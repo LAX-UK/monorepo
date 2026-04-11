@@ -17,3 +17,15 @@ export function loadEnvFiles(): void {
     config({ path: pkgEnv, override: true });
   }
 }
+
+/**
+ * Load `.env` only when `DATABASE_URL` is unset. Docker/Kubernetes (and `docker compose exec`)
+ * inject `DATABASE_URL`; loading `.env` with `override` would replace it with a host-only URL
+ * or wrong password and break `pnpm db:migrate:docker`.
+ */
+export function loadEnvFilesIfNeeded(): void {
+  if (process.env.DATABASE_URL?.trim()) {
+    return;
+  }
+  loadEnvFiles();
+}
