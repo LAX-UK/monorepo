@@ -28,6 +28,8 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
 - `apps/api/Dockerfile` and `apps/ws/Dockerfile` — run with `tsx` against workspace sources.
 - `.dockerignore` excludes `node_modules` and build artifacts.
 
+**Migrations: `password authentication failed` on the host, but `docker compose exec postgres psql …` works:** another PostgreSQL is usually listening on host port `5432` (e.g. Ubuntu’s `postgresql.service`). In repo root `.env` set `POSTGRES_PUBLISH_PORT=5433`, set `DATABASE_URL=…@localhost:5433/auction`, then `docker compose up -d postgres` (recreate so the new port mapping applies) and run `pnpm db:migrate` again.
+
 ## Scripts
 
 `pnpm build` · `pnpm typecheck` · `pnpm db:generate` · `pnpm db:migrate`

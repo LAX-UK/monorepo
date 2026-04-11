@@ -6,8 +6,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: auction
+    # Default 5432. On Ubuntu, system Postgres often uses 5432 already — set in .env:
+    #   POSTGRES_PUBLISH_PORT=5433
+    # and use the same port in DATABASE_URL for host-side migrate/seed.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
