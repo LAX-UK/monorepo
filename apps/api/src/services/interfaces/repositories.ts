@@ -1,16 +1,23 @@
 import type { Auction, AuctionStatus, CreateAuctionInput } from "@auction/types";
 import type { Bid } from "@auction/types";
 
-export type ListAuctionsSort = "createdDesc" | "endingAsc";
+export type ListAuctionsSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc";
 
 export type ListAuctionsFilter = {
   status?: AuctionStatus | undefined;
   categoryId?: string | undefined;
   sellerId?: string | undefined;
   winnerId?: string | undefined;
+  /** Restrict lots whose endTime falls in this calendar year (UTC). */
+  endYear?: number | undefined;
   limit: number;
   offset: number;
   sort?: ListAuctionsSort | undefined;
+};
+
+/** Aggregate for archive / past-auctions views (ended lots). */
+export type ArchiveEndedAggregateFilter = {
+  endYear?: number | undefined;
 };
 
 export interface IAuctionRepository {
@@ -19,6 +26,10 @@ export interface IAuctionRepository {
   findByIdForUpdate(id: string): Promise<Auction | null>;
   create(sellerId: string, input: CreateAuctionInput): Promise<Auction>;
   list(filter: ListAuctionsFilter): Promise<Auction[]>;
+  /** Count rows matching the same predicates as list (ignores limit/offset/sort). */
+  countMatching(filter: Omit<ListAuctionsFilter, "limit" | "offset" | "sort">): Promise<number>;
+  /** Sum of current_price for ended auctions (hammer totals), optional calendar year on endTime. */
+  sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }>;
   updateCurrentPrice(id: string, price: string): Promise<void>;
   updateEndTime(id: string, endTime: Date): Promise<void>;
   updateStatus(id: string, status: Auction["status"]): Promise<void>;

@@ -1,4 +1,9 @@
-import { createAuctionSchema, listAuctionsQuerySchema } from "@auction/validators";
+import {
+  archiveCountQuerySchema,
+  archiveSummaryQuerySchema,
+  createAuctionSchema,
+  listAuctionsQuerySchema,
+} from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
@@ -17,11 +22,32 @@ export function createAuctionRoutes(container: Container, authenticator: IAuthen
       categoryId: query.categoryId,
       sellerId: query.sellerId,
       winnerId: query.winnerId,
+      endYear: query.endYear,
       sort: query.sort,
       limit: query.limit,
       offset: query.offset,
     });
     return c.json({ data });
+  });
+
+  r.get("/archive/summary", zValidator("query", archiveSummaryQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const { total, count } = await container.auctionService.archiveEndedSummary({
+      endYear: q.endYear,
+    });
+    return c.json({
+      data: { totalHammer: total, endedLotCount: count },
+    });
+  });
+
+  r.get("/archive/count", zValidator("query", archiveCountQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const count = await container.auctionService.countMatching({
+      status: "ended",
+      categoryId: q.categoryId,
+      endYear: q.endYear,
+    });
+    return c.json({ count });
   });
 
   r.get("/:id/bids", async (c) => {

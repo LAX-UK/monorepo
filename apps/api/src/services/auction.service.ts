@@ -1,7 +1,11 @@
 import type { Auction, CreateAuctionInput } from "@auction/types";
 import { err, ok, type Result } from "neverthrow";
 import { AuctionError } from "../lib/errors.js";
-import type { IAuctionRepository, ListAuctionsFilter } from "./interfaces/repositories.js";
+import type {
+  ArchiveEndedAggregateFilter,
+  IAuctionRepository,
+  ListAuctionsFilter,
+} from "./interfaces/repositories.js";
 
 export class AuctionService {
   constructor(private readonly auctionRepo: IAuctionRepository) {}
@@ -23,5 +27,13 @@ export class AuctionService {
 
   async list(filter: ListAuctionsFilter): Promise<Auction[]> {
     return this.auctionRepo.list(filter);
+  }
+
+  countMatching(filter: Omit<ListAuctionsFilter, "limit" | "offset" | "sort">): Promise<number> {
+    return this.auctionRepo.countMatching(filter);
+  }
+
+  archiveEndedSummary(filter: ArchiveEndedAggregateFilter) {
+    return this.auctionRepo.sumEndedHammer(filter);
   }
 }

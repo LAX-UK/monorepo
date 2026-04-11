@@ -1,12 +1,50 @@
 import type { Database } from "@auction/db";
 import { auction } from "@auction/db/schema";
 import type { Auction, CreateAuctionInput } from "@auction/types";
-import { and, asc, desc, eq, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { mapAuctionRow } from "../lib/mappers.js";
 import type {
+  ArchiveEndedAggregateFilter,
   IAuctionRepository,
   ListAuctionsFilter,
+  ListAuctionsSort,
 } from "../services/interfaces/repositories.js";
+
+type ListWhereInput = Omit<ListAuctionsFilter, "limit" | "offset" | "sort">;
+
+function endYearBoundsUtc(year: number): { start: Date; end: Date } {
+  return {
+    start: new Date(Date.UTC(year, 0, 1)),
+    end: new Date(Date.UTC(year + 1, 0, 1)),
+  };
+}
+
+function listWhere(input: ListWhereInput) {
+  const conditions = [];
+  if (input.status) conditions.push(eq(auction.status, input.status));
+  if (input.categoryId) conditions.push(eq(auction.categoryId, input.categoryId));
+  if (input.sellerId) conditions.push(eq(auction.sellerId, input.sellerId));
+  if (input.winnerId) conditions.push(eq(auction.winnerId, input.winnerId));
+  if (input.endYear !== undefined) {
+    const { start, end } = endYearBoundsUtc(input.endYear);
+    conditions.push(gte(auction.endTime, start));
+    conditions.push(lt(auction.endTime, end));
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function listOrderBy(sort: ListAuctionsSort | undefined) {
+  switch (sort) {
+    case "endingAsc":
+      return asc(auction.endTime);
+    case "hammerDesc":
+      return desc(auction.currentPrice);
+    case "endedDesc":
+      return desc(auction.endTime);
+    default:
+      return desc(auction.createdAt);
+  }
+}
 
 export class DrizzleAuctionRepository implements IAuctionRepository {
   constructor(private readonly db: Database) {}
@@ -58,16 +96,8 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
   }
 
   async list(filter: ListAuctionsFilter) {
-    const conditions = [];
-    if (filter.status) conditions.push(eq(auction.status, filter.status));
-    if (filter.categoryId) conditions.push(eq(auction.categoryId, filter.categoryId));
-    if (filter.sellerId) conditions.push(eq(auction.sellerId, filter.sellerId));
-    if (filter.winnerId) conditions.push(eq(auction.winnerId, filter.winnerId));
-
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const orderBy =
-      filter.sort === "endingAsc" ? asc(auction.endTime) : desc(auction.createdAt);
+    const whereClause = listWhere(filter);
+    const orderBy = listOrderBy(filter.sort);
 
     const rows = await this.db
       .select()
@@ -78,6 +108,36 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
       .offset(filter.offset);
 
     return rows.map(mapAuctionRow);
+  }
+
+  async countMatching(filter: ListWhereInput): Promise<number> {
+    const whereClause = listWhere(filter);
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(auction)
+      .where(whereClause);
+    return row?.n ?? 0;
+  }
+
+  async sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }> {
+    const conditions = [eq(auction.status, "ended")];
+    if (filter.endYear !== undefined) {
+      const { start, end } = endYearBoundsUtc(filter.endYear);
+      conditions.push(gte(auction.endTime, start));
+      conditions.push(lt(auction.endTime, end));
+    }
+    const whereClause = and(...conditions);
+    const [row] = await this.db
+      .select({
+        total: sql<string>`coalesce(sum(${auction.currentPrice}), 0)::text`,
+        cnt: sql<number>`count(*)::int`,
+      })
+      .from(auction)
+      .where(whereClause);
+    return {
+      total: row?.total ?? "0",
+      count: row?.cnt ?? 0,
+    };
   }
 
   async findScheduledToActivate(asOf: Date): Promise<Auction[]> {

@@ -27,16 +27,29 @@ export const createAuctionSchema = z.object({
   endTime: z.coerce.date(),
 });
 
-const listSort = z.enum(["createdDesc", "endingAsc"]).optional();
+const listSort = z
+  .enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc"])
+  .optional();
 
 export const listAuctionsQuerySchema = z.object({
   status: z.enum(auctionStatuses).optional(),
   categoryId: z.string().uuid().optional(),
   sellerId: z.string().optional(),
   winnerId: z.string().optional(),
+  endYear: z.coerce.number().int().min(1970).max(2100).optional(),
   sort: listSort,
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+export const archiveSummaryQuerySchema = z.object({
+  endYear: z.coerce.number().int().min(1970).max(2100).optional(),
+});
+
+/** Same filters as archive grid; status is always `ended` on the server. */
+export const archiveCountQuerySchema = z.object({
+  categoryId: z.string().uuid().optional(),
+  endYear: z.coerce.number().int().min(1970).max(2100).optional(),
 });
 
 export type CreateAuctionInput = z.infer<typeof createAuctionSchema>;

@@ -5,11 +5,24 @@ export type ListAuctionsParams = {
   categoryId?: string;
   sellerId?: string;
   winnerId?: string;
+  /** Filter lots whose endTime falls in this calendar year (UTC). */
+  endYear?: number;
   limit?: number;
   offset?: number;
-  /** API sort: default createdDesc; endingAsc for urgency (active lots ending soonest first). */
-  sort?: "createdDesc" | "endingAsc";
+  /** API sort: default createdDesc; endingAsc for live urgency; hammerDesc/endedDesc for archive. */
+  sort?: "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc";
 };
+
+/** Aggregates for past / ended auctions (ISP: separate from row listing). */
+export type ArchiveEndedSummary = {
+  totalHammer: string;
+  endedLotCount: number;
+};
+
+export interface ArchiveMetricsReader {
+  getEndedSummary(endYear?: number): Promise<ArchiveEndedSummary>;
+  countEndedLots(filters: { categoryId?: string; endYear?: number }): Promise<number>;
+}
 
 /** Read-only auction listing and detail (ISP). */
 export interface AuctionReader {

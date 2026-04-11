@@ -8,7 +8,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 const nav = [
   { href: "/", label: "Upcoming Auctions" },
-  { href: "/#archive", label: "Past Auctions" },
+  { href: "/archive", label: "Past Auctions" },
   { href: "/artist/featured", label: "Artists" },
 ];
 

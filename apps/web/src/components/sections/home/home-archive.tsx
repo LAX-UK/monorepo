@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 const imgA =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAD4Nvrs5uB2uKmfg09-ougWoqAgw0yP_Ktw1QzEFkkoXRcCr2EHSphXK08CiCc-Zz2wifTsrSDswibojfttwhyjXcSgTDP-vhIFoARirretax_rO0OE_zJdy_705r3BCdIReOs_kbUkwup_Y19a-HU4m8uk1WYjF0zHPC79VSNfze1R-bKLN4K-GlWNtplmK84GHMqLIivcGeXAjmZ5Ts3txujGaK1agAQx1GsfUZjH-JcPsx5CLK0o--GeXDzkC0eGoJorm4j5UFA";
@@ -48,14 +49,17 @@ export function HomeArchive() {
               </div>
             </div>
           </div>
-          <button type="button" className="group mt-16 flex items-center space-x-4">
+          <Link
+            href="/archive"
+            className="group mt-16 inline-flex items-center space-x-4"
+          >
             <span className="border-b border-primary pb-1 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
               Access Sales Archive
             </span>
             <span className="material-symbols-outlined text-primary transition-transform duration-300 group-hover:translate-x-2">
               east
             </span>
-          </button>
+          </Link>
         </div>
         <div className="lg:col-span-7">
           <div className="flex space-x-8 md:space-x-12">

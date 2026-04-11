@@ -8,6 +8,14 @@ import { hc } from "hono/client";
 export type RpcApp = {
   auctions: {
     $get: (args: { query: Record<string, string> }) => Promise<Response>;
+    archive: {
+      summary: {
+        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+      };
+      count: {
+        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+      };
+    };
     ":id": {
       $get: (args: { param: { id: string } }) => Promise<Response>;
       bids: {
