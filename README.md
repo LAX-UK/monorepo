@@ -8,9 +8,9 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
    **Or full stack:** `docker compose up -d` (builds API + WS images — run DB migrations before traffic).
 2. `cp .env.example .env` and set `BETTER_AUTH_SECRET` (≥16 characters).
 3. `pnpm install`
-4. Put `DATABASE_URL` in the repo root `.env` (see `.env.example`), then `pnpm db:migrate` (loads that file automatically). You can still `export DATABASE_URL=...` to override. For Drizzle Kit’s CLI instead, use `pnpm --filter @auction/db db:migrate:kit`.
+4. Put `DATABASE_URL` in the repo root `.env` (see `.env.example`). Migrate and seed **do not** read `.env` by themselves — export it first, e.g. `set -a && source .env && set +a`, then `pnpm db:migrate`. For Drizzle Kit’s CLI instead, use `pnpm --filter @auction/db db:migrate:kit`.
 
-   **If host migrate fails** (`ECONNREFUSED`, `password authentication failed`, or port clashes with another Postgres): bring the stack up (`docker compose up -d`) and run migrations **inside** the API container (uses Compose `DATABASE_URL` → `postgres:5432`, no host port): `pnpm db:migrate:docker` (runs compiled `packages/db/dist/migrate.js`, no `tsx` in the image). Migrate/seed only read `.env` when `DATABASE_URL` is unset, so Docker-injected URLs are not overwritten by a mounted repo `.env`.
+   **On a server with Docker**, prefer migrations inside the API container so `DATABASE_URL` matches Compose (`postgres:5432`): `docker compose up -d postgres redis api`, then `pnpm db:migrate:docker` (runs `packages/db/dist/migrate.js`). Seed the same way: `docker compose exec -T api node packages/db/dist/seed.js`.
 5. `pnpm turbo run dev --parallel`
 
 | Service | URL | Notes |
@@ -30,8 +30,8 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
 - `apps/api/Dockerfile` and `apps/ws/Dockerfile` — run with `tsx` against workspace sources.
 - `.dockerignore` excludes `node_modules` and build artifacts.
 
-**Migrations: `password authentication failed` on the host, but `docker compose exec postgres psql …` works:** another PostgreSQL is usually listening on host port `5432` (e.g. Ubuntu’s `postgresql.service`). In repo root `.env` set `POSTGRES_PUBLISH_PORT=5433`, set `DATABASE_URL=…@localhost:5433/auction`, then `docker compose up -d postgres` (recreate so the new port mapping applies) and run `pnpm db:migrate` again.
+**Migrations: `password authentication failed` on the host, but `docker compose exec postgres psql …` works:** the volume may have been initialized with a different password than `docker-compose.yml`, or another Postgres is on host `5432`. Align password inside the DB with `ALTER USER`, or use `POSTGRES_PUBLISH_PORT=5433` and `DATABASE_URL=…@localhost:5433/auction`, recreate Postgres, export `DATABASE_URL`, then `pnpm db:migrate` — or skip the host and use `pnpm db:migrate:docker`.
 
 ## Scripts
 
-`pnpm build` · `pnpm typecheck` · `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:migrate:docker`
+`pnpm build` · `pnpm typecheck` · `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:migrate:docker` · `pnpm db:seed:docker`

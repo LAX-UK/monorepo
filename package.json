@@ -13,6 +13,7 @@
     "db:generate": "pnpm --filter @auction/db db:generate",
     "db:migrate": "pnpm --filter @auction/db db:migrate",
     "db:migrate:docker": "docker compose exec -T api node packages/db/dist/migrate.js",
+    "db:seed:docker": "docker compose exec -T api node packages/db/dist/seed.js",
     "db:studio": "pnpm --filter @auction/db db:studio",
     "db:seed": "pnpm --filter @auction/db db:seed"
   },
