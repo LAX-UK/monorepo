@@ -1,0 +1,15 @@
+import type { Database } from "@auction/db";
+import { user } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
+import type { IUserRepository } from "../services/interfaces/repositories.js";
+
+export class DrizzleUserRepository implements IUserRepository {
+  constructor(private readonly db: Database) {}
+
+  async findById(id: string) {
+    const rows = await this.db.select().from(user).where(eq(user.id, id)).limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { id: row.id, role: row.role };
+  }
+}

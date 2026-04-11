@@ -1,0 +1,32 @@
+import type { Redis } from "ioredis";
+import type { Auction, Bid } from "@auction/types";
+import type { INotificationSender } from "../services/interfaces/notifications.js";
+
+export class RedisNotificationSender implements INotificationSender {
+  constructor(private readonly redis: Redis) {}
+
+  async notifyBidPlaced(auction: Auction, bid: Bid): Promise<void> {
+    const channel = `auction:${auction.id}:events`;
+    await this.redis.publish(
+      channel,
+      JSON.stringify({
+        type: "bid_placed",
+        auctionId: auction.id,
+        bid,
+        currentPrice: auction.currentPrice,
+      }),
+    );
+  }
+
+  async notifyAuctionExtended(auction: Auction, newEndTime: Date): Promise<void> {
+    const channel = `auction:${auction.id}:events`;
+    await this.redis.publish(
+      channel,
+      JSON.stringify({
+        type: "auction_extended",
+        auctionId: auction.id,
+        newEndTime: newEndTime.toISOString(),
+      }),
+    );
+  }
+}
