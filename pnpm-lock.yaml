@@ -119,6 +119,9 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts
+      '@tailwindcss/oxide-wasm32-wasi':
+        specifier: 4.2.2
+        version: 4.2.2
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -2779,8 +2782,7 @@ snapshots:
   '@tailwindcss/oxide-linux-x64-musl@4.2.2':
     optional: true
 
-  '@tailwindcss/oxide-wasm32-wasi@4.2.2':
-    optional: true
+  '@tailwindcss/oxide-wasm32-wasi@4.2.2': {}
 
   '@tailwindcss/oxide-win32-arm64-msvc@4.2.2':
     optional: true

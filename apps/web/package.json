@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@tailwindcss/oxide-wasm32-wasi": "4.2.2",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.6",

@@ -1,3 +1,21 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Install optional @tailwindcss/oxide platform bindings (and wasm32 fallback) even when the
+# lockfile was produced on another OS. Without wasm32, pnpm can omit @tailwindcss/oxide-wasm32-wasi
+# on linux-x64, so native failures have no fallback and `next build` errors.
+supportedArchitectures:
+  os:
+    - current
+    - linux
+    - darwin
+  cpu:
+    - current
+    - x64
+    - arm64
+    - wasm32
+  libc:
+    - current
+    - glibc
+    - musl
