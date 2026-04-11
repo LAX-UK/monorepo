@@ -47,5 +47,8 @@ export function createMockArtistReader(): ArtistReader {
       if (!id) return null;
       return pickProfile(id);
     },
+    async listFeatured(): Promise<ArtistProfile[]> {
+      return PROFILES.map((p) => ({ ...p }));
+    },
   };
 }

@@ -13,7 +13,12 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
   r.post("/", requireAuth, zValidator("json", placeBidSchema), async (c) => {
     const userId = c.get("userId");
     const body = c.req.valid("json");
-    const result = await container.bidService.placeBid(userId, body.auctionId, body.amount);
+    const result = await container.bidService.placeBid(
+      userId,
+      body.auctionId,
+      body.amount,
+      body.maxAutoBidAmount,
+    );
     return result.match(
       (bid) => c.json({ data: bid }, 201),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),

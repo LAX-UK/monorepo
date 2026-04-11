@@ -6,6 +6,8 @@ import type { Env } from "./env.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createAuctionRoutes } from "./routes/auctions.js";
 import { createBidRoutes } from "./routes/bids.js";
+import { createCategoryRoutes } from "./routes/categories.js";
+import { createPaymentRoutes } from "./routes/payments.js";
 import { createUserRoutes } from "./routes/users.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
@@ -35,7 +37,9 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   const routed = app
     .route("/auctions", createAuctionRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
-    .route("/users", createUserRoutes(container, authenticator));
+    .route("/users", createUserRoutes(container, authenticator))
+    .route("/categories", createCategoryRoutes(container))
+    .route("/payments", createPaymentRoutes(container, authenticator));
 
   return routed;
 }

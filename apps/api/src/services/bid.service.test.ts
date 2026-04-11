@@ -15,6 +15,8 @@ function auction(overrides: Partial<Auction> = {}): Auction {
     sellerId: "seller-1",
     title: "Lot",
     description: null,
+    medium: null,
+    dimensions: null,
     images: [],
     categoryId: null,
     auctionType: "english",
@@ -70,6 +72,8 @@ describe("BidService.placeBid", () => {
       updateEndTime: vi.fn(),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([]),
     };
     const bidRepo: IBidRepository = {
       create: vi.fn(),
@@ -79,10 +83,9 @@ describe("BidService.placeBid", () => {
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
-    const notifications = new NotificationService({
-      notifyBidPlaced: vi.fn().mockResolvedValue(undefined),
-      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
-    });
+    const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(createMockFactory(auctionRepo, bidRepo), strategyFactory, cache, notifications);
 
     const result = await service.placeBid("bidder-1", "auc-1", 150);
@@ -104,6 +107,8 @@ describe("BidService.placeBid", () => {
       updateEndTime: vi.fn(),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([]),
     };
     const bidRepo: IBidRepository = {
       create: vi.fn(),
@@ -113,10 +118,9 @@ describe("BidService.placeBid", () => {
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
-    const notifications = new NotificationService({
-      notifyBidPlaced: vi.fn().mockResolvedValue(undefined),
-      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
-    });
+    const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(createMockFactory(auctionRepo, bidRepo), strategyFactory, cache, notifications);
 
     const result = await service.placeBid("bidder-1", "auc-1", 150);
@@ -134,6 +138,8 @@ describe("BidService.placeBid", () => {
       updateEndTime: vi.fn(),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([]),
     };
     const bidRepo: IBidRepository = {
       create: vi.fn(),
@@ -143,10 +149,9 @@ describe("BidService.placeBid", () => {
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
-    const notifications = new NotificationService({
-      notifyBidPlaced: vi.fn().mockResolvedValue(undefined),
-      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
-    });
+    const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(createMockFactory(auctionRepo, bidRepo), strategyFactory, cache, notifications);
 
     const result = await service.placeBid("bidder-1", "auc-1", 100);
@@ -167,6 +172,8 @@ describe("BidService.placeBid", () => {
       updateEndTime: vi.fn(),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([]),
     };
     const bidRepo: IBidRepository = {
       create: vi.fn().mockResolvedValue(created),
@@ -179,7 +186,10 @@ describe("BidService.placeBid", () => {
     const cache: ICacheProvider = { set: cacheSet, get: vi.fn(), del: vi.fn() };
     const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
     const notifyAuctionExtended = vi.fn().mockResolvedValue(undefined);
-    const notifications = new NotificationService({ notifyBidPlaced, notifyAuctionExtended });
+    const notifications = new NotificationService(
+      { notifyBidPlaced },
+      { notifyAuctionExtended },
+    );
     const service = new BidService(createMockFactory(auctionRepo, bidRepo), strategyFactory, cache, notifications);
 
     const result = await service.placeBid("bidder-1", "auc-1", 150);

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { auction } from "@auction/db/schema";
 import type { Auction, CreateAuctionInput } from "@auction/types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { mapAuctionRow } from "../lib/mappers.js";
 import type {
   IAuctionRepository,
@@ -36,6 +36,8 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
         sellerId,
         title: input.title,
         description: input.description ?? null,
+        medium: input.medium ?? null,
+        dimensions: input.dimensions ?? null,
         images,
         categoryId: input.categoryId ?? null,
         auctionType: input.auctionType,
@@ -64,14 +66,33 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+    const orderBy =
+      filter.sort === "endingAsc" ? asc(auction.endTime) : desc(auction.createdAt);
+
     const rows = await this.db
       .select()
       .from(auction)
       .where(whereClause)
-      .orderBy(desc(auction.createdAt))
+      .orderBy(orderBy)
       .limit(filter.limit)
       .offset(filter.offset);
 
+    return rows.map(mapAuctionRow);
+  }
+
+  async findScheduledToActivate(asOf: Date): Promise<Auction[]> {
+    const rows = await this.db
+      .select()
+      .from(auction)
+      .where(and(eq(auction.status, "scheduled"), lte(auction.startTime, asOf)));
+    return rows.map(mapAuctionRow);
+  }
+
+  async findActivePastEnd(asOf: Date): Promise<Auction[]> {
+    const rows = await this.db
+      .select()
+      .from(auction)
+      .where(and(eq(auction.status, "active"), lte(auction.endTime, asOf)));
     return rows.map(mapAuctionRow);
   }
 

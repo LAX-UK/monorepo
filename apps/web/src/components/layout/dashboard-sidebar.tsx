@@ -13,16 +13,29 @@ const links = [
 
 type Props = {
   user: SessionUser;
+  /** Close mobile drawer after navigation */
+  onNavigate?: () => void;
+  /** When true, drawer is visible on small viewports */
+  mobileOpen?: boolean;
 };
 
-export function DashboardSidebar({ user }: Props) {
+export function DashboardSidebar({ user, onNavigate, mobileOpen = false }: Props) {
   const pathname = usePathname();
+  const onNav = onNavigate ?? (() => {});
+
+  const asideTransform =
+    mobileOpen
+      ? "translate-x-0"
+      : "-translate-x-full lg:translate-x-0";
 
   return (
-    <aside className="fixed z-50 flex h-full w-64 flex-col border-r border-outline-variant/20 bg-surface-container-lowest">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)] transition-transform duration-200 ease-out ${asideTransform}`}
+    >
       <div className="p-8">
         <Link
           href="/"
+          onClick={onNav}
           className="mb-12 block font-headline text-xl tracking-tighter text-on-surface"
         >
           The Digital Curator
@@ -42,6 +55,7 @@ export function DashboardSidebar({ user }: Props) {
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={onNav}
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center border-l-4 px-4 py-3 text-xs font-medium uppercase tracking-widest transition-all ${
                   active
@@ -59,6 +73,7 @@ export function DashboardSidebar({ user }: Props) {
       <div className="mt-auto p-8">
         <Link
           href="/"
+          onClick={onNav}
           className="font-label text-[10px] uppercase tracking-widest text-primary transition-colors hover:underline"
         >
           Exit to gallery

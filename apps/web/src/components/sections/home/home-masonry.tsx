@@ -1,3 +1,4 @@
+import { LotCountdownChip } from "@/components/sections/home/lot-countdown-chip";
 import { formatMoney } from "@/lib/format-currency";
 import type { Auction, AuctionStatus } from "@auction/types";
 import Image from "next/image";
@@ -94,6 +95,11 @@ export function HomeMasonry({ auctions }: Props) {
                       {lotLabel(a.id)}
                     </p>
                   </div>
+                  {a.status === "active" ? (
+                    <div className="absolute bottom-4 left-4">
+                      <LotCountdownChip endTime={a.endTime} />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex items-start justify-between gap-4 pr-4">
                   <div className="min-w-0 flex-1">

@@ -10,15 +10,40 @@ export type RpcApp = {
     $get: (args: { query: Record<string, string> }) => Promise<Response>;
     ":id": {
       $get: (args: { param: { id: string } }) => Promise<Response>;
+      bids: {
+        $get: (args: { param: { id: string }; query?: Record<string, string> }) => Promise<Response>;
+      };
     };
   };
   bids: {
-    $post: (args: { json: { auctionId: string; amount: number } }) => Promise<Response>;
+    $post: (args: {
+      json: { auctionId: string; amount: number; maxAutoBidAmount?: number };
+    }) => Promise<Response>;
   };
   users: {
+    public: {
+      ":userId": {
+        $get: (args: { param: { userId: string } }) => Promise<Response>;
+      };
+    };
     me: {
       $get: () => Promise<Response>;
+      bids: { $get: () => Promise<Response> };
+      portfolio: { $get: () => Promise<Response> };
+      watchlist: {
+        $get: () => Promise<Response>;
+        $post: (args: { json: { auctionId: string } }) => Promise<Response>;
+      };
+      notifications: {
+        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+      };
     };
+  };
+  categories: {
+    $get: () => Promise<Response>;
+  };
+  payments: {
+    $post: (args: { json: { auctionId: string } }) => Promise<Response>;
   };
 };
 

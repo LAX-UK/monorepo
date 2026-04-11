@@ -5,7 +5,8 @@ import { HomeMasonry } from "@/components/sections/home/home-masonry";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import type { ListAuctionsParams } from "@/lib/data/contracts";
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
-import type { Auction } from "@auction/types";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import type { Auction, Category } from "@auction/types";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -31,11 +32,15 @@ export default async function HomePage({ searchParams }: PageProps) {
   const maxN = maxRaw !== undefined ? Number.parseFloat(maxRaw) : Number.NaN;
 
   let auctions: Auction[] = [];
+  let categories: Category[] = [];
   try {
     const reader = await getServerAuctionReader();
+    const catReader = await getServerCategoryReader();
+    categories = await catReader.list();
     const filtered: ListAuctionsParams = {
       limit: 24,
       status: "active",
+      sort: "endingAsc",
       ...(categoryId !== undefined ? { categoryId } : {}),
       ...(sellerId !== undefined ? { sellerId } : {}),
     };
@@ -43,6 +48,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     if (auctions.length === 0) {
       const fallback: ListAuctionsParams = {
         limit: 24,
+        sort: "endingAsc",
         ...(categoryId !== undefined ? { categoryId } : {}),
         ...(sellerId !== undefined ? { sellerId } : {}),
       };
@@ -55,9 +61,10 @@ export default async function HomePage({ searchParams }: PageProps) {
       auctions = auctions.filter((a) => Number.parseFloat(a.currentPrice) <= maxN);
     }
     if (auctions.length === 0) {
-      auctions = await reader.list({ limit: 12 });
+      auctions = await reader.list({ limit: 12, sort: "endingAsc" });
     }
   } catch (err) {
+    categories = [];
     console.error(
       "[HomePage] auction list failed (API down or misconfigured INTERNAL_API_URL?)",
       err,
@@ -69,7 +76,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     <main id="main-content" className="bg-surface pt-24">
       <HomeHero featured={featured} />
       <Suspense fallback={filtersBarFallback()}>
-        <HomeFilters />
+        <HomeFilters categories={categories} />
       </Suspense>
       <HomeMasonry auctions={auctions} />
       <HomeArchive />

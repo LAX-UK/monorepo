@@ -19,7 +19,7 @@ export default async function DashboardPortfolioPage() {
       </p>
 
       {won.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-md border border-outline-variant/20 bg-surface-container-low/60 px-8 py-20 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl bg-surface-container-low/60 px-8 py-20 text-center shadow-sm ring-1 ring-outline-variant/10">
           <div
             className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-outline-variant/30 bg-surface-container-lowest font-headline text-3xl text-primary"
             aria-hidden
@@ -47,7 +47,7 @@ export default async function DashboardPortfolioPage() {
               <li key={a.id}>
                 <Link
                   href={`/dashboard/checkout/${a.id}`}
-                  className="group block overflow-hidden border border-outline-variant/15 bg-surface-container-lowest shadow-sm transition-shadow hover:shadow-md"
+                  className="group block overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md"
                 >
                   <div className="relative aspect-[4/5] bg-surface-container-low">
                     {img ? (

@@ -17,10 +17,24 @@ export function createAuctionRoutes(container: Container, authenticator: IAuthen
       categoryId: query.categoryId,
       sellerId: query.sellerId,
       winnerId: query.winnerId,
+      sort: query.sort,
       limit: query.limit,
       offset: query.offset,
     });
     return c.json({ data });
+  });
+
+  r.get("/:id/bids", async (c) => {
+    const id = c.req.param("id");
+    const auction = await container.auctionService.getById(id);
+    if (!auction) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    const raw = c.req.query("limit");
+    const parsed = Number.parseInt(raw ?? "50", 10);
+    const limit = Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
+    const bids = await container.bidService.listForAuction(id, limit);
+    return c.json({ data: bids });
   });
 
   r.get("/:id", async (c) => {

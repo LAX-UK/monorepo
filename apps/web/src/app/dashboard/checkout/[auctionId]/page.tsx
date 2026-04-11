@@ -24,7 +24,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const { auctionId } = await params;
   const user = await getServerSessionUser();
   if (!user) {
-    redirect("/?auth=required");
+    redirect("/login?next=/dashboard&auth=required");
   }
 
   const reader = await getServerAuctionReader();
@@ -89,6 +89,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             </p>
 
             <CheckoutPurchasePanel
+              auctionId={auction.id}
               hammer={formatMoney(auction.currentPrice)}
               buyerPremium={formatMoney(premium.toFixed(2))}
               total={formatMoney(total.toFixed(2))}

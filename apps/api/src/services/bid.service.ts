@@ -20,6 +20,7 @@ export class BidService {
     bidderId: string,
     auctionId: string,
     amount: number,
+    maxAutoBidAmount?: number,
   ): Promise<Result<Bid, BidError>> {
     try {
       const { created, auction, nextEnd } = await this.repos.runInTransaction(
@@ -44,13 +45,19 @@ export class BidService {
           const nextPrice = strategy.getNextPrice(auctionRow, amount);
           const amountStr = nextPrice.toFixed(2);
 
+          const hasMax =
+            maxAutoBidAmount !== undefined &&
+            Number.isFinite(maxAutoBidAmount) &&
+            maxAutoBidAmount >= amount;
+          const maxStr = hasMax ? maxAutoBidAmount.toFixed(2) : null;
+
           const createdBid = await bids.create({
             auctionId,
             bidderId,
             amount: amountStr,
             isWinning: true,
-            isAutoBid: false,
-            maxAutoBidAmount: null,
+            isAutoBid: hasMax,
+            maxAutoBidAmount: maxStr,
           });
 
           await bids.markWinningBid(auctionId, createdBid.id);
@@ -86,17 +93,8 @@ export class BidService {
     }
   }
 
-  /** Dashboard: bids placed by user with resolved auction rows. */
-  async listBidsWithAuctionsForBidder(
-    bidderId: string,
-  ): Promise<Array<{ bid: Bid; auction: Auction | null }>> {
-    const bids = await this.repos.root.bid.listForBidder(bidderId, 200);
-    const auctionIds = [...new Set(bids.map((b) => b.auctionId))];
-    const auctionMap = new Map<string, Auction>();
-    for (const id of auctionIds) {
-      const a = await this.repos.root.auction.findById(id);
-      if (a) auctionMap.set(id, a);
-    }
-    return bids.map((b) => ({ bid: b, auction: auctionMap.get(b.auctionId) ?? null }));
+  /** Public bid history for a lot (newest first). */
+  async listForAuction(auctionId: string, limit: number): Promise<Bid[]> {
+    return this.repos.root.bid.listForAuction(auctionId, limit);
   }
 }

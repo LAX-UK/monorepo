@@ -1,8 +1,8 @@
 import type { Redis } from "ioredis";
 import type { Auction, Bid } from "@auction/types";
-import type { INotificationSender } from "../services/interfaces/notifications.js";
+import type { IAuctionNotificationSender, IBidNotificationSender } from "../services/interfaces/notifications.js";
 
-export class RedisNotificationSender implements INotificationSender {
+export class RedisNotificationSender implements IBidNotificationSender, IAuctionNotificationSender {
   constructor(private readonly redis: Redis) {}
 
   async notifyBidPlaced(auction: Auction, bid: Bid): Promise<void> {

@@ -34,6 +34,8 @@ export const auction = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
+    medium: text("medium"),
+    dimensions: text("dimensions"),
     images: text("images")
       .array()
       .notNull()

@@ -1,6 +1,8 @@
 import type { Auction, AuctionStatus, CreateAuctionInput } from "@auction/types";
 import type { Bid } from "@auction/types";
 
+export type ListAuctionsSort = "createdDesc" | "endingAsc";
+
 export type ListAuctionsFilter = {
   status?: AuctionStatus | undefined;
   categoryId?: string | undefined;
@@ -8,6 +10,7 @@ export type ListAuctionsFilter = {
   winnerId?: string | undefined;
   limit: number;
   offset: number;
+  sort?: ListAuctionsSort | undefined;
 };
 
 export interface IAuctionRepository {
@@ -20,6 +23,10 @@ export interface IAuctionRepository {
   updateEndTime(id: string, endTime: Date): Promise<void>;
   updateStatus(id: string, status: Auction["status"]): Promise<void>;
   setWinner(id: string, winnerId: string): Promise<void>;
+  /** Lifecycle: scheduled auctions whose start time has passed. */
+  findScheduledToActivate(asOf: Date): Promise<Auction[]>;
+  /** Lifecycle: active auctions whose end time has passed. */
+  findActivePastEnd(asOf: Date): Promise<Auction[]>;
 }
 
 export type CreateBidRow = {

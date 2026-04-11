@@ -1,29 +1,43 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 
 type Props = {
+  auctionId: string;
   hammer: string;
   buyerPremium: string;
   total: string;
   premiumPercentLabel: string;
 };
 
-export function CheckoutPurchasePanel({ hammer, buyerPremium, total, premiumPercentLabel }: Props) {
+function apiBase(): string {
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+}
+
+export function CheckoutPurchasePanel({
+  auctionId,
+  hammer,
+  buyerPremium,
+  total,
+  premiumPercentLabel,
+}: Props) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const termsId = useId();
 
   if (submitted) {
     return (
-      <output className="block border border-primary/30 bg-primary/5 px-8 py-10 text-center">
+      <output className="block rounded-xl bg-primary-container/15 px-8 py-10 text-center ring-1 ring-primary/25">
         <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
           Request received
         </p>
         <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
         <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-          Our settlements team will contact you within one business day with wire instructions and
-          shipping options. Payment is due within seven days of invoice.
+          Your payment record has been created. When Stripe is configured, you&apos;ll complete card
+          payment here; until then our settlements team will follow up with wire instructions.
         </p>
       </output>
     );
@@ -31,7 +45,7 @@ export function CheckoutPurchasePanel({ hammer, buyerPremium, total, premiumPerc
 
   return (
     <div className="space-y-10">
-      <div className="border border-outline-variant/20 bg-surface-container-lowest p-8 shadow-sm">
+      <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
         <h2 className="mb-8 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-secondary">
           Order summary
         </h2>
@@ -46,20 +60,20 @@ export function CheckoutPurchasePanel({ hammer, buyerPremium, total, premiumPerc
             </dt>
             <dd className="font-headline text-lg tabular-nums text-primary">{buyerPremium}</dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-outline-variant/15 pt-4">
+          <div className="flex justify-between gap-4 border-t border-outline-variant/10 pt-4">
             <dt className="text-on-surface-variant">Shipping &amp; logistics</dt>
             <dd className="font-label text-xs uppercase tracking-widest text-secondary">
               Quoted after payment
             </dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-outline-variant/20 pt-6">
+          <div className="flex justify-between gap-4 border-t border-outline-variant/15 pt-6">
             <dt className="font-headline text-xl text-on-surface">Total due</dt>
             <dd className="font-headline text-3xl tabular-nums text-primary">{total}</dd>
           </div>
         </dl>
       </div>
 
-      <div className="border border-outline-variant/20 bg-surface-container-low/40 p-8">
+      <div className="rounded-xl bg-surface-container-high/40 p-8 ring-1 ring-outline-variant/10">
         <h2 className="mb-4 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-secondary">
           Payment
         </h2>
@@ -110,19 +124,47 @@ export function CheckoutPurchasePanel({ hammer, buyerPremium, total, premiumPerc
           />
           <span className="font-body text-sm text-on-surface-variant">
             I agree to the{" "}
-            <a href="/" className="border-b border-primary/40 text-on-surface hover:border-primary">
+            <Link href="/terms" className="border-b border-primary/40 text-on-surface hover:border-primary">
               Terms of Sale
-            </a>
+            </Link>
             , including buyer&apos;s premium and payment deadlines.
           </span>
         </label>
+        {apiError ? (
+          <p className="text-sm text-error" role="alert">
+            {apiError}
+          </p>
+        ) : null}
         <button
           type="button"
-          disabled={!termsAccepted}
-          onClick={() => setSubmitted(true)}
+          disabled={!termsAccepted || busy}
+          onClick={() => {
+            void (async () => {
+              setApiError(null);
+              setBusy(true);
+              try {
+                const res = await fetch(`${apiBase()}/payments`, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ auctionId }),
+                });
+                const json = (await res.json().catch(() => ({}))) as { error?: string };
+                if (!res.ok) {
+                  setApiError(json.error ?? "Could not start payment");
+                  return;
+                }
+                setSubmitted(true);
+              } catch {
+                setApiError("Network error");
+              } finally {
+                setBusy(false);
+              }
+            })();
+          }}
           className="w-full bg-gradient-to-br from-primary to-primary-container py-5 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Complete purchase
+          {busy ? "Processing…" : "Complete purchase"}
         </button>
       </div>
     </div>

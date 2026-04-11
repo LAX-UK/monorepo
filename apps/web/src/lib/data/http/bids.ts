@@ -10,6 +10,9 @@ export function createHttpBidWriter(): BidWriter {
         json: {
           auctionId: input.auctionId,
           amount: input.amount,
+          ...(input.maxAutoBidAmount !== undefined
+            ? { maxAutoBidAmount: input.maxAutoBidAmount }
+            : {}),
         },
       });
       const json = (await res.json().catch(() => ({}))) as { data?: unknown; error?: string };

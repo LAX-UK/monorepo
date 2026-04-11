@@ -12,6 +12,8 @@ export function mapAuctionRow(row: AuctionRow): Auction {
     sellerId: row.sellerId,
     title: row.title,
     description: row.description,
+    medium: row.medium ?? null,
+    dimensions: row.dimensions ?? null,
     images: row.images ?? [],
     categoryId: row.categoryId,
     auctionType: row.auctionType as AuctionType,

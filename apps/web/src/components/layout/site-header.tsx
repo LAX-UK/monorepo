@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -52,13 +53,14 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-4 md:gap-8">
-          <button
-            type="button"
+          <Link
+            href="/search"
             className="rounded-md p-1 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            aria-label="Search (coming soon)"
+            aria-label="Search lots"
           >
             <MaterialIcon name="search" />
-          </button>
+          </Link>
+          <NotificationBell />
           <Link
             href="/dashboard"
             className="rounded-md p-1 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -96,6 +98,15 @@ export function SiteHeader() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href="/search"
+                className="block py-2 font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-primary"
+                onClick={closeMenu}
+              >
+                Search
+              </Link>
+            </li>
             <li>
               <Link
                 href="/dashboard"

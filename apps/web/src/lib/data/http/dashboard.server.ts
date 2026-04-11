@@ -49,3 +49,31 @@ export async function getServerMyPortfolio(): Promise<Auction[]> {
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAuction);
 }
+
+export type WatchlistWithAuctionRow = {
+  watchlistId: string;
+  auctionId: string;
+  createdAt: Date;
+  auction: Auction | null;
+};
+
+export async function getServerMyWatchlist(): Promise<WatchlistWithAuctionRow[]> {
+  const res = await authedFetch("/users/me/watchlist");
+  if (!res.ok) {
+    throw new Error(`Failed to load watchlist: ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    data: Array<{
+      watchlistId: string;
+      auctionId: string;
+      createdAt: string;
+      auction: unknown | null;
+    }>;
+  };
+  return body.data.map((row) => ({
+    watchlistId: row.watchlistId,
+    auctionId: row.auctionId,
+    createdAt: new Date(row.createdAt),
+    auction: row.auction ? parseAuction(row.auction) : null,
+  }));
+}

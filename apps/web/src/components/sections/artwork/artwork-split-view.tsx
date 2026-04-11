@@ -1,7 +1,8 @@
+import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
+import { RelatedLots } from "@/components/sections/artwork/related-lots";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { formatMoney } from "@/lib/format-currency";
 import type { Auction } from "@auction/types";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -19,30 +20,26 @@ function formatDateTime(d: Date): string {
 type Props = {
   auction: Auction;
   bidPanel: ReactNode;
+  watchSlot?: ReactNode;
+  sellerHref: string;
+  sellerName: string;
+  relatedAuctions: Auction[];
 };
 
-export function ArtworkSplitView({ auction, bidPanel }: Props) {
-  const img = auction.images[0];
+export function ArtworkSplitView({
+  auction,
+  bidPanel,
+  watchSlot,
+  sellerHref,
+  sellerName,
+  relatedAuctions,
+}: Props) {
   const live = auction.status === "active";
 
   return (
     <main id="main-content" className="flex min-h-screen flex-col pt-24 lg:flex-row lg:pt-0">
       <div className="h-[60vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:w-1/2">
-        <div className="group relative h-full">
-          {img ? (
-            <Image
-              src={img}
-              alt={auction.title}
-              fill
-              priority
-              className="bg-surface-container-low object-cover transition-transform duration-1000 group-hover:scale-105 lg:object-contain"
-              sizes="50vw"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-secondary">No image</div>
-          )}
-          <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
-        </div>
+        <ArtworkImageStage title={auction.title} images={auction.images} />
       </div>
       <div className="w-full overflow-y-auto px-8 pb-20 pt-8 lg:w-1/2 lg:px-24 lg:pt-32">
         <div className="mx-auto max-w-xl lg:mx-0">
@@ -54,6 +51,14 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
               <li>
                 <Link href="/" className="transition-colors hover:text-primary">
                   Gallery
+                </Link>
+              </li>
+              <li aria-hidden className="text-outline-variant">
+                /
+              </li>
+              <li>
+                <Link href="/artist/featured" className="transition-colors hover:text-primary">
+                  Artists
                 </Link>
               </li>
               <li aria-hidden className="text-outline-variant">
@@ -71,13 +76,19 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
             <MaterialIcon name="arrow_back" className="text-sm" />
             Back to gallery
           </Link>
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+            {watchSlot}
+          </div>
           <div className="mb-12">
             <div className="mb-6 flex items-center gap-3">
               {live ? (
                 <>
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-error" />
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-error opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-error" />
+                  </span>
                   <span className="font-label text-[10px] font-bold uppercase tracking-[0.3em] text-error">
-                    Live Auction • Lot {lotNo(auction.id)}
+                    Auction pulse • Lot {lotNo(auction.id)}
                   </span>
                 </>
               ) : (
@@ -89,16 +100,48 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
             <h1 className="mb-4 font-headline text-4xl tracking-tight text-on-surface lg:text-6xl">
               {auction.title}
             </h1>
-            <p className="mb-10 font-headline text-xl italic text-secondary">
-              Offered by a verified private seller
+            <p className="mb-2 font-headline text-xl italic text-secondary">
+              <Link
+                href={sellerHref}
+                className="border-b border-transparent transition-colors hover:border-primary hover:text-primary"
+              >
+                {sellerName}
+              </Link>
+              <span className="font-body text-sm not-italic text-on-surface-variant">
+                {" "}
+                · Verified seller
+              </span>
             </p>
-            <div className="mb-12 grid grid-cols-2 gap-x-8 gap-y-6 border-y border-outline-variant/30 py-8 sm:grid-cols-3">
+            <Link
+              href={sellerHref}
+              className="mb-10 inline-flex items-center gap-1 font-label text-[10px] font-bold uppercase tracking-widest text-primary"
+            >
+              View portfolio
+              <MaterialIcon name="arrow_forward" className="text-sm" />
+            </Link>
+            <div className="mb-12 grid grid-cols-2 gap-x-8 gap-y-6 border-y border-outline-variant/15 py-8 sm:grid-cols-3">
               <div>
                 <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
                   Format
                 </span>
                 <span className="text-sm font-medium capitalize text-on-surface">
                   {auction.auctionType.replaceAll("_", " ")}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Medium
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {auction.medium ?? "—"}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Dimensions
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {auction.dimensions ?? "—"}
                 </span>
               </div>
               <div>
@@ -149,6 +192,7 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
             ) : null}
           </div>
           {bidPanel}
+          <RelatedLots auctions={relatedAuctions} currentId={auction.id} />
         </div>
       </div>
     </main>

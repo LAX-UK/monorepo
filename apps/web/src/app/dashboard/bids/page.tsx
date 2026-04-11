@@ -1,6 +1,7 @@
 import { getServerMyBids } from "@/lib/data/http/dashboard.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
+import Image from "next/image";
 import Link from "next/link";
 
 function formatRemaining(endMs: number, now: number): string {
@@ -30,36 +31,40 @@ export default async function DashboardBidsPage() {
       latestByAuction.set(row.bid.auctionId, row);
     }
   }
-  const unique = [...latestByAuction.values()];
+  const unique = [...latestByAuction.values()].sort((a, b) => {
+    const ae = a.auction?.endTime.getTime() ?? 0;
+    const be = b.auction?.endTime.getTime() ?? 0;
+    return ae - be;
+  });
 
-  function statusFor(row: (typeof rows)[0]): { label: string; className: string } {
+  function statusFor(row: (typeof rows)[0]): { label: string; className: string; outbid: boolean } {
     const a = row.auction;
-    if (!a) return { label: "Unknown", className: "text-secondary" };
+    if (!a) return { label: "Unknown", className: "text-secondary", outbid: false };
     if (a.status === "ended") {
       const won = user?.id && a.winnerId === user.id;
       return won
-        ? { label: "Won", className: "text-primary" }
-        : { label: "Closed", className: "text-secondary" };
+        ? { label: "Won", className: "text-primary", outbid: false }
+        : { label: "Closed", className: "text-secondary", outbid: false };
     }
     if (a.status !== "active") {
-      return { label: a.status, className: "text-secondary" };
+      return { label: a.status, className: "text-secondary", outbid: false };
     }
     const myAmount = Number.parseFloat(row.bid.amount);
     const high = Number.parseFloat(a.currentPrice);
     const winning = row.bid.isWinning && Math.abs(myAmount - high) < 0.02;
-    if (winning) return { label: "Winning", className: "text-primary" };
-    return { label: "Outbid", className: "text-error" };
+    if (winning) return { label: "Winning", className: "text-primary", outbid: false };
+    return { label: "Outbid", className: "text-error", outbid: true };
   }
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
       <h1 className="mb-2 font-headline text-4xl tracking-tight">Active bids</h1>
       <p className="mb-10 font-body text-sm text-on-surface-variant">
-        Your latest bid per lot. Open a lot to raise your offer.
+        Your latest bid per lot, sorted by closing time. Increase your offer in one click.
       </p>
 
       {unique.length === 0 ? (
-        <div className="border border-outline-variant/15 bg-surface-container-low p-10 text-center">
+        <div className="rounded-xl bg-surface-container-low p-10 text-center shadow-sm ring-1 ring-outline-variant/10">
           <p className="mb-4 font-body text-on-surface-variant">You have no bids yet.</p>
           <Link
             href="/"
@@ -69,73 +74,77 @@ export default async function DashboardBidsPage() {
           </Link>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-outline-variant/15">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-outline-variant/20 bg-surface-container-low">
-                <th className="px-4 py-4 font-label text-[10px] uppercase tracking-widest text-secondary">
-                  Artwork
-                </th>
-                <th className="px-4 py-4 font-label text-[10px] uppercase tracking-widest text-secondary">
-                  Your bid
-                </th>
-                <th className="px-4 py-4 font-label text-[10px] uppercase tracking-widest text-secondary">
-                  Current high
-                </th>
-                <th className="px-4 py-4 font-label text-[10px] uppercase tracking-widest text-secondary">
-                  Time left
-                </th>
-                <th className="px-4 py-4 font-label text-[10px] uppercase tracking-widest text-secondary">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {unique.map((row) => {
-                const a = row.auction;
-                const st = statusFor(row);
-                const timeLeft =
-                  a && a.status === "active"
-                    ? formatRemaining(a.endTime.getTime(), now)
-                    : a?.status === "ended"
-                      ? "—"
-                      : "—";
-                return (
-                  <tr
-                    key={row.bid.id}
-                    className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container-low/50"
-                  >
-                    <td className="px-4 py-4">
-                      {a ? (
-                        <Link
-                          href={`/artwork/${a.id}`}
-                          className="font-headline text-lg font-light text-on-surface underline-offset-4 hover:underline"
-                        >
-                          {a.title}
-                        </Link>
-                      ) : (
-                        <span className="text-secondary">Removed lot</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 font-headline text-on-surface">
-                      {formatMoney(row.bid.amount)}
-                    </td>
-                    <td className="px-4 py-4 font-headline text-on-surface">
-                      {a ? formatMoney(a.currentPrice) : "—"}
-                    </td>
-                    <td className="px-4 py-4 font-body text-sm tabular-nums text-on-surface-variant">
-                      {timeLeft}
-                    </td>
-                    <td
-                      className={`px-4 py-4 font-label text-[10px] font-bold uppercase tracking-widest ${st.className}`}
+        <div className="space-y-6">
+          {unique.map((row) => {
+            const a = row.auction;
+            const st = statusFor(row);
+            const timeLeft =
+              a && a.status === "active"
+                ? formatRemaining(a.endTime.getTime(), now)
+                : a?.status === "ended"
+                  ? "—"
+                  : "—";
+            const img = a?.images[0];
+            return (
+              <div
+                key={row.bid.id}
+                className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-4 shadow-sm ring-1 ring-outline-variant/10 md:flex-row md:items-center"
+              >
+                <div className="relative h-28 w-full flex-shrink-0 overflow-hidden rounded-lg bg-surface-container-high md:h-24 md:w-36">
+                  {img ? (
+                    <Image
+                      src={img}
+                      alt=""
+                      fill
+                      className={`object-cover ${st.outbid ? "grayscale" : ""}`}
+                      sizes="144px"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {a ? (
+                    <Link
+                      href={`/artwork/${a.id}`}
+                      className="font-headline text-xl font-light text-on-surface underline-offset-4 hover:underline"
                     >
-                      {st.label}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {a.title}
+                    </Link>
+                  ) : (
+                    <span className="text-secondary">Removed lot</span>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 font-body text-sm text-on-surface-variant">
+                    <span>
+                      Your bid:{" "}
+                      <span className={st.outbid ? "line-through" : ""}>
+                        {formatMoney(row.bid.amount)}
+                      </span>
+                    </span>
+                    {a ? (
+                      <span className="text-on-surface">
+                        Current high: {formatMoney(a.currentPrice)}
+                      </span>
+                    ) : null}
+                    <span className="tabular-nums">{timeLeft}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-stretch gap-2 md:w-44">
+                  <span
+                    className={`font-label text-[10px] font-bold uppercase tracking-widest ${st.className}`}
+                  >
+                    {st.label}
+                  </span>
+                  {a?.status === "active" ? (
+                    <Link
+                      href={`/artwork/${a.id}`}
+                      className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container py-3 text-center font-label text-[10px] font-bold uppercase tracking-widest text-on-primary shadow-sm transition-opacity hover:opacity-95"
+                    >
+                      Re-bid now
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

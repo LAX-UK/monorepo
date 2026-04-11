@@ -5,16 +5,22 @@ import { formatMoney } from "@/lib/format-currency";
 type Props = {
   minNumeric: number;
   amount: string;
+  maxAuto: string;
   onAmountChange: (value: string) => void;
+  onMaxAutoChange: (value: string) => void;
   onReview: () => void;
   onUseMinimum: () => void;
   error: string | null;
 };
 
+const CHIP_ADDS = [500, 1000, 5000] as const;
+
 export function BidForm({
   minNumeric,
   amount,
+  maxAuto,
   onAmountChange,
+  onMaxAutoChange,
   onReview,
   onUseMinimum,
   error,
@@ -30,10 +36,24 @@ export function BidForm({
         <button
           type="button"
           onClick={onUseMinimum}
-          className="rounded-md border border-outline-variant/30 bg-surface-container-low px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:border-primary hover:bg-surface-container"
+          className="rounded-md bg-surface-container-high px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container"
         >
           Min {formatMoney(minStr)}
         </button>
+        {CHIP_ADDS.map((add) => {
+          const v = minNumeric + add;
+          const label = add >= 1000 ? `+$${add / 1000}k` : `+$${add}`;
+          return (
+            <button
+              key={add}
+              type="button"
+              onClick={() => onAmountChange(v.toFixed(2))}
+              className="rounded-md bg-surface-container-high px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
       <div>
         <label
@@ -51,6 +71,25 @@ export function BidForm({
             value={amount}
             onChange={(e) => onAmountChange(e.target.value)}
             className="border-0 p-0 text-3xl focus:shadow-none"
+          />
+        </div>
+      </div>
+      <div>
+        <label
+          htmlFor="bid-max-auto"
+          className="mb-4 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+        >
+          Set max auto-bid (optional)
+        </label>
+        <div className="flex items-center border-b-2 border-outline-variant/30 py-3 transition-colors focus-within:border-primary">
+          <span className="mr-4 font-headline text-xl text-on-surface">$</span>
+          <UnderlineInput
+            id="bid-max-auto"
+            inputMode="decimal"
+            placeholder="Single bid only if empty"
+            value={maxAuto}
+            onChange={(e) => onMaxAutoChange(e.target.value)}
+            className="border-0 p-0 text-xl focus:shadow-none"
           />
         </div>
       </div>

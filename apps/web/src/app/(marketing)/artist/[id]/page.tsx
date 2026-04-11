@@ -1,4 +1,4 @@
-import { createMockArtistReader } from "@/lib/data/mock/artist";
+import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +9,7 @@ type PageProps = {
 
 export default async function ArtistPage({ params }: PageProps) {
   const { id } = await params;
-  const reader = createMockArtistReader();
+  const reader = await getServerArtistReader();
   const artist = await reader.getById(id);
   if (!artist) {
     notFound();
@@ -71,7 +71,7 @@ export default async function ArtistPage({ params }: PageProps) {
           </p>
         </div>
       </section>
-      <section className="mb-32 grid grid-cols-2 gap-8 border-y border-outline-variant/20 py-16 md:grid-cols-4">
+      <section className="mb-32 grid grid-cols-2 gap-8 rounded-xl py-16 ring-1 ring-outline-variant/10 md:grid-cols-4">
         {artist.stats.map((s) => (
           <div key={s.label} className="flex flex-col">
             <span className="mb-2 font-label text-[0.65rem] uppercase tracking-widest text-secondary">
@@ -93,7 +93,7 @@ export default async function ArtistPage({ params }: PageProps) {
         </div>
       </div>
       <div
-        className="rounded-md border border-outline-variant/20 bg-surface-container-low/80 p-10 text-center md:p-16"
+        className="rounded-xl bg-surface-container-low/80 p-10 text-center shadow-sm ring-1 ring-outline-variant/10 md:p-16"
         role="status"
       >
         <p className="mx-auto mb-6 max-w-lg font-headline text-xl font-light text-on-surface md:text-2xl">
@@ -105,7 +105,7 @@ export default async function ArtistPage({ params }: PageProps) {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center justify-center border border-primary bg-transparent px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary transition-colors hover:bg-primary hover:text-on-primary"
+          className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-on-primary shadow-sm transition-opacity hover:opacity-95"
         >
           Browse auctions
         </Link>

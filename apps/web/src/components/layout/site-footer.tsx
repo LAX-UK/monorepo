@@ -60,13 +60,18 @@ export function SiteFooter() {
             </h5>
             <ul className="space-y-4 font-label text-[10px] uppercase tracking-[0.2em] text-inverse-on-surface/70">
               <li>
-                <Link href="/#terms" className="transition-colors hover:text-primary-fixed">
+                <Link href="/terms" className="transition-colors hover:text-primary-fixed">
                   Bidding Terms
                 </Link>
               </li>
               <li>
-                <Link href="/#shipping" className="transition-colors hover:text-primary-fixed">
+                <Link href="/shipping" className="transition-colors hover:text-primary-fixed">
                   Global Shipping
+                </Link>
+              </li>
+              <li>
+                <Link href="/about" className="transition-colors hover:text-primary-fixed">
+                  About
                 </Link>
               </li>
               <li>
@@ -84,16 +89,22 @@ export function SiteFooter() {
         </p>
         <div className="flex gap-8">
           <Link
-            href="/#privacy"
+            href="/privacy"
             className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
           >
             Privacy
           </Link>
           <Link
-            href="/#legal"
+            href="/legal"
             className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
           >
             Legal
+          </Link>
+          <Link
+            href="/contact"
+            className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
+          >
+            Contact
           </Link>
         </div>
       </div>

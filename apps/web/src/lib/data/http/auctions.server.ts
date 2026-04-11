@@ -1,8 +1,8 @@
 import "server-only";
 import type { AuctionReader, ListAuctionsParams } from "@/lib/data/contracts";
 import { getServerHc } from "@/lib/data/http/hc-server";
-import { parseAuction } from "@/lib/data/http/parse";
-import type { Auction } from "@auction/types";
+import { parseAuction, parseBid } from "@/lib/data/http/parse";
+import type { Auction, Bid } from "@auction/types";
 
 function buildQuery(params: ListAuctionsParams): Record<string, string> {
   const q: Record<string, string> = {
@@ -13,7 +13,22 @@ function buildQuery(params: ListAuctionsParams): Record<string, string> {
   if (params.categoryId) q.categoryId = params.categoryId;
   if (params.sellerId) q.sellerId = params.sellerId;
   if (params.winnerId) q.winnerId = params.winnerId;
+  if (params.sort) q.sort = params.sort;
   return q;
+}
+
+/** Initial bid history for artwork SSR (no auth). */
+export async function getServerAuctionBids(auctionId: string, limit = 50): Promise<Bid[]> {
+  const client = await getServerHc();
+  const res = await client.auctions[":id"].bids.$get({
+    param: { id: auctionId },
+    query: { limit: String(limit) },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load bids: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseBid);
 }
 
 export async function getServerAuctionReader(): Promise<AuctionReader> {

@@ -9,6 +9,10 @@ export type Auction = {
   sellerId: string;
   title: string;
   description: string | null;
+  /** Physical / catalog medium (e.g. oil on canvas). */
+  medium: string | null;
+  /** Display dimensions (e.g. 180 x 140 cm). */
+  dimensions: string | null;
   images: string[];
   categoryId: string | null;
   auctionType: AuctionType;
@@ -29,6 +33,8 @@ export type Auction = {
 export type CreateAuctionInput = {
   title: string;
   description?: string | undefined;
+  medium?: string | undefined;
+  dimensions?: string | undefined;
   images?: string[] | undefined;
   categoryId?: string | undefined;
   auctionType: AuctionType;

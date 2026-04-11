@@ -20,6 +20,12 @@ export function HomeHero({ featured }: Props) {
 
   return (
     <section className="mb-20 px-4 md:mb-32 md:px-10 lg:px-20">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/10 pb-4 font-label text-[10px] uppercase tracking-[0.25em] text-secondary md:mb-8">
+        <span className="text-on-surface">Editorial</span>
+        <span className="max-w-xl text-right text-on-surface-variant">
+          This week: luminous abstraction, architectural photography, and sealed masterworks.
+        </span>
+      </div>
       <div className="group relative h-[600px] w-full overflow-hidden md:h-[800px]">
         <Image
           src={img}

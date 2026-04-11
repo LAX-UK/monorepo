@@ -9,6 +9,8 @@ function auction(overrides: Partial<Auction> = {}): Auction {
     sellerId: "seller-1",
     title: "Lot",
     description: null,
+    medium: null,
+    dimensions: null,
     images: [],
     categoryId: null,
     auctionType: "dutch",

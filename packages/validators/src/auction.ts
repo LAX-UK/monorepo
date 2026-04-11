@@ -14,6 +14,8 @@ const buyerPremiumRateString = z
 export const createAuctionSchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
+  medium: z.string().max(500).optional(),
+  dimensions: z.string().max(200).optional(),
   images: z.array(z.string().url()).max(20).optional(),
   categoryId: z.string().uuid().optional(),
   auctionType: z.enum(auctionTypes),
@@ -25,11 +27,14 @@ export const createAuctionSchema = z.object({
   endTime: z.coerce.date(),
 });
 
+const listSort = z.enum(["createdDesc", "endingAsc"]).optional();
+
 export const listAuctionsQuerySchema = z.object({
   status: z.enum(auctionStatuses).optional(),
   categoryId: z.string().uuid().optional(),
   sellerId: z.string().optional(),
   winnerId: z.string().optional(),
+  sort: listSort,
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });

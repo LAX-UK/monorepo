@@ -1,5 +1,5 @@
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
-import { getServerMyPortfolio } from "@/lib/data/http/dashboard.server";
+import { getServerMyBids, getServerMyPortfolio, getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import Image from "next/image";
@@ -8,13 +8,33 @@ import Link from "next/link";
 export default async function DashboardHomePage() {
   const user = await getServerSessionUser();
   const reader = await getServerAuctionReader();
-  const [active, portfolio] = await Promise.all([
-    reader.list({ status: "active", limit: 6 }),
+  const [active, portfolio, watchlist, bidRows] = await Promise.all([
+    reader.list({ status: "active", limit: 8, sort: "endingAsc" }),
     getServerMyPortfolio().catch(() => [] as Awaited<ReturnType<typeof getServerMyPortfolio>>),
+    getServerMyWatchlist().catch(() => [] as Awaited<ReturnType<typeof getServerMyWatchlist>>),
+    getServerMyBids().catch(() => [] as Awaited<ReturnType<typeof getServerMyBids>>),
   ]);
 
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
   const totalSpent = portfolio.reduce((sum, a) => sum + Number.parseFloat(a.currentPrice), 0);
+
+  let wins = 0;
+  let losses = 0;
+  if (user) {
+    const seen = new Set<string>();
+    for (const row of bidRows) {
+      const a = row.auction;
+      if (!a || a.status !== "ended" || seen.has(a.id)) continue;
+      seen.add(a.id);
+      if (a.winnerId === user.id) wins += 1;
+      else losses += 1;
+    }
+  }
+  const decided = wins + losses;
+  const winRate = decided > 0 ? Math.round((wins / decided) * 100) : null;
+
+  const wonLotsSidebar = portfolio.filter((a) => a.status === "ended").slice(0, 4);
+  const watchPreview = watchlist.filter((w) => w.auction).slice(0, 4);
 
   return (
     <div className="max-w-[1920px]">
@@ -27,24 +47,32 @@ export default async function DashboardHomePage() {
         </p>
       </section>
 
-      <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
           <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
-            Active lots
+            Portfolio value (hammer)
           </p>
-          <p className="font-headline text-3xl text-on-surface">{active.length}</p>
+          <p className="font-headline text-3xl text-primary">{formatMoney(totalSpent.toFixed(2))}</p>
         </div>
-        <div className="border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
           <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
-            Lots won
+            Won this year
           </p>
           <p className="font-headline text-3xl text-on-surface">{portfolio.length}</p>
         </div>
-        <div className="border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
           <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
-            Collection (hammer)
+            Win rate
           </p>
-          <p className="font-headline text-3xl text-primary">{formatMoney(totalSpent.toFixed(2))}</p>
+          <p className="font-headline text-3xl text-on-surface">
+            {winRate !== null ? `${winRate}%` : "—"}
+          </p>
+        </div>
+        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
+          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+            Curator rank
+          </p>
+          <p className="font-headline text-3xl text-on-surface">Tier II</p>
         </div>
       </div>
 
@@ -53,7 +81,7 @@ export default async function DashboardHomePage() {
           <div className="mb-8 flex items-end justify-between">
             <h2 className="font-headline text-2xl">Live inventory</h2>
             <span className="border-b border-primary-container pb-1 font-label text-[0.6875rem] uppercase tracking-widest text-primary">
-              Pulled from API
+              Ending soon first
             </span>
           </div>
           <div className="space-y-12">
@@ -68,7 +96,7 @@ export default async function DashboardHomePage() {
                     href={`/artwork/${a.id}`}
                     className="flex flex-col gap-6 border-b border-outline-variant/10 pb-12 transition-opacity last:border-0 hover:opacity-90 md:flex-row md:items-center"
                   >
-                    <div className="relative h-32 w-full flex-shrink-0 overflow-hidden bg-surface-container-low md:w-48">
+                    <div className="relative h-32 w-full flex-shrink-0 overflow-hidden rounded-lg bg-surface-container-low md:w-48">
                       {img ? (
                         <Image src={img} alt="" fill className="object-cover" sizes="192px" />
                       ) : null}
@@ -91,14 +119,80 @@ export default async function DashboardHomePage() {
             )}
           </div>
         </div>
-        <div className="lg:col-span-4">
-          <div className="border border-outline-variant/15 bg-surface-container-low p-8">
+        <div className="space-y-8 lg:col-span-4">
+          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
+            <h3 className="mb-4 font-headline text-xl">Won lots</h3>
+            {wonLotsSidebar.length === 0 ? (
+              <p className="font-body text-sm text-on-surface-variant">No completed wins yet.</p>
+            ) : (
+              <ul className="space-y-4">
+                {wonLotsSidebar.map((a) => {
+                  const img = a.images[0];
+                  return (
+                    <li key={a.id}>
+                      <Link
+                        href={`/dashboard/checkout/${a.id}`}
+                        className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
+                      >
+                        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+                          {img ? <Image src={img} alt="" fill className="object-cover" sizes="56px" /> : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
+                          <p className="font-label text-[9px] font-bold uppercase tracking-wider text-primary">
+                            Awaiting payment
+                          </p>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
+            <h3 className="mb-4 font-headline text-xl">Watchlist</h3>
+            {watchPreview.length === 0 ? (
+              <p className="font-body text-sm text-on-surface-variant">
+                Save lots from the artwork page to track them here.
+              </p>
+            ) : (
+              <ul className="space-y-4">
+                {watchPreview.map((w) => {
+                  const a = w.auction;
+                  if (!a) return null;
+                  const img = a.images[0];
+                  return (
+                    <li key={w.watchlistId}>
+                      <Link
+                        href={`/artwork/${a.id}`}
+                        className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
+                      >
+                        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+                          {img ? <Image src={img} alt="" fill className="object-cover" sizes="56px" /> : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
+                          <p className="font-label text-[9px] uppercase tracking-wider text-secondary">
+                            Est. {formatMoney(a.currentPrice)}
+                          </p>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
             <h3 className="mb-4 font-headline text-xl">Account</h3>
             <p className="font-body text-sm text-secondary">
               <span className="font-medium text-on-surface">Role:</span> {user?.role ?? "—"}
             </p>
             <p className="mt-4 font-body text-xs text-on-surface-variant">
-              Manage bids under Active Bids; won lots appear in Portfolio.
+              Manage bids under Active Bids; won lots settle from Portfolio.
             </p>
           </div>
         </div>
