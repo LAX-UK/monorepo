@@ -3,7 +3,10 @@ import { auction } from "@auction/db/schema";
 import type { Auction, CreateAuctionInput } from "@auction/types";
 import { and, desc, eq } from "drizzle-orm";
 import { mapAuctionRow } from "../lib/mappers.js";
-import type { IAuctionRepository, ListAuctionsFilter } from "../services/interfaces/repositories.js";
+import type {
+  IAuctionRepository,
+  ListAuctionsFilter,
+} from "../services/interfaces/repositories.js";
 
 export class DrizzleAuctionRepository implements IAuctionRepository {
   constructor(private readonly db: Database) {}
@@ -40,6 +43,9 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
         reservePrice: input.reservePrice ?? null,
         buyNowPrice: input.buyNowPrice ?? null,
         currentPrice: input.startingPrice,
+        ...(input.buyerPremiumRate !== undefined
+          ? { buyerPremiumRate: input.buyerPremiumRate }
+          : {}),
         startTime: input.startTime,
         endTime: input.endTime,
         status: "draft",
@@ -54,6 +60,7 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
     if (filter.status) conditions.push(eq(auction.status, filter.status));
     if (filter.categoryId) conditions.push(eq(auction.categoryId, filter.categoryId));
     if (filter.sellerId) conditions.push(eq(auction.sellerId, filter.sellerId));
+    if (filter.winnerId) conditions.push(eq(auction.winnerId, filter.winnerId));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -76,17 +83,11 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
   }
 
   async updateEndTime(id: string, endTime: Date) {
-    await this.db
-      .update(auction)
-      .set({ endTime, updatedAt: new Date() })
-      .where(eq(auction.id, id));
+    await this.db.update(auction).set({ endTime, updatedAt: new Date() }).where(eq(auction.id, id));
   }
 
   async updateStatus(id: string, status: Auction["status"]) {
-    await this.db
-      .update(auction)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(auction.id, id));
+    await this.db.update(auction).set({ status, updatedAt: new Date() }).where(eq(auction.id, id));
   }
 
   async setWinner(id: string, winnerId: string) {

@@ -44,6 +44,16 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map(mapBidRow);
   }
 
+  async listForBidder(bidderId: string, limit: number) {
+    const rows = await this.db
+      .select()
+      .from(bid)
+      .where(eq(bid.bidderId, bidderId))
+      .orderBy(desc(bid.createdAt))
+      .limit(limit);
+    return rows.map(mapBidRow);
+  }
+
   async markWinningBid(auctionId: string, bidId: string) {
     await this.db.update(bid).set({ isWinning: false }).where(eq(bid.auctionId, auctionId));
     await this.db.update(bid).set({ isWinning: true }).where(eq(bid.id, bidId));

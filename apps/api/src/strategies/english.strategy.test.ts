@@ -16,6 +16,7 @@ function auction(overrides: Partial<Auction> = {}): Auction {
     reservePrice: null,
     buyNowPrice: null,
     currentPrice: "100.00",
+    buyerPremiumRate: "0.25",
     startTime: new Date(now.getTime() - 60_000),
     endTime: new Date(now.getTime() + 60 * 60_000),
     status: "active",

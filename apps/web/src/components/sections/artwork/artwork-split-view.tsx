@@ -9,6 +9,13 @@ function lotNo(id: string): string {
   return id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
+function formatDateTime(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
+}
+
 type Props = {
   auction: Auction;
   bidPanel: ReactNode;
@@ -19,8 +26,8 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
   const live = auction.status === "active";
 
   return (
-    <main className="flex min-h-screen flex-col lg:flex-row">
-      <div className="h-[60vh] w-full overflow-hidden bg-stone-100 lg:sticky lg:top-0 lg:h-screen lg:w-1/2">
+    <main id="main-content" className="flex min-h-screen flex-col pt-24 lg:flex-row lg:pt-0">
+      <div className="h-[60vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:w-1/2">
         <div className="group relative h-full">
           {img ? (
             <Image
@@ -28,7 +35,7 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
               alt={auction.title}
               fill
               priority
-              className="bg-stone-100 object-cover transition-transform duration-1000 group-hover:scale-105 lg:object-contain"
+              className="bg-surface-container-low object-cover transition-transform duration-1000 group-hover:scale-105 lg:object-contain"
               sizes="50vw"
             />
           ) : (
@@ -37,8 +44,26 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
           <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       </div>
-      <div className="w-full overflow-y-auto px-8 pb-20 pt-12 lg:w-1/2 lg:px-24 lg:pt-32">
+      <div className="w-full overflow-y-auto px-8 pb-20 pt-8 lg:w-1/2 lg:px-24 lg:pt-32">
         <div className="mx-auto max-w-xl lg:mx-0">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-8 font-label text-[10px] uppercase tracking-[0.2em] text-secondary"
+          >
+            <ol className="flex flex-wrap items-center gap-2">
+              <li>
+                <Link href="/" className="transition-colors hover:text-primary">
+                  Gallery
+                </Link>
+              </li>
+              <li aria-hidden className="text-outline-variant">
+                /
+              </li>
+              <li className="text-on-surface" aria-current="page">
+                {auction.title}
+              </li>
+            </ol>
+          </nav>
           <Link
             href="/"
             className="mb-12 flex items-center gap-2 font-label text-[10px] uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
@@ -65,20 +90,56 @@ export function ArtworkSplitView({ auction, bidPanel }: Props) {
               {auction.title}
             </h1>
             <p className="mb-10 font-headline text-xl italic text-secondary">
-              Seller {auction.sellerId.slice(0, 8)}…
+              Offered by a verified private seller
             </p>
-            <div className="mb-12 grid grid-cols-2 gap-8 border-y border-stone-200/60 py-8">
+            <div className="mb-12 grid grid-cols-2 gap-x-8 gap-y-6 border-y border-outline-variant/30 py-8 sm:grid-cols-3">
               <div>
-                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-stone-400">
-                  Type
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Format
                 </span>
-                <span className="text-sm font-medium">{auction.auctionType}</span>
+                <span className="text-sm font-medium capitalize text-on-surface">
+                  {auction.auctionType.replaceAll("_", " ")}
+                </span>
               </div>
               <div>
-                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-stone-400">
-                  Current
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Current bid
                 </span>
-                <span className="text-sm font-medium">{formatMoney(auction.currentPrice)}</span>
+                <span className="text-sm font-medium text-on-surface">
+                  {formatMoney(auction.currentPrice)}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Opening bid
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {formatMoney(auction.startingPrice)}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Opens
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {formatDateTime(auction.startTime)}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Closes
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {formatDateTime(auction.endTime)}
+                </span>
+              </div>
+              <div>
+                <span className="mb-1 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                  Reserve
+                </span>
+                <span className="text-sm font-medium text-on-surface">
+                  {auction.reservePrice ? formatMoney(auction.reservePrice) : "Not disclosed"}
+                </span>
               </div>
             </div>
             {auction.description ? (

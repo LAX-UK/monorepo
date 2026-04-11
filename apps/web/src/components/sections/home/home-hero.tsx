@@ -30,7 +30,7 @@ export function HomeHero({ featured }: Props) {
           sizes="100vw"
         />
         <div className="absolute inset-0 bg-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface via-transparent to-transparent opacity-80" />
         <div className="absolute bottom-12 left-6 max-w-3xl md:bottom-24 md:left-20">
           <div className="mb-8 flex items-center space-x-4">
             <span className="flex h-2.5 w-2.5">

@@ -4,6 +4,7 @@ export type ListAuctionsParams = {
   status?: AuctionStatus;
   categoryId?: string;
   sellerId?: string;
+  winnerId?: string;
   limit?: number;
   offset?: number;
 };
@@ -28,6 +29,8 @@ export interface BidWriter {
 
 export type SessionUser = {
   id: string;
+  email: string;
+  name: string;
   role: string;
 };
 

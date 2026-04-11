@@ -9,7 +9,7 @@ export function HomeArchive() {
   return (
     <section
       id="archive"
-      className="overflow-hidden border-y border-stone-200 bg-stone-50 px-6 py-32 md:px-20"
+      className="overflow-hidden border-y border-outline-variant/30 bg-surface-container-low px-6 py-32 md:px-20"
     >
       <div className="mx-auto grid max-w-[1920px] grid-cols-1 items-center gap-16 lg:grid-cols-12 lg:gap-32">
         <div className="lg:col-span-5">
@@ -21,30 +21,30 @@ export function HomeArchive() {
             <span className="italic">Private Collections</span>
           </h2>
           <div>
-            <div className="group flex cursor-pointer flex-col justify-between border-b border-stone-200 px-4 py-10 transition-colors duration-500 hover:bg-white md:flex-row md:items-center">
+            <div className="group flex cursor-pointer flex-col justify-between border-b border-outline-variant/30 px-4 py-10 transition-colors duration-500 hover:bg-surface-container-lowest md:flex-row md:items-center">
               <div>
                 <h4 className="mb-2 font-headline text-2xl transition-all group-hover:italic">
                   The Winter Study
                 </h4>
-                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
                   Contemporary Masters 2024
                 </p>
               </div>
               <div className="mt-4 text-right md:mt-0">
-                <span className="font-headline text-lg text-stone-900">Sold: $420,000</span>
+                <span className="font-headline text-lg text-on-surface">Sold: $420,000</span>
               </div>
             </div>
-            <div className="group flex cursor-pointer flex-col justify-between border-b border-stone-200 px-4 py-10 transition-colors duration-500 hover:bg-white md:flex-row md:items-center">
+            <div className="group flex cursor-pointer flex-col justify-between border-b border-outline-variant/30 px-4 py-10 transition-colors duration-500 hover:bg-surface-container-lowest md:flex-row md:items-center">
               <div>
                 <h4 className="mb-2 font-headline text-2xl transition-all group-hover:italic">
                   Anatomy of Light
                 </h4>
-                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
                   Minimalist Sculpture Series
                 </p>
               </div>
               <div className="mt-4 text-right md:mt-0">
-                <span className="font-headline text-lg text-stone-900">Sold: $115,000</span>
+                <span className="font-headline text-lg text-on-surface">Sold: $115,000</span>
               </div>
             </div>
           </div>

@@ -12,6 +12,7 @@ function buildQuery(params: ListAuctionsParams): Record<string, string> {
   if (params.status) q.status = params.status;
   if (params.categoryId) q.categoryId = params.categoryId;
   if (params.sellerId) q.sellerId = params.sellerId;
+  if (params.winnerId) q.winnerId = params.winnerId;
   return q;
 }
 

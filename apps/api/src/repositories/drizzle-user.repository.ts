@@ -10,6 +10,11 @@ export class DrizzleUserRepository implements IUserRepository {
     const rows = await this.db.select().from(user).where(eq(user.id, id)).limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, role: row.role };
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      role: row.role,
+    };
   }
 }

@@ -1,10 +1,38 @@
 import { formatMoney } from "@/lib/format-currency";
-import type { Auction } from "@auction/types";
+import type { Auction, AuctionStatus } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
 function lotLabel(id: string): string {
   return `LOT ${id.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+}
+
+function statusBadge(status: AuctionStatus): { label: string; className: string } {
+  switch (status) {
+    case "active":
+      return { label: "Live", className: "text-primary" };
+    case "scheduled":
+      return { label: "Upcoming", className: "text-secondary" };
+    case "ended":
+      return { label: "Ended", className: "text-on-surface-variant" };
+    case "draft":
+      return { label: "Draft", className: "text-on-surface-variant" };
+    case "cancelled":
+      return { label: "Cancelled", className: "text-error" };
+    default:
+      return { label: status, className: "text-secondary" };
+  }
+}
+
+function endsLabel(end: Date): string {
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const diffMs = end.getTime() - Date.now();
+  const diffDays = Math.round(diffMs / 86_400_000);
+  if (Math.abs(diffDays) >= 1) {
+    return rtf.format(diffDays, "day");
+  }
+  const diffHours = Math.round(diffMs / 3_600_000);
+  return rtf.format(diffHours, "hour");
 }
 
 type Props = {
@@ -35,29 +63,30 @@ export function HomeMasonry({ auctions }: Props) {
                 : i % 4 === 2
                   ? "aspect-square"
                   : "aspect-[4/3]";
+          const badge = statusBadge(a.status);
           return (
             <div
               key={a.id}
               className={`break-inside-avoid mb-16 group art-card lg:mb-24 ${tallOffsets[i % 4] ?? ""}`}
             >
               <Link href={`/artwork/${a.id}`} className="block">
-                <div className={`relative mb-8 overflow-hidden bg-stone-100 ${aspect}`}>
+                <div className={`relative mb-8 overflow-hidden bg-surface-container-low ${aspect}`}>
                   {img ? (
                     <Image
                       src={img}
                       alt={a.title}
                       fill
                       className="object-cover transition-transform duration-1000 group-hover:scale-110"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1536px) 50vw, 33vw"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-surface-container-low text-secondary">
                       No image
                     </div>
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center bg-stone-900/40 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                    <span className="bg-white px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900 transition-colors duration-300 hover:bg-primary hover:text-white">
-                      View Lot Details
+                  <div className="absolute inset-0 flex items-center justify-center bg-inverse-surface/40 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                    <span className="bg-surface-container-lowest px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface transition-colors duration-300 hover:bg-primary hover:text-on-primary">
+                      View lot details
                     </span>
                   </div>
                   <div className="absolute right-6 top-6 mix-blend-difference">
@@ -66,19 +95,24 @@ export function HomeMasonry({ auctions }: Props) {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start justify-between pr-4">
-                  <div>
-                    <p className="mb-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
-                      Featured lot
+                <div className="flex items-start justify-between gap-4 pr-4">
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`mb-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] ${badge.className}`}
+                    >
+                      {badge.label}
                     </p>
                     <h3 className="mb-3 font-headline text-3xl font-light transition-all duration-300 group-hover:italic">
                       {a.title}
                     </h3>
-                    <p className="text-xs font-medium tracking-wide text-stone-500">
+                    <p className="text-xs font-medium tracking-wide text-on-surface-variant">
                       {a.description?.slice(0, 80) ?? "Curated auction lot"}
                     </p>
+                    <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+                      Ends {endsLabel(a.endTime)}
+                    </p>
                   </div>
-                  <p className="font-headline text-2xl text-stone-800">
+                  <p className="shrink-0 font-headline text-2xl text-on-surface">
                     {formatMoney(a.currentPrice)}
                   </p>
                 </div>

@@ -16,6 +16,7 @@ export function createAuctionRoutes(container: Container, authenticator: IAuthen
       status: query.status,
       categoryId: query.categoryId,
       sellerId: query.sellerId,
+      winnerId: query.winnerId,
       limit: query.limit,
       offset: query.offset,
     });

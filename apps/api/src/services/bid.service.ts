@@ -1,10 +1,10 @@
-import type { Bid } from "@auction/types";
+import type { Auction, Bid } from "@auction/types";
 import { err, ok, type Result } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IAuctionStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import { NotificationService } from "./notification.service.js";
+import type { NotificationService } from "./notification.service.js";
 
 const ANTI_SNIPING_EXTENSION_MS = 30_000;
 
@@ -84,5 +84,19 @@ export class BidService {
       }
       throw e;
     }
+  }
+
+  /** Dashboard: bids placed by user with resolved auction rows. */
+  async listBidsWithAuctionsForBidder(
+    bidderId: string,
+  ): Promise<Array<{ bid: Bid; auction: Auction | null }>> {
+    const bids = await this.repos.root.bid.listForBidder(bidderId, 200);
+    const auctionIds = [...new Set(bids.map((b) => b.auctionId))];
+    const auctionMap = new Map<string, Auction>();
+    for (const id of auctionIds) {
+      const a = await this.repos.root.auction.findById(id);
+      if (a) auctionMap.set(id, a);
+    }
+    return bids.map((b) => ({ bid: b, auction: auctionMap.get(b.auctionId) ?? null }));
   }
 }

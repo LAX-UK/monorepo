@@ -46,6 +46,9 @@ export const auction = pgTable(
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
     buyNowPrice: numeric("buy_now_price", { precision: 18, scale: 2 }),
     currentPrice: numeric("current_price", { precision: 18, scale: 2 }).notNull(),
+    buyerPremiumRate: numeric("buyer_premium_rate", { precision: 5, scale: 4 })
+      .notNull()
+      .default("0.25"),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     status: auctionStatusEnum("status").notNull().default("draft"),

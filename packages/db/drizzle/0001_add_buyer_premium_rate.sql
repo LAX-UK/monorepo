@@ -1,0 +1,1 @@
+ALTER TABLE "auction" ADD COLUMN "buyer_premium_rate" numeric(5, 4) DEFAULT '0.25' NOT NULL;

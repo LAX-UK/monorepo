@@ -1,7 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { UnderlineInput } from "@/components/ui/input";
+import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
+import { BidDisplay } from "@/components/sections/artwork/bid-display";
+import { BidForm } from "@/components/sections/artwork/bid-form";
+import { type BidHistoryEntry, BidHistory } from "@/components/sections/artwork/bid-history";
 import { useAuctionRealtime } from "@/hooks/use-auction-realtime";
 import { useAuctionPorts } from "@/lib/context/auction-ports";
 import { formatMoney } from "@/lib/format-currency";
@@ -21,6 +23,8 @@ function formatRemaining(ms: number): string {
   return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
 }
 
+const HISTORY_CAP = 20;
+
 export function ArtworkBidPanel({ auction }: Props) {
   const { bidWriter } = useAuctionPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -30,12 +34,30 @@ export function ArtworkBidPanel({ auction }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [bidSuccess, setBidSuccess] = useState(false);
+  const [history, setHistory] = useState<BidHistoryEntry[]>([]);
 
   const minNumeric = useMemo(() => Number.parseFloat(currentPrice) + 0.01, [currentPrice]);
+
+  const pushHistory = useCallback((entry: Omit<BidHistoryEntry, "at"> & { at?: number }) => {
+    setHistory((h) =>
+      [{ ...entry, at: entry.at ?? Date.now() }, ...h]
+        .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
+        .slice(0, HISTORY_CAP),
+    );
+  }, []);
 
   useAuctionRealtime(auction.id, {
     onBidUpdate: (e) => {
       setCurrentPrice(e.currentPrice);
+      pushHistory({
+        id: e.bidId,
+        bidderId: e.bidderId,
+        amount: e.amount,
+      });
+      if (e.endTime) {
+        setEndTime(new Date(e.endTime).getTime());
+      }
     },
     onAuctionExtended: (payload) => {
       const p = payload as { newEndTime?: string };
@@ -49,6 +71,12 @@ export function ArtworkBidPanel({ auction }: Props) {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!bidSuccess) return;
+    const t = window.setTimeout(() => setBidSuccess(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [bidSuccess]);
 
   const onReview = useCallback(() => {
     setError(null);
@@ -76,91 +104,58 @@ export function ArtworkBidPanel({ auction }: Props) {
       return;
     }
     setCurrentPrice(result.bid.amount);
+    pushHistory({
+      id: result.bid.id,
+      bidderId: result.bid.bidderId,
+      amount: result.bid.amount,
+    });
     setAmount("");
     setStep(1);
-  }, [amount, auction.id, bidWriter]);
+    setBidSuccess(true);
+  }, [amount, auction.id, bidWriter, pushHistory]);
+
+  const onUseMinimum = useCallback(() => {
+    setAmount(minNumeric.toFixed(2));
+    setError(null);
+  }, [minNumeric]);
+
+  const remainingLabel = formatRemaining(endTime - now);
 
   return (
-    <div className="mb-20 border border-stone-200/60 bg-surface-container-lowest p-8 shadow-sm lg:p-12">
-      <div className="mb-12 flex items-end justify-between">
-        <div>
-          <span className="mb-2 block font-label text-[10px] uppercase tracking-widest text-secondary">
-            Current High Bid
-          </span>
-          <span className="font-headline text-5xl text-primary">{formatMoney(currentPrice)}</span>
+    <div className="mb-20 border border-outline-variant/30 bg-surface-container-lowest p-8 shadow-sm lg:p-12">
+      <BidDisplay currentPrice={currentPrice} remainingLabel={remainingLabel} />
+
+      {bidSuccess ? (
+        <div
+          className="mb-8 rounded-md border border-primary/40 bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container"
+          role="status"
+        >
+          Bid placed successfully.
         </div>
-        <div className="text-right">
-          <span className="mb-2 block font-label text-[10px] uppercase tracking-widest text-secondary">
-            Time Remaining
-          </span>
-          <span className="font-headline tabular-nums text-2xl text-on-surface">
-            {formatRemaining(endTime - now)}
-          </span>
-        </div>
-      </div>
+      ) : null}
 
       {auction.status !== "active" ? (
         <p className="font-body text-secondary">This auction is not accepting bids.</p>
       ) : step === 1 ? (
-        <div className="space-y-8">
-          <div>
-            <label
-              htmlFor="bid-amount"
-              className="mb-4 block font-label text-[10px] uppercase tracking-widest text-stone-400"
-            >
-              Enter bid amount (min. {formatMoney(minNumeric.toFixed(2))})
-            </label>
-            <div className="flex items-center border-b-2 border-stone-200 py-4 transition-colors focus-within:border-primary">
-              <span className="mr-4 font-headline text-2xl">$</span>
-              <UnderlineInput
-                id="bid-amount"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="border-0 p-0 text-3xl focus:shadow-none"
-              />
-            </div>
-          </div>
-          {error ? <p className="text-sm text-error">{error}</p> : null}
-          <Button type="button" variant="primary" className="w-full py-6" onClick={onReview}>
-            Review bid amount
-          </Button>
-        </div>
+        <BidForm
+          minNumeric={minNumeric}
+          amount={amount}
+          onAmountChange={setAmount}
+          onReview={onReview}
+          onUseMinimum={onUseMinimum}
+          error={error}
+        />
       ) : (
-        <div className="space-y-8">
-          <div className="border-l-4 border-primary bg-stone-50 p-6">
-            <p className="mb-1 font-label text-xs uppercase tracking-widest text-stone-500">
-              Confirming your bid of
-            </p>
-            <p className="font-headline text-3xl text-primary">{formatMoney(amount)}</p>
-            <p className="mt-4 font-label text-[10px] leading-relaxed text-stone-400">
-              By placing a bid you agree to the terms of sale. Authentication may be required for
-              high-value lots.
-            </p>
-          </div>
-          {error ? <p className="text-sm text-error">{error}</p> : null}
-          <div className="flex gap-4">
-            <Button
-              type="button"
-              variant="secondary"
-              className="flex-1 py-6"
-              onClick={() => setStep(1)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              className="flex-1 py-6"
-              disabled={submitting}
-              onClick={() => void onConfirm()}
-            >
-              {submitting ? "Submitting…" : "Place bid"}
-            </Button>
-          </div>
-        </div>
+        <BidConfirmation
+          amount={amount}
+          error={error}
+          submitting={submitting}
+          onCancel={() => setStep(1)}
+          onConfirm={onConfirm}
+        />
       )}
+
+      <BidHistory entries={history} />
     </div>
   );
 }

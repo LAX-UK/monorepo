@@ -20,6 +20,8 @@ export function parseAuction(raw: unknown): Auction {
     reservePrice: o.reservePrice == null ? null : String(o.reservePrice),
     buyNowPrice: o.buyNowPrice == null ? null : String(o.buyNowPrice),
     currentPrice: String(o.currentPrice),
+    buyerPremiumRate:
+      o.buyerPremiumRate == null || o.buyerPremiumRate === "" ? "0.25" : String(o.buyerPremiumRate),
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),
     status: o.status as Auction["status"],

@@ -7,7 +7,8 @@ import { cookies } from "next/headers";
  * Prefer INTERNAL_API_URL on the host (e.g. http://127.0.0.1:3001) so SSR does not rely on
  * NEXT_PUBLIC_API_URL (often the public IP), which can fail with hairpin NAT or wrong host.
  */
-function serverApiBase(): string {
+/** Base URL for server-side API calls (SSR / route handlers). */
+export function getServerApiBase(): string {
   const internal = process.env.INTERNAL_API_URL?.replace(/\/$/, "");
   if (internal) return internal;
   const pub = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
@@ -21,7 +22,7 @@ export async function getServerHc(): Promise<RpcApp> {
     .getAll()
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
-  return hcAsRpcApp(serverApiBase(), {
+  return hcAsRpcApp(getServerApiBase(), {
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers as HeadersInit | undefined);
       if (cookieHeader) headers.set("Cookie", cookieHeader);

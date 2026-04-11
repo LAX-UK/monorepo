@@ -22,6 +22,7 @@ function auction(overrides: Partial<Auction> = {}): Auction {
     reservePrice: null,
     buyNowPrice: null,
     currentPrice: "100.00",
+    buyerPremiumRate: "0.25",
     startTime: new Date(now.getTime() - 60_000),
     endTime: new Date(now.getTime() + 60 * 60_000),
     status: "active",
@@ -74,6 +75,7 @@ describe("BidService.placeBid", () => {
       create: vi.fn(),
       findHighestForAuction: vi.fn(),
       listForAuction: vi.fn(),
+      listForBidder: vi.fn(),
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
@@ -107,6 +109,7 @@ describe("BidService.placeBid", () => {
       create: vi.fn(),
       findHighestForAuction: vi.fn(),
       listForAuction: vi.fn(),
+      listForBidder: vi.fn(),
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
@@ -136,6 +139,7 @@ describe("BidService.placeBid", () => {
       create: vi.fn(),
       findHighestForAuction: vi.fn(),
       listForAuction: vi.fn(),
+      listForBidder: vi.fn(),
       markWinningBid: vi.fn(),
     };
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
@@ -168,6 +172,7 @@ describe("BidService.placeBid", () => {
       create: vi.fn().mockResolvedValue(created),
       findHighestForAuction: vi.fn(),
       listForAuction: vi.fn(),
+      listForBidder: vi.fn(),
       markWinningBid: vi.fn().mockResolvedValue(undefined),
     };
     const cacheSet = vi.fn().mockResolvedValue(undefined);

@@ -1,7 +1,7 @@
-import type { InferSelectModel } from "drizzle-orm";
-import { auction, bid } from "@auction/db/schema";
+import type { auction, bid } from "@auction/db/schema";
 import type { Auction, AuctionStatus, AuctionType } from "@auction/types";
 import type { Bid } from "@auction/types";
+import type { InferSelectModel } from "drizzle-orm";
 
 type AuctionRow = InferSelectModel<typeof auction>;
 type BidRow = InferSelectModel<typeof bid>;
@@ -19,6 +19,7 @@ export function mapAuctionRow(row: AuctionRow): Auction {
     reservePrice: row.reservePrice !== null ? String(row.reservePrice) : null,
     buyNowPrice: row.buyNowPrice !== null ? String(row.buyNowPrice) : null,
     currentPrice: String(row.currentPrice),
+    buyerPremiumRate: String(row.buyerPremiumRate),
     startTime: row.startTime,
     endTime: row.endTime,
     status: row.status as AuctionStatus,

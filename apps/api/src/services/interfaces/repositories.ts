@@ -5,6 +5,7 @@ export type ListAuctionsFilter = {
   status?: AuctionStatus | undefined;
   categoryId?: string | undefined;
   sellerId?: string | undefined;
+  winnerId?: string | undefined;
   limit: number;
   offset: number;
 };
@@ -34,9 +35,18 @@ export interface IBidRepository {
   create(row: CreateBidRow): Promise<Bid>;
   findHighestForAuction(auctionId: string): Promise<Bid | null>;
   listForAuction(auctionId: string, limit: number): Promise<Bid[]>;
+  /** Latest bids placed by a bidder (for dashboard). */
+  listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   markWinningBid(auctionId: string, bidId: string): Promise<void>;
 }
 
+export type UserProfileRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+};
+
 export interface IUserRepository {
-  findById(id: string): Promise<{ id: string; role: string } | null>;
+  findById(id: string): Promise<UserProfileRow | null>;
 }

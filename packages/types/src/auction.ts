@@ -1,13 +1,7 @@
 export const auctionTypes = ["english", "dutch", "sealed", "buy_it_now"] as const;
 export type AuctionType = (typeof auctionTypes)[number];
 
-export const auctionStatuses = [
-  "draft",
-  "scheduled",
-  "active",
-  "ended",
-  "cancelled",
-] as const;
+export const auctionStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type AuctionStatus = (typeof auctionStatuses)[number];
 
 export type Auction = {
@@ -22,6 +16,8 @@ export type Auction = {
   reservePrice: string | null;
   buyNowPrice: string | null;
   currentPrice: string;
+  /** Decimal fraction, e.g. "0.25" for 25% buyer's premium on hammer. */
+  buyerPremiumRate: string;
   startTime: Date;
   endTime: Date;
   status: AuctionStatus;
@@ -39,6 +35,8 @@ export type CreateAuctionInput = {
   startingPrice: string;
   reservePrice?: string | undefined;
   buyNowPrice?: string | undefined;
+  /** Optional; defaults per DB (e.g. 0.25). */
+  buyerPremiumRate?: string | undefined;
   startTime: Date;
   endTime: Date;
 };

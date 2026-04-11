@@ -1,5 +1,3 @@
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import { AuctionPortsProvider } from "@/lib/context/auction-ports";
@@ -19,12 +17,8 @@ export default async function ArtworkPage({ params }: PageProps) {
   }
 
   return (
-    <>
-      <SiteHeader />
-      <AuctionPortsProvider>
-        <ArtworkSplitView auction={auction} bidPanel={<ArtworkBidPanel auction={auction} />} />
-      </AuctionPortsProvider>
-      <SiteFooter />
-    </>
+    <AuctionPortsProvider>
+      <ArtworkSplitView auction={auction} bidPanel={<ArtworkBidPanel auction={auction} />} />
+    </AuctionPortsProvider>
   );
 }
