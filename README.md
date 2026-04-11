@@ -10,7 +10,7 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
 3. `pnpm install`
 4. Put `DATABASE_URL` in the repo root `.env` (see `.env.example`), then `pnpm db:migrate` (loads that file automatically). You can still `export DATABASE_URL=...` to override. For Drizzle Kit’s CLI instead, use `pnpm --filter @auction/db db:migrate:kit`.
 
-   **If host migrate fails** (`ECONNREFUSED`, `password authentication failed`, or port clashes with another Postgres): bring the stack up (`docker compose up -d`) and run migrations **inside** the API container (uses Compose `DATABASE_URL` → `postgres:5432`, no host port): `pnpm db:migrate:docker`.
+   **If host migrate fails** (`ECONNREFUSED`, `password authentication failed`, or port clashes with another Postgres): bring the stack up (`docker compose up -d`) and run migrations **inside** the API container (uses Compose `DATABASE_URL` → `postgres:5432`, no host port): `pnpm db:migrate:docker` (runs compiled `packages/db/dist/migrate.js`, no `tsx` in the image).
 5. `pnpm turbo run dev --parallel`
 
 | Service | URL | Notes |
