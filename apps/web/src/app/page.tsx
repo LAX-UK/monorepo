@@ -6,12 +6,21 @@ import { HomeHero } from "@/components/sections/home/home-hero";
 import { HomeMasonry } from "@/components/sections/home/home-masonry";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import type { Auction } from "@auction/types";
 
 export default async function HomePage() {
-  const reader = await getServerAuctionReader();
-  let auctions = await reader.list({ status: "active", limit: 12 });
-  if (auctions.length === 0) {
-    auctions = await reader.list({ limit: 12 });
+  let auctions: Auction[] = [];
+  try {
+    const reader = await getServerAuctionReader();
+    auctions = await reader.list({ status: "active", limit: 12 });
+    if (auctions.length === 0) {
+      auctions = await reader.list({ limit: 12 });
+    }
+  } catch (err) {
+    console.error(
+      "[HomePage] auction list failed (API down or misconfigured INTERNAL_API_URL?)",
+      err,
+    );
   }
   const featured = auctions[0] ?? null;
 
