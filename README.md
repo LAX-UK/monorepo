@@ -8,7 +8,7 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
    **Or full stack:** `docker compose up -d` (builds API + WS images — run DB migrations before traffic).
 2. `cp .env.example .env` and set `BETTER_AUTH_SECRET` (≥16 characters).
 3. `pnpm install`
-4. `export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/auction` then `pnpm db:migrate` (or `pnpm --filter @auction/db db:migrate:run` for `packages/db/src/migrate.ts`).
+4. `export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/auction` then `pnpm db:migrate` (runs `packages/db/src/migrate.ts`). For Drizzle Kit’s CLI instead, use `pnpm --filter @auction/db db:migrate:kit`.
 5. `pnpm turbo run dev --parallel`
 
 | Service | URL | Notes |

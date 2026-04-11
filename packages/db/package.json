@@ -18,8 +18,8 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:migrate:run": "tsx src/migrate.ts",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:migrate:kit": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
