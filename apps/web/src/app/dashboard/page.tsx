@@ -49,19 +49,19 @@ export default async function DashboardHomePage() {
 
       <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
             Portfolio value (hammer)
           </p>
           <p className="font-headline text-3xl text-primary">{formatMoney(totalSpent.toFixed(2))}</p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
             Won this year
           </p>
           <p className="font-headline text-3xl text-on-surface">{portfolio.length}</p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
             Win rate
           </p>
           <p className="font-headline text-3xl text-on-surface">
@@ -69,7 +69,7 @@ export default async function DashboardHomePage() {
           </p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
             Curator rank
           </p>
           <p className="font-headline text-3xl text-on-surface">Tier II</p>
@@ -80,7 +80,7 @@ export default async function DashboardHomePage() {
         <div className="lg:col-span-8">
           <div className="mb-8 flex items-end justify-between">
             <h2 className="font-headline text-2xl">Live inventory</h2>
-            <span className="border-b border-primary-container pb-1 font-label text-[0.6875rem] uppercase tracking-widest text-primary">
+            <span className="border-b border-primary-container pb-1 font-label text-xs uppercase tracking-widest text-primary">
               Ending soon first
             </span>
           </div>
@@ -106,7 +106,7 @@ export default async function DashboardHomePage() {
                         Lot
                       </span>
                       <h3 className="font-headline text-3xl font-light text-on-surface">{a.title}</h3>
-                      <p className="font-label text-[10px] uppercase tracking-widest text-primary">
+                      <p className="font-label text-xs uppercase tracking-widest text-primary">
                         Current {formatMoney(a.currentPrice)}
                       </p>
                     </div>
@@ -139,7 +139,7 @@ export default async function DashboardHomePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
-                          <p className="font-label text-[9px] font-bold uppercase tracking-wider text-primary">
+                          <p className="font-label text-xs font-bold uppercase tracking-wider text-primary">
                             Awaiting payment
                           </p>
                         </div>
@@ -174,7 +174,7 @@ export default async function DashboardHomePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
-                          <p className="font-label text-[9px] uppercase tracking-wider text-secondary">
+                          <p className="font-label text-xs uppercase tracking-wider text-secondary">
                             Est. {formatMoney(a.currentPrice)}
                           </p>
                         </div>

@@ -6,7 +6,7 @@ export default function NotFound() {
       id="main-content"
       className="flex min-h-[70vh] flex-col items-center justify-center bg-surface px-6 py-24 text-center"
     >
-      <p className="mb-4 font-label text-[10px] font-bold uppercase tracking-[0.4em] text-primary">
+      <p className="mb-4 font-label text-xs font-bold uppercase tracking-[0.4em] text-primary">
         404
       </p>
       <h1 className="mb-6 font-headline text-4xl tracking-tight text-on-surface md:text-5xl">

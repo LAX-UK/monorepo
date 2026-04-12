@@ -1,3 +1,4 @@
+import { ThemeInit } from "@/components/layout/theme-init";
 import type { Metadata } from "next";
 import { Manrope, Noto_Serif } from "next/font/google";
 import type { ReactNode } from "react";
@@ -22,8 +23,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${notoSerif.variable} ${manrope.variable}`}>
+    <html
+      lang="en"
+      className={`${notoSerif.variable} ${manrope.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        <ThemeInit />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0"

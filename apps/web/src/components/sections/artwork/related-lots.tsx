@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Auction } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,6 +33,8 @@ export function RelatedLots({ auctions, currentId }: Props) {
                       src={img}
                       alt=""
                       fill
+                      placeholder="blur"
+                      blurDataURL={TINY_IMAGE_BLUR}
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
@@ -41,7 +44,7 @@ export function RelatedLots({ auctions, currentId }: Props) {
                   <h3 className="font-headline text-lg font-light text-on-surface group-hover:italic">
                     {a.title}
                   </h3>
-                  <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-primary">
+                  <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
                     {formatMoney(a.currentPrice)}
                   </p>
                 </div>

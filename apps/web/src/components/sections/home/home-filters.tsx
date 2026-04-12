@@ -60,7 +60,7 @@ export function HomeFilters({ categories }: Props) {
       <div className="flex flex-col items-start justify-between border-b border-outline-variant/15 pb-12 lg:flex-row lg:items-center">
         <div className="grid w-full grid-cols-1 gap-8 sm:grid-cols-3 lg:w-auto lg:gap-16">
           <div className="group">
-            <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
+            <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
               Artist
             </p>
             <select
@@ -78,7 +78,7 @@ export function HomeFilters({ categories }: Props) {
             </select>
           </div>
           <div className="group">
-            <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
+            <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
               Medium
             </p>
             <select
@@ -99,7 +99,7 @@ export function HomeFilters({ categories }: Props) {
             </select>
           </div>
           <div className="group">
-            <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
+            <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary transition-colors group-hover:text-primary">
               Valuation
             </p>
             <select
@@ -124,7 +124,7 @@ export function HomeFilters({ categories }: Props) {
           </div>
         </div>
         <div className="mt-12 flex flex-col items-end lg:mt-0">
-          <span className="font-label text-[10px] font-bold uppercase tracking-[0.3em] text-secondary">
+          <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
             Inventory status
           </span>
           <span className="mt-1 font-headline text-xl text-on-surface">

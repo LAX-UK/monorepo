@@ -12,7 +12,7 @@ export function ArtworkTrustStrip() {
       {items.map((it) => (
         <div key={it.label} className="flex items-center gap-2 text-on-surface-variant">
           <MaterialIcon name={it.icon} className="text-lg text-primary" />
-          <span className="font-label text-[9px] font-bold uppercase tracking-widest">{it.label}</span>
+          <span className="font-label text-xs font-bold uppercase tracking-widest">{it.label}</span>
         </div>
       ))}
     </div>

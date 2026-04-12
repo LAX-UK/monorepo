@@ -1,4 +1,5 @@
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { formatMoney } from "@/lib/format-currency";
 import type { Auction } from "@auction/types";
 import Image from "next/image";
@@ -32,9 +33,16 @@ export default async function SearchPage({ searchParams }: PageProps) {
       <p className="mb-6 font-body text-sm text-on-surface-variant">
         Filter loaded inventory by title or description.
       </p>
-      <form action="/search" method="get" className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form
+        action="/search"
+        method="get"
+        className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end"
+      >
         <div className="flex-1">
-          <label htmlFor="search-q" className="mb-2 block font-label text-[10px] uppercase tracking-widest text-secondary">
+          <label
+            htmlFor="search-q"
+            className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+          >
             Keywords
           </label>
           <input
@@ -47,14 +55,35 @@ export default async function SearchPage({ searchParams }: PageProps) {
         </div>
         <button
           type="submit"
-          className="bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-on-primary shadow-sm transition-opacity hover:opacity-95"
+          className="bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-sm transition-opacity hover:opacity-95"
         >
           Search
         </button>
       </form>
 
       {filtered.length === 0 ? (
-        <p className="font-body text-on-surface-variant">No lots match that search.</p>
+        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10">
+          <p className="mb-6 font-body text-on-surface-variant">
+            {q.trim() ? "No lots match that search." : "No lots to show yet."}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/archive"
+              className="font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
+            >
+              Browse past auctions
+            </Link>
+            <span className="text-on-surface-variant/50" aria-hidden>
+              ·
+            </span>
+            <Link
+              href="/"
+              className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant underline-offset-4 hover:text-primary hover:underline"
+            >
+              Upcoming auctions
+            </Link>
+          </div>
+        </div>
       ) : (
         <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((a) => {
@@ -71,6 +100,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                         src={img}
                         alt=""
                         fill
+                        placeholder="blur"
+                        blurDataURL={TINY_IMAGE_BLUR}
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 640px) 100vw, 33vw"
                       />
@@ -80,7 +111,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     <h2 className="font-headline text-xl font-light text-on-surface group-hover:italic">
                       {a.title}
                     </h2>
-                    <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-primary">
+                    <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
                       {formatMoney(a.currentPrice)}
                     </p>
                   </div>

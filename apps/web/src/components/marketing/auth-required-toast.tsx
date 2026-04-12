@@ -33,13 +33,13 @@ function AuthToastInner() {
       <div className="flex flex-wrap gap-3">
         <Link
           href="/login?next=/dashboard&auth=required"
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-on-primary"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary"
         >
           Sign in
         </Link>
         <button
           type="button"
-          className="font-label text-[10px] uppercase tracking-widest text-inverse-on-surface/70 underline"
+          className="font-label text-xs uppercase tracking-widest text-inverse-on-surface/70 underline"
           onClick={() => setVisible(false)}
         >
           Dismiss

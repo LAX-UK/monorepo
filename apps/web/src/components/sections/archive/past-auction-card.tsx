@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Auction } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,14 +23,16 @@ export function PastAuctionCard({ auction, sellerName, gridOffsetClass = "" }: P
   return (
     <div className={`group ${gridOffsetClass}`}>
       <Link href={`/artwork/${auction.id}`} className="block">
-        <div className="mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 group-hover:scale-[0.98]">
+        <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 group-hover:scale-[0.98]">
           {img ? (
             <Image
               src={img}
               alt=""
-              width={600}
-              height={750}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              fill
+              placeholder="blur"
+              blurDataURL={TINY_IMAGE_BLUR}
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-on-surface-variant">

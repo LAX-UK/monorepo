@@ -30,13 +30,13 @@ export function BidForm({
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+        <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
           Quick bid
         </span>
         <button
           type="button"
           onClick={onUseMinimum}
-          className="rounded-md bg-surface-container-high px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container"
+          className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container"
         >
           Min {formatMoney(minStr)}
         </button>
@@ -48,7 +48,7 @@ export function BidForm({
               key={add}
               type="button"
               onClick={() => onAmountChange(v.toFixed(2))}
-              className="rounded-md bg-surface-container-high px-4 py-2 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
+              className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
             >
               {label}
             </button>
@@ -58,7 +58,7 @@ export function BidForm({
       <div>
         <label
           htmlFor="bid-amount"
-          className="mb-4 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+          className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
         >
           Enter bid amount (min. {formatMoney(minStr)})
         </label>
@@ -77,7 +77,7 @@ export function BidForm({
       <div>
         <label
           htmlFor="bid-max-auto"
-          className="mb-4 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+          className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
         >
           Set max auto-bid (optional)
         </label>

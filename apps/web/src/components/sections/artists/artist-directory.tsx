@@ -49,7 +49,7 @@ export function ArtistDirectory({ artists }: Props) {
       <div className="sticky top-20 z-40 border-y border-outline-variant/10 bg-surface/90 px-8 py-4 backdrop-blur-md md:px-20">
         <div className="no-scrollbar mx-auto flex max-w-[1920px] items-center justify-between gap-6 overflow-x-auto">
           <div className="flex min-w-max items-center gap-4 md:gap-6">
-            <span className="mr-4 shrink-0 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface">
+            <span className="mr-4 shrink-0 font-label text-xs font-bold uppercase tracking-widest text-on-surface">
               Filter by
             </span>
             <div className="flex gap-4 md:gap-6">
@@ -136,7 +136,7 @@ export function ArtistDirectory({ artists }: Props) {
                 </div>
                 <div className="flex flex-col">
                   {eyebrow ? (
-                    <span className="mb-2 font-label text-[9px] uppercase tracking-[0.3em] text-primary">
+                    <span className="mb-2 font-label text-xs uppercase tracking-[0.3em] text-primary">
                       {eyebrow}
                     </span>
                   ) : null}

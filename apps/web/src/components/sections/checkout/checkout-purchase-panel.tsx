@@ -31,7 +31,7 @@ export function CheckoutPurchasePanel({
   if (submitted) {
     return (
       <output className="block rounded-xl bg-primary-container/15 px-8 py-10 text-center ring-1 ring-primary/25">
-        <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+        <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
           Request received
         </p>
         <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
@@ -45,8 +45,8 @@ export function CheckoutPurchasePanel({
 
   return (
     <div className="space-y-10">
-      <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
-        <h2 className="mb-8 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-secondary">
+      <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10 max-lg:sticky max-lg:top-4 max-lg:z-10 max-lg:shadow-md">
+        <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
           Order summary
         </h2>
         <dl className="space-y-4 font-body text-sm">
@@ -74,7 +74,7 @@ export function CheckoutPurchasePanel({
       </div>
 
       <div className="rounded-xl bg-surface-container-high/40 p-8 ring-1 ring-outline-variant/10">
-        <h2 className="mb-4 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-secondary">
+        <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
           Payment
         </h2>
         <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
@@ -82,7 +82,7 @@ export function CheckoutPurchasePanel({
           qualifying invoices—your specialist will confirm options and any processing fees.
         </p>
         <p className="font-body text-sm text-on-surface">
-          <span className="font-label text-[10px] uppercase tracking-widest text-primary">
+          <span className="font-label text-xs uppercase tracking-widest text-primary">
             Concierge
           </span>
           <br />
@@ -92,7 +92,7 @@ export function CheckoutPurchasePanel({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-outline-variant/10 py-6 font-label text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+      <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-outline-variant/10 py-6 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
         <span className="inline-flex items-center gap-2">
           <span className="material-symbols-outlined text-base text-primary" aria-hidden>
             security
@@ -124,7 +124,10 @@ export function CheckoutPurchasePanel({
           />
           <span className="font-body text-sm text-on-surface-variant">
             I agree to the{" "}
-            <Link href="/terms" className="border-b border-primary/40 text-on-surface hover:border-primary">
+            <Link
+              href="/terms"
+              className="border-b border-primary/40 text-on-surface hover:border-primary"
+            >
               Terms of Sale
             </Link>
             , including buyer&apos;s premium and payment deadlines.
@@ -162,7 +165,7 @@ export function CheckoutPurchasePanel({
               }
             })();
           }}
-          className="w-full bg-gradient-to-br from-primary to-primary-container py-5 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full bg-gradient-to-br from-primary to-primary-container py-5 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "Processing…" : "Complete purchase"}
         </button>

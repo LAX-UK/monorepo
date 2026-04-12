@@ -35,7 +35,7 @@ export function ArtistSpotlightHero({ artist }: Props) {
         />
       </div>
       <div className="relative z-10 w-full px-8 md:w-1/2 md:px-20">
-        <span className="mb-6 block font-label text-[10px] uppercase tracking-[0.4em] text-primary">
+        <span className="mb-6 block font-label text-xs uppercase tracking-[0.4em] text-primary">
           Featured Artist of the Month
         </span>
         <h1 className="mb-8 font-headline text-6xl leading-tight tracking-tighter text-on-surface md:text-8xl lg:text-9xl">

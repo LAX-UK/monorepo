@@ -9,7 +9,7 @@ type Props = {
 export function LegalPage({ title, kicker = "The Digital Curator", children }: Props) {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-6 pb-24 pt-28 md:px-10 lg:pt-32">
-      <p className="mb-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
         {kicker}
       </p>
       <h1 className="mb-10 font-headline text-4xl tracking-tight text-on-surface md:text-5xl">

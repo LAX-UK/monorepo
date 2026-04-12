@@ -86,14 +86,14 @@ export function NotificationBell() {
                   n.read ? "opacity-70" : ""
                 }`}
               >
-                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-primary">
+                <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
                   {n.title}
                 </p>
                 <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
                 {n.auctionId ? (
                   <Link
                     href={`/artwork/${n.auctionId}`}
-                    className="mt-2 inline-block font-label text-[9px] uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+                    className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
                     onClick={() => void markRead(n.id)}
                   >
                     View lot
@@ -101,7 +101,7 @@ export function NotificationBell() {
                 ) : !n.read ? (
                   <button
                     type="button"
-                    className="mt-2 font-label text-[9px] uppercase tracking-widest text-secondary hover:text-primary"
+                    className="mt-2 font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
                     onClick={() => void markRead(n.id)}
                   >
                     Mark read
@@ -113,7 +113,7 @@ export function NotificationBell() {
           <div className="border-t border-outline-variant/10 px-4 py-2">
             <Link
               href="/dashboard"
-              className="font-label text-[9px] uppercase tracking-widest text-primary"
+              className="font-label text-xs uppercase tracking-widest text-primary"
               onClick={() => setOpen(false)}
             >
               Open dashboard

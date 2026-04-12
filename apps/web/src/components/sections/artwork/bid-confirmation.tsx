@@ -32,7 +32,7 @@ export function BidConfirmation({
             <span className="font-headline text-on-surface">{formatMoney(maxAuto)}</span>
           </p>
         ) : null}
-        <p className="mt-4 font-label text-[10px] leading-relaxed text-on-surface-variant">
+        <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}
           <Link href="/terms" className="text-primary underline-offset-2 hover:underline">
             terms of sale

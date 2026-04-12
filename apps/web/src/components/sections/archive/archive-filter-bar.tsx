@@ -51,8 +51,8 @@ export function ArchiveFilterBar({ categories }: Props) {
               onClick={() => setParams({ year: "all" })}
               className={
                 year === "all"
-                  ? "border-b border-primary pb-1 font-label text-[0.6875rem] uppercase tracking-[0.2em] text-primary"
-                  : "font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
+                  ? "border-b border-primary pb-1 font-label text-xs uppercase tracking-[0.2em] text-primary"
+                  : "font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
               }
             >
               All time
@@ -65,8 +65,8 @@ export function ArchiveFilterBar({ categories }: Props) {
                 onClick={() => setParams({ year: String(y) })}
                 className={
                   year === String(y)
-                    ? "border-b border-primary pb-1 font-label text-[0.6875rem] uppercase tracking-[0.2em] text-primary"
-                    : "font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
+                    ? "border-b border-primary pb-1 font-label text-xs uppercase tracking-[0.2em] text-primary"
+                    : "font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
                 }
               >
                 {y}
@@ -86,8 +86,8 @@ export function ArchiveFilterBar({ categories }: Props) {
               onClick={() => setParams({ categoryId: "" })}
               className={
                 categoryId === ""
-                  ? "whitespace-nowrap border-b border-primary pb-1 font-label text-[0.6875rem] uppercase tracking-[0.2em] text-primary"
-                  : "whitespace-nowrap font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
+                  ? "whitespace-nowrap border-b border-primary pb-1 font-label text-xs uppercase tracking-[0.2em] text-primary"
+                  : "whitespace-nowrap font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
               }
             >
               All media
@@ -100,8 +100,8 @@ export function ArchiveFilterBar({ categories }: Props) {
                 onClick={() => setParams({ categoryId: c.id })}
                 className={
                   categoryId === c.id
-                    ? "whitespace-nowrap border-b border-primary pb-1 font-label text-[0.6875rem] uppercase tracking-[0.2em] text-primary"
-                    : "whitespace-nowrap font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
+                    ? "whitespace-nowrap border-b border-primary pb-1 font-label text-xs uppercase tracking-[0.2em] text-primary"
+                    : "whitespace-nowrap font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
                 }
               >
                 {c.name}
@@ -119,7 +119,7 @@ export function ArchiveFilterBar({ categories }: Props) {
             disabled={pending}
             value={sort}
             onChange={(e) => setParams({ sort: e.target.value })}
-            className="cursor-pointer border-none bg-transparent p-0 font-label text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-on-surface focus:ring-0"
+            className="cursor-pointer border-none bg-transparent p-0 font-label text-xs font-medium uppercase tracking-[0.2em] text-on-surface focus:ring-0"
           >
             <option value="hammer">Hammer price (high to low)</option>
             <option value="recent">Most recent</option>

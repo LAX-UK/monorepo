@@ -37,7 +37,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
       <div className="flex items-center gap-8 md:gap-12">
         <Link
           href={buildHref(searchParams, prev)}
-          className={`flex items-center gap-4 font-label text-[0.6875rem] uppercase tracking-[0.2em] transition-colors ${
+          className={`flex items-center gap-4 font-label text-xs uppercase tracking-[0.2em] transition-colors ${
             page <= 1
               ? "pointer-events-none text-on-surface-variant/40"
               : "text-on-surface-variant hover:text-primary"
@@ -52,7 +52,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
             <Link
               key={p}
               href={buildHref(searchParams, p)}
-              className={`font-label text-[0.6875rem] uppercase tracking-[0.2em] transition-colors ${
+              className={`font-label text-xs uppercase tracking-[0.2em] transition-colors ${
                 p === page
                   ? "font-bold text-primary"
                   : "text-on-surface-variant hover:text-on-surface"
@@ -62,14 +62,14 @@ export function ArchivePagination({ page, totalPages }: Props) {
             </Link>
           ))}
           {totalPages > windowEnd ? (
-            <span className="font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant">
               …
             </span>
           ) : null}
           {totalPages > windowEnd ? (
             <Link
               href={buildHref(searchParams, totalPages)}
-              className="font-label text-[0.6875rem] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
+              className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface"
             >
               {String(totalPages).padStart(2, "0")}
             </Link>
@@ -77,7 +77,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
         </div>
         <Link
           href={buildHref(searchParams, next)}
-          className={`flex items-center gap-4 font-label text-[0.6875rem] uppercase tracking-[0.2em] transition-colors ${
+          className={`flex items-center gap-4 font-label text-xs uppercase tracking-[0.2em] transition-colors ${
             page >= totalPages
               ? "pointer-events-none text-on-surface-variant/40"
               : "text-on-surface hover:text-primary"

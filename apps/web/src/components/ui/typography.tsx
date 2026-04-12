@@ -26,7 +26,7 @@ export function LabelCaps({
 }: HTMLAttributes<HTMLSpanElement> & { children: ReactNode }) {
   return (
     <span
-      className={`font-label text-[0.6875rem] font-semibold uppercase tracking-[0.3em] text-secondary ${className}`}
+      className={`font-label text-xs font-semibold uppercase tracking-[0.3em] text-secondary ${className}`}
       {...props}
     >
       {children}

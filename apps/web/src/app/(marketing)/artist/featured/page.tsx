@@ -24,7 +24,7 @@ export default async function FeaturedArtistsPage() {
       <div className="mx-auto max-w-[1920px] px-8 pt-8 md:px-20">
         <nav
           aria-label="Breadcrumb"
-          className="font-label text-[10px] uppercase tracking-[0.2em] text-secondary"
+          className="font-label text-xs uppercase tracking-[0.2em] text-secondary"
         >
           <ol className="flex flex-wrap items-center gap-2">
             <li>

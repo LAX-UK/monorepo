@@ -1,4 +1,5 @@
 import { LotCountdownChip } from "@/components/sections/home/lot-countdown-chip";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { formatMoney } from "@/lib/format-currency";
 import type { Auction, AuctionStatus } from "@auction/types";
 import Image from "next/image";
@@ -77,6 +78,8 @@ export function HomeMasonry({ auctions }: Props) {
                       src={img}
                       alt={a.title}
                       fill
+                      placeholder="blur"
+                      blurDataURL={TINY_IMAGE_BLUR}
                       className="object-cover transition-transform duration-1000 group-hover:scale-110"
                       sizes="(max-width: 768px) 100vw, (max-width: 1536px) 50vw, 33vw"
                     />
@@ -86,12 +89,12 @@ export function HomeMasonry({ auctions }: Props) {
                     </div>
                   )}
                   <div className="absolute inset-0 flex items-center justify-center bg-inverse-surface/40 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                    <span className="bg-surface-container-lowest px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface transition-colors duration-300 hover:bg-primary hover:text-on-primary">
+                    <span className="bg-surface-container-lowest px-8 py-3 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface transition-colors duration-300 hover:bg-primary hover:text-on-primary">
                       View lot details
                     </span>
                   </div>
                   <div className="absolute right-6 top-6 mix-blend-difference">
-                    <p className="font-label text-[10px] font-bold uppercase tracking-widest text-white">
+                    <p className="font-label text-xs font-bold uppercase tracking-widest text-white">
                       {lotLabel(a.id)}
                     </p>
                   </div>
@@ -104,7 +107,7 @@ export function HomeMasonry({ auctions }: Props) {
                 <div className="flex items-start justify-between gap-4 pr-4">
                   <div className="min-w-0 flex-1">
                     <p
-                      className={`mb-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] ${badge.className}`}
+                      className={`mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] ${badge.className}`}
                     >
                       {badge.label}
                     </p>
@@ -114,7 +117,7 @@ export function HomeMasonry({ auctions }: Props) {
                     <p className="text-xs font-medium tracking-wide text-on-surface-variant">
                       {a.description?.slice(0, 80) ?? "Curated auction lot"}
                     </p>
-                    <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+                    <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
                       Ends {endsLabel(a.endTime)}
                     </p>
                   </div>

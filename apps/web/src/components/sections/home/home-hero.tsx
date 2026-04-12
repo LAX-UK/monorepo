@@ -20,7 +20,7 @@ export function HomeHero({ featured }: Props) {
 
   return (
     <section className="mb-20 px-4 md:mb-32 md:px-10 lg:px-20">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/10 pb-4 font-label text-[10px] uppercase tracking-[0.25em] text-secondary md:mb-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/10 pb-4 font-label text-xs uppercase tracking-[0.25em] text-secondary md:mb-8">
         <span className="text-on-surface">Editorial</span>
         <span className="max-w-xl text-right text-on-surface-variant">
           This week: luminous abstraction, architectural photography, and sealed masterworks.
@@ -43,7 +43,7 @@ export function HomeHero({ featured }: Props) {
               <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-error opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-error" />
             </span>
-            <span className="font-label text-[10px] font-bold uppercase tracking-[0.4em] text-white">
+            <span className="font-label text-xs font-bold uppercase tracking-[0.4em] text-white">
               Live Auction Phase
             </span>
           </div>
@@ -52,7 +52,7 @@ export function HomeHero({ featured }: Props) {
           </h1>
           <div className="flex flex-col space-y-8 md:flex-row md:items-center md:space-x-12 md:space-y-0">
             <div className="min-w-[240px] border border-white/20 bg-white/10 p-6 backdrop-blur-md md:px-10 md:py-5">
-              <p className="mb-2 font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+              <p className="mb-2 font-label text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
                 Current Highest Bid
               </p>
               <div className="flex items-baseline space-x-3">

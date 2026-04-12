@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
@@ -40,7 +41,7 @@ export function DashboardSidebar({ user, onNavigate, mobileOpen = false }: Props
         >
           The Digital Curator
         </Link>
-        <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-secondary">
+        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
           Signed in
         </p>
         <p className="font-body text-sm font-medium text-on-surface">{user.name}</p>
@@ -70,11 +71,15 @@ export function DashboardSidebar({ user, onNavigate, mobileOpen = false }: Props
           })}
         </nav>
       </div>
-      <div className="mt-auto p-8">
+      <div className="mt-auto space-y-4 p-8">
+        <div className="flex items-center gap-3">
+          <span className="font-label text-xs uppercase tracking-widest text-secondary">Theme</span>
+          <ThemeToggle />
+        </div>
         <Link
           href="/"
           onClick={onNav}
-          className="font-label text-[10px] uppercase tracking-widest text-primary transition-colors hover:underline"
+          className="block font-label text-xs uppercase tracking-widest text-primary transition-colors hover:underline"
         >
           Exit to gallery
         </Link>

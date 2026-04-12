@@ -32,14 +32,14 @@ export function SiteFooter() {
         </div>
         <div className="md:col-span-7 grid grid-cols-2 gap-12 lg:grid-cols-3">
           <div>
-            <h5 className="mb-8 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-inverse-on-surface">
+            <h5 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-inverse-on-surface">
               Galleries
             </h5>
             <ul className="space-y-4">
               <li>
                 <Link
                   href="/"
-                  className="font-label text-[10px] uppercase tracking-[0.2em] text-inverse-on-surface/70 transition-colors hover:text-primary-fixed"
+                  className="font-label text-xs uppercase tracking-[0.2em] text-inverse-on-surface/70 transition-colors hover:text-primary-fixed"
                 >
                   Live Auctions
                 </Link>
@@ -47,7 +47,7 @@ export function SiteFooter() {
               <li>
                 <Link
                   href="/#archive"
-                  className="font-label text-[10px] uppercase tracking-[0.2em] text-inverse-on-surface/70 transition-colors hover:text-primary-fixed"
+                  className="font-label text-xs uppercase tracking-[0.2em] text-inverse-on-surface/70 transition-colors hover:text-primary-fixed"
                 >
                   Past Archives
                 </Link>
@@ -55,10 +55,10 @@ export function SiteFooter() {
             </ul>
           </div>
           <div>
-            <h5 className="mb-8 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-inverse-on-surface">
+            <h5 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-inverse-on-surface">
               Concierge
             </h5>
-            <ul className="space-y-4 font-label text-[10px] uppercase tracking-[0.2em] text-inverse-on-surface/70">
+            <ul className="space-y-4 font-label text-xs uppercase tracking-[0.2em] text-inverse-on-surface/70">
               <li>
                 <Link href="/terms" className="transition-colors hover:text-primary-fixed">
                   Bidding Terms
@@ -84,25 +84,25 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="mx-auto flex max-w-[1920px] flex-col items-center justify-between border-t border-white/5 px-6 py-10 md:flex-row md:px-20">
-        <p className="mb-4 font-label text-[9px] uppercase tracking-[0.4em] text-secondary md:mb-0">
+        <p className="mb-4 font-label text-xs uppercase tracking-[0.4em] text-secondary md:mb-0">
           © {new Date().getFullYear()} The Digital Curator Gallery. Fine Art Excellence.
         </p>
         <div className="flex gap-8">
           <Link
             href="/privacy"
-            className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
+            className="text-xs uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
           >
             Privacy
           </Link>
           <Link
             href="/legal"
-            className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
+            className="text-xs uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
           >
             Legal
           </Link>
           <Link
             href="/contact"
-            className="text-[9px] uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
+            className="text-xs uppercase tracking-[0.3em] text-inverse-on-surface/60 transition-colors hover:text-inverse-on-surface"
           >
             Contact
           </Link>

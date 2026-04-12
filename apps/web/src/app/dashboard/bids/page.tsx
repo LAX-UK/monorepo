@@ -68,7 +68,7 @@ export default async function DashboardBidsPage() {
           <p className="mb-4 font-body text-on-surface-variant">You have no bids yet.</p>
           <Link
             href="/"
-            className="font-label text-[10px] font-bold uppercase tracking-widest text-primary underline"
+            className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
           >
             Browse live auctions
           </Link>
@@ -129,14 +129,14 @@ export default async function DashboardBidsPage() {
                 </div>
                 <div className="flex flex-col items-stretch gap-2 md:w-44">
                   <span
-                    className={`font-label text-[10px] font-bold uppercase tracking-widest ${st.className}`}
+                    className={`font-label text-xs font-bold uppercase tracking-widest ${st.className}`}
                   >
                     {st.label}
                   </span>
                   {a?.status === "active" ? (
                     <Link
                       href={`/artwork/${a.id}`}
-                      className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container py-3 text-center font-label text-[10px] font-bold uppercase tracking-widest text-on-primary shadow-sm transition-opacity hover:opacity-95"
+                      className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container py-3 text-center font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm transition-opacity hover:opacity-95"
                     >
                       Re-bid now
                     </Link>

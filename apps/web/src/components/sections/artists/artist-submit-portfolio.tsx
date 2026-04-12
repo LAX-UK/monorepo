@@ -44,7 +44,7 @@ export function ArtistSubmitPortfolio() {
           </p>
           <Link
             href="/contact"
-            className="inline-flex w-full items-center justify-center bg-on-surface py-4 font-label text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-primary"
+            className="inline-flex w-full items-center justify-center bg-on-surface py-4 font-label text-xs font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-primary"
           >
             Go to contact
           </Link>

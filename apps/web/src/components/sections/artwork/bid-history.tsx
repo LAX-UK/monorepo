@@ -30,7 +30,7 @@ export function BidHistory({ entries }: Props) {
 
   return (
     <div className="mt-10 border-t border-outline-variant/15 pt-10">
-      <h3 className="mb-4 font-label text-[10px] uppercase tracking-widest text-secondary">
+      <h3 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
         Bid history
       </h3>
       <ul className="max-h-52 space-y-3 overflow-y-auto pr-1">
@@ -41,7 +41,7 @@ export function BidHistory({ entries }: Props) {
           >
             <div className="min-w-0">
               <span className="block text-on-surface-variant">{maskBidder(e.bidderId)}</span>
-              <span className="font-label text-[9px] uppercase tracking-wider text-on-surface-variant/80">
+              <span className="font-label text-xs uppercase tracking-wider text-on-surface-variant/80">
                 {formatRelative(e.at)}
               </span>
             </div>

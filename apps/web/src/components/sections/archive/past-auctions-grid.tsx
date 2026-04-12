@@ -1,5 +1,6 @@
 import { PastAuctionCard } from "@/components/sections/archive/past-auction-card";
 import type { Auction } from "@auction/types";
+import Link from "next/link";
 
 export type ArchiveLotVM = {
   auction: Auction;
@@ -15,9 +16,28 @@ type Props = {
 export function PastAuctionsGrid({ items }: Props) {
   if (items.length === 0) {
     return (
-      <p className="mx-auto max-w-screen-2xl font-body text-on-surface-variant">
-        No past auctions match these filters.
-      </p>
+      <div className="mx-auto max-w-screen-2xl rounded-xl border border-outline-variant/15 bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10">
+        <p className="mb-6 font-body text-on-surface-variant">
+          No past auctions match these filters.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/archive"
+            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+          >
+            View full archive
+          </Link>
+          <span className="hidden text-on-surface-variant sm:inline" aria-hidden>
+            ·
+          </span>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant underline-offset-4 transition-colors hover:text-primary hover:underline"
+          >
+            Back to upcoming auctions
+          </Link>
+        </div>
+      </div>
     );
   }
 

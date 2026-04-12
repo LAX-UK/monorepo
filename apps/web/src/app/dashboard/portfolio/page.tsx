@@ -61,7 +61,7 @@ export default async function DashboardPortfolioPage() {
                     ) : null}
                     <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-sm bg-white/90 px-2 py-1 backdrop-blur-sm">
                       <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                      <span className="font-label text-[9px] font-bold uppercase tracking-wider text-primary">
+                      <span className="font-label text-xs font-bold uppercase tracking-wider text-primary">
                         Awaiting payment
                       </span>
                     </div>
@@ -70,10 +70,10 @@ export default async function DashboardPortfolioPage() {
                     <h3 className="font-headline text-xl font-light text-on-surface group-hover:italic">
                       {a.title}
                     </h3>
-                    <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-primary">
+                    <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
                       Hammer {formatMoney(a.currentPrice)}
                     </p>
-                    <p className="mt-3 inline-flex items-center gap-1 font-label text-[10px] uppercase tracking-widest text-on-surface">
+                    <p className="mt-3 inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-on-surface">
                       Complete purchase
                       <span className="material-symbols-outlined text-sm" aria-hidden>
                         arrow_forward

@@ -46,7 +46,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="login-email"
-          className="mb-2 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+          className="mb-2 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
         >
           Email
         </label>
@@ -63,7 +63,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="login-password"
-          className="mb-2 block font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+          className="mb-2 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
         >
           Password
         </label>

@@ -62,7 +62,7 @@ export function HomeNewsletter() {
             type="button"
             disabled={status === "loading"}
             onClick={onSubmit}
-            className="absolute right-0 top-1/2 -translate-y-1/2 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary transition-all duration-500 hover:tracking-[0.5em] disabled:opacity-50"
+            className="absolute right-0 top-1/2 -translate-y-1/2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary transition-all duration-500 hover:tracking-[0.5em] disabled:opacity-50"
           >
             {status === "loading" ? "…" : "Subscribe"}
           </button>

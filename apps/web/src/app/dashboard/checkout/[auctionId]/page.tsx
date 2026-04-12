@@ -1,5 +1,6 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import Image from "next/image";
@@ -46,7 +47,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
       <div className="mb-10">
         <Link
           href="/dashboard/portfolio"
-          className="inline-flex items-center gap-2 font-label text-[10px] uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
+          className="inline-flex items-center gap-2 font-label text-xs uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
         >
           <span className="material-symbols-outlined text-sm" aria-hidden>
             arrow_back
@@ -62,6 +63,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               src={img}
               alt=""
               fill
+              placeholder="blur"
+              blurDataURL={TINY_IMAGE_BLUR}
               className="object-cover lg:object-contain"
               sizes="(max-width: 1024px) 100vw, 50vw"
               priority
@@ -75,26 +78,47 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
         <div className="w-full flex-1 px-0 pb-20 pt-10 lg:w-1/2 lg:px-16 lg:pt-16">
           <div className="mx-auto max-w-xl lg:mx-0">
-            <div className="mb-10 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
-              <span className="font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
-                Awaiting payment
-              </span>
-            </div>
             <h1 className="mb-3 font-headline text-4xl tracking-tight text-on-surface lg:text-5xl">
               {auction.title}
             </h1>
-            <p className="mb-12 font-body text-sm text-on-surface-variant">
+            <p className="mb-10 font-body text-sm text-on-surface-variant">
               Lot settled in your favor. Review your invoice and confirm to begin settlement.
             </p>
 
-            <CheckoutPurchasePanel
-              auctionId={auction.id}
-              hammer={formatMoney(auction.currentPrice)}
-              buyerPremium={formatMoney(premium.toFixed(2))}
-              total={formatMoney(total.toFixed(2))}
-              premiumPercentLabel={premiumPercentLabel}
-            />
+            <section
+              aria-labelledby="checkout-flow-heading"
+              className="rounded-xl bg-surface-container-low/50 p-6 ring-1 ring-outline-variant/15 sm:p-8"
+            >
+              <h2 id="checkout-flow-heading" className="sr-only">
+                Invoice and payment
+              </h2>
+              <nav
+                aria-label="Checkout steps"
+                className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant"
+              >
+                <span className="rounded-full bg-primary px-3 py-1 text-on-primary">1 · Invoice</span>
+                <span className="text-on-surface-variant/50" aria-hidden>
+                  →
+                </span>
+                <span className="rounded-full bg-surface-container-high px-3 py-1 ring-1 ring-outline-variant/20">
+                  2 · Confirm
+                </span>
+              </nav>
+              <div className="mb-10 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
+                <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+                  Awaiting payment
+                </span>
+              </div>
+
+              <CheckoutPurchasePanel
+                auctionId={auction.id}
+                hammer={formatMoney(auction.currentPrice)}
+                buyerPremium={formatMoney(premium.toFixed(2))}
+                total={formatMoney(total.toFixed(2))}
+                premiumPercentLabel={premiumPercentLabel}
+              />
+            </section>
 
             <p className="mt-10 font-body text-xs text-on-surface-variant">
               <Link

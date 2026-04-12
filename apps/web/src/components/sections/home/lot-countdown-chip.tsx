@@ -18,14 +18,14 @@ export function LotCountdownChip({ endTime }: Props) {
   const ms = endTime.getTime() - now;
   if (ms <= 0) {
     return (
-      <span className="rounded-sm bg-inverse-surface/80 px-2 py-1 font-label text-[9px] font-bold uppercase tracking-widest text-inverse-on-surface backdrop-blur-sm">
+      <span className="rounded-sm bg-inverse-surface/80 px-2 py-1 font-label text-xs font-bold uppercase tracking-widest text-inverse-on-surface backdrop-blur-sm">
         Closed
       </span>
     );
   }
 
   return (
-    <span className="rounded-sm bg-inverse-surface/80 px-2 py-1 font-mono text-[11px] tabular-nums text-inverse-on-surface backdrop-blur-sm">
+    <span className="rounded-sm bg-inverse-surface/80 px-2 py-1 font-mono text-xs tabular-nums text-inverse-on-surface backdrop-blur-sm">
       {formatCountdownClock(ms)}
     </span>
   );
