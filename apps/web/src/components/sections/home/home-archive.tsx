@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/** Stable Unsplash assets (Google aida-public tokens expire or 404 when truncated). */
+/** Left: original editorial portrait. Right: gallery wall (URL verified 200 on images.unsplash.com). */
 const imgA =
-  "https://images.unsplash.com/photo-1571115764595-644a1f56a55c?auto=format&fit=crop&w=900&q=80";
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuAD4Nvrs5uB2uKmfg09-ougWoqAgw0yP_Ktw1QzEFkkoXRcCr2EHSphXK08CiCc-Zz2wifTsrSDswibojfttwhyjXcSgTDP-vhIFoARirretax_rO0OE_zJdy_705r3BCdIReOs_kbUkwup_Y19a-HU4m8uk1WYjF0zHPC79VSNfze1R-bKLN4K-GlWNtplmK84GHMqLIivcGeXAjmZ5Ts3txujGaK1agAQx1GsfUZjH-JcPsx5CLK0o--GeXDzkC0eGoJorm4j5UFA";
 const imgB =
-  "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&w=900&q=80";
+  "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=900&q=80";
 
 export function HomeArchive() {
   return (
@@ -64,7 +64,7 @@ export function HomeArchive() {
             <div className="w-1/2 pt-20">
               <Image
                 src={imgA}
-                alt="Archive"
+                alt="Portrait in a studio setting"
                 width={400}
                 height={500}
                 className="h-[500px] w-full object-cover shadow-xl grayscale transition-all duration-700 hover:grayscale-0"
@@ -73,7 +73,7 @@ export function HomeArchive() {
             <div className="w-1/2">
               <Image
                 src={imgB}
-                alt="Archive"
+                alt="Gallery wall with framed artworks"
                 width={400}
                 height={600}
                 className="h-[600px] w-full object-cover shadow-2xl transition-transform duration-700 hover:scale-[1.02]"
