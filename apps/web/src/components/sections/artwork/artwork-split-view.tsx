@@ -41,8 +41,8 @@ export function ArtworkSplitView({
       <div className="h-[60vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:w-1/2">
         <ArtworkImageStage title={auction.title} images={auction.images} />
       </div>
-      <div className="w-full overflow-y-auto px-8 pb-28 pt-8 lg:w-1/2 lg:px-24 lg:pb-20 lg:pt-32">
-        <div className="mx-auto max-w-xl lg:mx-0">
+      <div className="w-full min-w-0 overflow-y-auto overflow-x-hidden px-8 pb-28 pt-8 lg:w-1/2 lg:px-24 lg:pb-20 lg:pt-32">
+        <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
           <nav
             aria-label="Breadcrumb"
             className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"

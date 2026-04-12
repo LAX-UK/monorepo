@@ -19,22 +19,22 @@ export function BidDisplay({
 }: Props) {
   return (
     <div className="mb-12 space-y-6">
-      <div className="grid gap-8 sm:grid-cols-2">
-        <div className="rounded-lg bg-surface-container-high/50 p-6 ring-1 ring-outline-variant/10">
+      <div className="flex min-w-0 flex-col gap-6">
+        <div className="min-w-0 overflow-hidden rounded-lg bg-surface-container-high/50 p-6 ring-1 ring-outline-variant/10">
           <span className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary">
             Current high bid
           </span>
-          <span className="font-headline text-4xl text-primary sm:text-5xl">
+          <span className="block max-w-full font-headline text-3xl leading-tight tracking-tight text-primary [overflow-wrap:anywhere] min-[400px]:text-4xl lg:text-5xl">
             {formatMoney(currentPrice)}
           </span>
-          <p className="mt-3 font-body text-sm text-on-surface-variant">
+          <p className="mt-3 break-words font-body text-sm text-on-surface-variant">
             Minimum next bid{" "}
             <span className="font-headline tabular-nums text-on-surface">
               {formatMoney(minNextBid)}
             </span>
           </p>
         </div>
-        <div className="rounded-lg bg-gradient-to-br from-primary-container/25 to-surface-container-high/80 p-6 ring-1 ring-primary/15">
+        <div className="min-w-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-container/25 to-surface-container-high/80 p-6 ring-1 ring-primary/15">
           <div className="mb-2 flex items-center gap-2">
             {live ? (
               <>
@@ -55,10 +55,10 @@ export function BidDisplay({
           <span className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary">
             Time remaining
           </span>
-          <span className="font-headline tabular-nums text-3xl text-on-surface">
+          <span className="block max-w-full break-words font-headline tabular-nums text-3xl text-on-surface min-[400px]:text-4xl">
             {remainingLabel}
           </span>
-          <p className="mt-3 font-body text-xs leading-relaxed text-on-surface-variant">
+          <p className="mt-3 break-words font-body text-xs leading-relaxed text-on-surface-variant">
             {saleEndLocalLabel}. Timer uses your device&apos;s local time.
           </p>
         </div>

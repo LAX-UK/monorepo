@@ -147,7 +147,7 @@ export function ArtworkBidPanel({ auction, initialHistory, sessionUser }: Props)
   }, []);
 
   return (
-    <div className="mb-20 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
+    <div className="mb-20 min-w-0 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
       <BidDisplay
         currentPrice={currentPrice}
         remainingLabel={remainingLabel}
