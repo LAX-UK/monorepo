@@ -122,12 +122,12 @@ export function ArtworkImageStage({ title, images }: Props) {
 
       <dialog
         ref={dialogRef}
-        className="artwork-lightbox-dialog fixed inset-0 z-[100] max-h-none max-w-none border-0 bg-transparent p-0 text-white backdrop:bg-black/90 motion-reduce:backdrop:transition-none"
+        className="artwork-lightbox-dialog fixed inset-0 z-[100] box-border h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] border-0 bg-transparent p-0 text-white backdrop:bg-black/90 motion-reduce:backdrop:transition-none"
         aria-labelledby={titleId}
         aria-describedby={hasMany ? countId : undefined}
         onClose={() => setLightboxOpen(false)}
       >
-        <div className="flex h-full w-full flex-col items-center justify-center p-4 motion-reduce:transition-none">
+        <div className="flex h-[100dvh] min-h-0 w-full flex-col items-center justify-center p-4 motion-reduce:transition-none">
           <h2 id={titleId} className="sr-only">
             Fullscreen image: {title}
           </h2>
@@ -153,7 +153,7 @@ export function ArtworkImageStage({ title, images }: Props) {
           >
             <MaterialIcon name="close" className="text-3xl" />
           </button>
-          <div className="relative h-[min(85vh,900px)] w-full max-w-6xl">
+          <div className="relative h-[min(85dvh,900px)] min-h-[200px] w-full max-w-6xl shrink-0">
             <Image
               src={img}
               alt={lightboxAlt}
