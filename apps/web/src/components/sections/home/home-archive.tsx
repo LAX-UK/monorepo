@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
+/** Stable Unsplash assets (Google aida-public tokens expire or 404 when truncated). */
 const imgA =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAD4Nvrs5uB2uKmfg09-ougWoqAgw0yP_Ktw1QzEFkkoXRcCr2EHSphXK08CiCc-Zz2wifTsrSDswibojfttwhyjXcSgTDP-vhIFoARirretax_rO0OE_zJdy_705r3BCdIReOs_kbUkwup_Y19a-HU4m8uk1WYjF0zHPC79VSNfze1R-bKLN4K-GlWNtplmK84GHMqLIivcGeXAjmZ5Ts3txujGaK1agAQx1GsfUZjH-JcPsx5CLK0o--GeXDzkC0eGoJorm4j5UFA";
+  "https://images.unsplash.com/photo-1571115764595-644a1f56a55c?auto=format&fit=crop&w=900&q=80";
 const imgB =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBPCDQin-8R4B8eocRze-KM78lgiCYvC-UuaU5q-EreySMFfAs5j9yg5Ob0A1PbXFpGvjIfGVx7n4DD_U96Hm1G0TecZ40ud_9Uz9W8TKfLq2t2wO0BZyDHGEKa19YPZmTtlZoq2QbJ88UQRXWHGK1pRrnyj9HKJxbhumcp9RpwefSz2jp5IQTanr2f87c4CpFSBVrMepvf-hQtRKgWEm33GQF8qPur_6d2dhMo7WqIxIvtcwpKcuiMWAJUw2AtuIzNgS5xnf5Upp_";
+  "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&w=900&q=80";
 
 export function HomeArchive() {
   return (
@@ -49,10 +50,7 @@ export function HomeArchive() {
               </div>
             </div>
           </div>
-          <Link
-            href="/archive"
-            className="group mt-16 inline-flex items-center space-x-4"
-          >
+          <Link href="/archive" className="group mt-16 inline-flex items-center space-x-4">
             <span className="border-b border-primary pb-1 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
               Access Sales Archive
             </span>

@@ -42,15 +42,26 @@ export function SiteHeader() {
           The Digital Curator
         </Link>
         <nav className="hidden items-center gap-12 lg:flex" aria-label="Primary">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {nav.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : item.href === "/artist/featured"
+                  ? pathname.startsWith("/artist")
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`font-label text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors hover:text-primary ${
+                  active ? "border-b border-primary pb-1 text-primary" : "text-secondary"
+                }`}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="flex items-center gap-4 md:gap-8">
           <Link
@@ -87,17 +98,28 @@ export function SiteHeader() {
           aria-label="Mobile primary"
         >
           <ul className="flex flex-col gap-4">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block py-2 font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-on-surface transition-colors hover:text-primary"
-                  onClick={closeMenu}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {nav.map((item) => {
+              const active =
+                item.href === "/"
+                  ? pathname === "/"
+                  : item.href === "/artist/featured"
+                    ? pathname.startsWith("/artist")
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`block py-2 font-label text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors hover:text-primary ${
+                      active ? "text-primary" : "text-on-surface"
+                    }`}
+                    aria-current={active ? "page" : undefined}
+                    onClick={closeMenu}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
             <li>
               <Link
                 href="/search"

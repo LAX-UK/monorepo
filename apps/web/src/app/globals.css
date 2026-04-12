@@ -122,3 +122,12 @@
 .break-inside-avoid {
   break-inside: avoid;
 }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

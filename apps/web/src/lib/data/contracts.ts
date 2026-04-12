@@ -62,6 +62,8 @@ export type ArtistProfile = {
   tagline: string;
   bio: string;
   portraitUrl: string;
+  /** Display line above the name (e.g. medium category). Falls back to Medium stat when omitted. */
+  discipline?: string;
   stats: { label: string; value: string }[];
 };
 

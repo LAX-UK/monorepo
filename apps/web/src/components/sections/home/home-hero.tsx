@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 const FALLBACK_IMG =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuC7pZAoQN2C6iMEQ6JiImCeOz01ebXcouL4BodtWbN4WsNFl-rvRmnuAh0YOz0YiiVOSsN1xUY964RtBGObX2vn9ezlRHsWuFQoEzIeXnDAoedSe1bWF41aTbDICRgRXuouj902mC_Igs9hw1NKgBz61dD6F2elKXfYj9Vy5STDtYZ3h6W6aN_J4H6CoMWPE4_wL0tpyyeVYMFktdfvLB74yqkGkigHImAqb88k4hhZIn2kvrKKSSh66z-CjjCfuru54PtrLVbNB3Km";
+  "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1920&q=80";
 
 type Props = {
   featured: Auction | null;
