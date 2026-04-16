@@ -17,9 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <DashboardShell
       user={user}
       mobileTitle="Admin"
-      renderSidebar={({ onNavigate, mobileOpen }) => (
-        <AdminSidebar user={user} onNavigate={onNavigate} mobileOpen={mobileOpen} />
-      )}
+      sidebar={<AdminSidebar user={user} />}
     >
       {children}
     </DashboardShell>

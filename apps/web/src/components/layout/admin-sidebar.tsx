@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { useShellContext } from "@/components/layout/dashboard-shell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,13 +15,12 @@ const links = [
 
 type Props = {
   user: SessionUser;
-  onNavigate?: () => void;
-  mobileOpen?: boolean;
 };
 
-export function AdminSidebar({ user, onNavigate, mobileOpen = false }: Props) {
+export function AdminSidebar({ user }: Props) {
+  const { onNavigate, mobileOpen } = useShellContext();
   const pathname = usePathname();
-  const onNav = onNavigate ?? (() => {});
+  const onNav = onNavigate;
 
   const asideTransform =
     mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";

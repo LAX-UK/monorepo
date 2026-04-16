@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { useShellContext } from "@/components/layout/dashboard-shell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,15 +17,12 @@ const adminLink = { href: "/admin", label: "Admin panel", icon: "shield_person" 
 
 type Props = {
   user: SessionUser;
-  /** Close mobile drawer after navigation */
-  onNavigate?: () => void;
-  /** When true, drawer is visible on small viewports */
-  mobileOpen?: boolean;
 };
 
-export function DashboardSidebar({ user, onNavigate, mobileOpen = false }: Props) {
+export function DashboardSidebar({ user }: Props) {
+  const { onNavigate, mobileOpen } = useShellContext();
   const pathname = usePathname();
-  const onNav = onNavigate ?? (() => {});
+  const onNav = onNavigate;
 
   const asideTransform =
     mobileOpen

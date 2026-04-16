@@ -6,22 +6,32 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState, createContext, useContext } from "react";
 
 export type DashboardShellSidebarProps = {
   onNavigate: () => void;
   mobileOpen: boolean;
 };
 
+/** Context for sidebar to access shell state. */
+const ShellContext = createContext<DashboardShellSidebarProps | null>(null);
+
+export function useShellContext(): DashboardShellSidebarProps {
+  const ctx = useContext(ShellContext);
+  if (!ctx) throw new Error("useShellContext must be used inside DashboardShell");
+  return ctx;
+}
+
 type Props = {
   user: SessionUser;
   children: ReactNode;
   /** Mobile header label (e.g. "Dashboard" or "Admin"). */
   mobileTitle?: string;
-  renderSidebar: (p: DashboardShellSidebarProps) => ReactNode;
+  /** Sidebar component (rendered inside shell context). */
+  sidebar: ReactNode;
 };
 
-export function DashboardShell({ user, children, mobileTitle = "Dashboard", renderSidebar }: Props) {
+export function DashboardShell({ user, children, mobileTitle = "Dashboard", sidebar }: Props) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -81,7 +91,9 @@ export function DashboardShell({ user, children, mobileTitle = "Dashboard", rend
         />
       ) : null}
 
-      {renderSidebar({ onNavigate: closeNav, mobileOpen: mobileNavOpen })}
+      <ShellContext.Provider value={{ onNavigate: closeNav, mobileOpen: mobileNavOpen }}>
+        {sidebar}
+      </ShellContext.Provider>
 
       <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-64">
         <div className="hidden justify-end border-b border-outline-variant/10 px-4 py-3 lg:flex lg:px-20">

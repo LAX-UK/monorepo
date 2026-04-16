@@ -14,9 +14,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     <DashboardShell
       user={user}
       mobileTitle="Dashboard"
-      renderSidebar={({ onNavigate, mobileOpen }) => (
-        <DashboardSidebar user={user} onNavigate={onNavigate} mobileOpen={mobileOpen} />
-      )}
+      sidebar={<DashboardSidebar user={user} />}
     >
       {children}
     </DashboardShell>
