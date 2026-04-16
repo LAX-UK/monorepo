@@ -19,6 +19,9 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   const app = new Hono();
   const appLogger = createAppLogger(env);
 
+  /** Process is listening; no DB/Redis (used by container health checks during boot). */
+  app.get("/health/live", (c) => c.json({ status: "ok" }));
+
   app.use("*", logger());
   app.use(
     "*",
