@@ -7,7 +7,17 @@ const env = loadEnv();
 const container = createContainer(env);
 const app = createApp(container, env, container.authenticator);
 
+// BullMQ / ioredis emit `error`; without a listener Node exits the process.
+container.redis.on("error", (err: Error) => {
+  console.error("[redis]", err);
+});
+container.auctionJobScheduler.queue.on("error", (err: Error) => {
+  console.error("[auction-queue]", err);
+});
 const auctionWorker = container.auctionJobScheduler.createWorker();
+auctionWorker.on("error", (err: Error) => {
+  console.error("[auction-worker]", err);
+});
 auctionWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
   console.error("[auction-worker] job failed", job?.id, err);
 });
@@ -25,9 +35,10 @@ void container.auctionLifecycleService.runTransitions().catch((err) => {
 serve(
   {
     fetch: app.fetch,
+    hostname: "0.0.0.0",
     port: env.PORT,
   },
   (info) => {
-    console.log(`API listening on http://localhost:${info.port}`);
+    console.log(`API listening on http://${info.address}:${info.port}`);
   },
 );
