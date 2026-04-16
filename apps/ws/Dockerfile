@@ -24,6 +24,7 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/ws/package.json ./apps/ws/package.json
+COPY --from=builder /app/apps/ws/node_modules ./apps/ws/node_modules
 COPY --from=builder /app/apps/ws/dist ./apps/ws/dist
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
