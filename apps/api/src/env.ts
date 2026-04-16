@@ -12,6 +12,11 @@ const envSchema = z.object({
     if (val === undefined || val === "") return false;
     return val === "true" || val === true;
   }, z.boolean()),
+  /** Allow auth cookies over HTTP (insecure). Only for testing without HTTPS! */
+  ALLOW_HTTP_COOKIES: z.preprocess((val) => {
+    if (val === undefined || val === "") return false;
+    return val === "true" || val === true;
+  }, z.boolean()),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

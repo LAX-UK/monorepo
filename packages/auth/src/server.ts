@@ -9,6 +9,8 @@ export type AuthEnv = {
   /** e.g. http://localhost:3001 */
   baseURL: string;
   trustedOrigins?: string[] | undefined;
+  /** Set to true to allow cookies over HTTP (non-HTTPS). Only for testing! */
+  allowInsecureCookies?: boolean;
 };
 
 export function createAuth(env: AuthEnv) {
@@ -42,6 +44,10 @@ export function createAuth(env: AuthEnv) {
     session: {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
+    },
+    advanced: {
+      // Allow cookies over HTTP when explicitly enabled (for testing without HTTPS)
+      useSecureCookies: env.allowInsecureCookies ? false : undefined,
     },
   });
 }

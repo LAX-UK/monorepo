@@ -57,6 +57,7 @@ export function createContainer(env: Env): Container {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.API_PUBLIC_URL,
     trustedOrigins: [env.WEB_ORIGIN],
+    allowInsecureCookies: env.ALLOW_HTTP_COOKIES,
   });
 
   const authenticator: IAuthenticator = new BetterAuthAuthenticator(auth);

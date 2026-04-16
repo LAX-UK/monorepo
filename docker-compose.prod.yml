@@ -41,6 +41,7 @@ services:
       API_PUBLIC_URL: ${API_PUBLIC_URL:?set API_PUBLIC_URL in .env}
       WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
       VERIFY_ORIGIN: ${VERIFY_ORIGIN:-false}
+      ALLOW_HTTP_COOKIES: ${ALLOW_HTTP_COOKIES:-false}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
