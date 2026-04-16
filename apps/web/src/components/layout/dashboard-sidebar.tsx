@@ -12,6 +12,8 @@ const links = [
   { href: "/dashboard/portfolio", label: "Portfolio", icon: "palette" },
 ] as const;
 
+const adminLink = { href: "/admin", label: "Admin panel", icon: "shield_person" } as const;
+
 type Props = {
   user: SessionUser;
   /** Close mobile drawer after navigation */
@@ -69,6 +71,22 @@ export function DashboardSidebar({ user, onNavigate, mobileOpen = false }: Props
               </Link>
             );
           })}
+          {user.role === "admin" ? (
+            <Link
+              key={adminLink.href}
+              href={adminLink.href}
+              onClick={onNav}
+              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+              className={`flex items-center border-l-4 px-4 py-3 text-xs font-medium uppercase tracking-widest transition-all ${
+                pathname.startsWith("/admin")
+                  ? "border-primary bg-surface-container-low text-on-surface"
+                  : "border-transparent text-on-surface hover:bg-surface-container-low/80"
+              }`}
+            >
+              <MaterialIcon name={adminLink.icon} className="mr-3 text-lg" />
+              {adminLink.label}
+            </Link>
+          ) : null}
         </nav>
       </div>
       <div className="mt-auto space-y-4 p-8">

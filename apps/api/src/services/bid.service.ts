@@ -3,10 +3,35 @@ import { err, ok, type Result } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IAuctionStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
+import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationService } from "./notification.service.js";
 
 const ANTI_SNIPING_EXTENSION_MS = 30_000;
+const MAX_PROXY_ROUNDS = 100;
+
+function minIncrementAmount(auction: Auction): number {
+  const n = Number.parseFloat(auction.minBidIncrement);
+  return Number.isFinite(n) && n > 0 ? n : 0.01;
+}
+
+function bidderCeilings(bids: Bid[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const b of bids) {
+    const amt = Number(b.amount);
+    const cap =
+      b.maxAutoBidAmount !== null && b.maxAutoBidAmount !== ""
+        ? Math.max(amt, Number(b.maxAutoBidAmount))
+        : amt;
+    m.set(b.bidderId, Math.max(m.get(b.bidderId) ?? 0, cap));
+  }
+  return m;
+}
+
+export type AuctionJobSchedulerPort = {
+  rescheduleEnd(auctionId: string, endTime: Date): Promise<void>;
+};
 
 export class BidService {
   constructor(
@@ -14,6 +39,8 @@ export class BidService {
     private readonly strategyFactory: IAuctionStrategyFactory,
     private readonly cache: ICacheProvider,
     private readonly notifications: NotificationService,
+    private readonly notificationWrite: INotificationWriteRepository | null,
+    private readonly auctionJobs: AuctionJobSchedulerPort | null,
   ) {}
 
   async placeBid(
@@ -23,6 +50,7 @@ export class BidService {
     maxAutoBidAmount?: number,
   ): Promise<Result<Bid, BidError>> {
     try {
+      let prevWinnerId: string | null = null;
       const { created, auction, nextEnd } = await this.repos.runInTransaction(
         async ({ auction: auctions, bid: bids }) => {
           const auctionRow = await auctions.findByIdForUpdate(auctionId);
@@ -35,6 +63,9 @@ export class BidService {
           if (Date.now() > auctionRow.endTime.getTime()) {
             throw new BidError("Auction has ended", 400);
           }
+
+          const prevWinning = await bids.findWinningBid(auctionId);
+          prevWinnerId = prevWinning?.bidderId ?? null;
 
           const strategy = this.strategyFactory.create(auctionRow.auctionType);
           const validation = strategy.validateBid(auctionRow, { bidderId, amount });
@@ -51,7 +82,7 @@ export class BidService {
             maxAutoBidAmount >= amount;
           const maxStr = hasMax ? maxAutoBidAmount.toFixed(2) : null;
 
-          const createdBid = await bids.create({
+          let lastBid = await bids.create({
             auctionId,
             bidderId,
             amount: amountStr,
@@ -60,16 +91,25 @@ export class BidService {
             maxAutoBidAmount: maxStr,
           });
 
-          await bids.markWinningBid(auctionId, createdBid.id);
-          await auctions.updateCurrentPrice(auctionId, amountStr);
+          if (auctionRow.auctionType === "english" || auctionRow.auctionType === "buy_it_now") {
+            lastBid = await this.runProxyAutoBids(bids, auctionId, lastBid, minIncrementAmount(auctionRow));
+          }
+
+          await bids.markWinningBid(auctionId, lastBid.id);
+          await auctions.updateCurrentPrice(auctionId, lastBid.amount);
 
           let nextEnd = auctionRow.endTime;
-          if (strategy.shouldExtendTime(auctionRow, { bidderId, amount })) {
+          if (
+            strategy.shouldExtendTime(auctionRow, {
+              bidderId,
+              amount: Number.parseFloat(amountStr),
+            })
+          ) {
             nextEnd = new Date(auctionRow.endTime.getTime() + ANTI_SNIPING_EXTENSION_MS);
             await auctions.updateEndTime(auctionId, nextEnd);
           }
 
-          return { created: createdBid, auction: auctionRow, nextEnd };
+          return { created: lastBid, auction: auctionRow, nextEnd };
         },
       );
 
@@ -82,6 +122,19 @@ export class BidService {
       await this.notifications.notifyBidPlaced(updatedAuction, created);
       if (nextEnd.getTime() !== auction.endTime.getTime()) {
         await this.notifications.notifyAuctionExtended(updatedAuction, nextEnd);
+        await this.auctionJobs?.rescheduleEnd(auctionId, nextEnd);
+      }
+
+      if (this.notificationWrite && prevWinnerId && prevWinnerId !== created.bidderId) {
+        await this.notificationWrite.createMany([
+          {
+            userId: prevWinnerId,
+            type: "outbid",
+            title: "You have been outbid",
+            message: `Another bidder placed a higher bid on "${auction.title}".`,
+            auctionId,
+          },
+        ]);
       }
 
       return ok(created);
@@ -91,6 +144,53 @@ export class BidService {
       }
       throw e;
     }
+  }
+
+  private async runProxyAutoBids(
+    bids: IBidRepository,
+    auctionId: string,
+    initialBid: Bid,
+    minInc: number,
+  ): Promise<Bid> {
+    let lastBid = initialBid;
+    let currentPrice = Number(lastBid.amount);
+    let winnerId = lastBid.bidderId;
+
+    for (let round = 0; round < MAX_PROXY_ROUNDS; round++) {
+      const all = await bids.listForAuction(auctionId, 5000);
+      const ceilings = bidderCeilings(all);
+      type Cand = { bidderId: string; ceiling: number };
+      const candidates: Cand[] = [];
+      for (const [bidderId, ceiling] of ceilings) {
+        if (bidderId === winnerId) continue;
+        if (ceiling >= currentPrice + minInc - 1e-9) {
+          candidates.push({ bidderId, ceiling });
+        }
+      }
+      if (candidates.length === 0) break;
+      candidates.sort((a, b) => {
+        if (b.ceiling !== a.ceiling) return b.ceiling - a.ceiling;
+        return a.bidderId.localeCompare(b.bidderId);
+      });
+      const challenger = candidates[0];
+      if (!challenger) break;
+      const nextAmt = Math.min(challenger.ceiling, currentPrice + minInc);
+      if (nextAmt <= currentPrice + 1e-9) break;
+
+      const nextStr = nextAmt.toFixed(2);
+      lastBid = await bids.create({
+        auctionId,
+        bidderId: challenger.bidderId,
+        amount: nextStr,
+        isWinning: true,
+        isAutoBid: true,
+        maxAutoBidAmount: challenger.ceiling.toFixed(2),
+      });
+      currentPrice = nextAmt;
+      winnerId = challenger.bidderId;
+    }
+
+    return lastBid;
   }
 
   /** Public bid history for a lot (newest first). */

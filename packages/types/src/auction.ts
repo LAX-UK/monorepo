@@ -22,6 +22,12 @@ export type Auction = {
   currentPrice: string;
   /** Decimal fraction, e.g. "0.25" for 25% buyer's premium on hammer. */
   buyerPremiumRate: string;
+  /** Minimum raise over current price (English / buy-it-now paths). */
+  minBidIncrement: string;
+  /** Amount subtracted from current price each Dutch interval (optional; derived if null). */
+  dutchDecrementAmount: string | null;
+  dutchDecrementIntervalMs: number;
+  dutchLastDecrementAt: Date | null;
   startTime: Date;
   endTime: Date;
   status: AuctionStatus;
@@ -43,6 +49,9 @@ export type CreateAuctionInput = {
   buyNowPrice?: string | undefined;
   /** Optional; defaults per DB (e.g. 0.25). */
   buyerPremiumRate?: string | undefined;
+  minBidIncrement?: string | undefined;
+  dutchDecrementAmount?: string | undefined;
+  dutchDecrementIntervalMs?: number | undefined;
   startTime: Date;
   endTime: Date;
 };

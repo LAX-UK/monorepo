@@ -29,7 +29,15 @@ export class SealedBidAuctionStrategy implements IAuctionStrategy {
 
   determineWinner(_auction: Auction, bids: Bid[]): Bid | null {
     if (bids.length === 0) return null;
-    const sorted = [...bids].sort((a, b) => Number(b.amount) - Number(a.amount));
-    return sorted[sorted.length - 1] ?? null;
+    let best = bids[0];
+    if (!best) return null;
+    for (const b of bids.slice(1)) {
+      const amt = Number(b.amount);
+      const bestAmt = Number(best.amount);
+      if (amt > bestAmt || (amt === bestAmt && b.createdAt.getTime() < best.createdAt.getTime())) {
+        best = b;
+      }
+    }
+    return best;
   }
 }

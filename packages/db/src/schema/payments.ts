@@ -25,6 +25,7 @@ export const payment = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
     platformFee: numeric("platform_fee", { precision: 18, scale: 2 }).notNull(),
+    /** Nullable external id from the chosen payment gateway (DB column name is legacy). */
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     status: paymentStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })

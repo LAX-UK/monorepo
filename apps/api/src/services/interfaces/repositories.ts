@@ -33,11 +33,17 @@ export interface IAuctionRepository {
   updateCurrentPrice(id: string, price: string): Promise<void>;
   updateEndTime(id: string, endTime: Date): Promise<void>;
   updateStatus(id: string, status: Auction["status"]): Promise<void>;
+  /** Partial update for editable fields (e.g. draft lots). */
+  update(id: string, input: Partial<CreateAuctionInput>): Promise<Auction>;
   setWinner(id: string, winnerId: string): Promise<void>;
   /** Lifecycle: scheduled auctions whose start time has passed. */
   findScheduledToActivate(asOf: Date): Promise<Auction[]>;
   /** Lifecycle: active auctions whose end time has passed. */
   findActivePastEnd(asOf: Date): Promise<Auction[]>;
+  /** Active Dutch lots (for timed price decrements). */
+  findActiveDutchAuctions(): Promise<Auction[]>;
+  setDutchLastDecrementAt(id: string, at: Date | null): Promise<void>;
+  updateDutchCurrentPrice(id: string, price: string, lastDecrementAt: Date): Promise<void>;
 }
 
 export type CreateBidRow = {
@@ -52,7 +58,11 @@ export type CreateBidRow = {
 export interface IBidRepository {
   create(row: CreateBidRow): Promise<Bid>;
   findHighestForAuction(auctionId: string): Promise<Bid | null>;
+  /** Highest amount first; earliest bid wins ties (settlement). */
+  listForAuctionSettlement(auctionId: string, limit: number): Promise<Bid[]>;
   listForAuction(auctionId: string, limit: number): Promise<Bid[]>;
+  findWinningBid(auctionId: string): Promise<Bid | null>;
+  listDistinctBidderIds(auctionId: string): Promise<string[]>;
   /** Latest bids placed by a bidder (for dashboard). */
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   markWinningBid(auctionId: string, bidId: string): Promise<void>;

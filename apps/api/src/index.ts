@@ -7,7 +7,12 @@ const env = loadEnv();
 const container = createContainer(env);
 const app = createApp(container, env, container.authenticator);
 
-const LIFECYCLE_MS = 60_000;
+const auctionWorker = container.auctionJobScheduler.createWorker();
+auctionWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
+  console.error("[auction-worker] job failed", job?.id, err);
+});
+
+const LIFECYCLE_MS = 10_000;
 setInterval(() => {
   void container.auctionLifecycleService.runTransitions().catch((err) => {
     console.error("[auction-lifecycle]", err);

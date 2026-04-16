@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
   CreatePaymentRow,
@@ -41,5 +42,45 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .returning();
     if (!created) throw new Error("Payment insert failed");
     return mapRow(created);
+  }
+
+  async findById(id: string): Promise<PaymentRecord | null> {
+    const rows = await this.db.select().from(payment).where(eq(payment.id, id)).limit(1);
+    const row = rows[0];
+    return row ? mapRow(row) : null;
+  }
+
+  async findOpenByAuctionAndBuyer(auctionId: string, buyerId: string): Promise<PaymentRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(payment)
+      .where(
+        and(
+          eq(payment.auctionId, auctionId),
+          eq(payment.buyerId, buyerId),
+          inArray(payment.status, ["pending", "authorized", "captured"]),
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    return row ? mapRow(row) : null;
+  }
+
+  async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
+    await this.db.update(payment).set({ status }).where(eq(payment.id, id));
+  }
+
+  async listAll(): Promise<PaymentRecord[]> {
+    const rows = await this.db.select().from(payment).orderBy(desc(payment.createdAt));
+    return rows.map(mapRow);
+  }
+
+  async listByBuyerId(buyerId: string): Promise<PaymentRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(payment)
+      .where(eq(payment.buyerId, buyerId))
+      .orderBy(desc(payment.createdAt));
+    return rows.map(mapRow);
   }
 }

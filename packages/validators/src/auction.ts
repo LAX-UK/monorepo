@@ -23,6 +23,9 @@ export const createAuctionSchema = z.object({
   reservePrice: decimalString.optional(),
   buyNowPrice: decimalString.optional(),
   buyerPremiumRate: buyerPremiumRateString.optional(),
+  minBidIncrement: decimalString.optional(),
+  dutchDecrementAmount: decimalString.optional(),
+  dutchDecrementIntervalMs: z.coerce.number().int().min(1000).max(86_400_000).optional(),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
 });
@@ -53,3 +56,14 @@ export const archiveCountQuerySchema = z.object({
 });
 
 export type CreateAuctionInput = z.infer<typeof createAuctionSchema>;
+
+/** Partial update for draft auctions (admin). */
+export const updateAuctionSchema = createAuctionSchema.partial();
+
+export const auctionIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const cancelAuctionBodySchema = z.object({
+  reason: z.string().max(500).optional(),
+});

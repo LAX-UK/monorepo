@@ -89,6 +89,11 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
         startTime: input.startTime,
         endTime: input.endTime,
         status: "draft",
+        ...(input.minBidIncrement !== undefined ? { minBidIncrement: input.minBidIncrement } : {}),
+        ...(input.dutchDecrementAmount !== undefined ? { dutchDecrementAmount: input.dutchDecrementAmount } : {}),
+        ...(input.dutchDecrementIntervalMs !== undefined
+          ? { dutchDecrementIntervalMs: input.dutchDecrementIntervalMs }
+          : {}),
       })
       .returning();
     if (!row) throw new Error("Failed to create auction");
@@ -156,6 +161,32 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
     return rows.map(mapAuctionRow);
   }
 
+  async findActiveDutchAuctions(): Promise<Auction[]> {
+    const rows = await this.db
+      .select()
+      .from(auction)
+      .where(and(eq(auction.status, "active"), eq(auction.auctionType, "dutch")));
+    return rows.map(mapAuctionRow);
+  }
+
+  async setDutchLastDecrementAt(id: string, at: Date | null): Promise<void> {
+    await this.db
+      .update(auction)
+      .set({ dutchLastDecrementAt: at, updatedAt: new Date() })
+      .where(eq(auction.id, id));
+  }
+
+  async updateDutchCurrentPrice(id: string, price: string, lastDecrementAt: Date): Promise<void> {
+    await this.db
+      .update(auction)
+      .set({
+        currentPrice: price,
+        dutchLastDecrementAt: lastDecrementAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(auction.id, id));
+  }
+
   async updateCurrentPrice(id: string, price: string) {
     await this.db
       .update(auction)
@@ -169,6 +200,35 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
 
   async updateStatus(id: string, status: Auction["status"]) {
     await this.db.update(auction).set({ status, updatedAt: new Date() }).where(eq(auction.id, id));
+  }
+
+  async update(id: string, input: Partial<CreateAuctionInput>): Promise<Auction> {
+    const patch: Partial<typeof auction.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (input.title !== undefined) patch.title = input.title;
+    if (input.description !== undefined) patch.description = input.description ?? null;
+    if (input.medium !== undefined) patch.medium = input.medium ?? null;
+    if (input.dimensions !== undefined) patch.dimensions = input.dimensions ?? null;
+    if (input.images !== undefined) patch.images = input.images;
+    if (input.categoryId !== undefined) patch.categoryId = input.categoryId ?? null;
+    if (input.auctionType !== undefined) patch.auctionType = input.auctionType;
+    if (input.startingPrice !== undefined) {
+      patch.startingPrice = input.startingPrice;
+      patch.currentPrice = input.startingPrice;
+    }
+    if (input.reservePrice !== undefined) patch.reservePrice = input.reservePrice ?? null;
+    if (input.buyNowPrice !== undefined) patch.buyNowPrice = input.buyNowPrice ?? null;
+    if (input.buyerPremiumRate !== undefined) patch.buyerPremiumRate = input.buyerPremiumRate;
+    if (input.minBidIncrement !== undefined) patch.minBidIncrement = input.minBidIncrement;
+    if (input.dutchDecrementAmount !== undefined) patch.dutchDecrementAmount = input.dutchDecrementAmount ?? null;
+    if (input.dutchDecrementIntervalMs !== undefined) patch.dutchDecrementIntervalMs = input.dutchDecrementIntervalMs;
+    if (input.startTime !== undefined) patch.startTime = input.startTime;
+    if (input.endTime !== undefined) patch.endTime = input.endTime;
+
+    const [row] = await this.db.update(auction).set(patch).where(eq(auction.id, id)).returning();
+    if (!row) throw new Error("Auction update failed");
+    return mapAuctionRow(row);
   }
 
   async setWinner(id: string, winnerId: string) {

@@ -9,7 +9,7 @@ import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseAuction, parseBid } from "@/lib/data/http/parse";
 import type { Auction, Bid } from "@auction/types";
 
-function buildQuery(params: ListAuctionsParams): Record<string, string> {
+export function buildAuctionListQuery(params: ListAuctionsParams): Record<string, string> {
   const q: Record<string, string> = {
     limit: String(params.limit ?? 20),
     offset: String(params.offset ?? 0),
@@ -76,7 +76,7 @@ export async function getServerAuctionReader(): Promise<AuctionReader> {
   const client = await getServerHc();
   return {
     async list(params: ListAuctionsParams): Promise<Auction[]> {
-      const res = await client.auctions.$get({ query: buildQuery(params) });
+      const res = await client.auctions.$get({ query: buildAuctionListQuery(params) });
       if (!res.ok) {
         throw new Error(`Failed to list auctions: ${res.status}`);
       }

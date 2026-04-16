@@ -8,6 +8,11 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(16),
   API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+  VERIFY_ORIGIN: z.preprocess((val) => {
+    if (val === undefined || val === "") return false;
+    return val === "true" || val === true;
+  }, z.boolean()),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -18,10 +18,12 @@ export default async function DashboardBidsPage() {
   const user = await getServerSessionUser();
   const now = Date.now();
   let rows: Awaited<ReturnType<typeof getServerMyBids>> = [];
+  let fetchError: string | null = null;
   try {
     rows = await getServerMyBids();
-  } catch {
+  } catch (e) {
     rows = [];
+    fetchError = e instanceof Error ? e.message : "Could not load bids.";
   }
 
   const latestByAuction = new Map<string, (typeof rows)[0]>();
@@ -63,15 +65,25 @@ export default async function DashboardBidsPage() {
         Your latest bid per lot, sorted by closing time. Increase your offer in one click.
       </p>
 
+      {fetchError ? (
+        <div className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+          {fetchError}
+        </div>
+      ) : null}
+
       {unique.length === 0 ? (
         <div className="rounded-xl bg-surface-container-low p-10 text-center shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-4 font-body text-on-surface-variant">You have no bids yet.</p>
-          <Link
-            href="/"
-            className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
-          >
-            Browse live auctions
-          </Link>
+          <p className="mb-4 font-body text-on-surface-variant">
+            {fetchError ? "Unable to load bids right now." : "You have no bids yet."}
+          </p>
+          {!fetchError ? (
+            <Link
+              href="/"
+              className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
+            >
+              Browse live auctions
+            </Link>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-6">

@@ -8,6 +8,10 @@ export class BetterAuthAuthenticator implements IAuthenticator {
     const session = await this.auth.api.getSession({ headers });
     const id = session?.user?.id;
     if (!id) return null;
-    return { id };
+    const role =
+      typeof session?.user === "object" && session.user && "role" in session.user
+        ? String((session.user as { role?: string }).role ?? "buyer")
+        : "buyer";
+    return { id, role };
   }
 }

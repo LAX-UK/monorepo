@@ -19,6 +19,10 @@ function auction(overrides: Partial<Auction> = {}): Auction {
     buyNowPrice: null,
     currentPrice: "100.00",
     buyerPremiumRate: "0.25",
+    minBidIncrement: "1.00",
+    dutchDecrementAmount: null,
+    dutchDecrementIntervalMs: 60_000,
+    dutchLastDecrementAt: null,
     startTime: new Date(now.getTime() - 60_000),
     endTime: new Date(now.getTime() + 60 * 60_000),
     status: "active",
@@ -32,15 +36,15 @@ function auction(overrides: Partial<Auction> = {}): Auction {
 describe("EnglishAuctionStrategy", () => {
   const strategy = new EnglishAuctionStrategy();
 
-  it("rejects bids at or below current price", () => {
-    const a = auction({ currentPrice: "100.00" });
+  it("rejects bids below current plus minimum increment", () => {
+    const a = auction({ currentPrice: "100.00", minBidIncrement: "1.00" });
     expect(strategy.validateBid(a, { bidderId: "u1", amount: 100 }).isErr()).toBe(true);
-    expect(strategy.validateBid(a, { bidderId: "u1", amount: 99.99 }).isErr()).toBe(true);
+    expect(strategy.validateBid(a, { bidderId: "u1", amount: 100.99 }).isErr()).toBe(true);
   });
 
-  it("accepts bid above current price", () => {
-    const a = auction({ currentPrice: "100.00" });
-    const r = strategy.validateBid(a, { bidderId: "u1", amount: 100.01 });
+  it("accepts bid at least current plus increment", () => {
+    const a = auction({ currentPrice: "100.00", minBidIncrement: "1.00" });
+    const r = strategy.validateBid(a, { bidderId: "u1", amount: 101 });
     expect(r.isOk()).toBe(true);
   });
 

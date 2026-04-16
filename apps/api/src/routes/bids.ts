@@ -8,10 +8,17 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createBidRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator);
-  const r = new Hono<{ Variables: { userId: string } }>();
+  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
   r.post("/", requireAuth, zValidator("json", placeBidSchema), async (c) => {
-    const userId = c.get("userId");
+    const userId = c.get("userId") as string;
+    const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
+    if (idem) {
+      const cached = await container.redis.get(`idempotency:bid:${userId}:${idem}`);
+      if (cached) {
+        return c.json(JSON.parse(cached) as { data: unknown }, 201);
+      }
+    }
     const body = c.req.valid("json");
     const result = await container.bidService.placeBid(
       userId,
@@ -19,10 +26,20 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
       body.amount,
       body.maxAutoBidAmount,
     );
-    return result.match(
-      (bid) => c.json({ data: bid }, 201),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    }
+    const bid = result.value;
+    const payload = { data: bid };
+    if (idem) {
+      await container.redis.set(
+        `idempotency:bid:${userId}:${idem}`,
+        JSON.stringify(payload),
+        "EX",
+        86_400,
+      );
+    }
+    return c.json(payload, 201);
   });
 
   return r;

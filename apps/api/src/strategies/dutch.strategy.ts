@@ -26,6 +26,8 @@ export class DutchAuctionStrategy implements IAuctionStrategy {
   }
 
   determineWinner(_auction: Auction, bids: Bid[]): Bid | null {
-    return bids[0] ?? null;
+    if (bids.length === 0) return null;
+    const sorted = [...bids].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    return sorted[0] ?? null;
   }
 }

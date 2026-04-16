@@ -24,6 +24,18 @@ export function parseAuction(raw: unknown): Auction {
     currentPrice: String(o.currentPrice),
     buyerPremiumRate:
       o.buyerPremiumRate == null || o.buyerPremiumRate === "" ? "0.25" : String(o.buyerPremiumRate),
+    minBidIncrement:
+      o.minBidIncrement == null || o.minBidIncrement === "" ? "1.00" : String(o.minBidIncrement),
+    dutchDecrementAmount:
+      o.dutchDecrementAmount == null || o.dutchDecrementAmount === ""
+        ? null
+        : String(o.dutchDecrementAmount),
+    dutchDecrementIntervalMs:
+      typeof o.dutchDecrementIntervalMs === "number" && Number.isFinite(o.dutchDecrementIntervalMs)
+        ? o.dutchDecrementIntervalMs
+        : 60_000,
+    dutchLastDecrementAt:
+      o.dutchLastDecrementAt == null ? null : toDate(o.dutchLastDecrementAt),
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),
     status: o.status as Auction["status"],

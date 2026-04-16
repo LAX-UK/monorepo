@@ -15,6 +15,14 @@ function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
+function settlementsEmail(): string {
+  return process.env.NEXT_PUBLIC_SETTLEMENTS_EMAIL?.trim() || "settlements@example.com";
+}
+
+function settlementsPhone(): string {
+  return process.env.NEXT_PUBLIC_SETTLEMENTS_PHONE?.trim() || "+1 (000) 000-0000";
+}
+
 export function CheckoutPurchasePanel({
   auctionId,
   hammer,
@@ -36,8 +44,8 @@ export function CheckoutPurchasePanel({
         </p>
         <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
         <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-          Your payment record has been created. When Stripe is configured, you&apos;ll complete card
-          payment here; until then our settlements team will follow up with wire instructions.
+          Your payment record has been created. When online checkout is enabled, you&apos;ll complete
+          payment here; until then our settlements team will follow up with wire or other instructions.
         </p>
       </output>
     );
@@ -86,9 +94,9 @@ export function CheckoutPurchasePanel({
             Concierge
           </span>
           <br />
-          settlements@curator.example
+          {settlementsEmail()}
           <br />
-          <span className="text-on-surface-variant">+1 (212) 555-0142</span>
+          <span className="text-on-surface-variant">{settlementsPhone()}</span>
         </p>
       </div>
 

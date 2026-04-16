@@ -21,6 +21,7 @@ export function NotificationBell() {
     const client = getBrowserHc();
     const res = await client.users.me.notifications.$get({ query: { limit: "20" } });
     if (!res.ok) {
+      setItems([]);
       setLoaded(true);
       return;
     }
@@ -56,8 +57,12 @@ export function NotificationBell() {
     }
   };
 
-  if (!loaded || items.length === 0) {
-    return null;
+  if (!loaded) {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center" aria-busy="true" aria-label="Loading notifications">
+        <MaterialIcon name="notifications" className="animate-pulse text-secondary" />
+      </div>
+    );
   }
 
   return (
@@ -79,36 +84,38 @@ export function NotificationBell() {
       {open ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-lg border border-outline-variant/15 bg-surface-container-lowest py-2 shadow-lg">
           <div className="max-h-80 overflow-y-auto">
-            {items.map((n) => (
-              <div
-                key={n.id}
-                className={`border-b border-outline-variant/10 px-4 py-3 last:border-0 ${
-                  n.read ? "opacity-70" : ""
-                }`}
-              >
-                <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
-                  {n.title}
-                </p>
-                <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
-                {n.auctionId ? (
-                  <Link
-                    href={`/artwork/${n.auctionId}`}
-                    className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-                    onClick={() => void markRead(n.id)}
-                  >
-                    View lot
-                  </Link>
-                ) : !n.read ? (
-                  <button
-                    type="button"
-                    className="mt-2 font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
-                    onClick={() => void markRead(n.id)}
-                  >
-                    Mark read
-                  </button>
-                ) : null}
-              </div>
-            ))}
+            {items.length === 0 ? (
+              <p className="px-4 py-6 text-center font-body text-sm text-on-surface-variant">No notifications yet.</p>
+            ) : (
+              items.map((n) => (
+                <div
+                  key={n.id}
+                  className={`border-b border-outline-variant/10 px-4 py-3 last:border-0 ${
+                    n.read ? "opacity-70" : ""
+                  }`}
+                >
+                  <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">{n.title}</p>
+                  <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
+                  {n.auctionId ? (
+                    <Link
+                      href={`/artwork/${n.auctionId}`}
+                      className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+                      onClick={() => void markRead(n.id)}
+                    >
+                      View lot
+                    </Link>
+                  ) : !n.read ? (
+                    <button
+                      type="button"
+                      className="mt-2 font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
+                      onClick={() => void markRead(n.id)}
+                    >
+                      Mark read
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            )}
           </div>
           <div className="border-t border-outline-variant/10 px-4 py-2">
             <Link

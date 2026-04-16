@@ -10,4 +10,5 @@ export interface IWatchlistRepository {
   remove(userId: string, auctionId: string): Promise<void>;
   findByUser(userId: string): Promise<WatchlistRow[]>;
   exists(userId: string, auctionId: string): Promise<boolean>;
+  listUserIdsForAuction(auctionId: string): Promise<string[]>;
 }

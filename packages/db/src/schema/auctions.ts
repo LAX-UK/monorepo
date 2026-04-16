@@ -1,12 +1,4 @@
-import {
-  index,
-  numeric,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { category } from "./categories.js";
 
@@ -55,6 +47,15 @@ export const auction = pgTable(
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     status: auctionStatusEnum("status").notNull().default("draft"),
     winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
+    minBidIncrement: numeric("min_bid_increment", { precision: 18, scale: 2 })
+      .notNull()
+      .default("1.00"),
+    dutchDecrementAmount: numeric("dutch_decrement_amount", { precision: 18, scale: 2 }),
+    dutchDecrementIntervalMs: integer("dutch_decrement_interval_ms").notNull().default(60_000),
+    dutchLastDecrementAt: timestamp("dutch_last_decrement_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .notNull()
       .defaultNow(),

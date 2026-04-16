@@ -1,19 +1,27 @@
 "use client";
 
 import { CommandPalette } from "@/components/layout/command-palette";
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
+export type DashboardShellSidebarProps = {
+  onNavigate: () => void;
+  mobileOpen: boolean;
+};
+
 type Props = {
   user: SessionUser;
   children: ReactNode;
+  /** Mobile header label (e.g. "Dashboard" or "Admin"). */
+  mobileTitle?: string;
+  renderSidebar: (p: DashboardShellSidebarProps) => ReactNode;
 };
 
-export function DashboardShell({ user, children }: Props) {
+export function DashboardShell({ user, children, mobileTitle = "Dashboard", renderSidebar }: Props) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -37,7 +45,7 @@ export function DashboardShell({ user, children }: Props) {
     <div className="flex min-h-screen bg-surface font-body text-on-surface">
       <CommandPalette variant="dashboard" />
       <div
-        className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-outline-variant/15 bg-surface-container-lowest/95 px-4 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-4 backdrop-blur-md lg:hidden"
         role="banner"
       >
         <button
@@ -49,16 +57,19 @@ export function DashboardShell({ user, children }: Props) {
         >
           <MaterialIcon name={mobileNavOpen ? "close" : "menu"} />
         </button>
-        <span className="truncate font-headline text-sm font-semibold tracking-tight text-on-surface">
-          Dashboard
+        <span className="min-w-0 flex-1 truncate text-center font-headline text-sm font-semibold tracking-tight text-on-surface">
+          {mobileTitle}
         </span>
-        <Link
-          href="/"
-          className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          aria-label="Back to gallery"
-        >
-          <MaterialIcon name="home" />
-        </Link>
+        <div className="flex shrink-0 items-center gap-1">
+          <NotificationBell />
+          <Link
+            href="/"
+            className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            aria-label="Back to gallery"
+          >
+            <MaterialIcon name="home" />
+          </Link>
+        </div>
       </div>
 
       {mobileNavOpen ? (
@@ -70,9 +81,12 @@ export function DashboardShell({ user, children }: Props) {
         />
       ) : null}
 
-      <DashboardSidebar user={user} onNavigate={closeNav} mobileOpen={mobileNavOpen} />
+      {renderSidebar({ onNavigate: closeNav, mobileOpen: mobileNavOpen })}
 
       <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-64">
+        <div className="hidden justify-end border-b border-outline-variant/10 px-4 py-3 lg:flex lg:px-20">
+          <NotificationBell />
+        </div>
         <div id="main-content" className="px-4 py-10 md:px-12 md:py-12 lg:px-20">
           {children}
         </div>

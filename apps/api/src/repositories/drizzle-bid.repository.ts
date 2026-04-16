@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { bid } from "@auction/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { mapBidRow } from "../lib/mappers.js";
 import type { CreateBidRow, IBidRepository } from "../services/interfaces/repositories.js";
 
@@ -42,6 +42,34 @@ export class DrizzleBidRepository implements IBidRepository {
       .orderBy(desc(bid.createdAt))
       .limit(limit);
     return rows.map(mapBidRow);
+  }
+
+  async listForAuctionSettlement(auctionId: string, limit: number) {
+    const rows = await this.db
+      .select()
+      .from(bid)
+      .where(eq(bid.auctionId, auctionId))
+      .orderBy(desc(bid.amount), asc(bid.createdAt))
+      .limit(limit);
+    return rows.map(mapBidRow);
+  }
+
+  async findWinningBid(auctionId: string) {
+    const rows = await this.db
+      .select()
+      .from(bid)
+      .where(and(eq(bid.auctionId, auctionId), eq(bid.isWinning, true)))
+      .limit(1);
+    const row = rows[0];
+    return row ? mapBidRow(row) : null;
+  }
+
+  async listDistinctBidderIds(auctionId: string) {
+    const rows = await this.db
+      .selectDistinct({ bidderId: bid.bidderId })
+      .from(bid)
+      .where(eq(bid.auctionId, auctionId));
+    return rows.map((r) => r.bidderId);
   }
 
   async listForBidder(bidderId: string, limit: number) {

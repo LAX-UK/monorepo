@@ -48,4 +48,12 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
       .limit(1);
     return rows.length > 0;
   }
+
+  async listUserIdsForAuction(auctionId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: watchlist.userId })
+      .from(watchlist)
+      .where(eq(watchlist.auctionId, auctionId));
+    return rows.map((r) => r.userId);
+  }
 }

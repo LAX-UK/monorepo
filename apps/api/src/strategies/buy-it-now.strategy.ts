@@ -4,6 +4,11 @@ import { err, ok, type Result } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { IAuctionStrategy } from "../services/interfaces/auction-strategy.js";
 
+function minIncrement(auction: Auction): number {
+  const n = Number.parseFloat(auction.minBidIncrement);
+  return Number.isFinite(n) && n > 0 ? n : 0.01;
+}
+
 export class BuyItNowAuctionStrategy implements IAuctionStrategy {
   validateBid(auction: Auction, bid: NewBid): Result<void, BidError> {
     if (bid.bidderId === auction.sellerId) {
@@ -14,8 +19,9 @@ export class BuyItNowAuctionStrategy implements IAuctionStrategy {
     if (buyNow !== null && bid.amount >= buyNow) {
       return ok(undefined);
     }
-    if (bid.amount <= current) {
-      return err(new BidError("Bid must exceed current price"));
+    const inc = minIncrement(auction);
+    if (bid.amount + 1e-9 < current + inc) {
+      return err(new BidError(`Bid must be at least ${(current + inc).toFixed(2)}`));
     }
     return ok(undefined);
   }
@@ -36,6 +42,12 @@ export class BuyItNowAuctionStrategy implements IAuctionStrategy {
   }
 
   determineWinner(_auction: Auction, bids: Bid[]): Bid | null {
-    return bids[0] ?? null;
+    if (bids.length === 0) return null;
+    const sorted = [...bids].sort((a, b) => {
+      const d = Number(b.amount) - Number(a.amount);
+      if (d !== 0) return d;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+    return sorted[0] ?? null;
   }
 }

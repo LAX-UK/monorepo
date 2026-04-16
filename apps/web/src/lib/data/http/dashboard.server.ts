@@ -1,6 +1,6 @@
 import "server-only";
 import { parseAuction, parseBid } from "@/lib/data/http/parse";
-import type { Auction, Bid } from "@auction/types";
+import type { Auction, Bid, PaymentStatus, PortfolioRow } from "@auction/types";
 import { cookies } from "next/headers";
 import { getServerApiBase } from "./hc-server";
 
@@ -41,13 +41,25 @@ export async function getServerMyBids(): Promise<BidWithAuction[]> {
   }));
 }
 
-export async function getServerMyPortfolio(): Promise<Auction[]> {
+function isPaymentStatus(s: string): s is PaymentStatus {
+  return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
+}
+
+export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   const res = await authedFetch("/users/me/portfolio");
   if (!res.ok) {
     throw new Error(`Failed to load portfolio: ${res.status}`);
   }
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseAuction);
+  const body = (await res.json()) as {
+    data: Array<{ auction: unknown; payment: { id: string; status: string } | null }>;
+  };
+  return body.data.map((row) => ({
+    auction: parseAuction(row.auction),
+    payment:
+      row.payment && isPaymentStatus(row.payment.status)
+        ? { id: row.payment.id, status: row.payment.status }
+        : null,
+  }));
 }
 
 export type WatchlistWithAuctionRow = {

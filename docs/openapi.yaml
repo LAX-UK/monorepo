@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Auction API
+  version: 1.0.0
+  description: |
+    Hono REST API for auctions, bids, payments, and users. Auth at `/api/auth/*` (Better Auth).
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      summary: Liveness and dependency checks
+      responses:
+        "200":
+          description: OK
+        "503":
+          description: Degraded (DB or Redis failure)
+  /metrics:
+    get:
+      summary: Basic counters (e.g. active auctions)
+      responses:
+        "200":
+          description: JSON metrics
+  /auctions:
+    get:
+      summary: List auctions (filters via query)
+    post:
+      summary: Create draft auction (auth)
+  /auctions/{id}:
+    get:
+      summary: Get auction by id
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /auctions/{id}/bids:
+    get:
+      summary: Bid history (sealed + active hides bids except admin)
+  /auctions/{id}/publish:
+    post:
+      summary: Publish draft → scheduled and schedule BullMQ jobs (seller, auth)
+  /auctions/{id}/cancel:
+    post:
+      summary: Cancel auction (seller or admin, auth)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+  /bids:
+    post:
+      summary: Place bid (auth). Optional header Idempotency-Key (24h dedupe).
+  /payments:
+    post:
+      summary: Create pending payment for winner (auth)
+  /payments/{id}/refund:
+    post:
+      summary: Refund payment (admin only, auth; DB status only until a gateway is integrated)
+  /categories:
+    get:
+      summary: List categories
+  /users/me/notifications:
+    get:
+      summary: List notifications (auth)
