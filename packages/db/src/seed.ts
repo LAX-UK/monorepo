@@ -862,7 +862,7 @@ async function main() {
     },
     {
       id: payId(),
-      auctionId: A.marginal,
+      auctionId: A.riverStudy,
       buyerId: BUYER_BOB,
       sellerId: SELLER_ID,
       amount: "5000.00",
