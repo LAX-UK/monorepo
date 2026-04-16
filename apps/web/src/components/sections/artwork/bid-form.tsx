@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
+import type { AuctionType } from "@auction/types";
 
 type Props = {
+  auctionType: AuctionType;
   minNumeric: number;
   amount: string;
   maxAuto: string;
@@ -16,6 +18,7 @@ type Props = {
 const CHIP_ADDS = [500, 1000, 5000] as const;
 
 export function BidForm({
+  auctionType,
   minNumeric,
   amount,
   maxAuto,
@@ -26,6 +29,8 @@ export function BidForm({
   error,
 }: Props) {
   const minStr = minNumeric.toFixed(2);
+
+  const showIncrementChips = auctionType === "english" || auctionType === "buy_it_now";
 
   return (
     <div className="space-y-8">
@@ -38,22 +43,24 @@ export function BidForm({
           onClick={onUseMinimum}
           className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container"
         >
-          Min {formatMoney(minStr)}
+          {auctionType === "dutch" ? `Accept ${formatMoney(minStr)}` : `Min ${formatMoney(minStr)}`}
         </button>
-        {CHIP_ADDS.map((add) => {
-          const v = minNumeric + add;
-          const label = add >= 1000 ? `+$${add / 1000}k` : `+$${add}`;
-          return (
-            <button
-              key={add}
-              type="button"
-              onClick={() => onAmountChange(v.toFixed(2))}
-              className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
-            >
-              {label}
-            </button>
-          );
-        })}
+        {showIncrementChips
+          ? CHIP_ADDS.map((add) => {
+              const v = minNumeric + add;
+              const label = add >= 1000 ? `+$${add / 1000}k` : `+$${add}`;
+              return (
+                <button
+                  key={add}
+                  type="button"
+                  onClick={() => onAmountChange(v.toFixed(2))}
+                  className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
+                >
+                  {label}
+                </button>
+              );
+            })
+          : null}
       </div>
       <div>
         <label
@@ -74,25 +81,27 @@ export function BidForm({
           />
         </div>
       </div>
-      <div>
-        <label
-          htmlFor="bid-max-auto"
-          className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
-        >
-          Set max auto-bid (optional)
-        </label>
-        <div className="flex items-center border-b-2 border-outline-variant/30 py-3 transition-colors focus-within:border-primary">
-          <span className="mr-4 font-headline text-xl text-on-surface">$</span>
-          <UnderlineInput
-            id="bid-max-auto"
-            inputMode="decimal"
-            placeholder="Single bid only if empty"
-            value={maxAuto}
-            onChange={(e) => onMaxAutoChange(e.target.value)}
-            className="border-0 p-0 text-xl focus:shadow-none"
-          />
+      {auctionType === "english" || auctionType === "buy_it_now" ? (
+        <div>
+          <label
+            htmlFor="bid-max-auto"
+            className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+          >
+            Set max auto-bid (optional)
+          </label>
+          <div className="flex items-center border-b-2 border-outline-variant/30 py-3 transition-colors focus-within:border-primary">
+            <span className="mr-4 font-headline text-xl text-on-surface">$</span>
+            <UnderlineInput
+              id="bid-max-auto"
+              inputMode="decimal"
+              placeholder="Single bid only if empty"
+              value={maxAuto}
+              onChange={(e) => onMaxAutoChange(e.target.value)}
+              className="border-0 p-0 text-xl focus:shadow-none"
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
       {error ? (
         <p className="text-sm text-error" role="alert">
           {error}

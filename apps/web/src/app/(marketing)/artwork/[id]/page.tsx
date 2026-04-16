@@ -1,15 +1,12 @@
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { AuctionPortsProvider } from "@/lib/context/auction-ports";
-import {
-  getServerAuctionBids,
-  getServerAuctionReader,
-} from "@/lib/data/http/auctions.server";
-import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
-import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { AuctionPortsProvider } from "@/lib/context/auction-ports";
+import { getServerAuctionBids, getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { notFound } from "next/navigation";
 
 type PageProps = {
@@ -50,6 +47,7 @@ export default async function ArtworkPage({ params }: PageProps) {
     amount: b.amount,
     at: b.createdAt.getTime(),
   }));
+  const initialLeadingBidderId = initialBids.find((b) => b.isWinning)?.bidderId ?? null;
 
   const watching = watchlist.some((w) => w.auctionId === auction.id);
   const sellerName = seller?.name ?? "Private seller";
@@ -73,6 +71,7 @@ export default async function ArtworkPage({ params }: PageProps) {
           <ArtworkBidPanel
             auction={auction}
             initialHistory={initialHistory}
+            initialLeadingBidderId={initialLeadingBidderId}
             sessionUser={session}
           />
         }

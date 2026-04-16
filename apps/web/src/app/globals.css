@@ -203,3 +203,14 @@ html.dark {
   --color-inverse-primary: #775a19;
   --color-background: #121414;
 }
+
+@keyframes bidPriceBump {
+  0% {
+    transform: scale(1.04);
+    color: var(--color-primary-container);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--color-primary);
+  }
+}

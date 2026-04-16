@@ -24,6 +24,8 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
         io.to(room).emit("bidUpdate", parsed);
       } else if (parsed.type === "auction_extended") {
         io.to(room).emit("auctionExtended", parsed);
+      } else if (parsed.type === "auction_ended") {
+        io.to(room).emit("auctionEnded", parsed);
       } else {
         io.to(room).emit("auctionEvent", parsed);
       }

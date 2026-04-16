@@ -1,6 +1,14 @@
-import { getAdminAuctionList } from "@/lib/data/http/admin.server";
+import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
 import { DisplayHeading } from "@/components/ui/typography";
-import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
+import { getAdminAuctionList } from "@/lib/data/http/admin.server";
 import type { AuctionStatus } from "@auction/types";
 import Link from "next/link";
 
@@ -16,16 +24,21 @@ const statuses: (AuctionStatus | "all")[] = [
 export default async function AdminAuctionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; view?: string }>;
 }) {
   const sp = await searchParams;
   const statusFilter = sp.status === "all" || !sp.status ? undefined : (sp.status as AuctionStatus);
   const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const viewPipeline = sp.view === "pipeline";
 
   let rows: Awaited<ReturnType<typeof getAdminAuctionList>> = [];
   let listError: string | null = null;
   try {
-    rows = await getAdminAuctionList({ limit: 100, offset: 0, ...(statusFilter ? { status: statusFilter } : {}) });
+    rows = await getAdminAuctionList({
+      limit: viewPipeline ? 200 : 100,
+      offset: 0,
+      ...(viewPipeline || !statusFilter ? {} : { status: statusFilter }),
+    });
   } catch (e) {
     listError = e instanceof Error ? e.message : "Could not load auctions.";
   }
@@ -45,32 +58,69 @@ export default async function AdminAuctionsPage({
       </div>
 
       {(error || listError) && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-body text-sm text-error" role="alert">
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-body text-sm text-error"
+          role="alert"
+        >
           {listError ?? error}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {statuses.map((s) => {
-          const href = s === "all" ? "/admin/auctions" : `/admin/auctions?status=${s}`;
-          const active = (s === "all" && !sp.status) || sp.status === s;
-          return (
-            <Link
-              key={s}
-              href={href}
-              className={`rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-                active
-                  ? "bg-primary text-on-primary ring-primary"
-                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-              }`}
-            >
-              {s}
-            </Link>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap gap-2">
+          {statuses.map((s) => {
+            const qs = new URLSearchParams();
+            if (s !== "all") qs.set("status", s);
+            if (viewPipeline) qs.set("view", "pipeline");
+            const href = qs.toString() ? `/admin/auctions?${qs.toString()}` : "/admin/auctions";
+            const active = (s === "all" && !sp.status) || sp.status === s;
+            return (
+              <Link
+                key={s}
+                href={href}
+                className={`rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+                  active
+                    ? "bg-primary text-on-primary ring-primary"
+                    : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+                }`}
+              >
+                {s}
+              </Link>
+            );
+          })}
+        </div>
+        <span className="hidden h-6 w-px bg-outline-variant/30 sm:block" aria-hidden />
+        <div className="flex gap-2">
+          <Link
+            href="/admin/auctions"
+            className={`rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+              !viewPipeline
+                ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
+                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+            }`}
+          >
+            Table
+          </Link>
+          <Link
+            href="/admin/auctions?view=pipeline"
+            className={`rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+              viewPipeline
+                ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
+                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+            }`}
+          >
+            Pipeline
+          </Link>
+        </div>
       </div>
 
-      {rows.length === 0 && !listError ? (
+      {viewPipeline ? (
+        rows.length === 0 && !listError ? (
+          <p className="text-on-surface-variant">No auctions loaded.</p>
+        ) : (
+          <AdminAuctionPipeline auctions={rows} />
+        )
+      ) : rows.length === 0 && !listError ? (
         <p className="text-on-surface-variant">No auctions match this filter.</p>
       ) : (
         <Table>
@@ -87,7 +137,10 @@ export default async function AdminAuctionsPage({
             {rows.map((a) => (
               <TableRow key={a.id}>
                 <TableCell>
-                  <Link href={`/admin/auctions/${a.id}`} className="font-medium text-primary hover:underline">
+                  <Link
+                    href={`/admin/auctions/${a.id}`}
+                    className="font-medium text-primary hover:underline"
+                  >
                     {a.title}
                   </Link>
                 </TableCell>

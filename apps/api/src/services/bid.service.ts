@@ -1,8 +1,8 @@
 import type { Auction, Bid } from "@auction/types";
-import { err, ok, type Result } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IAuctionStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { ICacheProvider } from "./interfaces/cache.js";
 import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
@@ -31,6 +31,7 @@ function bidderCeilings(bids: Bid[]): Map<string, number> {
 
 export type AuctionJobSchedulerPort = {
   rescheduleEnd(auctionId: string, endTime: Date): Promise<void>;
+  cancelAuctionJobs(auctionId: string): Promise<void>;
 };
 
 export class BidService {
@@ -51,7 +52,7 @@ export class BidService {
   ): Promise<Result<Bid, BidError>> {
     try {
       let prevWinnerId: string | null = null;
-      const { created, auction, nextEnd } = await this.repos.runInTransaction(
+      const { created, auction, nextEnd, endedEarly } = await this.repos.runInTransaction(
         async ({ auction: auctions, bid: bids }) => {
           const auctionRow = await auctions.findByIdForUpdate(auctionId);
           if (!auctionRow) {
@@ -92,7 +93,12 @@ export class BidService {
           });
 
           if (auctionRow.auctionType === "english" || auctionRow.auctionType === "buy_it_now") {
-            lastBid = await this.runProxyAutoBids(bids, auctionId, lastBid, minIncrementAmount(auctionRow));
+            lastBid = await this.runProxyAutoBids(
+              bids,
+              auctionId,
+              lastBid,
+              minIncrementAmount(auctionRow),
+            );
           }
 
           await bids.markWinningBid(auctionId, lastBid.id);
@@ -109,18 +115,53 @@ export class BidService {
             await auctions.updateEndTime(auctionId, nextEnd);
           }
 
-          return { created: lastBid, auction: auctionRow, nextEnd };
+          let endedEarly = false;
+          if (auctionRow.auctionType === "dutch") {
+            await auctions.setWinner(auctionId, lastBid.bidderId);
+            await auctions.updateStatus(auctionId, "ended");
+            endedEarly = true;
+          } else if (auctionRow.auctionType === "buy_it_now") {
+            const bn =
+              auctionRow.buyNowPrice !== null && auctionRow.buyNowPrice !== ""
+                ? Number(auctionRow.buyNowPrice)
+                : null;
+            if (bn !== null && Number.isFinite(bn) && Number(lastBid.amount) + 1e-9 >= bn) {
+              await auctions.setWinner(auctionId, lastBid.bidderId);
+              await auctions.updateStatus(auctionId, "ended");
+              endedEarly = true;
+            }
+          }
+
+          return { created: lastBid, auction: auctionRow, nextEnd, endedEarly };
         },
       );
 
-      const updatedAuction =
-        nextEnd.getTime() !== auction.endTime.getTime()
+      const updatedAuction = endedEarly
+        ? {
+            ...auction,
+            endTime: nextEnd,
+            currentPrice: created.amount,
+            status: "ended" as const,
+            winnerId: created.bidderId,
+          }
+        : nextEnd.getTime() !== auction.endTime.getTime()
           ? { ...auction, endTime: nextEnd, currentPrice: created.amount }
           : { ...auction, currentPrice: created.amount };
 
       await this.cache.set(`auction:${auctionId}:currentPrice`, created.amount, 3600);
-      await this.notifications.notifyBidPlaced(updatedAuction, created);
-      if (nextEnd.getTime() !== auction.endTime.getTime()) {
+
+      const outbidMeta =
+        prevWinnerId && prevWinnerId !== created.bidderId
+          ? { outbidUserId: prevWinnerId }
+          : undefined;
+      await this.notifications.notifyBidPlaced(updatedAuction, created, outbidMeta);
+
+      if (endedEarly) {
+        await this.auctionJobs?.cancelAuctionJobs(auctionId);
+        await this.notifications.notifyAuctionEnded(updatedAuction, created);
+      }
+
+      if (nextEnd.getTime() !== auction.endTime.getTime() && !endedEarly) {
         await this.notifications.notifyAuctionExtended(updatedAuction, nextEnd);
         await this.auctionJobs?.rescheduleEnd(auctionId, nextEnd);
       }

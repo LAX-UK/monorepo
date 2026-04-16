@@ -1,8 +1,13 @@
+import { ActiveBidsWidget } from "@/components/dashboard/active-bids-widget";
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
-import { getServerMyBids, getServerMyPortfolio, getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
+import {
+  getServerMyBids,
+  getServerMyPortfolio,
+  getServerMyWatchlist,
+} from "@/lib/data/http/dashboard.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { formatMoney } from "@/lib/format-currency";
+import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { Auction } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -50,10 +55,15 @@ export default async function DashboardHomePage() {
   }
 
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
-  const totalSpent = portfolio.reduce((sum, row) => sum + Number.parseFloat(row.auction.currentPrice), 0);
+  const totalSpent = portfolio.reduce(
+    (sum, row) => sum + Number.parseFloat(row.auction.currentPrice),
+    0,
+  );
 
   const yearUtc = new Date().getUTCFullYear();
-  const wonThisYear = portfolio.filter((row) => row.auction.endTime.getUTCFullYear() === yearUtc).length;
+  const wonThisYear = portfolio.filter(
+    (row) => row.auction.endTime.getUTCFullYear() === yearUtc,
+  ).length;
 
   let wins = 0;
   let losses = 0;
@@ -76,6 +86,18 @@ export default async function DashboardHomePage() {
   const engagementLabel =
     decided > 0 ? `${wins} win${wins === 1 ? "" : "s"} / ${decided} decided` : "—";
 
+  const activeBidRows = bidRows
+    .filter((row) => row.auction?.status === "active")
+    .map((row) =>
+      row.auction
+        ? {
+            bid: row.bid,
+            auction: row.auction,
+          }
+        : null,
+    )
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   return (
     <div className="max-w-[1920px]">
       {(activeError || portfolioError || watchlistError || bidsError) && (
@@ -83,7 +105,9 @@ export default async function DashboardHomePage() {
           className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-body text-sm text-error"
           role="alert"
         >
-          <p className="font-label text-xs font-bold uppercase tracking-widest text-error">Some data could not load</p>
+          <p className="font-label text-xs font-bold uppercase tracking-widest text-error">
+            Some data could not load
+          </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {activeError ? <li>Live inventory: {activeError}</li> : null}
             {portfolioError ? <li>Portfolio: {portfolioError}</li> : null}
@@ -93,30 +117,47 @@ export default async function DashboardHomePage() {
         </div>
       )}
 
+      {user && activeBidRows.length > 0 ? (
+        <ActiveBidsWidget rows={activeBidRows} userId={user.id} />
+      ) : null}
+
       <section className="mb-12">
         <h1 className="mb-4 font-headline text-5xl tracking-tight text-on-surface md:text-6xl">
           Welcome back, {firstName}.
         </h1>
         <p className="font-label text-sm uppercase tracking-[0.2em] text-secondary">
-          {active.length} live lots • {portfolio.length} acquired work{portfolio.length === 1 ? "" : "s"}
+          {active.length} live lots • {portfolio.length} acquired work
+          {portfolio.length === 1 ? "" : "s"}
         </p>
       </section>
 
       <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Portfolio value (hammer)</p>
-          <p className="font-headline text-3xl text-primary">{formatMoney(totalSpent.toFixed(2))}</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+            Portfolio value (hammer)
+          </p>
+          <p className="font-headline text-3xl text-primary">
+            {formatMoney(totalSpent.toFixed(2))}
+          </p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Won this year (UTC)</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+            Won this year (UTC)
+          </p>
           <p className="font-headline text-3xl text-on-surface">{wonThisYear}</p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Win rate</p>
-          <p className="font-headline text-3xl text-on-surface">{winRate !== null ? `${winRate}%` : "—"}</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+            Win rate
+          </p>
+          <p className="font-headline text-3xl text-on-surface">
+            {winRate !== null ? `${winRate}%` : "—"}
+          </p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Engagement</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+            Engagement
+          </p>
           <p className="font-headline text-3xl text-on-surface">{engagementLabel}</p>
         </div>
       </div>
@@ -149,13 +190,19 @@ export default async function DashboardHomePage() {
                       ) : null}
                     </div>
                     <div className="flex flex-1 flex-col justify-center space-y-2">
-                      <span className="font-label text-[0.65rem] uppercase tracking-[0.4em] text-secondary">Lot</span>
-                      <h3 className="font-headline text-3xl font-light text-on-surface">{a.title}</h3>
+                      <span className="font-label text-[0.65rem] uppercase tracking-[0.4em] text-secondary">
+                        Lot
+                      </span>
+                      <h3 className="font-headline text-3xl font-light text-on-surface">
+                        {a.title}
+                      </h3>
                       <p className="font-label text-xs uppercase tracking-widest text-primary">
                         Current {formatMoney(a.currentPrice)}
                       </p>
                     </div>
-                    <div className="text-right font-headline text-2xl text-on-surface">{formatMoney(a.currentPrice)}</div>
+                    <div className="text-right font-headline text-2xl text-on-surface">
+                      {formatMoney(a.currentPrice)}
+                    </div>
                   </Link>
                 );
               })
@@ -180,11 +227,17 @@ export default async function DashboardHomePage() {
                         className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
                       >
                         <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                          {img ? <Image src={img} alt="" fill className="object-cover" sizes="56px" /> : null}
+                          {img ? (
+                            <Image src={img} alt="" fill className="object-cover" sizes="56px" />
+                          ) : null}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
-                          <p className="font-label text-xs font-bold uppercase tracking-wider text-primary">{label}</p>
+                          <p className="truncate font-headline text-sm text-on-surface">
+                            {a.title}
+                          </p>
+                          <p className="font-label text-xs font-bold uppercase tracking-wider text-primary">
+                            {label}
+                          </p>
                         </div>
                       </Link>
                     </li>
@@ -213,10 +266,14 @@ export default async function DashboardHomePage() {
                         className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
                       >
                         <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                          {img ? <Image src={img} alt="" fill className="object-cover" sizes="56px" /> : null}
+                          {img ? (
+                            <Image src={img} alt="" fill className="object-cover" sizes="56px" />
+                          ) : null}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-headline text-sm text-on-surface">{a.title}</p>
+                          <p className="truncate font-headline text-sm text-on-surface">
+                            {a.title}
+                          </p>
                           <p className="font-label text-xs uppercase tracking-wider text-secondary">
                             Est. {formatMoney(a.currentPrice)}
                           </p>

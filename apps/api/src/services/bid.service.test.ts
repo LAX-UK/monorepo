@@ -109,7 +109,10 @@ describe("BidService.placeBid", () => {
     const bidRepo = baseBidRepo();
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
     const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
-    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = {
+      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
+      notifyAuctionEnded: vi.fn().mockResolvedValue(undefined),
+    };
     const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(
       createMockFactory(auctionRepo, bidRepo),
@@ -136,7 +139,10 @@ describe("BidService.placeBid", () => {
     const bidRepo = baseBidRepo();
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
     const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
-    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = {
+      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
+      notifyAuctionEnded: vi.fn().mockResolvedValue(undefined),
+    };
     const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(
       createMockFactory(auctionRepo, bidRepo),
@@ -159,7 +165,10 @@ describe("BidService.placeBid", () => {
     const bidRepo = baseBidRepo();
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
     const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
-    const aucNotif = { notifyAuctionExtended: vi.fn().mockResolvedValue(undefined) };
+    const aucNotif = {
+      notifyAuctionExtended: vi.fn().mockResolvedValue(undefined),
+      notifyAuctionEnded: vi.fn().mockResolvedValue(undefined),
+    };
     const notifications = new NotificationService(bidNotif, aucNotif);
     const service = new BidService(
       createMockFactory(auctionRepo, bidRepo),
@@ -190,9 +199,10 @@ describe("BidService.placeBid", () => {
     const cache: ICacheProvider = { set: cacheSet, get: vi.fn(), del: vi.fn() };
     const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
     const notifyAuctionExtended = vi.fn().mockResolvedValue(undefined);
+    const notifyAuctionEnded = vi.fn().mockResolvedValue(undefined);
     const notifications = new NotificationService(
       { notifyBidPlaced },
-      { notifyAuctionExtended },
+      { notifyAuctionExtended, notifyAuctionEnded },
     );
     const service = new BidService(
       createMockFactory(auctionRepo, bidRepo),
@@ -213,5 +223,89 @@ describe("BidService.placeBid", () => {
     expect(cacheSet).toHaveBeenCalledWith("auction:auc-1:currentPrice", "150.00", 3600);
     expect(notifyBidPlaced).toHaveBeenCalledOnce();
     expect(notifyAuctionExtended).not.toHaveBeenCalled();
+    expect(notifyAuctionEnded).not.toHaveBeenCalled();
+  });
+
+  it("ends Dutch auction on first acceptance and cancels lifecycle jobs", async () => {
+    const now = new Date();
+    const active = auction({
+      auctionType: "dutch",
+      currentPrice: "50.00",
+      endTime: new Date(now.getTime() + 60 * 60_000),
+    });
+    const created = createBid({ amount: "50.00", bidderId: "buyer-1" });
+
+    const auctionRepo = baseAuctionRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
+    const notifyAuctionEnded = vi.fn().mockResolvedValue(undefined);
+    const notifications = new NotificationService(
+      { notifyBidPlaced },
+      { notifyAuctionExtended: vi.fn(), notifyAuctionEnded },
+    );
+    const cancelAuctionJobs = vi.fn().mockResolvedValue(undefined);
+    const service = new BidService(
+      createMockFactory(auctionRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      { rescheduleEnd: vi.fn(), cancelAuctionJobs },
+    );
+
+    const result = await service.placeBid("buyer-1", "auc-1", 50);
+    expect(result.isOk()).toBe(true);
+    expect(auctionRepo.setWinner).toHaveBeenCalledWith("auc-1", "buyer-1");
+    expect(auctionRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
+    expect(cancelAuctionJobs).toHaveBeenCalledWith("auc-1");
+    expect(notifyAuctionEnded).toHaveBeenCalledOnce();
+  });
+
+  it("ends buy-it-now auction when bid meets buy-now price", async () => {
+    const now = new Date();
+    const active = auction({
+      auctionType: "buy_it_now",
+      currentPrice: "100.00",
+      buyNowPrice: "500.00",
+      endTime: new Date(now.getTime() + 60 * 60_000),
+    });
+    const created = createBid({ amount: "500.00", bidderId: "buyer-1" });
+
+    const auctionRepo = baseAuctionRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
+    const notifyAuctionEnded = vi.fn().mockResolvedValue(undefined);
+    const notifications = new NotificationService(
+      { notifyBidPlaced },
+      { notifyAuctionExtended: vi.fn(), notifyAuctionEnded },
+    );
+    const cancelAuctionJobs = vi.fn().mockResolvedValue(undefined);
+    const service = new BidService(
+      createMockFactory(auctionRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      { rescheduleEnd: vi.fn(), cancelAuctionJobs },
+    );
+
+    const result = await service.placeBid("buyer-1", "auc-1", 500);
+    expect(result.isOk()).toBe(true);
+    expect(auctionRepo.setWinner).toHaveBeenCalledWith("auc-1", "buyer-1");
+    expect(auctionRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
+    expect(cancelAuctionJobs).toHaveBeenCalledWith("auc-1");
+    expect(notifyAuctionEnded).toHaveBeenCalledOnce();
   });
 });
