@@ -1,6 +1,6 @@
 import { getServerMyPortfolio } from "@/lib/data/http/dashboard.server";
-import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { formatMoney } from "@/lib/format-currency";
+import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -22,7 +22,10 @@ export default async function DashboardPortfolioPage() {
       </p>
 
       {fetchError ? (
-        <div className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {fetchError}
         </div>
       ) : null}
@@ -35,7 +38,9 @@ export default async function DashboardPortfolioPage() {
           >
             ◆
           </div>
-          <h2 className="mb-3 font-headline text-2xl font-light text-on-surface">No acquired works yet</h2>
+          <h2 className="mb-3 font-headline text-2xl font-light text-on-surface">
+            No acquired works yet
+          </h2>
           <p className="mb-8 max-w-md font-body text-sm text-on-surface-variant">
             You haven&apos;t won any lots yet. Browse live auctions and place your best bid.
           </p>
@@ -76,7 +81,9 @@ export default async function DashboardPortfolioPage() {
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-headline text-xl font-light text-on-surface group-hover:italic">{a.title}</h3>
+                    <h3 className="font-headline text-xl font-light text-on-surface group-hover:italic">
+                      {a.title}
+                    </h3>
                     <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
                       Hammer {formatMoney(a.currentPrice)}
                     </p>

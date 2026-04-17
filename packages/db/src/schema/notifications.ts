@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
 import { auction } from "./auctions.js";
+import { user } from "./auth.js";
 
 export const notification = pgTable(
   "notification",
@@ -15,13 +15,13 @@ export const notification = pgTable(
     message: text("message").notNull(),
     auctionId: uuid("auction_id").references(() => auction.id, { onDelete: "set null" }),
     read: boolean("read").notNull().default(false),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("notification_user_id_idx").on(table.userId),
     index("notification_read_idx").on(table.read),
+    index("notification_archived_at_idx").on(table.archivedAt),
   ],
 );
 

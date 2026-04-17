@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
 import { auction } from "./auctions.js";
+import { user } from "./auth.js";
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -28,9 +28,7 @@ export const payment = pgTable(
     /** Nullable external id from the chosen payment gateway (DB column name is legacy). */
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     status: paymentStatusEnum("status").notNull().default("pending"),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("payment_auction_id_idx").on(table.auctionId),

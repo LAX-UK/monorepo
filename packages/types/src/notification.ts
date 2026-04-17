@@ -6,5 +6,32 @@ export type UserNotification = {
   message: string;
   auctionId: string | null;
   read: boolean;
+  /** When set, hidden from default inbox lists (soft archive). */
+  archivedAt?: Date | null;
+  createdAt: Date;
+};
+
+export type NotificationPreference = {
+  userId: string;
+  outbidInApp: boolean;
+  wonInApp: boolean;
+  lostInApp: boolean;
+  endingSoonInApp: boolean;
+  watchlistInApp: boolean;
+  paymentInApp: boolean;
+  outbidPush: boolean;
+  wonPush: boolean;
+  endingSoonPush: boolean;
+  quietStart: string | null;
+  quietEnd: string | null;
+  updatedAt: Date;
+};
+
+export type PushSubscriptionRecord = {
+  id: string;
+  userId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
   createdAt: Date;
 };

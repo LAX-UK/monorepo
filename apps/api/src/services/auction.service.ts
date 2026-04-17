@@ -1,14 +1,15 @@
 import type { Auction, CreateAuctionInput } from "@auction/types";
-import { err, ok, type Result } from "neverthrow";
-import { AuctionError, AuthzError } from "../lib/errors.js";
+import { type Result, err, ok } from "neverthrow";
 import type { AuctionJobScheduler } from "../jobs/auction-job-scheduler.js";
+import { AuctionError, AuthzError } from "../lib/errors.js";
+import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
 import type {
   ArchiveEndedAggregateFilter,
   IAuctionRepository,
   IBidRepository,
   ListAuctionsFilter,
 } from "./interfaces/repositories.js";
-import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
+import type { IUserNotificationPublisher } from "./interfaces/user-notification-publisher.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 
 const CANCELLABLE: ReadonlySet<Auction["status"]> = new Set(["draft", "scheduled", "active"]);
@@ -19,6 +20,7 @@ export class AuctionService {
     private readonly bids: IBidRepository,
     private readonly watchlist: IWatchlistRepository,
     private readonly notificationWrite: INotificationWriteRepository | null,
+    private readonly userNotificationPublisher: IUserNotificationPublisher | null,
     private readonly jobScheduler: AuctionJobScheduler | null,
   ) {}
 
@@ -78,7 +80,7 @@ export class AuctionService {
       const bidders = await this.bids.listDistinctBidderIds(auctionId);
       const watchers = await this.watchlist.listUserIdsForAuction(auctionId);
       const recipientIds = new Set<string>([...bidders, ...watchers, a.sellerId]);
-      await this.notificationWrite.createMany(
+      const persisted = await this.notificationWrite.createMany(
         [...recipientIds].map((uid) => ({
           userId: uid,
           type: "auction_cancelled",
@@ -87,6 +89,11 @@ export class AuctionService {
           auctionId,
         })),
       );
+      if (this.userNotificationPublisher) {
+        for (const row of persisted) {
+          await this.userNotificationPublisher.publish(row.userId, row);
+        }
+      }
     }
 
     return ok(updated);

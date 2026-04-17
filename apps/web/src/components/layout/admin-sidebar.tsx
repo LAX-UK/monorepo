@@ -1,8 +1,8 @@
 "use client";
 
+import { useShellContext } from "@/components/layout/dashboard-shell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { useShellContext } from "@/components/layout/dashboard-shell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,8 +22,7 @@ export function AdminSidebar({ user }: Props) {
   const pathname = usePathname();
   const onNav = onNavigate;
 
-  const asideTransform =
-    mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";
+  const asideTransform = mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";
 
   return (
     <aside
@@ -37,7 +36,9 @@ export function AdminSidebar({ user }: Props) {
         >
           Admin
         </Link>
-        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Signed in</p>
+        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+          Signed in
+        </p>
         <p className="font-body text-sm font-medium text-on-surface">{user.name}</p>
         <p className="mt-1 truncate font-body text-xs text-on-surface-variant">{user.email}</p>
         <nav className="mt-12 space-y-1" aria-label="Admin">

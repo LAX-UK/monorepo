@@ -1,8 +1,8 @@
-import { adminCreateAuctionAction } from "@/lib/actions/admin";
-import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
+import { UnderlineInput } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select-field";
 import { TextareaField } from "@/components/ui/textarea-field";
-import { UnderlineInput } from "@/components/ui/input";
+import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
+import { adminCreateAuctionAction } from "@/lib/actions/admin";
 import Link from "next/link";
 
 export default async function AdminNewAuctionPage({
@@ -15,14 +15,20 @@ export default async function AdminNewAuctionPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <Link href="/admin/auctions" className="font-label text-xs uppercase tracking-widest text-primary hover:underline">
+      <Link
+        href="/admin/auctions"
+        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+      >
         ← Auctions
       </Link>
       <DisplayHeading as="h1" className="text-4xl">
         New auction
       </DisplayHeading>
       {error ? (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
@@ -149,7 +155,11 @@ export default async function AdminNewAuctionPage({
             <label htmlFor="dutchDecrementIntervalMs" className="mb-2 block">
               <LabelCaps>Dutch interval ms (optional)</LabelCaps>
             </label>
-            <UnderlineInput id="dutchDecrementIntervalMs" name="dutchDecrementIntervalMs" placeholder="60000" />
+            <UnderlineInput
+              id="dutchDecrementIntervalMs"
+              name="dutchDecrementIntervalMs"
+              placeholder="60000"
+            />
           </div>
         </div>
 

@@ -31,10 +31,7 @@ export function HomeNewsletter() {
         distinguished market analysis delivered with care.
       </p>
       {status === "success" ? (
-        <p
-          className="mx-auto max-w-xl font-body text-sm text-primary"
-          role="status"
-        >
+        <p className="mx-auto max-w-xl font-body text-sm text-primary" role="status">
           Thank you — you&apos;re on the list. We&apos;ll be in touch shortly.
         </p>
       ) : (

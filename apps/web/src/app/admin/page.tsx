@@ -1,5 +1,5 @@
-import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 import { DisplayHeading } from "@/components/ui/typography";
+import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 import Link from "next/link";
 
 const btnPrimary =
@@ -43,7 +43,9 @@ export default async function AdminHomePage() {
           <p className="mt-2 font-headline text-3xl text-on-surface">{activeCount}</p>
         </div>
         <div className="rounded-xl bg-surface-container-low p-6 ring-1 ring-outline-variant/10">
-          <p className="font-label text-xs uppercase tracking-widest text-secondary">Payment rows</p>
+          <p className="font-label text-xs uppercase tracking-widest text-secondary">
+            Payment rows
+          </p>
           <p className="mt-2 font-headline text-3xl text-on-surface">{paymentCount}</p>
         </div>
       </div>

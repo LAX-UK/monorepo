@@ -43,6 +43,9 @@ services:
       VERIFY_ORIGIN: ${VERIFY_ORIGIN:-false}
       ALLOW_HTTP_COOKIES: ${ALLOW_HTTP_COOKIES:-false}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +74,10 @@ services:
       PORT: "3002"
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: ${WEB_ORIGIN}
+      API_URL: http://api:3001
     depends_on:
+      api:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:

@@ -5,8 +5,8 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy">
       <p>
         We collect account and session data necessary to operate auctions, process settlements, and
-        comply with legal obligations. Payment details are handled by our payment partners; we do not
-        store full card numbers on our servers.
+        comply with legal obligations. Payment details are handled by our payment partners; we do
+        not store full card numbers on our servers.
       </p>
       <p>
         You may request access or deletion of personal data where applicable law allows. Marketing

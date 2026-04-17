@@ -1,18 +1,32 @@
 import type { Redis } from "ioredis";
 import type { Server } from "socket.io";
 
-const CHANNEL_PATTERN = "auction:*:events";
+const AUCTION_EVENTS_PATTERN = "auction:*:events";
+const USER_NOTIFICATIONS_PATTERN = "user:*:notifications";
 
 /**
- * Subscribes to Redis pub/sub channels published by the API (`auction:{id}:events`)
- * and broadcasts JSON payloads to the matching Socket.IO room.
+ * Subscribes to Redis pub/sub channels published by the API (`auction:{id}:events`,
+ * `user:{userId}:notifications`) and broadcasts JSON payloads to matching Socket.IO rooms.
  */
 export function bridgeRedisToSockets(io: Server, sub: Redis): void {
-  void sub.psubscribe(CHANNEL_PATTERN).catch((err: unknown) => {
+  void sub.psubscribe(AUCTION_EVENTS_PATTERN, USER_NOTIFICATIONS_PATTERN).catch((err: unknown) => {
     console.error("Redis psubscribe error", err);
   });
 
   sub.on("pmessage", (_pattern, channel, message) => {
+    const userMatch = /^user:(.+):notifications$/.exec(channel);
+    if (userMatch) {
+      const userId = userMatch[1];
+      const room = `user:${userId}`;
+      try {
+        const parsed = JSON.parse(message) as unknown;
+        io.to(room).emit("userNotification", parsed);
+      } catch {
+        io.to(room).emit("userNotification", { raw: message });
+      }
+      return;
+    }
+
     const match = /^auction:(.+):events$/.exec(channel);
     const auctionId = match?.[1];
     if (!auctionId) return;

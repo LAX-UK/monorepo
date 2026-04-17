@@ -2,9 +2,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Suspense } from "react";
 
 function LoginFormFallback() {
-  return (
-    <div className="h-64 animate-pulse rounded-md bg-surface-container-high" aria-hidden />
-  );
+  return <div className="h-64 animate-pulse rounded-md bg-surface-container-high" aria-hidden />;
 }
 
 export default function LoginPage() {

@@ -75,7 +75,10 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:concierge@example.com" className="transition-colors hover:text-primary-fixed">
+                <a
+                  href="mailto:concierge@example.com"
+                  className="transition-colors hover:text-primary-fixed"
+                >
                   Contact Us
                 </a>
               </li>

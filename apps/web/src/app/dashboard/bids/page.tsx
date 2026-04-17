@@ -66,7 +66,10 @@ export default async function DashboardBidsPage() {
       </p>
 
       {fetchError ? (
-        <div className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {fetchError}
         </div>
       ) : null}

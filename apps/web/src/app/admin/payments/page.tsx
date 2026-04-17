@@ -1,7 +1,14 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
+import { DisplayHeading } from "@/components/ui/typography";
 import { adminRefundPaymentAction } from "@/lib/actions/admin";
 import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
-import { DisplayHeading } from "@/components/ui/typography";
-import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -34,7 +41,10 @@ export default async function AdminPaymentsPage({
       </DisplayHeading>
 
       {(error || loadError) && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {loadError ?? error}
         </div>
       )}
@@ -56,7 +66,9 @@ export default async function AdminPaymentsPage({
             {payments.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>{titleById.get(p.auctionId) ?? p.auctionId}</TableCell>
-                <TableCell className="max-w-[10rem] truncate font-mono text-xs">{p.buyerId}</TableCell>
+                <TableCell className="max-w-[10rem] truncate font-mono text-xs">
+                  {p.buyerId}
+                </TableCell>
                 <TableCell className="tabular-nums">{p.amount}</TableCell>
                 <TableCell>{p.status}</TableCell>
                 <TableCell className="text-right">

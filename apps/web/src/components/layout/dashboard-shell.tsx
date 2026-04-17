@@ -1,12 +1,12 @@
 "use client";
 
 import { CommandPalette } from "@/components/layout/command-palette";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useState, createContext, useContext } from "react";
+import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export type DashboardShellSidebarProps = {
   onNavigate: () => void;

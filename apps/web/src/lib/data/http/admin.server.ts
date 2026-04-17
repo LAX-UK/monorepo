@@ -1,9 +1,9 @@
 import "server-only";
 
 import type { ListAuctionsParams } from "@/lib/data/contracts";
+import { buildAuctionListQuery } from "@/lib/data/http/auctions.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { parseAuction } from "@/lib/data/http/parse";
-import { buildAuctionListQuery } from "@/lib/data/http/auctions.server";
 import type { Auction } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 

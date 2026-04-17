@@ -1,6 +1,6 @@
 import { LotCountdownChip } from "@/components/sections/home/lot-countdown-chip";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { formatMoney } from "@/lib/format-currency";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Auction, AuctionStatus } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";

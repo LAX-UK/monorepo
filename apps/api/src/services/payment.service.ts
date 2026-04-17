@@ -1,13 +1,18 @@
 import type { Auction } from "@auction/types";
-import { err, ok, type Result } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 import { AuctionError, AuthzError } from "../lib/errors.js";
-import type { IAuctionRepository } from "./interfaces/repositories.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
+import type { IAuctionRepository } from "./interfaces/repositories.js";
+import { notificationRowToPayload } from "./notification-payload.js";
+import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import type { NotificationFactory } from "./notification.factory.js";
 
 export class PaymentService {
   constructor(
     private readonly auctions: IAuctionRepository,
     private readonly payments: IPaymentWriteRepository,
+    private readonly notificationDispatcher: NotificationDispatcher | null,
+    private readonly notificationFactory: NotificationFactory,
   ) {}
 
   /**
@@ -17,7 +22,9 @@ export class PaymentService {
   async createPendingForWinner(
     buyerId: string,
     auctionId: string,
-  ): Promise<Result<{ paymentId: string; clientSecret: string | null }, AuthzError | AuctionError>> {
+  ): Promise<
+    Result<{ paymentId: string; clientSecret: string | null }, AuthzError | AuctionError>
+  > {
     const auction = await this.auctions.findById(auctionId);
     if (!auction) {
       return err(new AuctionError("Auction not found", 404));
@@ -78,6 +85,33 @@ export class PaymentService {
       return ok(undefined);
     }
     await this.payments.updateStatus(paymentId, "refunded");
+    return ok(undefined);
+  }
+
+  async markCapturedByAdmin(
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError>> {
+    if (userRole !== "admin") {
+      return err(new AuthzError("Only admins can confirm payment capture", 403));
+    }
+    const p = await this.payments.findById(paymentId);
+    if (!p) {
+      return err(new AuthzError("Payment not found", 404));
+    }
+    if (p.status === "captured") {
+      return ok(undefined);
+    }
+    await this.payments.updateStatus(paymentId, "captured");
+    const auction = await this.auctions.findById(p.auctionId);
+    if (auction && this.notificationDispatcher) {
+      await this.notificationDispatcher.dispatch(
+        p.buyerId,
+        notificationRowToPayload(
+          this.notificationFactory.createPaymentReceived(auction, p.buyerId),
+        ),
+      );
+    }
     return ok(undefined);
   }
 

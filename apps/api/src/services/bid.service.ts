@@ -3,9 +3,11 @@ import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { IAuctionStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
-import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import { notificationRowToPayload } from "./notification-payload.js";
+import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
 
 const ANTI_SNIPING_EXTENSION_MS = 30_000;
@@ -40,7 +42,7 @@ export class BidService {
     private readonly strategyFactory: IAuctionStrategyFactory,
     private readonly cache: ICacheProvider,
     private readonly notifications: NotificationService,
-    private readonly notificationWrite: INotificationWriteRepository | null,
+    private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly auctionJobs: AuctionJobSchedulerPort | null,
   ) {}
 
@@ -166,16 +168,12 @@ export class BidService {
         await this.auctionJobs?.rescheduleEnd(auctionId, nextEnd);
       }
 
-      if (this.notificationWrite && prevWinnerId && prevWinnerId !== created.bidderId) {
-        await this.notificationWrite.createMany([
-          {
-            userId: prevWinnerId,
-            type: "outbid",
-            title: "You have been outbid",
-            message: `Another bidder placed a higher bid on "${auction.title}".`,
-            auctionId,
-          },
-        ]);
+      if (this.notificationDispatcher && prevWinnerId && prevWinnerId !== created.bidderId) {
+        const factory = new NotificationFactory();
+        await this.notificationDispatcher.dispatch(
+          prevWinnerId,
+          notificationRowToPayload(factory.createOutbid(auction, prevWinnerId)),
+        );
       }
 
       return ok(created);

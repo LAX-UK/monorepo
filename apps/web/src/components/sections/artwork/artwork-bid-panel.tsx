@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/format-currency";
 import type { Auction } from "@auction/types";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type Props = {
   auction: Auction;
@@ -56,7 +57,6 @@ export function ArtworkBidPanel({
   const [history, setHistory] = useState<BidHistoryEntry[]>(initialHistory);
   const [lotStatus, setLotStatus] = useState<Auction["status"]>(auction.status);
   const [leadingBidderId, setLeadingBidderId] = useState<string | null>(initialLeadingBidderId);
-  const [outbidToast, setOutbidToast] = useState<string | null>(null);
   const [priceFlash, setPriceFlash] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
 
@@ -92,8 +92,11 @@ export function ArtworkBidPanel({
         setEndTime(new Date(e.endTime).getTime());
       }
       if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
-        setOutbidToast("You've been outbid on this lot.");
-        window.setTimeout(() => setOutbidToast(null), 6500);
+        toast.error("You've been outbid on this lot.", {
+          id: `outbid-${auction.id}`,
+          description: "Place a higher bid to stay in the running.",
+          duration: 6500,
+        });
       }
     },
     onAuctionExtended: (payload) => {
@@ -222,18 +225,6 @@ export function ArtworkBidPanel({
 
   return (
     <div className="mb-20 min-w-0 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
-      {outbidToast ? (
-        <div
-          className="mb-6 rounded-lg border border-error/40 bg-error/10 px-4 py-3 font-body text-sm text-error shadow-sm ring-1 ring-error/20"
-          role="alert"
-        >
-          <p className="font-label text-xs font-bold uppercase tracking-widest text-error">
-            Outbid
-          </p>
-          <p className="mt-1 text-on-surface">{outbidToast}</p>
-        </div>
-      ) : null}
-
       {endedBanner ? (
         <output
           className="mb-6 block rounded-lg border border-primary/30 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/20"

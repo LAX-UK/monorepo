@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
 import { auction } from "./auctions.js";
+import { user } from "./auth.js";
 
 export const watchlist = pgTable(
   "watchlist",
@@ -13,9 +13,7 @@ export const watchlist = pgTable(
     auctionId: uuid("auction_id")
       .notNull()
       .references(() => auction.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     unique("watchlist_user_auction_uid").on(table.userId, table.auctionId),

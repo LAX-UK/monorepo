@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 function errMessage(body: unknown, fallback: string): string {
-  if (body && typeof body === "object" && "error" in body && typeof (body as { error: unknown }).error === "string") {
+  if (
+    body &&
+    typeof body === "object" &&
+    "error" in body &&
+    typeof (body as { error: unknown }).error === "string"
+  ) {
     return (body as { error: string }).error;
   }
   return fallback;
@@ -14,10 +19,14 @@ function errMessage(body: unknown, fallback: string): string {
 export async function adminPublishAuctionAction(formData: FormData): Promise<void> {
   const id = String(formData.get("auctionId") ?? "").trim();
   if (!id) redirect(`/admin/auctions?error=${encodeURIComponent("Missing auction")}`);
-  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}/publish`, { method: "POST" });
+  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}/publish`, {
+    method: "POST",
+  });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Publish failed"))}`);
+    redirect(
+      `/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Publish failed"))}`,
+    );
   }
   revalidatePath("/admin/auctions");
   revalidatePath(`/admin/auctions/${id}`);
@@ -34,7 +43,9 @@ export async function adminCancelAuctionAction(formData: FormData): Promise<void
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Cancel failed"))}`);
+    redirect(
+      `/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Cancel failed"))}`,
+    );
   }
   revalidatePath("/admin/auctions");
   revalidatePath(`/admin/auctions/${id}`);
@@ -44,7 +55,9 @@ export async function adminCancelAuctionAction(formData: FormData): Promise<void
 export async function adminRefundPaymentAction(formData: FormData): Promise<void> {
   const id = String(formData.get("paymentId") ?? "").trim();
   if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
-  const res = await authedServerFetch(`/payments/${encodeURIComponent(id)}/refund`, { method: "POST" });
+  const res = await authedServerFetch(`/payments/${encodeURIComponent(id)}/refund`, {
+    method: "POST",
+  });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     redirect(`/admin/payments?error=${encodeURIComponent(errMessage(body, "Refund failed"))}`);
@@ -61,7 +74,14 @@ export async function adminCreateAuctionAction(formData: FormData): Promise<void
   const endRaw = String(formData.get("endTime") ?? "");
   const startTime = new Date(startRaw);
   const endTime = new Date(endRaw);
-  if (!title || !startingPrice || !startRaw || !endRaw || Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+  if (
+    !title ||
+    !startingPrice ||
+    !startRaw ||
+    !endRaw ||
+    Number.isNaN(startTime.getTime()) ||
+    Number.isNaN(endTime.getTime())
+  ) {
     redirect(`/admin/auctions/new?error=${encodeURIComponent("Please fill required fields")}`);
   }
   const description = String(formData.get("description") ?? "").trim();
@@ -122,8 +142,18 @@ export async function adminUpdateAuctionAction(formData: FormData): Promise<void
   const endRaw = String(formData.get("endTime") ?? "");
   const startTime = new Date(startRaw);
   const endTime = new Date(endRaw);
-  if (!title || !auctionType || !startingPrice || !startRaw || !endRaw || Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
-    redirect(`/admin/auctions/${id}/edit?error=${encodeURIComponent("Please fill required fields")}`);
+  if (
+    !title ||
+    !auctionType ||
+    !startingPrice ||
+    !startRaw ||
+    !endRaw ||
+    Number.isNaN(startTime.getTime()) ||
+    Number.isNaN(endTime.getTime())
+  ) {
+    redirect(
+      `/admin/auctions/${id}/edit?error=${encodeURIComponent("Please fill required fields")}`,
+    );
   }
   const description = String(formData.get("description") ?? "").trim();
   const medium = String(formData.get("medium") ?? "").trim();
@@ -164,7 +194,9 @@ export async function adminUpdateAuctionAction(formData: FormData): Promise<void
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/auctions/${id}/edit?error=${encodeURIComponent(errMessage(body, "Update failed"))}`);
+    redirect(
+      `/admin/auctions/${id}/edit?error=${encodeURIComponent(errMessage(body, "Update failed"))}`,
+    );
   }
   revalidatePath("/admin/auctions");
   revalidatePath(`/admin/auctions/${id}`);

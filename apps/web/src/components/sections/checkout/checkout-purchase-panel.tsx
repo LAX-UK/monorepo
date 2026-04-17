@@ -44,8 +44,9 @@ export function CheckoutPurchasePanel({
         </p>
         <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
         <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-          Your payment record has been created. When online checkout is enabled, you&apos;ll complete
-          payment here; until then our settlements team will follow up with wire or other instructions.
+          Your payment record has been created. When online checkout is enabled, you&apos;ll
+          complete payment here; until then our settlements team will follow up with wire or other
+          instructions.
         </p>
       </output>
     );

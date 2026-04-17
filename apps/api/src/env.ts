@@ -18,6 +18,10 @@ const envSchema = z.object({
     return val === "true" || val === true;
   }, z.boolean()),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  /** Web Push (optional). When all three are set, server push is enabled. */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

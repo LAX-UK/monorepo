@@ -1,4 +1,4 @@
-import { Queue, Worker, type ConnectionOptions, type Job } from "bullmq";
+import { type ConnectionOptions, type Job, Queue, Worker } from "bullmq";
 
 export type AuctionJobData = { auctionId: string };
 

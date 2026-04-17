@@ -19,28 +19,33 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     );
   });
 
-  r.post(
-    "/:id/refund",
-    requireAuth,
-    zValidator("param", paymentIdParamSchema),
-    async (c) => {
-      const userId = c.get("userId") as string;
-      const role = c.get("userRole") ?? "buyer";
-      const { id } = c.req.valid("param");
-      const result = await container.paymentService.refundPayment(userId, role, id);
-      return result.match(
-        () => c.json({ ok: true }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
-    },
-  );
-
   r.post("/", requireAuth, zValidator("json", createPaymentBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.paymentService.createPendingForWinner(userId, body.auctionId);
     return result.match(
       (data) => c.json({ data }, 201),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
+
+  r.post("/:id/capture", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
+    const role = c.get("userRole") ?? "buyer";
+    const { id } = c.req.valid("param");
+    const result = await container.paymentService.markCapturedByAdmin(role, id);
+    return result.match(
+      () => c.json({ ok: true }),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
+
+  r.post("/:id/refund", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = c.get("userRole") ?? "buyer";
+    const { id } = c.req.valid("param");
+    const result = await container.paymentService.refundPayment(userId, role, id);
+    return result.match(
+      () => c.json({ ok: true }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });

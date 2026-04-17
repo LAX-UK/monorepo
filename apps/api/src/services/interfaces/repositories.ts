@@ -40,6 +40,8 @@ export interface IAuctionRepository {
   findScheduledToActivate(asOf: Date): Promise<Auction[]>;
   /** Lifecycle: active auctions whose end time has passed. */
   findActivePastEnd(asOf: Date): Promise<Auction[]>;
+  /** Active auctions whose endTime is in (endAfter, endBeforeInclusive]. */
+  findActiveByEndTimeBetween(endAfter: Date, endBeforeInclusive: Date): Promise<Auction[]>;
   /** Active Dutch lots (for timed price decrements). */
   findActiveDutchAuctions(): Promise<Auction[]>;
   setDutchLastDecrementAt(id: string, at: Date | null): Promise<void>;

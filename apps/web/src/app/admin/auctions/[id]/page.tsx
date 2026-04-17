@@ -1,10 +1,7 @@
-import {
-  adminCancelAuctionAction,
-  adminPublishAuctionAction,
-} from "@/lib/actions/admin";
+import { DisplayHeading } from "@/components/ui/typography";
+import { adminCancelAuctionAction, adminPublishAuctionAction } from "@/lib/actions/admin";
 import { getAdminAuctionById } from "@/lib/data/http/admin.server";
 import { getServerAuctionBids } from "@/lib/data/http/auctions.server";
-import { DisplayHeading } from "@/components/ui/typography";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -30,26 +27,37 @@ export default async function AdminAuctionDetailPage({
   }
 
   const canPublish = auction.status === "draft";
-  const canCancel = auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
+  const canCancel =
+    auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
 
   return (
     <div className="max-w-4xl space-y-10">
-      <Link href="/admin/auctions" className="font-label text-xs uppercase tracking-widest text-primary hover:underline">
+      <Link
+        href="/admin/auctions"
+        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+      >
         ← Auctions
       </Link>
 
       {error ? (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
 
       <div>
-        <p className="font-label text-xs uppercase tracking-widest text-secondary">{auction.status}</p>
+        <p className="font-label text-xs uppercase tracking-widest text-secondary">
+          {auction.status}
+        </p>
         <DisplayHeading as="h1" className="mt-2 text-4xl">
           {auction.title}
         </DisplayHeading>
-        <p className="mt-4 font-body text-sm text-on-surface-variant">{auction.description ?? "—"}</p>
+        <p className="mt-4 font-body text-sm text-on-surface-variant">
+          {auction.description ?? "—"}
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-4">
@@ -86,7 +94,9 @@ export default async function AdminAuctionDetailPage({
       </div>
 
       <section>
-        <p className="mb-4 font-label text-xs font-semibold uppercase tracking-[0.3em] text-secondary">Bids</p>
+        <p className="mb-4 font-label text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+          Bids
+        </p>
         {bids.length === 0 ? (
           <p className="text-sm text-on-surface-variant">No bids yet.</p>
         ) : (

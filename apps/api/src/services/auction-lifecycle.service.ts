@@ -1,5 +1,11 @@
+import type { Auction } from "@auction/types";
 import type { IAuctionStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IAuctionRepository, IBidRepository } from "./interfaces/repositories.js";
+import type { IWatchlistRepository } from "./interfaces/watchlist.js";
+import { notificationRowToPayload } from "./notification-payload.js";
+import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import type { NotificationFactory } from "./notification.factory.js";
 
 /**
  * Scheduled status transitions (scheduled→active, active→ended + winner),
@@ -10,6 +16,10 @@ export class AuctionLifecycleService {
     private readonly auctions: IAuctionRepository,
     private readonly bids: IBidRepository,
     private readonly strategyFactory: IAuctionStrategyFactory,
+    private readonly watchlist: IWatchlistRepository | null,
+    private readonly cache: ICacheProvider | null,
+    private readonly notificationDispatcher: NotificationDispatcher | null,
+    private readonly notificationFactory: NotificationFactory,
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
@@ -46,24 +56,83 @@ export class AuctionLifecycleService {
       if (a.auctionType === "dutch") {
         await this.auctions.setDutchLastDecrementAt(a.id, now);
       }
+      await this.notifyWatchlistStarting(a);
     }
 
     await this.runDutchDecrements(now);
 
+    await this.notifyEndingSoonBuckets(now);
+
     const toEnd = await this.auctions.findActivePastEnd(now);
     for (const a of toEnd) {
-      const bids = await this.bids.listForAuctionSettlement(a.id, 10_000);
-      const strategy = this.strategyFactory.create(a.auctionType);
-      const winnerBid = strategy.determineWinner(a, bids);
-      if (
-        winnerBid &&
-        (!a.reservePrice ||
-          a.reservePrice === "" ||
-          Number(winnerBid.amount) >= Number(a.reservePrice))
-      ) {
-        await this.auctions.setWinner(a.id, winnerBid.bidderId);
+      await this.finalizeAuctionEnding(a);
+    }
+  }
+
+  private async notifyWatchlistStarting(a: Auction): Promise<void> {
+    if (!this.watchlist || !this.notificationDispatcher) return;
+    const watchers = await this.watchlist.listUserIdsForAuction(a.id);
+    for (const uid of watchers) {
+      await this.notificationDispatcher.dispatch(
+        uid,
+        notificationRowToPayload(this.notificationFactory.createWatchlistStarting(a, uid)),
+      );
+    }
+  }
+
+  private async notifyEndingSoonBuckets(now: Date): Promise<void> {
+    if (!this.notificationDispatcher || !this.cache || !this.watchlist) return;
+    const windowStart = new Date(now.getTime() + 59 * 60_000);
+    const windowEnd = new Date(now.getTime() + 61 * 60_000);
+    const almostEnding = await this.auctions.findActiveByEndTimeBetween(windowStart, windowEnd);
+    for (const a of almostEnding) {
+      const cacheKey = `endingSoonAuction:${a.id}`;
+      const sent = await this.cache.get(cacheKey);
+      if (sent) continue;
+      await this.cache.set(cacheKey, "1", 7200);
+      const bidderIds = await this.bids.listDistinctBidderIds(a.id);
+      const watchers = await this.watchlist.listUserIdsForAuction(a.id);
+      const recipients = new Set([...bidderIds, ...watchers]);
+      for (const uid of recipients) {
+        const onlyWatcher = watchers.includes(uid) && !bidderIds.includes(uid);
+        const row = onlyWatcher
+          ? this.notificationFactory.createWatchlistEndingSoon(a, uid)
+          : this.notificationFactory.createEndingSoon(a, uid);
+        await this.notificationDispatcher.dispatch(uid, notificationRowToPayload(row));
       }
-      await this.auctions.updateStatus(a.id, "ended");
+    }
+  }
+
+  private async finalizeAuctionEnding(a: Auction): Promise<void> {
+    const bids = await this.bids.listForAuctionSettlement(a.id, 10_000);
+    const strategy = this.strategyFactory.create(a.auctionType);
+    const winnerBid = strategy.determineWinner(a, bids);
+    let winnerId: string | null = null;
+    if (
+      winnerBid &&
+      (!a.reservePrice ||
+        a.reservePrice === "" ||
+        Number(winnerBid.amount) >= Number(a.reservePrice))
+    ) {
+      await this.auctions.setWinner(a.id, winnerBid.bidderId);
+      winnerId = winnerBid.bidderId;
+    }
+    await this.auctions.updateStatus(a.id, "ended");
+
+    if (!this.notificationDispatcher) return;
+    const bidderIds = await this.bids.listDistinctBidderIds(a.id);
+    if (winnerId) {
+      await this.notificationDispatcher.dispatch(
+        winnerId,
+        notificationRowToPayload(this.notificationFactory.createWon(a, winnerId)),
+      );
+    }
+    for (const uid of bidderIds) {
+      if (uid === winnerId) continue;
+      await this.notificationDispatcher.dispatch(
+        uid,
+        notificationRowToPayload(this.notificationFactory.createLost(a, uid)),
+      );
     }
   }
 
@@ -75,23 +144,13 @@ export class AuctionLifecycleService {
     if (a.auctionType === "dutch") {
       await this.auctions.setDutchLastDecrementAt(a.id, now);
     }
+    await this.notifyWatchlistStarting(a);
   }
 
   /** Idempotent end for delayed jobs. */
   async processEndJob(auctionId: string, now: Date = new Date()): Promise<void> {
     const a = await this.auctions.findById(auctionId);
     if (!a || a.status !== "active" || a.endTime > now) return;
-    const bids = await this.bids.listForAuctionSettlement(a.id, 10_000);
-    const strategy = this.strategyFactory.create(a.auctionType);
-    const winnerBid = strategy.determineWinner(a, bids);
-    if (
-      winnerBid &&
-      (!a.reservePrice ||
-        a.reservePrice === "" ||
-        Number(winnerBid.amount) >= Number(a.reservePrice))
-    ) {
-      await this.auctions.setWinner(a.id, winnerBid.bidderId);
-    }
-    await this.auctions.updateStatus(a.id, "ended");
+    await this.finalizeAuctionEnding(a);
   }
 }

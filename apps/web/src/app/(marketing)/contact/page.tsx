@@ -5,7 +5,10 @@ export default function ContactPage() {
     <LegalPage title="Contact">
       <p>
         Concierge:{" "}
-        <a href="mailto:concierge@example.com" className="text-primary underline-offset-4 hover:underline">
+        <a
+          href="mailto:concierge@example.com"
+          className="text-primary underline-offset-4 hover:underline"
+        >
           concierge@example.com
         </a>
       </p>

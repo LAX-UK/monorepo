@@ -1,8 +1,8 @@
 "use client";
 
+import { useShellContext } from "@/components/layout/dashboard-shell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { useShellContext } from "@/components/layout/dashboard-shell";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,6 +11,8 @@ const links = [
   { href: "/dashboard", label: "Overview", icon: "dashboard" },
   { href: "/dashboard/bids", label: "Active Bids", icon: "gavel" },
   { href: "/dashboard/portfolio", label: "Portfolio", icon: "palette" },
+  { href: "/dashboard/notifications", label: "Notifications", icon: "notifications" },
+  { href: "/dashboard/settings/notifications", label: "Alert settings", icon: "tune" },
 ] as const;
 
 const adminLink = { href: "/admin", label: "Admin panel", icon: "shield_person" } as const;
@@ -24,10 +26,7 @@ export function DashboardSidebar({ user }: Props) {
   const pathname = usePathname();
   const onNav = onNavigate;
 
-  const asideTransform =
-    mobileOpen
-      ? "translate-x-0"
-      : "-translate-x-full lg:translate-x-0";
+  const asideTransform = mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";
 
   return (
     <aside

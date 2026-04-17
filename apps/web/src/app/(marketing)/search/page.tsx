@@ -1,6 +1,6 @@
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { formatMoney } from "@/lib/format-currency";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Auction } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";

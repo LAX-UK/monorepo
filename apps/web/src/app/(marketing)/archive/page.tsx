@@ -1,10 +1,10 @@
 import { ArchiveFilterBar } from "@/components/sections/archive/archive-filter-bar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
-import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
 import {
   type ArchiveLotVM,
   PastAuctionsGrid,
 } from "@/components/sections/archive/past-auctions-grid";
+import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
 import { buildArchivePageQuery } from "@/lib/archive/build-archive-params";
 import {
   getServerArchiveMetricsReader,

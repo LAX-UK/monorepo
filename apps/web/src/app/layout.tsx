@@ -1,4 +1,5 @@
 import { ThemeInit } from "@/components/layout/theme-init";
+import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from "next";
 import { Manrope, Noto_Serif } from "next/font/google";
 import type { ReactNode } from "react";
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
         {children}
+        <Toaster />
       </body>
     </html>
   );

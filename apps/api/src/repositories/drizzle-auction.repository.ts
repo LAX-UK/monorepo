@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { auction } from "@auction/db/schema";
 import type { Auction, CreateAuctionInput } from "@auction/types";
-import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, lt, lte, sql } from "drizzle-orm";
 import { mapAuctionRow } from "../lib/mappers.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -90,7 +90,9 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
         endTime: input.endTime,
         status: "draft",
         ...(input.minBidIncrement !== undefined ? { minBidIncrement: input.minBidIncrement } : {}),
-        ...(input.dutchDecrementAmount !== undefined ? { dutchDecrementAmount: input.dutchDecrementAmount } : {}),
+        ...(input.dutchDecrementAmount !== undefined
+          ? { dutchDecrementAmount: input.dutchDecrementAmount }
+          : {}),
         ...(input.dutchDecrementIntervalMs !== undefined
           ? { dutchDecrementIntervalMs: input.dutchDecrementIntervalMs }
           : {}),
@@ -124,7 +126,9 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
     return row?.n ?? 0;
   }
 
-  async sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }> {
+  async sumEndedHammer(
+    filter: ArchiveEndedAggregateFilter,
+  ): Promise<{ total: string; count: number }> {
     const conditions = [eq(auction.status, "ended")];
     if (filter.endYear !== undefined) {
       const { start, end } = endYearBoundsUtc(filter.endYear);
@@ -158,6 +162,20 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
       .select()
       .from(auction)
       .where(and(eq(auction.status, "active"), lte(auction.endTime, asOf)));
+    return rows.map(mapAuctionRow);
+  }
+
+  async findActiveByEndTimeBetween(endAfter: Date, endBeforeInclusive: Date): Promise<Auction[]> {
+    const rows = await this.db
+      .select()
+      .from(auction)
+      .where(
+        and(
+          eq(auction.status, "active"),
+          gt(auction.endTime, endAfter),
+          lte(auction.endTime, endBeforeInclusive),
+        ),
+      );
     return rows.map(mapAuctionRow);
   }
 
@@ -221,8 +239,10 @@ export class DrizzleAuctionRepository implements IAuctionRepository {
     if (input.buyNowPrice !== undefined) patch.buyNowPrice = input.buyNowPrice ?? null;
     if (input.buyerPremiumRate !== undefined) patch.buyerPremiumRate = input.buyerPremiumRate;
     if (input.minBidIncrement !== undefined) patch.minBidIncrement = input.minBidIncrement;
-    if (input.dutchDecrementAmount !== undefined) patch.dutchDecrementAmount = input.dutchDecrementAmount ?? null;
-    if (input.dutchDecrementIntervalMs !== undefined) patch.dutchDecrementIntervalMs = input.dutchDecrementIntervalMs;
+    if (input.dutchDecrementAmount !== undefined)
+      patch.dutchDecrementAmount = input.dutchDecrementAmount ?? null;
+    if (input.dutchDecrementIntervalMs !== undefined)
+      patch.dutchDecrementIntervalMs = input.dutchDecrementIntervalMs;
     if (input.startTime !== undefined) patch.startTime = input.startTime;
     if (input.endTime !== undefined) patch.endTime = input.endTime;
 

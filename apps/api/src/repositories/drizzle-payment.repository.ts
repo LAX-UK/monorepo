@@ -50,7 +50,10 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row ? mapRow(row) : null;
   }
 
-  async findOpenByAuctionAndBuyer(auctionId: string, buyerId: string): Promise<PaymentRecord | null> {
+  async findOpenByAuctionAndBuyer(
+    auctionId: string,
+    buyerId: string,
+  ): Promise<PaymentRecord | null> {
     const rows = await this.db
       .select()
       .from(payment)

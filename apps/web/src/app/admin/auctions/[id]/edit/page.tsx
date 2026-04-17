@@ -1,9 +1,9 @@
-import { adminUpdateAuctionAction } from "@/lib/actions/admin";
-import { getAdminAuctionById } from "@/lib/data/http/admin.server";
-import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
+import { UnderlineInput } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select-field";
 import { TextareaField } from "@/components/ui/textarea-field";
-import { UnderlineInput } from "@/components/ui/input";
+import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
+import { adminUpdateAuctionAction } from "@/lib/actions/admin";
+import { getAdminAuctionById } from "@/lib/data/http/admin.server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -31,14 +31,20 @@ export default async function AdminEditAuctionPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <Link href={`/admin/auctions/${id}`} className="font-label text-xs uppercase tracking-widest text-primary hover:underline">
+      <Link
+        href={`/admin/auctions/${id}`}
+        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+      >
         ← Lot detail
       </Link>
       <DisplayHeading as="h1" className="text-4xl">
         Edit draft
       </DisplayHeading>
       {error ? (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
@@ -79,13 +85,22 @@ export default async function AdminEditAuctionPage({
             <label htmlFor="startingPrice" className="mb-2 block">
               <LabelCaps>Starting price</LabelCaps>
             </label>
-            <UnderlineInput id="startingPrice" name="startingPrice" required defaultValue={auction.startingPrice} />
+            <UnderlineInput
+              id="startingPrice"
+              name="startingPrice"
+              required
+              defaultValue={auction.startingPrice}
+            />
           </div>
           <div>
             <label htmlFor="reservePrice" className="mb-2 block">
               <LabelCaps>Reserve (optional)</LabelCaps>
             </label>
-            <UnderlineInput id="reservePrice" name="reservePrice" defaultValue={auction.reservePrice ?? ""} />
+            <UnderlineInput
+              id="reservePrice"
+              name="reservePrice"
+              defaultValue={auction.reservePrice ?? ""}
+            />
           </div>
         </div>
 
@@ -94,13 +109,21 @@ export default async function AdminEditAuctionPage({
             <label htmlFor="buyNowPrice" className="mb-2 block">
               <LabelCaps>Buy now (optional)</LabelCaps>
             </label>
-            <UnderlineInput id="buyNowPrice" name="buyNowPrice" defaultValue={auction.buyNowPrice ?? ""} />
+            <UnderlineInput
+              id="buyNowPrice"
+              name="buyNowPrice"
+              defaultValue={auction.buyNowPrice ?? ""}
+            />
           </div>
           <div>
             <label htmlFor="buyerPremiumRate" className="mb-2 block">
               <LabelCaps>Buyer premium</LabelCaps>
             </label>
-            <UnderlineInput id="buyerPremiumRate" name="buyerPremiumRate" defaultValue={auction.buyerPremiumRate} />
+            <UnderlineInput
+              id="buyerPremiumRate"
+              name="buyerPremiumRate"
+              defaultValue={auction.buyerPremiumRate}
+            />
           </div>
         </div>
 
@@ -108,14 +131,22 @@ export default async function AdminEditAuctionPage({
           <label htmlFor="minBidIncrement" className="mb-2 block">
             <LabelCaps>Min bid increment</LabelCaps>
           </label>
-          <UnderlineInput id="minBidIncrement" name="minBidIncrement" defaultValue={auction.minBidIncrement} />
+          <UnderlineInput
+            id="minBidIncrement"
+            name="minBidIncrement"
+            defaultValue={auction.minBidIncrement}
+          />
         </div>
 
         <div>
           <label htmlFor="categoryId" className="mb-2 block">
             <LabelCaps>Category ID (optional)</LabelCaps>
           </label>
-          <UnderlineInput id="categoryId" name="categoryId" defaultValue={auction.categoryId ?? ""} />
+          <UnderlineInput
+            id="categoryId"
+            name="categoryId"
+            defaultValue={auction.categoryId ?? ""}
+          />
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
@@ -158,7 +189,11 @@ export default async function AdminEditAuctionPage({
             <label htmlFor="dimensions" className="mb-2 block">
               <LabelCaps>Dimensions</LabelCaps>
             </label>
-            <UnderlineInput id="dimensions" name="dimensions" defaultValue={auction.dimensions ?? ""} />
+            <UnderlineInput
+              id="dimensions"
+              name="dimensions"
+              defaultValue={auction.dimensions ?? ""}
+            />
           </div>
         </div>
 
@@ -167,7 +202,11 @@ export default async function AdminEditAuctionPage({
             <label htmlFor="dutchDecrementAmount" className="mb-2 block">
               <LabelCaps>Dutch decrement</LabelCaps>
             </label>
-            <UnderlineInput id="dutchDecrementAmount" name="dutchDecrementAmount" defaultValue={auction.dutchDecrementAmount ?? ""} />
+            <UnderlineInput
+              id="dutchDecrementAmount"
+              name="dutchDecrementAmount"
+              defaultValue={auction.dutchDecrementAmount ?? ""}
+            />
           </div>
           <div>
             <label htmlFor="dutchDecrementIntervalMs" className="mb-2 block">

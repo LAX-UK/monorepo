@@ -1,3 +1,4 @@
+import type { CreateAuctionInput } from "@auction/types";
 import {
   archiveCountQuerySchema,
   archiveSummaryQuerySchema,
@@ -9,7 +10,6 @@ import {
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { CreateAuctionInput } from "@auction/types";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
@@ -56,21 +56,16 @@ export function createAuctionRoutes(container: Container, authenticator: IAuthen
     return c.json({ count });
   });
 
-  r.post(
-    "/:id/publish",
-    requireAuth,
-    zValidator("param", auctionIdParamSchema),
-    async (c) => {
-      const userId = c.get("userId") as string;
-      const role = c.get("userRole") ?? "buyer";
-      const { id } = c.req.valid("param");
-      const result = await container.auctionService.publish(userId, role, id);
-      return result.match(
-        (auction) => c.json({ data: auction }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
-    },
-  );
+  r.post("/:id/publish", requireAuth, zValidator("param", auctionIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = c.get("userRole") ?? "buyer";
+    const { id } = c.req.valid("param");
+    const result = await container.auctionService.publish(userId, role, id);
+    return result.match(
+      (auction) => c.json({ data: auction }),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
 
   r.post(
     "/:id/cancel",

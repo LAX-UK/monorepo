@@ -1,6 +1,6 @@
 import type { Auction } from "@auction/types";
 import type { Bid, NewBid } from "@auction/types";
-import { err, ok, type Result } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { IAuctionStrategy } from "../services/interfaces/auction-strategy.js";
 

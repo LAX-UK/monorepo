@@ -10,7 +10,15 @@ type Props = {
   required?: boolean;
 };
 
-export function TextareaField({ id, label, name, rows = 4, placeholder, defaultValue, required }: Props) {
+export function TextareaField({
+  id,
+  label,
+  name,
+  rows = 4,
+  placeholder,
+  defaultValue,
+  required,
+}: Props) {
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="block">

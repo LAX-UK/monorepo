@@ -1,3 +1,5 @@
+import type { UserNotification } from "@auction/types";
+
 export type CreateNotificationRow = {
   userId: string;
   type: string;
@@ -7,5 +9,5 @@ export type CreateNotificationRow = {
 };
 
 export interface INotificationWriteRepository {
-  createMany(rows: CreateNotificationRow[]): Promise<void>;
+  createMany(rows: CreateNotificationRow[]): Promise<UserNotification[]>;
 }

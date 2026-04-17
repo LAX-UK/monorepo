@@ -1,5 +1,5 @@
-import type { Redis } from "ioredis";
 import { createMiddleware } from "hono/factory";
+import type { Redis } from "ioredis";
 
 const WINDOW_SEC = 60;
 const MAX_REQUESTS = 120;

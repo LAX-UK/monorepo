@@ -1,6 +1,6 @@
 import { boolean, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
 import { auction } from "./auctions.js";
+import { user } from "./auth.js";
 
 export const bid = pgTable(
   "bid",
@@ -16,9 +16,7 @@ export const bid = pgTable(
     isWinning: boolean("is_winning").notNull().default(false),
     isAutoBid: boolean("is_auto_bid").notNull().default(false),
     maxAutoBidAmount: numeric("max_auto_bid_amount", { precision: 18, scale: 2 }),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("bid_auction_id_amount_idx").on(table.auctionId, table.amount),

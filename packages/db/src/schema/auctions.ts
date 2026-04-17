@@ -1,13 +1,17 @@
-import { index, integer, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { category } from "./categories.js";
 
-export const auctionTypeEnum = pgEnum("auction_type", [
-  "english",
-  "dutch",
-  "sealed",
-  "buy_it_now",
-]);
+export const auctionTypeEnum = pgEnum("auction_type", ["english", "dutch", "sealed", "buy_it_now"]);
 
 export const auctionStatusEnum = pgEnum("auction_status", [
   "draft",
@@ -28,10 +32,7 @@ export const auction = pgTable(
     description: text("description"),
     medium: text("medium"),
     dimensions: text("dimensions"),
-    images: text("images")
-      .array()
-      .notNull()
-      .default([]),
+    images: text("images").array().notNull().default([]),
     categoryId: uuid("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
@@ -56,12 +57,8 @@ export const auction = pgTable(
       mode: "date",
       withTimezone: true,
     }),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("auction_seller_id_idx").on(table.sellerId),

@@ -23,7 +23,8 @@ export function mapAuctionRow(row: AuctionRow): Auction {
     currentPrice: String(row.currentPrice),
     buyerPremiumRate: String(row.buyerPremiumRate),
     minBidIncrement: String(row.minBidIncrement),
-    dutchDecrementAmount: row.dutchDecrementAmount !== null ? String(row.dutchDecrementAmount) : null,
+    dutchDecrementAmount:
+      row.dutchDecrementAmount !== null ? String(row.dutchDecrementAmount) : null,
     dutchDecrementIntervalMs: row.dutchDecrementIntervalMs,
     dutchLastDecrementAt: row.dutchLastDecrementAt ?? null,
     startTime: row.startTime,

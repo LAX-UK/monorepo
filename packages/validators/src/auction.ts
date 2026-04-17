@@ -30,9 +30,7 @@ export const createAuctionSchema = z.object({
   endTime: z.coerce.date(),
 });
 
-const listSort = z
-  .enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc"])
-  .optional();
+const listSort = z.enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc"]).optional();
 
 export const listAuctionsQuerySchema = z.object({
   status: z.enum(auctionStatuses).optional(),

@@ -1,5 +1,8 @@
 import type { Auction } from "@auction/types";
-import type { IAuctionStrategy, IAuctionStrategyFactory } from "../services/interfaces/auction-strategy.js";
+import type {
+  IAuctionStrategy,
+  IAuctionStrategyFactory,
+} from "../services/interfaces/auction-strategy.js";
 import { BuyItNowAuctionStrategy } from "./buy-it-now.strategy.js";
 import { DutchAuctionStrategy } from "./dutch.strategy.js";
 import { EnglishAuctionStrategy } from "./english.strategy.js";

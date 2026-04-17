@@ -1,8 +1,8 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
+import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -96,7 +96,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                 aria-label="Checkout steps"
                 className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant"
               >
-                <span className="rounded-full bg-primary px-3 py-1 text-on-primary">1 · Invoice</span>
+                <span className="rounded-full bg-primary px-3 py-1 text-on-primary">
+                  1 · Invoice
+                </span>
                 <span className="text-on-surface-variant/50" aria-hidden>
                   →
                 </span>

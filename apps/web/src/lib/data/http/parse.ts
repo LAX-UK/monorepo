@@ -1,4 +1,4 @@
-import type { Auction, Bid, UserNotification } from "@auction/types";
+import type { Auction, Bid, NotificationPreference, UserNotification } from "@auction/types";
 
 function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
@@ -34,13 +34,31 @@ export function parseAuction(raw: unknown): Auction {
       typeof o.dutchDecrementIntervalMs === "number" && Number.isFinite(o.dutchDecrementIntervalMs)
         ? o.dutchDecrementIntervalMs
         : 60_000,
-    dutchLastDecrementAt:
-      o.dutchLastDecrementAt == null ? null : toDate(o.dutchLastDecrementAt),
+    dutchLastDecrementAt: o.dutchLastDecrementAt == null ? null : toDate(o.dutchLastDecrementAt),
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),
     status: o.status as Auction["status"],
     winnerId: o.winnerId == null ? null : String(o.winnerId),
     createdAt: toDate(o.createdAt),
+    updatedAt: toDate(o.updatedAt),
+  };
+}
+
+export function parseNotificationPreference(raw: unknown): NotificationPreference {
+  const o = raw as Record<string, unknown>;
+  return {
+    userId: String(o.userId),
+    outbidInApp: Boolean(o.outbidInApp),
+    wonInApp: Boolean(o.wonInApp),
+    lostInApp: Boolean(o.lostInApp),
+    endingSoonInApp: Boolean(o.endingSoonInApp),
+    watchlistInApp: Boolean(o.watchlistInApp),
+    paymentInApp: Boolean(o.paymentInApp),
+    outbidPush: Boolean(o.outbidPush),
+    wonPush: Boolean(o.wonPush),
+    endingSoonPush: Boolean(o.endingSoonPush),
+    quietStart: o.quietStart == null || o.quietStart === "" ? null : String(o.quietStart),
+    quietEnd: o.quietEnd == null || o.quietEnd === "" ? null : String(o.quietEnd),
     updatedAt: toDate(o.updatedAt),
   };
 }
@@ -55,6 +73,7 @@ export function parseUserNotification(raw: unknown): UserNotification {
     message: String(o.message),
     auctionId: o.auctionId == null ? null : String(o.auctionId),
     read: Boolean(o.read),
+    archivedAt: o.archivedAt == null || o.archivedAt === "" ? null : toDate(o.archivedAt),
     createdAt: toDate(o.createdAt),
   };
 }

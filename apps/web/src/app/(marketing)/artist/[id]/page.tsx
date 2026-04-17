@@ -17,7 +17,10 @@ export default async function ArtistPage({ params }: PageProps) {
 
   return (
     <main id="main-content" className="mx-auto max-w-[1920px] px-10 pb-20 pt-32 md:px-20">
-      <nav aria-label="Breadcrumb" className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary">
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
+      >
         <ol className="flex flex-wrap items-center gap-2">
           <li>
             <Link href="/" className="transition-colors hover:text-primary">

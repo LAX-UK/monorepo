@@ -1,12 +1,12 @@
 import type { Auction, Bid } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../lib/errors.js";
-import type { IAuctionRepository, IBidRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { AuctionStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
-import { NotificationService } from "./notification.service.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { IAuctionRepository, IBidRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import { NotificationService } from "./notification.service.js";
 
 function auction(overrides: Partial<Auction> = {}): Auction {
   const now = new Date();
@@ -90,7 +90,10 @@ function baseAuctionRepo(overrides: Partial<IAuctionRepository> = {}): IAuctionR
   } as IAuctionRepository;
 }
 
-function createMockFactory(auctionRepo: IAuctionRepository, bidRepo: IBidRepository): IRepositoryFactory {
+function createMockFactory(
+  auctionRepo: IAuctionRepository,
+  bidRepo: IBidRepository,
+): IRepositoryFactory {
   const repos = { auction: auctionRepo, bid: bidRepo };
   return {
     root: repos,

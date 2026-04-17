@@ -19,7 +19,10 @@ export type RpcApp = {
     ":id": {
       $get: (args: { param: { id: string } }) => Promise<Response>;
       bids: {
-        $get: (args: { param: { id: string }; query?: Record<string, string> }) => Promise<Response>;
+        $get: (args: {
+          param: { id: string };
+          query?: Record<string, string>;
+        }) => Promise<Response>;
       };
     };
   };

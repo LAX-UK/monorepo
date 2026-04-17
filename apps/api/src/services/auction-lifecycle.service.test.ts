@@ -1,8 +1,9 @@
 import type { Auction, Bid } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuctionStrategyFactory } from "../strategies/strategy.factory.js";
-import type { IAuctionRepository, IBidRepository } from "./interfaces/repositories.js";
 import { AuctionLifecycleService } from "./auction-lifecycle.service.js";
+import type { IAuctionRepository, IBidRepository } from "./interfaces/repositories.js";
+import { NotificationFactory } from "./notification.factory.js";
 
 function bid(overrides: Partial<Bid> = {}): Bid {
   const now = new Date();
@@ -53,6 +54,7 @@ describe("AuctionLifecycleService", () => {
     const auctions: IAuctionRepository = {
       findScheduledToActivate: vi.fn().mockResolvedValue([]),
       findActivePastEnd: vi.fn().mockResolvedValue([auction]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
       findActiveDutchAuctions: vi.fn().mockResolvedValue([]),
@@ -62,9 +64,18 @@ describe("AuctionLifecycleService", () => {
 
     const bids: IBidRepository = {
       listForAuctionSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
     } as unknown as IBidRepository;
 
-    const svc = new AuctionLifecycleService(auctions, bids, strategyFactory);
+    const svc = new AuctionLifecycleService(
+      auctions,
+      bids,
+      strategyFactory,
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+    );
     await svc.runTransitions(new Date());
 
     expect(auctions.setWinner).not.toHaveBeenCalled();
@@ -102,6 +113,7 @@ describe("AuctionLifecycleService", () => {
     const auctions: IAuctionRepository = {
       findScheduledToActivate: vi.fn().mockResolvedValue([]),
       findActivePastEnd: vi.fn().mockResolvedValue([auction]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
       findActiveDutchAuctions: vi.fn().mockResolvedValue([]),
@@ -110,10 +122,21 @@ describe("AuctionLifecycleService", () => {
     } as unknown as IAuctionRepository;
 
     const bids: IBidRepository = {
-      listForAuctionSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00", bidderId: "winner" })]),
+      listForAuctionSettlement: vi
+        .fn()
+        .mockResolvedValue([bid({ amount: "500.00", bidderId: "winner" })]),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
     } as unknown as IBidRepository;
 
-    const svc = new AuctionLifecycleService(auctions, bids, strategyFactory);
+    const svc = new AuctionLifecycleService(
+      auctions,
+      bids,
+      strategyFactory,
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+    );
     await svc.runTransitions(new Date());
 
     expect(auctions.setWinner).toHaveBeenCalledWith("a1", "winner");

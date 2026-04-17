@@ -48,8 +48,7 @@ export function buildArchivePageQuery(
   const categoryId = firstString(searchParams.categoryId) || undefined;
   const sortMode = parseSort(firstString(searchParams.sort));
 
-  const apiSort: ListAuctionsParams["sort"] =
-    sortMode === "hammer" ? "hammerDesc" : "endedDesc";
+  const apiSort: ListAuctionsParams["sort"] = sortMode === "hammer" ? "hammerDesc" : "endedDesc";
 
   const listParams: ListAuctionsParams = {
     status: "ended",
