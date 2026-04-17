@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAuctionRealtime } from "@/hooks/use-auction-realtime";
 import { AuctionPortsProvider } from "@/lib/context/auction-ports";
 import { formatCountdownClock } from "@/lib/format-countdown";
@@ -108,7 +109,24 @@ export function ActiveBidsWidget({ rows, userId }: Props) {
     return [...byAuction.values()].slice(0, 12);
   }, [rows]);
 
-  if (deduped.length === 0) return null;
+  if (deduped.length === 0) {
+    return (
+      <section className="mb-12">
+        <EmptyState
+          title="No active bids"
+          description="Browse live lots and place a bid — your active bids will show here with live countdowns."
+          action={
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-sm transition-opacity hover:opacity-95"
+            >
+              Browse gallery
+            </Link>
+          }
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="mb-12 rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-8 shadow-sm ring-1 ring-outline-variant/10">

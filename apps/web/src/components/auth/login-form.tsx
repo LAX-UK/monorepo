@@ -86,6 +86,11 @@ export function LoginForm() {
         {loading ? "Signing in…" : "Sign in"}
       </Button>
       <p className="text-center font-body text-xs text-on-surface-variant">
+        Need an account?{" "}
+        <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+          Register
+        </Link>
+        <span className="mx-2 text-outline-variant">·</span>
         <Link href="/" className="text-primary underline-offset-4 hover:underline">
           Back to gallery
         </Link>

@@ -7,11 +7,22 @@ import { getServerAuctionBids, getServerAuctionReader } from "@/lib/data/http/au
 import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { metadataForAuction } from "@/lib/seo/metadata-factory";
+import { auctionProductJsonLd } from "@/lib/seo/structured-data";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const reader = await getServerAuctionReader();
+  const auction = await reader.getById(id);
+  if (!auction) return { title: "Lot" };
+  return metadataForAuction(auction);
+}
 
 export default async function ArtworkPage({ params }: PageProps) {
   const { id } = await params;
@@ -53,29 +64,41 @@ export default async function ArtworkPage({ params }: PageProps) {
   const sellerName = seller?.name ?? "Private seller";
   const sellerHref = `/artist/${auction.sellerId}`;
 
+  const jsonLd = auctionProductJsonLd(auction);
+  const jsonLdText = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+
   return (
-    <AuctionPortsProvider>
-      <ArtworkSplitView
-        auction={auction}
-        sellerHref={sellerHref}
-        sellerName={sellerName}
-        relatedAuctions={relatedRaw}
-        watchSlot={
-          <ArtworkWatchToggle
-            auctionId={auction.id}
-            initialWatching={watching}
-            isAuthenticated={Boolean(session)}
-          />
-        }
-        bidPanel={
-          <ArtworkBidPanel
-            auction={auction}
-            initialHistory={initialHistory}
-            initialLeadingBidderId={initialLeadingBidderId}
-            sessionUser={session}
-          />
-        }
-      />
-    </AuctionPortsProvider>
+    <>
+      <script
+        id={`auction-jsonld-${auction.id}`}
+        type="application/ld+json"
+        suppressHydrationWarning
+      >
+        {jsonLdText}
+      </script>
+      <AuctionPortsProvider>
+        <ArtworkSplitView
+          auction={auction}
+          sellerHref={sellerHref}
+          sellerName={sellerName}
+          relatedAuctions={relatedRaw}
+          watchSlot={
+            <ArtworkWatchToggle
+              auctionId={auction.id}
+              initialWatching={watching}
+              isAuthenticated={Boolean(session)}
+            />
+          }
+          bidPanel={
+            <ArtworkBidPanel
+              auction={auction}
+              initialHistory={initialHistory}
+              initialLeadingBidderId={initialLeadingBidderId}
+              sessionUser={session}
+            />
+          }
+        />
+      </AuctionPortsProvider>
+    </>
   );
 }

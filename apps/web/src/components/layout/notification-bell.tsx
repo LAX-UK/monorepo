@@ -1,6 +1,8 @@
 "use client";
 
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { useClickOutside } from "@/hooks/use-click-outside";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseUserNotification } from "@/lib/data/http/parse";
@@ -8,6 +10,8 @@ import type { UserNotification } from "@auction/types";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+const MENU_ID = "notification-menu";
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
@@ -18,6 +22,7 @@ export function NotificationBell() {
   const [items, setItems] = useState<UserNotification[]>([]);
   const [loaded, setLoaded] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(async () => {
     const client = getBrowserHc();
@@ -58,16 +63,13 @@ export function NotificationBell() {
     onNotification: onRealtimeNotification,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }, []);
+
+  useEscapeKey(open, closeMenu);
+  useClickOutside(open, wrapRef, closeMenu);
 
   const unread = items.filter((n) => !n.read).length;
 
@@ -106,10 +108,12 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={wrapRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="relative rounded-md p-1 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         aria-label="Notifications"
         aria-expanded={open}
+        aria-controls={MENU_ID}
         onClick={() => setOpen((o) => !o)}
       >
         <MaterialIcon name="notifications" />
@@ -120,7 +124,11 @@ export function NotificationBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-lg border border-outline-variant/15 bg-surface-container-lowest py-2 shadow-lg">
+        <div
+          id={MENU_ID}
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-lg border border-outline-variant/15 bg-surface-container-lowest py-2 shadow-lg"
+        >
           {unread > 0 ? (
             <div className="flex justify-end border-b border-outline-variant/10 px-4 py-2">
               <button
@@ -174,14 +182,14 @@ export function NotificationBell() {
             <Link
               href="/dashboard/notifications"
               className="font-label text-xs uppercase tracking-widest text-primary"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
             >
               View all notifications
             </Link>
             <Link
               href="/dashboard"
               className="font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
             >
               Open dashboard
             </Link>

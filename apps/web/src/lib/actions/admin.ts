@@ -66,6 +66,68 @@ export async function adminRefundPaymentAction(formData: FormData): Promise<void
   redirect("/admin/payments");
 }
 
+export async function adminCapturePaymentAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("paymentId") ?? "").trim();
+  if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
+  const res = await authedServerFetch(`/payments/${encodeURIComponent(id)}/capture`, {
+    method: "POST",
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    redirect(`/admin/payments?error=${encodeURIComponent(errMessage(body, "Capture failed"))}`);
+  }
+  revalidatePath("/admin/payments");
+  redirect("/admin/payments");
+}
+
+export async function adminSuspendUserAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("userId") ?? "").trim();
+  if (!id) redirect(`/admin/users?error=${encodeURIComponent("Missing user")}`);
+  const reason = String(formData.get("reason") ?? "").trim() || undefined;
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(id)}/suspend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Suspend failed"))}`);
+  }
+  revalidatePath("/admin/users");
+  redirect("/admin/users");
+}
+
+export async function adminUnsuspendUserAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("userId") ?? "").trim();
+  if (!id) redirect(`/admin/users?error=${encodeURIComponent("Missing user")}`);
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(id)}/unsuspend`, {
+    method: "POST",
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Unsuspend failed"))}`);
+  }
+  revalidatePath("/admin/users");
+  redirect("/admin/users");
+}
+
+export async function adminSetUserRoleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("userId") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+  if (!id || !role) redirect(`/admin/users?error=${encodeURIComponent("Missing fields")}`);
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(id)}/role`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Role update failed"))}`);
+  }
+  revalidatePath("/admin/users");
+  redirect("/admin/users");
+}
+
 export async function adminCreateAuctionAction(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   const auctionType = String(formData.get("auctionType") ?? "english");

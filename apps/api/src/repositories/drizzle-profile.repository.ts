@@ -1,0 +1,41 @@
+import type { Database } from "@auction/db";
+import { user } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
+import type {
+  IProfileReader,
+  IProfileWriter,
+  ProfileUpdateInput,
+} from "../services/interfaces/profile.js";
+
+export class DrizzleProfileRepository implements IProfileReader, IProfileWriter {
+  constructor(private readonly db: Database) {}
+
+  async getProfile(userId: string) {
+    const [row] = await this.db
+      .select({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!row) return null;
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      image: row.image ?? null,
+      role: row.role,
+    };
+  }
+
+  async updateProfile(userId: string, input: ProfileUpdateInput): Promise<void> {
+    const patch: Partial<typeof user.$inferInsert> = { updatedAt: new Date() };
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.image !== undefined) patch.image = input.image;
+    await this.db.update(user).set(patch).where(eq(user.id, userId));
+  }
+}

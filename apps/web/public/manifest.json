@@ -1,0 +1,10 @@
+{
+  "name": "The Digital Curator",
+  "short_name": "Curator",
+  "description": "Fine art auctions — curated lots and live bidding.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f5",
+  "theme_color": "#1a1a1a",
+  "icons": []
+}

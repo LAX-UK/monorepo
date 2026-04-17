@@ -1,7 +1,15 @@
 import {
+  addressIdParamSchema,
+  createAddressBodySchema,
+  notificationIdUuidParamSchema,
   notificationPreferencePatchSchema,
   pushSubscriptionBodySchema,
   pushUnsubscribeBodySchema,
+  registerBodySchema,
+  updateAddressBodySchema,
+  updateProfileSchema,
+  userIdParamSchema,
+  watchlistAuctionIdParamSchema,
   watchlistBodySchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -12,13 +20,29 @@ import { defaultNotificationPreference } from "../lib/notification-preference-ke
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
+import type { UpdateAddressInput } from "../services/interfaces/profile.js";
 
 export function createUserRoutes(container: Container, authenticator: IAuthenticator) {
-  const requireAuth = createRequireAuth(authenticator);
+  const requireAuth = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+  });
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  r.get("/public/:userId", async (c) => {
-    const id = c.req.param("userId");
+  r.post("/register", zValidator("json", registerBodySchema), async (c) => {
+    const body = c.req.valid("json");
+    const result = await container.registrationService.register({
+      name: body.name,
+      email: body.email,
+      password: body.password,
+    });
+    if (!result.ok) {
+      return c.json({ error: result.message }, result.status as 400);
+    }
+    return c.json({ data: { userId: result.userId } }, 201);
+  });
+
+  r.get("/public/:userId", zValidator("param", userIdParamSchema), async (c) => {
+    const { userId: id } = c.req.valid("param");
     const row = await container.userService.getById(id);
     if (!row) {
       return c.json({ error: "Not found" }, 404);
@@ -72,12 +96,79 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data: row }, 201);
   });
 
-  r.delete("/me/watchlist/:auctionId", requireAuth, async (c) => {
+  r.delete(
+    "/me/watchlist/:auctionId",
+    requireAuth,
+    zValidator("param", watchlistAuctionIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { auctionId } = c.req.valid("param");
+      await container.watchlistService.remove(userId, auctionId);
+      return c.body(null, 204);
+    },
+  );
+
+  r.patch("/me/profile", requireAuth, zValidator("json", updateProfileSchema), async (c) => {
     const userId = c.get("userId") as string;
-    const auctionId = c.req.param("auctionId");
-    await container.watchlistService.remove(userId, auctionId);
-    return c.body(null, 204);
+    const body = c.req.valid("json");
+    await container.profileService.updateProfile(userId, body);
+    return c.json({ ok: true });
   });
+
+  r.get("/me/addresses", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const data = await container.addressService.list(userId);
+    return c.json({ data });
+  });
+
+  r.post("/me/addresses", requireAuth, zValidator("json", createAddressBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const body = c.req.valid("json");
+    const row = await container.addressService.create(userId, body);
+    return c.json({ data: row }, 201);
+  });
+
+  r.patch(
+    "/me/addresses/:id",
+    requireAuth,
+    zValidator("param", addressIdParamSchema),
+    zValidator("json", updateAddressBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const row = await container.addressService.update(userId, id, body as UpdateAddressInput);
+      if (!row) return c.json({ error: "Not found" }, 404);
+      return c.json({ data: row });
+    },
+  );
+
+  r.delete(
+    "/me/addresses/:id",
+    requireAuth,
+    zValidator("param", addressIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const ok = await container.addressService.delete(userId, id);
+      if (!ok) return c.json({ error: "Not found" }, 404);
+      return c.body(null, 204);
+    },
+  );
+
+  r.post(
+    "/me/addresses/:id/default",
+    requireAuth,
+    zValidator("param", addressIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const existing = await container.addressService.list(userId);
+      if (!existing.some((a) => a.id === id)) return c.json({ error: "Not found" }, 404);
+      await container.addressService.setDefault(userId, id);
+      return c.json({ ok: true });
+    },
+  );
 
   r.get("/me/notifications", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
@@ -117,25 +208,35 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
-  r.delete("/me/notifications/:notificationId", requireAuth, async (c) => {
-    const userId = c.get("userId") as string;
-    const notificationId = c.req.param("notificationId");
-    const archived = await container.notificationQueryService.archive(userId, notificationId);
-    if (!archived) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    return c.body(null, 204);
-  });
+  r.delete(
+    "/me/notifications/:notificationId",
+    requireAuth,
+    zValidator("param", notificationIdUuidParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { notificationId } = c.req.valid("param");
+      const archived = await container.notificationQueryService.archive(userId, notificationId);
+      if (!archived) {
+        return c.json({ error: "Not found" }, 404);
+      }
+      return c.body(null, 204);
+    },
+  );
 
-  r.patch("/me/notifications/:notificationId/read", requireAuth, async (c) => {
-    const userId = c.get("userId") as string;
-    const notificationId = c.req.param("notificationId");
-    const updated = await container.notificationQueryService.markRead(userId, notificationId);
-    if (!updated) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    return c.body(null, 204);
-  });
+  r.patch(
+    "/me/notifications/:notificationId/read",
+    requireAuth,
+    zValidator("param", notificationIdUuidParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { notificationId } = c.req.valid("param");
+      const updated = await container.notificationQueryService.markRead(userId, notificationId);
+      if (!updated) {
+        return c.json({ error: "Not found" }, 404);
+      }
+      return c.body(null, 204);
+    },
+  );
 
   r.patch("/me/notifications/read-all", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
@@ -199,11 +300,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const row = await container.userService.getById(userId);
+    const row = await container.profileService.getProfile(userId);
     if (!row) {
       return c.json({ error: "User not found" }, 404);
     }
-    return c.json({ data: { id: row.id, email: row.email, name: row.name, role: row.role } });
+    return c.json({
+      data: {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        role: row.role,
+        image: row.image,
+      },
+    });
   });
 
   return r;

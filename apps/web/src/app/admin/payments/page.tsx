@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DisplayHeading } from "@/components/ui/typography";
-import { adminRefundPaymentAction } from "@/lib/actions/admin";
+import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
 import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 
 export default async function AdminPaymentsPage({
@@ -75,15 +75,28 @@ export default async function AdminPaymentsPage({
                   {p.status === "refunded" ? (
                     <span className="text-on-surface-variant">Refunded</span>
                   ) : (
-                    <form action={adminRefundPaymentAction} className="inline">
-                      <input type="hidden" name="paymentId" value={p.id} />
-                      <button
-                        type="submit"
-                        className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline"
-                      >
-                        Refund
-                      </button>
-                    </form>
+                    <div className="flex flex-wrap justify-end gap-3">
+                      {(p.status === "pending" || p.status === "authorized") && (
+                        <form action={adminCapturePaymentAction} className="inline">
+                          <input type="hidden" name="paymentId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+                          >
+                            Mark captured
+                          </button>
+                        </form>
+                      )}
+                      <form action={adminRefundPaymentAction} className="inline">
+                        <input type="hidden" name="paymentId" value={p.id} />
+                        <button
+                          type="submit"
+                          className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline"
+                        >
+                          Refund
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

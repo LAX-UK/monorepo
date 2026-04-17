@@ -18,13 +18,14 @@ export function Button({
   variant = "primary",
   className = "",
   children,
+  type = "button",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   children: ReactNode;
 }) {
   return (
-    <button type="button" className={`${base} ${variants[variant]} ${className}`} {...props}>
+    <button type={type} className={`${base} ${variants[variant]} ${className}`} {...props}>
       {children}
     </button>
   );

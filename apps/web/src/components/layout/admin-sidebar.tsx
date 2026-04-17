@@ -9,8 +9,10 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/admin", label: "Overview", icon: "dashboard" },
+  { href: "/admin/analytics", label: "Analytics", icon: "bar_chart" },
   { href: "/admin/auctions", label: "Auctions", icon: "gavel" },
   { href: "/admin/payments", label: "Payments", icon: "account_balance_wallet" },
+  { href: "/admin/users", label: "Users", icon: "group" },
 ] as const;
 
 type Props = {

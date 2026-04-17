@@ -109,12 +109,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -200,12 +196,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -215,9 +207,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -302,9 +292,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -532,12 +520,8 @@
           "name": "auction_seller_id_user_id_fk",
           "tableFrom": "auction",
           "tableTo": "user",
-          "columnsFrom": [
-            "seller_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["seller_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -545,12 +529,8 @@
           "name": "auction_category_id_category_id_fk",
           "tableFrom": "auction",
           "tableTo": "category",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -558,12 +538,8 @@
           "name": "auction_winner_id_user_id_fk",
           "tableFrom": "auction",
           "tableTo": "user",
-          "columnsFrom": [
-            "winner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["winner_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -674,12 +650,8 @@
           "name": "bid_auction_id_auction_id_fk",
           "tableFrom": "bid",
           "tableTo": "auction",
-          "columnsFrom": [
-            "auction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["auction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -687,12 +659,8 @@
           "name": "bid_bidder_id_user_id_fk",
           "tableFrom": "bid",
           "tableTo": "user",
-          "columnsFrom": [
-            "bidder_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["bidder_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -771,9 +739,7 @@
         "category_slug_unique": {
           "name": "category_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},
@@ -873,12 +839,8 @@
           "name": "notification_user_id_user_id_fk",
           "tableFrom": "notification",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -886,12 +848,8 @@
           "name": "notification_auction_id_auction_id_fk",
           "tableFrom": "notification",
           "tableTo": "auction",
-          "columnsFrom": [
-            "auction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["auction_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1002,12 +960,8 @@
           "name": "payment_auction_id_auction_id_fk",
           "tableFrom": "payment",
           "tableTo": "auction",
-          "columnsFrom": [
-            "auction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["auction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1015,12 +969,8 @@
           "name": "payment_buyer_id_user_id_fk",
           "tableFrom": "payment",
           "tableTo": "user",
-          "columnsFrom": [
-            "buyer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["buyer_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1028,12 +978,8 @@
           "name": "payment_seller_id_user_id_fk",
           "tableFrom": "payment",
           "tableTo": "user",
-          "columnsFrom": [
-            "seller_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["seller_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1097,12 +1043,8 @@
           "name": "watchlist_user_id_user_id_fk",
           "tableFrom": "watchlist",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1110,12 +1052,8 @@
           "name": "watchlist_auction_id_auction_id_fk",
           "tableFrom": "watchlist",
           "tableTo": "auction",
-          "columnsFrom": [
-            "auction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["auction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1125,10 +1063,7 @@
         "watchlist_user_auction_uid": {
           "name": "watchlist_user_auction_uid",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "auction_id"
-          ]
+          "columns": ["user_id", "auction_id"]
         }
       },
       "policies": {},
@@ -1140,33 +1075,17 @@
     "public.auction_status": {
       "name": "auction_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "scheduled",
-        "active",
-        "ended",
-        "cancelled"
-      ]
+      "values": ["draft", "scheduled", "active", "ended", "cancelled"]
     },
     "public.auction_type": {
       "name": "auction_type",
       "schema": "public",
-      "values": [
-        "english",
-        "dutch",
-        "sealed",
-        "buy_it_now"
-      ]
+      "values": ["english", "dutch", "sealed", "buy_it_now"]
     },
     "public.payment_status": {
       "name": "payment_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "authorized",
-        "captured",
-        "refunded"
-      ]
+      "values": ["pending", "authorized", "captured", "refunded"]
     }
   },
   "schemas": {},

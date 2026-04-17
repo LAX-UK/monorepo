@@ -1,4 +1,9 @@
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
+import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { metadataForSeller } from "@/lib/seo/metadata-factory";
+import type { Auction } from "@auction/types";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,12 +12,85 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const reader = await getServerArtistReader();
+  const artist = await reader.getById(id);
+  if (artist) return { title: artist.name };
+  const publicReader = await getServerPublicUserReader();
+  const user = await publicReader.getById(id).catch(() => null);
+  if (!user) return { title: "Artist" };
+  return metadataForSeller(user.name, id);
+}
+
 export default async function ArtistPage({ params }: PageProps) {
   const { id } = await params;
   const reader = await getServerArtistReader();
   const artist = await reader.getById(id);
   if (!artist) {
-    notFound();
+    const publicReader = await getServerPublicUserReader();
+    const user = await publicReader.getById(id).catch(() => null);
+    if (!user) notFound();
+    const auctionReader = await getServerAuctionReader();
+    const [active, ended] = await Promise.all([
+      auctionReader
+        .list({ sellerId: id, status: "active", limit: 24, offset: 0, sort: "endingAsc" })
+        .catch(() => [] as Auction[]),
+      auctionReader
+        .list({ sellerId: id, status: "ended", limit: 24, offset: 0, sort: "endedDesc" })
+        .catch(() => [] as Auction[]),
+    ]);
+    const sellerLots = [...active, ...ended];
+    return (
+      <main id="main-content" className="mx-auto max-w-[1920px] px-10 pb-20 pt-32 md:px-20">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
+        >
+          <ol className="flex flex-wrap items-center gap-2">
+            <li>
+              <Link href="/" className="transition-colors hover:text-primary">
+                Gallery
+              </Link>
+            </li>
+            <li aria-hidden className="text-outline-variant">
+              /
+            </li>
+            <li className="text-on-surface" aria-current="page">
+              {user.name}
+            </li>
+          </ol>
+        </nav>
+        <h1 className="mb-4 font-headline text-5xl tracking-tight text-on-surface md:text-7xl">
+          {user.name}
+        </h1>
+        <p className="mb-12 max-w-2xl font-body text-sm text-on-surface-variant">
+          Seller on The Digital Curator — lots listed below are attributed to this account.
+        </p>
+        {sellerLots.length === 0 ? (
+          <p className="font-body text-on-surface-variant">No public lots for this seller yet.</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {sellerLots.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-4 ring-1 ring-outline-variant/10"
+              >
+                <Link
+                  href={`/artwork/${a.id}`}
+                  className="font-headline text-lg text-on-surface hover:text-primary"
+                >
+                  {a.title}
+                </Link>
+                <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
+                  {a.status}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+    );
   }
 
   return (
@@ -95,9 +173,9 @@ export default async function ArtistPage({ params }: PageProps) {
           </span>
         </div>
       </div>
-      <div
-        className="rounded-xl bg-surface-container-low/80 p-10 text-center shadow-sm ring-1 ring-outline-variant/10 md:p-16"
-        role="status"
+      <output
+        className="block rounded-xl bg-surface-container-low/80 p-10 text-center shadow-sm ring-1 ring-outline-variant/10 md:p-16"
+        aria-live="polite"
       >
         <p className="mx-auto mb-6 max-w-lg font-headline text-xl font-light text-on-surface md:text-2xl">
           Works linked to this artist will appear here.
@@ -112,7 +190,7 @@ export default async function ArtistPage({ params }: PageProps) {
         >
           Browse auctions
         </Link>
-      </div>
+      </output>
     </main>
   );
 }

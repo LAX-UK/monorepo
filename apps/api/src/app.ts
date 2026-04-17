@@ -8,6 +8,7 @@ import type { Env } from "./env.js";
 import { createAppLogger } from "./lib/logger.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
+import { createAdminRoutes } from "./routes/admin.js";
 import { createAuctionRoutes } from "./routes/auctions.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
@@ -17,6 +18,7 @@ import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
   const app = new Hono();
+  app.onError((err, c) => container.httpErrorHandler.handle(err, c));
   const appLogger = createAppLogger(env);
 
   /** Process is listening; no DB/Redis (used by container health checks during boot). */
@@ -38,6 +40,9 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/auctions/*", createRateLimitMiddleware(container.redis));
   app.use("/bids/*", createRateLimitMiddleware(container.redis));
   app.use("/users/*", createRateLimitMiddleware(container.redis));
+  app.use("/payments/*", createRateLimitMiddleware(container.redis));
+  app.use("/categories/*", createRateLimitMiddleware(container.redis));
+  app.use("/admin/*", createRateLimitMiddleware(container.redis));
 
   app.get("/health", async (c) => {
     try {
@@ -66,7 +71,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))
     .route("/categories", createCategoryRoutes(container))
-    .route("/payments", createPaymentRoutes(container, authenticator));
+    .route("/payments", createPaymentRoutes(container, authenticator))
+    .route("/admin", createAdminRoutes(container, authenticator));
 
   return routed;
 }

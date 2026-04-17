@@ -7,7 +7,9 @@ import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createBidRoutes(container: Container, authenticator: IAuthenticator) {
-  const requireAuth = createRequireAuth(authenticator);
+  const requireAuth = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+  });
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
   r.post("/", requireAuth, zValidator("json", placeBidSchema), async (c) => {

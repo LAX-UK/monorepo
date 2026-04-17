@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { DisplayHeading } from "@/components/ui/typography";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 type DialogProps = {
   open: boolean;
@@ -14,6 +14,7 @@ type DialogProps = {
 
 export function Dialog({ open, onClose, title, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const el = ref.current;
@@ -25,11 +26,12 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       className="max-w-lg rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-0 text-on-surface shadow-xl backdrop:bg-black/40"
       onClose={onClose}
     >
       <div className="border-b border-outline-variant/10 px-6 py-4">
-        <DisplayHeading as="h2" className="text-2xl">
+        <DisplayHeading as="h2" className="text-2xl" id={titleId}>
           {title}
         </DisplayHeading>
       </div>

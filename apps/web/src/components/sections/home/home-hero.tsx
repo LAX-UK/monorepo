@@ -62,9 +62,17 @@ export function HomeHero({ featured }: Props) {
                 </span>
               </div>
             </div>
-            <Link href={href} className={primaryLinkClass}>
-              Register & Bid
-            </Link>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+              <Link href="/register" className={primaryLinkClass}>
+                Register
+              </Link>
+              <Link
+                href={href}
+                className="inline-flex items-center justify-center rounded-md border border-white/40 px-10 py-5 font-label text-xs font-bold uppercase tracking-[0.3em] text-white transition-colors hover:bg-white/10"
+              >
+                View featured lot
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -1,0 +1,47 @@
+import { getSiteUrl } from "@/lib/site-url";
+import type { Auction } from "@auction/types";
+
+const siteName = "The Digital Curator";
+
+export function auctionProductJsonLd(auction: Auction): Record<string, unknown> {
+  const base = getSiteUrl();
+  const url = `${base}/artwork/${auction.id}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: auction.title,
+    description: auction.description ?? undefined,
+    image: auction.images.length ? auction.images : undefined,
+    offers: {
+      "@type": "Offer",
+      url,
+      priceCurrency: "USD",
+      price: auction.currentPrice,
+      availability: "https://schema.org/InStock",
+    },
+  };
+}
+
+export function organizationJsonLd(): Record<string, unknown> {
+  const base = getSiteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: siteName,
+    url: base,
+  };
+}
+
+export function breadcrumbJsonLd(items: { name: string; path: string }[]): Record<string, unknown> {
+  const base = getSiteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: `${base}${item.path.startsWith("/") ? item.path : `/${item.path}`}`,
+    })),
+  };
+}

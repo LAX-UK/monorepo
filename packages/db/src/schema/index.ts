@@ -7,6 +7,7 @@ export * from "./notification-preferences.js";
 export * from "./push-subscriptions.js";
 export * from "./payments.js";
 export * from "./watchlist.js";
+export * from "./user-address.js";
 export {
   auctionRelations,
   bidRelations,

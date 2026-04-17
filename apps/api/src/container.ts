@@ -4,29 +4,53 @@ import { createDb } from "@auction/db";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
+import { BetterAuthRegistrationPersister } from "./infrastructure/better-auth-registration.persister.js";
+import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
+import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
+import { JsonErrorResponseBuilder } from "./infrastructure/json-error-response.builder.js";
+import { NoOpErrorReporter } from "./infrastructure/no-op-error.reporter.js";
 import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
+import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js";
 import { PushNotificationChannel } from "./infrastructure/push-notification.channel.js";
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
+import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { AuctionJobScheduler } from "./jobs/auction-job-scheduler.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
+import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
+import {
+  DrizzleAdminUserActivityReader,
+  DrizzleAdminUserReader,
+  DrizzleAdminUserRoleManager,
+  DrizzleAdminUserSuspender,
+} from "./repositories/drizzle-admin-user.reader.js";
+import { DrizzleAuctionMetricsReader } from "./repositories/drizzle-auction-metrics.reader.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
+import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.repository.js";
+import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
+import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
+import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
+import { AddressService } from "./services/address.service.js";
+import { AdminUserService } from "./services/admin-user.service.js";
+import { AnalyticsService } from "./services/analytics.service.js";
 import { AuctionLifecycleService } from "./services/auction-lifecycle.service.js";
 import { AuctionService } from "./services/auction.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
+import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
+import { ErrorHandlerService } from "./services/error-handler.service.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IPushSender } from "./services/interfaces/push.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
@@ -35,7 +59,9 @@ import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
 import { PaymentService } from "./services/payment.service.js";
+import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
+import { RegistrationService } from "./services/registration.service.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { AuctionStrategyFactory } from "./strategies/strategy.factory.js";
@@ -63,6 +89,13 @@ export type Container = {
   pushSubscriptionRepository: DrizzlePushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
   notificationFactory: NotificationFactory;
+  userSuspensionChecker: DrizzleUserSuspensionChecker;
+  registrationService: RegistrationService;
+  profileService: ProfileService;
+  addressService: AddressService;
+  analyticsService: AnalyticsService;
+  adminUserService: AdminUserService;
+  httpErrorHandler: ErrorHandlerService;
 };
 
 export function createContainer(env: Env): Container {
@@ -88,6 +121,9 @@ export function createContainer(env: Env): Container {
   const paymentRepo = new DrizzlePaymentRepository(db);
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
   const pushSubscriptionRepository = new DrizzlePushSubscriptionRepository(db);
+  const profileRepo = new DrizzleProfileRepository(db);
+  const addressRepo = new DrizzleAddressRepository(db);
+  const userSuspensionChecker = new DrizzleUserSuspensionChecker(db);
 
   const cache = new RedisCacheProvider(redis);
   const notifier = new RedisNotificationSender(redis);
@@ -159,6 +195,43 @@ export function createContainer(env: Env): Container {
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, auctionRepo);
+  const profileService = new ProfileService(profileRepo, profileRepo);
+  const addressService = new AddressService(addressRepo);
+
+  const registrationService = new RegistrationService(
+    new ZodRegistrationValidator(),
+    new BetterAuthRegistrationPersister(auth),
+    new NoOpWelcomeNotifier(),
+  );
+
+  const auctionMetrics = new DrizzleAuctionMetricsReader(db);
+  const paymentMetrics = new DrizzlePaymentMetricsReader(db);
+  const userMetrics = new DrizzleUserMetricsReader(db);
+  const metricsAggregator = new DefaultMetricsAggregator();
+  const analyticsService = new AnalyticsService(
+    auctionMetrics,
+    paymentMetrics,
+    userMetrics,
+    metricsAggregator,
+  );
+
+  const adminUserReader = new DrizzleAdminUserReader(db);
+  const adminRoleManager = new DrizzleAdminUserRoleManager(db);
+  const adminSuspender = new DrizzleAdminUserSuspender(db);
+  const adminActivityReader = new DrizzleAdminUserActivityReader(db);
+  const adminUserService = new AdminUserService(
+    adminUserReader,
+    adminRoleManager,
+    adminSuspender,
+    adminActivityReader,
+  );
+
+  const httpErrorHandler = new ErrorHandlerService(
+    new DefaultErrorClassifier(),
+    new ConsoleErrorLogger(env),
+    new NoOpErrorReporter(),
+    new JsonErrorResponseBuilder(),
+  );
 
   return {
     db,
@@ -182,5 +255,12 @@ export function createContainer(env: Env): Container {
     pushSubscriptionRepository,
     notificationDispatcher,
     notificationFactory,
+    userSuspensionChecker,
+    registrationService,
+    profileService,
+    addressService,
+    analyticsService,
+    adminUserService,
+    httpErrorHandler,
   };
 }

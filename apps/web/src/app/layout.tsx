@@ -1,5 +1,6 @@
 import { ThemeInit } from "@/components/layout/theme-init";
 import { Toaster } from "@/components/ui/toaster";
+import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { Manrope, Noto_Serif } from "next/font/google";
 import type { ReactNode } from "react";
@@ -18,8 +19,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "The Digital Curator",
-  description: "Fine art auctions — curated lots and live bidding.",
+  ...rootMetadataBase(),
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
