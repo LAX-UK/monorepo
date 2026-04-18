@@ -35,9 +35,10 @@ const CAT = {
   finePrints: "c1000010-0000-4000-8000-000000000010",
 } as const;
 
+/** Sale ids — must be valid UUID hex only (PostgreSQL uuid type). */
 const S = {
-  evening: "s1000001-0000-4000-8000-000000000001",
-  online: "s1000002-0000-4000-8000-000000000002",
+  evening: "e1000001-0000-4000-8000-000000000001",
+  online: "e1000002-0000-4000-8000-000000000002",
 } as const;
 
 /** Fixed UUIDs for seeded item submissions (admin queue / demos). */
