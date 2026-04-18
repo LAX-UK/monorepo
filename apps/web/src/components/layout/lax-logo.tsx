@@ -1,16 +1,18 @@
-import { SITE_SHORT_NAME } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
 import type { ReactNode } from "react";
 
 type LaxLogoProps = {
   /** "header" = compact nav bar; "footer" = larger mark */
   variant?: "header" | "footer";
   className?: string;
-  /** Optional image (e.g. `/brand/logo.png`) — otherwise typeset stack */
+  /**
+   * Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
+   * Pass `""` to force the typeset wordmark (no image).
+   */
   imageSrc?: string;
   imageAlt?: string;
   imageWidth?: number;
   imageHeight?: number;
-  /** Extra content after the wordmark (e.g. Next Image) */
   children?: ReactNode;
 };
 
@@ -25,17 +27,20 @@ export function LaxLogo({
 }: LaxLogoProps) {
   const titleSize = variant === "footer" ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl";
   const subSize = variant === "footer" ? "text-[11px] md:text-xs" : "text-[9px] md:text-[10px]";
+  const src = imageSrc === "" ? null : (imageSrc ?? SITE_LOGO_PATH);
+  const imgMax =
+    variant === "footer" ? "max-h-[60px] max-w-[min(100%,320px)]" : "max-h-11 max-w-[201px]";
 
-  if (imageSrc) {
+  if (src) {
     return (
       <div className={`flex flex-col ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- optional static asset from /public */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static asset from /public */}
         <img
-          src={imageSrc}
+          src={src}
           alt={imageAlt}
           width={imageWidth}
           height={imageHeight}
-          className="h-auto w-auto max-w-[201px]"
+          className={`h-auto w-auto ${imgMax}`}
         />
         {children}
       </div>
