@@ -1,12 +1,13 @@
 import { HomeArchive } from "@/components/sections/home/home-archive";
+import { HomeCurrentSales } from "@/components/sections/home/home-current-sales";
 import { HomeFilters } from "@/components/sections/home/home-filters";
 import { HomeHero } from "@/components/sections/home/home-hero";
 import { HomeMasonry } from "@/components/sections/home/home-masonry";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
-import type { ListAuctionsParams } from "@/lib/data/contracts";
-import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import type { Auction, Category } from "@auction/types";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
+import type { Category, Lot } from "@auction/types";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -31,13 +32,13 @@ export default async function HomePage({ searchParams }: PageProps) {
   const minN = minRaw !== undefined ? Number.parseFloat(minRaw) : Number.NaN;
   const maxN = maxRaw !== undefined ? Number.parseFloat(maxRaw) : Number.NaN;
 
-  let auctions: Auction[] = [];
+  let auctions: Lot[] = [];
   let categories: Category[] = [];
   try {
-    const reader = await getServerAuctionReader();
+    const reader = await getServerLotReader();
     const catReader = await getServerCategoryReader();
     categories = await catReader.list();
-    const filtered: ListAuctionsParams = {
+    const filtered: ListLotsParams = {
       limit: 24,
       status: "active",
       sort: "endingAsc",
@@ -46,7 +47,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     };
     auctions = await reader.list(filtered);
     if (auctions.length === 0) {
-      const fallback: ListAuctionsParams = {
+      const fallback: ListLotsParams = {
         limit: 24,
         sort: "endingAsc",
         ...(categoryId !== undefined ? { categoryId } : {}),
@@ -75,6 +76,9 @@ export default async function HomePage({ searchParams }: PageProps) {
   return (
     <main id="main-content" className="bg-surface pt-24">
       <HomeHero featured={featured} />
+      <Suspense fallback={null}>
+        <HomeCurrentSales />
+      </Suspense>
       <Suspense fallback={filtersBarFallback()}>
         <HomeFilters categories={categories} />
       </Suspense>

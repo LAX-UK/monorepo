@@ -1,4 +1,4 @@
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
 
 export type StaticPageKey =
@@ -10,12 +10,12 @@ export type StaticPageKey =
   | "login"
   | "register";
 
-export interface IAuctionMetadataBuilder {
-  build(auction: Auction, opts: { baseUrl: string }): Metadata;
+export interface ILotMetadataBuilder {
+  build(lot: Lot, opts: { baseUrl: string }): Metadata;
 }
 
-export interface IStructuredDataAuction {
-  buildJsonLd(auction: Auction, opts: { baseUrl: string }): Record<string, unknown>;
+export interface IStructuredDataLot {
+  buildJsonLd(lot: Lot, opts: { baseUrl: string }): Record<string, unknown>;
 }
 
 export interface IStructuredDataOrganization {

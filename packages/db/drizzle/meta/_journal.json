@@ -43,6 +43,27 @@
       "when": 1776300000000,
       "tag": "0005_user_profile_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776400000000,
+      "tag": "0006_sale_and_lot",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776500000000,
+      "tag": "0007_role_simplify",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776600000000,
+      "tag": "0008_item_submission",
+      "breakpoints": true
     }
   ]
 }

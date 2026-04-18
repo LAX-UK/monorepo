@@ -1,7 +1,7 @@
-import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -9,7 +9,7 @@ type PageProps = {
   searchParams: Promise<{ q?: string }>;
 };
 
-function matchesQuery(a: Auction, q: string): boolean {
+function matchesQuery(a: Lot, q: string): boolean {
   const n = q.trim().toLowerCase();
   if (!n) return true;
   const t = `${a.title} ${a.description ?? ""}`.toLowerCase();
@@ -18,8 +18,8 @@ function matchesQuery(a: Auction, q: string): boolean {
 
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q = "" } = await searchParams;
-  const reader = await getServerAuctionReader();
-  let auctions: Auction[] = [];
+  const reader = await getServerLotReader();
+  let auctions: Lot[] = [];
   try {
     auctions = await reader.list({ limit: 60 });
   } catch {

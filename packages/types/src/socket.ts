@@ -1,14 +1,14 @@
-export type JoinAuctionPayload = {
-  auctionId: string;
+export type JoinLotPayload = {
+  lotId: string;
 };
 
 export type PlaceBidPayload = {
-  auctionId: string;
+  lotId: string;
   amount: number;
 };
 
 export type BidUpdateEvent = {
-  auctionId: string;
+  lotId: string;
   bidId: string;
   bidderId: string;
   amount: string;
@@ -18,17 +18,17 @@ export type BidUpdateEvent = {
   outbidUserId?: string | undefined;
 };
 
-export type AuctionEndedEvent = {
-  type: "auction_ended";
-  auctionId: string;
+export type LotEndedEvent = {
+  type: "lot_ended";
+  lotId: string;
   winnerId: string;
   bidId: string;
   currentPrice: string;
   status: string;
 };
 
-export type AuctionStateEvent = {
-  auctionId: string;
+export type LotStateEvent = {
+  lotId: string;
   currentPrice: string;
   endTime: string;
   status: string;

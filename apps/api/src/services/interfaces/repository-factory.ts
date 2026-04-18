@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { IAuctionRepository, IBidRepository } from "./repositories.js";
+import type { IBidRepository, ILotRepository } from "./repositories.js";
 
-export type AuctionBidRepos = {
-  auction: IAuctionRepository;
+export type LotBidRepos = {
+  lot: ILotRepository;
   bid: IBidRepository;
 };
 
@@ -11,8 +11,8 @@ export type AuctionBidRepos = {
  */
 export interface IRepositoryFactory {
   /** Repositories bound to the root pool (read paths, non-transactional). */
-  readonly root: AuctionBidRepos;
+  readonly root: LotBidRepos;
   /** Repositories for a specific connection (including transaction scope). */
-  forConnection(db: Database): AuctionBidRepos;
-  runInTransaction<T>(fn: (repos: AuctionBidRepos) => Promise<T>): Promise<T>;
+  forConnection(db: Database): LotBidRepos;
+  runInTransaction<T>(fn: (repos: LotBidRepos) => Promise<T>): Promise<T>;
 }

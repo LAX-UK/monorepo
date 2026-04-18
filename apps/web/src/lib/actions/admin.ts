@@ -1,55 +1,41 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_helpers";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { createLotSchema, updateLotSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-function errMessage(body: unknown, fallback: string): string {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  return fallback;
-}
-
-export async function adminPublishAuctionAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("auctionId") ?? "").trim();
-  if (!id) redirect(`/admin/auctions?error=${encodeURIComponent("Missing auction")}`);
-  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}/publish`, {
+export async function adminPublishLotAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("lotId") ?? "").trim();
+  if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
+  const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}/publish`, {
     method: "POST",
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(
-      `/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Publish failed"))}`,
-    );
+    redirect(`/admin/lots/${id}?error=${encodeURIComponent(readApiError(body, "Publish failed"))}`);
   }
-  revalidatePath("/admin/auctions");
-  revalidatePath(`/admin/auctions/${id}`);
-  redirect(`/admin/auctions/${id}`);
+  revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${id}`);
+  redirect(`/admin/lots/${id}`);
 }
 
-export async function adminCancelAuctionAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("auctionId") ?? "").trim();
-  if (!id) redirect(`/admin/auctions?error=${encodeURIComponent("Missing auction")}`);
-  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}/cancel`, {
+export async function adminCancelLotAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("lotId") ?? "").trim();
+  if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
+  const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}/cancel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason: String(formData.get("reason") ?? "").trim() || undefined }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(
-      `/admin/auctions/${id}?error=${encodeURIComponent(errMessage(body, "Cancel failed"))}`,
-    );
+    redirect(`/admin/lots/${id}?error=${encodeURIComponent(readApiError(body, "Cancel failed"))}`);
   }
-  revalidatePath("/admin/auctions");
-  revalidatePath(`/admin/auctions/${id}`);
-  redirect(`/admin/auctions/${id}`);
+  revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${id}`);
+  redirect(`/admin/lots/${id}`);
 }
 
 export async function adminRefundPaymentAction(formData: FormData): Promise<void> {
@@ -60,7 +46,7 @@ export async function adminRefundPaymentAction(formData: FormData): Promise<void
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/payments?error=${encodeURIComponent(errMessage(body, "Refund failed"))}`);
+    redirect(`/admin/payments?error=${encodeURIComponent(readApiError(body, "Refund failed"))}`);
   }
   revalidatePath("/admin/payments");
   redirect("/admin/payments");
@@ -74,7 +60,7 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/payments?error=${encodeURIComponent(errMessage(body, "Capture failed"))}`);
+    redirect(`/admin/payments?error=${encodeURIComponent(readApiError(body, "Capture failed"))}`);
   }
   revalidatePath("/admin/payments");
   redirect("/admin/payments");
@@ -91,7 +77,7 @@ export async function adminSuspendUserAction(formData: FormData): Promise<void> 
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Suspend failed"))}`);
+    redirect(`/admin/users?error=${encodeURIComponent(readApiError(body, "Suspend failed"))}`);
   }
   revalidatePath("/admin/users");
   redirect("/admin/users");
@@ -105,7 +91,7 @@ export async function adminUnsuspendUserAction(formData: FormData): Promise<void
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Unsuspend failed"))}`);
+    redirect(`/admin/users?error=${encodeURIComponent(readApiError(body, "Unsuspend failed"))}`);
   }
   revalidatePath("/admin/users");
   redirect("/admin/users");
@@ -122,145 +108,98 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(errMessage(body, "Role update failed"))}`);
+    redirect(`/admin/users?error=${encodeURIComponent(readApiError(body, "Role update failed"))}`);
   }
   revalidatePath("/admin/users");
   redirect("/admin/users");
 }
 
-export async function adminCreateAuctionAction(formData: FormData): Promise<void> {
-  const title = String(formData.get("title") ?? "").trim();
-  const auctionType = String(formData.get("auctionType") ?? "english");
-  const startingPrice = String(formData.get("startingPrice") ?? "").trim();
+export async function adminCreateLotAction(formData: FormData): Promise<void> {
   const startRaw = String(formData.get("startTime") ?? "");
   const endRaw = String(formData.get("endTime") ?? "");
   const startTime = new Date(startRaw);
   const endTime = new Date(endRaw);
-  if (
-    !title ||
-    !startingPrice ||
-    !startRaw ||
-    !endRaw ||
-    Number.isNaN(startTime.getTime()) ||
-    Number.isNaN(endTime.getTime())
-  ) {
-    redirect(`/admin/auctions/new?error=${encodeURIComponent("Please fill required fields")}`);
-  }
-  const description = String(formData.get("description") ?? "").trim();
-  const medium = String(formData.get("medium") ?? "").trim();
-  const dimensions = String(formData.get("dimensions") ?? "").trim();
-  const reservePrice = String(formData.get("reservePrice") ?? "").trim();
-  const buyNowPrice = String(formData.get("buyNowPrice") ?? "").trim();
-  const buyerPremiumRate = String(formData.get("buyerPremiumRate") ?? "").trim() || "0.25";
-  const minBidIncrement = String(formData.get("minBidIncrement") ?? "").trim() || "1.00";
-  const categoryId = String(formData.get("categoryId") ?? "").trim();
-  const dutchDecrementAmount = String(formData.get("dutchDecrementAmount") ?? "").trim();
   const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
-
-  const payload: Record<string, unknown> = {
-    title,
-    auctionType,
-    startingPrice,
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
-    buyerPremiumRate,
-    minBidIncrement,
-  };
-  if (description) payload.description = description;
-  if (medium) payload.medium = medium;
-  if (dimensions) payload.dimensions = dimensions;
-  if (reservePrice) payload.reservePrice = reservePrice;
-  if (buyNowPrice) payload.buyNowPrice = buyNowPrice;
-  if (categoryId) payload.categoryId = categoryId;
-  if (dutchDecrementAmount) payload.dutchDecrementAmount = dutchDecrementAmount;
-  if (dutchInterval) {
-    const n = Number.parseInt(dutchInterval, 10);
-    if (Number.isFinite(n)) payload.dutchDecrementIntervalMs = n;
+  const parsed = createLotSchema.safeParse({
+    title: String(formData.get("title") ?? "").trim(),
+    description: String(formData.get("description") ?? "").trim() || undefined,
+    medium: String(formData.get("medium") ?? "").trim() || undefined,
+    dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
+    categoryId: String(formData.get("categoryId") ?? "").trim(),
+    auctionType: String(formData.get("auctionType") ?? "english"),
+    startingPrice: String(formData.get("startingPrice") ?? "").trim(),
+    reservePrice: String(formData.get("reservePrice") ?? "").trim() || undefined,
+    buyNowPrice: String(formData.get("buyNowPrice") ?? "").trim() || undefined,
+    buyerPremiumRate: String(formData.get("buyerPremiumRate") ?? "").trim() || undefined,
+    minBidIncrement: String(formData.get("minBidIncrement") ?? "").trim() || undefined,
+    dutchDecrementAmount: String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
+    dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
+    startTime,
+    endTime,
+  });
+  if (!parsed.success) {
+    redirect(
+      `/admin/lots/new?error=${encodeURIComponent(parsed.error.issues.map((i: { message: string }) => i.message).join("; "))}`,
+    );
   }
 
-  const res = await authedServerFetch("/auctions", {
+  const res = await authedServerFetch("/lots", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(parsed.data),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    redirect(`/admin/auctions/new?error=${encodeURIComponent(errMessage(body, "Create failed"))}`);
+    redirect(`/admin/lots/new?error=${encodeURIComponent(readApiError(body, "Create failed"))}`);
   }
   const created = (body as { data?: { id?: string } }).data;
   const newId = created?.id;
-  if (!newId) redirect(`/admin/auctions/new?error=${encodeURIComponent("Create failed")}`);
-  revalidatePath("/admin/auctions");
-  redirect(`/admin/auctions/${newId}`);
+  if (!newId) redirect(`/admin/lots/new?error=${encodeURIComponent("Create failed")}`);
+  revalidatePath("/admin/lots");
+  redirect(`/admin/lots/${newId}`);
 }
 
-export async function adminUpdateAuctionAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("auctionId") ?? "").trim();
-  if (!id) throw new Error("Missing auction");
-  const title = String(formData.get("title") ?? "").trim();
-  const auctionType = String(formData.get("auctionType") ?? "").trim();
-  const startingPrice = String(formData.get("startingPrice") ?? "").trim();
+export async function adminUpdateLotAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("lotId") ?? "").trim();
+  if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
   const startRaw = String(formData.get("startTime") ?? "");
   const endRaw = String(formData.get("endTime") ?? "");
-  const startTime = new Date(startRaw);
-  const endTime = new Date(endRaw);
-  if (
-    !title ||
-    !auctionType ||
-    !startingPrice ||
-    !startRaw ||
-    !endRaw ||
-    Number.isNaN(startTime.getTime()) ||
-    Number.isNaN(endTime.getTime())
-  ) {
+  const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
+  const parsed = updateLotSchema.safeParse({
+    title: String(formData.get("title") ?? "").trim(),
+    description: String(formData.get("description") ?? "").trim() || undefined,
+    medium: String(formData.get("medium") ?? "").trim() || undefined,
+    dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
+    categoryId: String(formData.get("categoryId") ?? "").trim() || undefined,
+    auctionType: String(formData.get("auctionType") ?? "").trim() || undefined,
+    startingPrice: String(formData.get("startingPrice") ?? "").trim() || undefined,
+    reservePrice: String(formData.get("reservePrice") ?? "").trim() || undefined,
+    buyNowPrice: String(formData.get("buyNowPrice") ?? "").trim() || undefined,
+    buyerPremiumRate: String(formData.get("buyerPremiumRate") ?? "").trim() || undefined,
+    minBidIncrement: String(formData.get("minBidIncrement") ?? "").trim() || undefined,
+    dutchDecrementAmount: String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
+    dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
+    startTime: startRaw ? new Date(startRaw) : undefined,
+    endTime: endRaw ? new Date(endRaw) : undefined,
+  });
+  if (!parsed.success) {
     redirect(
-      `/admin/auctions/${id}/edit?error=${encodeURIComponent("Please fill required fields")}`,
+      `/admin/lots/${id}/edit?error=${encodeURIComponent(parsed.error.issues.map((i: { message: string }) => i.message).join("; "))}`,
     );
   }
-  const description = String(formData.get("description") ?? "").trim();
-  const medium = String(formData.get("medium") ?? "").trim();
-  const dimensions = String(formData.get("dimensions") ?? "").trim();
-  const reservePrice = String(formData.get("reservePrice") ?? "").trim();
-  const buyNowPrice = String(formData.get("buyNowPrice") ?? "").trim();
-  const buyerPremiumRate = String(formData.get("buyerPremiumRate") ?? "").trim() || "0.25";
-  const minBidIncrement = String(formData.get("minBidIncrement") ?? "").trim() || "1.00";
-  const categoryId = String(formData.get("categoryId") ?? "").trim();
-  const dutchDecrementAmount = String(formData.get("dutchDecrementAmount") ?? "").trim();
-  const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
 
-  const payload: Record<string, unknown> = {
-    title,
-    auctionType,
-    startingPrice,
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
-    buyerPremiumRate,
-    minBidIncrement,
-    description: description || undefined,
-    medium: medium || undefined,
-    dimensions: dimensions || undefined,
-    reservePrice: reservePrice || undefined,
-    buyNowPrice: buyNowPrice || undefined,
-    categoryId: categoryId || undefined,
-    dutchDecrementAmount: dutchDecrementAmount || undefined,
-  };
-  if (dutchInterval) {
-    const n = Number.parseInt(dutchInterval, 10);
-    if (Number.isFinite(n)) payload.dutchDecrementIntervalMs = n;
-  }
-
-  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}`, {
+  const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(parsed.data),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     redirect(
-      `/admin/auctions/${id}/edit?error=${encodeURIComponent(errMessage(body, "Update failed"))}`,
+      `/admin/lots/${id}/edit?error=${encodeURIComponent(readApiError(body, "Update failed"))}`,
     );
   }
-  revalidatePath("/admin/auctions");
-  revalidatePath(`/admin/auctions/${id}`);
-  redirect(`/admin/auctions/${id}`);
+  revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${id}`);
+  redirect(`/admin/lots/${id}`);
 }

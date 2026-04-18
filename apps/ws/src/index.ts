@@ -1,9 +1,9 @@
 import { createServer } from "node:http";
 import { Server } from "socket.io";
-import { bridgeRedisToSockets } from "./services/redis-bridge.js";
 import { createWsContainer } from "./container.js";
 import { loadWsEnv } from "./env.js";
 import { registerSocketHandlers } from "./handlers/register-handlers.js";
+import { bridgeRedisToSockets } from "./services/redis-bridge.js";
 
 const env = loadWsEnv();
 const container = createWsContainer(env);

@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { AuctionError, AuthzError, BidError } from "../lib/errors.js";
+import { AuthzError, BidError, LotError } from "../lib/errors.js";
 import type {
   ClassifiedError,
   ErrorSeverity,
@@ -23,11 +23,11 @@ export class DefaultErrorClassifier implements IErrorClassifier {
         cause: error,
       };
     }
-    if (error instanceof AuctionError) {
+    if (error instanceof LotError) {
       return {
         message: error.message,
         status: error.status,
-        code: "AuctionError",
+        code: "LotError",
         severity: severityForStatus(error.status),
         cause: error,
       };

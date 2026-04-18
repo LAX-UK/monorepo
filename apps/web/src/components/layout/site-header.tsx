@@ -9,9 +9,19 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 const nav = [
   { href: "/", label: "Upcoming Auctions" },
+  { href: "/sales", label: "Sales" },
+  { href: "/dashboard/submissions/new", label: "Sell with us" },
   { href: "/archive", label: "Past Auctions" },
   { href: "/artist/featured", label: "Artists" },
 ];
+
+function navItemActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  if (href === "/artist/featured") return pathname.startsWith("/artist");
+  if (href === "/sales") return pathname.startsWith("/sales");
+  if (href === "/dashboard/submissions/new") return pathname.startsWith("/dashboard/submissions");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,12 +54,7 @@ export function SiteHeader() {
         </Link>
         <nav className="hidden items-center gap-12 lg:flex" aria-label="Primary">
           {nav.map((item) => {
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : item.href === "/artist/featured"
-                  ? pathname.startsWith("/artist")
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = navItemActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
@@ -101,12 +106,7 @@ export function SiteHeader() {
         >
           <ul className="flex flex-col gap-4">
             {nav.map((item) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : item.href === "/artist/featured"
-                    ? pathname.startsWith("/artist")
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = navItemActive(pathname, item.href);
               return (
                 <li key={item.href}>
                   <Link

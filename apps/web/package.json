@@ -13,6 +13,7 @@
   "dependencies": {
     "@auction/api": "workspace:*",
     "@auction/types": "workspace:*",
+    "@auction/validators": "workspace:*",
     "better-auth": "^1.6.2",
     "hono": "^4.6.14",
     "next": "^15.1.3",

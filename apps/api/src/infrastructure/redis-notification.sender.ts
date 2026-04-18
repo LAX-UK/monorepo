@@ -1,47 +1,47 @@
-import type { Auction, Bid } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import type { Redis } from "ioredis";
 import type {
   BidPlacedRealtimeMeta,
-  IAuctionNotificationSender,
   IBidNotificationSender,
+  ILotNotificationSender,
 } from "../services/interfaces/notifications.js";
 
-export class RedisNotificationSender implements IBidNotificationSender, IAuctionNotificationSender {
+export class RedisNotificationSender implements IBidNotificationSender, ILotNotificationSender {
   constructor(private readonly redis: Redis) {}
 
-  async notifyBidPlaced(auction: Auction, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
-    const channel = `auction:${auction.id}:events`;
+  async notifyBidPlaced(lot: Lot, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
+    const channel = `lot:${lot.id}:events`;
     await this.redis.publish(
       channel,
       JSON.stringify({
         type: "bid_placed",
-        auctionId: auction.id,
+        lotId: lot.id,
         bid,
-        currentPrice: auction.currentPrice,
+        currentPrice: lot.currentPrice,
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
       }),
     );
   }
 
-  async notifyAuctionExtended(auction: Auction, newEndTime: Date): Promise<void> {
-    const channel = `auction:${auction.id}:events`;
+  async notifyLotExtended(lot: Lot, newEndTime: Date): Promise<void> {
+    const channel = `lot:${lot.id}:events`;
     await this.redis.publish(
       channel,
       JSON.stringify({
-        type: "auction_extended",
-        auctionId: auction.id,
+        type: "lot_extended",
+        lotId: lot.id,
         newEndTime: newEndTime.toISOString(),
       }),
     );
   }
 
-  async notifyAuctionEnded(auction: Auction, bid: Bid): Promise<void> {
-    const channel = `auction:${auction.id}:events`;
+  async notifyLotEnded(lot: Lot, bid: Bid): Promise<void> {
+    const channel = `lot:${lot.id}:events`;
     await this.redis.publish(
       channel,
       JSON.stringify({
-        type: "auction_ended",
-        auctionId: auction.id,
+        type: "lot_ended",
+        lotId: lot.id,
         winnerId: bid.bidderId,
         bidId: bid.id,
         currentPrice: bid.amount,

@@ -2,13 +2,14 @@ import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
-import { AuctionPortsProvider } from "@/lib/context/auction-ports";
-import { getServerAuctionBids, getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
+import { getServerLotBids, getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
-import { metadataForAuction } from "@/lib/seo/metadata-factory";
-import { auctionProductJsonLd } from "@/lib/seo/structured-data";
+import { metadataForLot } from "@/lib/seo/metadata-factory";
+import { lotProductJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -18,15 +19,15 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const reader = await getServerAuctionReader();
+  const reader = await getServerLotReader();
   const auction = await reader.getById(id);
   if (!auction) return { title: "Lot" };
-  return metadataForAuction(auction);
+  return metadataForLot(auction);
 }
 
 export default async function ArtworkPage({ params }: PageProps) {
   const { id } = await params;
-  const reader = await getServerAuctionReader();
+  const reader = await getServerLotReader();
   const [auction, session, publicReader] = await Promise.all([
     reader.getById(id),
     getServerSessionUser(),
@@ -37,7 +38,7 @@ export default async function ArtworkPage({ params }: PageProps) {
   }
 
   const [initialBids, seller, relatedRaw, watchlist] = await Promise.all([
-    getServerAuctionBids(id, 30).catch(() => []),
+    getServerLotBids(id, 30).catch(() => []),
     publicReader.getById(auction.sellerId).catch(() => null),
     auction.categoryId
       ? reader
@@ -60,11 +61,16 @@ export default async function ArtworkPage({ params }: PageProps) {
   }));
   const initialLeadingBidderId = initialBids.find((b) => b.isWinning)?.bidderId ?? null;
 
-  const watching = watchlist.some((w) => w.auctionId === auction.id);
+  const watching = watchlist.some((w) => w.lotId === auction.id);
+  let parentSale: { id: string; title: string } | null = null;
+  if (auction.saleId) {
+    const bundle = await getServerSaleWithLots(auction.saleId).catch(() => null);
+    if (bundle) parentSale = { id: bundle.sale.id, title: bundle.sale.title };
+  }
   const sellerName = seller?.name ?? "Private seller";
   const sellerHref = `/artist/${auction.sellerId}`;
 
-  const jsonLd = auctionProductJsonLd(auction);
+  const jsonLd = lotProductJsonLd(auction);
   const jsonLdText = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 
   return (
@@ -76,15 +82,16 @@ export default async function ArtworkPage({ params }: PageProps) {
       >
         {jsonLdText}
       </script>
-      <AuctionPortsProvider>
+      <LotPortsProvider>
         <ArtworkSplitView
           auction={auction}
+          parentSale={parentSale}
           sellerHref={sellerHref}
           sellerName={sellerName}
           relatedAuctions={relatedRaw}
           watchSlot={
             <ArtworkWatchToggle
-              auctionId={auction.id}
+              lotId={auction.id}
               initialWatching={watching}
               isAuthenticated={Boolean(session)}
             />
@@ -98,7 +105,7 @@ export default async function ArtworkPage({ params }: PageProps) {
             />
           }
         />
-      </AuctionPortsProvider>
+      </LotPortsProvider>
     </>
   );
 }

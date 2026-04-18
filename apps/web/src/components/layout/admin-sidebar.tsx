@@ -10,16 +10,24 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/admin", label: "Overview", icon: "dashboard" },
   { href: "/admin/analytics", label: "Analytics", icon: "bar_chart" },
-  { href: "/admin/auctions", label: "Auctions", icon: "gavel" },
+  { href: "/admin/sales", label: "Sales", icon: "event" },
+  {
+    href: "/admin/submissions",
+    label: "Submissions",
+    icon: "assignment",
+    badgeKey: "submissions" as const,
+  },
+  { href: "/admin/lots", label: "Lots", icon: "gavel" },
   { href: "/admin/payments", label: "Payments", icon: "account_balance_wallet" },
   { href: "/admin/users", label: "Users", icon: "group" },
 ] as const;
 
 type Props = {
   user: SessionUser;
+  pendingSubmissionCount?: number;
 };
 
-export function AdminSidebar({ user }: Props) {
+export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
   const { onNavigate, mobileOpen } = useShellContext();
   const pathname = usePathname();
   const onNav = onNavigate;
@@ -49,6 +57,10 @@ export function AdminSidebar({ user }: Props) {
               l.href === "/admin"
                 ? pathname === "/admin"
                 : pathname === l.href || pathname.startsWith(`${l.href}/`);
+            const badge =
+              "badgeKey" in l && l.badgeKey === "submissions" && pendingSubmissionCount > 0
+                ? pendingSubmissionCount
+                : null;
             return (
               <Link
                 key={l.href}
@@ -62,7 +74,14 @@ export function AdminSidebar({ user }: Props) {
                 }`}
               >
                 <MaterialIcon name={l.icon} className="mr-3 text-lg" />
-                {l.label}
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  <span>{l.label}</span>
+                  {badge != null ? (
+                    <span className="rounded-full bg-primary px-2 py-0.5 font-label text-[10px] text-on-primary">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  ) : null}
+                </span>
               </Link>
             );
           })}

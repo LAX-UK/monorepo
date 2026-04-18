@@ -157,9 +157,9 @@ export function NotificationBell() {
                     {n.title}
                   </p>
                   <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
-                  {n.auctionId ? (
+                  {n.lotId ? (
                     <Link
-                      href={`/artwork/${n.auctionId}`}
+                      href={`/artwork/${n.lotId}`}
                       className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
                       onClick={() => void markRead(n.id)}
                     >

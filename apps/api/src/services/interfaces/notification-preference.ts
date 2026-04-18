@@ -12,5 +12,9 @@ export interface INotificationPreferenceWriter {
   ): Promise<NotificationPreference>;
 }
 
+/** Repository used by the API container (read + write). */
+export type INotificationPreferenceRepository = INotificationPreferenceReader &
+  INotificationPreferenceWriter;
+
 /** Writable preference fields (no userId / updatedAt from client). */
 export type NotificationPreferenceInput = Omit<NotificationPreference, "userId" | "updatedAt">;

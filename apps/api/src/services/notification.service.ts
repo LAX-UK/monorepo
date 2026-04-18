@@ -1,8 +1,8 @@
-import type { Auction, Bid } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import type {
   BidPlacedRealtimeMeta,
-  IAuctionNotificationSender,
   IBidNotificationSender,
+  ILotNotificationSender,
 } from "./interfaces/notifications.js";
 
 /**
@@ -11,18 +11,18 @@ import type {
 export class NotificationService {
   constructor(
     private readonly bidSender: IBidNotificationSender,
-    private readonly auctionSender: IAuctionNotificationSender,
+    private readonly lotSender: ILotNotificationSender,
   ) {}
 
-  notifyBidPlaced(auction: Auction, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
-    return this.bidSender.notifyBidPlaced(auction, bid, meta);
+  notifyBidPlaced(lot: Lot, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
+    return this.bidSender.notifyBidPlaced(lot, bid, meta);
   }
 
-  notifyAuctionExtended(auction: Auction, newEndTime: Date): Promise<void> {
-    return this.auctionSender.notifyAuctionExtended(auction, newEndTime);
+  notifyLotExtended(lot: Lot, newEndTime: Date): Promise<void> {
+    return this.lotSender.notifyLotExtended(lot, newEndTime);
   }
 
-  notifyAuctionEnded(auction: Auction, bid: Bid): Promise<void> {
-    return this.auctionSender.notifyAuctionEnded(auction, bid);
+  notifyLotEnded(lot: Lot, bid: Bid): Promise<void> {
+    return this.lotSender.notifyLotEnded(lot, bid);
   }
 }

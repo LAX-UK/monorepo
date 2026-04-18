@@ -7,7 +7,7 @@ function mapRow(row: typeof watchlist.$inferSelect): WatchlistRow {
   return {
     id: row.id,
     userId: row.userId,
-    auctionId: row.auctionId,
+    lotId: row.lotId,
     createdAt: row.createdAt,
   };
 }
@@ -15,24 +15,24 @@ function mapRow(row: typeof watchlist.$inferSelect): WatchlistRow {
 export class DrizzleWatchlistRepository implements IWatchlistRepository {
   constructor(private readonly db: Database) {}
 
-  async add(userId: string, auctionId: string): Promise<WatchlistRow> {
+  async add(userId: string, lotId: string): Promise<WatchlistRow> {
     await this.db
       .insert(watchlist)
-      .values({ userId, auctionId })
-      .onConflictDoNothing({ target: [watchlist.userId, watchlist.auctionId] });
+      .values({ userId, lotId })
+      .onConflictDoNothing({ target: [watchlist.userId, watchlist.lotId] });
     const [row] = await this.db
       .select()
       .from(watchlist)
-      .where(and(eq(watchlist.userId, userId), eq(watchlist.auctionId, auctionId)))
+      .where(and(eq(watchlist.userId, userId), eq(watchlist.lotId, lotId)))
       .limit(1);
     if (!row) throw new Error("Watchlist insert failed");
     return mapRow(row);
   }
 
-  async remove(userId: string, auctionId: string): Promise<void> {
+  async remove(userId: string, lotId: string): Promise<void> {
     await this.db
       .delete(watchlist)
-      .where(and(eq(watchlist.userId, userId), eq(watchlist.auctionId, auctionId)));
+      .where(and(eq(watchlist.userId, userId), eq(watchlist.lotId, lotId)));
   }
 
   async findByUser(userId: string): Promise<WatchlistRow[]> {
@@ -40,20 +40,20 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
     return rows.map(mapRow);
   }
 
-  async exists(userId: string, auctionId: string): Promise<boolean> {
+  async exists(userId: string, lotId: string): Promise<boolean> {
     const rows = await this.db
       .select({ id: watchlist.id })
       .from(watchlist)
-      .where(and(eq(watchlist.userId, userId), eq(watchlist.auctionId, auctionId)))
+      .where(and(eq(watchlist.userId, userId), eq(watchlist.lotId, lotId)))
       .limit(1);
     return rows.length > 0;
   }
 
-  async listUserIdsForAuction(auctionId: string): Promise<string[]> {
+  async listUserIdsForLot(lotId: string): Promise<string[]> {
     const rows = await this.db
       .select({ userId: watchlist.userId })
       .from(watchlist)
-      .where(eq(watchlist.auctionId, auctionId));
+      .where(eq(watchlist.lotId, lotId));
     return rows.map((r) => r.userId);
   }
 }

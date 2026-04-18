@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 type Props = {
-  auctionId: string;
+  lotId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
 };
@@ -15,7 +15,7 @@ function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-export function ArtworkWatchToggle({ auctionId, initialWatching, isAuthenticated }: Props) {
+export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: Props) {
   const [watching, setWatching] = useState(initialWatching);
   const [busy, setBusy] = useState(false);
 
@@ -24,27 +24,27 @@ export function ArtworkWatchToggle({ auctionId, initialWatching, isAuthenticated
     setBusy(true);
     try {
       if (watching) {
-        const res = await fetch(
-          `${apiBase()}/users/me/watchlist/${encodeURIComponent(auctionId)}`,
-          { method: "DELETE", credentials: "include" },
-        );
+        const res = await fetch(`${apiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
         if (res.ok) setWatching(false);
       } else {
         const client = getBrowserHc();
         const res = await client.users.me.watchlist.$post({
-          json: { auctionId },
+          json: { lotId },
         });
         if (res.ok) setWatching(true);
       }
     } finally {
       setBusy(false);
     }
-  }, [auctionId, busy, isAuthenticated, watching]);
+  }, [lotId, busy, isAuthenticated, watching]);
 
   if (!isAuthenticated) {
     return (
       <Link
-        href={`/login?next=/artwork/${encodeURIComponent(auctionId)}`}
+        href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
         className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
       >
         <MaterialIcon name="visibility" className="text-base" />

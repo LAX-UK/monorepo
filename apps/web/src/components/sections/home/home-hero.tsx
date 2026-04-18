@@ -1,5 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -7,7 +7,7 @@ const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1920&q=80";
 
 type Props = {
-  featured: Auction | null;
+  featured: Lot | null;
 };
 
 export function HomeHero({ featured }: Props) {
@@ -44,7 +44,7 @@ export function HomeHero({ featured }: Props) {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-error" />
             </span>
             <span className="font-label text-xs font-bold uppercase tracking-[0.4em] text-white">
-              Live Auction Phase
+              Live Lot Phase
             </span>
           </div>
           <h1 className="mb-10 font-headline text-5xl font-light leading-none tracking-tight text-white md:text-8xl">

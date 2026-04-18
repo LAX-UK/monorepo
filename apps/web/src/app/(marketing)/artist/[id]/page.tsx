@@ -1,8 +1,8 @@
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
-import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { metadataForSeller } from "@/lib/seo/metadata-factory";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,14 +31,14 @@ export default async function ArtistPage({ params }: PageProps) {
     const publicReader = await getServerPublicUserReader();
     const user = await publicReader.getById(id).catch(() => null);
     if (!user) notFound();
-    const auctionReader = await getServerAuctionReader();
+    const auctionReader = await getServerLotReader();
     const [active, ended] = await Promise.all([
       auctionReader
         .list({ sellerId: id, status: "active", limit: 24, offset: 0, sort: "endingAsc" })
-        .catch(() => [] as Auction[]),
+        .catch(() => [] as Lot[]),
       auctionReader
         .list({ sellerId: id, status: "ended", limit: 24, offset: 0, sort: "endedDesc" })
-        .catch(() => [] as Auction[]),
+        .catch(() => [] as Lot[]),
     ]);
     const sellerLots = [...active, ...ended];
     return (

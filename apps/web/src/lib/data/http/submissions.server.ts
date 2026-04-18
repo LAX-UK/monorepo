@@ -1,0 +1,64 @@
+import "server-only";
+
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { parseItemSubmission } from "@/lib/data/http/parse";
+import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
+
+export async function getMySubmissions(
+  params: {
+    status?: ItemSubmissionStatus;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<ItemSubmission[]> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 25));
+  qs.set("offset", String(params.offset ?? 0));
+  if (params.status) qs.set("status", params.status);
+  const res = await authedServerFetch(`/submissions/mine?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load submissions: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseItemSubmission);
+}
+
+export async function getSubmissionForUser(id: string): Promise<ItemSubmission | null> {
+  const res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load submission: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseItemSubmission(body.data);
+}
+
+export async function getAdminSubmissions(
+  params: {
+    status?: ItemSubmissionStatus;
+    sellerId?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<ItemSubmission[]> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 50));
+  qs.set("offset", String(params.offset ?? 0));
+  if (params.status) qs.set("status", params.status);
+  if (params.sellerId) qs.set("sellerId", params.sellerId);
+  const res = await authedServerFetch(`/submissions?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load admin submissions: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseItemSubmission);
+}
+
+export async function getAdminSubmissionById(id: string): Promise<ItemSubmission | null> {
+  const res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load submission: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseItemSubmission(body.data);
+}
+
+export async function getAdminSubmissionPendingCount(): Promise<number> {
+  const res = await authedServerFetch(`/admin/submissions/pending-count?status=submitted`);
+  if (!res.ok) return 0;
+  const body = (await res.json()) as { data: { count: number } };
+  return body.data.count;
+}

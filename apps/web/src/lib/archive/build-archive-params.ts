@@ -1,11 +1,11 @@
-import type { ListAuctionsParams } from "@/lib/data/contracts";
+import type { ListLotsParams } from "@/lib/data/contracts";
 
 export const ARCHIVE_PAGE_SIZE = 18;
 
 export type ArchiveSortMode = "hammer" | "recent" | "artist";
 
 export type ArchivePageQuery = {
-  listParams: ListAuctionsParams;
+  listParams: ListLotsParams;
   page: number;
   pageSize: number;
   sortMode: ArchiveSortMode;
@@ -48,9 +48,9 @@ export function buildArchivePageQuery(
   const categoryId = firstString(searchParams.categoryId) || undefined;
   const sortMode = parseSort(firstString(searchParams.sort));
 
-  const apiSort: ListAuctionsParams["sort"] = sortMode === "hammer" ? "hammerDesc" : "endedDesc";
+  const apiSort: ListLotsParams["sort"] = sortMode === "hammer" ? "hammerDesc" : "endedDesc";
 
-  const listParams: ListAuctionsParams = {
+  const listParams: ListLotsParams = {
     status: "ended",
     ...(categoryId ? { categoryId } : {}),
     ...(endYear !== undefined ? { endYear } : {}),

@@ -1,22 +1,20 @@
-import type { Auction, Bid } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 /**
- * SRP: read models for dashboard views that join bids + auctions.
+ * SRP: read models for dashboard views that join bids + lots.
  */
 export class DashboardQueryService {
   constructor(private readonly repos: IRepositoryFactory) {}
 
-  async listBidsWithAuctionsForBidder(
-    bidderId: string,
-  ): Promise<Array<{ bid: Bid; auction: Auction | null }>> {
+  async listBidsWithLotsForBidder(bidderId: string): Promise<Array<{ bid: Bid; lot: Lot | null }>> {
     const bids = await this.repos.root.bid.listForBidder(bidderId, 200);
-    const auctionIds = [...new Set(bids.map((b) => b.auctionId))];
-    const auctionMap = new Map<string, Auction>();
-    for (const id of auctionIds) {
-      const a = await this.repos.root.auction.findById(id);
-      if (a) auctionMap.set(id, a);
+    const lotIds = [...new Set(bids.map((b) => b.lotId))];
+    const lotMap = new Map<string, Lot>();
+    for (const id of lotIds) {
+      const a = await this.repos.root.lot.findById(id);
+      if (a) lotMap.set(id, a);
     }
-    return bids.map((b) => ({ bid: b, auction: auctionMap.get(b.auctionId) ?? null }));
+    return bids.map((b) => ({ bid: b, lot: lotMap.get(b.lotId) ?? null }));
   }
 }

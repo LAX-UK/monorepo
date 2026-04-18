@@ -1,9 +1,9 @@
 import { PastAuctionCard } from "@/components/sections/archive/past-auction-card";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Link from "next/link";
 
 export type ArchiveLotVM = {
-  auction: Auction;
+  auction: Lot;
   sellerName: string;
 };
 

@@ -1,12 +1,12 @@
 import "server-only";
-import { parseAuction, parseBid } from "@/lib/data/http/parse";
-import type { Auction, Bid, PaymentStatus, PortfolioRow } from "@auction/types";
+import { parseBid, parseLot } from "@/lib/data/http/parse";
+import type { Bid, Lot, PaymentStatus, PortfolioRow } from "@auction/types";
 import { cookies } from "next/headers";
 import { getServerApiBase } from "./hc-server";
 
-export type BidWithAuction = {
+export type BidWithLot = {
   bid: Bid;
-  auction: Auction | null;
+  lot: Lot | null;
 };
 
 async function cookieHeader(): Promise<string> {
@@ -27,17 +27,17 @@ async function authedFetch(path: string): Promise<Response> {
   });
 }
 
-export async function getServerMyBids(): Promise<BidWithAuction[]> {
+export async function getServerMyBids(): Promise<BidWithLot[]> {
   const res = await authedFetch("/users/me/bids");
   if (!res.ok) {
     throw new Error(`Failed to load bids: ${res.status}`);
   }
   const body = (await res.json()) as {
-    data: Array<{ bid: unknown; auction: unknown | null }>;
+    data: Array<{ bid: unknown; lot: unknown | null }>;
   };
   return body.data.map((row) => ({
     bid: parseBid(row.bid),
-    auction: row.auction ? parseAuction(row.auction) : null,
+    lot: row.lot ? parseLot(row.lot) : null,
   }));
 }
 
@@ -51,10 +51,10 @@ export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
     throw new Error(`Failed to load portfolio: ${res.status}`);
   }
   const body = (await res.json()) as {
-    data: Array<{ auction: unknown; payment: { id: string; status: string } | null }>;
+    data: Array<{ lot: unknown; payment: { id: string; status: string } | null }>;
   };
   return body.data.map((row) => ({
-    auction: parseAuction(row.auction),
+    lot: parseLot(row.lot),
     payment:
       row.payment && isPaymentStatus(row.payment.status)
         ? { id: row.payment.id, status: row.payment.status }
@@ -62,14 +62,14 @@ export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   }));
 }
 
-export type WatchlistWithAuctionRow = {
+export type WatchlistWithLotRow = {
   watchlistId: string;
-  auctionId: string;
+  lotId: string;
   createdAt: Date;
-  auction: Auction | null;
+  lot: Lot | null;
 };
 
-export async function getServerMyWatchlist(): Promise<WatchlistWithAuctionRow[]> {
+export async function getServerMyWatchlist(): Promise<WatchlistWithLotRow[]> {
   const res = await authedFetch("/users/me/watchlist");
   if (!res.ok) {
     throw new Error(`Failed to load watchlist: ${res.status}`);
@@ -77,15 +77,15 @@ export async function getServerMyWatchlist(): Promise<WatchlistWithAuctionRow[]>
   const body = (await res.json()) as {
     data: Array<{
       watchlistId: string;
-      auctionId: string;
+      lotId: string;
       createdAt: string;
-      auction: unknown | null;
+      lot: unknown | null;
     }>;
   };
   return body.data.map((row) => ({
     watchlistId: row.watchlistId,
-    auctionId: row.auctionId,
+    lotId: row.lotId,
     createdAt: new Date(row.createdAt),
-    auction: row.auction ? parseAuction(row.auction) : null,
+    lot: row.lot ? parseLot(row.lot) : null,
   }));
 }

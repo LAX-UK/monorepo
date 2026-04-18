@@ -1,8 +1,9 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
+import type { IUserSuspensionChecker } from "../services/interfaces/user-suspension.js";
 
-export class DrizzleUserSuspensionChecker {
+export class DrizzleUserSuspensionChecker implements IUserSuspensionChecker {
   constructor(private readonly db: Database) {}
 
   async isSuspended(userId: string): Promise<boolean> {

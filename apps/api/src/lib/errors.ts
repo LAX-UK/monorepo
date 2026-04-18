@@ -8,13 +8,13 @@ export class BidError extends Error {
   }
 }
 
-export class AuctionError extends Error {
+export class LotError extends Error {
   constructor(
     message: string,
     readonly status: number = 400,
   ) {
     super(message);
-    this.name = "AuctionError";
+    this.name = "LotError";
   }
 }
 
@@ -25,5 +25,15 @@ export class AuthzError extends Error {
   ) {
     super(message);
     this.name = "AuthzError";
+  }
+}
+
+export class SubmissionError extends Error {
+  constructor(
+    message: string,
+    readonly status: number = 400,
+  ) {
+    super(message);
+    this.name = "SubmissionError";
   }
 }

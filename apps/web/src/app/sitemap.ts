@@ -1,4 +1,5 @@
-import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { fetchSalesIdsForSitemap } from "@/lib/data/http/sales.server";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 
@@ -14,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/about",
     "/contact",
     "/artist/featured",
+    "/sales",
   ].map((path) => ({
     url: `${base}${path}`,
     lastModified: now,
@@ -21,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "" ? 1 : 0.6,
   }));
 
-  const reader = await getServerAuctionReader();
+  const reader = await getServerLotReader();
   const active = await reader.list({ status: "active", limit: 500, offset: 0, sort: "endingAsc" });
   const ended = await reader.list({ status: "ended", limit: 500, offset: 0, sort: "endedDesc" });
   const seen = new Set<string>();
@@ -37,5 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  return [...staticRoutes, ...lots];
+  const saleIds = await fetchSalesIdsForSitemap();
+  const sales: MetadataRoute.Sitemap = saleIds.map((id) => ({
+    url: `${base}/sales/${id}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.65,
+  }));
+
+  return [...staticRoutes, ...sales, ...lots];
 }

@@ -1,15 +1,15 @@
 import type { Redis } from "ioredis";
 import type { Server } from "socket.io";
 
-const AUCTION_EVENTS_PATTERN = "auction:*:events";
+const LOT_EVENTS_PATTERN = "lot:*:events";
 const USER_NOTIFICATIONS_PATTERN = "user:*:notifications";
 
 /**
- * Subscribes to Redis pub/sub channels published by the API (`auction:{id}:events`,
+ * Subscribes to Redis pub/sub channels published by the API (`lot:{id}:events`,
  * `user:{userId}:notifications`) and broadcasts JSON payloads to matching Socket.IO rooms.
  */
 export function bridgeRedisToSockets(io: Server, sub: Redis): void {
-  void sub.psubscribe(AUCTION_EVENTS_PATTERN, USER_NOTIFICATIONS_PATTERN).catch((err: unknown) => {
+  void sub.psubscribe(LOT_EVENTS_PATTERN, USER_NOTIFICATIONS_PATTERN).catch((err: unknown) => {
     console.error("Redis psubscribe error", err);
   });
 
@@ -27,24 +27,24 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
       return;
     }
 
-    const match = /^auction:(.+):events$/.exec(channel);
-    const auctionId = match?.[1];
-    if (!auctionId) return;
+    const match = /^lot:(.+):events$/.exec(channel);
+    const lotId = match?.[1];
+    if (!lotId) return;
 
     try {
       const parsed = JSON.parse(message) as { type?: string };
-      const room = `auction:${auctionId}`;
+      const room = `lot:${lotId}`;
       if (parsed.type === "bid_placed") {
         io.to(room).emit("bidUpdate", parsed);
-      } else if (parsed.type === "auction_extended") {
-        io.to(room).emit("auctionExtended", parsed);
-      } else if (parsed.type === "auction_ended") {
-        io.to(room).emit("auctionEnded", parsed);
+      } else if (parsed.type === "lot_extended") {
+        io.to(room).emit("lotExtended", parsed);
+      } else if (parsed.type === "lot_ended") {
+        io.to(room).emit("lotEnded", parsed);
       } else {
-        io.to(room).emit("auctionEvent", parsed);
+        io.to(room).emit("lotEvent", parsed);
       }
     } catch {
-      io.to(`auction:${auctionId}`).emit("auctionEvent", { raw: message });
+      io.to(`lot:${lotId}`).emit("lotEvent", { raw: message });
     }
   });
 }

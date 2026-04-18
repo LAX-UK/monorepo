@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { createAuth } from "@auction/auth/server";
 import type { Auth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
@@ -9,6 +10,7 @@ import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
 import { JsonErrorResponseBuilder } from "./infrastructure/json-error-response.builder.js";
+import { LocalDiskObjectStorage } from "./infrastructure/local-disk-object-storage.js";
 import { NoOpErrorReporter } from "./infrastructure/no-op-error.reporter.js";
 import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
 import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js";
@@ -16,9 +18,10 @@ import { PushNotificationChannel } from "./infrastructure/push-notification.chan
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
+import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
-import { AuctionJobScheduler } from "./jobs/auction-job-scheduler.js";
+import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
 import {
@@ -27,8 +30,9 @@ import {
   DrizzleAdminUserRoleManager,
   DrizzleAdminUserSuspender,
 } from "./repositories/drizzle-admin-user.reader.js";
-import { DrizzleAuctionMetricsReader } from "./repositories/drizzle-auction-metrics.reader.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
+import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
+import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
@@ -37,6 +41,7 @@ import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.reposit
 import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
+import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
@@ -44,16 +49,25 @@ import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.rep
 import { AddressService } from "./services/address.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
-import { AuctionLifecycleService } from "./services/auction-lifecycle.service.js";
-import { AuctionService } from "./services/auction.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
+import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
+import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
+import type { IObjectStorage } from "./services/interfaces/object-storage.js";
+import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IPushSender } from "./services/interfaces/push.js";
+import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
+import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
+import { ItemSubmissionService } from "./services/item-submission.service.js";
+import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
+import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
+import { LotService } from "./services/lot.service.js";
 import { NotificationQueryService } from "./services/notification-query.service.js";
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
@@ -62,9 +76,12 @@ import { PaymentService } from "./services/payment.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
+import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
+import { SaleService } from "./services/sale.service.js";
+import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
-import { AuctionStrategyFactory } from "./strategies/strategy.factory.js";
+import { LotStrategyFactory } from "./strategies/strategy.factory.js";
 
 export type Container = {
   db: ReturnType<typeof createDb>;
@@ -74,9 +91,11 @@ export type Container = {
   auth: Auth;
   authenticator: IAuthenticator;
   repoFactory: IRepositoryFactory;
-  auctionService: AuctionService;
-  auctionLifecycleService: AuctionLifecycleService;
-  auctionJobScheduler: AuctionJobScheduler;
+  lotService: LotService;
+  saleService: SaleService;
+  lotLifecycleService: LotLifecycleService;
+  saleLifecycleService: SaleLifecycleService;
+  lotJobScheduler: ILotJobScheduler;
   bidService: BidService;
   categoryService: CategoryService;
   dashboardQueryService: DashboardQueryService;
@@ -85,17 +104,21 @@ export type Container = {
   userService: UserService;
   watchlistService: WatchlistService;
   notificationService: NotificationService;
-  notificationPreferenceRepository: DrizzleNotificationPreferenceRepository;
-  pushSubscriptionRepository: DrizzlePushSubscriptionRepository;
+  notificationPreferenceRepository: INotificationPreferenceRepository;
+  pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
   notificationFactory: NotificationFactory;
-  userSuspensionChecker: DrizzleUserSuspensionChecker;
+  userSuspensionChecker: IUserSuspensionChecker;
   registrationService: RegistrationService;
   profileService: ProfileService;
   addressService: AddressService;
   analyticsService: AnalyticsService;
   adminUserService: AdminUserService;
   httpErrorHandler: ErrorHandlerService;
+  itemSubmissionRepository: IItemSubmissionRepository;
+  itemSubmissionService: IItemSubmissionService;
+  objectStorage: IObjectStorage;
+  uploadService: UploadService;
 };
 
 export function createContainer(env: Env): Container {
@@ -112,8 +135,10 @@ export function createContainer(env: Env): Container {
 
   const authenticator: IAuthenticator = new BetterAuthAuthenticator(auth);
   const repoFactory: IRepositoryFactory = new DrizzleRepositoryFactory(db);
-  const auctionRepo = repoFactory.root.auction;
+  const lotRepo = repoFactory.root.lot;
+  const saleRepo = new DrizzleSaleRepository(db);
   const userRepo = new DrizzleUserRepository(db);
+  const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
   const categoryRepo = new DrizzleCategoryRepository(db);
   const watchlistRepo = new DrizzleWatchlistRepository(db);
   const notificationReadRepo = new DrizzleNotificationReadRepository(db);
@@ -129,7 +154,7 @@ export function createContainer(env: Env): Container {
   const notifier = new RedisNotificationSender(redis);
   const userNotificationPublisher = new RedisUserNotificationPublisher(redis);
   const notificationService = new NotificationService(notifier, notifier);
-  const strategyFactory = new AuctionStrategyFactory();
+  const strategyFactory = new LotStrategyFactory();
   const notificationFactory = new NotificationFactory();
 
   const quietHoursChecker = new QuietHoursChecker();
@@ -149,8 +174,30 @@ export function createContainer(env: Env): Container {
     quietHoursChecker,
   );
 
-  const auctionLifecycleService = new AuctionLifecycleService(
-    auctionRepo,
+  const itemSubmissionService = new ItemSubmissionService(
+    itemSubmissionRepository,
+    lotRepo,
+    userRepo,
+    notificationDispatcher,
+  );
+
+  const publicUploadBase = `${env.API_PUBLIC_URL.replace(/\/$/, "")}/static/uploads`;
+  const objectStorage: IObjectStorage =
+    env.STORAGE_DRIVER === "s3"
+      ? new S3ObjectStorage({
+          bucket: env.S3_BUCKET as string,
+          region: env.S3_REGION as string,
+          endpoint: env.S3_ENDPOINT,
+          accessKeyId: env.S3_ACCESS_KEY_ID as string,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY as string,
+          publicBaseUrl:
+            env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`,
+        })
+      : new LocalDiskObjectStorage(join(process.cwd(), env.STORAGE_LOCAL_ROOT), publicUploadBase);
+  const uploadService = new UploadService(objectStorage);
+
+  const lotLifecycleService = new LotLifecycleService(
+    lotRepo,
     repoFactory.root.bid,
     strategyFactory,
     watchlistRepo,
@@ -159,21 +206,29 @@ export function createContainer(env: Env): Container {
     notificationFactory,
   );
 
+  const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
+
   const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
-  const auctionJobScheduler = new AuctionJobScheduler(
+  const lotJobScheduler: ILotJobScheduler = new LotJobScheduler(
     bullConnection,
-    (auctionId) => auctionLifecycleService.processActivateJob(auctionId),
-    (auctionId) => auctionLifecycleService.processEndJob(auctionId),
+    (lotId) => lotLifecycleService.processActivateJob(lotId),
+    (lotId) => lotLifecycleService.processEndJob(lotId),
   );
 
-  const auctionService = new AuctionService(
-    auctionRepo,
-    repoFactory.root.bid,
-    watchlistRepo,
+  const lotNotificationCoordinator = new LotNotificationCoordinator(
     notificationWriteRepo,
     userNotificationPublisher,
-    auctionJobScheduler,
   );
+
+  const lotService = new LotService(
+    lotRepo,
+    repoFactory.root.bid,
+    watchlistRepo,
+    lotJobScheduler,
+    lotNotificationCoordinator,
+  );
+
+  const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler);
 
   const bidService = new BidService(
     repoFactory,
@@ -181,20 +236,20 @@ export function createContainer(env: Env): Container {
     cache,
     notificationService,
     notificationDispatcher,
-    auctionJobScheduler,
+    lotJobScheduler,
   );
 
   const categoryService = new CategoryService(categoryRepo);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
   const paymentService = new PaymentService(
-    auctionRepo,
+    lotRepo,
     paymentRepo,
     notificationDispatcher,
     notificationFactory,
   );
   const userService = new UserService(userRepo);
-  const watchlistService = new WatchlistService(watchlistRepo, auctionRepo);
+  const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
   const profileService = new ProfileService(profileRepo, profileRepo);
   const addressService = new AddressService(addressRepo);
 
@@ -204,12 +259,12 @@ export function createContainer(env: Env): Container {
     new NoOpWelcomeNotifier(),
   );
 
-  const auctionMetrics = new DrizzleAuctionMetricsReader(db);
+  const lotMetrics = new DrizzleLotMetricsReader(db);
   const paymentMetrics = new DrizzlePaymentMetricsReader(db);
   const userMetrics = new DrizzleUserMetricsReader(db);
   const metricsAggregator = new DefaultMetricsAggregator();
   const analyticsService = new AnalyticsService(
-    auctionMetrics,
+    lotMetrics,
     paymentMetrics,
     userMetrics,
     metricsAggregator,
@@ -240,9 +295,11 @@ export function createContainer(env: Env): Container {
     auth,
     authenticator,
     repoFactory,
-    auctionService,
-    auctionLifecycleService,
-    auctionJobScheduler,
+    lotService,
+    saleService,
+    lotLifecycleService,
+    saleLifecycleService,
+    lotJobScheduler,
     bidService,
     categoryService,
     dashboardQueryService,
@@ -262,5 +319,9 @@ export function createContainer(env: Env): Container {
     analyticsService,
     adminUserService,
     httpErrorHandler,
+    itemSubmissionRepository,
+    itemSubmissionService,
+    objectStorage,
+    uploadService,
   };
 }

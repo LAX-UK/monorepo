@@ -4,7 +4,7 @@ export type UserNotification = {
   type: string;
   title: string;
   message: string;
-  auctionId: string | null;
+  lotId: string | null;
   read: boolean;
   /** When set, hidden from default inbox lists (soft archive). */
   archivedAt?: Date | null;

@@ -80,8 +80,7 @@ export default async function AdminUsersPage({
                     defaultValue={u.role}
                     className="rounded border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-xs"
                   >
-                    <option value="buyer">buyer</option>
-                    <option value="seller">seller</option>
+                    <option value="user">user</option>
                     <option value="admin">admin</option>
                   </select>
                   <button

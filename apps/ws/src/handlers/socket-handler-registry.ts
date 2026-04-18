@@ -6,8 +6,8 @@ export type HandlerContext = {
   env: WsEnv;
 };
 
-function roomForAuction(auctionId: string): string {
-  return `auction:${auctionId}`;
+function roomForLot(lotId: string): string {
+  return `lot:${lotId}`;
 }
 
 function roomForUser(userId: string): string {
@@ -32,33 +32,33 @@ async function resolveUserIdFromSession(socket: Socket, env: WsEnv): Promise<str
   }
 }
 
-function handleJoinAuction(
+function handleJoinLot(
   socket: Socket,
   _ctx: HandlerContext,
-  payload: { auctionId?: string },
+  payload: { lotId?: string },
   ack: AckFn,
 ) {
-  const auctionId = payload?.auctionId;
-  if (!auctionId) {
-    ack?.({ ok: false, error: "auctionId required" });
+  const lotId = payload?.lotId;
+  if (!lotId) {
+    ack?.({ ok: false, error: "lotId required" });
     return;
   }
-  void socket.join(roomForAuction(auctionId));
+  void socket.join(roomForLot(lotId));
   ack?.({ ok: true });
 }
 
-function handleLeaveAuction(
+function handleLeaveLot(
   socket: Socket,
   _ctx: HandlerContext,
-  payload: { auctionId?: string },
+  payload: { lotId?: string },
   ack: AckFn,
 ) {
-  const auctionId = payload?.auctionId;
-  if (!auctionId) {
-    ack?.({ ok: false, error: "auctionId required" });
+  const lotId = payload?.lotId;
+  if (!lotId) {
+    ack?.({ ok: false, error: "lotId required" });
     return;
   }
-  void socket.leave(roomForAuction(auctionId));
+  void socket.leave(roomForLot(lotId));
   ack?.({ ok: true });
 }
 
@@ -87,10 +87,10 @@ const handlers: Record<
   string,
   (socket: Socket, ctx: HandlerContext, payload: unknown, ack: AckFn) => void | Promise<void>
 > = {
-  joinAuction: (socket, ctx, payload, ack) =>
-    handleJoinAuction(socket, ctx, payload as { auctionId?: string }, ack),
-  leaveAuction: (socket, ctx, payload, ack) =>
-    handleLeaveAuction(socket, ctx, payload as { auctionId?: string }, ack),
+  joinLot: (socket, ctx, payload, ack) =>
+    handleJoinLot(socket, ctx, payload as { lotId?: string }, ack),
+  leaveLot: (socket, ctx, payload, ack) =>
+    handleLeaveLot(socket, ctx, payload as { lotId?: string }, ack),
   joinUser: (socket, ctx, payload, ack) => void handleJoinUser(socket, ctx, payload, ack),
   leaveUser: (socket, ctx, payload, ack) => void handleLeaveUser(socket, ctx, payload, ack),
 };

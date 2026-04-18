@@ -6,7 +6,7 @@ import { useCallback, useMemo, useTransition } from "react";
 
 const SELLER = {
   "": "",
-  alice: "seller-seed-001",
+  alice: "user-seed-001",
 } as const;
 
 const VALUATION = {

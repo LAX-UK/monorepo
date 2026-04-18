@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 type Props = {
-  auctionId: string;
+  lotId: string;
   hammer: string;
   buyerPremium: string;
   total: string;
@@ -24,7 +24,7 @@ function settlementsPhone(): string {
 }
 
 export function CheckoutPurchasePanel({
-  auctionId,
+  lotId,
   hammer,
   buyerPremium,
   total,
@@ -159,7 +159,7 @@ export function CheckoutPurchasePanel({
                   method: "POST",
                   credentials: "include",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ auctionId }),
+                  body: JSON.stringify({ lotId }),
                 });
                 const json = (await res.json().catch(() => ({}))) as { error?: string };
                 if (!res.ok) {

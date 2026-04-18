@@ -6,14 +6,11 @@ import {
 } from "@/components/sections/archive/past-auctions-grid";
 import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
 import { buildArchivePageQuery } from "@/lib/archive/build-archive-params";
-import {
-  getServerArchiveMetricsReader,
-  getServerAuctionReader,
-} from "@/lib/data/http/auctions.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
-import type { Auction, Category } from "@auction/types";
+import type { Category, Lot } from "@auction/types";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -44,14 +41,14 @@ export default async function ArchivePage({ searchParams }: PageProps) {
 
   let categories: Category[] = [];
   let totalHammer = "0";
-  let auctions: Auction[] = [];
+  let auctions: Lot[] = [];
   let totalCount = 0;
 
   try {
     const [catReader, metricsReader, auctionReader, publicReader] = await Promise.all([
       getServerCategoryReader(),
       getServerArchiveMetricsReader(),
-      getServerAuctionReader(),
+      getServerLotReader(),
       getServerPublicUserReader(),
     ]);
 

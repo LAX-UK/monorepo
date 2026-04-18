@@ -6,7 +6,7 @@ import { hc } from "hono/client";
  * We keep a narrow structural type for the routes the web app calls.
  */
 export type RpcApp = {
-  auctions: {
+  lots: {
     $get: (args: { query: Record<string, string> }) => Promise<Response>;
     archive: {
       summary: {
@@ -26,9 +26,15 @@ export type RpcApp = {
       };
     };
   };
+  sales: {
+    $get: (args: { query: Record<string, string> }) => Promise<Response>;
+    ":id": {
+      $get: (args: { param: { id: string } }) => Promise<Response>;
+    };
+  };
   bids: {
     $post: (args: {
-      json: { auctionId: string; amount: number; maxAutoBidAmount?: number };
+      json: { lotId: string; amount: number; maxAutoBidAmount?: number };
     }) => Promise<Response>;
   };
   users: {
@@ -43,7 +49,7 @@ export type RpcApp = {
       portfolio: { $get: () => Promise<Response> };
       watchlist: {
         $get: () => Promise<Response>;
-        $post: (args: { json: { auctionId: string } }) => Promise<Response>;
+        $post: (args: { json: { lotId: string } }) => Promise<Response>;
       };
       notifications: {
         $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
@@ -54,7 +60,7 @@ export type RpcApp = {
     $get: () => Promise<Response>;
   };
   payments: {
-    $post: (args: { json: { auctionId: string } }) => Promise<Response>;
+    $post: (args: { json: { lotId: string } }) => Promise<Response>;
   };
 };
 

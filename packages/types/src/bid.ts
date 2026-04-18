@@ -1,6 +1,6 @@
 export type Bid = {
   id: string;
-  auctionId: string;
+  lotId: string;
   bidderId: string;
   amount: string;
   isWinning: boolean;

@@ -1,5 +1,5 @@
 export type CreatePaymentRow = {
-  auctionId: string;
+  lotId: string;
   buyerId: string;
   sellerId: string;
   amount: string;
@@ -9,7 +9,7 @@ export type CreatePaymentRow = {
 
 export type PaymentRecord = {
   id: string;
-  auctionId: string;
+  lotId: string;
   buyerId: string;
   sellerId: string;
   amount: string;
@@ -22,7 +22,7 @@ export type PaymentRecord = {
 export interface IPaymentWriteRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   findById(id: string): Promise<PaymentRecord | null>;
-  findOpenByAuctionAndBuyer(auctionId: string, buyerId: string): Promise<PaymentRecord | null>;
+  findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;

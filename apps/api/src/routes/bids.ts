@@ -24,7 +24,7 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
     const body = c.req.valid("json");
     const result = await container.bidService.placeBid(
       userId,
-      body.auctionId,
+      body.lotId,
       body.amount,
       body.maxAutoBidAmount,
     );

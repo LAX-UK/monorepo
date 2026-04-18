@@ -5,7 +5,7 @@ export type CreateNotificationRow = {
   type: string;
   title: string;
   message: string;
-  auctionId?: string | undefined;
+  lotId?: string | undefined;
 };
 
 export interface INotificationWriteRepository {

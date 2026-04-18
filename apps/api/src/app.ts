@@ -1,4 +1,4 @@
-import { auction } from "@auction/db/schema";
+import { lot } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -9,10 +9,13 @@ import { createAppLogger } from "./lib/logger.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminRoutes } from "./routes/admin.js";
-import { createAuctionRoutes } from "./routes/auctions.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
+import { createLotRoutes } from "./routes/lots.js";
 import { createPaymentRoutes } from "./routes/payments.js";
+import { createSaleRoutes } from "./routes/sales.js";
+import { createSubmissionRoutes } from "./routes/submissions.js";
+import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
@@ -37,11 +40,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   );
   app.use("*", createVerifyOriginMiddleware(env.WEB_ORIGIN, env.VERIFY_ORIGIN));
 
-  app.use("/auctions/*", createRateLimitMiddleware(container.redis));
+  app.use("/lots/*", createRateLimitMiddleware(container.redis));
+  app.use("/sales/*", createRateLimitMiddleware(container.redis));
   app.use("/bids/*", createRateLimitMiddleware(container.redis));
   app.use("/users/*", createRateLimitMiddleware(container.redis));
   app.use("/payments/*", createRateLimitMiddleware(container.redis));
   app.use("/categories/*", createRateLimitMiddleware(container.redis));
+  app.use("/submissions/*", createRateLimitMiddleware(container.redis));
+  app.use("/uploads/*", createRateLimitMiddleware(container.redis));
   app.use("/admin/*", createRateLimitMiddleware(container.redis));
 
   app.get("/health", async (c) => {
@@ -58,20 +64,23 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.get("/metrics", async (c) => {
     const [activeRow] = await container.db
       .select({ n: sql<number>`count(*)::int` })
-      .from(auction)
-      .where(eq(auction.status, "active"));
-    const activeAuctions = activeRow?.n ?? 0;
-    return c.json({ activeAuctions });
+      .from(lot)
+      .where(eq(lot.status, "active"));
+    const activeLots = activeRow?.n ?? 0;
+    return c.json({ activeLots });
   });
 
   app.all("/api/auth/*", (c) => container.auth.handler(c.req.raw));
 
   const routed = app
-    .route("/auctions", createAuctionRoutes(container, authenticator))
+    .route("/lots", createLotRoutes(container, authenticator))
+    .route("/sales", createSaleRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))
     .route("/categories", createCategoryRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
+    .route("/submissions", createSubmissionRoutes(container, authenticator))
+    .route("/uploads", createUploadRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator));
 
   return routed;

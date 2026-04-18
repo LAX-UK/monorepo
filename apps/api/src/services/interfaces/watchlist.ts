@@ -1,14 +1,14 @@
 export type WatchlistRow = {
   id: string;
   userId: string;
-  auctionId: string;
+  lotId: string;
   createdAt: Date;
 };
 
 export interface IWatchlistRepository {
-  add(userId: string, auctionId: string): Promise<WatchlistRow>;
-  remove(userId: string, auctionId: string): Promise<void>;
+  add(userId: string, lotId: string): Promise<WatchlistRow>;
+  remove(userId: string, lotId: string): Promise<void>;
   findByUser(userId: string): Promise<WatchlistRow[]>;
-  exists(userId: string, auctionId: string): Promise<boolean>;
-  listUserIdsForAuction(auctionId: string): Promise<string[]>;
+  exists(userId: string, lotId: string): Promise<boolean>;
+  listUserIdsForLot(lotId: string): Promise<string[]>;
 }

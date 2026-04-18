@@ -2,7 +2,7 @@ import type {
   AdminAnalyticsDashboard,
   DateRange,
   IAnalyticsService,
-  IAuctionMetricsReader,
+  ILotMetricsReader,
   IMetricsAggregator,
   IPaymentMetricsReader,
   IUserMetricsReader,
@@ -10,18 +10,13 @@ import type {
 
 export class AnalyticsService implements IAnalyticsService {
   constructor(
-    private readonly auctionMetrics: IAuctionMetricsReader,
+    private readonly lotMetrics: ILotMetricsReader,
     private readonly paymentMetrics: IPaymentMetricsReader,
     private readonly userMetrics: IUserMetricsReader,
     private readonly aggregator: IMetricsAggregator,
   ) {}
 
   getDashboard(range: DateRange): Promise<AdminAnalyticsDashboard> {
-    return this.aggregator.aggregate(
-      this.auctionMetrics,
-      this.paymentMetrics,
-      this.userMetrics,
-      range,
-    );
+    return this.aggregator.aggregate(this.lotMetrics, this.paymentMetrics, this.userMetrics, range);
   }
 }

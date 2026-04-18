@@ -17,4 +17,9 @@ export class DrizzleUserRepository implements IUserRepository {
       role: row.role,
     };
   }
+
+  async listIdsByRole(role: string): Promise<string[]> {
+    const rows = await this.db.select({ id: user.id }).from(user).where(eq(user.role, role));
+    return rows.map((r) => r.id);
+  }
 }

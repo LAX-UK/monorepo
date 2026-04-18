@@ -1,20 +1,9 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_helpers";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-function errMessage(body: unknown, fallback: string): string {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  return fallback;
-}
 
 export async function updateProfileNameAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
@@ -27,7 +16,7 @@ export async function updateProfileNameAction(formData: FormData): Promise<void>
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     redirect(
-      `/dashboard/settings/profile?error=${encodeURIComponent(errMessage(body, "Update failed"))}`,
+      `/dashboard/settings/profile?error=${encodeURIComponent(readApiError(body, "Update failed"))}`,
     );
   }
   revalidatePath("/dashboard/settings/profile");
@@ -63,7 +52,7 @@ export async function createAddressAction(formData: FormData): Promise<void> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     redirect(
-      `/dashboard/settings/profile?error=${encodeURIComponent(errMessage(body, "Address failed"))}`,
+      `/dashboard/settings/profile?error=${encodeURIComponent(readApiError(body, "Address failed"))}`,
     );
   }
   revalidatePath("/dashboard/settings/profile");

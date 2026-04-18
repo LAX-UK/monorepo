@@ -42,7 +42,7 @@ export function ArchiveFilterBar({ categories }: Props) {
       <div className="flex flex-wrap items-center gap-x-12 gap-y-6 border-b border-outline-variant/20 pb-8">
         <div className="flex flex-col gap-2">
           <span className="font-label text-[0.625rem] uppercase tracking-[0.2em] text-on-surface-variant">
-            Auction year
+            Lot year
           </span>
           <div className="flex gap-4 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button

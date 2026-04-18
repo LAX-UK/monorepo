@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { auction } from "./auctions.js";
 import { user } from "./auth.js";
+import { lot } from "./lots.js";
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -14,9 +14,9 @@ export const payment = pgTable(
   "payment",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    auctionId: uuid("auction_id")
+    lotId: uuid("lot_id")
       .notNull()
-      .references(() => auction.id, { onDelete: "cascade" }),
+      .references(() => lot.id, { onDelete: "cascade" }),
     buyerId: text("buyer_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -31,15 +31,15 @@ export const payment = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("payment_auction_id_idx").on(table.auctionId),
+    index("payment_lot_id_idx").on(table.lotId),
     index("payment_buyer_id_idx").on(table.buyerId),
   ],
 );
 
 export const paymentRelations = relations(payment, ({ one }) => ({
-  auction: one(auction, {
-    fields: [payment.auctionId],
-    references: [auction.id],
+  lot: one(lot, {
+    fields: [payment.lotId],
+    references: [lot.id],
   }),
   buyer: one(user, {
     fields: [payment.buyerId],

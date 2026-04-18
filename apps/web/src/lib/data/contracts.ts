@@ -1,10 +1,11 @@
-import type { Auction, AuctionStatus, Bid, Category } from "@auction/types";
+import type { Bid, Category, Lot, LotStatus } from "@auction/types";
 
-export type ListAuctionsParams = {
-  status?: AuctionStatus;
+export type ListLotsParams = {
+  status?: LotStatus;
   categoryId?: string;
   sellerId?: string;
   winnerId?: string;
+  saleId?: string;
   /** Filter lots whose endTime falls in this calendar year (UTC). */
   endYear?: number;
   limit?: number;
@@ -13,7 +14,7 @@ export type ListAuctionsParams = {
   sort?: "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc";
 };
 
-/** Aggregates for past / ended auctions (ISP: separate from row listing). */
+/** Aggregates for past / ended lots (ISP: separate from row listing). */
 export type ArchiveEndedSummary = {
   totalHammer: string;
   endedLotCount: number;
@@ -24,14 +25,14 @@ export interface ArchiveMetricsReader {
   countEndedLots(filters: { categoryId?: string; endYear?: number }): Promise<number>;
 }
 
-/** Read-only auction listing and detail (ISP). */
-export interface AuctionReader {
-  list(params: ListAuctionsParams): Promise<Auction[]>;
-  getById(id: string): Promise<Auction | null>;
+/** Read-only lot listing and detail (ISP). */
+export interface LotReader {
+  list(params: ListLotsParams): Promise<Lot[]>;
+  getById(id: string): Promise<Lot | null>;
 }
 
 export type PlaceBidInput = {
-  auctionId: string;
+  lotId: string;
   amount: number;
   /** When set, stored as max auto-bid (English auction). */
   maxAutoBidAmount?: number;

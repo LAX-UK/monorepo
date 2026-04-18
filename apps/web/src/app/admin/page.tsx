@@ -1,5 +1,5 @@
 import { DisplayHeading } from "@/components/ui/typography";
-import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
+import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 import Link from "next/link";
 
 const btnPrimary =
@@ -13,8 +13,8 @@ export default async function AdminHomePage() {
   let paymentCount = 0;
   try {
     const [drafts, active, payments] = await Promise.all([
-      getAdminAuctionList({ status: "draft", limit: 100 }),
-      getAdminAuctionList({ status: "active", limit: 100 }),
+      getAdminLotList({ status: "draft", limit: 100 }),
+      getAdminLotList({ status: "active", limit: 100 }),
       getAdminPaymentList(),
     ]);
     draftCount = drafts.length;
@@ -51,11 +51,14 @@ export default async function AdminHomePage() {
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <Link href="/admin/auctions/new" className={btnPrimary}>
-          New auction
+        <Link href="/admin/lots/new" className={btnPrimary}>
+          New lot
         </Link>
-        <Link href="/admin/auctions" className={btnSecondary}>
-          All auctions
+        <Link href="/admin/lots" className={btnSecondary}>
+          All lots
+        </Link>
+        <Link href="/admin/sales" className={btnSecondary}>
+          Sales
         </Link>
         <Link href="/admin/payments" className={btnSecondary}>
           Payments

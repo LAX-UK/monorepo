@@ -54,7 +54,7 @@ export default async function DashboardPortfolioPage() {
       ) : (
         <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {won.map((row) => {
-            const a = row.auction;
+            const a = row.lot;
             const img = a.images[0];
             const settlement = portfolioSettlementLabel(row);
             return (

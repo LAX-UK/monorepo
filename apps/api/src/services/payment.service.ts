@@ -1,15 +1,15 @@
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import { AuctionError, AuthzError } from "../lib/errors.js";
+import { AuthzError, LotError } from "../lib/errors.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
-import type { IAuctionRepository } from "./interfaces/repositories.js";
+import type { ILotRepository } from "./interfaces/repositories.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 
 export class PaymentService {
   constructor(
-    private readonly auctions: IAuctionRepository,
+    private readonly lots: ILotRepository,
     private readonly payments: IPaymentWriteRepository,
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly notificationFactory: NotificationFactory,
@@ -21,34 +21,32 @@ export class PaymentService {
    */
   async createPendingForWinner(
     buyerId: string,
-    auctionId: string,
-  ): Promise<
-    Result<{ paymentId: string; clientSecret: string | null }, AuthzError | AuctionError>
-  > {
-    const auction = await this.auctions.findById(auctionId);
-    if (!auction) {
-      return err(new AuctionError("Auction not found", 404));
+    lotId: string,
+  ): Promise<Result<{ paymentId: string; clientSecret: string | null }, AuthzError | LotError>> {
+    const lot = await this.lots.findById(lotId);
+    if (!lot) {
+      return err(new LotError("Lot not found", 404));
     }
-    if (auction.winnerId !== buyerId) {
+    if (lot.winnerId !== buyerId) {
       return err(new AuthzError("Only the winning bidder can initiate payment", 403));
     }
-    if (auction.status !== "ended") {
-      return err(new AuthzError("Auction must be ended before payment", 400));
+    if (lot.status !== "ended") {
+      return err(new AuthzError("Lot must be ended before payment", 400));
     }
 
-    const existing = await this.payments.findOpenByAuctionAndBuyer(auctionId, buyerId);
+    const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
       return ok({ paymentId: existing.id, clientSecret: null });
     }
 
-    const total = this.totalDue(auction);
+    const total = this.totalDue(lot);
     const platformFee = (total * 0.05).toFixed(2);
     const amount = total.toFixed(2);
 
     const created = await this.payments.create({
-      auctionId,
+      lotId,
       buyerId,
-      sellerId: auction.sellerId,
+      sellerId: lot.sellerId,
       amount,
       platformFee,
       stripePaymentIntentId: null,
@@ -103,21 +101,19 @@ export class PaymentService {
       return ok(undefined);
     }
     await this.payments.updateStatus(paymentId, "captured");
-    const auction = await this.auctions.findById(p.auctionId);
-    if (auction && this.notificationDispatcher) {
+    const lot = await this.lots.findById(p.lotId);
+    if (lot && this.notificationDispatcher) {
       await this.notificationDispatcher.dispatch(
         p.buyerId,
-        notificationRowToPayload(
-          this.notificationFactory.createPaymentReceived(auction, p.buyerId),
-        ),
+        notificationRowToPayload(this.notificationFactory.createPaymentReceived(lot, p.buyerId)),
       );
     }
     return ok(undefined);
   }
 
-  private totalDue(auction: Auction): number {
-    const hammer = Number.parseFloat(auction.currentPrice);
-    const rate = Number.parseFloat(auction.buyerPremiumRate);
+  private totalDue(lot: Lot): number {
+    const hammer = Number.parseFloat(lot.currentPrice);
+    const rate = Number.parseFloat(lot.buyerPremiumRate);
     const safeHammer = Number.isFinite(hammer) ? hammer : 0;
     const safeRate = Number.isFinite(rate) ? rate : 0;
     return safeHammer * (1 + safeRate);

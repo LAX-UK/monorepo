@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { auction } from "./auctions.js";
 import { user } from "./auth.js";
+import { lot } from "./lots.js";
 
 export const notification = pgTable(
   "notification",
@@ -13,7 +13,7 @@ export const notification = pgTable(
     type: text("type").notNull(),
     title: text("title").notNull(),
     message: text("message").notNull(),
-    auctionId: uuid("auction_id").references(() => auction.id, { onDelete: "set null" }),
+    lotId: uuid("lot_id").references(() => lot.id, { onDelete: "set null" }),
     read: boolean("read").notNull().default(false),
     archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -30,8 +30,8 @@ export const notificationRelations = relations(notification, ({ one }) => ({
     fields: [notification.userId],
     references: [user.id],
   }),
-  auction: one(auction, {
-    fields: [notification.auctionId],
-    references: [auction.id],
+  lot: one(lot, {
+    fields: [notification.lotId],
+    references: [lot.id],
   }),
 }));

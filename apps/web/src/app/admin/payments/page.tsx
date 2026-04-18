@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { DisplayHeading } from "@/components/ui/typography";
 import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
-import { getAdminAuctionList, getAdminPaymentList } from "@/lib/data/http/admin.server";
+import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -19,12 +19,12 @@ export default async function AdminPaymentsPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
 
   let payments: Awaited<ReturnType<typeof getAdminPaymentList>> = [];
-  let auctions: Awaited<ReturnType<typeof getAdminAuctionList>> = [];
+  let auctions: Awaited<ReturnType<typeof getAdminLotList>> = [];
   let loadError: string | null = null;
   try {
     const [p, a] = await Promise.all([
       getAdminPaymentList(),
-      getAdminAuctionList({ limit: 200, offset: 0 }),
+      getAdminLotList({ limit: 200, offset: 0 }),
     ]);
     payments = p;
     auctions = a;
@@ -65,7 +65,7 @@ export default async function AdminPaymentsPage({
           <TableBody>
             {payments.map((p) => (
               <TableRow key={p.id}>
-                <TableCell>{titleById.get(p.auctionId) ?? p.auctionId}</TableCell>
+                <TableCell>{titleById.get(p.lotId) ?? p.lotId}</TableCell>
                 <TableCell className="max-w-[10rem] truncate font-mono text-xs">
                   {p.buyerId}
                 </TableCell>

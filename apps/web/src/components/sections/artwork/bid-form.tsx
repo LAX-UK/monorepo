@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
-import type { AuctionType } from "@auction/types";
+import type { LotAuctionType } from "@auction/types";
 
 type Props = {
-  auctionType: AuctionType;
+  auctionType: LotAuctionType;
   minNumeric: number;
   amount: string;
   maxAuto: string;

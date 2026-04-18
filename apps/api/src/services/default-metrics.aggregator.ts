@@ -1,7 +1,7 @@
 import type {
   AdminAnalyticsDashboard,
   DateRange,
-  IAuctionMetricsReader,
+  ILotMetricsReader,
   IMetricsAggregator,
   IPaymentMetricsReader,
   IUserMetricsReader,
@@ -9,23 +9,23 @@ import type {
 
 export class DefaultMetricsAggregator implements IMetricsAggregator {
   async aggregate(
-    auction: IAuctionMetricsReader,
+    lot: ILotMetricsReader,
     payment: IPaymentMetricsReader,
     users: IUserMetricsReader,
     range: DateRange,
   ): Promise<AdminAnalyticsDashboard> {
     const [
-      activeAuctions,
-      auctionCompletedSeries,
+      activeLots,
+      lotCompletedSeries,
       conversion,
       revenueSeries,
       averageOrderValue,
       registrationSeries,
       totalUsers,
     ] = await Promise.all([
-      auction.getActiveCount(),
-      auction.getCompletedByDateRange(range),
-      auction.getConversionRate(range),
+      lot.getActiveCount(),
+      lot.getCompletedByDateRange(range),
+      lot.getConversionRate(range),
       payment.getRevenueByDateRange(range),
       payment.getAverageOrderValue(range),
       users.getRegistrationsByDate(range),
@@ -33,8 +33,8 @@ export class DefaultMetricsAggregator implements IMetricsAggregator {
     ]);
 
     return {
-      activeAuctions,
-      auctionCompletedSeries,
+      activeLots,
+      lotCompletedSeries,
       conversion,
       revenueSeries,
       averageOrderValue,

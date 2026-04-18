@@ -1,18 +1,22 @@
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { EnglishAuctionStrategy } from "./english.strategy.js";
 
-function auction(overrides: Partial<Auction> = {}): Auction {
+const CAT = "c1000001-0000-4000-8000-000000000001";
+
+function mkLot(overrides: Partial<Lot> = {}): Lot {
   const now = new Date();
   return {
     id: "auc-1",
+    saleId: null,
+    lotNumber: null,
     sellerId: "seller-1",
     title: "Lot",
     description: null,
     medium: null,
     dimensions: null,
     images: [],
-    categoryId: null,
+    categoryId: CAT,
     auctionType: "english",
     startingPrice: "100.00",
     reservePrice: null,
@@ -37,26 +41,26 @@ describe("EnglishAuctionStrategy", () => {
   const strategy = new EnglishAuctionStrategy();
 
   it("rejects bids below current plus minimum increment", () => {
-    const a = auction({ currentPrice: "100.00", minBidIncrement: "1.00" });
+    const a = mkLot({ currentPrice: "100.00", minBidIncrement: "1.00" });
     expect(strategy.validateBid(a, { bidderId: "u1", amount: 100 }).isErr()).toBe(true);
     expect(strategy.validateBid(a, { bidderId: "u1", amount: 100.99 }).isErr()).toBe(true);
   });
 
   it("accepts bid at least current plus increment", () => {
-    const a = auction({ currentPrice: "100.00", minBidIncrement: "1.00" });
+    const a = mkLot({ currentPrice: "100.00", minBidIncrement: "1.00" });
     const r = strategy.validateBid(a, { bidderId: "u1", amount: 101 });
     expect(r.isOk()).toBe(true);
   });
 
-  it("rejects seller bidding on own auction", () => {
-    const a = auction({ sellerId: "seller-1", currentPrice: "50.00" });
+  it("rejects seller bidding on own lot", () => {
+    const a = mkLot({ sellerId: "seller-1", currentPrice: "50.00" });
     const r = strategy.validateBid(a, { bidderId: "seller-1", amount: 100 });
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error.message).toContain("Seller cannot bid");
   });
 
   it("getNextPrice is max of current price and bid amount", () => {
-    const a = auction({ currentPrice: "100.00" });
+    const a = mkLot({ currentPrice: "100.00" });
     expect(strategy.getNextPrice(a, 120)).toBe(120);
     expect(strategy.getNextPrice(a, 80)).toBe(100);
   });

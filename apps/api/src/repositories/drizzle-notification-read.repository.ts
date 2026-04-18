@@ -17,7 +17,7 @@ function mapRow(row: Row): UserNotification {
     type: row.type,
     title: row.title,
     message: row.message,
-    auctionId: row.auctionId,
+    lotId: row.lotId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,
     createdAt: row.createdAt,

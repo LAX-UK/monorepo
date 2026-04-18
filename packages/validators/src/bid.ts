@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const placeBidSchema = z
   .object({
-    auctionId: z.string().uuid(),
+    lotId: z.string().uuid(),
     amount: z.number().positive().finite(),
     maxAutoBidAmount: z.number().positive().finite().optional(),
   })

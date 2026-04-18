@@ -26,21 +26,21 @@ export default async function DashboardBidsPage() {
     fetchError = e instanceof Error ? e.message : "Could not load bids.";
   }
 
-  const latestByAuction = new Map<string, (typeof rows)[0]>();
+  const latestByLot = new Map<string, (typeof rows)[0]>();
   for (const row of rows) {
-    const prev = latestByAuction.get(row.bid.auctionId);
+    const prev = latestByLot.get(row.bid.lotId);
     if (!prev || row.bid.createdAt > prev.bid.createdAt) {
-      latestByAuction.set(row.bid.auctionId, row);
+      latestByLot.set(row.bid.lotId, row);
     }
   }
-  const unique = [...latestByAuction.values()].sort((a, b) => {
-    const ae = a.auction?.endTime.getTime() ?? 0;
-    const be = b.auction?.endTime.getTime() ?? 0;
+  const unique = [...latestByLot.values()].sort((a, b) => {
+    const ae = a.lot?.endTime.getTime() ?? 0;
+    const be = b.lot?.endTime.getTime() ?? 0;
     return ae - be;
   });
 
   function statusFor(row: (typeof rows)[0]): { label: string; className: string; outbid: boolean } {
-    const a = row.auction;
+    const a = row.lot;
     if (!a) return { label: "Unknown", className: "text-secondary", outbid: false };
     if (a.status === "ended") {
       const won = user?.id && a.winnerId === user.id;
@@ -91,7 +91,7 @@ export default async function DashboardBidsPage() {
       ) : (
         <div className="space-y-6">
           {unique.map((row) => {
-            const a = row.auction;
+            const a = row.lot;
             const st = statusFor(row);
             const timeLeft =
               a && a.status === "active"

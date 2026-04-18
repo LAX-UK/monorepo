@@ -11,7 +11,7 @@ export class DrizzleBidRepository implements IBidRepository {
     const [created] = await this.db
       .insert(bid)
       .values({
-        auctionId: row.auctionId,
+        lotId: row.lotId,
         bidderId: row.bidderId,
         amount: row.amount,
         isWinning: row.isWinning,
@@ -23,52 +23,52 @@ export class DrizzleBidRepository implements IBidRepository {
     return mapBidRow(created);
   }
 
-  async findHighestForAuction(auctionId: string) {
+  async findHighestForLot(lotId: string) {
     const rows = await this.db
       .select()
       .from(bid)
-      .where(eq(bid.auctionId, auctionId))
+      .where(eq(bid.lotId, lotId))
       .orderBy(desc(bid.amount))
       .limit(1);
     const row = rows[0];
     return row ? mapBidRow(row) : null;
   }
 
-  async listForAuction(auctionId: string, limit: number) {
+  async listForLot(lotId: string, limit: number) {
     const rows = await this.db
       .select()
       .from(bid)
-      .where(eq(bid.auctionId, auctionId))
+      .where(eq(bid.lotId, lotId))
       .orderBy(desc(bid.createdAt))
       .limit(limit);
     return rows.map(mapBidRow);
   }
 
-  async listForAuctionSettlement(auctionId: string, limit: number) {
+  async listForLotSettlement(lotId: string, limit: number) {
     const rows = await this.db
       .select()
       .from(bid)
-      .where(eq(bid.auctionId, auctionId))
+      .where(eq(bid.lotId, lotId))
       .orderBy(desc(bid.amount), asc(bid.createdAt))
       .limit(limit);
     return rows.map(mapBidRow);
   }
 
-  async findWinningBid(auctionId: string) {
+  async findWinningBid(lotId: string) {
     const rows = await this.db
       .select()
       .from(bid)
-      .where(and(eq(bid.auctionId, auctionId), eq(bid.isWinning, true)))
+      .where(and(eq(bid.lotId, lotId), eq(bid.isWinning, true)))
       .limit(1);
     const row = rows[0];
     return row ? mapBidRow(row) : null;
   }
 
-  async listDistinctBidderIds(auctionId: string) {
+  async listDistinctBidderIds(lotId: string) {
     const rows = await this.db
       .selectDistinct({ bidderId: bid.bidderId })
       .from(bid)
-      .where(eq(bid.auctionId, auctionId));
+      .where(eq(bid.lotId, lotId));
     return rows.map((r) => r.bidderId);
   }
 
@@ -82,8 +82,8 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map(mapBidRow);
   }
 
-  async markWinningBid(auctionId: string, bidId: string) {
-    await this.db.update(bid).set({ isWinning: false }).where(eq(bid.auctionId, auctionId));
+  async markWinningBid(lotId: string, bidId: string) {
+    await this.db.update(bid).set({ isWinning: false }).where(eq(bid.lotId, lotId));
     await this.db.update(bid).set({ isWinning: true }).where(eq(bid.id, bidId));
   }
 }

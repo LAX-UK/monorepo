@@ -9,8 +9,8 @@ import {
   updateAddressBodySchema,
   updateProfileSchema,
   userIdParamSchema,
-  watchlistAuctionIdParamSchema,
   watchlistBodySchema,
+  watchlistLotIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
@@ -54,26 +54,26 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.dashboardQueryService.listBidsWithAuctionsForBidder(userId);
+    const data = await container.dashboardQueryService.listBidsWithLotsForBidder(userId);
     return c.json({ data });
   });
 
   r.get("/me/portfolio", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const auctions = await container.auctionService.list({
+    const lots = await container.lotService.list({
       winnerId: userId,
       limit: 50,
       offset: 0,
     });
     const payments = await container.paymentService.listForBuyer(userId);
-    const byAuction = new Map<string, (typeof payments)[number]>();
+    const byLot = new Map<string, (typeof payments)[number]>();
     for (const p of payments) {
-      if (!byAuction.has(p.auctionId)) byAuction.set(p.auctionId, p);
+      if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
     }
-    const data = auctions.map((auction) => {
-      const p = byAuction.get(auction.id);
+    const data = lots.map((lotRow) => {
+      const p = byLot.get(lotRow.id);
       return {
-        auction,
+        lot: lotRow,
         payment: p ? { id: p.id, status: p.status } : null,
       };
     });
@@ -82,28 +82,28 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/watchlist", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.watchlistService.listWithAuctions(userId);
+    const data = await container.watchlistService.listWithLots(userId);
     return c.json({ data });
   });
 
   r.post("/me/watchlist", requireAuth, zValidator("json", watchlistBodySchema), async (c) => {
     const userId = c.get("userId") as string;
-    const { auctionId } = c.req.valid("json");
-    const row = await container.watchlistService.add(userId, auctionId);
+    const { lotId } = c.req.valid("json");
+    const row = await container.watchlistService.add(userId, lotId);
     if (!row) {
-      return c.json({ error: "Auction not found" }, 404);
+      return c.json({ error: "Lot not found" }, 404);
     }
     return c.json({ data: row }, 201);
   });
 
   r.delete(
-    "/me/watchlist/:auctionId",
+    "/me/watchlist/:lotId",
     requireAuth,
-    zValidator("param", watchlistAuctionIdParamSchema),
+    zValidator("param", watchlistLotIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const { auctionId } = c.req.valid("param");
-      await container.watchlistService.remove(userId, auctionId);
+      const { lotId } = c.req.valid("param");
+      await container.watchlistService.remove(userId, lotId);
       return c.body(null, 204);
     },
   );

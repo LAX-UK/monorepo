@@ -13,7 +13,7 @@ type Row = InferSelectModel<typeof payment>;
 function mapRow(row: Row): PaymentRecord {
   return {
     id: row.id,
-    auctionId: row.auctionId,
+    lotId: row.lotId,
     buyerId: row.buyerId,
     sellerId: row.sellerId,
     amount: String(row.amount),
@@ -31,7 +31,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     const [created] = await this.db
       .insert(payment)
       .values({
-        auctionId: row.auctionId,
+        lotId: row.lotId,
         buyerId: row.buyerId,
         sellerId: row.sellerId,
         amount: row.amount,
@@ -50,16 +50,13 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row ? mapRow(row) : null;
   }
 
-  async findOpenByAuctionAndBuyer(
-    auctionId: string,
-    buyerId: string,
-  ): Promise<PaymentRecord | null> {
+  async findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null> {
     const rows = await this.db
       .select()
       .from(payment)
       .where(
         and(
-          eq(payment.auctionId, auctionId),
+          eq(payment.lotId, lotId),
           eq(payment.buyerId, buyerId),
           inArray(payment.status, ["pending", "authorized", "captured"]),
         ),

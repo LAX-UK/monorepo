@@ -1,14 +1,14 @@
-import type { Auction, AuctionStatus } from "@auction/types";
+import type { Lot, LotStatus } from "@auction/types";
 import Link from "next/link";
 
-const PIPELINE: AuctionStatus[] = ["draft", "scheduled", "active", "ended", "cancelled"];
+const PIPELINE: LotStatus[] = ["draft", "scheduled", "active", "ended", "cancelled"];
 
 type Props = {
-  auctions: Auction[];
+  auctions: Lot[];
 };
 
 export function AdminAuctionPipeline({ auctions }: Props) {
-  const groups = new Map<AuctionStatus, Auction[]>();
+  const groups = new Map<LotStatus, Lot[]>();
   for (const s of PIPELINE) groups.set(s, []);
   for (const a of auctions) {
     const list = groups.get(a.status);
@@ -33,7 +33,7 @@ export function AdminAuctionPipeline({ auctions }: Props) {
                 {list.map((a) => (
                   <li key={a.id}>
                     <Link
-                      href={`/admin/auctions/${a.id}`}
+                      href={`/admin/lots/${a.id}`}
                       className="block rounded-md bg-surface-container-high/50 px-2 py-2 text-left text-sm text-on-surface ring-1 ring-outline-variant/10 transition-colors hover:bg-surface-container-high hover:ring-primary/25"
                     >
                       <span className="line-clamp-2 font-medium text-primary">{a.title}</span>

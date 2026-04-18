@@ -1,11 +1,11 @@
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
-  auctions: Auction[];
+  auctions: Lot[];
   currentId: string;
 };
 

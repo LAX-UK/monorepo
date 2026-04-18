@@ -2,7 +2,7 @@ export type NotificationPayload = {
   type: string;
   title: string;
   message: string;
-  auctionId?: string | undefined;
+  lotId?: string | undefined;
 };
 
 export type NotificationChannelKind = "in_app" | "push";

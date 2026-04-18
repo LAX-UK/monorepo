@@ -1,15 +1,15 @@
 import "server-only";
 
-import type { ListAuctionsParams } from "@/lib/data/contracts";
-import { buildAuctionListQuery } from "@/lib/data/http/auctions.server";
+import type { ListLotsParams } from "@/lib/data/contracts";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { parseAuction } from "@/lib/data/http/parse";
-import type { Auction } from "@auction/types";
+import { buildLotListQuery } from "@/lib/data/http/lots.server";
+import { parseLot, parseSale } from "@/lib/data/http/parse";
+import type { Lot, Sale } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
 export type AdminPaymentRow = {
   id: string;
-  auctionId: string;
+  lotId: string;
   buyerId: string;
   sellerId: string;
   amount: string;
@@ -25,9 +25,10 @@ function isPaymentStatus(s: string): s is PaymentStatus {
 function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
   const o = raw as Record<string, unknown>;
   const status = typeof o.status === "string" && isPaymentStatus(o.status) ? o.status : "pending";
+  const lotId = o.lotId != null ? String(o.lotId) : String(o.auctionId ?? "");
   return {
     id: String(o.id ?? ""),
-    auctionId: String(o.auctionId ?? ""),
+    lotId,
     buyerId: String(o.buyerId ?? ""),
     sellerId: String(o.sellerId ?? ""),
     amount: String(o.amount ?? "0"),
@@ -37,26 +38,59 @@ function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
   };
 }
 
-export async function getAdminAuctionList(params: ListAuctionsParams = {}): Promise<Auction[]> {
+export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[]> {
   const qs = new URLSearchParams(
-    buildAuctionListQuery({ limit: params.limit ?? 100, offset: params.offset ?? 0, ...params }),
+    buildLotListQuery({ limit: params.limit ?? 100, offset: params.offset ?? 0, ...params }),
   );
-  const res = await authedServerFetch(`/auctions?${qs.toString()}`);
+  const res = await authedServerFetch(`/lots?${qs.toString()}`);
   if (!res.ok) {
-    throw new Error(`Failed to load auctions: ${res.status}`);
+    throw new Error(`Failed to load lots: ${res.status}`);
   }
   const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseAuction);
+  return body.data.map(parseLot);
 }
 
-export async function getAdminAuctionById(id: string): Promise<Auction | null> {
-  const res = await authedServerFetch(`/auctions/${encodeURIComponent(id)}`);
+export type AdminSaleListRow = { sale: Sale; lots: Lot[] };
+
+export async function getAdminSalesList(
+  params: {
+    status?: Sale["status"];
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<AdminSaleListRow[]> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 50));
+  qs.set("offset", String(params.offset ?? 0));
+  if (params.status) qs.set("status", params.status);
+  const res = await authedServerFetch(`/sales?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
+  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
+  return body.data.map((row) => ({
+    sale: parseSale(row.sale),
+    lots: row.lots.map(parseLot),
+  }));
+}
+
+export async function getAdminSaleById(id: string): Promise<AdminSaleListRow | null> {
+  const res = await authedServerFetch(`/sales/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
+  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] } };
+  return {
+    sale: parseSale(body.data.sale),
+    lots: body.data.lots.map(parseLot),
+  };
+}
+
+export async function getAdminLotById(id: string): Promise<Lot | null> {
+  const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}`);
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`Failed to load auction: ${res.status}`);
+    throw new Error(`Failed to load lot: ${res.status}`);
   }
   const body = (await res.json()) as { data: unknown };
-  return parseAuction(body.data);
+  return parseLot(body.data);
 }
 
 export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
@@ -69,8 +103,8 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
 }
 
 export type AdminAnalyticsPayload = {
-  activeAuctions: number;
-  auctionCompletedSeries: { date: string; count: number }[];
+  activeLots: number;
+  lotCompletedSeries: { date: string; count: number }[];
   conversion: { ended: number; withWinner: number };
   revenueSeries: { date: string; total: string }[];
   averageOrderValue: string | null;

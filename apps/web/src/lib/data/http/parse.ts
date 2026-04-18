@@ -1,4 +1,13 @@
-import type { Auction, Bid, NotificationPreference, UserNotification } from "@auction/types";
+import type {
+  Bid,
+  ItemSubmission,
+  ItemSubmissionStatus,
+  Lot,
+  NotificationPreference,
+  Sale,
+  UserNotification,
+} from "@auction/types";
+import { itemSubmissionStatuses } from "@auction/types";
 
 function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
@@ -6,18 +15,47 @@ function toDate(value: unknown): Date {
   return new Date(Number.NaN);
 }
 
-export function parseAuction(raw: unknown): Auction {
+export function parseSale(raw: unknown): Sale {
   const o = raw as Record<string, unknown>;
   return {
     id: String(o.id),
+    title: String(o.title),
+    description: o.description == null ? null : String(o.description),
+    coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
+    categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
+    status: o.status as Sale["status"],
+    startTime: toDate(o.startTime),
+    endTime: toDate(o.endTime),
+    previewStartTime:
+      o.previewStartTime == null || o.previewStartTime === "" ? null : toDate(o.previewStartTime),
+    buyerPremiumRate:
+      o.buyerPremiumRate == null || o.buyerPremiumRate === "" ? "0.25" : String(o.buyerPremiumRate),
+    terms: o.terms == null || o.terms === "" ? null : String(o.terms),
+    createdBy: String(o.createdBy ?? ""),
+    createdAt: toDate(o.createdAt),
+    updatedAt: toDate(o.updatedAt),
+  };
+}
+
+export function parseLot(raw: unknown): Lot {
+  const o = raw as Record<string, unknown>;
+  return {
+    id: String(o.id),
+    saleId: o.saleId == null || o.saleId === "" ? null : String(o.saleId),
+    lotNumber:
+      o.lotNumber == null || o.lotNumber === ""
+        ? null
+        : typeof o.lotNumber === "number"
+          ? o.lotNumber
+          : Number.parseInt(String(o.lotNumber), 10),
     sellerId: String(o.sellerId),
     title: String(o.title),
     description: o.description == null ? null : String(o.description),
     medium: o.medium == null || o.medium === "" ? null : String(o.medium),
     dimensions: o.dimensions == null || o.dimensions === "" ? null : String(o.dimensions),
     images: Array.isArray(o.images) ? (o.images as unknown[]).map(String) : [],
-    categoryId: o.categoryId == null ? null : String(o.categoryId),
-    auctionType: o.auctionType as Auction["auctionType"],
+    categoryId: String(o.categoryId ?? ""),
+    auctionType: o.auctionType as Lot["auctionType"],
     startingPrice: String(o.startingPrice),
     reservePrice: o.reservePrice == null ? null : String(o.reservePrice),
     buyNowPrice: o.buyNowPrice == null ? null : String(o.buyNowPrice),
@@ -37,7 +75,7 @@ export function parseAuction(raw: unknown): Auction {
     dutchLastDecrementAt: o.dutchLastDecrementAt == null ? null : toDate(o.dutchLastDecrementAt),
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),
-    status: o.status as Auction["status"],
+    status: o.status as Lot["status"],
     winnerId: o.winnerId == null ? null : String(o.winnerId),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
@@ -71,10 +109,44 @@ export function parseUserNotification(raw: unknown): UserNotification {
     type: String(o.type),
     title: String(o.title),
     message: String(o.message),
-    auctionId: o.auctionId == null ? null : String(o.auctionId),
+    lotId: o.lotId != null ? String(o.lotId) : o.auctionId != null ? String(o.auctionId) : null,
     read: Boolean(o.read),
     archivedAt: o.archivedAt == null || o.archivedAt === "" ? null : toDate(o.archivedAt),
     createdAt: toDate(o.createdAt),
+  };
+}
+
+function isItemSubmissionStatus(s: string): s is ItemSubmissionStatus {
+  return (itemSubmissionStatuses as readonly string[]).includes(s);
+}
+
+export function parseItemSubmission(raw: unknown): ItemSubmission {
+  const o = raw as Record<string, unknown>;
+  const status =
+    typeof o.status === "string" && isItemSubmissionStatus(o.status) ? o.status : "draft";
+  return {
+    id: String(o.id),
+    sellerId: String(o.sellerId ?? ""),
+    title: String(o.title),
+    description: o.description == null || o.description === "" ? null : String(o.description),
+    medium: o.medium == null || o.medium === "" ? null : String(o.medium),
+    dimensions: o.dimensions == null || o.dimensions === "" ? null : String(o.dimensions),
+    images: Array.isArray(o.images) ? (o.images as unknown[]).map(String) : [],
+    askingPrice: o.askingPrice == null || o.askingPrice === "" ? null : String(o.askingPrice),
+    reservePrice: o.reservePrice == null || o.reservePrice === "" ? null : String(o.reservePrice),
+    categoryId: String(o.categoryId ?? ""),
+    submitterNotes:
+      o.submitterNotes == null || o.submitterNotes === "" ? null : String(o.submitterNotes),
+    status,
+    reviewedBy: o.reviewedBy == null || o.reviewedBy === "" ? null : String(o.reviewedBy),
+    reviewedAt: o.reviewedAt == null || o.reviewedAt === "" ? null : toDate(o.reviewedAt),
+    reviewNotes: o.reviewNotes == null || o.reviewNotes === "" ? null : String(o.reviewNotes),
+    rejectionReason:
+      o.rejectionReason == null || o.rejectionReason === "" ? null : String(o.rejectionReason),
+    convertedLotId:
+      o.convertedLotId == null || o.convertedLotId === "" ? null : String(o.convertedLotId),
+    createdAt: toDate(o.createdAt),
+    updatedAt: toDate(o.updatedAt),
   };
 }
 
@@ -82,7 +154,7 @@ export function parseBid(raw: unknown): Bid {
   const o = raw as Record<string, unknown>;
   return {
     id: String(o.id),
-    auctionId: String(o.auctionId),
+    lotId: String(o.lotId ?? o.auctionId),
     bidderId: String(o.bidderId),
     amount: String(o.amount),
     isWinning: Boolean(o.isWinning),

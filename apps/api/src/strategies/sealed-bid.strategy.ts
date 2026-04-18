@@ -1,33 +1,32 @@
-import type { Auction } from "@auction/types";
-import type { Bid, NewBid } from "@auction/types";
+import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import type { IAuctionStrategy } from "../services/interfaces/auction-strategy.js";
+import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
 
-export class SealedBidAuctionStrategy implements IAuctionStrategy {
-  validateBid(auction: Auction, bid: NewBid): Result<void, BidError> {
-    if (auction.status !== "active") {
-      return err(new BidError("Sealed bids are only accepted while auction is active"));
+export class SealedBidAuctionStrategy implements ILotStrategy {
+  validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
+    if (lot.status !== "active") {
+      return err(new BidError("Sealed bids are only accepted while lot is active"));
     }
-    if (bid.bidderId === auction.sellerId) {
-      return err(new BidError("Seller cannot bid on own auction"));
+    if (bid.bidderId === lot.sellerId) {
+      return err(new BidError("Seller cannot bid on own lot"));
     }
-    const min = Number(auction.startingPrice);
+    const min = Number(lot.startingPrice);
     if (bid.amount < min) {
       return err(new BidError("Bid must be at least starting price"));
     }
     return ok(undefined);
   }
 
-  getNextPrice(auction: Auction, currentBidAmount: number): number {
-    return Math.max(Number(auction.currentPrice), currentBidAmount);
+  getNextPrice(lot: Lot, currentBidAmount: number): number {
+    return Math.max(Number(lot.currentPrice), currentBidAmount);
   }
 
   shouldExtendTime(): boolean {
     return false;
   }
 
-  determineWinner(_auction: Auction, bids: Bid[]): Bid | null {
+  determineWinner(_lot: Lot, bids: Bid[]): Bid | null {
     if (bids.length === 0) return null;
     let best = bids[0];
     if (!best) return null;

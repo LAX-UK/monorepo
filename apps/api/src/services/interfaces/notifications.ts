@@ -1,4 +1,4 @@
-import type { Auction, Bid } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 
 export type BidPlacedRealtimeMeta = {
   /** Previous high bidder (for client-side outbid toast). */
@@ -7,11 +7,11 @@ export type BidPlacedRealtimeMeta = {
 
 /** ISP: bid-related realtime / outbound notifications only. */
 export interface IBidNotificationSender {
-  notifyBidPlaced(auction: Auction, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void>;
+  notifyBidPlaced(lot: Lot, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void>;
 }
 
-/** ISP: auction lifecycle notifications (extensions, etc.). */
-export interface IAuctionNotificationSender {
-  notifyAuctionExtended(auction: Auction, newEndTime: Date): Promise<void>;
-  notifyAuctionEnded(auction: Auction, bid: Bid): Promise<void>;
+/** ISP: lot lifecycle notifications (extensions, etc.). */
+export interface ILotNotificationSender {
+  notifyLotExtended(lot: Lot, newEndTime: Date): Promise<void>;
+  notifyLotEnded(lot: Lot, bid: Bid): Promise<void>;
 }

@@ -1,14 +1,14 @@
 export type DateRange = { start: Date; end: Date };
 
-export type AuctionMetricPoint = { date: string; count: number };
+export type LotMetricPoint = { date: string; count: number };
 
 export type RevenueMetricPoint = { date: string; total: string };
 
 export type UserMetricPoint = { date: string; count: number };
 
-export interface IAuctionMetricsReader {
+export interface ILotMetricsReader {
   getActiveCount(): Promise<number>;
-  getCompletedByDateRange(range: DateRange): Promise<AuctionMetricPoint[]>;
+  getCompletedByDateRange(range: DateRange): Promise<LotMetricPoint[]>;
   /** Ended with winner / total ended in range (simple conversion proxy). */
   getConversionRate(range: DateRange): Promise<{ ended: number; withWinner: number }>;
 }
@@ -24,8 +24,8 @@ export interface IUserMetricsReader {
 }
 
 export type AdminAnalyticsDashboard = {
-  activeAuctions: number;
-  auctionCompletedSeries: AuctionMetricPoint[];
+  activeLots: number;
+  lotCompletedSeries: LotMetricPoint[];
   conversion: { ended: number; withWinner: number };
   revenueSeries: RevenueMetricPoint[];
   averageOrderValue: string | null;
@@ -35,7 +35,7 @@ export type AdminAnalyticsDashboard = {
 
 export interface IMetricsAggregator {
   aggregate(
-    auction: IAuctionMetricsReader,
+    lot: ILotMetricsReader,
     payment: IPaymentMetricsReader,
     users: IUserMetricsReader,
     range: DateRange,

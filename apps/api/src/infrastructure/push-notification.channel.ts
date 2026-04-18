@@ -10,11 +10,11 @@ import type {
 
 const PUSH_TYPES = new Set([
   "outbid",
-  "auction_won",
-  "auction_ending_soon",
+  "lot_won",
+  "lot_ending_soon",
   "watchlist_ending_soon",
   "payment_received",
-  "auction_cancelled",
+  "lot_cancelled",
 ]);
 
 export class PushNotificationChannel implements INotificationChannel {
@@ -34,7 +34,7 @@ export class PushNotificationChannel implements INotificationChannel {
     const pushPayload: PushPayload = {
       title: payload.title,
       body: payload.message,
-      url: payload.auctionId ? `/artwork/${payload.auctionId}` : undefined,
+      url: payload.lotId ? `/artwork/${payload.lotId}` : undefined,
     };
     for (const sub of subs) {
       const ok = await this.sender.send(sub.endpoint, sub.p256dh, sub.auth, pushPayload);

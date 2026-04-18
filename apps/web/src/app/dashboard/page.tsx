@@ -1,22 +1,22 @@
 import { ActiveBidsWidget } from "@/components/dashboard/active-bids-widget";
-import { getServerAuctionReader } from "@/lib/data/http/auctions.server";
 import {
   getServerMyBids,
   getServerMyPortfolio,
   getServerMyWatchlist,
 } from "@/lib/data/http/dashboard.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
 export default async function DashboardHomePage() {
   const user = await getServerSessionUser();
-  const reader = await getServerAuctionReader();
+  const reader = await getServerLotReader();
 
-  let active: Auction[] = [];
+  let active: Lot[] = [];
   let portfolio: Awaited<ReturnType<typeof getServerMyPortfolio>> = [];
   let watchlist: Awaited<ReturnType<typeof getServerMyWatchlist>> = [];
   let bidRows: Awaited<ReturnType<typeof getServerMyBids>> = [];
@@ -56,13 +56,13 @@ export default async function DashboardHomePage() {
 
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
   const totalSpent = portfolio.reduce(
-    (sum, row) => sum + Number.parseFloat(row.auction.currentPrice),
+    (sum, row) => sum + Number.parseFloat(row.lot.currentPrice),
     0,
   );
 
   const yearUtc = new Date().getUTCFullYear();
   const wonThisYear = portfolio.filter(
-    (row) => row.auction.endTime.getUTCFullYear() === yearUtc,
+    (row) => row.lot.endTime.getUTCFullYear() === yearUtc,
   ).length;
 
   let wins = 0;
@@ -70,7 +70,7 @@ export default async function DashboardHomePage() {
   if (user) {
     const seen = new Set<string>();
     for (const row of bidRows) {
-      const a = row.auction;
+      const a = row.lot;
       if (!a || a.status !== "ended" || seen.has(a.id)) continue;
       seen.add(a.id);
       if (a.winnerId === user.id) wins += 1;
@@ -80,19 +80,19 @@ export default async function DashboardHomePage() {
   const decided = wins + losses;
   const winRate = decided > 0 ? Math.round((wins / decided) * 100) : null;
 
-  const wonLotsSidebar = portfolio.filter((row) => row.auction.status === "ended").slice(0, 4);
-  const watchPreview = watchlist.filter((w) => w.auction).slice(0, 4);
+  const wonLotsSidebar = portfolio.filter((row) => row.lot.status === "ended").slice(0, 4);
+  const watchPreview = watchlist.filter((w) => w.lot).slice(0, 4);
 
   const engagementLabel =
     decided > 0 ? `${wins} win${wins === 1 ? "" : "s"} / ${decided} decided` : "—";
 
   const activeBidRows = bidRows
-    .filter((row) => row.auction?.status === "active")
+    .filter((row) => row.lot?.status === "active")
     .map((row) =>
-      row.auction
+      row.lot
         ? {
             bid: row.bid,
-            auction: row.auction,
+            lot: row.lot,
           }
         : null,
     )
@@ -162,6 +162,20 @@ export default async function DashboardHomePage() {
         </div>
       </div>
 
+      <section className="mb-12 rounded-xl border border-primary/20 bg-primary-container/10 p-6 ring-1 ring-primary/10">
+        <h2 className="font-headline text-xl text-on-surface">Sell with The Digital Curator</h2>
+        <p className="mt-2 max-w-2xl font-body text-sm text-on-surface-variant">
+          Submit item details for specialist review. When approved, we create a draft catalog lot
+          for scheduling and publication.
+        </p>
+        <Link
+          href="/dashboard/submissions/new"
+          className="mt-4 inline-block font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
+        >
+          Start a submission
+        </Link>
+      </section>
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8">
           <div className="mb-8 flex items-end justify-between">
@@ -217,7 +231,7 @@ export default async function DashboardHomePage() {
             ) : (
               <ul className="space-y-4">
                 {wonLotsSidebar.map((row) => {
-                  const a = row.auction;
+                  const a = row.lot;
                   const img = a.images[0];
                   const label = portfolioSettlementLabel(row);
                   return (
@@ -256,7 +270,7 @@ export default async function DashboardHomePage() {
             ) : (
               <ul className="space-y-4">
                 {watchPreview.map((w) => {
-                  const a = w.auction;
+                  const a = w.lot;
                   if (!a) return null;
                   const img = a.images[0];
                   return (

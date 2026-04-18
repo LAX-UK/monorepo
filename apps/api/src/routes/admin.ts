@@ -1,6 +1,7 @@
 import {
   adminAnalyticsQuerySchema,
   adminSetRoleBodySchema,
+  adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
   adminUserListQuerySchema,
   userIdParamSchema,
@@ -35,6 +36,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   r.use("*", requireAuth, requireAdmin);
 
+  r.get(
+    "/submissions/pending-count",
+    zValidator("query", adminSubmissionCountQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const count = await container.itemSubmissionService.countPendingForAdmin({
+        status: q.status,
+      });
+      return c.json({ data: { count } });
+    },
+  );
+
   r.get("/analytics", zValidator("query", adminAnalyticsQuerySchema), async (c) => {
     const { days } = c.req.valid("query");
     const end = new Date();
@@ -68,7 +81,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { userId } = c.req.valid("param");
       const { role } = c.req.valid("json");
-      const actorRole = c.get("userRole") ?? "buyer";
+      const actorRole = c.get("userRole") ?? "user";
       const actorId = c.get("userId") as string;
       try {
         await container.adminUserService.setRole(actorRole, actorId, userId, role);
@@ -90,7 +103,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { userId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const role = c.get("userRole") ?? "buyer";
+      const role = c.get("userRole") ?? "user";
       await container.adminUserService.suspend(role, userId, reason ?? null);
       return c.json({ ok: true });
     },
@@ -98,7 +111,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   r.post("/users/:userId/unsuspend", zValidator("param", userIdParamSchema), async (c) => {
     const { userId } = c.req.valid("param");
-    const role = c.get("userRole") ?? "buyer";
+    const role = c.get("userRole") ?? "user";
     await container.adminUserService.unsuspend(role, userId);
     return c.json({ ok: true });
   });

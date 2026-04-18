@@ -8,7 +8,7 @@ export function createHttpBidWriter(): BidWriter {
     async placeBid(input: PlaceBidInput): Promise<PlaceBidResult> {
       const res = await client.bids.$post({
         json: {
-          auctionId: input.auctionId,
+          lotId: input.lotId,
           amount: input.amount,
           ...(input.maxAutoBidAmount !== undefined
             ? { maxAutoBidAmount: input.maxAutoBidAmount }

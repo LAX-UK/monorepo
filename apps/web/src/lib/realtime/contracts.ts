@@ -1,16 +1,16 @@
-import type { AuctionEndedEvent, BidUpdateEvent } from "@auction/types";
+import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 
 export type BidUpdateHandler = (event: BidUpdateEvent) => void;
 
-export type AuctionRealtimeCallbacks = {
+export type LotRealtimeCallbacks = {
   onBidUpdate?: BidUpdateHandler;
-  onAuctionExtended?: (payload: unknown) => void;
-  onAuctionEnded?: (payload: AuctionEndedEvent) => void;
-  onAuctionEvent?: (payload: unknown) => void;
+  onLotExtended?: (payload: unknown) => void;
+  onLotEnded?: (payload: LotEndedEvent) => void;
+  onLotEvent?: (payload: unknown) => void;
 };
 
-/** Narrow port for auction rooms — no raw Socket exposure (ISP). */
-export interface AuctionRealtimePort {
-  subscribeToAuction(auctionId: string, callbacks: AuctionRealtimeCallbacks): () => void;
-  leaveAuction(auctionId: string): void;
+/** Narrow port for lot rooms — no raw Socket exposure (ISP). */
+export interface LotRealtimePort {
+  subscribeToLot(lotId: string, callbacks: LotRealtimeCallbacks): () => void;
+  leaveLot(lotId: string): void;
 }

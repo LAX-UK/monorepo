@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { loadWsEnv, type WsEnv } from "./env.js";
+import { type WsEnv, loadWsEnv } from "./env.js";
 
 export type WsContainer = {
   env: WsEnv;

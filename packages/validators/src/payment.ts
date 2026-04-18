@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const createPaymentBodySchema = z.object({
-  auctionId: z.string().uuid(),
+  lotId: z.string().uuid(),
 });
 
 export const paymentIdParamSchema = z.object({

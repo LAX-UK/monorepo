@@ -1,9 +1,9 @@
 import { getSiteUrl } from "@/lib/site-url";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 
 const siteName = "The Digital Curator";
 
-export function auctionProductJsonLd(auction: Auction): Record<string, unknown> {
+export function lotProductJsonLd(auction: Lot): Record<string, unknown> {
   const base = getSiteUrl();
   const url = `${base}/artwork/${auction.id}`;
   return {

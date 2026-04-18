@@ -1,48 +1,48 @@
-import type { Auction } from "@auction/types";
-import type { IAuctionRepository } from "./interfaces/repositories.js";
+import type { Lot } from "@auction/types";
+import type { ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository, WatchlistRow } from "./interfaces/watchlist.js";
 
-export type WatchlistWithAuction = {
+export type WatchlistWithLot = {
   watchlistId: string;
-  auctionId: string;
+  lotId: string;
   createdAt: Date;
-  auction: Auction | null;
+  lot: Lot | null;
 };
 
 export class WatchlistService {
   constructor(
     private readonly watchlist: IWatchlistRepository,
-    private readonly auctions: IAuctionRepository,
+    private readonly lots: ILotRepository,
   ) {}
 
-  async add(userId: string, auctionId: string): Promise<WatchlistRow | null> {
-    const auction = await this.auctions.findById(auctionId);
-    if (!auction) return null;
-    return this.watchlist.add(userId, auctionId);
+  async add(userId: string, lotId: string): Promise<WatchlistRow | null> {
+    const lot = await this.lots.findById(lotId);
+    if (!lot) return null;
+    return this.watchlist.add(userId, lotId);
   }
 
-  remove(userId: string, auctionId: string): Promise<void> {
-    return this.watchlist.remove(userId, auctionId);
+  remove(userId: string, lotId: string): Promise<void> {
+    return this.watchlist.remove(userId, lotId);
   }
 
   list(userId: string): Promise<WatchlistRow[]> {
     return this.watchlist.findByUser(userId);
   }
 
-  exists(userId: string, auctionId: string): Promise<boolean> {
-    return this.watchlist.exists(userId, auctionId);
+  exists(userId: string, lotId: string): Promise<boolean> {
+    return this.watchlist.exists(userId, lotId);
   }
 
-  async listWithAuctions(userId: string): Promise<WatchlistWithAuction[]> {
+  async listWithLots(userId: string): Promise<WatchlistWithLot[]> {
     const rows = await this.watchlist.findByUser(userId);
-    const out: WatchlistWithAuction[] = [];
+    const out: WatchlistWithLot[] = [];
     for (const r of rows) {
-      const auction = await this.auctions.findById(r.auctionId);
+      const lot = await this.lots.findById(r.lotId);
       out.push({
         watchlistId: r.id,
-        auctionId: r.auctionId,
+        lotId: r.lotId,
         createdAt: r.createdAt,
-        auction,
+        lot,
       });
     }
     return out;

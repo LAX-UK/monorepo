@@ -1,14 +1,14 @@
 import { boolean, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { auction } from "./auctions.js";
 import { user } from "./auth.js";
+import { lot } from "./lots.js";
 
 export const bid = pgTable(
   "bid",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    auctionId: uuid("auction_id")
+    lotId: uuid("lot_id")
       .notNull()
-      .references(() => auction.id, { onDelete: "cascade" }),
+      .references(() => lot.id, { onDelete: "cascade" }),
     bidderId: text("bidder_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -19,7 +19,7 @@ export const bid = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("bid_auction_id_amount_idx").on(table.auctionId, table.amount),
+    index("bid_lot_id_amount_idx").on(table.lotId, table.amount),
     index("bid_bidder_id_idx").on(table.bidderId),
   ],
 );

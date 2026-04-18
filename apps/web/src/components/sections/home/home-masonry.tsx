@@ -1,7 +1,7 @@
 import { LotCountdownChip } from "@/components/sections/home/lot-countdown-chip";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import type { Auction, AuctionStatus } from "@auction/types";
+import type { Lot, LotStatus } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -9,7 +9,7 @@ function lotLabel(id: string): string {
   return `LOT ${id.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 }
 
-function statusBadge(status: AuctionStatus): { label: string; className: string } {
+function statusBadge(status: LotStatus): { label: string; className: string } {
   switch (status) {
     case "active":
       return { label: "Live", className: "text-primary" };
@@ -38,7 +38,7 @@ function endsLabel(end: Date): string {
 }
 
 type Props = {
-  auctions: Auction[];
+  auctions: Lot[];
 };
 
 export function HomeMasonry({ auctions }: Props) {
@@ -97,6 +97,11 @@ export function HomeMasonry({ auctions }: Props) {
                     <p className="font-label text-xs font-bold uppercase tracking-widest text-white">
                       {lotLabel(a.id)}
                     </p>
+                    {a.saleId != null && a.lotNumber != null ? (
+                      <p className="mt-1 text-right font-label text-[0.65rem] font-bold uppercase tracking-wider text-white/90">
+                        Sale · Lot {a.lotNumber}
+                      </p>
+                    ) : null}
                   </div>
                   {a.status === "active" ? (
                     <div className="absolute bottom-4 left-4">

@@ -37,7 +37,7 @@ export default async function AdminAnalyticsPage() {
     loadError = e instanceof Error ? e.message : "Could not load analytics.";
   }
 
-  const completedMax = Math.max(1, ...(data?.auctionCompletedSeries.map((x) => x.count) ?? [0]));
+  const completedMax = Math.max(1, ...(data?.lotCompletedSeries.map((x) => x.count) ?? [0]));
   const revenueMax = Math.max(
     1,
     ...(data?.revenueSeries.map((x) => Number.parseFloat(x.total) || 0) ?? [0]),
@@ -58,7 +58,7 @@ export default async function AdminAnalyticsPage() {
           <section className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10">
               <p className="font-label text-xs uppercase text-secondary">Active lots</p>
-              <p className="mt-2 font-headline text-3xl tabular-nums">{data.activeAuctions}</p>
+              <p className="mt-2 font-headline text-3xl tabular-nums">{data.activeLots}</p>
             </div>
             <div className="rounded-xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10">
               <p className="font-label text-xs uppercase text-secondary">Users</p>
@@ -77,7 +77,7 @@ export default async function AdminAnalyticsPage() {
               Ended lots per day
             </h2>
             <div className="space-y-2">
-              {data.auctionCompletedSeries.map((row) => (
+              {data.lotCompletedSeries.map((row) => (
                 <BarRow key={row.date} label={row.date} value={row.count} max={completedMax} />
               ))}
             </div>

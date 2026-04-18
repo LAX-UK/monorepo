@@ -1,14 +1,16 @@
-import type { AuctionRealtimeCallbacks, AuctionRealtimePort } from "@/lib/realtime/contracts";
+import type { LotRealtimeCallbacks, LotRealtimePort } from "@/lib/realtime/contracts";
 import { getSocket } from "@/lib/socket";
-import type { AuctionEndedEvent, BidUpdateEvent } from "@auction/types";
+import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 
 /** API Redis payload wraps the bid record (`bid`) plus `currentPrice`. */
 function asBidUpdate(raw: unknown): BidUpdateEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
+  const lotId =
+    typeof o.lotId === "string" ? o.lotId : typeof o.auctionId === "string" ? o.auctionId : null;
   const bid = o.bid as Record<string, unknown> | undefined;
   if (
-    typeof o.auctionId === "string" &&
+    lotId &&
     typeof o.currentPrice === "string" &&
     bid &&
     typeof bid.id === "string" &&
@@ -16,7 +18,7 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
     typeof bid.amount === "string"
   ) {
     return {
-      auctionId: o.auctionId,
+      lotId,
       bidId: bid.id,
       bidderId: bid.bidderId,
       amount: bid.amount,
@@ -28,20 +30,22 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
   return null;
 }
 
-function asAuctionEnded(raw: unknown): AuctionEndedEvent | null {
+function asLotEnded(raw: unknown): LotEndedEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
+  const lotId =
+    typeof o.lotId === "string" ? o.lotId : typeof o.auctionId === "string" ? o.auctionId : null;
   if (
-    o.type === "auction_ended" &&
-    typeof o.auctionId === "string" &&
+    (o.type === "lot_ended" || o.type === "auction_ended") &&
+    lotId &&
     typeof o.winnerId === "string" &&
     typeof o.bidId === "string" &&
     typeof o.currentPrice === "string" &&
     typeof o.status === "string"
   ) {
     return {
-      type: "auction_ended",
-      auctionId: o.auctionId,
+      type: "lot_ended",
+      lotId,
       winnerId: o.winnerId,
       bidId: o.bidId,
       currentPrice: o.currentPrice,
@@ -52,38 +56,44 @@ function asAuctionEnded(raw: unknown): AuctionEndedEvent | null {
 }
 
 /** Maps Socket.IO rooms + events to the realtime port. */
-export function createSocketAuctionRealtime(): AuctionRealtimePort {
+export function createSocketLotRealtime(): LotRealtimePort {
   const socket = getSocket();
 
   return {
-    subscribeToAuction(auctionId: string, callbacks: AuctionRealtimeCallbacks) {
+    subscribeToLot(lotId: string, callbacks: LotRealtimeCallbacks) {
       const onBidUpdate = (payload: unknown) => {
         const mapped = asBidUpdate(payload);
         if (mapped && callbacks.onBidUpdate) callbacks.onBidUpdate(mapped);
       };
-      const onExtended = (payload: unknown) => callbacks.onAuctionExtended?.(payload);
+      const onExtended = (payload: unknown) => callbacks.onLotExtended?.(payload);
       const onEnded = (payload: unknown) => {
-        const mapped = asAuctionEnded(payload);
-        if (mapped && callbacks.onAuctionEnded) callbacks.onAuctionEnded(mapped);
+        const mapped = asLotEnded(payload);
+        if (mapped && callbacks.onLotEnded) callbacks.onLotEnded(mapped);
       };
-      const onEvent = (payload: unknown) => callbacks.onAuctionEvent?.(payload);
+      const onEvent = (payload: unknown) => callbacks.onLotEvent?.(payload);
 
-      socket.emit("joinAuction", { auctionId }, () => {});
+      socket.emit("joinLot", { lotId }, () => {});
       socket.on("bidUpdate", onBidUpdate);
+      socket.on("lotExtended", onExtended);
       socket.on("auctionExtended", onExtended);
+      socket.on("lotEnded", onEnded);
       socket.on("auctionEnded", onEnded);
+      socket.on("lotEvent", onEvent);
       socket.on("auctionEvent", onEvent);
 
       return () => {
         socket.off("bidUpdate", onBidUpdate);
+        socket.off("lotExtended", onExtended);
         socket.off("auctionExtended", onExtended);
+        socket.off("lotEnded", onEnded);
         socket.off("auctionEnded", onEnded);
+        socket.off("lotEvent", onEvent);
         socket.off("auctionEvent", onEvent);
-        socket.emit("leaveAuction", { auctionId }, () => {});
+        socket.emit("leaveLot", { lotId }, () => {});
       };
     },
-    leaveAuction(auctionId: string) {
-      socket.emit("leaveAuction", { auctionId }, () => {});
+    leaveLot(lotId: string) {
+      socket.emit("leaveLot", { lotId }, () => {});
     },
   };
 }

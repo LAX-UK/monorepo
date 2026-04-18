@@ -1,6 +1,6 @@
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -13,7 +13,7 @@ function closingCaption(endTime: Date): string {
 }
 
 type Props = {
-  auction: Auction;
+  auction: Lot;
   sellerName: string;
   gridOffsetClass?: string;
 };

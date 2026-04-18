@@ -2,7 +2,7 @@ import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-s
 import { RelatedLots } from "@/components/sections/artwork/related-lots";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { formatMoney } from "@/lib/format-currency";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -18,16 +18,19 @@ function formatDateTime(d: Date): string {
 }
 
 type Props = {
-  auction: Auction;
+  auction: Lot;
+  /** When the lot belongs to a sale, show Sales / title in the breadcrumb. */
+  parentSale?: { id: string; title: string } | null;
   bidPanel: ReactNode;
   watchSlot?: ReactNode;
   sellerHref: string;
   sellerName: string;
-  relatedAuctions: Auction[];
+  relatedAuctions: Lot[];
 };
 
 export function ArtworkSplitView({
   auction,
+  parentSale = null,
   bidPanel,
   watchSlot,
   sellerHref,
@@ -61,6 +64,37 @@ export function ArtworkSplitView({
                   Artists
                 </Link>
               </li>
+              {parentSale ? (
+                <>
+                  <li aria-hidden className="text-outline-variant">
+                    /
+                  </li>
+                  <li>
+                    <Link href="/sales" className="transition-colors hover:text-primary">
+                      Sales
+                    </Link>
+                  </li>
+                  <li aria-hidden className="text-outline-variant">
+                    /
+                  </li>
+                  <li>
+                    <Link
+                      href={`/sales/${parentSale.id}`}
+                      className="transition-colors hover:text-primary"
+                    >
+                      {parentSale.title}
+                    </Link>
+                  </li>
+                  {auction.lotNumber != null ? (
+                    <>
+                      <li aria-hidden className="text-outline-variant">
+                        /
+                      </li>
+                      <li className="text-on-surface-variant">Lot {auction.lotNumber}</li>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
               <li aria-hidden className="text-outline-variant">
                 /
               </li>
@@ -86,7 +120,7 @@ export function ArtworkSplitView({
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-error" />
                   </span>
                   <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-error">
-                    Auction pulse • Lot {lotNo(auction.id)}
+                    Lot pulse • Lot {lotNo(auction.id)}
                   </span>
                 </>
               ) : (

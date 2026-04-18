@@ -1,5 +1,5 @@
 import { getSiteUrl } from "@/lib/site-url";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
 
 const siteName = "The Digital Curator";
@@ -26,7 +26,7 @@ export function rootMetadataBase(): Metadata {
   };
 }
 
-export function metadataForAuction(auction: Auction): Metadata {
+export function metadataForLot(auction: Lot): Metadata {
   const base = getSiteUrl();
   const url = `${base}/artwork/${auction.id}`;
   const title = `${auction.title}`;

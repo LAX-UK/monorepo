@@ -20,8 +20,8 @@ export const userIdParamSchema = z.object({
   userId: z.string().min(1).max(191),
 });
 
-export const watchlistAuctionIdParamSchema = z.object({
-  auctionId: z.string().uuid(),
+export const watchlistLotIdParamSchema = z.object({
+  lotId: z.string().uuid(),
 });
 
 export const notificationIdUuidParamSchema = z.object({

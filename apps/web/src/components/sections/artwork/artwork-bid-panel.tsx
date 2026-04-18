@@ -5,18 +5,18 @@ import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation"
 import { BidDisplay } from "@/components/sections/artwork/bid-display";
 import { BidForm } from "@/components/sections/artwork/bid-form";
 import { BidHistory, type BidHistoryEntry } from "@/components/sections/artwork/bid-history";
-import { useAuctionRealtime } from "@/hooks/use-auction-realtime";
-import { useAuctionPorts } from "@/lib/context/auction-ports";
+import { useLotRealtime } from "@/hooks/use-lot-realtime";
+import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
 import { formatCountdownClock } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
-import type { Auction } from "@auction/types";
+import type { Lot } from "@auction/types";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type Props = {
-  auction: Auction;
+  auction: Lot;
   initialHistory: BidHistoryEntry[];
   /** Current winning bidder from SSR (null if unknown / sealed). */
   initialLeadingBidderId?: string | null;
@@ -25,7 +25,7 @@ type Props = {
 
 const HISTORY_CAP = 20;
 
-function nextMinBidAmount(auction: Auction, currentPriceStr: string): number {
+function nextMinBidAmount(auction: Lot, currentPriceStr: string): number {
   const cur = Number.parseFloat(currentPriceStr);
   if (auction.auctionType === "dutch") return cur;
   const start = Number.parseFloat(auction.startingPrice);
@@ -44,7 +44,7 @@ export function ArtworkBidPanel({
   initialLeadingBidderId = null,
   sessionUser,
 }: Props) {
-  const { bidWriter } = useAuctionPorts();
+  const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
   const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
   const [amount, setAmount] = useState("");
@@ -55,7 +55,7 @@ export function ArtworkBidPanel({
   const [now, setNow] = useState(() => Date.now());
   const [bidSuccess, setBidSuccess] = useState(false);
   const [history, setHistory] = useState<BidHistoryEntry[]>(initialHistory);
-  const [lotStatus, setLotStatus] = useState<Auction["status"]>(auction.status);
+  const [lotStatus, setLotStatus] = useState<Lot["status"]>(auction.status);
   const [leadingBidderId, setLeadingBidderId] = useState<string | null>(initialLeadingBidderId);
   const [priceFlash, setPriceFlash] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function ArtworkBidPanel({
     );
   }, []);
 
-  useAuctionRealtime(auction.id, {
+  useLotRealtime(auction.id, {
     onBidUpdate: (e) => {
       setCurrentPrice(e.currentPrice);
       setLeadingBidderId(e.bidderId);
@@ -99,17 +99,17 @@ export function ArtworkBidPanel({
         });
       }
     },
-    onAuctionExtended: (payload) => {
+    onLotExtended: (payload) => {
       const p = payload as { newEndTime?: string };
       if (p?.newEndTime) {
         setEndTime(new Date(p.newEndTime).getTime());
       }
     },
-    onAuctionEnded: (p) => {
+    onLotEnded: (p) => {
       setLotStatus("ended");
       setCurrentPrice(p.currentPrice);
       setLeadingBidderId(p.winnerId);
-      setEndedBanner("This auction has ended.");
+      setEndedBanner("This lot has ended.");
     },
   });
 
@@ -166,7 +166,7 @@ export function ArtworkBidPanel({
     const maxN = maxAuto.trim() === "" ? undefined : Number.parseFloat(maxAuto);
     setSubmitting(true);
     const result = await bidWriter.placeBid({
-      auctionId: auction.id,
+      lotId: auction.id,
       amount: n,
       ...(maxN !== undefined && !Number.isNaN(maxN) ? { maxAutoBidAmount: maxN } : {}),
     });

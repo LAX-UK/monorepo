@@ -1,0 +1,152 @@
+import type { CreateLotInput } from "@auction/types";
+import {
+  archiveCountQuerySchema,
+  archiveSummaryQuerySchema,
+  cancelLotBodySchema,
+  createLotSchema,
+  listLotsQuerySchema,
+  lotIdParamSchema,
+  updateLotSchema,
+} from "@auction/validators";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
+import type { Container } from "../container.js";
+import { asHttpStatus } from "../lib/http-status.js";
+import { createOptionalAuth } from "../middleware/optional-auth.js";
+import { createRequireAuth } from "../middleware/require-auth.js";
+import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+
+export function createLotRoutes(container: Container, authenticator: IAuthenticator) {
+  const requireAuth = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+  });
+  const optionalAuth = createOptionalAuth(authenticator);
+  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+
+  r.get("/", zValidator("query", listLotsQuerySchema), async (c) => {
+    const query = c.req.valid("query");
+    const data = await container.lotService.list({
+      status: query.status,
+      categoryId: query.categoryId,
+      sellerId: query.sellerId,
+      winnerId: query.winnerId,
+      saleId: query.saleId,
+      endYear: query.endYear,
+      sort: query.sort,
+      limit: query.limit,
+      offset: query.offset,
+    });
+    return c.json({ data });
+  });
+
+  r.get("/archive/summary", zValidator("query", archiveSummaryQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const { total, count } = await container.lotService.archiveEndedSummary({
+      endYear: q.endYear,
+    });
+    return c.json({
+      data: { totalHammer: total, endedLotCount: count },
+    });
+  });
+
+  r.get("/archive/count", zValidator("query", archiveCountQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const count = await container.lotService.countMatching({
+      status: "ended",
+      categoryId: q.categoryId,
+      endYear: q.endYear,
+    });
+    return c.json({ count });
+  });
+
+  r.post("/:id/publish", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = c.get("userRole") ?? "user";
+    const { id } = c.req.valid("param");
+    const result = await container.lotService.publish(userId, role, id);
+    return result.match(
+      (lot) => c.json({ data: lot }),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
+
+  r.post(
+    "/:id/cancel",
+    requireAuth,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", cancelLotBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = c.get("userRole") ?? "user";
+      const { id } = c.req.valid("param");
+      const result = await container.lotService.cancel(userId, role, id);
+      return result.match(
+        (lot) => c.json({ data: lot }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.patch(
+    "/:id",
+    requireAuth,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", updateLotSchema),
+    async (c) => {
+      const role = c.get("userRole") ?? "user";
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json") as Partial<CreateLotInput>;
+      const result = await container.lotService.update(role, id, body);
+      return result.match(
+        (lot) => c.json({ data: lot }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.get("/:id/bids", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const lot = await container.lotService.getById(id);
+    if (!lot) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    const raw = c.req.query("limit");
+    const parsed = Number.parseInt(raw ?? "50", 10);
+    const limit = Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
+
+    const role = c.get("userRole");
+    if (lot.auctionType === "sealed" && lot.status === "active") {
+      if (role !== "admin") {
+        return c.json({ data: [] });
+      }
+    }
+
+    const bids = await container.bidService.listForLot(id, limit);
+    return c.json({ data: bids });
+  });
+
+  r.get("/:id", zValidator("param", lotIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const lot = await container.lotService.getById(id);
+    if (!lot) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return c.json({ data: lot });
+  });
+
+  r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {
+    const role = c.get("userRole") ?? "user";
+    if (role !== "admin") {
+      return c.json({ error: "Only admins can create lots" }, 403);
+    }
+    const userId = c.get("userId") as string;
+    const body = c.req.valid("json");
+    const result = await container.lotService.create(userId, body);
+    return result.match(
+      (lot) => c.json({ data: lot }, 201),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
+
+  return r;
+}

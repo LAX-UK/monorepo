@@ -23,13 +23,13 @@ export function defaultNotificationPreference(userId: string): NotificationPrefe
 export function inAppPreferenceKey(type: string): keyof NotificationPreference | null {
   switch (type) {
     case "outbid":
-    case "auction_cancelled":
+    case "lot_cancelled":
       return "outbidInApp";
-    case "auction_won":
+    case "lot_won":
       return "wonInApp";
-    case "auction_lost":
+    case "lot_lost":
       return "lostInApp";
-    case "auction_ending_soon":
+    case "lot_ending_soon":
     case "watchlist_ending_soon":
       return "endingSoonInApp";
     case "watchlist_starting":
@@ -45,11 +45,11 @@ export function inAppPreferenceKey(type: string): keyof NotificationPreference |
 export function pushPreferenceKey(type: string): keyof NotificationPreference | null {
   switch (type) {
     case "outbid":
-    case "auction_cancelled":
+    case "lot_cancelled":
       return "outbidPush";
-    case "auction_won":
+    case "lot_won":
       return "wonPush";
-    case "auction_ending_soon":
+    case "lot_ending_soon":
     case "watchlist_ending_soon":
       return "endingSoonPush";
     default:

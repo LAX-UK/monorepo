@@ -2,8 +2,8 @@ import type { PortfolioRow } from "@auction/types";
 
 /** User-facing label for settlement state on won lots. */
 export function portfolioSettlementLabel(row: PortfolioRow): string {
-  const { auction, payment } = row;
-  if (auction.status !== "ended") {
+  const { lot, payment } = row;
+  if (lot.status !== "ended") {
     return "—";
   }
   if (!payment) {

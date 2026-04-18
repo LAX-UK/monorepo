@@ -204,9 +204,9 @@ export default function NotificationsPage() {
                 <p className="mt-2 font-body text-xs text-on-surface-variant/80">
                   {n.type} · {new Date(n.createdAt).toLocaleString()}
                 </p>
-                {n.auctionId ? (
+                {n.lotId ? (
                   <Link
-                    href={`/artwork/${n.auctionId}`}
+                    href={`/artwork/${n.lotId}`}
                     className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
                   >
                     View lot
