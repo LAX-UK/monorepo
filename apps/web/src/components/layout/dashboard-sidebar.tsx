@@ -3,6 +3,7 @@
 import { useShellContext } from "@/components/layout/dashboard-shell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { SITE_SHORT_NAME } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,7 +41,7 @@ export function DashboardSidebar({ user }: Props) {
           onClick={onNav}
           className="mb-12 block font-headline text-xl tracking-tighter text-on-surface"
         >
-          The Digital Curator
+          {SITE_SHORT_NAME}
         </Link>
         <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
           Signed in

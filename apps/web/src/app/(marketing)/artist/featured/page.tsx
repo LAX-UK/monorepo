@@ -8,7 +8,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Artists",
   description:
-    "Discover featured artists and makers behind the lots on The Digital Curator—profiles, mediums, and portfolio context.",
+    "Discover featured artists and makers behind the lots on LAX London Auction House Ltd—profiles, mediums, and portfolio context.",
 };
 
 export default async function FeaturedArtistsPage() {

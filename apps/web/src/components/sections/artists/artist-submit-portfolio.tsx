@@ -1,3 +1,4 @@
+import { SITE_NAME } from "@/lib/brand";
 import Link from "next/link";
 
 const benefits = [
@@ -13,7 +14,7 @@ export function ArtistSubmitPortfolio() {
         <div className="w-full md:w-1/2">
           <h2 className="mb-6 font-headline text-4xl text-on-surface md:text-5xl">
             Shape the future of <br />
-            <span className="italic text-primary">The Digital Curator</span>
+            <span className="italic text-primary">{SITE_NAME}</span>
           </h2>
           <p className="mb-8 max-w-md font-body leading-relaxed text-secondary">
             We are constantly seeking visionary artists whose work challenges conventions and pushes

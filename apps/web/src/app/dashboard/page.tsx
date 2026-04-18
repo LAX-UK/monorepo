@@ -163,7 +163,9 @@ export default async function DashboardHomePage() {
       </div>
 
       <section className="mb-12 rounded-xl border border-primary/20 bg-primary-container/10 p-6 ring-1 ring-primary/10">
-        <h2 className="font-headline text-xl text-on-surface">Sell with The Digital Curator</h2>
+        <h2 className="font-headline text-xl text-on-surface">
+          Sell with LAX London Auction House Ltd
+        </h2>
         <p className="mt-2 max-w-2xl font-body text-sm text-on-surface-variant">
           Submit item details for specialist review. When approved, we create a draft catalog lot
           for scheduling and publication.

@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function LegalHubPage() {
   return (
     <LegalPage title="Legal">
-      <p>Key policies for collectors using The Digital Curator.</p>
+      <p>Key policies for collectors using LAX London Auction House Ltd.</p>
       <ul className="list-inside list-disc space-y-3 text-on-surface">
         <li>
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">

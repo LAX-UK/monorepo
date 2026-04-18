@@ -2,19 +2,26 @@ import { ThemeInit } from "@/components/layout/theme-init";
 import { Toaster } from "@/components/ui/toaster";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-import { Manrope, Noto_Serif } from "next/font/google";
+import { DM_Sans, Montserrat, Poppins } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const notoSerif = Noto_Serif({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-noto-serif",
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
-const manrope = Manrope({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-montserrat",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -27,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${notoSerif.variable} ${manrope.variable}`}
+      className={`${dmSans.variable} ${montserrat.variable} ${poppins.variable}`}
       suppressHydrationWarning
     >
       <head>

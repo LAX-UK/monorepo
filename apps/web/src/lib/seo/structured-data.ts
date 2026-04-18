@@ -1,7 +1,6 @@
+import { SITE_NAME } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
-
-const siteName = "The Digital Curator";
 
 export function lotProductJsonLd(auction: Lot): Record<string, unknown> {
   const base = getSiteUrl();
@@ -27,7 +26,7 @@ export function organizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: siteName,
+    name: SITE_NAME,
     url: base,
   };
 }

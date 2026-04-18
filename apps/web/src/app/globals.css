@@ -3,6 +3,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Figma LAX marketing palette (light) */
+  --color-brand-900: #050505;
+  --color-brand-800: #0a0a0a;
+  --color-brand-500: #191919;
+  --color-brand-400: #474747;
+  --color-brand-300: #757575;
+  --color-brand-200: #a3a3a3;
+  --color-brand-100: #d1d1d1;
+  --color-accent-gold: #d4af37;
+  --color-lot-orange: #e17100;
+  --color-live-red: #ff0000;
+  --color-page-bg: #f1f1f3;
+  --color-footer-bg: #ededef;
+  --color-divider: #c1c7cd;
+  --color-nav-border: #e6e8eb;
+  --color-nav-text: #1c170d;
+  --color-hero-cream: #feffdf;
+
   --color-on-surface: #1a1c1c;
   --color-surface-container-high: #e8e8e8;
   --color-surface-container-low: #f3f3f3;
@@ -56,11 +74,11 @@
   --radius-xl: 0.5rem;
   --radius-full: 0.75rem;
 
-  --font-headline: var(--font-noto-serif), ui-serif, Georgia, serif;
-  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-noto-serif: var(--font-noto-serif), ui-serif, Georgia, serif;
-  --font-manrope: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-headline: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-artists-serif: var(--font-montserrat), ui-serif, Georgia, serif;
+  --font-footer-links: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {

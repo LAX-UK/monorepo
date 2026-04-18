@@ -1,3 +1,4 @@
+import { SITE_NAME } from "@/lib/brand";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -6,7 +7,7 @@ type Props = {
   children: ReactNode;
 };
 
-export function LegalPage({ title, kicker = "The Digital Curator", children }: Props) {
+export function LegalPage({ title, kicker = SITE_NAME, children }: Props) {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-6 pb-24 pt-28 md:px-10 lg:pt-32">
       <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">

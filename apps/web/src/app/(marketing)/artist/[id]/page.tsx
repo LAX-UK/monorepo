@@ -65,7 +65,7 @@ export default async function ArtistPage({ params }: PageProps) {
           {user.name}
         </h1>
         <p className="mb-12 max-w-2xl font-body text-sm text-on-surface-variant">
-          Seller on The Digital Curator — lots listed below are attributed to this account.
+          Seller on LAX London Auction House Ltd — lots listed below are attributed to this account.
         </p>
         {sellerLots.length === 0 ? (
           <p className="font-body text-on-surface-variant">No public lots for this seller yet.</p>

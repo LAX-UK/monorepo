@@ -1,26 +1,25 @@
+import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
-
-const siteName = "The Digital Curator";
 
 export function rootMetadataBase(): Metadata {
   const base = getSiteUrl();
   return {
     metadataBase: new URL(base),
-    title: { default: siteName, template: `%s · ${siteName}` },
-    description: "Fine art auctions — curated lots and live bidding.",
+    title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+    description: SITE_TAGLINE,
     openGraph: {
       type: "website",
-      siteName,
+      siteName: SITE_NAME,
       url: base,
-      title: siteName,
-      description: "Fine art auctions — curated lots and live bidding.",
+      title: SITE_NAME,
+      description: SITE_TAGLINE,
     },
     twitter: {
       card: "summary_large_image",
-      title: siteName,
-      description: "Fine art auctions — curated lots and live bidding.",
+      title: SITE_NAME,
+      description: SITE_TAGLINE,
     },
     robots: { index: true, follow: true },
   };
@@ -39,13 +38,13 @@ export function metadataForLot(auction: Lot): Metadata {
     openGraph: {
       type: "website",
       url,
-      title: `${title} · ${siteName}`,
+      title: `${title} · ${SITE_NAME}`,
       description,
       images: auction.images[0] ? [{ url: auction.images[0] }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} · ${siteName}`,
+      title: `${title} · ${SITE_NAME}`,
       description,
       images: auction.images[0] ? [auction.images[0]] : undefined,
     },
@@ -62,12 +61,12 @@ export function metadataForSeller(name: string, sellerId: string): Metadata {
     openGraph: {
       type: "profile",
       url,
-      title: `${name} · ${siteName}`,
+      title: `${name} · ${SITE_NAME}`,
       description: `Seller profile — ${name}`,
     },
     twitter: {
       card: "summary",
-      title: `${name} · ${siteName}`,
+      title: `${name} · ${SITE_NAME}`,
       description: `Seller profile — ${name}`,
     },
   };

@@ -1,90 +1,74 @@
-import { HomeArchive } from "@/components/sections/home/home-archive";
-import { HomeCurrentSales } from "@/components/sections/home/home-current-sales";
-import { HomeFilters } from "@/components/sections/home/home-filters";
-import { HomeHero } from "@/components/sections/home/home-hero";
-import { HomeMasonry } from "@/components/sections/home/home-masonry";
-import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
+import {
+  toArtistCardVMs,
+  toHeroLotVM,
+  toLotCardVMs,
+  toUpcomingAuctionVM,
+} from "@/components/sections/home/home-view-models";
+import { LaxArtists } from "@/components/sections/home/lax-artists";
+import { LaxHero } from "@/components/sections/home/lax-hero";
+import { LaxUpcomingAuctions } from "@/components/sections/home/lax-upcoming-auctions";
+import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
 import type { ListLotsParams } from "@/lib/data/contracts";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
-import type { Category, Lot } from "@auction/types";
-import { Suspense } from "react";
+import { getServerSalesList } from "@/lib/data/http/sales.server";
+import type { Lot } from "@auction/types";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function filtersBarFallback() {
-  return (
-    <div
-      className="mb-20 mx-4 h-24 max-w-[1920px] animate-pulse rounded-md bg-surface-container-high md:mx-10 lg:mx-20"
-      aria-hidden
-    />
-  );
-}
-
 export default async function HomePage({ searchParams }: PageProps) {
-  const sp = await searchParams;
-  const categoryId = typeof sp.categoryId === "string" ? sp.categoryId : undefined;
-  const sellerId = typeof sp.sellerId === "string" ? sp.sellerId : undefined;
-  const minRaw = typeof sp.min === "string" ? sp.min : undefined;
-  const maxRaw = typeof sp.max === "string" ? sp.max : undefined;
-  const minN = minRaw !== undefined ? Number.parseFloat(minRaw) : Number.NaN;
-  const maxN = maxRaw !== undefined ? Number.parseFloat(maxRaw) : Number.NaN;
+  await searchParams;
 
-  let auctions: Lot[] = [];
-  let categories: Category[] = [];
+  let upcoming: Lot[] = [];
+  let salesRows: Awaited<ReturnType<typeof getServerSalesList>> = [];
+  let artists: Awaited<
+    ReturnType<Awaited<ReturnType<typeof getServerArtistReader>>["listFeatured"]>
+  > = [];
+
   try {
     const reader = await getServerLotReader();
-    const catReader = await getServerCategoryReader();
-    categories = await catReader.list();
+    const artistReader = await getServerArtistReader();
     const filtered: ListLotsParams = {
-      limit: 24,
+      limit: 5,
       status: "active",
       sort: "endingAsc",
-      ...(categoryId !== undefined ? { categoryId } : {}),
-      ...(sellerId !== undefined ? { sellerId } : {}),
     };
-    auctions = await reader.list(filtered);
-    if (auctions.length === 0) {
-      const fallback: ListLotsParams = {
-        limit: 24,
-        sort: "endingAsc",
-        ...(categoryId !== undefined ? { categoryId } : {}),
-        ...(sellerId !== undefined ? { sellerId } : {}),
-      };
-      auctions = await reader.list(fallback);
+    upcoming = await reader.list(filtered);
+    if (upcoming.length === 0) {
+      upcoming = await reader.list({ limit: 5, sort: "endingAsc" });
     }
-    if (!Number.isNaN(minN)) {
-      auctions = auctions.filter((a) => Number.parseFloat(a.currentPrice) >= minN);
-    }
-    if (!Number.isNaN(maxN)) {
-      auctions = auctions.filter((a) => Number.parseFloat(a.currentPrice) <= maxN);
-    }
-    if (auctions.length === 0) {
-      auctions = await reader.list({ limit: 12, sort: "endingAsc" });
-    }
+    const [salesResult, artistsResult] = await Promise.all([
+      getServerSalesList({ status: "active", limit: 1 }),
+      artistReader.listFeatured(),
+    ]);
+    salesRows = salesResult;
+    artists = artistsResult;
   } catch (err) {
-    categories = [];
-    console.error(
-      "[HomePage] auction list failed (API down or misconfigured INTERNAL_API_URL?)",
-      err,
-    );
+    console.error("[HomePage] data load failed", err);
   }
-  const featured = auctions[0] ?? null;
+
+  const featuredLot = upcoming[0] ?? null;
+  const firstSale = salesRows[0] ?? null;
+  const saleTitleForHero =
+    featuredLot && firstSale && featuredLot.saleId === firstSale.sale.id
+      ? firstSale.sale.title
+      : (firstSale?.sale.title ?? null);
+
+  const heroVm = featuredLot ? toHeroLotVM(featuredLot, saleTitleForHero) : null;
+  const lotCards = toLotCardVMs(upcoming.slice(1, 5));
+  const auctionVm = firstSale ? toUpcomingAuctionVM(firstSale) : null;
+  const artistCards = toArtistCardVMs(artists.slice(0, 4));
+
+  const saleMetaLine = firstSale?.sale.title ?? "Evening Sale · Spring 2025";
 
   return (
-    <main id="main-content" className="bg-surface pt-24">
-      <HomeHero featured={featured} />
-      <Suspense fallback={null}>
-        <HomeCurrentSales />
-      </Suspense>
-      <Suspense fallback={filtersBarFallback()}>
-        <HomeFilters categories={categories} />
-      </Suspense>
-      <HomeMasonry auctions={auctions} />
-      <HomeArchive />
-      <HomeNewsletter />
+    <main id="main-content" className="bg-page-bg pt-[114px]">
+      <LaxHero lot={heroVm} />
+      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
+      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
+      <LaxArtists items={artistCards} />
     </main>
   );
 }
