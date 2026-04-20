@@ -123,13 +123,18 @@ export type UserProfileRow = {
   email: string;
   name: string;
   role: string;
+  /** Public avatar URL (OAuth / profile); safe to expose on public user endpoints */
+  image: string | null;
 };
 
 export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
   listIdsByRole(role: string): Promise<string[]>;
   /** Public directory rows (no email) for marketing / mega-menu. */
-  listPublicProfiles(params: { limit: number; offset: number }): Promise<{ id: string; name: string }[]>;
+  listPublicProfiles(params: {
+    limit: number;
+    offset: number;
+  }): Promise<{ id: string; name: string; image: string | null }[]>;
 }
 
 export type ListSubmissionsFilter = {

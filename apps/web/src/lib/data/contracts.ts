@@ -80,6 +80,8 @@ export interface ArtistReader {
 export type PublicUser = {
   id: string;
   name: string;
+  /** Profile / OAuth avatar when present */
+  image?: string | null;
   /** Omitted from public API responses (defense in depth). */
   role?: string;
 };

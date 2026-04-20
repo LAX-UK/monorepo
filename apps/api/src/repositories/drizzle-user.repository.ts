@@ -15,6 +15,7 @@ export class DrizzleUserRepository implements IUserRepository {
       email: row.email,
       name: row.name,
       role: row.role,
+      image: row.image ?? null,
     };
   }
 
@@ -25,7 +26,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async listPublicProfiles(params: { limit: number; offset: number }) {
     const rows = await this.db
-      .select({ id: user.id, name: user.name })
+      .select({ id: user.id, name: user.name, image: user.image })
       .from(user)
       .orderBy(asc(user.name))
       .limit(params.limit)

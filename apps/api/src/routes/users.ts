@@ -44,7 +44,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   });
 
   r.get("/public/artists", async (c) => {
-    const limit = Math.min(50, Math.max(1, Number.parseInt(c.req.query("limit") ?? "24", 10) || 24));
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(c.req.query("limit") ?? "24", 10) || 24),
+    );
     const offset = Math.max(0, Number.parseInt(c.req.query("offset") ?? "0", 10) || 0);
     const data = await container.userService.listPublicArtists({ limit, offset });
     return c.json({ data });
@@ -57,7 +60,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({
-      data: { id: row.id, name: row.name },
+      data: { id: row.id, name: row.name, image: row.image ?? null },
     });
   });
 
