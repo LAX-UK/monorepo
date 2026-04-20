@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-currency";
-import type { Bid, Lot } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -12,25 +11,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
-
-export type BidBoardRow = {
-  bid: Bid;
-  lot: Lot | null;
-  statusLabel: string;
-  statusClassName: string;
-  outbid: boolean;
-  timeLeft: string;
-};
-
-function formatRemaining(endMs: number, now: number): string {
-  const ms = endMs - now;
-  if (ms <= 0) return "Ended";
-  const d = Math.floor(ms / 86_400_000);
-  const h = Math.floor((ms % 86_400_000) / 3_600_000);
-  if (d > 0) return `${d}d ${h}h`;
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  return `${h}h ${m}m`;
-}
+import type { BidBoardRow } from "./bid-board-rows";
 
 function bidColumns(): ColumnDef<BidBoardRow>[] {
   return [
@@ -207,83 +188,4 @@ export function BidsBoard({
       </Tabs>
     </div>
   );
-}
-
-export function buildBidBoardRows(
-  unique: { bid: Bid; lot: Lot | null }[],
-  userId: string | undefined,
-  now: number,
-): { active: BidBoardRow[]; won: BidBoardRow[]; lost: BidBoardRow[] } {
-  const active: BidBoardRow[] = [];
-  const won: BidBoardRow[] = [];
-  const lost: BidBoardRow[] = [];
-
-  for (const row of unique) {
-    const a = row.lot;
-
-    if (!a) {
-      lost.push({
-        bid: row.bid,
-        lot: null,
-        statusLabel: "Unknown",
-        statusClassName: "text-secondary",
-        outbid: false,
-        timeLeft: "—",
-      });
-      continue;
-    }
-
-    if (a.status === "ended") {
-      const didWin = Boolean(userId && a.winnerId === userId);
-      if (didWin) {
-        won.push({
-          bid: row.bid,
-          lot: a,
-          statusLabel: "Won",
-          statusClassName: "text-primary",
-          outbid: false,
-          timeLeft: "—",
-        });
-      } else {
-        lost.push({
-          bid: row.bid,
-          lot: a,
-          statusLabel: "Closed",
-          statusClassName: "text-secondary",
-          outbid: false,
-          timeLeft: "—",
-        });
-      }
-      continue;
-    }
-
-    if (a.status === "active") {
-      const myAmount = Number.parseFloat(row.bid.amount);
-      const high = Number.parseFloat(a.currentPrice);
-      const winning = row.bid.isWinning && Math.abs(myAmount - high) < 0.02;
-      const statusLabel = winning ? "Winning" : "Outbid";
-      const statusClassName = winning ? "text-primary" : "text-error";
-      const timeLeft = formatRemaining(a.endTime.getTime(), now);
-      active.push({
-        bid: row.bid,
-        lot: a,
-        statusLabel,
-        statusClassName,
-        outbid: !winning,
-        timeLeft,
-      });
-      continue;
-    }
-
-    lost.push({
-      bid: row.bid,
-      lot: a,
-      statusLabel: a.status,
-      statusClassName: "text-secondary",
-      outbid: false,
-      timeLeft: "—",
-    });
-  }
-
-  return { active, won, lost };
 }

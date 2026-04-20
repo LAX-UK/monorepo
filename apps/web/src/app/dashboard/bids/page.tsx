@@ -1,4 +1,5 @@
-import { BidsBoard, buildBidBoardRows } from "@/components/dashboard/bids-board";
+import { buildBidBoardRows } from "@/components/dashboard/bid-board-rows";
+import { BidsBoard } from "@/components/dashboard/bids-board";
 import { getServerMyBids } from "@/lib/data/http/dashboard.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 
