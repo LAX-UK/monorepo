@@ -2,38 +2,23 @@
 
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
-import { linkTop } from "./header-nav-config";
+import { HeaderUserMenu } from "./header-user-menu";
+
+const loginPillClass =
+  "inline-flex items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
 
 type HeaderAuthLinksProps = {
   user: SessionUser | null;
-  variant?: "utility" | "drawer";
-  onNavigate?: () => void;
 };
 
-const drawerLinkClass =
-  "block py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900";
-
-export function HeaderAuthLinks({ user, variant = "utility", onNavigate }: HeaderAuthLinksProps) {
-  const c = variant === "utility" ? linkTop : drawerLinkClass;
-
-  const navProps = onNavigate !== undefined ? { onClick: onNavigate } : {};
-
+export function HeaderAuthLinks({ user }: HeaderAuthLinksProps) {
   if (user) {
-    return (
-      <Link href="/dashboard" className={c} {...navProps}>
-        Dashboard
-      </Link>
-    );
+    return <HeaderUserMenu user={user} />;
   }
 
   return (
-    <>
-      <Link href="/login" className={c} {...navProps}>
-        Log in
-      </Link>
-      <Link href="/register" className={c} {...navProps}>
-        Register
-      </Link>
-    </>
+    <Link href="/login" className={loginPillClass}>
+      Log in
+    </Link>
   );
 }

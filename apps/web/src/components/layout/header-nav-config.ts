@@ -4,6 +4,25 @@ export const primaryNav = [
   { href: "/artist/featured", label: "Artists" },
 ] as const;
 
+export type MegaMenuItem = { href: string; label: string };
+
+export type MegaMenuSection = {
+  href: string;
+  label: string;
+  items: MegaMenuItem[];
+  viewAllHref?: string;
+};
+
+/** Empty items; marketing layout fills from server data. */
+export function emptyMegaMenuSections(): MegaMenuSection[] {
+  return primaryNav.map((item) => ({
+    href: item.href,
+    label: item.label,
+    items: [],
+    viewAllHref: item.href,
+  }));
+}
+
 export const utilityNav = [
   { href: "/terms", label: "FAQs" },
   { href: "/contact", label: "Contact us" },

@@ -1,6 +1,5 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
 import Link from "next/link";
 import { HeaderAuthLinks } from "./header-auth-links";
@@ -18,11 +17,7 @@ export function HeaderUtilityBar({ user }: HeaderUtilityBarProps) {
           {item.label}
         </Link>
       ))}
-      <HeaderAuthLinks user={user} variant="utility" />
-      <span className={`inline-flex items-center gap-2 ${linkTop}`}>
-        English
-        <MaterialIcon name="expand_more" className="text-base!" />
-      </span>
+      <HeaderAuthLinks user={user} />
     </div>
   );
 }
