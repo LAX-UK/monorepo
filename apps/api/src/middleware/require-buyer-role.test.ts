@@ -13,11 +13,11 @@ describe("createRequireBuyerRole", () => {
     const mw = createRequireBuyerRole(roleSource("admin"));
     const json = vi.fn((body: unknown, status?: number) => ({ body, status }));
     const next = vi.fn();
-    const c = { get: vi.fn(), json } as Parameters<typeof mw>[0];
+    const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
       key === "userRole" ? "admin" : undefined,
     );
-    await mw(c as never, next as never);
+    await mw(c, next as never);
     expect(json).toHaveBeenCalledWith({ error: "admin_cannot_buy" }, 403);
     expect(next).not.toHaveBeenCalled();
   });
@@ -26,11 +26,11 @@ describe("createRequireBuyerRole", () => {
     const mw = createRequireBuyerRole(roleSource("user"));
     const json = vi.fn();
     const next = vi.fn();
-    const c = { get: vi.fn(), json } as Parameters<typeof mw>[0];
+    const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
       key === "userRole" ? "user" : undefined,
     );
-    await mw(c as never, next as never);
+    await mw(c, next as never);
     expect(json).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalled();
   });
@@ -41,11 +41,11 @@ describe("createRequireBuyerRoleUnlessAdmin", () => {
     const mw = createRequireBuyerRoleUnlessAdmin(roleSource("admin"));
     const json = vi.fn();
     const next = vi.fn();
-    const c = { get: vi.fn(), json } as Parameters<typeof mw>[0];
+    const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
       key === "userRole" ? "admin" : undefined,
     );
-    await mw(c as never, next as never);
+    await mw(c, next as never);
     expect(json).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalled();
   });
