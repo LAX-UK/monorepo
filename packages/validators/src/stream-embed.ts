@@ -1,3 +1,5 @@
+import { URL, URLSearchParams } from "node:url";
+
 /** Whitelisted streaming hosts for sale.streamUrl (defense in depth with zod + embed builder). */
 
 const YOUTUBE_HOSTS = new Set([
