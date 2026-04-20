@@ -23,6 +23,10 @@ export type StreamEmbedResult = {
   /** iframe src (Twitch may omit parent=; caller appends for embed) */
   src: string;
   provider: StreamEmbedProvider;
+  /** YouTube 11-char id when provider is youtube */
+  videoId?: string | undefined;
+  /** YouTube start offset in seconds (from `t` or `start` query) */
+  startSeconds?: number | undefined;
 };
 
 function extractYoutubeId(pathname: string, search: string, host: string): string | null {
@@ -43,6 +47,25 @@ function extractYoutubeId(pathname: string, search: string, host: string): strin
     return id && /^[\w-]{11}$/.test(id) ? id : null;
   }
   return null;
+}
+
+/** Parse `?t=11s`, `?t=11`, or `?start=90` from a YouTube watch / short URL query string. */
+export function parseYoutubeStartSeconds(search: string): number | undefined {
+  const params = new URLSearchParams(search);
+  const start = params.get("start");
+  if (start != null && start !== "") {
+    const n = Number.parseInt(start, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  const t = params.get("t");
+  if (t == null || t === "") return undefined;
+  const trimmed = t.trim();
+  const simple = /^(\d+)(s)?$/i.exec(trimmed);
+  if (simple?.[1]) {
+    const n = Number.parseInt(simple[1], 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+  return undefined;
 }
 
 function extractVimeoId(pathname: string): string | null {
@@ -100,7 +123,16 @@ export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
   if (YOUTUBE_HOSTS.has(host)) {
     const id = extractYoutubeId(pathname, u.search, host);
     if (!id) return null;
-    return { provider: "youtube", src: `https://www.youtube.com/embed/${id}?rel=0` };
+    const startSeconds = parseYoutubeStartSeconds(u.search);
+    const base = `https://www.youtube.com/embed/${id}?rel=0`;
+    const src =
+      startSeconds !== undefined ? `${base}&start=${startSeconds}` : base;
+    return {
+      provider: "youtube",
+      src,
+      videoId: id,
+      ...(startSeconds !== undefined ? { startSeconds } : {}),
+    };
   }
 
   if (host === VIMEO_PLAYER_HOST) {

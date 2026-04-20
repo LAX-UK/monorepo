@@ -239,7 +239,9 @@ async function main() {
       coverImages: [IMG.a, IMG.b, IMG.a],
       categoryId: CAT.paintings,
       deliveryMode: "hybrid",
-      streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+      // Hero live stream (preview). To patch an existing DB without reseed:
+      // UPDATE sale SET stream_url = 'https://www.youtube.com/watch?v=AtO699gsFS8&t=11s' WHERE delivery_mode != 'onsite';
+      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
       status: "active",
       startTime: activeStart,
       endTime: new Date(now + 14 * day),
@@ -257,7 +259,7 @@ async function main() {
       coverImages: [IMG.c, IMG.d],
       categoryId: null,
       deliveryMode: "online",
-      streamUrl: "https://youtu.be/mOiEOs3ZlT8?si=cwF6HbkDGNSMi7jg",
+      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
       status: "active",
       startTime: scheduledStart,
       endTime: scheduledEnd,

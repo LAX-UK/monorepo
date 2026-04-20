@@ -38,30 +38,30 @@ export function LaxHeroLot({ lot }: Props) {
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-6">
                 <LiveIndicatorRow
-                  tone="dark"
+                  tone="white"
                   progressLabel="Auction in progress"
                   saleLine={lot.saleMetaLine}
                   announceUpdates={lot.isAuctionLive}
                 />
-                <LabelCaps className="text-base font-medium leading-6 tracking-normal text-brand-100">
+                <LabelCaps className="text-base font-medium leading-6 tracking-normal text-white">
                   {lot.featuredHeading}
                 </LabelCaps>
               </div>
               <div className="flex flex-col gap-3">
                 <DisplayHeading
                   as="h1"
-                  className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-hero-foreground md:text-[60px] md:leading-[72px]"
+                  className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
                 >
                   {lot.title}
                 </DisplayHeading>
-                <span className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px] text-brand-200">
+                <span className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px] text-white/90">
                   {lot.artistName}
                 </span>
               </div>
               <div className="flex flex-row flex-wrap gap-8">
-                <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="dark" />
-                <StatTile label="Current Highest Bid" value={lot.currentBidFormatted} tone="dark" />
-                <StatTile label="Bids" value={lot.bidCountDisplay} tone="dark" />
+                <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
+                <StatTile label="Current Highest Bid" value={lot.currentBidFormatted} tone="white" />
+                <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
               </div>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

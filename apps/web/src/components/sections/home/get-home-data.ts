@@ -95,6 +95,13 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
           provider: embed.provider,
           modeLabel,
           saleroomHref: `/sales/${sale.id}`,
+          ...(embed.provider === "youtube" && embed.videoId
+            ? {
+                videoId: embed.videoId,
+                ...(embed.startSeconds !== undefined ? { startSeconds: embed.startSeconds } : {}),
+              }
+            : {}),
+          posterImageUrl: sale.coverImages[0] ?? null,
         },
       };
     }

@@ -1,7 +1,7 @@
 import { LiveDot } from "@auction/ui";
 
 type LiveIndicatorRowProps = {
-  tone: "dark" | "light";
+  tone: "dark" | "light" | "white";
   progressLabel: string;
   saleLine: string;
   /** When true, status text is exposed to assistive tech as a polite live region. */
@@ -14,8 +14,14 @@ export function LiveIndicatorRow({
   saleLine,
   announceUpdates = false,
 }: LiveIndicatorRowProps) {
-  const textMuted = tone === "dark" ? "text-brand-200" : "text-brand-400";
-  const dividerBg = tone === "dark" ? "bg-black/78" : "bg-brand-400/78";
+  const textMuted =
+    tone === "dark"
+      ? "text-brand-200"
+      : tone === "light"
+        ? "text-brand-400"
+        : "text-white/90";
+  const dividerBg =
+    tone === "dark" ? "bg-black/78" : tone === "light" ? "bg-brand-400/78" : "bg-white/45";
 
   return (
     <div

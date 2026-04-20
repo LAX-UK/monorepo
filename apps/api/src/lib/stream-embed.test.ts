@@ -6,12 +6,29 @@ describe("parseStreamEmbedUrl", () => {
     const r = parseStreamEmbedUrl("https://www.youtube.com/watch?v=jNQXAC9IVRw");
     expect(r?.provider).toBe("youtube");
     expect(r?.src).toBe("https://www.youtube.com/embed/jNQXAC9IVRw?rel=0");
+    expect(r?.videoId).toBe("jNQXAC9IVRw");
+    expect(r?.startSeconds).toBeUndefined();
+  });
+
+  it("parses youtube watch URL with t=11s and embeds start", () => {
+    const r = parseStreamEmbedUrl("https://www.youtube.com/watch?v=AtO699gsFS8&t=11s");
+    expect(r?.provider).toBe("youtube");
+    expect(r?.videoId).toBe("AtO699gsFS8");
+    expect(r?.startSeconds).toBe(11);
+    expect(r?.src).toBe("https://www.youtube.com/embed/AtO699gsFS8?rel=0&start=11");
+  });
+
+  it("parses youtube start=90 query", () => {
+    const r = parseStreamEmbedUrl("https://www.youtube.com/watch?v=AtO699gsFS8&start=90");
+    expect(r?.startSeconds).toBe(90);
+    expect(r?.src).toContain("&start=90");
   });
 
   it("parses youtu.be short URL", () => {
     const r = parseStreamEmbedUrl("https://youtu.be/jNQXAC9IVRw");
     expect(r?.provider).toBe("youtube");
     expect(r?.src).toContain("/embed/jNQXAC9IVRw");
+    expect(r?.videoId).toBe("jNQXAC9IVRw");
   });
 
   it("parses vimeo", () => {

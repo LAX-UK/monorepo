@@ -52,6 +52,11 @@ export type HeroStateVM =
       provider: StreamEmbedProvider;
       modeLabel: string;
       saleroomHref: string;
+      /** Present when provider is youtube — used for background embed + watch link */
+      videoId?: string | undefined;
+      startSeconds?: number | undefined;
+      /** Sale cover for reduced-motion / visual fallback */
+      posterImageUrl?: string | null | undefined;
     }
   | { kind: "rotator"; slides: HeroSaleSlideVM[] }
   | { kind: "fallbackLot"; lot: HeroLotVM };
