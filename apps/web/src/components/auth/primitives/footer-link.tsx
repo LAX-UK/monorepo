@@ -8,11 +8,11 @@ type AuthFooterLinkProps = {
 
 export function AuthFooterLink({ prefix, linkText, href }: AuthFooterLinkProps) {
   return (
-    <p className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 font-footer-links text-sm leading-[18px] tracking-[0.16px] text-[#161616]">
+    <p className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 font-footer-links text-sm leading-[18px] tracking-[0.16px] text-on-surface">
       <span>{prefix}</span>
       <Link
         href={href}
-        className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-[3px]"
+        className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-[3px] dark:text-primary"
       >
         {linkText}
       </Link>

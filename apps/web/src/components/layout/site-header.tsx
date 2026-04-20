@@ -23,7 +23,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   }, [pathname]);
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-nav-border bg-white">
+    <header className="fixed top-0 z-50 w-full border-b border-nav-border bg-surface">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">
         <HeaderUtilityBar user={user} />
 
@@ -43,7 +43,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
             <NotificationBell />
             <button
               type="button"
-              className="rounded-md p-1 text-brand-800 transition-colors hover:bg-page-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold lg:hidden"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-brand-800 transition-colors hover:bg-page-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold lg:hidden dark:text-on-surface"
               aria-haspopup="dialog"
               aria-expanded={menuOpen}
               aria-label={menuOpen ? "Close menu" : "Open menu"}

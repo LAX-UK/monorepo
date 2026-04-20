@@ -1,4 +1,13 @@
 import { LegalPage } from "@/components/marketing/legal-page";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "About",
+  description:
+    "Learn about LAX London Auction House Ltd — editorial fine art auctions, specialist vetting, and white-glove bidding.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

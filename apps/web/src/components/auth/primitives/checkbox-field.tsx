@@ -34,11 +34,11 @@ export function RHFCheckboxField<TFieldValues extends FieldValues>({
               onCheckedChange={(v) => field.onChange(v === true)}
               onBlur={field.onBlur}
               ref={field.ref}
-              className="mt-0.5 size-6 shrink-0 cursor-pointer rounded-sm border-[1.5px] border-brand-900 data-[state=checked]:bg-brand-900 data-[state=checked]:text-[#F1F1F3]"
+              className="mt-0.5 size-6 shrink-0 cursor-pointer rounded-sm border-[1.5px] border-cta-bg data-[state=checked]:bg-cta-bg data-[state=checked]:text-cta-on dark:border-primary dark:data-[state=checked]:bg-primary dark:data-[state=checked]:text-on-primary"
             />
             <Label
               htmlFor={checkboxId}
-              className="cursor-pointer font-footer-links text-sm leading-[18px] tracking-[0.16px] font-normal text-[#161616]"
+              className="cursor-pointer font-footer-links text-sm font-normal leading-[18px] tracking-[0.16px] text-on-surface"
             >
               {children}
             </Label>

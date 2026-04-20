@@ -19,12 +19,10 @@ export function AuthSubmitButton({
   return (
     <Button
       type="submit"
-      variant="ghost"
+      variant="cta"
+      size="xl"
       disabled={disabled ?? loading}
-      className={cn(
-        "flex h-[60px] w-full cursor-pointer items-center justify-center rounded bg-brand-900 px-8 font-headline text-base font-semibold leading-6 tracking-wide text-[#F1F1F3] shadow-none transition-opacity hover:bg-brand-900 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60",
-        className,
-      )}
+      className={cn("font-headline shadow-none", className)}
       {...rest}
     >
       {loading ? (loadingLabel ?? children) : children}

@@ -17,12 +17,22 @@ const buttonVariants = cva(
         secondary: "bg-secondary-container text-on-secondary-container shadow-sm hover:opacity-95",
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
+        /** Primary marketing CTA (solid) */
+        cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-gold",
+        /** “Join live” style — border + label caps */
+        liveJoin:
+          "rounded border border-brand-100 bg-transparent font-label text-base font-semibold uppercase tracking-wide text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
+        /** Text “View all” with chevron slot — pair with `asChild` + Link */
+        chevron:
+          "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold tracking-[0.8px] text-brand-900 shadow-none hover:underline focus-visible:ring-accent-gold dark:text-on-surface",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        /** Full-width auth / hero primary button */
+        xl: "h-[60px] min-h-[44px] w-full px-8 py-[18px] text-base font-semibold leading-6 tracking-wide",
       },
     },
     defaultVariants: {

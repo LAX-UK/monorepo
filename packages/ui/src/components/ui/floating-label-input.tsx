@@ -1,21 +1,18 @@
 "use client";
 
-import { optionalString } from "@/lib/ts/if-defined";
-import { cn } from "@auction/ui";
-import { type InputHTMLAttributes, type ReactNode, forwardRef, useId, useState } from "react";
-import { FieldError } from "./form-error";
+import * as React from "react";
+import { cn } from "../../lib/utils.js";
 
-export type FloatingUnderlineInputProps = InputHTMLAttributes<HTMLInputElement> & {
+export type FloatingLabelInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
-  /** Classes for the bordered underline container (below the floating label). */
   containerClassName?: string;
   inputClassName?: string;
-  endAdornment?: ReactNode;
+  endAdornment?: React.ReactNode;
 };
 
-export const FloatingUnderlineInput = forwardRef<HTMLInputElement, FloatingUnderlineInputProps>(
-  function FloatingUnderlineInput(
+export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLabelInputProps>(
+  function FloatingLabelInput(
     {
       label,
       error,
@@ -27,29 +24,31 @@ export const FloatingUnderlineInput = forwardRef<HTMLInputElement, FloatingUnder
       endAdornment,
       onFocus,
       onBlur,
+      disabled,
       ...rest
     },
     ref,
   ) {
-    const genId = useId();
+    const genId = React.useId();
     const inputId = id ?? genId;
     const strVal = value === undefined || value === null ? "" : String(value);
-    const [focused, setFocused] = useState(false);
+    const [focused, setFocused] = React.useState(false);
     const float = focused || strVal.length > 0;
 
     return (
       <div className={cn("w-full", className)}>
         <div
           className={cn(
-            "relative rounded-t border-b border-brand-300 pt-5 pb-2 transition-colors",
-            error ? "border-error" : focused ? "border-brand-900" : "",
+            "relative rounded-t border-b border-input-border bg-transparent pt-5 pb-2 transition-colors",
+            error ? "border-error" : focused ? "border-input-border-focus" : "",
+            disabled ? "opacity-60" : "",
             containerClassName,
           )}
         >
           <label
             htmlFor={inputId}
             className={cn(
-              "pointer-events-none absolute left-0 font-footer-links text-brand-400 transition-all duration-150",
+              "pointer-events-none absolute left-0 font-footer-links text-on-surface-variant transition-all duration-150",
               float
                 ? "top-0 text-xs leading-[18px] tracking-[0.16px]"
                 : "top-4 text-base leading-6 tracking-[0.5px]",
@@ -61,9 +60,10 @@ export const FloatingUnderlineInput = forwardRef<HTMLInputElement, FloatingUnder
             ref={ref}
             id={inputId}
             value={value}
+            disabled={disabled}
             {...rest}
             className={cn(
-              "w-full border-0 bg-transparent pb-1 font-footer-links text-base leading-6 tracking-[0.5px] text-brand-900 outline-none placeholder:text-transparent",
+              "w-full border-0 bg-transparent pb-1 font-footer-links text-base leading-6 tracking-[0.5px] text-on-surface outline-none placeholder:text-transparent focus-visible:outline-none disabled:cursor-not-allowed",
               endAdornment ? "pr-10" : "",
               inputClassName,
             )}
@@ -82,8 +82,14 @@ export const FloatingUnderlineInput = forwardRef<HTMLInputElement, FloatingUnder
             </div>
           ) : null}
         </div>
-        <FieldError {...optionalString("message", error)} />
+        {error ? (
+          <p role="alert" className="mt-1 font-footer-links text-xs text-error">
+            {error}
+          </p>
+        ) : null}
       </div>
     );
   },
 );
+
+FloatingLabelInput.displayName = "FloatingLabelInput";

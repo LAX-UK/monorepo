@@ -1,6 +1,6 @@
 "use client";
 
-import { CommandPalette } from "@/components/layout/command-palette";
+import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -53,7 +53,7 @@ export function DashboardShell({ user, children, mobileTitle = "Dashboard", side
 
   return (
     <div className="flex min-h-screen bg-surface font-body text-on-surface">
-      <CommandPalette variant="dashboard" />
+      <CommandPaletteLazy variant="dashboard" />
       <div
         className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-4 backdrop-blur-md lg:hidden"
         role="banner"

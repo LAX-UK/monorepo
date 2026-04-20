@@ -1,9 +1,10 @@
 "use client";
 
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
+import type { SubmitService } from "@/lib/auth/submit-service";
 import { useCallback, useState } from "react";
 
-export function useAuthSubmit<TData>(onExecute: (data: TData) => Promise<AuthSubmitResult>) {
+export function useAuthSubmit<TData>(onExecute: SubmitService<TData>) {
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

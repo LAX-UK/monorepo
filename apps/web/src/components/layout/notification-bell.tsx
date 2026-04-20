@@ -110,7 +110,7 @@ export function NotificationBell() {
       <button
         ref={triggerRef}
         type="button"
-        className="relative rounded-md p-1 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         aria-label="Notifications"
         aria-expanded={open}
         aria-controls={MENU_ID}
@@ -118,15 +118,15 @@ export function NotificationBell() {
       >
         <MaterialIcon name="notifications" />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[8px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
       </button>
       {open ? (
-        <div
+        <section
           id={MENU_ID}
-          role="menu"
+          aria-label="Recent notifications"
           className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-lg border border-outline-variant/15 bg-surface-container-lowest py-2 shadow-lg"
         >
           {unread > 0 ? (
@@ -194,7 +194,7 @@ export function NotificationBell() {
               Open dashboard
             </Link>
           </div>
-        </div>
+        </section>
       ) : null}
     </div>
   );

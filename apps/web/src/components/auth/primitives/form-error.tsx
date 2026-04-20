@@ -15,6 +15,7 @@ export function FormBanner({ message }: { message: string | null }) {
   return (
     <Alert
       variant="destructive"
+      aria-live="assertive"
       className={cn(
         "items-start border-0 bg-transparent p-0 font-footer-links text-sm text-error shadow-none [&>svg]:hidden [&>svg~*]:pl-0",
       )}

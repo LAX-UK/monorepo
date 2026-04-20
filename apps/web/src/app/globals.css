@@ -72,6 +72,16 @@
   --color-inverse-primary: #e9c176;
   --color-background: #f9f9f9;
 
+  /* Semantic marketing + auth (single source; use these in new code) */
+  --color-cta-bg: #050505;
+  --color-cta-on: #f1f1f3;
+  --color-scrim-hero: rgba(10, 10, 10, 0.52);
+  --color-scrim-hero-mid: rgba(10, 10, 10, 0.4);
+  --color-scrim-auth: rgba(5, 5, 5, 0.07);
+  --color-input-border: #757575;
+  --color-input-border-focus: #050505;
+  --color-hero-foreground: #ffffff;
+
   --radius-DEFAULT: 0.125rem;
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
@@ -87,6 +97,18 @@
 :root {
   /* Fixed marketing header offset — keep in sync with site-header layout */
   --header-height: 114px;
+  --container-max: 1440px;
+  --container-inner: 1376px;
+  --auth-column: 528px;
+  --section-gutter-sm: 1.5rem;
+  --section-gutter-md: 2.5rem;
+  --section-gutter-lg: 2.5rem;
+  --section-pt: 7rem;
+  --section-pt-tight: 8rem;
+  --text-display-lg: clamp(2.25rem, 4vw + 1rem, 3.75rem);
+  --text-display-md: clamp(1.75rem, 2vw + 1rem, 2.5rem);
+  --text-title-section: 2.5rem;
+  --text-label-caps-tracking: 0.3em;
 }
 
 @layer base {
@@ -129,10 +151,6 @@
   top: 1rem;
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-}
-
-.material-symbols-outlined {
-  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
 }
 
 .masonry-layout {
@@ -181,6 +199,21 @@
 /* Dark theme: semantic tokens (mirrors @theme names) */
 html.dark {
   color-scheme: dark;
+  /* Marketing surfaces in dark */
+  --color-page-bg: #121414;
+  --color-footer-bg: #161818;
+  --color-nav-border: #333534;
+  --color-hero-cream: #1e2020;
+  --color-nav-text: #e3e2e0;
+  --color-cta-bg: #e8e8ea;
+  --color-cta-on: #0a0a0a;
+  --color-scrim-hero: rgba(0, 0, 0, 0.62);
+  --color-scrim-hero-mid: rgba(0, 0, 0, 0.5);
+  --color-scrim-auth: rgba(255, 255, 255, 0.06);
+  --color-input-border: #948f87;
+  --color-input-border-focus: #e8c77c;
+  --color-hero-foreground: #fafafa;
+
   --color-on-surface: #e3e2e0;
   --color-surface-container-high: #383a39;
   --color-surface-container-low: #2d2f2e;

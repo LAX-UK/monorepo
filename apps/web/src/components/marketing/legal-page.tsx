@@ -9,7 +9,10 @@ type Props = {
 
 export function LegalPage({ title, kicker = SITE_NAME, children }: Props) {
   return (
-    <main id="main-content" className="mx-auto max-w-3xl px-6 pb-24 pt-28 md:px-10 lg:pt-32">
+    <main
+      id="main-content"
+      className="mx-auto max-w-3xl px-6 pb-24 pt-[var(--section-pt)] md:px-10 lg:pt-32"
+    >
       <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
         {kicker}
       </p>

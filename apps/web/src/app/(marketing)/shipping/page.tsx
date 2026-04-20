@@ -1,4 +1,13 @@
 import { LegalPage } from "@/components/marketing/legal-page";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Shipping & logistics",
+  description:
+    "Shipping, insurance, and logistics information for lots purchased through LAX auctions.",
+  path: "/shipping",
+});
 
 export default function ShippingPage() {
   return (

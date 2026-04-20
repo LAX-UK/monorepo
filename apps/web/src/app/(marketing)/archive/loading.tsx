@@ -2,7 +2,7 @@ export default function ArchiveLoading() {
   return (
     <main
       id="main-content"
-      className="bg-surface px-8 pb-24 pt-32 text-on-surface md:px-20"
+      className="bg-surface px-8 pb-24 pt-[var(--section-pt)] text-on-surface md:px-20"
       aria-busy="true"
       aria-label="Loading archive"
     >

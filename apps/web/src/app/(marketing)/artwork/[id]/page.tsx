@@ -9,7 +9,7 @@ import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { metadataForLot } from "@/lib/seo/metadata-factory";
-import { lotProductJsonLd } from "@/lib/seo/structured-data";
+import { breadcrumbJsonLd, lotProductJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -70,8 +70,12 @@ export default async function ArtworkPage({ params }: PageProps) {
   const sellerName = seller?.name ?? "Private seller";
   const sellerHref = `/artist/${auction.sellerId}`;
 
-  const jsonLd = lotProductJsonLd(auction);
-  const jsonLdText = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Search", path: "/search" },
+    { name: auction.title, path: `/artwork/${auction.id}` },
+  ]);
+  const jsonLdText = JSON.stringify([lotProductJsonLd(auction), crumbs]).replace(/</g, "\\u003c");
 
   return (
     <main id="main-content">

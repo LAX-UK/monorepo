@@ -1,7 +1,9 @@
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import { BodyText, DisplayHeading } from "@auction/ui";
+import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,41 +14,44 @@ type Props = {
 
 export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
   return (
-    <section className="w-full max-w-[1440px] px-8 pb-0 pt-10 md:px-8">
-      <div className="mx-auto flex max-w-[1376px] flex-col gap-12">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex max-w-[1278px] flex-col gap-3">
+    <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-8">
+      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
+        <SectionHeader
+          kicker={
             <LiveIndicatorRow
               tone="light"
               progressLabel="Auction in progress"
               saleLine={saleMetaLine}
             />
+          }
+          heading={
             <DisplayHeading
               as="h2"
-              className="text-[40px] font-semibold leading-[60px] text-brand-900"
+              className="text-[40px] font-semibold leading-[60px] text-brand-900 dark:text-on-surface"
             >
               Upcoming Lots
             </DisplayHeading>
-          </div>
-          <Link
-            href="/sales"
-            className="inline-flex items-center gap-[11px] self-start py-[18px] font-label text-base font-semibold leading-6 tracking-[0.8px] text-brand-900 sm:self-auto"
-          >
-            View All
-            <span
-              className="inline-block h-5 w-5 border-r-[1.67px] border-b-[1.67px] border-brand-900 rotate-[-45deg]"
-              aria-hidden
-            />
-          </Link>
-        </div>
+          }
+          action={
+            <Button variant="chevron" asChild>
+              <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
+                View all
+                <span className="sr-only"> upcoming lots and sales</span>
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
         {items.length === 0 ? (
-          <BodyText className="text-brand-400">No upcoming lots to display.</BodyText>
+          <BodyText className="text-brand-400 dark:text-on-surface-variant">
+            No upcoming lots to display.
+          </BodyText>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item) => (
               <article key={item.id} className="flex flex-col gap-4">
                 <Link href={item.href} className="group block">
-                  <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800">
+                  <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
@@ -67,20 +72,20 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
                   <div className="flex flex-col gap-1">
                     <Link
                       href={item.href}
-                      className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline"
+                      className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
                     >
                       {item.title}
                     </Link>
-                    <BodyText className="text-sm font-light leading-4 text-brand-500">
+                    <BodyText className="text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
                       {item.artistName}
                     </BodyText>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="font-body text-xs font-normal leading-4 text-brand-400">
-                      Estimate
+                    <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
+                      {item.priceLabel}
                     </span>
-                    <span className="font-body text-sm font-medium leading-6 text-brand-400">
-                      {item.estimateFormatted}
+                    <span className="font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant">
+                      {item.priceFormatted}
                     </span>
                   </div>
                 </div>

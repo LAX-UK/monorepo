@@ -1,5 +1,14 @@
 import { LegalPage } from "@/components/marketing/legal-page";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Legal",
+  description:
+    "Terms of sale, privacy, shipping, and key policies for LAX London Auction House Ltd.",
+  path: "/legal",
+});
 
 export default function LegalHubPage() {
   return (

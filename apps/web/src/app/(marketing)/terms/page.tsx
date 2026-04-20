@@ -1,4 +1,12 @@
 import { LegalPage } from "@/components/marketing/legal-page";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Terms of sale",
+  description: "Terms of sale and bidding rules for auctions at LAX London Auction House Ltd.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

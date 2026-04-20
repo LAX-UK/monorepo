@@ -1,4 +1,13 @@
 import { LegalPage } from "@/components/marketing/legal-page";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Privacy",
+  description:
+    "Privacy notice for LAX London Auction House Ltd — how we collect, use, and protect your data.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

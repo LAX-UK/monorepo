@@ -2,10 +2,10 @@
 
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.service";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
+import { FloatingLabelInput } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -32,7 +32,7 @@ export function HomeNewsletter() {
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-32 text-center md:px-20">
-      <h2 className="mb-10 font-headline text-4xl font-light italic md:text-5xl">
+      <h2 className="mb-10 font-headline text-4xl font-light italic text-on-surface md:text-5xl">
         The Curator&apos;s Letter
       </h2>
       <p className="mx-auto mb-16 max-w-3xl text-lg font-light leading-relaxed text-on-surface-variant md:text-xl">
@@ -48,38 +48,39 @@ export function HomeNewsletter() {
         </Alert>
       ) : (
         <Form {...form}>
-          <form onSubmit={onSubmit} className="relative mx-auto max-w-xl text-left" noValidate>
+          <form onSubmit={onSubmit} className="mx-auto max-w-xl text-left" noValidate>
             {bannerError ? (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4" aria-live="assertive">
                 <AlertDescription>{bannerError}</AlertDescription>
               </Alert>
             ) : null}
-            <div className="relative">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        autoComplete="email"
-                        placeholder="EMAIL FOR INVITATION"
-                        disabled={loading}
-                        className="w-full border-0 border-b border-outline-variant/50 bg-transparent px-0 py-6 font-label text-xs font-bold uppercase tracking-[0.4em] text-on-surface placeholder:text-on-surface-variant focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
-                        aria-label="Email for invitation"
-                      />
-                    </FormControl>
-                    <FormMessage className="mt-4 text-sm text-error" />
-                  </FormItem>
-                )}
-              />
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <FloatingLabelInput
+                          {...field}
+                          label="Email for invitation"
+                          type="email"
+                          autoComplete="email"
+                          disabled={loading}
+                          aria-label="Email for invitation"
+                        />
+                      </FormControl>
+                      <FormMessage className="mt-4 text-sm text-error" />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <Button
                 type="submit"
-                variant="ghost"
+                variant="cta"
                 disabled={loading}
-                className="absolute right-0 top-1/2 -translate-y-1/2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary transition-all duration-500 hover:bg-transparent hover:tracking-[0.5em] disabled:opacity-50"
+                className="h-[52px] shrink-0 px-8 sm:h-[60px]"
               >
                 {loading ? "Subscribing…" : "Subscribe"}
               </Button>

@@ -2,14 +2,16 @@ import { ArtistDirectory } from "@/components/sections/artists/artist-directory"
 import { ArtistSpotlightHero } from "@/components/sections/artists/artist-spotlight-hero";
 import { ArtistSubmitPortfolio } from "@/components/sections/artists/artist-submit-portfolio";
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = metadataForStatic({
   title: "Artists",
   description:
-    "Discover featured artists and makers behind the lots on LAX London Auction House Ltd—profiles, mediums, and portfolio context.",
-};
+    "Discover featured artists and makers behind the lots on LAX London Auction House Ltd — profiles, mediums, and portfolio context.",
+  path: "/artist/featured",
+});
 
 export default async function FeaturedArtistsPage() {
   const reader = await getServerArtistReader();

@@ -11,6 +11,11 @@ export {
 } from "./components/ui/breadcrumb.js";
 export { Button, buttonVariants } from "./components/ui/button.js";
 export { Checkbox } from "./components/ui/checkbox.js";
+export { FloatingLabelInput } from "./components/ui/floating-label-input.js";
+export { LiveDot } from "./components/ui/live-dot.js";
+export { PasswordInput } from "./components/ui/password-input.js";
+export { SectionHeader } from "./components/ui/section-header.js";
+export { StatTile } from "./components/ui/stat-tile.js";
 export {
   Dialog,
   DialogClose,
@@ -60,4 +65,4 @@ export {
 } from "./components/ui/table.js";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs.js";
 export { Textarea } from "./components/ui/textarea.js";
-export { BodyText, DisplayHeading, LabelCaps } from "./components/typography.js";
+export { BodyText, DisplayHeading, Kicker, LabelCaps } from "./components/typography.js";

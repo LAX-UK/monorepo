@@ -1,8 +1,8 @@
 "use client";
 
 import { optionalString } from "@/lib/ts/if-defined";
+import { FloatingLabelInput } from "@auction/ui";
 import { type Control, Controller, type FieldPath, type FieldValues } from "react-hook-form";
-import { FloatingUnderlineInput } from "./floating-underline-input";
 
 type RHFInputProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
@@ -24,7 +24,7 @@ export function RHFInput<TFieldValues extends FieldValues>({
       control={control}
       name={name}
       render={({ field, fieldState }) => (
-        <FloatingUnderlineInput
+        <FloatingLabelInput
           {...field}
           label={label}
           type={type}

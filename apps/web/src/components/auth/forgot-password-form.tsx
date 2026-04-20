@@ -4,33 +4,15 @@ import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
 import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
-import { type ForgotPasswordFormValues, forgotPasswordFormSchema } from "@/lib/auth/schemas";
-import { forgotPasswordService } from "@/lib/auth/services/forgot-password.service";
-import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForgotPasswordController } from "@/lib/auth/hooks/use-forgot-password-controller";
 
 export function ForgotPasswordForm() {
-  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-  const { run, loading, bannerError } = useAuthSubmit(forgotPasswordService);
-
-  const form = useForm<ForgotPasswordFormValues>({
-    resolver: zodResolver(forgotPasswordFormSchema),
-    defaultValues: { email: "" },
-  });
-
-  const onSubmit = form.handleSubmit(async (data) => {
-    const result = await run(data);
-    if (result.ok) {
-      setSubmittedEmail(data.email);
-    }
-  });
+  const { form, onSubmit, loading, bannerError, submittedEmail } = useForgotPasswordController();
 
   if (submittedEmail) {
     return (
       <div className="flex w-full flex-col gap-10">
-        <p className="font-footer-links text-sm leading-relaxed text-[#161616]">
+        <p className="font-footer-links text-sm leading-relaxed text-on-surface">
           If an account exists for <span className="font-medium">{submittedEmail}</span>, we&apos;ve
           sent reset instructions.
         </p>

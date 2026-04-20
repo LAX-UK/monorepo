@@ -10,8 +10,17 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Category, Lot } from "@auction/types";
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Past auctions",
+  description:
+    "Browse past auctions, realized prices, and archived lots from LAX London Auction House Ltd.",
+  path: "/archive",
+});
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -86,7 +95,10 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     const totalPages = Math.max(1, Math.ceil(totalCount / q.pageSize));
 
     return (
-      <main id="main-content" className="bg-surface px-8 pb-24 pt-32 text-on-surface md:px-20">
+      <main
+        id="main-content"
+        className="bg-surface px-8 pb-24 pt-[var(--section-pt)] text-on-surface md:px-20"
+      >
         <PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={categories} />
@@ -100,7 +112,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
   } catch (err) {
     console.error("[ArchivePage]", err);
     return (
-      <main id="main-content" className="bg-surface px-8 pb-24 pt-32 md:px-20">
+      <main id="main-content" className="bg-surface px-8 pb-24 pt-[var(--section-pt)] md:px-20">
         <PastAuctionsHeader totalVolumeLabel="—" />
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={[]} />

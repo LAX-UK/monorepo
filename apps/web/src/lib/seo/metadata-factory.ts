@@ -1,7 +1,11 @@
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
+
+function defaultOgImage(base: string) {
+  return [{ url: new URL(SITE_LOGO_PATH, base).toString() }];
+}
 
 export function rootMetadataBase(): Metadata {
   const base = getSiteUrl();
@@ -15,13 +19,77 @@ export function rootMetadataBase(): Metadata {
       url: base,
       title: SITE_NAME,
       description: SITE_TAGLINE,
+      images: defaultOgImage(base),
     },
     twitter: {
       card: "summary_large_image",
       title: SITE_NAME,
       description: SITE_TAGLINE,
+      images: defaultOgImage(base),
     },
     robots: { index: true, follow: true },
+  };
+}
+
+/** Static marketing / legal pages */
+export function metadataForStatic(opts: {
+  title: string;
+  description: string;
+  path: string;
+}): Metadata {
+  const base = getSiteUrl();
+  const path = opts.path.startsWith("/") ? opts.path : `/${opts.path}`;
+  const url = `${base}${path}`;
+  const fullTitle = `${opts.title} · ${SITE_NAME}`;
+  return {
+    title: opts.title,
+    description: opts.description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title: fullTitle,
+      description: opts.description,
+      images: defaultOgImage(base),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: fullTitle,
+      description: opts.description,
+      images: defaultOgImage(base),
+    },
+  };
+}
+
+/** Sale catalog page */
+export function metadataForSale(opts: {
+  title: string;
+  description?: string | null;
+  id: string;
+}): Metadata {
+  const base = getSiteUrl();
+  const url = `${base}/sales/${opts.id}`;
+  const desc =
+    opts.description?.trim().slice(0, 160) ??
+    `Browse lots and bidding in ${opts.title} — ${SITE_NAME}.`;
+  const fullTitle = `${opts.title} · ${SITE_NAME}`;
+  return {
+    title: opts.title,
+    description: desc,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title: fullTitle,
+      description: desc,
+      images: defaultOgImage(base),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: fullTitle,
+      description: desc,
+      images: defaultOgImage(base),
+    },
   };
 }
 
@@ -40,13 +108,13 @@ export function metadataForLot(auction: Lot): Metadata {
       url,
       title: `${title} · ${SITE_NAME}`,
       description,
-      images: auction.images[0] ? [{ url: auction.images[0] }] : undefined,
+      images: auction.images[0] ? [{ url: auction.images[0] }] : defaultOgImage(base),
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} · ${SITE_NAME}`,
       description,
-      images: auction.images[0] ? [auction.images[0]] : undefined,
+      images: auction.images[0] ? [auction.images[0]] : defaultOgImage(base),
     },
   };
 }
@@ -63,11 +131,13 @@ export function metadataForSeller(name: string, sellerId: string): Metadata {
       url,
       title: `${name} · ${SITE_NAME}`,
       description: `Seller profile — ${name}`,
+      images: defaultOgImage(base),
     },
     twitter: {
       card: "summary",
       title: `${name} · ${SITE_NAME}`,
       description: `Seller profile — ${name}`,
+      images: defaultOgImage(base),
     },
   };
 }

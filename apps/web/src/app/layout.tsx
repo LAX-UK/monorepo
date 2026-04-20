@@ -1,6 +1,7 @@
 import { ThemeInit } from "@/components/layout/theme-init";
 import { Toaster } from "@/components/ui/toaster";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 import { DM_Sans, Montserrat, Poppins } from "next/font/google";
 import type { ReactNode } from "react";
@@ -21,7 +22,7 @@ const montserrat = Montserrat({
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-poppins",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -29,6 +30,8 @@ export const metadata: Metadata = {
   ...rootMetadataBase(),
   manifest: "/manifest.json",
 };
+
+const rootJsonLd = JSON.stringify([organizationJsonLd(), websiteJsonLd()]).replace(/</g, "\\u003c");
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -39,12 +42,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         <ThemeInit />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0"
-        />
       </head>
       <body>
+        <script type="application/ld+json" suppressHydrationWarning>
+          {rootJsonLd}
+        </script>
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

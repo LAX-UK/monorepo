@@ -24,7 +24,7 @@ type MobileNavDrawerProps = {
 };
 
 const drawerContentClass =
-  "fixed inset-y-0 top-0 right-0 left-auto z-50 !flex h-full max-h-[100dvh] w-full max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-white p-0 shadow-xl sm:max-w-sm sm:rounded-none";
+  "fixed inset-y-0 top-0 right-0 left-auto z-50 !flex h-full max-h-[100dvh] w-full max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-surface p-0 shadow-xl sm:max-w-sm sm:rounded-none";
 
 export function MobileNavDrawer({ open, onOpenChange, user, pathname }: MobileNavDrawerProps) {
   const close = () => {

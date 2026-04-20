@@ -1,6 +1,8 @@
 import type { UpcomingAuctionVM } from "@/components/sections/home/home-view-models";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import { BodyText, DisplayHeading } from "@auction/ui";
+import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,30 +12,31 @@ type Props = {
 
 export function LaxUpcomingAuctions({ auction }: Props) {
   return (
-    <section className="w-full max-w-[1440px] px-8 pb-0 pt-20 md:px-8">
-      <div className="mx-auto flex max-w-[1376px] flex-col gap-12">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <DisplayHeading
-            as="h2"
-            className="text-[40px] font-semibold leading-[60px] text-brand-900"
-          >
-            Upcoming Auctions
-          </DisplayHeading>
-          <Link
-            href="/sales"
-            className="inline-flex items-center gap-[11px] self-start py-[18px] font-label text-base font-semibold leading-6 tracking-[0.8px] text-brand-900 sm:self-auto"
-          >
-            View All
-            <span
-              className="inline-block h-5 w-5 border-r-[1.67px] border-b-[1.67px] border-brand-900 rotate-[-45deg]"
-              aria-hidden
-            />
-          </Link>
-        </div>
+    <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-20 md:px-8">
+      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
+        <SectionHeader
+          heading={
+            <DisplayHeading
+              as="h2"
+              className="text-[40px] font-semibold leading-[60px] text-brand-900 dark:text-on-surface"
+            >
+              Upcoming Auctions
+            </DisplayHeading>
+          }
+          action={
+            <Button variant="chevron" asChild>
+              <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
+                View all
+                <span className="sr-only"> auctions and sales</span>
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
         <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-stretch lg:gap-8">
           <div className="group flex min-w-0 flex-[853] flex-col gap-6">
             <Link href={auction.href} className="block">
-              <div className="relative aspect-[853/500] w-full overflow-hidden bg-brand-800">
+              <div className="relative aspect-[853/500] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                 {auction.coverImageUrl ? (
                   <Image
                     src={auction.coverImageUrl}
@@ -47,17 +50,23 @@ export function LaxUpcomingAuctions({ auction }: Props) {
                 ) : null}
               </div>
               <div className="mt-6 flex flex-col gap-3">
-                <BodyText className="text-base font-normal uppercase leading-4 text-brand-500">
+                <BodyText className="text-base font-normal uppercase leading-4 text-brand-500 dark:text-on-surface-variant">
                   {auction.dateLabel}
                 </BodyText>
-                <DisplayHeading as="h3" className="text-2xl font-semibold leading-6 text-brand-900">
+                <DisplayHeading
+                  as="h3"
+                  className="text-2xl font-semibold leading-6 text-brand-900 dark:text-on-surface"
+                >
                   {auction.title}
                 </DisplayHeading>
               </div>
             </Link>
           </div>
           <div className="flex w-full min-w-0 flex-[507] flex-col gap-8">
-            <DisplayHeading as="h3" className="text-2xl font-semibold leading-6 text-brand-900">
+            <DisplayHeading
+              as="h3"
+              className="text-2xl font-semibold leading-6 text-brand-900 dark:text-on-surface"
+            >
               Featured Lots
             </DisplayHeading>
             <div className="flex flex-col gap-6">
@@ -65,7 +74,7 @@ export function LaxUpcomingAuctions({ auction }: Props) {
                 <div key={lot.id} className="flex flex-row gap-4">
                   <Link
                     href={lot.href}
-                    className="relative block h-[210px] w-[min(45%,181.5px)] shrink-0 overflow-hidden bg-brand-800"
+                    className="relative block h-[210px] w-[min(45%,181.5px)] shrink-0 overflow-hidden bg-brand-800 dark:bg-surface-container-high"
                   >
                     {lot.imageUrl ? (
                       <Image
@@ -83,20 +92,20 @@ export function LaxUpcomingAuctions({ auction }: Props) {
                     <div className="flex flex-col gap-1">
                       <Link
                         href={lot.href}
-                        className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline"
+                        className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
                       >
                         {lot.title}
                       </Link>
-                      <BodyText className="text-sm font-light leading-4 text-brand-500">
+                      <BodyText className="text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
                         {lot.artistName}
                       </BodyText>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="font-body text-xs font-normal leading-4 text-brand-400">
-                        Estimate
+                      <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
+                        {lot.priceLabel}
                       </span>
-                      <span className="font-body text-sm font-medium leading-6 text-brand-400">
-                        {lot.estimateFormatted}
+                      <span className="font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant">
+                        {lot.priceFormatted}
                       </span>
                     </div>
                   </div>

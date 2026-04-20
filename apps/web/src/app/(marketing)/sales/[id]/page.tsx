@@ -1,11 +1,27 @@
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { metadataForSale } from "@/lib/seo/metadata-factory";
+import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo/structured-data";
+import { getSiteUrl } from "@/lib/site-url";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const bundle = await getServerSaleWithLots(id).catch(() => null);
+  if (!bundle) return { title: "Sale" };
+  const { sale } = bundle;
+  return metadataForSale({
+    id: sale.id,
+    title: sale.title,
+    description: sale.description,
+  });
+}
 
 export default async function SaleDetailPage({ params }: PageProps) {
   const { id } = await params;
@@ -14,15 +30,37 @@ export default async function SaleDetailPage({ params }: PageProps) {
 
   const { sale, lots } = bundle;
   const hero = sale.coverImages[0];
+  const base = getSiteUrl();
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Sales", path: "/sales" },
+    { name: sale.title, path: `/sales/${sale.id}` },
+  ]);
+  const itemsLd =
+    lots.length > 0
+      ? itemListJsonLd(
+          lots.map((lot) => ({
+            name: lot.title,
+            url: `${base}/artwork/${lot.id}`,
+          })),
+        )
+      : null;
+  const jsonLdText = JSON.stringify(itemsLd ? [crumbs, itemsLd] : [crumbs]).replace(
+    /</g,
+    "\\u003c",
+  );
 
   return (
-    <main id="main-content" className="bg-surface pb-24 pt-28">
+    <main id="main-content" className="bg-surface pb-24 pt-[var(--section-pt)]">
+      <script type="application/ld+json" suppressHydrationWarning>
+        {jsonLdText}
+      </script>
       <div className="relative mx-auto max-w-[1920px]">
         <div className="relative h-[42vh] min-h-[280px] w-full bg-surface-container-low md:h-[48vh]">
           {hero ? (
             <Image
               src={hero}
-              alt=""
+              alt={sale.title}
               fill
               priority
               placeholder="blur"
@@ -71,7 +109,7 @@ export default async function SaleDetailPage({ params }: PageProps) {
                       {img ? (
                         <Image
                           src={img}
-                          alt=""
+                          alt={lot.title}
                           fill
                           className="object-cover transition-transform duration-700 group-hover:scale-105"
                           sizes="(max-width: 768px) 100vw, 33vw"

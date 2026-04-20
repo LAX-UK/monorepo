@@ -3,6 +3,7 @@ import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
+import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { Lot } from "@auction/types";
 import {
   HERO_FALLBACK_IMG,
@@ -16,7 +17,8 @@ export type HeroLotVM = {
   id: string;
   title: string;
   artistName: string;
-  estimateFormatted: string;
+  priceLabel: string;
+  priceFormatted: string;
   currentBidFormatted: string;
   bidCountDisplay: string;
   heroImageUrl: string;
@@ -36,7 +38,8 @@ export type LotCardVM = {
   lotLabel: string;
   title: string;
   artistName: string;
-  estimateFormatted: string;
+  priceLabel: string;
+  priceFormatted: string;
   imageUrl: string | null;
   /** Alt text when `imageUrl` is set */
   imageAlt: string;
@@ -47,7 +50,8 @@ export type AuctionFeaturedLotVM = {
   href: string;
   title: string;
   artistName: string;
-  estimateFormatted: string;
+  priceLabel: string;
+  priceFormatted: string;
   imageUrl: string | null;
   imageAlt: string;
 };
@@ -82,7 +86,8 @@ export function createHeroFallbackVm(): HeroLotVM {
     id: "placeholder",
     title: HERO_PLACEHOLDER_TITLE,
     artistName: HERO_PLACEHOLDER_ARTIST,
-    estimateFormatted: "—",
+    priceLabel: "Starting bid",
+    priceFormatted: "—",
     currentBidFormatted: "—",
     bidCountDisplay: "—",
     heroImageUrl: HERO_FALLBACK_IMG,
@@ -97,11 +102,13 @@ export function createHeroFallbackVm(): HeroLotVM {
 export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
   const saleMetaLine = saleTitle?.trim() || formatLotAuctionLine(lot);
   const artistName = artistLineFromLot(lot);
+  const primary = lotPriceDisplay(lot);
   return {
     id: lot.id,
     title: lot.title,
     artistName,
-    estimateFormatted: formatMoney(lot.startingPrice),
+    priceLabel: primary.label,
+    priceFormatted: primary.value,
     currentBidFormatted: formatMoney(lot.currentPrice),
     bidCountDisplay: "—",
     heroImageUrl: lot.images[0] ?? HERO_FALLBACK_IMG,
@@ -115,13 +122,15 @@ export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
 
 export function toLotCardVM(lot: Lot): LotCardVM {
   const artistName = artistLineFromLot(lot);
+  const { label, value } = lotPriceDisplay(lot);
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
     lotLabel: lotLabelFromLot(lot),
     title: lot.title,
     artistName,
-    estimateFormatted: formatMoney(lot.startingPrice),
+    priceLabel: label,
+    priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
   };
@@ -133,12 +142,14 @@ export function toLotCardVMs(lots: Lot[]): LotCardVM[] {
 
 function toAuctionFeaturedLotVM(lot: Lot): AuctionFeaturedLotVM {
   const artistName = artistLineFromLot(lot);
+  const { label, value } = lotPriceDisplay(lot);
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
     title: lot.title,
     artistName,
-    estimateFormatted: formatMoney(lot.startingPrice),
+    priceLabel: label,
+    priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
   };

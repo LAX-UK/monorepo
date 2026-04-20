@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const reader = await getServerArtistReader();
   const artist = await reader.getById(id);
-  if (artist) return { title: artist.name };
+  if (artist) return metadataForSeller(artist.name, id);
   const publicReader = await getServerPublicUserReader();
   const user = await publicReader.getById(id).catch(() => null);
   if (!user) return { title: "Artist" };
@@ -42,7 +42,10 @@ export default async function ArtistPage({ params }: PageProps) {
     ]);
     const sellerLots = [...active, ...ended];
     return (
-      <main id="main-content" className="mx-auto max-w-[1920px] px-10 pb-20 pt-32 md:px-20">
+      <main
+        id="main-content"
+        className="mx-auto max-w-[1920px] px-10 pb-20 pt-[var(--section-pt)] md:px-20"
+      >
         <nav
           aria-label="Breadcrumb"
           className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
@@ -94,7 +97,10 @@ export default async function ArtistPage({ params }: PageProps) {
   }
 
   return (
-    <main id="main-content" className="mx-auto max-w-[1920px] px-10 pb-20 pt-32 md:px-20">
+    <main
+      id="main-content"
+      className="mx-auto max-w-[1920px] px-10 pb-20 pt-[var(--section-pt)] md:px-20"
+    >
       <nav
         aria-label="Breadcrumb"
         className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"

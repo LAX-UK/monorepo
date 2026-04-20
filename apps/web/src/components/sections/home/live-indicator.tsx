@@ -1,3 +1,5 @@
+import { LiveDot } from "@auction/ui";
+
 type LiveIndicatorRowProps = {
   tone: "dark" | "light";
   progressLabel: string;
@@ -20,16 +22,7 @@ export function LiveIndicatorRow({
       className="flex flex-row flex-wrap items-center gap-1 md:gap-0.5"
       {...(announceUpdates ? { role: "status", "aria-live": "polite" as const } : {})}
     >
-      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
-        <span
-          className="absolute inline-flex h-[19.51px] w-[19.51px] rounded-full bg-live-red opacity-[0.05]"
-          aria-hidden
-        />
-        <span
-          className="relative inline-flex h-2.5 w-2.5 rounded-full bg-live-red opacity-[0.78]"
-          aria-hidden
-        />
-      </span>
+      <LiveDot className="h-5 w-5" />
       <span
         className={`font-label text-xs font-semibold uppercase leading-[18px] tracking-[1.8px] ${textMuted}`}
       >

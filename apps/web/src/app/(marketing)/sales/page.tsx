@@ -1,7 +1,18 @@
 import { getServerSalesList } from "@/lib/data/http/sales.server";
 import { formatMoney } from "@/lib/format-currency";
+import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import { itemListJsonLd } from "@/lib/seo/structured-data";
+import { getSiteUrl } from "@/lib/site-url";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForStatic({
+  title: "Sales",
+  description:
+    "Browse active and scheduled sales — curated catalogs with shared timing and house terms.",
+  path: "/sales",
+});
 
 export default async function SalesListPage() {
   let rows: Awaited<ReturnType<typeof getServerSalesList>> = [];
@@ -16,8 +27,25 @@ export default async function SalesListPage() {
     err = e instanceof Error ? e.message : "Could not load sales.";
   }
 
+  const base = getSiteUrl();
+  const listLd =
+    !err && rows.length > 0
+      ? itemListJsonLd(
+          rows.map((r) => ({
+            name: r.sale.title,
+            url: `${base}/sales/${r.sale.id}`,
+          })),
+        )
+      : null;
+  const listLdText = listLd ? JSON.stringify(listLd).replace(/</g, "\\u003c") : null;
+
   return (
-    <main id="main-content" className="bg-surface px-6 pb-24 pt-32 md:px-20">
+    <main id="main-content" className="bg-surface px-6 pb-24 pt-[var(--section-pt)] md:px-20">
+      {listLdText ? (
+        <script type="application/ld+json" suppressHydrationWarning>
+          {listLdText}
+        </script>
+      ) : null}
       <h1 className="mb-4 font-headline text-4xl tracking-tight md:text-5xl">Sales</h1>
       <p className="mb-12 max-w-2xl font-body text-on-surface-variant">
         Browse umbrella sessions — each sale groups multiple catalogued lots with shared timing and
@@ -43,7 +71,7 @@ export default async function SalesListPage() {
                     {img ? (
                       <Image
                         src={img}
-                        alt=""
+                        alt={sale.title}
                         fill
                         className="object-cover transition-transform duration-700 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, 33vw"

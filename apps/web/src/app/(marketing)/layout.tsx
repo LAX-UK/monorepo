@@ -1,4 +1,4 @@
-import { CommandPalette } from "@/components/layout/command-palette";
+import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
@@ -10,7 +10,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
 
   return (
     <>
-      <CommandPalette variant="marketing" />
+      <CommandPaletteLazy variant="marketing" />
       <SiteHeader user={user} />
       {children}
       <SiteFooter />

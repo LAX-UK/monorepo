@@ -1,4 +1,4 @@
-import { SITE_NAME } from "@/lib/brand";
+import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
 
@@ -28,6 +28,40 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@type": "Organization",
     name: SITE_NAME,
     url: base,
+    description: SITE_TAGLINE,
+  };
+}
+
+export function websiteJsonLd(): Record<string, unknown> {
+  const base = getSiteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: base,
+    description: SITE_TAGLINE,
+    publisher: { "@type": "Organization", name: SITE_NAME, url: base },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${base}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+export function itemListJsonLd(items: { name: string; url: string }[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+    })),
   };
 }
 

@@ -5,37 +5,19 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
-import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
-import { signInService } from "@/lib/auth/services/sign-in.service";
-import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
 
 export function SignInForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
-  const { run, loading, bannerError } = useAuthSubmit(signInService);
-
-  const form = useForm<SignInFormValues>({
-    resolver: zodResolver(signInFormSchema),
-    defaultValues: { email: "", password: "" },
-  });
-
-  const onSubmit = form.handleSubmit(async (data) => {
-    const result = await run(data);
-    if (result.ok) {
-      router.push(next.startsWith("/") ? next : "/dashboard");
-      router.refresh();
-    }
-  });
+  const { form, onSubmit, loading, bannerError } = useSignInController(next);
 
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
       {searchParams.get("auth") === "required" ? (
-        <p className="rounded-sm border border-brand-300 bg-page-bg px-4 py-3 font-footer-links text-sm text-brand-500">
+        <p className="rounded-sm border border-brand-300 bg-surface-container-low px-4 py-3 font-footer-links text-sm text-brand-500 dark:border-outline-variant dark:bg-surface-container dark:text-on-surface-variant">
           Please sign in to continue.
         </p>
       ) : null}
@@ -58,7 +40,7 @@ export function SignInForm() {
           <div className="flex justify-end">
             <Link
               href="/forgot-password"
-              className="font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2"
+              className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
             >
               Forgot password?
             </Link>
