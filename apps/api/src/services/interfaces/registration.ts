@@ -1,7 +1,9 @@
 export type RegistrationInput = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
+  mobile?: string;
 };
 
 export interface IRegistrationValidator {

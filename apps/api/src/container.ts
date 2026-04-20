@@ -255,7 +255,7 @@ export function createContainer(env: Env): Container {
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
-    new BetterAuthRegistrationPersister(auth),
+    new BetterAuthRegistrationPersister(auth, db),
     new NoOpWelcomeNotifier(),
   );
 

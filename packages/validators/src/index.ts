@@ -5,6 +5,7 @@ export * from "./bid.js";
 export * from "./notification.js";
 export * from "./payment.js";
 export * from "./register.js";
+export * from "./forgot-password.js";
 export * from "./user.js";
 export * from "./watchlist.js";
 export * from "./item-submission.js";

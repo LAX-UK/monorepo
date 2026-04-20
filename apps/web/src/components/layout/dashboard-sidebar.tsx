@@ -1,6 +1,7 @@
 "use client";
 
 import { useShellContext } from "@/components/layout/dashboard-shell";
+import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { SITE_SHORT_NAME } from "@/lib/brand";
@@ -94,6 +95,7 @@ export function DashboardSidebar({ user }: Props) {
           <span className="font-label text-xs uppercase tracking-widest text-secondary">Theme</span>
           <ThemeToggle />
         </div>
+        <LogoutButton onBeforeNavigate={onNav} />
         <Link
           href="/"
           onClick={onNav}

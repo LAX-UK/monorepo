@@ -64,6 +64,13 @@
       "when": 1776600000000,
       "tag": "0008_item_submission",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776700000000,
+      "tag": "0009_user_profile_names",
+      "breakpoints": true
     }
   ]
 }

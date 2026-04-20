@@ -2,8 +2,8 @@ import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
 import type { ReactNode } from "react";
 
 type LaxLogoProps = {
-  /** "header" = compact nav bar; "footer" = larger mark */
-  variant?: "header" | "footer";
+  /** "header" = compact nav bar; "footer" = larger mark; "auth" = centered sign-in/up */
+  variant?: "header" | "footer" | "auth";
   className?: string;
   /**
    * Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
@@ -25,15 +25,29 @@ export function LaxLogo({
   imageHeight = 44,
   children,
 }: LaxLogoProps) {
-  const titleSize = variant === "footer" ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl";
-  const subSize = variant === "footer" ? "text-[11px] md:text-xs" : "text-[9px] md:text-[10px]";
+  const titleSize =
+    variant === "footer"
+      ? "text-4xl md:text-5xl"
+      : variant === "auth"
+        ? "text-3xl md:text-4xl"
+        : "text-2xl md:text-3xl";
+  const subSize =
+    variant === "footer"
+      ? "text-[11px] md:text-xs"
+      : variant === "auth"
+        ? "text-[10px] md:text-[11px]"
+        : "text-[9px] md:text-[10px]";
   const src = imageSrc === "" ? null : (imageSrc ?? SITE_LOGO_PATH);
   const imgMax =
-    variant === "footer" ? "max-h-[60px] max-w-[min(100%,320px)]" : "max-h-11 max-w-[201px]";
+    variant === "footer"
+      ? "max-h-[60px] max-w-[min(100%,320px)]"
+      : variant === "auth"
+        ? "max-h-[98px] max-w-[min(100%,512px)]"
+        : "max-h-11 max-w-[201px]";
 
   if (src) {
     return (
-      <div className={`flex flex-col ${className}`}>
+      <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- static asset from /public */}
         <img
           src={src}
@@ -48,7 +62,7 @@ export function LaxLogo({
   }
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
       <span
         className={`font-headline font-semibold uppercase leading-none tracking-tight text-brand-900 ${titleSize}`}
       >

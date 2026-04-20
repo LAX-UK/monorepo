@@ -31,9 +31,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.post("/register", zValidator("json", registerBodySchema), async (c) => {
     const body = c.req.valid("json");
     const result = await container.registrationService.register({
-      name: body.name,
+      firstName: body.firstName,
+      lastName: body.lastName,
       email: body.email,
       password: body.password,
+      ...(body.mobile !== undefined ? { mobile: body.mobile } : {}),
     });
     if (!result.ok) {
       return c.json({ error: result.message }, result.status as 400);

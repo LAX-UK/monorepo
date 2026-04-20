@@ -1,7 +1,17 @@
 import { z } from "zod";
 
 export const registerBodySchema = z.object({
-  name: z.string().min(1).max(200),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(8).max(128),
+  mobile: z
+    .string()
+    .trim()
+    .max(32)
+    .optional()
+    .refine((v) => v === undefined || v.length === 0 || v.length >= 6, {
+      message: "Mobile must be at least 6 characters when provided",
+    })
+    .transform((v) => (v === undefined || v.length === 0 ? undefined : v)),
 });

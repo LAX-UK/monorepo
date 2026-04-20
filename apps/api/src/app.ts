@@ -9,6 +9,7 @@ import { createAppLogger } from "./lib/logger.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
 import { createLotRoutes } from "./routes/lots.js";
@@ -44,6 +45,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/sales/*", createRateLimitMiddleware(container.redis));
   app.use("/bids/*", createRateLimitMiddleware(container.redis));
   app.use("/users/*", createRateLimitMiddleware(container.redis));
+  app.use("/auth/*", createRateLimitMiddleware(container.redis));
   app.use("/payments/*", createRateLimitMiddleware(container.redis));
   app.use("/categories/*", createRateLimitMiddleware(container.redis));
   app.use("/submissions/*", createRateLimitMiddleware(container.redis));
@@ -77,6 +79,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))
+    .route("/auth", createAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
     .route("/submissions", createSubmissionRoutes(container, authenticator))
