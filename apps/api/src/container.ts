@@ -176,6 +176,7 @@ export function createContainer(env: Env): Container {
   );
 
   const itemSubmissionService = new ItemSubmissionService(
+    db,
     itemSubmissionRepository,
     lotRepo,
     userRepo,
@@ -198,8 +199,7 @@ export function createContainer(env: Env): Container {
   const uploadService = new UploadService(objectStorage);
 
   const lotLifecycleService = new LotLifecycleService(
-    lotRepo,
-    repoFactory.root.bid,
+    repoFactory,
     strategyFactory,
     watchlistRepo,
     cache,

@@ -8,6 +8,7 @@ import { SITE_TAGLINE } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Fine art auctions",
@@ -19,20 +20,37 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function HomePage({ searchParams }: PageProps) {
-  await searchParams;
-
-  const hdrs = await headers();
-  const twitchParentHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost";
+async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: string }) {
   const { heroState, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
-
   return (
-    <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
+    <>
       <LaxHero state={heroState} twitchParentHost={twitchParentHost} />
       <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
       {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
       <LaxArtists items={artistCards} />
       <HomeNewsletter />
+    </>
+  );
+}
+
+export default async function HomePage({ searchParams }: PageProps) {
+  await searchParams;
+
+  const hdrs = await headers();
+  const twitchParentHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost";
+
+  return (
+    <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
+      <Suspense
+        fallback={
+          <div
+            className="min-h-[50vh] w-full animate-pulse bg-surface-container-low"
+            aria-hidden
+          />
+        }
+      >
+        <MarketingHomeContent twitchParentHost={twitchParentHost} />
+      </Suspense>
     </main>
   );
 }

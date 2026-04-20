@@ -39,6 +39,9 @@ export type RpcApp = {
   };
   users: {
     public: {
+      artists: {
+        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+      };
       ":userId": {
         $get: (args: { param: { userId: string } }) => Promise<Response>;
       };

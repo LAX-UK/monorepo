@@ -26,10 +26,10 @@ function sale(overrides: Partial<Sale> = {}): Sale {
   };
 }
 
-function childLot(status: Lot["status"]): Lot {
+function childLot(status: Lot["status"], id = "l1"): Lot {
   const now = new Date();
   return {
-    id: "l1",
+    id,
     saleId: "s1",
     lotNumber: 1,
     sellerId: "seller",
@@ -66,7 +66,9 @@ describe("SaleLifecycleService", () => {
     } as unknown as ISaleRepository;
 
     const lots: ILotRepository = {
-      findBySaleId: vi.fn().mockResolvedValue([childLot("ended"), childLot("cancelled")]),
+      findBySaleIds: vi
+        .fn()
+        .mockResolvedValue([childLot("ended", "l1"), childLot("cancelled", "l2")]),
     } as unknown as ILotRepository;
 
     const svc = new SaleLifecycleService(sales, lots);
@@ -82,7 +84,9 @@ describe("SaleLifecycleService", () => {
     } as unknown as ISaleRepository;
 
     const lots: ILotRepository = {
-      findBySaleId: vi.fn().mockResolvedValue([childLot("active"), childLot("scheduled")]),
+      findBySaleIds: vi
+        .fn()
+        .mockResolvedValue([childLot("active", "l1"), childLot("scheduled", "l2")]),
     } as unknown as ILotRepository;
 
     const svc = new SaleLifecycleService(sales, lots);

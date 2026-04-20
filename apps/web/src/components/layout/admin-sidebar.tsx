@@ -1,44 +1,39 @@
 "use client";
 
+import { getAdminNavItems } from "@/components/layout/admin-nav-items";
 import { useShellContext } from "@/components/layout/dashboard-shell";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { useIsLg } from "@/hooks/use-is-lg";
 import type { SessionUser } from "@/lib/data/contracts";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@auction/ui/components/sheet";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const links = [
-  { href: "/admin", label: "Overview", icon: "dashboard" },
-  { href: "/admin/analytics", label: "Analytics", icon: "bar_chart" },
-  { href: "/admin/sales", label: "Sales", icon: "event" },
-  {
-    href: "/admin/submissions",
-    label: "Submissions",
-    icon: "assignment",
-    badgeKey: "submissions" as const,
-  },
-  { href: "/admin/lots", label: "Lots", icon: "gavel" },
-  { href: "/admin/payments", label: "Payments", icon: "account_balance_wallet" },
-  { href: "/admin/users", label: "Users", icon: "group" },
-] as const;
 
 type Props = {
   user: SessionUser;
   pendingSubmissionCount?: number;
 };
 
-export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
-  const { onNavigate, mobileOpen } = useShellContext();
+function AdminNavBody({
+  user,
+  pendingSubmissionCount,
+  onNav,
+}: {
+  user: SessionUser;
+  pendingSubmissionCount: number;
+  onNav: () => void;
+}) {
   const pathname = usePathname();
-  const onNav = onNavigate;
-
-  const asideTransform = mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";
-
+  const links = getAdminNavItems(pendingSubmissionCount);
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)] transition-transform duration-200 ease-out ${asideTransform}`}
-    >
+    <>
       <div className="p-8">
         <Link
           href="/admin"
@@ -47,9 +42,7 @@ export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
         >
           Admin
         </Link>
-        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-          Signed in
-        </p>
+        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Signed in</p>
         <p className="font-body text-sm font-medium text-on-surface">{user.name}</p>
         <p className="mt-1 truncate font-body text-xs text-on-surface-variant">{user.email}</p>
         <nav className="mt-12 space-y-1" aria-label="Admin">
@@ -58,10 +51,7 @@ export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
               l.href === "/admin"
                 ? pathname === "/admin"
                 : pathname === l.href || pathname.startsWith(`${l.href}/`);
-            const badge =
-              "badgeKey" in l && l.badgeKey === "submissions" && pendingSubmissionCount > 0
-                ? pendingSubmissionCount
-                : null;
+            const badge = l.badge;
             return (
               <Link
                 key={l.href}
@@ -77,7 +67,7 @@ export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
                 <MaterialIcon name={l.icon} className="mr-3 text-lg" />
                 <span className="flex flex-1 items-center justify-between gap-2">
                   <span>{l.label}</span>
-                  {badge != null ? (
+                  {badge != null && badge > 0 ? (
                     <span className="rounded-full bg-primary px-2 py-0.5 font-label text-[10px] text-on-primary">
                       {badge > 99 ? "99+" : badge}
                     </span>
@@ -93,22 +83,44 @@ export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
           <span className="font-label text-xs uppercase tracking-widest text-secondary">Theme</span>
           <ThemeToggle />
         </div>
-        <Link
-          href="/dashboard"
-          onClick={onNav}
-          className="block font-label text-xs uppercase tracking-widest text-primary transition-colors hover:underline"
-        >
-          Collector dashboard
-        </Link>
         <LogoutButton onBeforeNavigate={onNav} />
         <Link
           href="/"
           onClick={onNav}
-          className="block font-label text-xs uppercase tracking-widest text-secondary transition-colors hover:underline"
+          className="block font-label text-xs uppercase tracking-widest text-primary transition-colors hover:underline"
         >
           Exit to gallery
         </Link>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function AdminSidebar({ user, pendingSubmissionCount = 0 }: Props) {
+  const { onNavigate, mobileOpen, setMobileOpen } = useShellContext();
+  const isLg = useIsLg();
+  const onNav = onNavigate;
+
+  const body = (
+    <AdminNavBody user={user} pendingSubmissionCount={pendingSubmissionCount} onNav={onNav} />
+  );
+
+  return (
+    <>
+      {isLg ? (
+        <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
+          {body}
+        </aside>
+      ) : (
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="flex w-[min(100vw-2rem,20rem)] max-w-none flex-col border-outline-variant/15 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Admin navigation</SheetTitle>
+            </SheetHeader>
+            <div className="flex h-full flex-col overflow-y-auto">{body}</div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 }

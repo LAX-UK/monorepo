@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { index, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { lot } from "./lots.js";
 
@@ -33,6 +33,9 @@ export const payment = pgTable(
   (table) => [
     index("payment_lot_id_idx").on(table.lotId),
     index("payment_buyer_id_idx").on(table.buyerId),
+    uniqueIndex("payment_lot_buyer_open_unique")
+      .on(table.lotId, table.buyerId)
+      .where(sql`${table.status} in ('pending', 'authorized', 'captured')`),
   ],
 );
 

@@ -4,26 +4,23 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import { siteCopyrightLine } from "@/lib/brand";
 
 const aboutLinks = [
-  { href: "/terms", label: "Our Policy" },
-  { href: "/contact", label: "Locations" },
-  { href: "/about", label: "Careers" },
-  { href: "/about", label: "Press" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/terms", label: "Terms" },
   { href: "/sitemap.xml", label: "Sitemap" },
 ];
 
 const serviceLinks = [
   { href: "/dashboard/submissions/new", label: "Sell to Us" },
-  { href: "/about", label: "Art Storage" },
-  { href: "/about", label: "Private Buyers" },
+  { href: "/contact", label: "Client services" },
+  { href: "/archive", label: "Past auctions" },
 ];
 
 const policyLinks = [
   { href: "/privacy", label: "Privacy Policy" },
-  { href: "/legal", label: "Cookie Policy" },
-  { href: "/terms", label: "Bidding Policy" },
-  { href: "/terms", label: "Return Policy" },
-  { href: "/shipping", label: "Shipping and Delivery Policy" },
-  { href: "/terms", label: "Terms & Condition" },
+  { href: "/legal", label: "Legal" },
+  { href: "/terms", label: "Terms of use" },
+  { href: "/shipping", label: "Shipping" },
 ];
 
 export function SiteFooter() {

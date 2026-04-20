@@ -1,4 +1,5 @@
-import { index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { category } from "./categories.js";
 
@@ -45,5 +46,7 @@ export const sale = pgTable(
     index("sale_category_id_idx").on(table.categoryId),
     index("sale_status_end_time_idx").on(table.status, table.endTime),
     index("sale_created_by_idx").on(table.createdBy),
+    index("sale_start_time_idx").on(table.startTime),
+    check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
   ],
 );

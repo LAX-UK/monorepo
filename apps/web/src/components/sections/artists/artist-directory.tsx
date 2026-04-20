@@ -128,7 +128,7 @@ export function ArtistDirectory({ artists }: Props) {
                 <div className="relative mb-6 aspect-4/5 overflow-hidden bg-surface-container">
                   <Image
                     src={a.portraitUrl}
-                    alt=""
+                    alt={`${a.name} — artist portrait`}
                     fill
                     className="object-cover grayscale transition-all duration-700 group-hover:scale-105 group-hover:grayscale-0"
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"

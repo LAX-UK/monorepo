@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createUploadRoutes(container: Container, authenticator: IAuthenticator) {
@@ -9,7 +10,7 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
   });
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  r.post("/image", requireAuth, async (c) => {
+  r.post("/image", requireAuth, requireBuyerRole, async (c) => {
     let body: Record<string, string | File>;
     try {
       body = await c.req.parseBody();

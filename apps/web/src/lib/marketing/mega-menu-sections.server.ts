@@ -41,7 +41,8 @@ export async function loadMegaMenuSections(): Promise<MegaMenuSection[]> {
     return [];
   }
 
-  return [
+  const enableArtists = process.env.NEXT_PUBLIC_ENABLE_ARTISTS !== "false";
+  const core = [
     {
       href: u.href,
       label: u.label,
@@ -60,6 +61,14 @@ export async function loadMegaMenuSections(): Promise<MegaMenuSection[]> {
       })),
       viewAllHref: "/archive",
     },
+  ];
+
+  if (!enableArtists || artists.length === 0) {
+    return core;
+  }
+
+  return [
+    ...core,
     {
       href: a.href,
       label: a.label,

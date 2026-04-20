@@ -11,6 +11,17 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
 
   async notifyBidPlaced(lot: Lot, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
     const channel = `lot:${lot.id}:events`;
+    if (lot.auctionType === "sealed" && lot.status === "active") {
+      await this.redis.publish(
+        channel,
+        JSON.stringify({
+          type: "bid_placed",
+          lotId: lot.id,
+          sealed: true,
+        }),
+      );
+      return;
+    }
     await this.redis.publish(
       channel,
       JSON.stringify({

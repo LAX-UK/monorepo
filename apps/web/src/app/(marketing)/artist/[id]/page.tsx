@@ -12,6 +12,31 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+async function loadSellerLots(sellerId: string): Promise<Lot[]> {
+  const auctionReader = await getServerLotReader();
+  try {
+    const [active, ended] = await Promise.all([
+      auctionReader.list({
+        sellerId,
+        status: "active",
+        limit: 24,
+        offset: 0,
+        sort: "endingAsc",
+      }),
+      auctionReader.list({
+        sellerId,
+        status: "ended",
+        limit: 24,
+        offset: 0,
+        sort: "endedDesc",
+      }),
+    ]);
+    return [...active, ...ended];
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const reader = await getServerArtistReader();
@@ -25,22 +50,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArtistPage({ params }: PageProps) {
   const { id } = await params;
+  const sellerLots = await loadSellerLots(id);
   const reader = await getServerArtistReader();
   const artist = await reader.getById(id);
+
   if (!artist) {
     const publicReader = await getServerPublicUserReader();
     const user = await publicReader.getById(id).catch(() => null);
     if (!user) notFound();
-    const auctionReader = await getServerLotReader();
-    const [active, ended] = await Promise.all([
-      auctionReader
-        .list({ sellerId: id, status: "active", limit: 24, offset: 0, sort: "endingAsc" })
-        .catch(() => [] as Lot[]),
-      auctionReader
-        .list({ sellerId: id, status: "ended", limit: 24, offset: 0, sort: "endedDesc" })
-        .catch(() => [] as Lot[]),
-    ]);
-    const sellerLots = [...active, ...ended];
     return (
       <main
         id="main-content"
@@ -130,13 +147,22 @@ export default async function ArtistPage({ params }: PageProps) {
       <section className="mb-32 grid grid-cols-1 items-end gap-16 md:grid-cols-12">
         <div className="relative md:col-span-5">
           <div className="aspect-4/5 overflow-hidden bg-surface-container-low">
-            <Image
-              src={artist.portraitUrl}
-              alt={artist.name}
-              width={560}
-              height={700}
-              className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-            />
+            {artist.portraitUrl ? (
+              <Image
+                src={artist.portraitUrl}
+                alt={artist.name}
+                width={560}
+                height={700}
+                className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+              />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center bg-surface-container-high font-headline text-4xl text-on-surface-variant"
+                aria-hidden
+              >
+                {artist.name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-start md:col-span-7">
@@ -150,53 +176,61 @@ export default async function ArtistPage({ params }: PageProps) {
               </span>
             ))}
           </h1>
-          <p className="mb-8 max-w-xl font-headline text-xl italic leading-relaxed text-secondary md:text-2xl">
-            &ldquo;{artist.tagline}&rdquo;
-          </p>
-          <p className="max-w-xl font-body text-sm leading-loose tracking-wide text-on-surface-variant opacity-80">
-            {artist.bio}
-          </p>
+          {artist.tagline ? (
+            <p className="mb-8 max-w-xl font-headline text-xl italic leading-relaxed text-secondary md:text-2xl">
+              &ldquo;{artist.tagline}&rdquo;
+            </p>
+          ) : null}
+          {artist.bio ? (
+            <p className="max-w-xl font-body text-sm leading-loose tracking-wide text-on-surface-variant opacity-80">
+              {artist.bio}
+            </p>
+          ) : null}
         </div>
       </section>
-      <section className="mb-32 grid grid-cols-2 gap-8 rounded-xl py-16 ring-1 ring-outline-variant/10 md:grid-cols-4">
-        {artist.stats.map((s) => (
-          <div key={s.label} className="flex flex-col">
-            <span className="mb-2 font-label text-[0.65rem] uppercase tracking-widest text-secondary">
-              {s.label}
-            </span>
-            <span className="font-headline text-3xl text-on-surface">{s.value}</span>
-          </div>
-        ))}
-      </section>
+      {artist.stats.length > 0 ? (
+        <section className="mb-32 grid grid-cols-2 gap-8 rounded-xl py-16 ring-1 ring-outline-variant/10 md:grid-cols-4">
+          {artist.stats.map((s) => (
+            <div key={s.label} className="flex flex-col">
+              <span className="mb-2 font-label text-[0.65rem] uppercase tracking-widest text-secondary">
+                {s.label}
+              </span>
+              <span className="font-headline text-3xl text-on-surface">{s.value}</span>
+            </div>
+          ))}
+        </section>
+      ) : null}
       <div className="mb-12 flex items-center justify-between">
         <h2 className="font-headline text-3xl tracking-tight">Curated Works</h2>
-        <div className="flex gap-4">
-          <span className="flex items-center rounded-full bg-secondary-container px-4 py-1 font-label text-[0.7rem] uppercase tracking-widest text-on-secondary-container">
-            Available
-          </span>
-          <span className="flex items-center rounded-full bg-surface-container-high px-4 py-1 font-label text-[0.7rem] uppercase tracking-widest text-secondary">
-            Archive
-          </span>
-        </div>
       </div>
-      <output
-        className="block rounded-xl bg-surface-container-low/80 p-10 text-center shadow-sm ring-1 ring-outline-variant/10 md:p-16"
-        aria-live="polite"
-      >
-        <p className="mx-auto mb-6 max-w-lg font-headline text-xl font-light text-on-surface md:text-2xl">
-          Works linked to this artist will appear here.
+      {sellerLots.length === 0 ? (
+        <p className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
+          No public lots for this profile yet. Browse{" "}
+          <Link href="/" className="text-primary underline-offset-4 hover:underline">
+            live salerooms
+          </Link>
+          .
         </p>
-        <p className="mx-auto mb-8 max-w-md font-body text-sm text-on-surface-variant">
-          Seller profiles and lot attribution are coming soon. Until then, explore live and past
-          auctions in the gallery.
-        </p>
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-sm transition-opacity hover:opacity-95"
-        >
-          Browse auctions
-        </Link>
-      </output>
+      ) : (
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {sellerLots.map((a) => (
+            <li
+              key={a.id}
+              className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-4 ring-1 ring-outline-variant/10"
+            >
+              <Link
+                href={`/artwork/${a.id}`}
+                className="font-headline text-lg text-on-surface hover:text-primary"
+              >
+                {a.title}
+              </Link>
+              <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
+                {a.status}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

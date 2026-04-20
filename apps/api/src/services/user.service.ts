@@ -6,4 +6,8 @@ export class UserService {
   getById(id: string) {
     return this.users.findById(id);
   }
+
+  listPublicArtists(params: { limit: number; offset: number }) {
+    return this.users.listPublicProfiles(params);
+  }
 }

@@ -1,14 +1,40 @@
+import type { Database } from "@auction/db";
 import type { ItemSubmission, Lot } from "@auction/types";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   IItemSubmissionRepository,
   ILotRepository,
   IUserRepository,
 } from "./interfaces/repositories.js";
-import { ItemSubmissionService } from "./item-submission.service.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 
+const hoisted = vi.hoisted(() => ({
+  txSubFindById: vi.fn(),
+  txSubUpdate: vi.fn(),
+  txLotCreate: vi.fn(),
+}));
+
+vi.mock("../repositories/drizzle-item-submission.repository.js", () => {
+  class DrizzleItemSubmissionRepository {
+    findById = hoisted.txSubFindById;
+    update = hoisted.txSubUpdate;
+    create = vi.fn();
+  }
+  return { DrizzleItemSubmissionRepository };
+});
+
+vi.mock("../repositories/drizzle-lot.repository.js", () => {
+  class DrizzleLotRepository {
+    create = hoisted.txLotCreate;
+  }
+  return { DrizzleLotRepository };
+});
+
+import { ItemSubmissionService } from "./item-submission.service.js";
+
 const catId = "c1000001-0000-4000-8000-000000000001";
+
+const stubDb = {} as unknown as Database;
 
 function mkSubmission(
   partial: Partial<ItemSubmission> & Pick<ItemSubmission, "id" | "status">,
@@ -36,6 +62,10 @@ function mkSubmission(
 }
 
 describe("ItemSubmissionService", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("createDraft persists via repository", async () => {
     const created = mkSubmission({ id: "sub-1", status: "draft" });
     const submissions: IItemSubmissionRepository = {
@@ -44,7 +74,7 @@ describe("ItemSubmissionService", () => {
     const lots = {} as unknown as ILotRepository;
     const users = {} as unknown as IUserRepository;
     const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(submissions, lots, users, dispatcher);
+    const svc = new ItemSubmissionService(stubDb, submissions, lots, users, dispatcher);
     const r = await svc.createDraft("seller-1", {
       title: "Work",
       categoryId: catId,
@@ -69,7 +99,7 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(submissions, {} as ILotRepository, users, dispatcher);
+    const svc = new ItemSubmissionService(stubDb, submissions, {} as ILotRepository, users, dispatcher);
     const r = await svc.submitForReview("u1", "sub-1");
     expect(r.isOk()).toBe(true);
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
@@ -114,22 +144,35 @@ describe("ItemSubmissionService", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const submissions: IItemSubmissionRepository = {
-      findById: vi.fn().mockResolvedValue(under),
-      update: vi.fn().mockImplementation(async (_id, patch) => ({
-        ...under,
-        ...patch,
-        status: "converted",
-        convertedLotId: createdLot.id,
-      })),
-    } as unknown as IItemSubmissionRepository;
-    const lots: ILotRepository = {
-      create: vi.fn().mockResolvedValue(createdLot),
-    } as unknown as ILotRepository;
+    const convertedSubmission = {
+      ...under,
+      status: "converted" as const,
+      convertedLotId: createdLot.id,
+      reviewedBy: "admin-1",
+      reviewedAt: new Date(),
+      reviewNotes: "Nice work",
+      rejectionReason: null,
+    };
+
+    hoisted.txSubFindById.mockResolvedValue(under);
+    hoisted.txLotCreate.mockResolvedValue(createdLot);
+    hoisted.txSubUpdate.mockResolvedValue(convertedSubmission);
+
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    } as unknown as Database;
+
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(submissions, lots, {} as IUserRepository, dispatcher);
+
+    const svc = new ItemSubmissionService(
+      db,
+      {} as IItemSubmissionRepository,
+      {} as ILotRepository,
+      {} as IUserRepository,
+      dispatcher,
+    );
     const r = await svc.approve("admin-1", "sub-1", "Nice work");
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
@@ -137,7 +180,7 @@ describe("ItemSubmissionService", () => {
       expect(r.value.submission.status).toBe("converted");
       expect(r.value.submission.convertedLotId).toBe("lot-new");
     }
-    expect(lots.create).toHaveBeenCalledWith(
+    expect(hoisted.txLotCreate).toHaveBeenCalledWith(
       "alice",
       expect.objectContaining({
         title: "Blue Study",
@@ -168,6 +211,7 @@ describe("ItemSubmissionService", () => {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
     const svc = new ItemSubmissionService(
+      stubDb,
       submissions,
       {} as ILotRepository,
       {} as IUserRepository,
@@ -191,6 +235,7 @@ describe("ItemSubmissionService", () => {
         .mockResolvedValue(mkSubmission({ id: "s1", status: "draft", sellerId: "alice" })),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
+      stubDb,
       submissions,
       {} as ILotRepository,
       {} as IUserRepository,

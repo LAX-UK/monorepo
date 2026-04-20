@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createBidRoutes(container: Container, authenticator: IAuthenticator) {
@@ -12,7 +13,7 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
   });
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  r.post("/", requireAuth, zValidator("json", placeBidSchema), async (c) => {
+  r.post("/", requireAuth, requireBuyerRole, zValidator("json", placeBidSchema), async (c) => {
     const userId = c.get("userId") as string;
     const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
     if (idem) {

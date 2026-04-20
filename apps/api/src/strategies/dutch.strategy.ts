@@ -1,4 +1,5 @@
 import type { Bid, Lot, NewBid } from "@auction/types";
+import { moneyEq } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
@@ -6,8 +7,7 @@ import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
 /** First acceptance at current dutch price wins — modeled as bid amount === currentPrice. */
 export class DutchAuctionStrategy implements ILotStrategy {
   validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
-    const price = Number(lot.currentPrice);
-    if (bid.amount !== price) {
+    if (!moneyEq(bid.amount.toFixed(2), lot.currentPrice)) {
       return err(new BidError("Bid must match current dutch price to accept"));
     }
     if (bid.bidderId === lot.sellerId) {

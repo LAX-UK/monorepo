@@ -1,16 +1,12 @@
+import { EditSubmissionForm } from "@/components/dashboard/edit-submission-form";
 import { Button } from "@/components/ui/button";
-import { UnderlineInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select-field";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { TextareaField } from "@/components/ui/textarea-field";
-import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
-import {
-  submitForReviewAction,
-  updateSubmissionAction,
-  withdrawSubmissionAction,
-} from "@/lib/actions/submissions";
+import { DisplayHeading } from "@/components/ui/typography";
+import { submitForReviewAction, withdrawSubmissionAction } from "@/lib/actions/submissions";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getSubmissionForUser } from "@/lib/data/http/submissions.server";
+import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -49,9 +45,10 @@ export default async function SubmissionDetailPage({
         <SubmissionStatusBadge status={s.status} />
       </div>
       {error ? (
-        <p className="text-sm text-error" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       {!editable ? (
@@ -84,83 +81,11 @@ export default async function SubmissionDetailPage({
           </p>
         </div>
       ) : (
-        <form action={updateSubmissionAction} className="space-y-8">
-          <input type="hidden" name="submissionId" value={s.id} />
-          <div>
-            <label htmlFor="title" className="mb-2 block">
-              <LabelCaps>Title</LabelCaps>
-            </label>
-            <UnderlineInput id="title" name="title" required defaultValue={s.title} />
-          </div>
-          <TextareaField
-            id="description"
-            name="description"
-            label="Description"
-            rows={5}
-            defaultValue={s.description ?? ""}
-          />
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="medium" className="mb-2 block">
-                <LabelCaps>Medium</LabelCaps>
-              </label>
-              <UnderlineInput id="medium" name="medium" defaultValue={s.medium ?? ""} />
-            </div>
-            <div>
-              <label htmlFor="dimensions" className="mb-2 block">
-                <LabelCaps>Dimensions</LabelCaps>
-              </label>
-              <UnderlineInput id="dimensions" name="dimensions" defaultValue={s.dimensions ?? ""} />
-            </div>
-          </div>
-          <SelectField
-            id="categoryId"
-            label="Category"
-            name="categoryId"
-            required
-            defaultValue={s.categoryId}
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
-          />
-          <TextareaField
-            id="images"
-            name="images"
-            label="Image URLs (one per line)"
-            rows={4}
-            defaultValue={s.images.join("\n")}
-          />
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="askingPrice" className="mb-2 block">
-                <LabelCaps>Asking price</LabelCaps>
-              </label>
-              <UnderlineInput
-                id="askingPrice"
-                name="askingPrice"
-                defaultValue={s.askingPrice ?? ""}
-              />
-            </div>
-            <div>
-              <label htmlFor="reservePrice" className="mb-2 block">
-                <LabelCaps>Reserve</LabelCaps>
-              </label>
-              <UnderlineInput
-                id="reservePrice"
-                name="reservePrice"
-                defaultValue={s.reservePrice ?? ""}
-              />
-            </div>
-          </div>
-          <TextareaField
-            id="submitterNotes"
-            name="submitterNotes"
-            label="Notes for reviewers"
-            rows={3}
-            defaultValue={s.submitterNotes ?? ""}
-          />
-          <Button type="submit" variant="secondary">
-            Save changes
-          </Button>
-        </form>
+        <EditSubmissionForm
+          submissionId={s.id}
+          initialValues={itemSubmissionToFormValues(s)}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        />
       )}
 
       <div className="flex flex-wrap gap-3">

@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -6,6 +7,8 @@ import type {
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
+import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
+import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type {
   IItemSubmissionService,
   UpdateSubmissionActorInput,
@@ -22,6 +25,7 @@ import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";
 
 export class ItemSubmissionService implements IItemSubmissionService {
   constructor(
+    private readonly db: Database,
     private readonly submissions: IItemSubmissionRepository,
     private readonly lots: ILotRepository,
     private readonly users: IUserRepository,
@@ -148,28 +152,42 @@ export class ItemSubmissionService implements IItemSubmissionService {
     id: string,
     reviewNotes?: string | undefined,
   ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>> {
-    const s = await this.submissions.findById(id);
-    if (!s) return err(new SubmissionError("Not found", 404));
-    if (s.status !== "under_review") {
-      return err(new SubmissionError("Submission must be under review to approve"));
+    try {
+      const { lot, submission, sellerId, title } = await this.db.transaction(async (tx) => {
+        const subRepo = new DrizzleItemSubmissionRepository(tx);
+        const lotRepo = new DrizzleLotRepository(tx);
+        const s = await subRepo.findById(id);
+        if (!s) {
+          throw new SubmissionError("Not found", 404);
+        }
+        if (s.status !== "under_review") {
+          throw new SubmissionError("Submission must be under review to approve");
+        }
+        const lotInput = submissionToCreateLotInput(s);
+        const createdLot = await lotRepo.create(s.sellerId, lotInput);
+        const submission = await subRepo.update(id, {
+          status: "converted",
+          convertedLotId: createdLot.id,
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+          reviewNotes: reviewNotes ?? null,
+          rejectionReason: null,
+        });
+        return { lot: createdLot, submission, sellerId: s.sellerId, title: s.title };
+      });
+      await this.dispatcher.dispatch(sellerId, {
+        type: "submission_approved",
+        title: "Submission approved",
+        message: `Your submission "${title}" was approved. A draft lot was created for cataloguing.`,
+        lotId: lot.id,
+      });
+      return ok({ submission, lot });
+    } catch (e) {
+      if (e instanceof SubmissionError) {
+        return err(e);
+      }
+      throw e;
     }
-    const lotInput = submissionToCreateLotInput(s);
-    const lot = await this.lots.create(s.sellerId, lotInput);
-    const submission = await this.submissions.update(id, {
-      status: "converted",
-      convertedLotId: lot.id,
-      reviewedBy: adminId,
-      reviewedAt: new Date(),
-      reviewNotes: reviewNotes ?? null,
-      rejectionReason: null,
-    });
-    await this.dispatcher.dispatch(s.sellerId, {
-      type: "submission_approved",
-      title: "Submission approved",
-      message: `Your submission "${s.title}" was approved. A draft lot was created for cataloguing.`,
-      lotId: lot.id,
-    });
-    return ok({ submission, lot });
   }
 
   async reject(

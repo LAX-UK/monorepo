@@ -1,19 +1,8 @@
+import { AdminUsersDataTable } from "@/components/admin/admin-users-data-table";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
 import { DisplayHeading } from "@/components/ui/typography";
-import {
-  adminSetUserRoleAction,
-  adminSuspendUserAction,
-  adminUnsuspendUserAction,
-} from "@/lib/actions/admin";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
+import { EmptyState } from "@auction/ui/components/empty-state";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -57,68 +46,14 @@ export default async function AdminUsersPage({
         </Button>
       </form>
       <p className="font-body text-xs text-on-surface-variant">Total: {total}</p>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableHeaderCell>Name</TableHeaderCell>
-            <TableHeaderCell>Email</TableHeaderCell>
-            <TableHeaderCell>Role</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell>{u.name}</TableCell>
-              <TableCell className="max-w-[14rem] truncate text-xs">{u.email}</TableCell>
-              <TableCell>
-                <form action={adminSetUserRoleAction} className="flex flex-wrap items-center gap-2">
-                  <input type="hidden" name="userId" value={u.id} />
-                  <select
-                    name="role"
-                    defaultValue={u.role}
-                    className="rounded border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-xs"
-                  >
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
-                  </select>
-                  <button
-                    type="submit"
-                    className="font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-                  >
-                    Save
-                  </button>
-                </form>
-              </TableCell>
-              <TableCell className="text-xs">
-                {u.suspendedAt ? <span className="text-error">Suspended</span> : "Active"}
-              </TableCell>
-              <TableCell className="text-right text-xs">
-                {u.suspendedAt ? (
-                  <form action={adminUnsuspendUserAction} className="inline">
-                    <input type="hidden" name="userId" value={u.id} />
-                    <button
-                      type="submit"
-                      className="text-primary underline-offset-2 hover:underline"
-                    >
-                      Unsuspend
-                    </button>
-                  </form>
-                ) : (
-                  <form action={adminSuspendUserAction} className="inline">
-                    <input type="hidden" name="userId" value={u.id} />
-                    <input type="hidden" name="reason" value="Admin action" />
-                    <button type="submit" className="text-error underline-offset-2 hover:underline">
-                      Suspend
-                    </button>
-                  </form>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {rows.length === 0 && !loadError ? (
+        <EmptyState
+          title="No users"
+          description="Try a different search query or clear the filter."
+        />
+      ) : (
+        <AdminUsersDataTable rows={rows} />
+      )}
     </div>
   );
 }

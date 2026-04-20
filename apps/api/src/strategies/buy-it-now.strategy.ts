@@ -2,6 +2,7 @@ import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
+import { determineHighestBid } from "./highest-bid-winner.js";
 
 function minIncrement(lot: Lot): number {
   const n = Number.parseFloat(lot.minBidIncrement);
@@ -41,12 +42,6 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
   }
 
   determineWinner(_lot: Lot, bids: Bid[]): Bid | null {
-    if (bids.length === 0) return null;
-    const sorted = [...bids].sort((a, b) => {
-      const d = Number(b.amount) - Number(a.amount);
-      if (d !== 0) return d;
-      return a.createdAt.getTime() - b.createdAt.getTime();
-    });
-    return sorted[0] ?? null;
+    return determineHighestBid(bids);
   }
 }

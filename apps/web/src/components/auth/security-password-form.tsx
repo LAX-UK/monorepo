@@ -2,94 +2,150 @@
 
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
-import { useCallback, useState } from "react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-export function SecurityPasswordForm() {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password"),
+    newPassword: z.string().min(8, "Use at least 8 characters"),
+    confirmPassword: z.string().min(1, "Confirm your new password"),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
-  const onSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError(null);
-      setOk(null);
-      setLoading(true);
-      const res = await fetch(`${apiBase()}/api/auth/change-password`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword, revokeOtherSessions: false }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { message?: string };
-      setLoading(false);
-      if (!res.ok) {
-        setError(typeof body.message === "string" ? body.message : "Could not change password");
-        return;
-      }
-      setOk("Password updated.");
-      setCurrentPassword("");
-      setNewPassword("");
+type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
+
+export function SecurityPasswordForm() {
+  const form = useForm<PasswordChangeValues>({
+    resolver: zodResolver(passwordChangeSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
-    [currentPassword, newPassword],
-  );
+  });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div>
-        <label
-          htmlFor="current-password"
-          className="mb-2 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
-        >
-          Current password
-        </label>
-        <UnderlineInput
-          id="current-password"
-          type="password"
-          autoComplete="current-password"
-          value={currentPassword}
-          onChange={(ev) => setCurrentPassword(ev.target.value)}
-          required
-          className="w-full border-b-2 border-outline-variant/40 py-3"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "pwd-error" : undefined}
+    <Form {...form}>
+      <form
+        className="space-y-6"
+        onSubmit={form.handleSubmit(async (values) => {
+          form.clearErrors("root");
+          const res = await fetch(`${apiBase()}/api/auth/change-password`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              currentPassword: values.currentPassword,
+              newPassword: values.newPassword,
+              revokeOtherSessions: false,
+            }),
+          });
+          const body = (await res.json().catch(() => ({}))) as { message?: string };
+          if (!res.ok) {
+            form.setError("root", {
+              message:
+                typeof body.message === "string" ? body.message : "Could not change password",
+            });
+            return;
+          }
+          form.reset();
+          toast.success("Password updated", {
+            description: "You can use your new password next time you sign in.",
+          });
+        })}
+      >
+        <FormField
+          control={form.control}
+          name="currentPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                Current password
+              </FormLabel>
+              <FormControl>
+                <UnderlineInput
+                  type="password"
+                  autoComplete="current-password"
+                  className="w-full border-b-2 border-outline-variant/40 py-3"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      <div>
-        <label
-          htmlFor="new-password"
-          className="mb-2 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
-        >
-          New password
-        </label>
-        <UnderlineInput
-          id="new-password"
-          type="password"
-          autoComplete="new-password"
-          value={newPassword}
-          onChange={(ev) => setNewPassword(ev.target.value)}
-          required
-          minLength={8}
-          className="w-full border-b-2 border-outline-variant/40 py-3"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "pwd-error" : undefined}
+        <FormField
+          control={form.control}
+          name="newPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                New password
+              </FormLabel>
+              <FormControl>
+                <UnderlineInput
+                  type="password"
+                  autoComplete="new-password"
+                  className="w-full border-b-2 border-outline-variant/40 py-3"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      {error ? (
-        <p id="pwd-error" className="text-sm text-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {ok ? <output className="block text-sm text-primary">{ok}</output> : null}
-      <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-        {loading ? "Saving…" : "Update password"}
-      </Button>
-    </form>
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                Confirm new password
+              </FormLabel>
+              <FormControl>
+                <UnderlineInput
+                  type="password"
+                  autoComplete="new-password"
+                  className="w-full border-b-2 border-outline-variant/40 py-3"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {form.formState.errors.root ? (
+          <p className="text-sm text-error" role="alert">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
+          disabled={form.formState.isSubmitting}
+        >
+          {form.formState.isSubmitting ? "Saving…" : "Update password"}
+        </Button>
+      </form>
+    </Form>
   );
 }

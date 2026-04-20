@@ -2,8 +2,14 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+  title: { default: "Admin", template: "%s · Admin · LAX" },
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await getServerSessionUser();
@@ -25,6 +31,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <DashboardShell
       user={user}
       mobileTitle="Admin"
+      accountMenu="admin"
       sidebar={<AdminSidebar user={user} pendingSubmissionCount={pendingSubmissionCount} />}
     >
       {children}

@@ -32,6 +32,24 @@ describe("parseStreamEmbedUrl", () => {
     expect(r?.src).toContain("channel=monstercat");
   });
 
+  it("canonicalizes cloudflare mediadelivery iframe (drops query string)", () => {
+    const r = parseStreamEmbedUrl(
+      "https://iframe.mediadelivery.net/abc123def/video?token=evil&x=1",
+    );
+    expect(r?.provider).toBe("cloudflare");
+    expect(r?.src).toBe("https://iframe.mediadelivery.net/abc123def/video");
+    expect(r?.src).not.toContain("?");
+  });
+
+  it("canonicalizes customer cloudflarestream iframe path (drops query string)", () => {
+    const r = parseStreamEmbedUrl(
+      "https://customer-abc123.cloudflarestream.com/00000000-0000-4000-8000-000000000001/iframe?foo=bar",
+    );
+    expect(r?.provider).toBe("cloudflare");
+    expect(r?.src).not.toContain("?");
+    expect(r?.src).toContain("/iframe");
+  });
+
   it("rejects unsupported hosts", () => {
     expect(parseStreamEmbedUrl("https://evil.com/embed/x")).toBeNull();
     expect(isAllowedStreamUrl("https://evil.com/embed/x")).toBe(false);

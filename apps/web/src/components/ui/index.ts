@@ -7,7 +7,6 @@ export { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
 export { SelectField, type SelectOption } from "./select-field";
 export { TextareaField } from "./textarea-field";
 export { ConfirmDialog, Dialog } from "./dialog";
-export { EmptyState } from "./empty-state";
 export { Skeleton } from "./skeleton";
 export { Tabs } from "./tabs";
 export { Breadcrumb } from "./breadcrumb";

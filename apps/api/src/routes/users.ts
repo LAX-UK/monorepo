@@ -43,6 +43,13 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data: { userId: result.userId } }, 201);
   });
 
+  r.get("/public/artists", async (c) => {
+    const limit = Math.min(50, Math.max(1, Number.parseInt(c.req.query("limit") ?? "24", 10) || 24));
+    const offset = Math.max(0, Number.parseInt(c.req.query("offset") ?? "0", 10) || 0);
+    const data = await container.userService.listPublicArtists({ limit, offset });
+    return c.json({ data });
+  });
+
   r.get("/public/:userId", zValidator("param", userIdParamSchema), async (c) => {
     const { userId: id } = c.req.valid("param");
     const row = await container.userService.getById(id);
@@ -50,7 +57,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({
-      data: { id: row.id, name: row.name, role: row.role },
+      data: { id: row.id, name: row.name },
     });
   });
 

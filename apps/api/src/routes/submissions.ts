@@ -14,6 +14,7 @@ import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole, requireBuyerRoleUnlessAdmin } from "../middleware/require-buyer-role.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createSubmissionRoutes(container: Container, authenticator: IAuthenticator) {
@@ -88,7 +89,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     );
   });
 
-  r.patch("/:id", requireAuth, zValidator("param", submissionIdParamSchema), async (c) => {
+  r.patch(
+    "/:id",
+    requireAuth,
+    requireBuyerRoleUnlessAdmin,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
     const { id } = c.req.valid("param");
     const role = c.get("userRole") ?? "user";
     const userId = c.get("userId") as string;
@@ -128,9 +134,15 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       (data) => c.json({ data }),
       (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
     );
-  });
+    },
+  );
 
-  r.post("/:id/submit", requireAuth, zValidator("param", submissionIdParamSchema), async (c) => {
+  r.post(
+    "/:id/submit",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
     const userId = c.get("userId") as string;
     const { id } = c.req.valid("param");
     const result = await container.itemSubmissionService.submitForReview(userId, id);
@@ -138,9 +150,15 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       (data) => c.json({ data }),
       (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
     );
-  });
+    },
+  );
 
-  r.post("/:id/withdraw", requireAuth, zValidator("param", submissionIdParamSchema), async (c) => {
+  r.post(
+    "/:id/withdraw",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
     const userId = c.get("userId") as string;
     const { id } = c.req.valid("param");
     const result = await container.itemSubmissionService.withdraw(userId, id);
@@ -148,7 +166,8 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       (data) => c.json({ data }),
       (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
     );
-  });
+    },
+  );
 
   r.post(
     "/:id/review/start",

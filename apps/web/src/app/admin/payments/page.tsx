@@ -1,13 +1,8 @@
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
+  type AdminPaymentTableRow,
+  AdminPaymentsDataTable,
+} from "@/components/admin/admin-payments-data-table";
 import { DisplayHeading } from "@/components/ui/typography";
-import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
 import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 
 export default async function AdminPaymentsPage({
@@ -34,6 +29,17 @@ export default async function AdminPaymentsPage({
 
   const titleById = new Map(auctions.map((a) => [a.id, a.title]));
 
+  const paymentRows: AdminPaymentTableRow[] = payments.map((p) => ({
+    id: p.id,
+    lotId: p.lotId,
+    lotTitle: titleById.get(p.lotId) ?? p.lotId,
+    buyerId: p.buyerId,
+    sellerId: p.sellerId,
+    amount: p.amount,
+    platformFee: p.platformFee,
+    status: p.status,
+  }));
+
   return (
     <div className="max-w-6xl space-y-8">
       <DisplayHeading as="h1" className="text-4xl">
@@ -52,57 +58,7 @@ export default async function AdminPaymentsPage({
       {payments.length === 0 && !loadError ? (
         <p className="text-on-surface-variant">No payment records yet.</p>
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Lot</TableHeaderCell>
-              <TableHeaderCell>Buyer</TableHeaderCell>
-              <TableHeaderCell>Amount</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {payments.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell>{titleById.get(p.lotId) ?? p.lotId}</TableCell>
-                <TableCell className="max-w-[10rem] truncate font-mono text-xs">
-                  {p.buyerId}
-                </TableCell>
-                <TableCell className="tabular-nums">{p.amount}</TableCell>
-                <TableCell>{p.status}</TableCell>
-                <TableCell className="text-right">
-                  {p.status === "refunded" ? (
-                    <span className="text-on-surface-variant">Refunded</span>
-                  ) : (
-                    <div className="flex flex-wrap justify-end gap-3">
-                      {(p.status === "pending" || p.status === "authorized") && (
-                        <form action={adminCapturePaymentAction} className="inline">
-                          <input type="hidden" name="paymentId" value={p.id} />
-                          <button
-                            type="submit"
-                            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-                          >
-                            Mark captured
-                          </button>
-                        </form>
-                      )}
-                      <form action={adminRefundPaymentAction} className="inline">
-                        <input type="hidden" name="paymentId" value={p.id} />
-                        <button
-                          type="submit"
-                          className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline"
-                        >
-                          Refund
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <AdminPaymentsDataTable rows={paymentRows} />
       )}
     </div>
   );

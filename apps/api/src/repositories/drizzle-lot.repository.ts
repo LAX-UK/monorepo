@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { lot } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
-import { and, asc, desc, eq, gt, gte, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
 import { mapLotRow } from "../lib/mappers.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -30,6 +30,12 @@ function listWhere(input: ListWhereInput) {
     const { start, end } = endYearBoundsUtc(input.endYear);
     conditions.push(gte(lot.endTime, start));
     conditions.push(lt(lot.endTime, end));
+  }
+  if (input.search?.trim()) {
+    const safe = input.search.trim().slice(0, 200).replace(/[%_\\]/g, "");
+    if (safe.length > 0) {
+      conditions.push(ilike(lot.title, `%${safe}%`));
+    }
   }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
@@ -205,6 +211,25 @@ export class DrizzleLotRepository implements ILotRepository {
       .where(eq(lot.id, id));
   }
 
+  /** Atomically decrement Dutch price only if `currentPrice` still matches `expectedPrice`. */
+  async updateDutchCurrentPriceIfMatch(
+    id: string,
+    expectedPrice: string,
+    nextPrice: string,
+    lastDecrementAt: Date,
+  ): Promise<boolean> {
+    const rows = await this.db
+      .update(lot)
+      .set({
+        currentPrice: nextPrice,
+        dutchLastDecrementAt: lastDecrementAt,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(lot.id, id), eq(lot.currentPrice, expectedPrice)))
+      .returning({ id: lot.id });
+    return rows.length > 0;
+  }
+
   async updateCurrentPrice(id: string, price: string) {
     await this.db
       .update(lot)
@@ -266,6 +291,12 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async findBySaleId(saleId: string): Promise<Lot[]> {
     const rows = await this.db.select().from(lot).where(eq(lot.saleId, saleId));
+    return rows.map(mapLotRow);
+  }
+
+  async findBySaleIds(saleIds: string[]): Promise<Lot[]> {
+    if (saleIds.length === 0) return [];
+    const rows = await this.db.select().from(lot).where(inArray(lot.saleId, saleIds));
     return rows.map(mapLotRow);
   }
 }

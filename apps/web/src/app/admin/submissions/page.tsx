@@ -1,8 +1,10 @@
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import {
+  type AdminSubmissionTableRow,
+  AdminSubmissionsDataTable,
+} from "@/components/admin/admin-submissions-data-table";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
-import Link from "next/link";
 
 export default async function AdminSubmissionsPage({
   searchParams,
@@ -31,6 +33,14 @@ export default async function AdminSubmissionsPage({
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
+
+  const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => ({
+    id: s.id,
+    title: s.title,
+    sellerPreview: `Seller ${s.sellerId.slice(0, 8)}…`,
+    status: s.status,
+    createdAtLabel: s.createdAt.toLocaleString(),
+  }));
 
   return (
     <div className="max-w-6xl space-y-8">
@@ -70,32 +80,7 @@ export default async function AdminSubmissionsPage({
       {rows.length === 0 ? (
         <p className="text-on-surface-variant">No submissions.</p>
       ) : (
-        <ul className="divide-y divide-outline-variant/15 rounded-xl border border-outline-variant/15 bg-surface-container-low/40">
-          {rows.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-              <div>
-                <Link
-                  href={`/admin/submissions/${s.id}`}
-                  className="font-headline text-lg text-on-surface"
-                >
-                  {s.title}
-                </Link>
-                <p className="mt-2 font-body text-xs text-on-surface-variant">
-                  Seller {s.sellerId.slice(0, 8)}… · {s.createdAt.toLocaleString()}
-                </p>
-                <p className="mt-2">
-                  <SubmissionStatusBadge status={s.status} />
-                </p>
-              </div>
-              <Link
-                href={`/admin/submissions/${s.id}`}
-                className="font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-              >
-                Open
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <AdminSubmissionsDataTable rows={submissionRows} />
       )}
     </div>
   );

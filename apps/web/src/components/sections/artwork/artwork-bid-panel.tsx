@@ -1,5 +1,6 @@
 "use client";
 
+import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
 import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidDisplay } from "@/components/sections/artwork/bid-display";
@@ -270,27 +271,31 @@ export function ArtworkBidPanel({
               Sign in to bid
             </Link>
           </div>
-        ) : step === 1 ? (
-          <BidForm
-            auctionType={auction.auctionType}
-            minNumeric={minNumeric}
-            amount={amount}
-            maxAuto={maxAuto}
-            onAmountChange={setAmount}
-            onMaxAutoChange={setMaxAuto}
-            onReview={onReview}
-            onUseMinimum={onUseMinimum}
-            error={error}
-          />
         ) : (
-          <BidConfirmation
-            amount={amount}
-            maxAuto={maxAuto.trim() === "" ? null : maxAuto}
-            error={error}
-            submitting={submitting}
-            onCancel={() => setStep(1)}
-            onConfirm={onConfirm}
-          />
+          <BuyerGate user={sessionUser}>
+            {step === 1 ? (
+              <BidForm
+                auctionType={auction.auctionType}
+                minNumeric={minNumeric}
+                amount={amount}
+                maxAuto={maxAuto}
+                onAmountChange={setAmount}
+                onMaxAutoChange={setMaxAuto}
+                onReview={onReview}
+                onUseMinimum={onUseMinimum}
+                error={error}
+              />
+            ) : (
+              <BidConfirmation
+                amount={amount}
+                maxAuto={maxAuto.trim() === "" ? null : maxAuto}
+                error={error}
+                submitting={submitting}
+                onCancel={() => setStep(1)}
+                onConfirm={onConfirm}
+              />
+            )}
+          </BuyerGate>
         )}
       </div>
 
@@ -316,6 +321,13 @@ export function ArtworkBidPanel({
                 className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm"
               >
                 Sign in
+              </Link>
+            ) : isAdminBuyerBlocked(sessionUser) ? (
+              <Link
+                href="/admin"
+                className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                Admin
               </Link>
             ) : step === 1 ? (
               <button

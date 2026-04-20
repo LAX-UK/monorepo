@@ -31,7 +31,7 @@ export function RelatedLots({ auctions, currentId }: Props) {
                   {img ? (
                     <Image
                       src={img}
-                      alt=""
+                      alt={`${a.title} — related lot`}
                       fill
                       placeholder="blur"
                       blurDataURL={TINY_IMAGE_BLUR}

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
 
 export class DrizzleUserRepository implements IUserRepository {
@@ -21,5 +21,15 @@ export class DrizzleUserRepository implements IUserRepository {
   async listIdsByRole(role: string): Promise<string[]> {
     const rows = await this.db.select({ id: user.id }).from(user).where(eq(user.role, role));
     return rows.map((r) => r.id);
+  }
+
+  async listPublicProfiles(params: { limit: number; offset: number }) {
+    const rows = await this.db
+      .select({ id: user.id, name: user.name })
+      .from(user)
+      .orderBy(asc(user.name))
+      .limit(params.limit)
+      .offset(params.offset);
+    return rows;
   }
 }

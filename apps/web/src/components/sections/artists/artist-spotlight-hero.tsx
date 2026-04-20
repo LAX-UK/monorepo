@@ -23,7 +23,7 @@ export function ArtistSpotlightHero({ artist }: Props) {
       <div className="absolute inset-0 left-auto h-full w-full md:right-0 md:w-3/5">
         <Image
           src={artist.portraitUrl}
-          alt=""
+          alt={`Portrait of ${artist.name}`}
           fill
           className="object-cover grayscale transition-all duration-1000 hover:grayscale-0"
           sizes="(max-width: 768px) 100vw, 60vw"

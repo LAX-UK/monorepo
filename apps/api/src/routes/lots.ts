@@ -12,6 +12,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -23,8 +24,9 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   const optionalAuth = createOptionalAuth(authenticator);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  r.get("/", zValidator("query", listLotsQuerySchema), async (c) => {
+  r.get("/", optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {
     const query = c.req.valid("query");
+    const role = c.get("userRole");
     const data = await container.lotService.list({
       status: query.status,
       categoryId: query.categoryId,
@@ -32,11 +34,12 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       winnerId: query.winnerId,
       saleId: query.saleId,
       endYear: query.endYear,
+      search: query.q,
       sort: query.sort,
       limit: query.limit,
       offset: query.offset,
     });
-    return c.json({ data });
+    return c.json({ data: data.map((lotRow) => maskLotForPublicView(lotRow, role)) });
   });
 
   r.get("/archive/summary", zValidator("query", archiveSummaryQuerySchema), async (c) => {
@@ -125,13 +128,14 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     return c.json({ data: bids });
   });
 
-  r.get("/:id", zValidator("param", lotIdParamSchema), async (c) => {
+  r.get("/:id", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
+    const role = c.get("userRole");
     const lot = await container.lotService.getById(id);
     if (!lot) {
       return c.json({ error: "Not found" }, 404);
     }
-    return c.json({ data: lot });
+    return c.json({ data: maskLotForPublicView(lot, role) });
   });
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {

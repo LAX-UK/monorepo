@@ -8,6 +8,8 @@ export type ListLotsParams = {
   saleId?: string;
   /** Filter lots whose endTime falls in this calendar year (UTC). */
   endYear?: number;
+  /** Server-side title search (API `q`). */
+  q?: string;
   limit?: number;
   offset?: number;
   /** API sort: default createdDesc; endingAsc for live urgency; hammerDesc/endedDesc for archive. */
@@ -78,7 +80,8 @@ export interface ArtistReader {
 export type PublicUser = {
   id: string;
   name: string;
-  role: string;
+  /** Omitted from public API responses (defense in depth). */
+  role?: string;
 };
 
 export interface PublicUserReader {

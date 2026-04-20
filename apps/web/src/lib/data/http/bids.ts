@@ -1,6 +1,7 @@
 import type { BidWriter, PlaceBidInput, PlaceBidResult } from "@/lib/data/contracts";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseBid } from "@/lib/data/http/parse";
+import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 
 export function createHttpBidWriter(): BidWriter {
   const client = getBrowserHc();
@@ -17,7 +18,9 @@ export function createHttpBidWriter(): BidWriter {
       });
       const json = (await res.json().catch(() => ({}))) as { data?: unknown; error?: string };
       if (!res.ok) {
-        return { ok: false, error: json.error ?? "Could not place bid", status: res.status };
+        const errMsg = json.error ?? "Could not place bid";
+        notifyAdminCannotBuyIfNeeded(json.error, res.status);
+        return { ok: false, error: errMsg, status: res.status };
       }
       if (!json.data) {
         return { ok: false, error: "Invalid response", status: res.status };

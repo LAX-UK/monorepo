@@ -21,15 +21,18 @@ export function Button({
   className = "",
   children,
   type = "button",
+  asChild = false,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   children: ReactNode;
+  asChild?: boolean;
 }) {
   return (
     <UiButton
       type={type}
       variant="ghost"
+      asChild={asChild}
       className={cn(
         base,
         variants[variant],

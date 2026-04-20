@@ -27,7 +27,7 @@ export function PastAuctionCard({ auction, sellerName, gridOffsetClass = "" }: P
           {img ? (
             <Image
               src={img}
-              alt=""
+              alt={`${auction.title} — past auction lot`}
               fill
               placeholder="blur"
               blurDataURL={TINY_IMAGE_BLUR}

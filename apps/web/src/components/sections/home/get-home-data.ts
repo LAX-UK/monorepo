@@ -20,6 +20,7 @@ import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSalesList } from "@/lib/data/http/sales.server";
 import type { Lot } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
+import { cache } from "react";
 
 export type HomePageData = {
   heroState: HeroStateVM;
@@ -29,7 +30,7 @@ export type HomePageData = {
   saleMetaLine: string;
 };
 
-export async function getHomeData(): Promise<HomePageData> {
+export const getHomeData = cache(async (): Promise<HomePageData> => {
   let upcoming: Lot[] = [];
   let salesRows: Awaited<ReturnType<typeof getServerSalesList>> = [];
   let artists: Awaited<
@@ -65,7 +66,9 @@ export async function getHomeData(): Promise<HomePageData> {
       ? firstSale.sale.title
       : (firstSale?.sale.title ?? null);
 
-  const heroVm = featuredLot ? toHeroLotVM(featuredLot, saleTitleForHero) : createHeroFallbackVm();
+  const heroVm: HeroLotVM = featuredLot
+    ? toHeroLotVM(featuredLot, saleTitleForHero)
+    : createHeroFallbackVm();
   const lotCards = toLotCardVMs(upcoming.slice(1, 5));
   const auctionVm = firstSale ? toUpcomingAuctionVM(firstSale) : null;
   const artistCards = toArtistCardVMs(artists.slice(0, 4));
@@ -118,4 +121,4 @@ export async function getHomeData(): Promise<HomePageData> {
     ...base,
     heroState: { kind: "fallbackLot", lot: heroVm },
   };
-}
+});

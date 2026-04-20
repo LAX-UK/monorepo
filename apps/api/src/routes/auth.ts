@@ -7,9 +7,8 @@ import type { Container } from "../container.js";
 export function createAuthRoutes(_container: Container) {
   const r = new Hono();
   r.post("/forgot-password", zValidator("json", forgotPasswordBodySchema), async (c) => {
-    const { email } = c.req.valid("json");
     // Stub: always succeed to avoid user enumeration; replace with real mailer later.
-    console.info("[auth] forgot-password requested", { email });
+    // Do not log raw email (PII).
     return c.json({ ok: true });
   });
   return r;

@@ -68,6 +68,7 @@ function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn(),
     markWinningBid: vi.fn(),
+    aggregateBidderCeilings: vi.fn().mockResolvedValue(new Map<string, number>()),
     ...overrides,
   };
 }
@@ -91,8 +92,10 @@ function baseLotRepo(overrides: Partial<ILotRepository> = {}): ILotRepository {
     findActiveDutchLots: vi.fn().mockResolvedValue([]),
     setDutchLastDecrementAt: vi.fn(),
     updateDutchCurrentPrice: vi.fn(),
+    updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
     clearSaleId: vi.fn(),
     findBySaleId: vi.fn(),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     ...overrides,
   } as ILotRepository;
 }

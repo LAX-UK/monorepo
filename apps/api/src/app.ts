@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import type { Container } from "./container.js";
 import type { Env } from "./env.js";
 import { createAppLogger } from "./lib/logger.js";
+import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminRoutes } from "./routes/admin.js";
@@ -72,6 +73,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     return c.json({ activeLots });
   });
 
+  app.use("/api/auth/*", createAuthRateLimitMiddleware(container.redis));
   app.all("/api/auth/*", (c) => container.auth.handler(c.req.raw));
 
   const routed = app

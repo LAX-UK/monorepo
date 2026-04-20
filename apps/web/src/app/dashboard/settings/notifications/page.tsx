@@ -3,6 +3,8 @@
 import { parseNotificationPreference } from "@/lib/data/http/parse";
 import { registerPushSubscription, urlBase64ToUint8Array } from "@/lib/push/subscribe";
 import type { NotificationPreference } from "@auction/types";
+import { Label } from "@auction/ui/components/label";
+import { Switch } from "@auction/ui/components/switch";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
@@ -20,26 +22,13 @@ function Toggle({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
-  const labelId = useId();
+  const id = useId();
   return (
     <div className="flex items-center justify-between gap-4 border-b border-outline-variant/10 py-3 font-body text-sm">
-      <span id={labelId}>{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-labelledby={labelId}
-        onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 rounded-full transition-colors ${
-          checked ? "bg-primary" : "bg-outline-variant/40"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-surface-container-lowest shadow transition-transform ${
-            checked ? "translate-x-5" : ""
-          }`}
-        />
-      </button>
+      <Label htmlFor={id} className="cursor-pointer font-normal">
+        {label}
+      </Label>
+      <Switch id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
     </div>
   );
 }

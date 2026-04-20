@@ -1,4 +1,5 @@
-import { boolean, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { lot } from "./lots.js";
 
@@ -21,5 +22,9 @@ export const bid = pgTable(
   (table) => [
     index("bid_lot_id_amount_idx").on(table.lotId, table.amount),
     index("bid_bidder_id_idx").on(table.bidderId),
+    index("bid_lot_id_created_at_idx").on(table.lotId, table.createdAt),
+    uniqueIndex("bid_one_winner_per_lot_uniq")
+      .on(table.lotId)
+      .where(sql`${table.isWinning} = true`),
   ],
 );

@@ -1,4 +1,5 @@
-import { ActiveBidsWidget } from "@/components/dashboard/active-bids-widget";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   getServerMyBids,
   getServerMyPortfolio,
@@ -9,10 +10,45 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { Lot } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@auction/ui/components/card";
+import { PageHeader } from "@auction/ui/components/page-header";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 
-export default async function DashboardHomePage() {
+function DashboardHomeFallback() {
+  return (
+    <div className="max-w-[1920px] space-y-10" aria-busy="true" aria-label="Loading dashboard">
+      <Skeleton className="h-10 w-64" />
+      <Skeleton className="h-4 w-48" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {(["kpi-a", "kpi-b", "kpi-c", "kpi-d"] as const).map((id) => (
+          <Skeleton key={id} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        <div className="space-y-4 lg:col-span-8">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </div>
+        <div className="space-y-4 lg:col-span-4">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function DashboardHomeContent() {
   const user = await getServerSessionUser();
   const reader = await getServerLotReader();
 
@@ -86,97 +122,80 @@ export default async function DashboardHomePage() {
   const engagementLabel =
     decided > 0 ? `${wins} win${wins === 1 ? "" : "s"} / ${decided} decided` : "—";
 
-  const activeBidRows = bidRows
-    .filter((row) => row.lot?.status === "active")
-    .map((row) =>
-      row.lot
-        ? {
-            bid: row.bid,
-            lot: row.lot,
-          }
-        : null,
-    )
-    .filter((x): x is NonNullable<typeof x> => x !== null);
-
   return (
     <div className="max-w-[1920px]">
       {(activeError || portfolioError || watchlistError || bidsError) && (
-        <div
-          className="mb-8 rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-body text-sm text-error"
-          role="alert"
-        >
-          <p className="font-label text-xs font-bold uppercase tracking-widest text-error">
-            Some data could not load
-          </p>
-          <ul className="mt-2 list-inside list-disc space-y-1">
-            {activeError ? <li>Live inventory: {activeError}</li> : null}
-            {portfolioError ? <li>Portfolio: {portfolioError}</li> : null}
-            {watchlistError ? <li>Watchlist: {watchlistError}</li> : null}
-            {bidsError ? <li>Bids: {bidsError}</li> : null}
-          </ul>
-        </div>
+        <Alert variant="destructive" className="mb-8 border-error/40">
+          <AlertTitle>Some data could not load</AlertTitle>
+          <AlertDescription>
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              {activeError ? <li>Live inventory: {activeError}</li> : null}
+              {portfolioError ? <li>Portfolio: {portfolioError}</li> : null}
+              {watchlistError ? <li>Watchlist: {watchlistError}</li> : null}
+              {bidsError ? <li>Bids: {bidsError}</li> : null}
+            </ul>
+          </AlertDescription>
+        </Alert>
       )}
 
-      {user && activeBidRows.length > 0 ? (
-        <ActiveBidsWidget rows={activeBidRows} userId={user.id} />
-      ) : null}
-
-      <section className="mb-12">
-        <h1 className="mb-4 font-headline text-5xl tracking-tight text-on-surface md:text-6xl">
-          Welcome back, {firstName}.
-        </h1>
-        <p className="font-label text-sm uppercase tracking-[0.2em] text-secondary">
-          {active.length} live lots • {portfolio.length} acquired work
-          {portfolio.length === 1 ? "" : "s"}
-        </p>
-      </section>
+      <PageHeader
+        title={`Welcome back, ${firstName}.`}
+        description={`${active.length} live lots · ${portfolio.length} acquired work${portfolio.length === 1 ? "" : "s"}`}
+        className="mb-10 border-0 pb-0"
+        actions={
+          <Button variant="secondary" asChild>
+            <Link href="/dashboard/submissions/new">New submission</Link>
+          </Button>
+        }
+      />
 
       <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-            Portfolio value (hammer)
-          </p>
-          <p className="font-headline text-3xl text-primary">
-            {formatMoney(totalSpent.toFixed(2))}
-          </p>
-        </div>
-        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-            Won this year (UTC)
-          </p>
-          <p className="font-headline text-3xl text-on-surface">{wonThisYear}</p>
-        </div>
-        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-            Win rate
-          </p>
-          <p className="font-headline text-3xl text-on-surface">
-            {winRate !== null ? `${winRate}%` : "—"}
-          </p>
-        </div>
-        <div className="rounded-xl bg-surface-container-low p-6 shadow-sm ring-1 ring-outline-variant/10">
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-            Engagement
-          </p>
-          <p className="font-headline text-3xl text-on-surface">{engagementLabel}</p>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Portfolio value (hammer)</CardDescription>
+            <CardTitle className="font-headline text-3xl text-primary">
+              {formatMoney(totalSpent.toFixed(2))}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Won this year (UTC)</CardDescription>
+            <CardTitle className="font-headline text-3xl">{wonThisYear}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Win rate</CardDescription>
+            <CardTitle className="font-headline text-3xl">
+              {winRate !== null ? `${winRate}%` : "—"}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Engagement</CardDescription>
+            <CardTitle className="font-headline text-3xl">{engagementLabel}</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
 
-      <section className="mb-12 rounded-xl border border-primary/20 bg-primary-container/10 p-6 ring-1 ring-primary/10">
-        <h2 className="font-headline text-xl text-on-surface">
-          Sell with LAX London Auction House Ltd
-        </h2>
-        <p className="mt-2 max-w-2xl font-body text-sm text-on-surface-variant">
-          Submit item details for specialist review. When approved, we create a draft catalog lot
-          for scheduling and publication.
-        </p>
-        <Link
-          href="/dashboard/submissions/new"
-          className="mt-4 inline-block font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-        >
-          Start a submission
-        </Link>
-      </section>
+      <Card className="mb-12 border-primary/25 bg-primary-container/10">
+        <CardHeader>
+          <CardTitle className="font-headline text-xl">
+            Sell with LAX London Auction House Ltd
+          </CardTitle>
+          <CardDescription className="max-w-2xl text-on-surface-variant">
+            Submit item details for specialist review. When approved, we create a draft catalog lot
+            for scheduling and publication.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="primary" asChild>
+            <Link href="/dashboard/submissions/new">Start a submission</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8">
@@ -202,7 +221,13 @@ export default async function DashboardHomePage() {
                   >
                     <div className="relative h-32 w-full flex-shrink-0 overflow-hidden rounded-lg bg-surface-container-low md:w-48">
                       {img ? (
-                        <Image src={img} alt="" fill className="object-cover" sizes="192px" />
+                        <Image
+                          src={img}
+                          alt={`${a.title} — artwork preview`}
+                          fill
+                          className="object-cover"
+                          sizes="192px"
+                        />
                       ) : null}
                     </div>
                     <div className="flex flex-1 flex-col justify-center space-y-2">
@@ -226,93 +251,125 @@ export default async function DashboardHomePage() {
           </div>
         </div>
         <div className="space-y-8 lg:col-span-4">
-          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
-            <h3 className="mb-4 font-headline text-xl">Won lots</h3>
-            {wonLotsSidebar.length === 0 ? (
-              <p className="font-body text-sm text-on-surface-variant">No completed wins yet.</p>
-            ) : (
-              <ul className="space-y-4">
-                {wonLotsSidebar.map((row) => {
-                  const a = row.lot;
-                  const img = a.images[0];
-                  const label = portfolioSettlementLabel(row);
-                  return (
-                    <li key={a.id}>
-                      <Link
-                        href={`/dashboard/checkout/${a.id}`}
-                        className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
-                      >
-                        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                          {img ? (
-                            <Image src={img} alt="" fill className="object-cover" sizes="56px" />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-headline text-sm text-on-surface">
-                            {a.title}
-                          </p>
-                          <p className="font-label text-xs font-bold uppercase tracking-wider text-primary">
-                            {label}
-                          </p>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-xl">Won lots</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {wonLotsSidebar.length === 0 ? (
+                <p className="font-body text-sm text-on-surface-variant">No completed wins yet.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {wonLotsSidebar.map((row) => {
+                    const a = row.lot;
+                    const img = a.images[0];
+                    const label = portfolioSettlementLabel(row);
+                    return (
+                      <li key={a.id}>
+                        <Link
+                          href={`/dashboard/checkout/${a.id}`}
+                          className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
+                        >
+                          <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+                            {img ? (
+                              <Image
+                                src={img}
+                                alt={`${a.title} — thumbnail`}
+                                fill
+                                className="object-cover"
+                                sizes="56px"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-headline text-sm text-on-surface">
+                              {a.title}
+                            </p>
+                            <p className="font-label text-xs font-bold uppercase tracking-wider text-primary">
+                              {label}
+                            </p>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
-          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
-            <h3 className="mb-4 font-headline text-xl">Watchlist</h3>
-            {watchPreview.length === 0 ? (
-              <p className="font-body text-sm text-on-surface-variant">
-                Save lots from the artwork page to track them here.
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-xl">Watchlist</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {watchPreview.length === 0 ? (
+                <p className="font-body text-sm text-on-surface-variant">
+                  Save lots from the artwork page to track them here.
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {watchPreview.map((w) => {
+                    const a = w.lot;
+                    if (!a) return null;
+                    const img = a.images[0];
+                    return (
+                      <li key={w.watchlistId}>
+                        <Link
+                          href={`/artwork/${a.id}`}
+                          className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
+                        >
+                          <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+                            {img ? (
+                              <Image
+                                src={img}
+                                alt={`${a.title} — thumbnail`}
+                                fill
+                                className="object-cover"
+                                sizes="56px"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-headline text-sm text-on-surface">
+                              {a.title}
+                            </p>
+                            <p className="font-label text-xs uppercase tracking-wider text-secondary">
+                              Est. {formatMoney(a.currentPrice)}
+                            </p>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-xl">Account</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="font-body text-sm text-secondary">
+                <span className="font-medium text-on-surface">Role:</span> {user?.role ?? "—"}
               </p>
-            ) : (
-              <ul className="space-y-4">
-                {watchPreview.map((w) => {
-                  const a = w.lot;
-                  if (!a) return null;
-                  const img = a.images[0];
-                  return (
-                    <li key={w.watchlistId}>
-                      <Link
-                        href={`/artwork/${a.id}`}
-                        className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high/80"
-                      >
-                        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                          {img ? (
-                            <Image src={img} alt="" fill className="object-cover" sizes="56px" />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-headline text-sm text-on-surface">
-                            {a.title}
-                          </p>
-                          <p className="font-label text-xs uppercase tracking-wider text-secondary">
-                            Est. {formatMoney(a.currentPrice)}
-                          </p>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10">
-            <h3 className="mb-4 font-headline text-xl">Account</h3>
-            <p className="font-body text-sm text-secondary">
-              <span className="font-medium text-on-surface">Role:</span> {user?.role ?? "—"}
-            </p>
-            <p className="mt-4 font-body text-xs text-on-surface-variant">
-              Manage bids under Active Bids; won lots settle from Portfolio.
-            </p>
-          </div>
+              <p className="mt-4 font-body text-xs text-on-surface-variant">
+                Manage bids under Active Bids; won lots settle from Portfolio.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardHomePage() {
+  return (
+    <Suspense fallback={<DashboardHomeFallback />}>
+      <DashboardHomeContent />
+    </Suspense>
   );
 }

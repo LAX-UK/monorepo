@@ -49,12 +49,16 @@ export class SaleService {
     filter: Parameters<ISaleRepository["list"]>[0],
   ): Promise<{ sale: Sale; lots: Lot[] }[]> {
     const sales = await this.saleRepo.list(filter);
-    const out: { sale: Sale; lots: Lot[] }[] = [];
-    for (const s of sales) {
-      const lots = await this.lotRepo.findBySaleId(s.id);
-      out.push({ sale: s, lots });
+    if (sales.length === 0) return [];
+    const allLots = await this.lotRepo.findBySaleIds(sales.map((s) => s.id));
+    const bySale = new Map<string, Lot[]>();
+    for (const l of allLots) {
+      if (!l.saleId) continue;
+      const arr = bySale.get(l.saleId) ?? [];
+      arr.push(l);
+      bySale.set(l.saleId, arr);
     }
-    return out;
+    return sales.map((s) => ({ sale: s, lots: bySale.get(s.id) ?? [] }));
   }
 
   async publish(

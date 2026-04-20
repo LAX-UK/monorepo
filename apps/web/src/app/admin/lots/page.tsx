@@ -1,12 +1,8 @@
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
+  type AdminLotTableRow,
+  AdminLotsDataTable,
+} from "@/components/admin/admin-lots-data-table";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotList } from "@/lib/data/http/admin.server";
 import type { LotStatus } from "@auction/types";
@@ -42,6 +38,15 @@ export default async function AdminAuctionsPage({
   } catch (e) {
     listError = e instanceof Error ? e.message : "Could not load auctions.";
   }
+
+  const lotTableRows: AdminLotTableRow[] = rows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    auctionType: a.auctionType,
+    status: a.status,
+    endTimeLabel: a.endTime.toISOString().slice(0, 16).replace("T", " "),
+    currentPrice: a.currentPrice,
+  }));
 
   return (
     <div className="max-w-6xl space-y-8">
@@ -123,37 +128,7 @@ export default async function AdminAuctionsPage({
       ) : rows.length === 0 && !listError ? (
         <p className="text-on-surface-variant">No auctions match this filter.</p>
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Title</TableHeaderCell>
-              <TableHeaderCell>Type</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Ends</TableHeaderCell>
-              <TableHeaderCell className="text-right">Hammer</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((a) => (
-              <TableRow key={a.id}>
-                <TableCell>
-                  <Link
-                    href={`/admin/lots/${a.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {a.title}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-on-surface-variant">{a.auctionType}</TableCell>
-                <TableCell>{a.status}</TableCell>
-                <TableCell className="text-on-surface-variant text-xs">
-                  {a.endTime.toISOString().slice(0, 16).replace("T", " ")}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{a.currentPrice}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <AdminLotsDataTable rows={lotTableRows} />
       )}
     </div>
   );

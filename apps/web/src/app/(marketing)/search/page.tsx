@@ -14,32 +14,39 @@ import Link from "next/link";
 export const metadata: Metadata = metadataForStatic({
   title: "Search lots",
   description:
-    "Search curated fine art lots by title or description — filter live inventory from LAX London Auction House Ltd.",
+    "Search curated fine art lots by title — browse live inventory from LAX London Auction House Ltd.",
   path: "/search",
 });
 
+const PAGE_SIZE = 24;
+
 type PageProps = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; offset?: string }>;
 };
 
-function matchesQuery(a: Lot, q: string): boolean {
-  const n = q.trim().toLowerCase();
-  if (!n) return true;
-  const t = `${a.title} ${a.description ?? ""}`.toLowerCase();
-  return t.includes(n);
-}
-
 export default async function SearchPage({ searchParams }: PageProps) {
-  const { q = "" } = await searchParams;
+  const { q = "", offset: offsetRaw = "0" } = await searchParams;
+  const offset = Math.max(0, Number.parseInt(String(offsetRaw), 10) || 0);
   const reader = await getServerLotReader();
   let auctions: Lot[] = [];
   let loadError: string | null = null;
   try {
-    auctions = await reader.list({ limit: 60 });
+    const trimmed = q.trim();
+    auctions = await reader.list({
+      limit: PAGE_SIZE,
+      offset,
+      ...(trimmed ? { q: trimmed } : {}),
+      sort: "endingAsc",
+    });
   } catch {
     loadError = "We couldn’t load inventory right now. Please try again shortly.";
   }
-  const filtered = q.trim() ? auctions.filter((a) => matchesQuery(a, q)) : auctions.slice(0, 24);
+  const filtered = auctions;
+  const hasPrev = offset > 0;
+  const hasNext = filtered.length === PAGE_SIZE;
+  const nextOffset = offset + PAGE_SIZE;
+  const prevOffset = Math.max(0, offset - PAGE_SIZE);
+  const qParam = q.trim() ? `&q=${encodeURIComponent(q.trim())}` : "";
 
   const base = getSiteUrl();
   const listLd =
@@ -65,7 +72,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       ) : null}
       <h1 className="mb-2 font-headline text-4xl tracking-tight text-on-surface">Search</h1>
       <p className="mb-6 font-body text-sm text-on-surface-variant">
-        Filter loaded inventory by title or description.
+        Search runs on the server across lot titles.
       </p>
       <form
         action="/search"
@@ -83,7 +90,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             id="search-q"
             name="q"
             defaultValue={q}
-            placeholder="Title, medium, description…"
+            placeholder="Search by lot title…"
             className="rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus"
           />
         </div>
@@ -123,6 +130,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           </div>
         </div>
       ) : (
+        <>
         <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((a) => {
             const img = a.images[0];
@@ -158,6 +166,32 @@ export default async function SearchPage({ searchParams }: PageProps) {
             );
           })}
         </ul>
+        <nav
+          className="mt-12 flex flex-wrap items-center justify-center gap-6 border-t border-outline-variant/15 pt-10 font-label text-xs font-semibold uppercase tracking-widest"
+          aria-label="Search results pagination"
+        >
+          {hasPrev ? (
+            <Link
+              href={`/search?offset=${prevOffset}${qParam}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Previous
+            </Link>
+          ) : (
+            <span className="text-on-surface-variant/40">Previous</span>
+          )}
+          {hasNext ? (
+            <Link
+              href={`/search?offset=${nextOffset}${qParam}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Next
+            </Link>
+          ) : (
+            <span className="text-on-surface-variant/40">Next</span>
+          )}
+        </nav>
+        </>
       )}
     </main>
   );

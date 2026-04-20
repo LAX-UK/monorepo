@@ -58,7 +58,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           {img ? (
             <Image
               src={img}
-              alt=""
+              alt={`${auction.title} — artwork for checkout`}
               fill
               placeholder="blur"
               blurDataURL={TINY_IMAGE_BLUR}
@@ -111,6 +111,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               </div>
 
               <CheckoutPurchasePanel
+                sessionUser={user}
                 lotId={auction.id}
                 hammer={formatMoney(auction.currentPrice)}
                 buyerPremium={formatMoney(premium.toFixed(2))}

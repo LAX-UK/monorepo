@@ -1,41 +1,30 @@
 "use client";
 
+import { dashboardNavItems } from "@/components/layout/dashboard-nav-items";
 import { useShellContext } from "@/components/layout/dashboard-shell";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { useIsLg } from "@/hooks/use-is-lg";
 import { SITE_SHORT_NAME } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@auction/ui/components/sheet";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const links = [
-  { href: "/dashboard", label: "Overview", icon: "dashboard" },
-  { href: "/dashboard/submissions", label: "Sell an item", icon: "storefront" },
-  { href: "/dashboard/bids", label: "Active Bids", icon: "gavel" },
-  { href: "/dashboard/portfolio", label: "Portfolio", icon: "palette" },
-  { href: "/dashboard/notifications", label: "Notifications", icon: "notifications" },
-  { href: "/dashboard/settings/profile", label: "Profile", icon: "person" },
-  { href: "/dashboard/settings/notifications", label: "Alert settings", icon: "tune" },
-] as const;
-
-const adminLink = { href: "/admin", label: "Admin panel", icon: "shield_person" } as const;
 
 type Props = {
   user: SessionUser;
 };
 
-export function DashboardSidebar({ user }: Props) {
-  const { onNavigate, mobileOpen } = useShellContext();
+function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => void }) {
   const pathname = usePathname();
-  const onNav = onNavigate;
-
-  const asideTransform = mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0";
-
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)] transition-transform duration-200 ease-out ${asideTransform}`}
-    >
+    <>
       <div className="p-8">
         <Link
           href="/"
@@ -44,13 +33,11 @@ export function DashboardSidebar({ user }: Props) {
         >
           {SITE_SHORT_NAME}
         </Link>
-        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-          Signed in
-        </p>
+        <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Signed in</p>
         <p className="font-body text-sm font-medium text-on-surface">{user.name}</p>
         <p className="mt-1 truncate font-body text-xs text-on-surface-variant">{user.email}</p>
         <nav className="mt-12 space-y-1" aria-label="Dashboard">
-          {links.map((l) => {
+          {dashboardNavItems.map((l) => {
             const active =
               l.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -72,22 +59,6 @@ export function DashboardSidebar({ user }: Props) {
               </Link>
             );
           })}
-          {user.role === "admin" ? (
-            <Link
-              key={adminLink.href}
-              href={adminLink.href}
-              onClick={onNav}
-              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
-              className={`flex items-center border-l-4 px-4 py-3 text-xs font-medium uppercase tracking-widest transition-all ${
-                pathname.startsWith("/admin")
-                  ? "border-primary bg-surface-container-low text-on-surface"
-                  : "border-transparent text-on-surface hover:bg-surface-container-low/80"
-              }`}
-            >
-              <MaterialIcon name={adminLink.icon} className="mr-3 text-lg" />
-              {adminLink.label}
-            </Link>
-          ) : null}
         </nav>
       </div>
       <div className="mt-auto space-y-4 p-8">
@@ -104,6 +75,33 @@ export function DashboardSidebar({ user }: Props) {
           Exit to gallery
         </Link>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function DashboardSidebar({ user }: Props) {
+  const { onNavigate, mobileOpen, setMobileOpen } = useShellContext();
+  const isLg = useIsLg();
+  const onNav = onNavigate;
+
+  const body = <DashboardNavBody user={user} onNav={onNav} />;
+
+  return (
+    <>
+      {isLg ? (
+        <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
+          {body}
+        </aside>
+      ) : (
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="flex w-[min(100vw-2rem,20rem)] max-w-none flex-col border-outline-variant/15 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Dashboard navigation</SheetTitle>
+            </SheetHeader>
+            <div className="flex h-full flex-col overflow-y-auto">{body}</div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import type { Server } from "socket.io";
 
 const LOT_EVENTS_PATTERN = "lot:*:events";
 const USER_NOTIFICATIONS_PATTERN = "user:*:notifications";
+const MAX_REDIS_MESSAGE_BYTES = 32 * 1024;
 
 /**
  * Subscribes to Redis pub/sub channels published by the API (`lot:{id}:events`,
@@ -19,7 +20,9 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
       const userId = userMatch[1];
       const room = `user:${userId}`;
       try {
+        if (message.length > MAX_REDIS_MESSAGE_BYTES) return;
         const parsed = JSON.parse(message) as unknown;
+        if (typeof parsed !== "object" || parsed === null) return;
         io.to(room).emit("userNotification", parsed);
       } catch {
         io.to(room).emit("userNotification", { raw: message });
@@ -32,8 +35,24 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
     if (!lotId) return;
 
     try {
-      const parsed = JSON.parse(message) as { type?: string };
+      if (message.length > MAX_REDIS_MESSAGE_BYTES) return;
+      const parsed = JSON.parse(message) as { type?: string; sealed?: boolean };
+      if (typeof parsed !== "object" || parsed === null) return;
       const room = `lot:${lotId}`;
+      if (parsed.type === "bid_placed" && parsed.sealed === true) {
+        void io
+          .in(room)
+          .fetchSockets()
+          .then((socks) => {
+            for (const s of socks) {
+              if (s.data.isAdmin) s.emit("bidUpdate", parsed);
+            }
+          })
+          .catch((err: unknown) => {
+            console.error("sealed bid fan-out", err);
+          });
+        return;
+      }
       if (parsed.type === "bid_placed") {
         io.to(room).emit("bidUpdate", parsed);
       } else if (parsed.type === "lot_extended") {

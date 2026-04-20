@@ -1,9 +1,35 @@
 "use client";
 
+import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
+import { Button } from "@/components/ui/button";
+import type { SessionUser } from "@/lib/data/contracts";
+import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
+import { Checkbox } from "@auction/ui/components/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
+const checkoutFormSchema = z.object({
+  termsAccepted: z.boolean().refine((v) => v === true, {
+    message: "You must accept the terms to continue.",
+  }),
+});
+
+type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
 
 type Props = {
+  sessionUser: SessionUser;
   lotId: string;
   hammer: string;
   buyerPremium: string;
@@ -24,17 +50,18 @@ function settlementsPhone(): string {
 }
 
 export function CheckoutPurchasePanel({
+  sessionUser,
   lotId,
   hammer,
   buyerPremium,
   total,
   premiumPercentLabel,
 }: Props) {
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const termsId = useId();
+  const form = useForm<CheckoutFormValues>({
+    resolver: zodResolver(checkoutFormSchema),
+    defaultValues: { termsAccepted: false },
+  });
 
   if (submitted) {
     return (
@@ -122,38 +149,12 @@ export function CheckoutPurchasePanel({
         </span>
       </div>
 
-      <div className="space-y-6">
-        <label htmlFor={termsId} className="flex cursor-pointer items-start gap-3">
-          <input
-            id={termsId}
-            type="checkbox"
-            checked={termsAccepted}
-            onChange={(e) => setTermsAccepted(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">
-            I agree to the{" "}
-            <Link
-              href="/terms"
-              className="border-b border-primary/40 text-on-surface hover:border-primary"
-            >
-              Terms of Sale
-            </Link>
-            , including buyer&apos;s premium and payment deadlines.
-          </span>
-        </label>
-        {apiError ? (
-          <p className="text-sm text-error" role="alert">
-            {apiError}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          disabled={!termsAccepted || busy}
-          onClick={() => {
-            void (async () => {
-              setApiError(null);
-              setBusy(true);
+      <BuyerGate user={sessionUser}>
+        <Form {...form}>
+          <form
+            className="space-y-6"
+            onSubmit={form.handleSubmit(async () => {
+              form.clearErrors("root");
               try {
                 const res = await fetch(`${apiBase()}/payments`, {
                   method: "POST",
@@ -163,22 +164,64 @@ export function CheckoutPurchasePanel({
                 });
                 const json = (await res.json().catch(() => ({}))) as { error?: string };
                 if (!res.ok) {
-                  setApiError(json.error ?? "Could not start payment");
+                  notifyAdminCannotBuyIfNeeded(json.error, res.status);
+                  form.setError("root", {
+                    message: json.error ?? "Could not start payment",
+                  });
                   return;
                 }
                 setSubmitted(true);
+                toast.success("Payment record created", {
+                  description: "Our settlements team will follow up with next steps.",
+                });
               } catch {
-                setApiError("Network error");
-              } finally {
-                setBusy(false);
+                form.setError("root", { message: "Network error" });
               }
-            })();
-          }}
-          className="w-full bg-gradient-to-br from-primary to-primary-container py-5 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {busy ? "Processing…" : "Complete purchase"}
-        </button>
-      </div>
+            })}
+          >
+            <FormField
+              control={form.control}
+              name="termsAccepted"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(v === true)}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="cursor-pointer font-body text-sm font-normal text-on-surface-variant">
+                      I agree to the{" "}
+                      <Link
+                        href="/terms"
+                        className="border-b border-primary/40 text-on-surface hover:border-primary"
+                      >
+                        Terms of Sale
+                      </Link>
+                      , including buyer&apos;s premium and payment deadlines.
+                    </FormLabel>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+            {form.formState.errors.root ? (
+              <p className="text-sm text-error" role="alert">
+                {form.formState.errors.root.message}
+              </p>
+            ) : null}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={form.formState.isSubmitting}
+              className="w-full py-5"
+            >
+              {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
+            </Button>
+          </form>
+        </Form>
+      </BuyerGate>
     </div>
   );
 }

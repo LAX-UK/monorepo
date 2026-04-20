@@ -2,6 +2,7 @@ import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { LotLifecycleService } from "./lot-lifecycle.service.js";
 import { NotificationFactory } from "./notification.factory.js";
 
@@ -53,6 +54,15 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
   };
 }
 
+function createFactory(lots: ILotRepository, bids: IBidRepository): IRepositoryFactory {
+  const root = { lot: lots, bid: bids };
+  return {
+    root,
+    forConnection: () => root,
+    runInTransaction: async <T>(fn: (r: typeof root) => Promise<T>) => fn(root),
+  };
+}
+
 describe("LotLifecycleService", () => {
   const strategyFactory = new LotStrategyFactory();
 
@@ -66,11 +76,13 @@ describe("LotLifecycleService", () => {
       findScheduledToActivate: vi.fn().mockResolvedValue([]),
       findActivePastEnd: vi.fn().mockResolvedValue([lot]),
       findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
       findActiveDutchLots: vi.fn().mockResolvedValue([]),
       setDutchLastDecrementAt: vi.fn(),
       updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
     } as unknown as ILotRepository;
 
     const bids: IBidRepository = {
@@ -79,8 +91,7 @@ describe("LotLifecycleService", () => {
     } as unknown as IBidRepository;
 
     const svc = new LotLifecycleService(
-      lots,
-      bids,
+      createFactory(lots, bids),
       strategyFactory,
       null,
       null,
@@ -103,11 +114,13 @@ describe("LotLifecycleService", () => {
       findScheduledToActivate: vi.fn().mockResolvedValue([]),
       findActivePastEnd: vi.fn().mockResolvedValue([lot]),
       findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot),
       updateStatus: vi.fn(),
       setWinner: vi.fn(),
       findActiveDutchLots: vi.fn().mockResolvedValue([]),
       setDutchLastDecrementAt: vi.fn(),
       updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
     } as unknown as ILotRepository;
 
     const bids: IBidRepository = {
@@ -118,8 +131,7 @@ describe("LotLifecycleService", () => {
     } as unknown as IBidRepository;
 
     const svc = new LotLifecycleService(
-      lots,
-      bids,
+      createFactory(lots, bids),
       strategyFactory,
       null,
       null,

@@ -1,7 +1,10 @@
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { DisplayHeading } from "@/components/ui/typography";
+import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
+import { Button } from "@/components/ui/button";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import type { SubmissionListFilterValues } from "@/lib/forms/submission/submission-form-schema";
 import type { ItemSubmissionStatus } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default async function DashboardSubmissionsPage({
@@ -22,6 +25,8 @@ export default async function DashboardSubmissionsPage({
       ? (sp.status as ItemSubmissionStatus)
       : undefined;
 
+  const initialStatus: SubmissionListFilterValues["status"] = status ?? "all";
+
   let rows: Awaited<ReturnType<typeof getMySubmissions>> = [];
   let loadError: string | null = null;
   try {
@@ -32,73 +37,32 @@ export default async function DashboardSubmissionsPage({
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
+  const tableRows = rows.map((s) => ({
+    id: s.id,
+    title: s.title,
+    status: s.status,
+    updatedAt: s.updatedAt.toISOString(),
+  }));
+
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <DisplayHeading as="h1" className="text-4xl">
-          Your submissions
-        </DisplayHeading>
-        <Link
-          href="/dashboard/submissions/new"
-          className="font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-        >
-          New submission
-        </Link>
-      </div>
-      <p className="font-body text-sm text-on-surface-variant">
-        Submit item details for specialist review. When approved, a draft lot is created for
-        cataloguing and scheduling.
-      </p>
+      <PageHeader
+        title="Your submissions"
+        description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
+        className="border-0 pb-0"
+        actions={
+          <Button variant="primary" asChild>
+            <Link href="/dashboard/submissions/new">New submission</Link>
+          </Button>
+        }
+      />
       {(error || loadError) && (
-        <p className="text-sm text-error" role="alert">
-          {loadError ?? error}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load</AlertTitle>
+          <AlertDescription>{loadError ?? error}</AlertDescription>
+        </Alert>
       )}
-      <form className="flex flex-wrap gap-2" method="get">
-        <select
-          name="status"
-          defaultValue={status ?? ""}
-          className="rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm"
-        >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="submitted">Submitted</option>
-          <option value="under_review">Under review</option>
-          <option value="rejected">Rejected</option>
-          <option value="withdrawn">Withdrawn</option>
-          <option value="converted">Converted</option>
-        </select>
-        <button
-          type="submit"
-          className="rounded-md border border-outline-variant/20 px-4 py-2 font-label text-xs uppercase tracking-widest text-primary"
-        >
-          Filter
-        </button>
-      </form>
-      {rows.length === 0 ? (
-        <p className="text-on-surface-variant">No submissions yet.</p>
-      ) : (
-        <ul className="divide-y divide-outline-variant/15 rounded-xl border border-outline-variant/15 bg-surface-container-low/40">
-          {rows.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-              <div>
-                <Link
-                  href={`/dashboard/submissions/${s.id}`}
-                  className="font-headline text-lg text-on-surface hover:text-primary"
-                >
-                  {s.title}
-                </Link>
-                <p className="mt-2">
-                  <SubmissionStatusBadge status={s.status} />
-                </p>
-              </div>
-              <p className="font-body text-xs text-on-surface-variant">
-                Updated {s.updatedAt.toLocaleString()}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <SubmissionsBoard rows={tableRows} initialStatus={initialStatus} />
     </div>
   );
 }

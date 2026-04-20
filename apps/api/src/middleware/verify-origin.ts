@@ -13,11 +13,20 @@ export function createVerifyOriginMiddleware(webOrigin: string, enabled: boolean
       return;
     }
     const path = c.req.path;
-    if (path.startsWith("/webhooks/") || path.startsWith("/api/auth")) {
+    if (
+      path.startsWith("/webhooks/") ||
+      path.startsWith("/api/auth") ||
+      path.startsWith("/health")
+    ) {
       await next();
       return;
     }
     const origin = c.req.header("origin") ?? c.req.header("referer");
+    const cookie = c.req.header("cookie") ?? "";
+    const hasSessionCookie = /better-auth|session_token/i.test(cookie);
+    if (!origin && hasSessionCookie) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
     if (!origin) {
       await next();
       return;

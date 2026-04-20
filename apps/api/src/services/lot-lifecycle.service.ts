@@ -1,7 +1,8 @@
 import type { Lot } from "@auction/types";
+import { moneyGte } from "@auction/validators";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
-import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
@@ -13,8 +14,7 @@ import type { NotificationFactory } from "./notification.factory.js";
  */
 export class LotLifecycleService {
   constructor(
-    private readonly lots: ILotRepository,
-    private readonly bids: IBidRepository,
+    private readonly repos: IRepositoryFactory,
     private readonly strategyFactory: ILotStrategyFactory,
     private readonly watchlist: IWatchlistRepository | null,
     private readonly cache: ICacheProvider | null,
@@ -23,7 +23,8 @@ export class LotLifecycleService {
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
-    const dutch = await this.lots.findActiveDutchLots();
+    const lots = this.repos.root.lot;
+    const dutch = await lots.findActiveDutchLots();
     for (const a of dutch) {
       const intervalMs = a.dutchDecrementIntervalMs;
       const lastMs = a.dutchLastDecrementAt?.getTime() ?? a.startTime.getTime();
@@ -45,16 +46,19 @@ export class LotLifecycleService {
       const next = Math.max(safeFloor, cur - safeDec);
       if (next >= cur - 1e-9) continue;
 
-      await this.lots.updateDutchCurrentPrice(a.id, next.toFixed(2), now);
+      const expected = a.currentPrice;
+      const nextStr = next.toFixed(2);
+      await lots.updateDutchCurrentPriceIfMatch(a.id, expected, nextStr, now);
     }
   }
 
   async runTransitions(now: Date = new Date()): Promise<void> {
-    const toActivate = await this.lots.findScheduledToActivate(now);
+    const lots = this.repos.root.lot;
+    const toActivate = await lots.findScheduledToActivate(now);
     for (const a of toActivate) {
-      await this.lots.updateStatus(a.id, "active");
+      await lots.updateStatus(a.id, "active");
       if (a.auctionType === "dutch") {
-        await this.lots.setDutchLastDecrementAt(a.id, now);
+        await lots.setDutchLastDecrementAt(a.id, now);
       }
       await this.notifyWatchlistStarting(a);
     }
@@ -63,9 +67,9 @@ export class LotLifecycleService {
 
     await this.notifyEndingSoonBuckets(now);
 
-    const toEnd = await this.lots.findActivePastEnd(now);
+    const toEnd = await lots.findActivePastEnd(now);
     for (const a of toEnd) {
-      await this.finalizeLotEnding(a);
+      await this.finalizeLotEnding(a, now);
     }
   }
 
@@ -82,15 +86,17 @@ export class LotLifecycleService {
 
   private async notifyEndingSoonBuckets(now: Date): Promise<void> {
     if (!this.notificationDispatcher || !this.cache || !this.watchlist) return;
+    const lots = this.repos.root.lot;
+    const bids = this.repos.root.bid;
     const windowStart = new Date(now.getTime() + 59 * 60_000);
     const windowEnd = new Date(now.getTime() + 61 * 60_000);
-    const almostEnding = await this.lots.findActiveByEndTimeBetween(windowStart, windowEnd);
+    const almostEnding = await lots.findActiveByEndTimeBetween(windowStart, windowEnd);
     for (const a of almostEnding) {
       const cacheKey = `endingSoonLot:${a.id}`;
       const sent = await this.cache.get(cacheKey);
       if (sent) continue;
       await this.cache.set(cacheKey, "1", 7200);
-      const bidderIds = await this.bids.listDistinctBidderIds(a.id);
+      const bidderIds = await bids.listDistinctBidderIds(a.id);
       const watchers = await this.watchlist.listUserIdsForLot(a.id);
       const recipients = new Set([...bidderIds, ...watchers]);
       for (const uid of recipients) {
@@ -103,32 +109,42 @@ export class LotLifecycleService {
     }
   }
 
-  private async finalizeLotEnding(a: Lot): Promise<void> {
-    const bids = await this.bids.listForLotSettlement(a.id, 10_000);
-    const strategy = this.strategyFactory.create(a.auctionType);
-    const winnerBid = strategy.determineWinner(a, bids);
-    let winnerId: string | null = null;
-    if (
-      winnerBid &&
-      (!a.reservePrice ||
-        a.reservePrice === "" ||
-        Number(winnerBid.amount) >= Number(a.reservePrice))
-    ) {
-      await this.lots.setWinner(a.id, winnerBid.bidderId);
-      winnerId = winnerBid.bidderId;
-    }
-    await this.lots.updateStatus(a.id, "ended");
+  private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
+    const outcome = await this.repos.runInTransaction(async ({ lot, bid }) => {
+      const row = await lot.findByIdForUpdate(a.id);
+      if (!row || row.status !== "active" || row.endTime > now) {
+        return null;
+      }
+      const bidsList = await bid.listForLotSettlement(row.id, 10_000);
+      const strategy = this.strategyFactory.create(row.auctionType);
+      const winnerBid = strategy.determineWinner(row, bidsList);
+      let winnerId: string | null = null;
+      if (
+        winnerBid &&
+        (!row.reservePrice ||
+          row.reservePrice === "" ||
+          moneyGte(winnerBid.amount, row.reservePrice))
+      ) {
+        await lot.setWinner(row.id, winnerBid.bidderId);
+        winnerId = winnerBid.bidderId;
+      }
+      await lot.updateStatus(row.id, "ended");
+      return { lotId: row.id, winnerId };
+    });
+
+    if (!outcome) return;
 
     if (!this.notificationDispatcher) return;
-    const bidderIds = await this.bids.listDistinctBidderIds(a.id);
-    if (winnerId) {
+    const bids = this.repos.root.bid;
+    const bidderIds = await bids.listDistinctBidderIds(outcome.lotId);
+    if (outcome.winnerId) {
       await this.notificationDispatcher.dispatch(
-        winnerId,
-        notificationRowToPayload(this.notificationFactory.createWon(a, winnerId)),
+        outcome.winnerId,
+        notificationRowToPayload(this.notificationFactory.createWon(a, outcome.winnerId)),
       );
     }
     for (const uid of bidderIds) {
-      if (uid === winnerId) continue;
+      if (uid === outcome.winnerId) continue;
       await this.notificationDispatcher.dispatch(
         uid,
         notificationRowToPayload(this.notificationFactory.createLost(a, uid)),
@@ -138,19 +154,21 @@ export class LotLifecycleService {
 
   /** Idempotent activation for delayed jobs. */
   async processActivateJob(lotId: string, now: Date = new Date()): Promise<void> {
-    const a = await this.lots.findById(lotId);
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
     if (!a || a.status !== "scheduled" || a.startTime > now) return;
-    await this.lots.updateStatus(lotId, "active");
+    await lots.updateStatus(lotId, "active");
     if (a.auctionType === "dutch") {
-      await this.lots.setDutchLastDecrementAt(a.id, now);
+      await lots.setDutchLastDecrementAt(a.id, now);
     }
     await this.notifyWatchlistStarting(a);
   }
 
   /** Idempotent end for delayed jobs. */
   async processEndJob(lotId: string, now: Date = new Date()): Promise<void> {
-    const a = await this.lots.findById(lotId);
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
     if (!a || a.status !== "active" || a.endTime > now) return;
-    await this.finalizeLotEnding(a);
+    await this.finalizeLotEnding(a, now);
   }
 }

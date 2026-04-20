@@ -1,4 +1,5 @@
 import type { Bid, Lot } from "@auction/types";
+import { moneyGte } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
@@ -16,19 +17,6 @@ const MAX_PROXY_ROUNDS = 100;
 function minIncrementAmount(lot: Lot): number {
   const n = Number.parseFloat(lot.minBidIncrement);
   return Number.isFinite(n) && n > 0 ? n : 0.01;
-}
-
-function bidderCeilings(bids: Bid[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const b of bids) {
-    const amt = Number(b.amount);
-    const cap =
-      b.maxAutoBidAmount !== null && b.maxAutoBidAmount !== ""
-        ? Math.max(amt, Number(b.maxAutoBidAmount))
-        : amt;
-    m.set(b.bidderId, Math.max(m.get(b.bidderId) ?? 0, cap));
-  }
-  return m;
 }
 
 export type LotJobSchedulerPort = {
@@ -99,7 +87,11 @@ export class BidService {
           }
 
           await bids.markWinningBid(lotId, lastBid.id);
-          await lots.updateCurrentPrice(lotId, lastBid.amount);
+          if (lotRow.auctionType === "sealed") {
+            await lots.updateCurrentPrice(lotId, lotRow.startingPrice);
+          } else {
+            await lots.updateCurrentPrice(lotId, lastBid.amount);
+          }
 
           let nextEnd = lotRow.endTime;
           if (
@@ -122,7 +114,13 @@ export class BidService {
               lotRow.buyNowPrice !== null && lotRow.buyNowPrice !== ""
                 ? Number(lotRow.buyNowPrice)
                 : null;
-            if (bn !== null && Number.isFinite(bn) && Number(lastBid.amount) + 1e-9 >= bn) {
+            if (
+              bn !== null &&
+              Number.isFinite(bn) &&
+              lotRow.buyNowPrice !== null &&
+              lotRow.buyNowPrice !== "" &&
+              moneyGte(lastBid.amount, lotRow.buyNowPrice)
+            ) {
               await lots.setWinner(lotId, lastBid.bidderId);
               await lots.updateStatus(lotId, "ended");
               endedEarly = true;
@@ -133,6 +131,9 @@ export class BidService {
         },
       );
 
+      const displayPrice =
+        lot.auctionType === "sealed" && !endedEarly ? lot.startingPrice : created.amount;
+
       const updatedLot = endedEarly
         ? {
             ...lot,
@@ -142,10 +143,10 @@ export class BidService {
             winnerId: created.bidderId,
           }
         : nextEnd.getTime() !== lot.endTime.getTime()
-          ? { ...lot, endTime: nextEnd, currentPrice: created.amount }
-          : { ...lot, currentPrice: created.amount };
+          ? { ...lot, endTime: nextEnd, currentPrice: displayPrice }
+          : { ...lot, currentPrice: displayPrice };
 
-      await this.cache.set(`lot:${lotId}:currentPrice`, created.amount, 3600);
+      await this.cache.set(`lot:${lotId}:currentPrice`, displayPrice, 3600);
 
       const outbidMeta =
         prevWinnerId && prevWinnerId !== created.bidderId
@@ -191,8 +192,7 @@ export class BidService {
     let winnerId = lastBid.bidderId;
 
     for (let round = 0; round < MAX_PROXY_ROUNDS; round++) {
-      const all = await bids.listForLot(lotId, 5000);
-      const ceilings = bidderCeilings(all);
+      const ceilings = await bids.aggregateBidderCeilings(lotId);
       type Cand = { bidderId: string; ceiling: number };
       const candidates: Cand[] = [];
       for (const [bidderId, ceiling] of ceilings) {

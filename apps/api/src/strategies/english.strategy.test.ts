@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { EnglishAuctionStrategy } from "./english.strategy.js";
 
@@ -63,5 +63,73 @@ describe("EnglishAuctionStrategy", () => {
     const a = mkLot({ currentPrice: "100.00" });
     expect(strategy.getNextPrice(a, 120)).toBe(120);
     expect(strategy.getNextPrice(a, 80)).toBe(100);
+  });
+
+  it("determineWinner picks highest amount", () => {
+    const a = mkLot();
+    const t0 = new Date("2020-01-01T00:00:00Z");
+    const t1 = new Date("2020-01-01T00:01:00Z");
+    const bids: Bid[] = [
+      {
+        id: "b1",
+        lotId: a.id,
+        bidderId: "u1",
+        amount: "50.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: t0,
+      },
+      {
+        id: "b2",
+        lotId: a.id,
+        bidderId: "u2",
+        amount: "200.00",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: t1,
+      },
+      {
+        id: "b3",
+        lotId: a.id,
+        bidderId: "u3",
+        amount: "100.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: t1,
+      },
+    ];
+    expect(strategy.determineWinner(a, bids)?.id).toBe("b2");
+  });
+
+  it("determineWinner breaks ties by earliest createdAt", () => {
+    const a = mkLot();
+    const early = new Date("2020-01-01T00:00:00Z");
+    const late = new Date("2020-01-01T01:00:00Z");
+    const bids: Bid[] = [
+      {
+        id: "b-late",
+        lotId: a.id,
+        bidderId: "u2",
+        amount: "100.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: late,
+      },
+      {
+        id: "b-early",
+        lotId: a.id,
+        bidderId: "u1",
+        amount: "100.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: early,
+      },
+    ];
+    expect(strategy.determineWinner(a, bids)?.id).toBe("b-early");
   });
 });

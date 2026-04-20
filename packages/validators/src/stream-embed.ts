@@ -129,12 +129,15 @@ export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
   }
 
   if (host === "iframe.mediadelivery.net" && pathname.includes("/")) {
-    return { provider: "cloudflare", src: u.toString() };
+    /** Strip query string — only origin + pathname (UID path) is trusted. */
+    const canonical = `${u.protocol}//${u.host}${u.pathname}`;
+    return { provider: "cloudflare", src: canonical };
   }
 
   if (CLOUDFLARE_STREAM_HOST.test(host) && host.startsWith("customer-")) {
     if (pathname.includes("/iframe") || pathname.match(/\/[a-f0-9-]{36}\//i)) {
-      return { provider: "cloudflare", src: u.toString() };
+      const canonical = `${u.protocol}//${u.host}${u.pathname}`;
+      return { provider: "cloudflare", src: canonical };
     }
   }
 

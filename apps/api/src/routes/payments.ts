@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
@@ -21,7 +22,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     );
   });
 
-  r.post("/", requireAuth, zValidator("json", createPaymentBodySchema), async (c) => {
+  r.post("/", requireAuth, requireBuyerRole, zValidator("json", createPaymentBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.paymentService.createPendingForWinner(userId, body.lotId);

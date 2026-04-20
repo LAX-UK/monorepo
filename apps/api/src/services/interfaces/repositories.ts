@@ -21,6 +21,8 @@ export type ListLotsFilter = {
   saleId?: string | undefined;
   /** Restrict lots whose endTime falls in this calendar year (UTC). */
   endYear?: number | undefined;
+  /** Case-insensitive substring match on title (public catalogue search). */
+  search?: string | undefined;
   limit: number;
   offset: number;
   sort?: ListLotsSort | undefined;
@@ -68,10 +70,18 @@ export interface ILotRepository {
   findActiveDutchLots(): Promise<Lot[]>;
   setDutchLastDecrementAt(id: string, at: Date | null): Promise<void>;
   updateDutchCurrentPrice(id: string, price: string, lastDecrementAt: Date): Promise<void>;
+  updateDutchCurrentPriceIfMatch(
+    id: string,
+    expectedPrice: string,
+    nextPrice: string,
+    lastDecrementAt: Date,
+  ): Promise<boolean>;
   /** Clear sale association (admin detach; draft sale only at service layer). */
   clearSaleId(id: string): Promise<void>;
   /** List lots belonging to a sale (any status). */
   findBySaleId(saleId: string): Promise<Lot[]>;
+  /** Batch lots for many sales (avoids N+1). */
+  findBySaleIds(saleIds: string[]): Promise<Lot[]>;
 }
 
 export interface ISaleRepository {
@@ -104,6 +114,8 @@ export interface IBidRepository {
   /** Latest bids placed by a bidder (for dashboard). */
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   markWinningBid(lotId: string, bidId: string): Promise<void>;
+  /** Max effective ceiling per bidder for proxy resolution (English / buy-it-now). */
+  aggregateBidderCeilings(lotId: string): Promise<Map<string, number>>;
 }
 
 export type UserProfileRow = {
@@ -116,6 +128,8 @@ export type UserProfileRow = {
 export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
   listIdsByRole(role: string): Promise<string[]>;
+  /** Public directory rows (no email) for marketing / mega-menu. */
+  listPublicProfiles(params: { limit: number; offset: number }): Promise<{ id: string; name: string }[]>;
 }
 
 export type ListSubmissionsFilter = {

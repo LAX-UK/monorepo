@@ -16,7 +16,10 @@ function roomForUser(userId: string): string {
 
 type AckFn = ((result: unknown) => void) | undefined;
 
-async function resolveUserIdFromSession(socket: Socket, env: WsEnv): Promise<string | null> {
+async function resolveSessionUser(
+  socket: Socket,
+  env: WsEnv,
+): Promise<{ id: string; role: string } | null> {
   const cookie = socket.handshake.headers.cookie;
   if (!cookie) return null;
   try {
@@ -24,17 +27,18 @@ async function resolveUserIdFromSession(socket: Socket, env: WsEnv): Promise<str
       headers: { cookie, accept: "application/json" },
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { data?: { id?: string } };
+    const json = (await res.json()) as { data?: { id?: string; role?: string } };
     const id = json.data?.id;
-    return typeof id === "string" ? id : null;
+    const role = json.data?.role;
+    return typeof id === "string" && typeof role === "string" ? { id, role } : null;
   } catch {
     return null;
   }
 }
 
-function handleJoinLot(
+async function handleJoinLot(
   socket: Socket,
-  _ctx: HandlerContext,
+  ctx: HandlerContext,
   payload: { lotId?: string },
   ack: AckFn,
 ) {
@@ -43,7 +47,10 @@ function handleJoinLot(
     ack?.({ ok: false, error: "lotId required" });
     return;
   }
-  void socket.join(roomForLot(lotId));
+  const me = await resolveSessionUser(socket, ctx.env);
+  socket.data.userId = me?.id;
+  socket.data.isAdmin = me?.role === "admin";
+  await socket.join(roomForLot(lotId));
   ack?.({ ok: true });
 }
 
@@ -63,22 +70,24 @@ function handleLeaveLot(
 }
 
 async function handleJoinUser(socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
-  const userId = await resolveUserIdFromSession(socket, ctx.env);
-  if (!userId) {
+  const me = await resolveSessionUser(socket, ctx.env);
+  if (!me) {
     ack?.({ ok: false, error: "unauthenticated" });
     return;
   }
-  await socket.join(roomForUser(userId));
+  socket.data.userId = me.id;
+  socket.data.isAdmin = me.role === "admin";
+  await socket.join(roomForUser(me.id));
   ack?.({ ok: true });
 }
 
 async function handleLeaveUser(socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
-  const userId = await resolveUserIdFromSession(socket, ctx.env);
-  if (!userId) {
+  const me = await resolveSessionUser(socket, ctx.env);
+  if (!me) {
     ack?.({ ok: false, error: "unauthenticated" });
     return;
   }
-  await socket.leave(roomForUser(userId));
+  await socket.leave(roomForUser(me.id));
   ack?.({ ok: true });
 }
 

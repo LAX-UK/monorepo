@@ -1,4 +1,4 @@
-import { index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 export const category = pgTable(
   "category",
@@ -6,7 +6,9 @@ export const category = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
-    parentId: uuid("parent_id"),
+    parentId: uuid("parent_id").references((): AnyPgColumn => category.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => [
     index("category_parent_id_idx").on(table.parentId),
