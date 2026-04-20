@@ -74,7 +74,7 @@ export default async function ArtworkPage({ params }: PageProps) {
   const jsonLdText = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 
   return (
-    <>
+    <main id="main-content">
       <script
         id={`auction-jsonld-${auction.id}`}
         type="application/ld+json"
@@ -106,6 +106,6 @@ export default async function ArtworkPage({ params }: PageProps) {
           }
         />
       </LotPortsProvider>
-    </>
+    </main>
   );
 }

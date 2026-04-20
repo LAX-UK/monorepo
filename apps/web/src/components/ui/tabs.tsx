@@ -1,20 +1,13 @@
 "use client";
 
+import { cn } from "@auction/ui";
+import {
+  Tabs as UiTabs,
+  TabsContent as UiTabsContent,
+  TabsList as UiTabsList,
+  TabsTrigger as UiTabsTrigger,
+} from "@auction/ui/components/tabs";
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo, useState } from "react";
-
-type TabsCtx = {
-  value: string;
-  setValue: (v: string) => void;
-};
-
-const Ctx = createContext<TabsCtx | null>(null);
-
-function useTabsCtx() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("Tabs compound components must be used within <Tabs>");
-  return v;
-}
 
 export function Tabs({
   defaultValue,
@@ -25,12 +18,10 @@ export function Tabs({
   children: ReactNode;
   className?: string;
 }) {
-  const [value, setValue] = useState(defaultValue);
-  const memo = useMemo(() => ({ value, setValue }), [value]);
   return (
-    <Ctx.Provider value={memo}>
-      <div className={className}>{children}</div>
-    </Ctx.Provider>
+    <UiTabs defaultValue={defaultValue} className={className}>
+      {children}
+    </UiTabs>
   );
 }
 
@@ -39,9 +30,9 @@ Tabs.List = function TabsList({
   className = "",
 }: { children: ReactNode; className?: string }) {
   return (
-    <div role="tablist" className={`flex flex-wrap gap-2 ${className}`}>
+    <UiTabsList className={cn("h-auto flex-wrap gap-2 rounded-none bg-transparent p-0", className)}>
       {children}
-    </div>
+    </UiTabsList>
   );
 };
 
@@ -54,22 +45,18 @@ Tabs.Trigger = function TabsTrigger({
   children: ReactNode;
   className?: string;
 }) {
-  const { value: active, setValue } = useTabsCtx();
-  const selected = active === value;
   return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={selected}
-      className={`rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest transition-colors ${
-        selected
-          ? "bg-primary text-on-primary"
-          : "bg-surface-container-high text-on-surface-variant hover:text-on-surface"
-      } ${className}`}
-      onClick={() => setValue(value)}
+    <UiTabsTrigger
+      value={value}
+      className={cn(
+        "rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest transition-colors",
+        "data-[state=active]:bg-primary data-[state=active]:text-on-primary",
+        "data-[state=inactive]:bg-surface-container-high data-[state=inactive]:text-on-surface-variant data-[state=inactive]:hover:text-on-surface",
+        className,
+      )}
     >
       {children}
-    </button>
+    </UiTabsTrigger>
   );
 };
 
@@ -82,11 +69,15 @@ Tabs.Content = function TabsContent({
   children: ReactNode;
   className?: string;
 }) {
-  const { value: active } = useTabsCtx();
-  if (active !== value) return null;
   return (
-    <div role="tabpanel" className={className}>
+    <UiTabsContent
+      value={value}
+      className={cn(
+        "mt-0 ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0",
+        className,
+      )}
+    >
       {children}
-    </div>
+    </UiTabsContent>
   );
 };

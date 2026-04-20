@@ -1,0 +1,14 @@
+import type * as React from "react";
+import { cn } from "../../lib/utils.js";
+
+function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("animate-pulse rounded-md bg-surface-container-high/60", className)}
+      aria-hidden
+      {...props}
+    />
+  );
+}
+
+export { Skeleton };

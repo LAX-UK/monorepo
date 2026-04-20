@@ -1,5 +1,8 @@
 "use client";
 
+import { optionalString } from "@/lib/ts/if-defined";
+import { Checkbox } from "@auction/ui/components/checkbox";
+import { Label } from "@auction/ui/components/label";
 import type { ReactNode } from "react";
 import { useId } from "react";
 import { type Control, Controller, type FieldPath, type FieldValues } from "react-hook-form";
@@ -25,25 +28,22 @@ export function RHFCheckboxField<TFieldValues extends FieldValues>({
       render={({ field, fieldState }) => (
         <div className="w-full">
           <div className="flex flex-row items-start gap-2">
-            <input
+            <Checkbox
               id={checkboxId}
-              type="checkbox"
               checked={Boolean(field.value)}
-              onChange={(e) => field.onChange(e.target.checked)}
+              onCheckedChange={(v) => field.onChange(v === true)}
               onBlur={field.onBlur}
               ref={field.ref}
-              className="mt-0.5 size-6 shrink-0 cursor-pointer rounded-sm border-[1.5px] border-brand-900 accent-brand-900"
+              className="mt-0.5 size-6 shrink-0 cursor-pointer rounded-sm border-[1.5px] border-brand-900 data-[state=checked]:bg-brand-900 data-[state=checked]:text-[#F1F1F3]"
             />
-            <label
+            <Label
               htmlFor={checkboxId}
-              className="cursor-pointer font-footer-links text-sm leading-[18px] tracking-[0.16px] text-[#161616]"
+              className="cursor-pointer font-footer-links text-sm leading-[18px] tracking-[0.16px] font-normal text-[#161616]"
             >
               {children}
-            </label>
+            </Label>
           </div>
-          <FieldError
-            {...(fieldState.error?.message ? { message: fieldState.error.message } : {})}
-          />
+          <FieldError {...optionalString("message", fieldState.error?.message)} />
         </div>
       )}
     />

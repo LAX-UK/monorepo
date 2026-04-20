@@ -1,4 +1,7 @@
 import { LabelCaps } from "@/components/ui/typography";
+import { cn } from "@auction/ui";
+import { Label } from "@auction/ui/components/label";
+import { Textarea } from "@auction/ui/components/textarea";
 
 type Props = {
   id: string;
@@ -21,17 +24,21 @@ export function TextareaField({
 }: Props) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block">
+      <Label htmlFor={id} className="block">
         <LabelCaps>{label}</LabelCaps>
-      </label>
-      <textarea
+      </Label>
+      <Textarea
         id={id}
         name={name}
         rows={rows}
         placeholder={placeholder}
         defaultValue={defaultValue}
         required={required}
-        className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className={cn(
+          "font-body text-sm",
+          "rounded-md border border-outline-variant/25 bg-surface-container-lowest",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        )}
       />
     </div>
   );

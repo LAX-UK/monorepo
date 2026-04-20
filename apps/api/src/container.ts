@@ -5,7 +5,7 @@ import { createDb } from "@auction/db";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
-import { BetterAuthRegistrationPersister } from "./infrastructure/better-auth-registration.persister.js";
+import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
@@ -19,6 +19,7 @@ import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
+import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
@@ -255,7 +256,8 @@ export function createContainer(env: Env): Container {
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
-    new BetterAuthRegistrationPersister(auth, db),
+    new BetterAuthEmailSignupPersister(auth),
+    new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
   );
 

@@ -13,8 +13,9 @@ export function useFocusTrap(enabled: boolean, containerRef: RefObject<HTMLEleme
       (el) => el.offsetParent !== null || el === document.activeElement,
     );
     if (nodes.length === 0) return;
-    const first = nodes[0]!;
-    const last = nodes[nodes.length - 1]!;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (!first || !last) return;
     const prev = document.activeElement as HTMLElement | null;
     first.focus();
 

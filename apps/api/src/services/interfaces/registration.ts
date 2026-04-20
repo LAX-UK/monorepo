@@ -10,13 +10,25 @@ export interface IRegistrationValidator {
   validate(input: RegistrationInput): { ok: true } | { ok: false; message: string };
 }
 
-/** Persists a new account (e.g. Better Auth API). */
-export interface IRegistrationPersister {
-  register(
-    input: RegistrationInput,
-  ): Promise<
+/** Creates the auth identity (e.g. Better Auth sign-up). */
+export interface IEmailSignupPersister {
+  signUpEmail(input: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   >;
+}
+
+/** Persists extended profile fields after signup (e.g. Drizzle). */
+export interface IUserProfilePersister {
+  setRegistrationProfile(input: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    mobile?: string;
+  }): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 export interface IWelcomeNotifier {

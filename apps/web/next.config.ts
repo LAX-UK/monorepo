@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
   reactStrictMode: true,
-  transpilePackages: ["@auction/api", "@auction/types"],
+  transpilePackages: ["@auction/api", "@auction/types", "@auction/ui"],
   images: {
     remotePatterns: [
       {

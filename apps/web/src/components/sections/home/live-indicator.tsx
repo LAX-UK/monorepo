@@ -2,14 +2,24 @@ type LiveIndicatorRowProps = {
   tone: "dark" | "light";
   progressLabel: string;
   saleLine: string;
+  /** When true, status text is exposed to assistive tech as a polite live region. */
+  announceUpdates?: boolean;
 };
 
-export function LiveIndicatorRow({ tone, progressLabel, saleLine }: LiveIndicatorRowProps) {
+export function LiveIndicatorRow({
+  tone,
+  progressLabel,
+  saleLine,
+  announceUpdates = false,
+}: LiveIndicatorRowProps) {
   const textMuted = tone === "dark" ? "text-brand-200" : "text-brand-400";
   const dividerBg = tone === "dark" ? "bg-black/78" : "bg-brand-400/78";
 
   return (
-    <div className="flex flex-row flex-wrap items-center gap-1 md:gap-0.5">
+    <div
+      className="flex flex-row flex-wrap items-center gap-1 md:gap-0.5"
+      {...(announceUpdates ? { role: "status", "aria-live": "polite" as const } : {})}
+    >
       <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
         <span
           className="absolute inline-flex h-[19.51px] w-[19.51px] rounded-full bg-live-red opacity-[0.05]"

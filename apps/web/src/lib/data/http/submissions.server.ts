@@ -57,7 +57,7 @@ export async function getAdminSubmissionById(id: string): Promise<ItemSubmission
 }
 
 export async function getAdminSubmissionPendingCount(): Promise<number> {
-  const res = await authedServerFetch(`/admin/submissions/pending-count?status=submitted`);
+  const res = await authedServerFetch("/admin/submissions/pending-count?status=submitted");
   if (!res.ok) return 0;
   const body = (await res.json()) as { data: { count: number } };
   return body.data.count;

@@ -1,3 +1,6 @@
+import { cn } from "@auction/ui";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
+
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
@@ -10,8 +13,15 @@ export function FieldError({ message }: { message?: string }) {
 export function FormBanner({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p role="alert" className="font-footer-links text-sm text-error">
-      {message}
-    </p>
+    <Alert
+      variant="destructive"
+      className={cn(
+        "items-start border-0 bg-transparent p-0 font-footer-links text-sm text-error shadow-none [&>svg]:hidden [&>svg~*]:pl-0",
+      )}
+    >
+      <AlertDescription className="font-footer-links text-sm text-error">
+        {message}
+      </AlertDescription>
+    </Alert>
   );
 }

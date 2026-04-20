@@ -1,25 +1,34 @@
 "use client";
 
-import { useCallback, useState } from "react";
-
-type Status = "idle" | "loading" | "success" | "error";
+import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.service";
+import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
+import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 export function HomeNewsletter() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
+  const [done, setDone] = useState(false);
+  const { run, loading, bannerError } = useNewsletterSubmit((email) =>
+    defaultNewsletterSubmitter.submit(email),
+  );
 
-  const onSubmit = useCallback(() => {
-    const trimmed = email.trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setStatus("error");
-      return;
+  const form = useForm<NewsletterSubscribeInput>({
+    resolver: zodResolver(newsletterSubscribeSchema),
+    defaultValues: { email: "" },
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    const result = await run({ email: values.email });
+    if (result.ok) {
+      form.reset();
+      setDone(true);
     }
-    setStatus("loading");
-    window.setTimeout(() => {
-      setStatus("success");
-      setEmail("");
-    }, 800);
-  }, [email]);
+  });
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-32 text-center md:px-20">
@@ -30,45 +39,53 @@ export function HomeNewsletter() {
         Join our private circle for exclusive access to viewing rooms, early lot registration, and
         distinguished market analysis delivered with care.
       </p>
-      {status === "success" ? (
-        <p className="mx-auto max-w-xl font-body text-sm text-primary" role="status">
-          Thank you — you&apos;re on the list. We&apos;ll be in touch shortly.
-        </p>
+
+      {done ? (
+        <Alert className="mx-auto max-w-xl border-0 bg-transparent text-center">
+          <AlertDescription className="font-body text-sm text-primary">
+            Thank you — you&apos;re on the list. We&apos;ll be in touch shortly.
+          </AlertDescription>
+        </Alert>
       ) : (
-        <div className="relative mx-auto max-w-xl">
-          <input
-            type="email"
-            placeholder="EMAIL FOR INVITATION"
-            disabled={status === "loading"}
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (status === "error") setStatus("idle");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onSubmit();
-              }
-            }}
-            className="w-full border-0 border-b border-outline-variant/50 bg-transparent px-0 py-6 font-label text-xs font-bold uppercase tracking-[0.4em] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-0 disabled:opacity-50"
-            aria-label="Email for invitation"
-            aria-invalid={status === "error"}
-          />
-          <button
-            type="button"
-            disabled={status === "loading"}
-            onClick={onSubmit}
-            className="absolute right-0 top-1/2 -translate-y-1/2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary transition-all duration-500 hover:tracking-[0.5em] disabled:opacity-50"
-          >
-            {status === "loading" ? "…" : "Subscribe"}
-          </button>
-          {status === "error" ? (
-            <p className="mt-4 text-left text-sm text-error" role="alert">
-              Enter a valid email address.
-            </p>
-          ) : null}
-        </div>
+        <Form {...form}>
+          <form onSubmit={onSubmit} className="relative mx-auto max-w-xl text-left" noValidate>
+            {bannerError ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{bannerError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="relative">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        autoComplete="email"
+                        placeholder="EMAIL FOR INVITATION"
+                        disabled={loading}
+                        className="w-full border-0 border-b border-outline-variant/50 bg-transparent px-0 py-6 font-label text-xs font-bold uppercase tracking-[0.4em] text-on-surface placeholder:text-on-surface-variant focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
+                        aria-label="Email for invitation"
+                      />
+                    </FormControl>
+                    <FormMessage className="mt-4 text-sm text-error" />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                variant="ghost"
+                disabled={loading}
+                className="absolute right-0 top-1/2 -translate-y-1/2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary transition-all duration-500 hover:bg-transparent hover:tracking-[0.5em] disabled:opacity-50"
+              >
+                {loading ? "Subscribing…" : "Subscribe"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       )}
     </section>
   );

@@ -1,33 +1,23 @@
 import type { HeroLotVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { DisplayHeading, LabelCaps } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
 
-const HERO_FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1920&q=80";
-
 type Props = {
-  lot: HeroLotVM | null;
+  lot: HeroLotVM;
 };
 
 export function LaxHero({ lot }: Props) {
-  const img = lot?.heroImageUrl ?? HERO_FALLBACK_IMG;
-  const title = lot?.title ?? "Ethereal Form (1928)";
-  const artist = lot?.artistName ?? "Jean-Michel Basquiat";
-  const saleLine = lot?.saleMetaLine ?? "Evening Sale · Spring 2025";
-  const featuredHeading = lot?.featuredHeading ?? "FEATURED LOT";
-  const estimate = lot?.estimateFormatted ?? "—";
-  const bid = lot?.currentBidFormatted ?? "—";
-  const bids = lot?.bidCountDisplay ?? "—";
-  const artworkHref = lot ? `/artwork/${lot.id}` : "/sales";
+  const artworkHref = lot.id === "placeholder" ? "/sales" : `/artwork/${lot.id}`;
 
   return (
     <section className="relative w-full bg-hero-cream">
       <div className="relative mx-auto min-h-[520px] w-full max-w-[1440px] md:min-h-[760px]">
         <Image
-          src={img}
-          alt=""
+          src={lot.heroImageUrl}
+          alt={lot.imageAlt}
           fill
           priority
           className="object-cover object-center"
@@ -44,24 +34,28 @@ export function LaxHero({ lot }: Props) {
                 <LiveIndicatorRow
                   tone="dark"
                   progressLabel="Auction in progress"
-                  saleLine={saleLine}
+                  saleLine={lot.saleMetaLine}
+                  announceUpdates={lot.isAuctionLive}
                 />
-                <p className="font-label text-base font-medium uppercase leading-6 tracking-normal text-brand-100">
-                  {featuredHeading}
-                </p>
+                <LabelCaps className="text-base font-medium leading-6 tracking-normal text-brand-100">
+                  {lot.featuredHeading}
+                </LabelCaps>
               </div>
               <div className="flex flex-col gap-3">
-                <h1 className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]">
-                  {title}
-                </h1>
-                <p className="font-label text-sm font-semibold uppercase leading-4 tracking-[1.8px] text-brand-200">
-                  {artist}
-                </p>
+                <DisplayHeading
+                  as="h1"
+                  className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
+                >
+                  {lot.title}
+                </DisplayHeading>
+                <span className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px] text-brand-200">
+                  {lot.artistName}
+                </span>
               </div>
               <div className="flex flex-row flex-wrap gap-8">
-                <StatTile label="Estimate" value={estimate} />
-                <StatTile label="Current Highest Bid" value={bid} />
-                <StatTile label="Bids" value={bids} />
+                <StatTile label="Estimate" value={lot.estimateFormatted} />
+                <StatTile label="Current Highest Bid" value={lot.currentBidFormatted} />
+                <StatTile label="Bids" value={lot.bidCountDisplay} />
               </div>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

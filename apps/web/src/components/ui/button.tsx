@@ -1,3 +1,5 @@
+import { cn } from "@auction/ui";
+import { Button as UiButton } from "@auction/ui/components/button";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 const base =
@@ -25,8 +27,18 @@ export function Button({
   children: ReactNode;
 }) {
   return (
-    <button type={type} className={`${base} ${variants[variant]} ${className}`} {...props}>
+    <UiButton
+      type={type}
+      variant="ghost"
+      className={cn(
+        base,
+        variants[variant],
+        "h-auto min-h-0 rounded-none px-[inherit] py-[inherit] shadow-none hover:bg-transparent",
+        className,
+      )}
+      {...props}
+    >
       {children}
-    </button>
+    </UiButton>
   );
 }

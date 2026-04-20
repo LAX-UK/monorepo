@@ -23,10 +23,7 @@ function AuthToastInner() {
   if (!visible) return null;
 
   return (
-    <div
-      className="fixed bottom-6 left-1/2 z-[60] w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-lg bg-inverse-surface px-5 py-4 text-inverse-on-surface shadow-lg"
-      role="status"
-    >
+    <div className="fixed bottom-6 left-1/2 z-[60] w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-lg bg-inverse-surface px-5 py-4 text-inverse-on-surface shadow-lg">
       <p className="mb-3 font-body text-sm">Sign in to access your dashboard and place bids.</p>
       <div className="flex flex-wrap gap-3">
         <Link

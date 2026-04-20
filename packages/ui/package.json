@@ -1,0 +1,102 @@
+{
+  "name": "@auction/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared UI primitives for Auction apps (shadcn/Radix-friendly).",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./lib/utils": {
+      "types": "./dist/lib/utils.d.ts",
+      "default": "./dist/lib/utils.js"
+    },
+    "./components/button": {
+      "types": "./dist/components/ui/button.d.ts",
+      "default": "./dist/components/ui/button.js"
+    },
+    "./components/input": {
+      "types": "./dist/components/ui/input.d.ts",
+      "default": "./dist/components/ui/input.js"
+    },
+    "./components/label": {
+      "types": "./dist/components/ui/label.d.ts",
+      "default": "./dist/components/ui/label.js"
+    },
+    "./components/checkbox": {
+      "types": "./dist/components/ui/checkbox.d.ts",
+      "default": "./dist/components/ui/checkbox.js"
+    },
+    "./components/alert": {
+      "types": "./dist/components/ui/alert.d.ts",
+      "default": "./dist/components/ui/alert.js"
+    },
+    "./components/form": {
+      "types": "./dist/components/ui/form.d.ts",
+      "default": "./dist/components/ui/form.js"
+    },
+    "./components/textarea": {
+      "types": "./dist/components/ui/textarea.d.ts",
+      "default": "./dist/components/ui/textarea.js"
+    },
+    "./components/select": {
+      "types": "./dist/components/ui/select.d.ts",
+      "default": "./dist/components/ui/select.js"
+    },
+    "./components/dialog": {
+      "types": "./dist/components/ui/dialog.d.ts",
+      "default": "./dist/components/ui/dialog.js"
+    },
+    "./components/tabs": {
+      "types": "./dist/components/ui/tabs.d.ts",
+      "default": "./dist/components/ui/tabs.js"
+    },
+    "./components/breadcrumb": {
+      "types": "./dist/components/ui/breadcrumb.d.ts",
+      "default": "./dist/components/ui/breadcrumb.js"
+    },
+    "./components/skeleton": {
+      "types": "./dist/components/ui/skeleton.d.ts",
+      "default": "./dist/components/ui/skeleton.js"
+    },
+    "./components/table": {
+      "types": "./dist/components/ui/table.d.ts",
+      "default": "./dist/components/ui/table.js"
+    },
+    "./components/typography": {
+      "types": "./dist/components/typography.d.ts",
+      "default": "./dist/components/typography.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.56.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.2",
+    "react-hook-form": "^7.56.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@auction/api": "workspace:*",
+    "@auction/ui": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "@hookform/resolvers": "^5.0.1",

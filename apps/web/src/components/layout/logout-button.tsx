@@ -1,8 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useLogout } from "@/lib/auth/use-logout";
 
 type LogoutButtonProps = {
   /** e.g. close mobile drawer before navigating */
@@ -14,23 +12,12 @@ export function LogoutButton({
   onBeforeNavigate,
   className = "block w-full text-left font-label text-xs uppercase tracking-widest text-secondary transition-colors hover:text-on-surface hover:underline disabled:cursor-not-allowed disabled:opacity-50",
 }: LogoutButtonProps) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-
-  const onLogout = useCallback(async () => {
-    onBeforeNavigate?.();
-    setPending(true);
-    try {
-      await authClient.signOut();
-    } finally {
-      setPending(false);
-    }
-    router.push("/");
-    router.refresh();
-  }, [onBeforeNavigate, router]);
+  const { logout, pending } = useLogout(
+    onBeforeNavigate !== undefined ? { onBeforeNavigate } : undefined,
+  );
 
   return (
-    <button type="button" disabled={pending} onClick={onLogout} className={className}>
+    <button type="button" disabled={pending} onClick={() => void logout()} className={className}>
       {pending ? "Signing out…" : "Log out"}
     </button>
   );

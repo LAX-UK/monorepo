@@ -4,9 +4,13 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import type { Lot } from "@auction/types";
-
-const HERO_FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1920&q=80";
+import {
+  HERO_FALLBACK_IMG,
+  HERO_PLACEHOLDER_ARTIST,
+  HERO_PLACEHOLDER_FEATURED_HEADING,
+  HERO_PLACEHOLDER_SALE_LINE,
+  HERO_PLACEHOLDER_TITLE,
+} from "./home-defaults";
 
 export type HeroLotVM = {
   id: string;
@@ -16,10 +20,14 @@ export type HeroLotVM = {
   currentBidFormatted: string;
   bidCountDisplay: string;
   heroImageUrl: string;
+  /** Descriptive alt for the hero artwork image */
+  imageAlt: string;
   auctionDateLabel: string;
   /** Second segment after live dot, e.g. sale title */
   saleMetaLine: string;
   featuredHeading: string;
+  /** True when lot status is active (for live region announcements). */
+  isAuctionLive: boolean;
 };
 
 export type LotCardVM = {
@@ -30,6 +38,8 @@ export type LotCardVM = {
   artistName: string;
   estimateFormatted: string;
   imageUrl: string | null;
+  /** Alt text when `imageUrl` is set */
+  imageAlt: string;
 };
 
 export type AuctionFeaturedLotVM = {
@@ -39,6 +49,7 @@ export type AuctionFeaturedLotVM = {
   artistName: string;
   estimateFormatted: string;
   imageUrl: string | null;
+  imageAlt: string;
 };
 
 export type UpcomingAuctionVM = {
@@ -47,6 +58,7 @@ export type UpcomingAuctionVM = {
   title: string;
   dateLabel: string;
   coverImageUrl: string | null;
+  coverImageAlt: string;
   featuredLots: AuctionFeaturedLotVM[];
 };
 
@@ -61,31 +73,57 @@ function artistLineFromLot(lot: Lot): string {
   return lot.medium?.trim() || lot.description?.trim()?.slice(0, 80) || "Contemporary";
 }
 
+function heroImageAlt(title: string, artistName: string): string {
+  return `${title} — artwork by ${artistName}`;
+}
+
+export function createHeroFallbackVm(): HeroLotVM {
+  return {
+    id: "placeholder",
+    title: HERO_PLACEHOLDER_TITLE,
+    artistName: HERO_PLACEHOLDER_ARTIST,
+    estimateFormatted: "—",
+    currentBidFormatted: "—",
+    bidCountDisplay: "—",
+    heroImageUrl: HERO_FALLBACK_IMG,
+    imageAlt: heroImageAlt(HERO_PLACEHOLDER_TITLE, HERO_PLACEHOLDER_ARTIST),
+    auctionDateLabel: HERO_PLACEHOLDER_SALE_LINE,
+    saleMetaLine: HERO_PLACEHOLDER_SALE_LINE,
+    featuredHeading: HERO_PLACEHOLDER_FEATURED_HEADING,
+    isAuctionLive: false,
+  };
+}
+
 export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
   const saleMetaLine = saleTitle?.trim() || formatLotAuctionLine(lot);
+  const artistName = artistLineFromLot(lot);
   return {
     id: lot.id,
     title: lot.title,
-    artistName: artistLineFromLot(lot),
+    artistName,
     estimateFormatted: formatMoney(lot.startingPrice),
     currentBidFormatted: formatMoney(lot.currentPrice),
     bidCountDisplay: "—",
     heroImageUrl: lot.images[0] ?? HERO_FALLBACK_IMG,
+    imageAlt: heroImageAlt(lot.title, artistName),
     auctionDateLabel: formatLotAuctionLine(lot),
     saleMetaLine,
     featuredHeading: featuredLotHeading(lot),
+    isAuctionLive: lot.status === "active",
   };
 }
 
 export function toLotCardVM(lot: Lot): LotCardVM {
+  const artistName = artistLineFromLot(lot);
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
     lotLabel: lotLabelFromLot(lot),
     title: lot.title,
-    artistName: artistLineFromLot(lot),
+    artistName,
     estimateFormatted: formatMoney(lot.startingPrice),
     imageUrl: lot.images[0] ?? null,
+    imageAlt: `${lot.title} — artwork by ${artistName}`,
   };
 }
 
@@ -94,13 +132,15 @@ export function toLotCardVMs(lots: Lot[]): LotCardVM[] {
 }
 
 function toAuctionFeaturedLotVM(lot: Lot): AuctionFeaturedLotVM {
+  const artistName = artistLineFromLot(lot);
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
     title: lot.title,
-    artistName: artistLineFromLot(lot),
+    artistName,
     estimateFormatted: formatMoney(lot.startingPrice),
     imageUrl: lot.images[0] ?? null,
+    imageAlt: `${lot.title} — artwork by ${artistName}`,
   };
 }
 
@@ -112,6 +152,7 @@ export function toUpcomingAuctionVM(row: SaleListRow): UpcomingAuctionVM {
     title: sale.title,
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
+    coverImageAlt: `${sale.title} — auction cover`,
     featuredLots: lots.slice(0, 2).map(toAuctionFeaturedLotVM),
   };
 }

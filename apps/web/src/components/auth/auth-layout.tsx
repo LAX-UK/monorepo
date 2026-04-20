@@ -10,7 +10,7 @@ type AuthLayoutProps = {
 
 export function AuthLayout({ title, children, backgroundSrc }: AuthLayoutProps) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white pt-[114px] pb-16">
+    <div className="relative min-h-screen overflow-hidden bg-white pt-[var(--header-height)] pb-16">
       {backgroundSrc ? (
         <div
           className="pointer-events-none absolute inset-0 scale-105 bg-cover bg-center opacity-30 blur-md"

@@ -1,5 +1,6 @@
 "use client";
 
+import { optionalString } from "@/lib/ts/if-defined";
 import { type Control, Controller, type FieldPath, type FieldValues } from "react-hook-form";
 import { FloatingUnderlineInput } from "./floating-underline-input";
 
@@ -28,7 +29,7 @@ export function RHFInput<TFieldValues extends FieldValues>({
           label={label}
           type={type}
           autoComplete={autoComplete}
-          {...(fieldState.error?.message ? { error: fieldState.error.message } : {})}
+          {...optionalString("error", fieldState.error?.message)}
         />
       )}
     />

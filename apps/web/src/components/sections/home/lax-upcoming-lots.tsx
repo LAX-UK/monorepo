@@ -1,6 +1,7 @@
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { BodyText, DisplayHeading } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -20,9 +21,12 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
               progressLabel="Auction in progress"
               saleLine={saleMetaLine}
             />
-            <h2 className="font-headline text-[40px] font-semibold leading-[60px] text-brand-900">
+            <DisplayHeading
+              as="h2"
+              className="text-[40px] font-semibold leading-[60px] text-brand-900"
+            >
               Upcoming Lots
-            </h2>
+            </DisplayHeading>
           </div>
           <Link
             href="/sales"
@@ -36,7 +40,7 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
           </Link>
         </div>
         {items.length === 0 ? (
-          <p className="font-body text-brand-400">No upcoming lots to display.</p>
+          <BodyText className="text-brand-400">No upcoming lots to display.</BodyText>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item) => (
@@ -46,7 +50,7 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
-                        alt=""
+                        alt={item.imageAlt}
                         fill
                         placeholder="blur"
                         blurDataURL={TINY_IMAGE_BLUR}
@@ -67,9 +71,9 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
                     >
                       {item.title}
                     </Link>
-                    <p className="font-body text-sm font-light leading-4 text-brand-500">
+                    <BodyText className="text-sm font-light leading-4 text-brand-500">
                       {item.artistName}
-                    </p>
+                    </BodyText>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="font-body text-xs font-normal leading-4 text-brand-400">

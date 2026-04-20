@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Scan shared UI package so Tailwind keeps utilities used in @auction/ui */
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -79,6 +82,11 @@
   --font-label: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-artists-serif: var(--font-montserrat), ui-serif, Georgia, serif;
   --font-footer-links: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  /* Fixed marketing header offset — keep in sync with site-header layout */
+  --header-height: 114px;
 }
 
 @layer base {

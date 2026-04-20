@@ -1,10 +1,18 @@
+import { cn } from "@auction/ui";
+import {
+  TableBody as UiTableBody,
+  TableCell as UiTableCell,
+  TableRow as UiTableRow,
+  TableHead as UiTableTh,
+  TableHeader as UiTableThead,
+} from "@auction/ui/components/table";
 import type { KeyboardEvent, ReactNode } from "react";
 
 type TableProps = { children: ReactNode; className?: string };
 
 export function Table({ children, className = "" }: TableProps) {
   return (
-    <div className={`overflow-x-auto rounded-lg border border-outline-variant/15 ${className}`}>
+    <div className={cn("overflow-x-auto rounded-lg border border-outline-variant/15", className)}>
       <table className="w-full min-w-lg border-collapse text-left text-sm">{children}</table>
     </div>
   );
@@ -12,17 +20,17 @@ export function Table({ children, className = "" }: TableProps) {
 
 export function TableHead({ children }: { children: ReactNode }) {
   return (
-    <thead className="bg-surface-container-low font-label text-xs uppercase tracking-widest text-secondary">
+    <UiTableThead className="bg-surface-container-low font-label text-xs uppercase tracking-widest text-secondary">
       {children}
-    </thead>
+    </UiTableThead>
   );
 }
 
 export function TableBody({ children }: { children: ReactNode }) {
   return (
-    <tbody className="divide-y divide-outline-variant/10 bg-surface-container-lowest">
+    <UiTableBody className="divide-y divide-outline-variant/10 bg-surface-container-lowest">
       {children}
-    </tbody>
+    </UiTableBody>
   );
 }
 
@@ -39,7 +47,7 @@ export function TableRow({ children, onClick }: { children: ReactNode; onClick?:
     : undefined;
 
   return (
-    <tr
+    <UiTableRow
       onClick={onClick}
       onKeyDown={onKeyDown}
       tabIndex={interactive ? 0 : undefined}
@@ -50,7 +58,7 @@ export function TableRow({ children, onClick }: { children: ReactNode; onClick?:
       }
     >
       {children}
-    </tr>
+    </UiTableRow>
   );
 }
 
@@ -59,7 +67,9 @@ export function TableCell({
   className = "",
 }: { children: ReactNode; className?: string }) {
   return (
-    <td className={`px-4 py-3 align-middle font-body text-on-surface ${className}`}>{children}</td>
+    <UiTableCell className={cn("px-4 py-3 align-middle font-body text-on-surface", className)}>
+      {children}
+    </UiTableCell>
   );
 }
 
@@ -67,5 +77,5 @@ export function TableHeaderCell({
   children,
   className = "",
 }: { children: ReactNode; className?: string }) {
-  return <th className={`px-4 py-3 font-medium ${className}`}>{children}</th>;
+  return <UiTableTh className={cn("px-4 py-3 font-medium", className)}>{children}</UiTableTh>;
 }

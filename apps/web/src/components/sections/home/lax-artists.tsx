@@ -1,9 +1,8 @@
+import { ARTIST_SECTION_BLURB } from "@/components/sections/home/home-copy";
 import type { ArtistCardVM } from "@/components/sections/home/home-view-models";
+import { BodyText, DisplayHeading } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
-
-const ARTIST_BLURB =
-  "Bright and versatile space, ideal for a variety of creative events. The studio has plenty of natural light and a flexible layout that can be adapted to suit a range of needs, from small workshops to larger events. The walls are adorned with beautiful artwork, providing an inspiring backdrop for any creative endeavor.";
 
 type Props = {
   items: ArtistCardVM[];
@@ -15,12 +14,15 @@ export function LaxArtists({ items }: Props) {
       <div className="mx-auto flex max-w-[1376px] flex-col gap-12">
         <div className="relative min-h-[208px] w-full">
           <div className="flex flex-col gap-3 md:max-w-[50%]">
-            <h2 className="font-headline text-[40px] font-semibold leading-[60px] text-brand-900">
+            <DisplayHeading
+              as="h2"
+              className="text-[40px] font-semibold leading-[60px] text-brand-900"
+            >
               Artists
-            </h2>
-            <p className="font-headline text-2xl font-normal leading-6 text-brand-300">
+            </DisplayHeading>
+            <BodyText className="font-headline text-2xl font-normal leading-6 text-brand-300">
               Carefully curated selections from our upcoming auctions
-            </p>
+            </BodyText>
           </div>
           <Link
             href="/artist/featured"
@@ -32,12 +34,12 @@ export function LaxArtists({ items }: Props) {
               aria-hidden
             />
           </Link>
-          <p className="font-artists-serif mt-8 max-w-[625px] text-base font-light leading-[120%] text-brand-900 md:absolute md:right-0 md:top-[88px] md:mt-0">
-            {ARTIST_BLURB}
-          </p>
+          <BodyText className="font-artists-serif mt-8 max-w-[625px] text-base font-light leading-[120%] text-brand-900 md:absolute md:right-0 md:top-[88px] md:mt-0">
+            {ARTIST_SECTION_BLURB}
+          </BodyText>
         </div>
         {items.length === 0 ? (
-          <p className="font-body text-brand-400">No artists to display.</p>
+          <BodyText className="text-brand-400">No artists to display.</BodyText>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((a) => (

@@ -1,4 +1,5 @@
 import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 type LaxLogoProps = {
@@ -48,13 +49,13 @@ export function LaxLogo({
   if (src) {
     return (
       <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- static asset from /public */}
-        <img
+        <Image
           src={src}
           alt={imageAlt}
           width={imageWidth}
           height={imageHeight}
           className={`h-auto w-auto ${imgMax}`}
+          priority={variant === "header"}
         />
         {children}
       </div>

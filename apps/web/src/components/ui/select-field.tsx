@@ -1,4 +1,6 @@
 import { LabelCaps } from "@/components/ui/typography";
+import { cn } from "@auction/ui";
+import { Label } from "@auction/ui/components/label";
 
 export type SelectOption = { value: string; label: string };
 
@@ -26,16 +28,19 @@ export function SelectField({
 }: Props) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block">
+      <Label htmlFor={id} className="block">
         <LabelCaps>{label}</LabelCaps>
-      </label>
+      </Label>
       <select
         id={id}
         name={name}
         required={required}
         disabled={disabled}
         defaultValue={defaultValue ?? (placeholderOption ? "" : options[0]?.value)}
-        className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+        className={cn(
+          "w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm text-on-surface",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50",
+        )}
       >
         {placeholderOption ? (
           <option value="" disabled>
