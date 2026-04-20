@@ -4,7 +4,8 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
+import type { StreamEmbedProvider } from "@auction/validators";
 import {
   HERO_FALLBACK_IMG,
   HERO_PLACEHOLDER_ARTIST,
@@ -31,6 +32,29 @@ export type HeroLotVM = {
   /** True when lot status is active (for live region announcements). */
   isAuctionLive: boolean;
 };
+
+export type HeroSaleSlideVM = {
+  id: string;
+  href: string;
+  title: string;
+  dateLabel: string;
+  coverImageUrl: string | null;
+  coverImageAlt: string;
+  modeBadge: "Online" | "Onsite" | "Online + Onsite";
+};
+
+export type HeroStateVM =
+  | {
+      kind: "live";
+      saleId: string;
+      saleTitle: string;
+      embedSrc: string;
+      provider: StreamEmbedProvider;
+      modeLabel: string;
+      saleroomHref: string;
+    }
+  | { kind: "rotator"; slides: HeroSaleSlideVM[] }
+  | { kind: "fallbackLot"; lot: HeroLotVM };
 
 export type LotCardVM = {
   id: string;
@@ -79,6 +103,24 @@ function artistLineFromLot(lot: Lot): string {
 
 function heroImageAlt(title: string, artistName: string): string {
   return `${title} — artwork by ${artistName}`;
+}
+
+export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
+  const modeBadge: HeroSaleSlideVM["modeBadge"] =
+    sale.deliveryMode === "online"
+      ? "Online"
+      : sale.deliveryMode === "hybrid"
+        ? "Online + Onsite"
+        : "Onsite";
+  return {
+    id: sale.id,
+    href: `/sales/${sale.id}`,
+    title: sale.title,
+    dateLabel: formatSaleDateRange(sale),
+    coverImageUrl: sale.coverImages[0] ?? null,
+    coverImageAlt: `${sale.title} — auction cover`,
+    modeBadge,
+  };
 }
 
 export function createHeroFallbackVm(): HeroLotVM {

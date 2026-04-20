@@ -6,9 +6,11 @@ import type { Lot, Sale } from "@auction/types";
 
 export type ListSalesQuery = {
   status?: Sale["status"];
+  statuses?: Sale["status"][];
   categoryId?: string;
   limit?: number;
   offset?: number;
+  sort?: "createdDesc" | "startAsc";
 };
 
 function buildSalesQuery(params: ListSalesQuery): Record<string, string> {
@@ -16,8 +18,10 @@ function buildSalesQuery(params: ListSalesQuery): Record<string, string> {
     limit: String(params.limit ?? 24),
     offset: String(params.offset ?? 0),
   };
-  if (params.status) q.status = params.status;
+  if (params.statuses?.length) q.statuses = params.statuses.join(",");
+  else if (params.status) q.status = params.status;
   if (params.categoryId) q.categoryId = params.categoryId;
+  if (params.sort) q.sort = params.sort;
   return q;
 }
 

@@ -1,13 +1,14 @@
 import type { Database } from "@auction/db";
 import { sale } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
 
-function listWhere(input: Omit<ListSalesFilter, "limit" | "offset">) {
+function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [];
-  if (input.status) conditions.push(eq(sale.status, input.status));
+  if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
+  else if (input.status) conditions.push(eq(sale.status, input.status));
   if (input.categoryId) conditions.push(eq(sale.categoryId, input.categoryId));
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
@@ -30,6 +31,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
         description: input.description ?? null,
         coverImages,
         categoryId: input.categoryId ?? null,
+        deliveryMode: input.deliveryMode ?? "onsite",
+        streamUrl: input.streamUrl ?? null,
         startTime: input.startTime,
         endTime: input.endTime,
         previewStartTime: input.previewStartTime ?? null,
@@ -47,11 +50,13 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async list(filter: ListSalesFilter): Promise<Sale[]> {
     const whereClause = listWhere(filter);
+    const order =
+      filter.sort === "startAsc" ? asc(sale.startTime) : desc(sale.createdAt);
     const rows = await this.db
       .select()
       .from(sale)
       .where(whereClause)
-      .orderBy(desc(sale.createdAt))
+      .orderBy(order)
       .limit(filter.limit)
       .offset(filter.offset);
     return rows.map(mapSaleRow);
@@ -75,6 +80,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
       rowPatch.previewStartTime = patch.previewStartTime ?? null;
     if (patch.buyerPremiumRate !== undefined) rowPatch.buyerPremiumRate = patch.buyerPremiumRate;
     if (patch.terms !== undefined) rowPatch.terms = patch.terms ?? null;
+    if (patch.deliveryMode !== undefined) rowPatch.deliveryMode = patch.deliveryMode;
+    if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;
 
     const [row] = await this.db.update(sale).set(rowPatch).where(eq(sale.id, id)).returning();
     if (!row) throw new Error("Sale update failed");

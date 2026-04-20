@@ -211,7 +211,12 @@ export class SaleService {
     if (nextEnd <= nextStart) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const updated = await this.saleRepo.update(saleId, patch as Partial<CreateSaleInput>);
+    const normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
+    const nextDelivery = patch.deliveryMode ?? sale.deliveryMode;
+    if (nextDelivery === "onsite") {
+      normalized.streamUrl = null;
+    }
+    const updated = await this.saleRepo.update(saleId, normalized);
     return ok(updated);
   }
 }

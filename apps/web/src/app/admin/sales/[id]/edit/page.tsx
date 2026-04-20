@@ -79,6 +79,35 @@ export default async function AdminEditSalePage({
           </label>
           <UnderlineInput id="categoryId" name="categoryId" defaultValue={sale.categoryId ?? ""} />
         </div>
+        <div>
+          <label htmlFor="deliveryMode" className="mb-2 block">
+            <LabelCaps>Saleroom delivery</LabelCaps>
+          </label>
+          <select
+            id="deliveryMode"
+            name="deliveryMode"
+            defaultValue={sale.deliveryMode}
+            className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+          >
+            <option value="onsite">Onsite only</option>
+            <option value="online">Online only</option>
+            <option value="hybrid">Online + onsite (hybrid)</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="streamUrl" className="mb-2 block">
+            <LabelCaps>Stream URL (optional)</LabelCaps>
+          </label>
+          <UnderlineInput
+            id="streamUrl"
+            name="streamUrl"
+            defaultValue={sale.streamUrl ?? ""}
+            placeholder="https://www.youtube.com/watch?v=…"
+          />
+          <p className="mt-2 font-body text-xs text-on-surface-variant">
+            Allowed: YouTube, Vimeo, Twitch, Cloudflare Stream. Clear for onsite-only.
+          </p>
+        </div>
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor="startTime" className="mb-2 block">

@@ -10,6 +10,8 @@ export const saleStatusEnum = pgEnum("sale_status", [
   "cancelled",
 ]);
 
+export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite", "hybrid"]);
+
 export const sale = pgTable(
   "sale",
   {
@@ -20,6 +22,8 @@ export const sale = pgTable(
     categoryId: uuid("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
+    deliveryMode: saleDeliveryModeEnum("delivery_mode").notNull().default("onsite"),
+    streamUrl: text("stream_url"),
     status: saleStatusEnum("status").notNull().default("draft"),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),

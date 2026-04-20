@@ -16,11 +16,17 @@ function splitUrlLines(raw: string): string[] {
 export async function adminCreateSaleAction(formData: FormData): Promise<void> {
   const coverRaw = String(formData.get("coverImages") ?? "");
   const cat = String(formData.get("categoryId") ?? "").trim();
+  const dmRaw = String(formData.get("deliveryMode") ?? "onsite").trim();
+  const deliveryMode =
+    dmRaw === "online" || dmRaw === "onsite" || dmRaw === "hybrid" ? dmRaw : "onsite";
+  const streamRaw = String(formData.get("streamUrl") ?? "").trim();
   const parsed = createSaleSchema.safeParse({
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || undefined,
     coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
     categoryId: cat && /^[0-9a-f-]{36}$/i.test(cat) ? cat : undefined,
+    deliveryMode,
+    streamUrl: streamRaw || undefined,
     startTime: new Date(String(formData.get("startTime") ?? "")),
     endTime: new Date(String(formData.get("endTime") ?? "")),
     previewStartTime: String(formData.get("previewStartTime") ?? "").trim()
@@ -47,6 +53,7 @@ export async function adminCreateSaleAction(formData: FormData): Promise<void> {
   }
   const id = String((body as { data?: { id?: string } }).data?.id ?? "");
   revalidatePath("/admin/sales");
+  revalidatePath("/");
   if (id) redirect(`/admin/sales/${id}`);
   redirect("/admin/sales");
 }
@@ -56,11 +63,17 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
   const coverRaw = String(formData.get("coverImages") ?? "");
   const cat = String(formData.get("categoryId") ?? "").trim();
+  const dmRaw = String(formData.get("deliveryMode") ?? "").trim();
+  const deliveryMode =
+    dmRaw === "online" || dmRaw === "onsite" || dmRaw === "hybrid" ? dmRaw : undefined;
+  const streamRaw = String(formData.get("streamUrl") ?? "").trim();
   const parsed = updateSaleSchema.safeParse({
     title: String(formData.get("title") ?? "").trim() || undefined,
     description: String(formData.get("description") ?? "").trim() || undefined,
     coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
     categoryId: cat && /^[0-9a-f-]{36}$/i.test(cat) ? cat : undefined,
+    deliveryMode,
+    streamUrl: streamRaw === "" ? null : streamRaw || undefined,
     startTime: String(formData.get("startTime") ?? "").trim()
       ? new Date(String(formData.get("startTime")))
       : undefined,
@@ -84,7 +97,7 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
     json: parsed.data,
     okRedirect: `/admin/sales/${id}`,
     errRedirect: `/admin/sales/${id}/edit`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`],
+    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
   });
 }
 
@@ -96,7 +109,7 @@ export async function adminPublishSaleAction(formData: FormData): Promise<void> 
     method: "POST",
     okRedirect: `/admin/sales/${id}`,
     errRedirect: `/admin/sales/${id}`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`],
+    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
   });
 }
 
@@ -109,7 +122,7 @@ export async function adminCancelSaleAction(formData: FormData): Promise<void> {
     json: {},
     okRedirect: `/admin/sales/${id}`,
     errRedirect: `/admin/sales/${id}`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`],
+    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
   });
 }
 

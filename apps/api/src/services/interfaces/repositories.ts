@@ -26,11 +26,15 @@ export type ListLotsFilter = {
   sort?: ListLotsSort | undefined;
 };
 
+export type ListSalesSort = "createdDesc" | "startAsc";
+
 export type ListSalesFilter = {
   status?: SaleStatus | undefined;
+  statuses?: SaleStatus[] | undefined;
   categoryId?: string | undefined;
   limit: number;
   offset: number;
+  sort?: ListSalesSort | undefined;
 };
 
 /** Aggregate for archive / past-auctions views (ended lots). */

@@ -7,6 +7,7 @@ import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
 import { SITE_TAGLINE } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Fine art auctions",
@@ -21,11 +22,13 @@ type PageProps = {
 export default async function HomePage({ searchParams }: PageProps) {
   await searchParams;
 
-  const { heroVm, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
+  const hdrs = await headers();
+  const twitchParentHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost";
+  const { heroState, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
 
   return (
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
-      <LaxHero lot={heroVm} />
+      <LaxHero state={heroState} twitchParentHost={twitchParentHost} />
       <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
       {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
       <LaxArtists items={artistCards} />

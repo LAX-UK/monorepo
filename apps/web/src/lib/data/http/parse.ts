@@ -15,6 +15,12 @@ function toDate(value: unknown): Date {
   return new Date(Number.NaN);
 }
 
+function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
+  const v = typeof raw === "string" ? raw : "";
+  if (v === "online" || v === "onsite" || v === "hybrid") return v;
+  return "onsite";
+}
+
 export function parseSale(raw: unknown): Sale {
   const o = raw as Record<string, unknown>;
   return {
@@ -23,6 +29,9 @@ export function parseSale(raw: unknown): Sale {
     description: o.description == null ? null : String(o.description),
     coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
+    deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
+    streamUrl:
+      o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
     status: o.status as Sale["status"],
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),

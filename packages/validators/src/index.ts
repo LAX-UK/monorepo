@@ -1,6 +1,7 @@
 export * from "./address.js";
 export * from "./lot.js";
 export * from "./sale.js";
+export * from "./stream-embed.js";
 export * from "./bid.js";
 export * from "./notification.js";
 export * from "./payment.js";

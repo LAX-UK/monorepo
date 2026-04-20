@@ -11,6 +11,8 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     description: null,
     coverImages: [],
     categoryId: null,
+    deliveryMode: "onsite",
+    streamUrl: null,
     status: "scheduled",
     startTime: now,
     endTime: now,

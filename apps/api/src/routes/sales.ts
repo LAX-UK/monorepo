@@ -24,10 +24,12 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
   r.get("/", zValidator("query", listSalesQuerySchema), async (c) => {
     const query = c.req.valid("query");
     const data = await container.saleService.list({
-      status: query.status,
+      status: query.statuses ? undefined : query.status,
+      statuses: query.statuses,
       categoryId: query.categoryId,
       limit: query.limit,
       offset: query.offset,
+      sort: query.sort,
     });
     return c.json({ data });
   });

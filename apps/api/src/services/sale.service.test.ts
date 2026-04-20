@@ -12,6 +12,8 @@ describe("SaleService.create", () => {
       description: null,
       coverImages: [],
       categoryId: null,
+      deliveryMode: "onsite",
+      streamUrl: null,
       status: "draft",
       startTime: new Date(),
       endTime: new Date(),
@@ -70,6 +72,7 @@ describe("SaleService.create", () => {
       title: "Evening",
       startTime: start,
       endTime: end,
+      streamUrl: null,
       lots: [
         {
           sellerId: "seller-1",

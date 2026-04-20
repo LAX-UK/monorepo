@@ -7,6 +7,7 @@ import type {
   LotAuctionType,
   LotStatus,
   Sale,
+  SaleDeliveryMode,
   SaleStatus,
 } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
@@ -92,6 +93,8 @@ export function mapSaleRow(row: SaleRow): Sale {
     description: row.description,
     coverImages: row.coverImages ?? [],
     categoryId: row.categoryId ?? null,
+    deliveryMode: (row.deliveryMode ?? "onsite") as SaleDeliveryMode,
+    streamUrl: row.streamUrl ?? null,
     status: row.status as SaleStatus,
     startTime: row.startTime,
     endTime: row.endTime,

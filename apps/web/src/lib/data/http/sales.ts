@@ -8,8 +8,10 @@ function buildSalesQuery(params: ListSalesQuery): Record<string, string> {
     limit: String(params.limit ?? 24),
     offset: String(params.offset ?? 0),
   };
-  if (params.status) q.status = params.status;
+  if (params.statuses?.length) q.statuses = params.statuses.join(",");
+  else if (params.status) q.status = params.status;
   if (params.categoryId) q.categoryId = params.categoryId;
+  if (params.sort) q.sort = params.sort;
   return q;
 }
 
