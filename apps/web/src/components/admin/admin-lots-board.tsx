@@ -154,7 +154,7 @@ export function AdminLotsBoard({
         <p className="text-live-red">{listError ?? urlError}</p>
       ) : null}
       <EntityTableShell
-        density={density === "compact" ? "compact" : "comfortable"}
+        density={density}
         filters={
           <>
             {statusChips}
@@ -177,7 +177,7 @@ export function AdminLotsBoard({
               getRowId={(r) => r.id}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
-              density={density === "compact" ? "compact" : "comfortable"}
+              density={density}
             />
           </TableScroll>
         }

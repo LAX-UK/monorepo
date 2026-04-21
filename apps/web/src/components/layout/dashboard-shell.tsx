@@ -8,11 +8,7 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { breadcrumbsForPath } from "@/lib/navigation/dashboard-breadcrumbs";
-import {
-  createLocalStorageSidebarCollapsedStore,
-  createTableDensityStore,
-  type DashboardTableDensity,
-} from "@/lib/preferences/preferences-store";
+import { createLocalStorageSidebarCollapsedStore } from "@/lib/preferences/preferences-store";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -42,12 +38,19 @@ import {
   useState,
 } from "react";
 
+export type DashboardTableDensity = "comfortable" | "compact";
+
+const TABLE_DENSITY_CONTEXT_VALUE = {
+  density: "comfortable" as const satisfies DashboardTableDensity,
+  setDensity: (_d: DashboardTableDensity) => {},
+};
+
 const TableDensityContext = createContext<{
   density: DashboardTableDensity;
   setDensity: (d: DashboardTableDensity) => void;
 } | null>(null);
 
-/** Table/card density from dashboard shell (md+); mobile is always comfortable. */
+/** Table density is fixed to comfortable (density toggle removed from shell). */
 export function useTableDensity(): {
   density: DashboardTableDensity;
   setDensity: (d: DashboardTableDensity) => void;
@@ -121,21 +124,10 @@ export function DashboardShell({
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
-  const [tableDensity, setTableDensityState] = useState<DashboardTableDensity>("comfortable");
 
   useEffect(() => {
     const store = createLocalStorageSidebarCollapsedStore();
     setDesktopSidebarCollapsed(store.getCollapsed());
-  }, []);
-
-  useEffect(() => {
-    const store = createTableDensityStore();
-    setTableDensityState(store.getDensity());
-  }, []);
-
-  const setTableDensity = useCallback((d: DashboardTableDensity) => {
-    createTableDensityStore().setDensity(d);
-    setTableDensityState(d);
   }, []);
 
   const paletteVariant = accountMenu === "admin" ? "admin" : "dashboard";
@@ -166,197 +158,172 @@ export function DashboardShell({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <TableDensityContext.Provider value={{ density: tableDensity, setDensity: setTableDensity }}>
-      <div
-        className="flex min-h-screen bg-surface font-body text-on-surface"
-        style={{ ["--sidebar-width" as string]: sidebarWidth }}
-      >
-        <a
-          href="#main-content"
-          className="fixed left-4 top-4 z-[60] -translate-y-[120%] rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary focus:translate-y-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
-        >
-          Skip to content
-        </a>
-        <CommandPaletteLazy variant={paletteVariant} />
+      <TableDensityContext.Provider value={TABLE_DENSITY_CONTEXT_VALUE}>
         <div
-          className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-3 backdrop-blur-md lg:hidden"
-          role="banner"
+          className="flex min-h-screen bg-surface font-body text-on-surface"
+          style={{ ["--sidebar-width" as string]: sidebarWidth }}
         >
-          <button
-            type="button"
-            className="rounded-md p-2 text-on-surface transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            aria-expanded={mobileNavOpen}
-            aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
-            onClick={() => setMobileNavOpen((o) => !o)}
+          <a
+            href="#main-content"
+            className="fixed left-4 top-4 z-[60] -translate-y-[120%] rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary focus:translate-y-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
           >
-            <MaterialIcon name={mobileNavOpen ? "close" : "menu"} />
-          </button>
-          <span className="min-w-0 flex-1 truncate text-center font-headline text-sm font-semibold tracking-tight text-on-surface">
-            {mobileTitle}
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
+            Skip to content
+          </a>
+          <CommandPaletteLazy variant={paletteVariant} />
+          <div
+            className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-3 backdrop-blur-md lg:hidden"
+            role="banner"
+          >
             <button
               type="button"
-              className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              aria-label="Open quick search"
-              onClick={openCommandPalette}
+              className="rounded-md p-2 text-on-surface transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              aria-expanded={mobileNavOpen}
+              aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+              onClick={() => setMobileNavOpen((o) => !o)}
             >
-              <MaterialIcon name="search" />
+              <MaterialIcon name={mobileNavOpen ? "close" : "menu"} />
             </button>
-            <NotificationBell />
-            <Link
-              href="/"
-              className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              aria-label="Back to gallery"
-            >
-              <MaterialIcon name="home" />
-            </Link>
-          </div>
-        </div>
-
-        <ShellContext.Provider
-          value={{
-            onNavigate: closeNav,
-            mobileOpen: mobileNavOpen,
-            setMobileOpen,
-            desktopSidebarCollapsed,
-            setDesktopSidebarCollapsed,
-            toggleDesktopSidebarCollapsed,
-          }}
-        >
-          {sidebar}
-        </ShellContext.Provider>
-
-        <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-[var(--sidebar-width)]">
-          <div className="hidden items-center justify-between gap-4 border-b border-outline-variant/10 px-6 py-3 lg:flex lg:px-10">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="min-w-0 flex-1 truncate text-center font-headline text-sm font-semibold tracking-tight text-on-surface">
+              {mobileTitle}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
-                className="hidden shrink-0 rounded-md border border-outline-variant/20 bg-surface-container-low px-2 py-2 text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:inline-flex"
-                aria-label={desktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                aria-pressed={desktopSidebarCollapsed}
-                onClick={toggleDesktopSidebarCollapsed}
-              >
-                <MaterialIcon name={desktopSidebarCollapsed ? "panel_left" : "panel_left_close"} />
-              </button>
-              <Breadcrumb>
-                <BreadcrumbList>
-                  {crumbs.map((c, i) => (
-                    <Fragment key={c.href}>
-                      {i > 0 ? (
-                        <BreadcrumbSeparator>
-                          <span className="text-on-surface-variant/50" aria-hidden>
-                            /
-                          </span>
-                        </BreadcrumbSeparator>
-                      ) : null}
-                      <BreadcrumbItem>
-                        {i === crumbs.length - 1 ? (
-                          <BreadcrumbPage className="font-medium text-on-surface">
-                            {c.label}
-                          </BreadcrumbPage>
-                        ) : (
-                          <BreadcrumbLink asChild>
-                            <Link href={c.href} className="hover:text-primary">
-                              {c.label}
-                            </Link>
-                          </BreadcrumbLink>
-                        )}
-                      </BreadcrumbItem>
-                    </Fragment>
-                  ))}
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              {pageActions ? (
-                <div className="mr-1 flex max-w-md flex-wrap items-center justify-end gap-2">
-                  {pageActions}
-                </div>
-              ) : null}
-              <div className="hidden items-center gap-1 md:flex" title="Table row density (md and up)">
-                <span className="sr-only">Table density</span>
-                <button
-                  type="button"
-                  aria-pressed={tableDensity === "comfortable"}
-                  onClick={() => setTableDensity("comfortable")}
-                  className={`rounded-md border px-2 py-2 font-label text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                    tableDensity === "comfortable"
-                      ? "border-primary bg-surface-container-high text-on-surface"
-                      : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low"
-                  }`}
-                >
-                  Comfort
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={tableDensity === "compact"}
-                  onClick={() => setTableDensity("compact")}
-                  className={`rounded-md border px-2 py-2 font-label text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                    tableDensity === "compact"
-                      ? "border-primary bg-surface-container-high text-on-surface"
-                      : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low"
-                  }`}
-                >
-                  Compact
-                </button>
-              </div>
-              <button
-                type="button"
+                className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                aria-label="Open quick search"
                 onClick={openCommandPalette}
-                className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 font-label text-xs uppercase tracking-widest text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                <MaterialIcon name="search" className="text-base" />
-                <span className="hidden sm:inline">Search</span>
-                <kbd className="hidden rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-                  {isMac ? "⌘" : "Ctrl"}+K
-                </kbd>
+                <MaterialIcon name="search" />
               </button>
-              <ThemeToggle />
               <NotificationBell />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex max-w-[12rem] items-center gap-2 rounded-md border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 text-left text-sm text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  >
-                    <span className="truncate font-medium">{user.name}</span>
-                    <MaterialIcon name="expand_more" className="shrink-0 text-base opacity-70" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="truncate font-normal text-on-surface-variant">
-                    {user.email}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {accountMenu === "admin" ? (
-                    <AdminAccountMenuItems />
-                  ) : (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href="/dashboard/settings/profile">Profile</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/dashboard/settings/notifications">Alert settings</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/">Gallery</Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Link
+                href="/"
+                className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                aria-label="Back to gallery"
+              >
+                <MaterialIcon name="home" />
+              </Link>
             </div>
           </div>
-          <div
-            id="main-content"
-            className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-10 md:px-8 md:py-12 lg:px-10 xl:px-12"
+
+          <ShellContext.Provider
+            value={{
+              onNavigate: closeNav,
+              mobileOpen: mobileNavOpen,
+              setMobileOpen,
+              desktopSidebarCollapsed,
+              setDesktopSidebarCollapsed,
+              toggleDesktopSidebarCollapsed,
+            }}
           >
-            {children}
+            {sidebar}
+          </ShellContext.Provider>
+
+          <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-[var(--sidebar-width)]">
+            <div className="hidden items-center justify-between gap-4 border-b border-outline-variant/10 px-6 py-3 lg:flex lg:px-10">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <button
+                  type="button"
+                  className="hidden shrink-0 rounded-md border border-outline-variant/20 bg-surface-container-low px-2 py-2 text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:inline-flex"
+                  aria-label={desktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-pressed={desktopSidebarCollapsed}
+                  onClick={toggleDesktopSidebarCollapsed}
+                >
+                  <MaterialIcon
+                    name={desktopSidebarCollapsed ? "panel_left" : "panel_left_close"}
+                  />
+                </button>
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    {crumbs.map((c, i) => (
+                      <Fragment key={c.href}>
+                        {i > 0 ? (
+                          <BreadcrumbSeparator>
+                            <span className="text-on-surface-variant/50" aria-hidden>
+                              /
+                            </span>
+                          </BreadcrumbSeparator>
+                        ) : null}
+                        <BreadcrumbItem>
+                          {i === crumbs.length - 1 ? (
+                            <BreadcrumbPage className="font-medium text-on-surface">
+                              {c.label}
+                            </BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink asChild>
+                              <Link href={c.href} className="hover:text-primary">
+                                {c.label}
+                              </Link>
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                      </Fragment>
+                    ))}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                {pageActions ? (
+                  <div className="mr-1 flex max-w-md flex-wrap items-center justify-end gap-2">
+                    {pageActions}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={openCommandPalette}
+                  className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 font-label text-xs uppercase tracking-widest text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <MaterialIcon name="search" className="text-base" />
+                  <span className="hidden sm:inline">Search</span>
+                  <kbd className="hidden rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+                    {isMac ? "⌘" : "Ctrl"}+K
+                  </kbd>
+                </button>
+                <ThemeToggle />
+                <NotificationBell />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex max-w-[12rem] items-center gap-2 rounded-md border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 text-left text-sm text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                      <span className="truncate font-medium">{user.name}</span>
+                      <MaterialIcon name="expand_more" className="shrink-0 text-base opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="truncate font-normal text-on-surface-variant">
+                      {user.email}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {accountMenu === "admin" ? (
+                      <AdminAccountMenuItems />
+                    ) : (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/settings/profile">Profile</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/settings/notifications">Alert settings</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href="/">Gallery</Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            <div
+              id="main-content"
+              className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-10 md:px-8 md:py-12 lg:px-10 xl:px-12"
+            >
+              {children}
+            </div>
           </div>
         </div>
-      </div>
       </TableDensityContext.Provider>
     </TooltipProvider>
   );

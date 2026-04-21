@@ -29,38 +29,6 @@ export function createLocalStorageSidebarCollapsedStore(): SidebarCollapsedStore
   };
 }
 
-/** Table row density (md+ only; mobile forces comfortable in shell). */
-export type DashboardTableDensity = "comfortable" | "compact";
-
-const DENSITY_KEY = "lax_dashboard_table_density";
-
-export type TableDensityStore = {
-  getDensity(): DashboardTableDensity;
-  setDensity(d: DashboardTableDensity): void;
-};
-
-export function createTableDensityStore(): TableDensityStore {
-  return {
-    getDensity() {
-      if (typeof window === "undefined") return "comfortable";
-      try {
-        const v = window.localStorage.getItem(DENSITY_KEY);
-        return v === "compact" ? "compact" : "comfortable";
-      } catch {
-        return "comfortable";
-      }
-    },
-    setDensity(d: DashboardTableDensity) {
-      if (typeof window === "undefined") return;
-      try {
-        window.localStorage.setItem(DENSITY_KEY, d);
-      } catch {
-        /* ignore */
-      }
-    },
-  };
-}
-
 const SAVED_VIEW_PREFIX = "lax_table_saved_view:";
 
 export type SavedTableViewStore = {
