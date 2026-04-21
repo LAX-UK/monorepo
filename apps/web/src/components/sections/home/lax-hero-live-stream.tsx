@@ -1,5 +1,6 @@
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
+import { RevealOnMount } from "@/components/ui/reveal";
 import { Button } from "@auction/ui/components/button";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import Image from "next/image";
@@ -102,15 +103,17 @@ function LaxHeroLiveSplitEmbed({ vm, twitchParentHost }: Props) {
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto flex min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] flex-col md:min-h-[min(100svh,760px)]">
         <div className="relative aspect-video w-full shrink-0 bg-black">
-          <iframe
-            title={`Live auction: ${vm.saleTitle}`}
-            src={iframeSrc}
-            className="absolute inset-0 h-full w-full"
-            loading="lazy"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          <RevealOnMount className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+            <iframe
+              title={`Live auction: ${vm.saleTitle}`}
+              src={iframeSrc}
+              className="absolute inset-0 h-full w-full"
+              loading="lazy"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </RevealOnMount>
         </div>
         <div className="relative flex flex-1 flex-col justify-end border-t border-nav-border bg-hero-cream px-6 py-10 md:px-10 dark:border-outline-variant/15 dark:bg-surface-container-low">
           <div className="relative z-[1] flex max-w-[684px] flex-col gap-6">
@@ -163,15 +166,20 @@ export function LaxHeroLiveStream({ vm, twitchParentHost }: Props) {
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
         <div className="absolute inset-0 overflow-hidden bg-black">
           {poster ? (
-            <Image
-              src={poster}
-              alt={`${vm.saleTitle} — saleroom cover`}
-              fill
-              priority
-              fetchPriority="high"
-              className="absolute inset-0 z-0 hidden object-cover object-center motion-reduce:block"
-              sizes="100vw"
-            />
+            <RevealOnMount
+              className="absolute inset-0 z-0 hidden overflow-hidden motion-reduce:block"
+              innerClassName="absolute inset-0"
+            >
+              <Image
+                src={poster}
+                alt={`${vm.saleTitle} — saleroom cover`}
+                fill
+                priority
+                fetchPriority="high"
+                className="object-cover object-center"
+                sizes="100vw"
+              />
+            </RevealOnMount>
           ) : (
             <div
               className="absolute inset-0 z-0 hidden bg-brand-900/40 motion-reduce:block dark:bg-surface-container-high"
@@ -179,15 +187,17 @@ export function LaxHeroLiveStream({ vm, twitchParentHost }: Props) {
             />
           )}
           <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
-            <iframe
-              title={`Live auction: ${vm.saleTitle}`}
-              src={bgSrc}
-              className="absolute left-1/2 top-1/2 h-[max(100%,56.25vw)] w-[max(100%,177.78vh)] max-w-none -translate-x-1/2 -translate-y-1/2 border-0"
-              loading="lazy"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+            <RevealOnMount className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+              <iframe
+                title={`Live auction: ${vm.saleTitle}`}
+                src={bgSrc}
+                className="absolute left-1/2 top-1/2 h-[max(100%,56.25vw)] w-[max(100%,177.78vh)] max-w-none -translate-x-1/2 -translate-y-1/2 border-0"
+                loading="lazy"
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </RevealOnMount>
           </div>
         </div>
         <div

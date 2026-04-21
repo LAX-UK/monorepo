@@ -273,3 +273,60 @@ html.dark {
     color: var(--color-primary);
   }
 }
+
+@keyframes revealWipeIn {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes revealZoomIn {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.reveal {
+  clip-path: inset(0 100% 0 0);
+}
+
+.reveal__inner {
+  height: 100%;
+  width: 100%;
+  transform: scale(1.08);
+  transform-origin: center;
+  will-change: transform;
+}
+
+.reveal--wipe[data-revealed="true"],
+.reveal--wipeZoom[data-revealed="true"] {
+  animation: revealWipeIn 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal--zoom[data-revealed="true"] > .reveal__inner,
+.reveal--wipeZoom[data-revealed="true"] > .reveal__inner {
+  animation: revealZoomIn 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    clip-path: none;
+  }
+
+  .reveal,
+  .reveal[data-revealed="true"] {
+    animation: none;
+  }
+
+  .reveal__inner,
+  .reveal[data-revealed="true"] > .reveal__inner {
+    transform: none;
+    animation: none;
+  }
+}

@@ -1,5 +1,6 @@
 import { ARTIST_SECTION_BLURB } from "@/components/sections/home/home-copy";
 import type { ArtistCardVM } from "@/components/sections/home/home-view-models";
+import { RevealInView } from "@/components/ui/reveal";
 import { BodyText, DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
@@ -49,13 +50,15 @@ export function LaxArtists({ items }: Props) {
                 href={a.href}
                 className="group relative block aspect-[320/440] w-full overflow-hidden"
               >
-                <Image
-                  src={a.portraitUrl}
-                  alt={a.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  sizes="(max-width: 640px) 100vw, 25vw"
-                />
+                <RevealInView className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+                  <Image
+                    src={a.portraitUrl}
+                    alt={a.name}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, 25vw"
+                  />
+                </RevealInView>
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 dark:from-black/85">
                   <span className="font-label text-sm font-semibold uppercase tracking-wider text-hero-foreground">
                     {a.name}

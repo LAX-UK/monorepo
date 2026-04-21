@@ -1,5 +1,6 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
+import { RevealInView } from "@/components/ui/reveal";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
@@ -55,15 +56,20 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                 <Link href={item.href} className="group block">
                   <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                     {item.imageUrl ? (
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.imageAlt}
-                        fill
-                        placeholder="blur"
-                        blurDataURL={TINY_IMAGE_BLUR}
-                        className="object-cover transition-transform duration-700 group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
+                      <RevealInView
+                        className="absolute inset-0 overflow-hidden"
+                        innerClassName="absolute inset-0"
+                      >
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.imageAlt}
+                          fill
+                          placeholder="blur"
+                          blurDataURL={TINY_IMAGE_BLUR}
+                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        />
+                      </RevealInView>
                     ) : null}
                     <OwnerBadge
                       owned={Boolean(currentUserId && item.sellerId === currentUserId)}

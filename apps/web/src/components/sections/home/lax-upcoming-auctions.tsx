@@ -1,5 +1,6 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { UpcomingAuctionVM } from "@/components/sections/home/home-view-models";
+import { RevealInView } from "@/components/ui/reveal";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -40,15 +41,20 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
             <Link href={auction.href} className="block">
               <div className="relative aspect-[853/500] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                 {auction.coverImageUrl ? (
-                  <Image
-                    src={auction.coverImageUrl}
-                    alt={auction.coverImageAlt}
-                    fill
-                    placeholder="blur"
-                    blurDataURL={TINY_IMAGE_BLUR}
-                    className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                    sizes="(max-width: 1024px) 100vw, 853px"
-                  />
+                  <RevealInView
+                    className="absolute inset-0 overflow-hidden"
+                    innerClassName="absolute inset-0"
+                  >
+                    <Image
+                      src={auction.coverImageUrl}
+                      alt={auction.coverImageAlt}
+                      fill
+                      placeholder="blur"
+                      blurDataURL={TINY_IMAGE_BLUR}
+                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      sizes="(max-width: 1024px) 100vw, 853px"
+                    />
+                  </RevealInView>
                 ) : null}
               </div>
               <div className="mt-6 flex flex-col gap-3">
@@ -79,15 +85,20 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                     className="relative block h-[210px] w-[min(45%,181.5px)] shrink-0 overflow-hidden bg-brand-800 dark:bg-surface-container-high"
                   >
                     {lot.imageUrl ? (
-                      <Image
-                        src={lot.imageUrl}
-                        alt={lot.imageAlt}
-                        fill
-                        placeholder="blur"
-                        blurDataURL={TINY_IMAGE_BLUR}
-                        className="object-cover"
-                        sizes="182px"
-                      />
+                      <RevealInView
+                        className="absolute inset-0 overflow-hidden"
+                        innerClassName="absolute inset-0"
+                      >
+                        <Image
+                          src={lot.imageUrl}
+                          alt={lot.imageAlt}
+                          fill
+                          placeholder="blur"
+                          blurDataURL={TINY_IMAGE_BLUR}
+                          className="object-cover"
+                          sizes="182px"
+                        />
+                      </RevealInView>
                     ) : null}
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col justify-start gap-3 py-1">

@@ -1,9 +1,9 @@
 "use client";
 
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
+import { RevealOnMount } from "@/components/ui/reveal";
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { cn } from "@auction/ui";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { cn, DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
@@ -75,18 +75,21 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
     >
       <div className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
         {current.coverImageUrl ? (
-          <Image
+          <RevealOnMount
             key={current.id}
-            src={current.coverImageUrl}
-            alt={current.coverImageAlt}
-            fill
-            priority={index === 0}
-            fetchPriority={index === 0 ? "high" : "auto"}
-            className={cn(
-              "object-cover object-center transition-opacity duration-500 motion-reduce:transition-none",
-            )}
-            sizes="100vw"
-          />
+            className="absolute inset-0 overflow-hidden"
+            innerClassName="absolute inset-0"
+          >
+            <Image
+              src={current.coverImageUrl}
+              alt={current.coverImageAlt}
+              fill
+              priority={index === 0}
+              fetchPriority={index === 0 ? "high" : "auto"}
+              className="object-cover object-center"
+              sizes="100vw"
+            />
+          </RevealOnMount>
         ) : (
           <div
             key={`empty-${current.id}`}

@@ -1,5 +1,6 @@
 import type { HeroLotVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
+import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, LiveDot, StatTile } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
@@ -16,15 +17,17 @@ export function LaxHeroLot({ lot }: Props) {
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
-        <Image
-          src={lot.heroImageUrl}
-          alt={lot.imageAlt}
-          fill
-          priority
-          fetchPriority="high"
-          className="object-cover object-center"
-          sizes="100vw"
-        />
+        <RevealOnMount className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+          <Image
+            src={lot.heroImageUrl}
+            alt={lot.imageAlt}
+            fill
+            priority
+            fetchPriority="high"
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+        </RevealOnMount>
         <div
           className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-transparent"
           style={{
