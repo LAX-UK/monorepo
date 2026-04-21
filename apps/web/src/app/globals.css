@@ -277,9 +277,14 @@ html.dark {
 @keyframes revealWipeIn {
   from {
     clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
   }
   to {
     clip-path: inset(0 0 0 0);
+    opacity: 1;
   }
 }
 
@@ -295,6 +300,7 @@ html.dark {
 /* Default: no clip — SSR and no-JS stay visible. JS arms data-reveal-init before animation. */
 .reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
   clip-path: inset(0 100% 0 0);
+  opacity: 0;
 }
 
 .reveal__inner {
@@ -310,17 +316,20 @@ html.dark {
 
 .reveal--wipe[data-revealed="true"],
 .reveal--wipeZoom[data-revealed="true"] {
-  animation: revealWipeIn 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: revealWipeIn 1000ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
 }
 
 .reveal--zoom[data-revealed="true"] > .reveal__inner,
 .reveal--wipeZoom[data-revealed="true"] > .reveal__inner {
-  animation: revealZoomIn 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: revealZoomIn 1600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
     clip-path: none;
+    opacity: 1;
   }
 
   .reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
@@ -336,5 +345,47 @@ html.dark {
   .reveal[data-revealed="true"] > .reveal__inner {
     transform: none;
     animation: none;
+  }
+}
+
+/* Desktop mega-menu: full-bleed shelf under header (break out of max-width container). */
+.header-megamenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  left: 0;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  transform: translateY(-4px);
+  opacity: 0;
+  pointer-events: none;
+  border-bottom: 1px solid var(--color-nav-border, transparent);
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease-out;
+}
+
+.header-megamenu > div {
+  min-height: 0;
+}
+
+.header-megamenu__inner {
+  overflow: hidden;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.header-megamenu[data-open="true"] {
+  grid-template-rows: 1fr;
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-megamenu {
+    transition: none;
+    transform: none;
   }
 }

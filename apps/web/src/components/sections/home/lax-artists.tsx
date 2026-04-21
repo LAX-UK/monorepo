@@ -44,13 +44,17 @@ export function LaxArtists({ items }: Props) {
           </BodyText>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {items.map((a) => (
+            {items.map((a, index) => (
               <Link
                 key={a.id}
                 href={a.href}
                 className="group relative block aspect-[320/440] w-full overflow-hidden"
               >
-                <RevealInView className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+                <RevealInView
+                  className="absolute inset-0 overflow-hidden"
+                  innerClassName="absolute inset-0"
+                  delayMs={Math.min(index * 70, 280)}
+                >
                   <Image
                     src={a.portraitUrl}
                     alt={a.name}

@@ -4,6 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ type SiteHeaderProps = {
 export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
   const nav = navProp ?? emptyMegaMenuSections();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -31,13 +33,19 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
   }, [pathname]);
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-nav-border bg-surface">
+    <header
+      className={cn(
+        "fixed top-0 z-50 w-full bg-surface transition-colors",
+        megaOpen ? "border-b border-transparent" : "border-b border-nav-border",
+      )}
+    >
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">
         <HeaderUtilityBar user={user} />
 
         <HeaderMegaNav
           sections={nav}
           pathname={pathname}
+          onOpenChange={setMegaOpen}
           logo={
             <Link
               href="/"

@@ -15,11 +15,12 @@ const HOVER_CLOSE_MS = 160;
 type HeaderMegaNavProps = {
   sections: MegaMenuSection[];
   pathname: string;
+  onOpenChange?: (open: boolean) => void;
   logo: ReactNode;
   trailing: ReactNode;
 };
 
-export function HeaderMegaNav({ sections, pathname, logo, trailing }: HeaderMegaNavProps) {
+export function HeaderMegaNav({ sections, pathname, onOpenChange, logo, trailing }: HeaderMegaNavProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const openHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +70,10 @@ export function HeaderMegaNav({ sections, pathname, logo, trailing }: HeaderMega
     clearCloseHover();
     setOpenIndex(null);
   }, [pathname, clearOpenHover, clearCloseHover]);
+
+  useEffect(() => {
+    onOpenChange?.(openIndex !== null);
+  }, [openIndex, onOpenChange]);
 
   useEffect(() => {
     return () => {
@@ -134,7 +139,7 @@ export function HeaderMegaNav({ sections, pathname, logo, trailing }: HeaderMega
     }
   };
 
-  const onPanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const onPanelKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const root = panelRef.current;
     if (!root) return;
@@ -213,19 +218,22 @@ export function HeaderMegaNav({ sections, pathname, logo, trailing }: HeaderMega
         {trailing}
       </div>
 
-      {section ? (
-        <section
-          ref={panelRef}
-          id={MEGAMENU_PANEL_ID}
-          aria-label={section.label}
-          className="absolute -mt-px left-0 right-0 top-full z-40 border-t border-nav-border bg-surface px-0 py-8 shadow-sm motion-reduce:shadow-none motion-reduce:transition-none"
-          onKeyDown={onPanelKeyDown}
-        >
-          <div className="px-6 md:px-10">
-            <HeaderMegaMenuPanelContent section={section} onNavigate={closeMenu} />
+      <section
+        ref={panelRef}
+        id={MEGAMENU_PANEL_ID}
+        data-open={openIndex !== null ? "true" : "false"}
+        aria-hidden={openIndex === null}
+        inert={openIndex === null ? true : undefined}
+        aria-label={section?.label}
+        className="header-megamenu absolute top-full z-40 bg-surface"
+        onKeyDown={onPanelKeyDown}
+      >
+        <div className="mx-auto max-w-[1440px] px-6 md:px-10">
+          <div className="header-megamenu__inner">
+            {section ? <HeaderMegaMenuPanelContent section={section} onNavigate={closeMenu} /> : null}
           </div>
-        </section>
-      ) : null}
+        </div>
+      </section>
     </div>
   );
 }

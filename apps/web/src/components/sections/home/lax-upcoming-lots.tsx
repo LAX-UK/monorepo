@@ -51,7 +51,7 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
           </BodyText>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {items.map((item) => (
+            {items.map((item, index) => (
               <article key={item.id} className="flex flex-col gap-4">
                 <Link href={item.href} className="group block">
                   <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
@@ -59,6 +59,7 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                       <RevealInView
                         className="absolute inset-0 overflow-hidden"
                         innerClassName="absolute inset-0"
+                        delayMs={Math.min(index * 70, 280)}
                       >
                         <Image
                           src={item.imageUrl}
