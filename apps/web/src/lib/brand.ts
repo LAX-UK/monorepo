@@ -8,6 +8,8 @@ export const SITE_LEGAL_NAME = SITE_NAME;
 
 /** Static mark in `apps/web/public/` */
 export const SITE_LOGO_PATH = "/logo.svg";
+/** Vector wordmark for dark UI (header/footer/auth); light mode uses `SITE_LOGO_PATH`. */
+export const SITE_LOGO_PATH_DARK = "/logo-dark.svg";
 
 export function siteCopyrightYear(): number {
   return new Date().getFullYear();

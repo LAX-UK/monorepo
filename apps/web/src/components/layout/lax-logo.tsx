@@ -1,4 +1,4 @@
-import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_LOGO_PATH_DARK, SITE_SHORT_NAME } from "@/lib/brand";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -39,6 +39,7 @@ export function LaxLogo({
         ? "text-[10px] md:text-[11px]"
         : "text-[9px] md:text-[10px]";
   const src = imageSrc === "" ? null : (imageSrc ?? SITE_LOGO_PATH);
+  const useDefaultDarkPair = src === SITE_LOGO_PATH;
   const imgMax =
     variant === "footer"
       ? "max-h-[60px] max-w-[min(100%,320px)]"
@@ -49,14 +50,35 @@ export function LaxLogo({
   if (src) {
     return (
       <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
-        <Image
-          src={src}
-          alt={imageAlt}
-          width={imageWidth}
-          height={imageHeight}
-          className={`h-auto w-auto ${imgMax}`}
-          priority={variant === "header"}
-        />
+        {useDefaultDarkPair ? (
+          <>
+            <Image
+              src={SITE_LOGO_PATH}
+              alt={imageAlt}
+              width={imageWidth}
+              height={imageHeight}
+              className={`h-auto w-auto ${imgMax} dark:hidden`}
+              priority={variant === "header"}
+            />
+            <Image
+              src={SITE_LOGO_PATH_DARK}
+              alt={imageAlt}
+              width={imageWidth}
+              height={imageHeight}
+              className={`h-auto w-auto ${imgMax} hidden dark:block`}
+              priority={variant === "header"}
+            />
+          </>
+        ) : (
+          <Image
+            src={src}
+            alt={imageAlt}
+            width={imageWidth}
+            height={imageHeight}
+            className={`h-auto w-auto ${imgMax}`}
+            priority={variant === "header"}
+          />
+        )}
         {children}
       </div>
     );
@@ -65,12 +87,12 @@ export function LaxLogo({
   return (
     <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
       <span
-        className={`font-headline font-semibold uppercase leading-none tracking-tight text-brand-900 ${titleSize}`}
+        className={`font-headline font-semibold uppercase leading-none tracking-tight text-brand-900 dark:text-inverse-on-surface ${titleSize}`}
       >
         {SITE_SHORT_NAME}
       </span>
       <span
-        className={`font-label font-semibold uppercase tracking-[0.28em] text-brand-900 ${subSize} mt-1`}
+        className={`font-label font-semibold uppercase tracking-[0.28em] text-brand-900 dark:text-accent-gold ${subSize} mt-1`}
       >
         London Auction House Ltd
       </span>
