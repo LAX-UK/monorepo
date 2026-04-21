@@ -292,16 +292,20 @@ html.dark {
   }
 }
 
-.reveal {
+/* Default: no clip — SSR and no-JS stay visible. JS arms data-reveal-init before animation. */
+.reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
   clip-path: inset(0 100% 0 0);
 }
 
 .reveal__inner {
   height: 100%;
   width: 100%;
-  transform: scale(1.08);
   transform-origin: center;
   will-change: transform;
+}
+
+.reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+  transform: scale(1.08);
 }
 
 .reveal--wipe[data-revealed="true"],
@@ -315,8 +319,12 @@ html.dark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
     clip-path: none;
+  }
+
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+    transform: none;
   }
 
   .reveal,
