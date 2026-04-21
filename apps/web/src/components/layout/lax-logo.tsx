@@ -1,4 +1,4 @@
-import { SITE_LOGO_PATH, SITE_LOGO_PATH_DARK, SITE_SHORT_NAME } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -39,7 +39,6 @@ export function LaxLogo({
         ? "text-[10px] md:text-[11px]"
         : "text-[9px] md:text-[10px]";
   const src = imageSrc === "" ? null : (imageSrc ?? SITE_LOGO_PATH);
-  const useDefaultDarkPair = src === SITE_LOGO_PATH;
   const imgMax =
     variant === "footer"
       ? "max-h-[60px] max-w-[min(100%,320px)]"
@@ -50,35 +49,14 @@ export function LaxLogo({
   if (src) {
     return (
       <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
-        {useDefaultDarkPair ? (
-          <>
-            <Image
-              src={SITE_LOGO_PATH}
-              alt={imageAlt}
-              width={imageWidth}
-              height={imageHeight}
-              className={`h-auto w-auto ${imgMax} dark:hidden`}
-              priority={variant === "header"}
-            />
-            <Image
-              src={SITE_LOGO_PATH_DARK}
-              alt={imageAlt}
-              width={imageWidth}
-              height={imageHeight}
-              className={`h-auto w-auto ${imgMax} hidden dark:block`}
-              priority={variant === "header"}
-            />
-          </>
-        ) : (
-          <Image
-            src={src}
-            alt={imageAlt}
-            width={imageWidth}
-            height={imageHeight}
-            className={`h-auto w-auto ${imgMax}`}
-            priority={variant === "header"}
-          />
-        )}
+        <Image
+          src={src}
+          alt={imageAlt}
+          width={imageWidth}
+          height={imageHeight}
+          className={`h-auto w-auto ${imgMax} dark:brightness-0 dark:invert`}
+          priority={variant === "header"}
+        />
         {children}
       </div>
     );
