@@ -37,6 +37,7 @@ export function NotificationsInboxBoard() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(
     async (offset: number, append: boolean) => {
@@ -74,6 +75,18 @@ export function NotificationsInboxBoard() {
       cancelled = true;
     };
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (items.length === 0) {
+      setFocusedId(null);
+      return;
+    }
+    setFocusedId((prev) => {
+      if (prev && items.some((x) => x.id === prev)) return prev;
+      return items[0]?.id ?? null;
+    });
+  }, [items, loading]);
 
   useUserNotifications({
     enabled: !loading,
@@ -279,6 +292,11 @@ export function NotificationsInboxBoard() {
     [archiveOne, markReadOne, selected, toggle],
   );
 
+  const focused = useMemo(
+    () => (focusedId ? (items.find((n) => n.id === focusedId) ?? null) : null),
+    [focusedId, items],
+  );
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <PageHeader
@@ -330,7 +348,111 @@ export function NotificationsInboxBoard() {
             description="Nothing in this view yet. Try another tab or clear the type filter."
           />
         ) : (
-          <DataTable columns={columns} data={items} emptyMessage="No notifications in this view." />
+          <>
+            <div className="hidden lg:block">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
+                <nav
+                  aria-label="Notification threads"
+                  className="max-h-[70vh] overflow-y-auto rounded-xl border border-outline-variant/15 bg-surface-container-lowest/60 shadow-sm"
+                >
+                  {items.map((n) => {
+                    const isActive = n.id === focusedId;
+                    return (
+                      <div
+                        key={n.id}
+                        className={`flex gap-3 border-b border-outline-variant/10 p-3 last:border-b-0 ${
+                          isActive ? "bg-surface-container-high/80" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.has(n.id)}
+                          onChange={() => toggle(n.id)}
+                          aria-label={`Select ${n.title}`}
+                          className="mt-1 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFocusedId(n.id)}
+                          className="min-w-0 flex-1 rounded-md text-left transition-colors hover:bg-surface-container-high/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        >
+                          <span
+                            className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
+                              n.read ? "opacity-60" : ""
+                            }`}
+                          >
+                            {n.title}
+                          </span>
+                          <p
+                            className={`mt-1 line-clamp-2 font-body text-sm text-on-surface-variant ${
+                              n.read ? "opacity-70" : ""
+                            }`}
+                          >
+                            {n.message}
+                          </p>
+                          <p className="mt-2 font-body text-xs text-on-surface-variant/90">
+                            {n.type} · {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </nav>
+                <article
+                  aria-live="polite"
+                  className="min-h-[280px] rounded-xl border border-outline-variant/15 bg-surface-container-lowest/40 p-6 shadow-sm"
+                >
+                  {focused ? (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+                          {focused.title}
+                        </p>
+                        <p className="mt-2 font-body text-sm text-on-surface">{focused.message}</p>
+                        <p className="mt-3 font-body text-xs text-on-surface-variant">
+                          {focused.type} · {new Date(focused.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          disabled={focused.read}
+                          onClick={() => void markReadOne(focused.id)}
+                        >
+                          Mark as read
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => void archiveOne(focused.id)}
+                        >
+                          Archive
+                        </Button>
+                        {focused.lotId ? (
+                          <Button type="button" variant="secondary" asChild>
+                            <Link href={`/artwork/${focused.lotId}`}>View lot</Link>
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="font-body text-sm text-on-surface-variant">
+                      Select a notification.
+                    </p>
+                  )}
+                </article>
+              </div>
+            </div>
+            <div className="lg:hidden">
+              <DataTable
+                columns={columns}
+                data={items}
+                emptyMessage="No notifications in this view."
+              />
+            </div>
+          </>
         )}
       </div>
 

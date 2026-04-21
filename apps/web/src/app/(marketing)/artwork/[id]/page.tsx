@@ -3,7 +3,7 @@ import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-vi
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
-import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerLotBids, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -37,6 +37,12 @@ export default async function ArtworkPage({ params }: PageProps) {
     notFound();
   }
 
+  const watchlistPromise = session
+    ? getServerDataContainer()
+        .then((c) => c.watchlist.listMine())
+        .catch(() => [])
+    : Promise.resolve([]);
+
   const [initialBids, seller, relatedRaw, watchlist] = await Promise.all([
     getServerLotBids(id, 30).catch(() => []),
     publicReader.getById(auction.sellerId).catch(() => null),
@@ -50,7 +56,7 @@ export default async function ArtworkPage({ params }: PageProps) {
           })
           .catch(() => [])
       : Promise.resolve([]),
-    session ? getServerMyWatchlist().catch(() => []) : Promise.resolve([]),
+    watchlistPromise,
   ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({

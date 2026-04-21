@@ -5,15 +5,18 @@ import type { SubmissionListFilterValues } from "@/lib/forms/submission/submissi
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export default async function DashboardSubmissionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const initialQ = (sp.q ?? "").trim().slice(0, 200);
   const status =
     sp.status === "draft" ||
     sp.status === "submitted" ||
@@ -37,15 +40,18 @@ export default async function DashboardSubmissionsPage({
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
-  const tableRows = rows.map((s) => ({
+  const mapped = rows.map((s) => ({
     id: s.id,
     title: s.title,
     status: s.status,
     updatedAt: s.updatedAt.toISOString(),
   }));
+  const qLower = initialQ.toLowerCase();
+  const tableRows =
+    initialQ.length === 0 ? mapped : mapped.filter((r) => r.title.toLowerCase().includes(qLower));
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
       <PageHeader
         title="Your submissions"
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
@@ -56,13 +62,21 @@ export default async function DashboardSubmissionsPage({
           </Button>
         }
       />
-      {(error || loadError) && (
+      {error || loadError ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load</AlertTitle>
           <AlertDescription>{loadError ?? error}</AlertDescription>
         </Alert>
+      ) : (
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <SubmissionsBoard
+            rows={tableRows}
+            initialStatus={initialStatus}
+            initialQ={initialQ}
+            fetchedCount={mapped.length}
+          />
+        </Suspense>
       )}
-      <SubmissionsBoard rows={tableRows} initialStatus={initialStatus} />
     </div>
   );
 }

@@ -45,6 +45,12 @@ export function CommandPalette({ variant }: Props) {
   }, []);
 
   useEffect(() => {
+    const onPaletteOpen = () => setOpen(true);
+    window.addEventListener("lax-command-palette-open", onPaletteOpen);
+    return () => window.removeEventListener("lax-command-palette-open", onPaletteOpen);
+  }, []);
+
+  useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
     if (open) {

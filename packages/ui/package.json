@@ -101,6 +101,38 @@
       "types": "./dist/components/ui/page-header.d.ts",
       "default": "./dist/components/ui/page-header.js"
     },
+    "./components/status-badge": {
+      "types": "./dist/components/ui/status-badge.d.ts",
+      "default": "./dist/components/ui/status-badge.js"
+    },
+    "./components/sparkline": {
+      "types": "./dist/components/ui/sparkline.d.ts",
+      "default": "./dist/components/ui/sparkline.js"
+    },
+    "./components/kpi-tile": {
+      "types": "./dist/components/ui/kpi-tile.d.ts",
+      "default": "./dist/components/ui/kpi-tile.js"
+    },
+    "./components/toolbar": {
+      "types": "./dist/components/ui/toolbar.d.ts",
+      "default": "./dist/components/ui/toolbar.js"
+    },
+    "./components/section-nav": {
+      "types": "./dist/components/ui/section-nav.d.ts",
+      "default": "./dist/components/ui/section-nav.js"
+    },
+    "./components/page-skeleton": {
+      "types": "./dist/components/ui/page-skeleton.d.ts",
+      "default": "./dist/components/ui/page-skeleton.js"
+    },
+    "./components/drawer-detail": {
+      "types": "./dist/components/ui/drawer-detail.d.ts",
+      "default": "./dist/components/ui/drawer-detail.js"
+    },
+    "./components/date-range-picker": {
+      "types": "./dist/components/ui/date-range-picker.d.ts",
+      "default": "./dist/components/ui/date-range-picker.js"
+    },
     "./components/sonner": {
       "types": "./dist/components/ui/sonner.d.ts",
       "default": "./dist/components/ui/sonner.js"

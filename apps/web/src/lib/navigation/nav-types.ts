@@ -7,6 +7,11 @@ export type NavItem = {
   badge?: number;
 };
 
+export type NavGroup = {
+  title: string;
+  items: readonly NavItem[];
+};
+
 export type NavItemsProvider = {
   getItems(): readonly NavItem[];
 };

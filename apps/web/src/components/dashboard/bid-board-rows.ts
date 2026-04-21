@@ -1,5 +1,13 @@
 import type { Bid, Lot } from "@auction/types";
 
+export const bidTabs = ["active", "won", "lost"] as const;
+export type BidTab = (typeof bidTabs)[number];
+
+export function parseBidTab(raw: string | null | undefined, fallback: BidTab = "active"): BidTab {
+  if (raw && (bidTabs as readonly string[]).includes(raw)) return raw as BidTab;
+  return fallback;
+}
+
 export type BidBoardRow = {
   bid: Bid;
   lot: Lot | null;

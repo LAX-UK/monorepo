@@ -60,6 +60,8 @@ export type NewSubmissionFormValues = z.infer<typeof newSubmissionFormSchema>;
 
 export const submissionListFilterSchema = z.object({
   status: z.union([z.literal("all"), z.enum(itemSubmissionStatuses)]),
+  /** Optional title contains filter (URL `q`, server-truth on apply). */
+  q: z.string().max(200),
 });
 
 export type SubmissionListFilterValues = z.infer<typeof submissionListFilterSchema>;

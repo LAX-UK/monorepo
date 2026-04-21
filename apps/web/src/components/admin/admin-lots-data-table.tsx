@@ -1,6 +1,8 @@
 "use client";
 
+import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { DataTable } from "@auction/ui/components/data-table";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -35,7 +37,15 @@ function lotColumns(): ColumnDef<AdminLotTableRow>[] {
         <span className="text-on-surface-variant">{row.original.auctionType}</span>
       ),
     },
-    { accessorKey: "status", header: "Status" },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <StatusBadge variant={lotStatusToBadgeVariant(row.original.status)}>
+          {row.original.status}
+        </StatusBadge>
+      ),
+    },
     {
       accessorKey: "endTimeLabel",
       header: "Ends",

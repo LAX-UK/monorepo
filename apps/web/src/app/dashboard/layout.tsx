@@ -1,3 +1,4 @@
+import { DashboardBottomNav } from "@/components/layout/dashboard-bottom-nav";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -20,8 +21,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <DashboardShell user={user} mobileTitle="Dashboard" sidebar={<DashboardSidebar user={user} />}>
-      {children}
-    </DashboardShell>
+    <>
+      <DashboardShell
+        user={user}
+        mobileTitle="Dashboard"
+        sidebar={<DashboardSidebar user={user} />}
+      >
+        <div className="pb-20 lg:pb-0">{children}</div>
+      </DashboardShell>
+      <DashboardBottomNav />
+    </>
   );
 }

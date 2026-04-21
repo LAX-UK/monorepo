@@ -1,8 +1,10 @@
 "use client";
 
 import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
+import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { PaymentStatus } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -36,7 +38,15 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
       header: "Amount",
       cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
     },
-    { accessorKey: "status", header: "Status" },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <StatusBadge variant={paymentStatusToBadgeVariant(row.original.status)}>
+          {row.original.status}
+        </StatusBadge>
+      ),
+    },
     {
       id: "actions",
       header: "",

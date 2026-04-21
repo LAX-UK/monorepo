@@ -1,6 +1,7 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import Image from "next/image";
@@ -10,16 +11,6 @@ import { redirect } from "next/navigation";
 type PageProps = {
   params: Promise<{ lotId: string }>;
 };
-
-function totalsFromLot(currentPrice: string, buyerPremiumRate: string) {
-  const hammer = Number.parseFloat(currentPrice);
-  const rate = Number.parseFloat(buyerPremiumRate);
-  const safeHammer = Number.isFinite(hammer) ? hammer : 0;
-  const safeRate = Number.isFinite(rate) ? rate : 0;
-  const premium = safeHammer * safeRate;
-  const total = safeHammer + premium;
-  return { hammer: safeHammer, premium, total, rate: safeRate };
-}
 
 export default async function DashboardCheckoutPage({ params }: PageProps) {
   const { lotId } = await params;
@@ -34,13 +25,15 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
     redirect("/dashboard/portfolio");
   }
 
-  const { premium, total, rate } = totalsFromLot(auction.currentPrice, auction.buyerPremiumRate);
-  const premiumPercentLabel = `${Math.round(rate * 100)}%`;
+  const { premium, total, premiumPercentLabel } = buildCheckoutTotalsVm(
+    auction.currentPrice,
+    auction.buyerPremiumRate,
+  );
 
   const img = auction.images[0];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen mx-auto w-full max-w-[var(--container-inner,1376px)]">
       <div className="mb-10">
         <Link
           href="/dashboard/portfolio"

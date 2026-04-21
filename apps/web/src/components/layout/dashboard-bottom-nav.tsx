@@ -1,0 +1,43 @@
+"use client";
+
+import { MaterialIcon } from "@/components/ui/material-icon";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const tabs = [
+  { href: "/dashboard", label: "Home", icon: "dashboard" as const },
+  { href: "/dashboard/bids", label: "Bids", icon: "gavel" as const },
+  { href: "/dashboard/portfolio", label: "Collection", icon: "palette" as const },
+  { href: "/dashboard/submissions", label: "Sell", icon: "storefront" as const },
+  { href: "/dashboard/settings/profile", label: "You", icon: "person" as const },
+];
+
+export function DashboardBottomNav() {
+  const pathname = usePathname();
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-outline-variant/15 bg-surface-container-lowest/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-md lg:hidden"
+      aria-label="Dashboard sections"
+    >
+      {tabs.map((t) => {
+        const active =
+          t.href === "/dashboard"
+            ? pathname === "/dashboard"
+            : pathname === t.href || pathname.startsWith(`${t.href}/`);
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg py-2 font-label text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+              active ? "text-primary" : "text-on-surface-variant hover:text-on-surface"
+            }`}
+            aria-current={active ? "page" : undefined}
+          >
+            <MaterialIcon name={t.icon} className="text-xl" />
+            <span className="truncate">{t.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

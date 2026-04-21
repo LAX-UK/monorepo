@@ -1,34 +1,45 @@
-import { buildBidBoardRows } from "@/components/dashboard/bid-board-rows";
+import { parseBidTab } from "@/components/dashboard/bid-board-rows";
 import { BidsBoard } from "@/components/dashboard/bids-board";
-import { getServerMyBids } from "@/lib/data/http/dashboard.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { buildDashboardBidsBoardVm } from "@/lib/data/view-models/dashboard-bids.vm";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { Suspense } from "react";
 
-export default async function DashboardBidsPage() {
+type PageProps = {
+  searchParams: Promise<{ tab?: string; q?: string }>;
+};
+
+export default async function DashboardBidsPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const initialTab = parseBidTab(sp.tab);
+  const initialQ = (sp.q ?? "").trim().slice(0, 200);
   const user = await getServerSessionUser();
   const now = Date.now();
-  let rows: Awaited<ReturnType<typeof getServerMyBids>> = [];
+  const container = await getServerDataContainer();
+  let rows: Awaited<ReturnType<typeof container.bids.listMine>> = [];
   let fetchError: string | null = null;
   try {
-    rows = await getServerMyBids();
+    rows = await container.bids.listMine();
   } catch (e) {
     rows = [];
     fetchError = e instanceof Error ? e.message : "Could not load bids.";
   }
 
-  const latestByLot = new Map<string, (typeof rows)[0]>();
-  for (const row of rows) {
-    const prev = latestByLot.get(row.bid.lotId);
-    if (!prev || row.bid.createdAt > prev.bid.createdAt) {
-      latestByLot.set(row.bid.lotId, row);
-    }
-  }
-  const unique = [...latestByLot.values()].sort((a, b) => {
-    const ae = a.lot?.endTime.getTime() ?? 0;
-    const be = b.lot?.endTime.getTime() ?? 0;
-    return ae - be;
-  });
+  const { active, won, lost } = buildDashboardBidsBoardVm(rows, user?.id, now);
 
-  const { active, won, lost } = buildBidBoardRows(unique, user?.id, now);
-
-  return <BidsBoard fetchError={fetchError} active={active} won={won} lost={lost} />;
+  return (
+    <Suspense
+      fallback={<PageSkeleton variant="table" className="max-w-[var(--container-inner,1376px)]" />}
+    >
+      <BidsBoard
+        fetchError={fetchError}
+        active={active}
+        won={won}
+        lost={lost}
+        initialTab={initialTab}
+        initialQ={initialQ}
+      />
+    </Suspense>
+  );
 }

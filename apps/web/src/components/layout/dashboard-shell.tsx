@@ -7,6 +7,7 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { breadcrumbsForPath } from "@/lib/navigation/dashboard-breadcrumbs";
+import { createLocalStorageSidebarCollapsedStore } from "@/lib/preferences/preferences-store";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -40,6 +41,9 @@ export type DashboardShellSidebarProps = {
   onNavigate: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  desktopSidebarCollapsed: boolean;
+  setDesktopSidebarCollapsed: (collapsed: boolean) => void;
+  toggleDesktopSidebarCollapsed: () => void;
 };
 
 const ShellContext = createContext<DashboardShellSidebarProps | null>(null);
@@ -55,7 +59,6 @@ type Props = {
   children: ReactNode;
   mobileTitle?: string;
   sidebar: ReactNode;
-  /** Collector menus link to `/dashboard/*`; admin shell omits those (admins cannot use collector dashboard). */
   accountMenu?: "collector" | "admin";
 };
 
@@ -80,6 +83,10 @@ function AdminAccountMenuItems() {
   );
 }
 
+function openCommandPalette() {
+  window.dispatchEvent(new Event("lax-command-palette-open"));
+}
+
 export function DashboardShell({
   user,
   children,
@@ -89,6 +96,20 @@ export function DashboardShell({
 }: Props) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const store = createLocalStorageSidebarCollapsedStore();
+    setDesktopSidebarCollapsed(store.getCollapsed());
+  }, []);
+
+  const toggleDesktopSidebarCollapsed = useCallback(() => {
+    setDesktopSidebarCollapsed((prev) => {
+      const next = !prev;
+      createLocalStorageSidebarCollapsedStore().setCollapsed(next);
+      return next;
+    });
+  }, []);
 
   const closeNav = useCallback(() => setMobileNavOpen(false), []);
   const setMobileOpen = useCallback((open: boolean) => {
@@ -101,10 +122,17 @@ export function DashboardShell({
   }, [pathname]);
 
   const crumbs = breadcrumbsForPath(pathname, user);
+  const sidebarWidth = desktopSidebarCollapsed ? "4.5rem" : "16rem";
+
+  const isMac =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-screen bg-surface font-body text-on-surface">
+      <div
+        className="flex min-h-screen bg-surface font-body text-on-surface"
+        style={{ ["--sidebar-width" as string]: sidebarWidth }}
+      >
         <CommandPaletteLazy variant="dashboard" />
         <div
           className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-3 backdrop-blur-md lg:hidden"
@@ -123,6 +151,14 @@ export function DashboardShell({
             {mobileTitle}
           </span>
           <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              aria-label="Open quick search"
+              onClick={openCommandPalette}
+            >
+              <MaterialIcon name="search" />
+            </button>
             <NotificationBell />
             <Link
               href="/"
@@ -135,42 +171,71 @@ export function DashboardShell({
         </div>
 
         <ShellContext.Provider
-          value={{ onNavigate: closeNav, mobileOpen: mobileNavOpen, setMobileOpen }}
+          value={{
+            onNavigate: closeNav,
+            mobileOpen: mobileNavOpen,
+            setMobileOpen,
+            desktopSidebarCollapsed,
+            setDesktopSidebarCollapsed,
+            toggleDesktopSidebarCollapsed,
+          }}
         >
           {sidebar}
         </ShellContext.Provider>
 
-        <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-64">
+        <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-[var(--sidebar-width)]">
           <div className="hidden items-center justify-between gap-4 border-b border-outline-variant/10 px-6 py-3 lg:flex lg:px-10">
-            <Breadcrumb>
-              <BreadcrumbList>
-                {crumbs.map((c, i) => (
-                  <Fragment key={c.href}>
-                    {i > 0 ? (
-                      <BreadcrumbSeparator>
-                        <span className="text-on-surface-variant/50" aria-hidden>
-                          /
-                        </span>
-                      </BreadcrumbSeparator>
-                    ) : null}
-                    <BreadcrumbItem>
-                      {i === crumbs.length - 1 ? (
-                        <BreadcrumbPage className="font-medium text-on-surface">
-                          {c.label}
-                        </BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <Link href={c.href} className="hover:text-primary">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <button
+                type="button"
+                className="hidden shrink-0 rounded-md border border-outline-variant/20 bg-surface-container-low px-2 py-2 text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:inline-flex"
+                aria-label={desktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-pressed={desktopSidebarCollapsed}
+                onClick={toggleDesktopSidebarCollapsed}
+              >
+                <MaterialIcon name={desktopSidebarCollapsed ? "panel_left" : "panel_left_close"} />
+              </button>
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {crumbs.map((c, i) => (
+                    <Fragment key={c.href}>
+                      {i > 0 ? (
+                        <BreadcrumbSeparator>
+                          <span className="text-on-surface-variant/50" aria-hidden>
+                            /
+                          </span>
+                        </BreadcrumbSeparator>
+                      ) : null}
+                      <BreadcrumbItem>
+                        {i === crumbs.length - 1 ? (
+                          <BreadcrumbPage className="font-medium text-on-surface">
                             {c.label}
-                          </Link>
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                  </Fragment>
-                ))}
-              </BreadcrumbList>
-            </Breadcrumb>
-            <div className="flex shrink-0 items-center gap-2">
+                          </BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink asChild>
+                            <Link href={c.href} className="hover:text-primary">
+                              {c.label}
+                            </Link>
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 font-label text-xs uppercase tracking-widest text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <MaterialIcon name="search" className="text-base" />
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+                  {isMac ? "⌘" : "Ctrl"}+K
+                </kbd>
+              </button>
               <ThemeToggle />
               <NotificationBell />
               <DropdownMenu>
@@ -208,7 +273,10 @@ export function DashboardShell({
               </DropdownMenu>
             </div>
           </div>
-          <div id="main-content" className="px-4 py-10 md:px-12 md:py-12 lg:px-10 xl:px-16">
+          <div
+            id="main-content"
+            className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-10 md:px-8 md:py-12 lg:px-10 xl:px-12"
+          >
             {children}
           </div>
         </div>

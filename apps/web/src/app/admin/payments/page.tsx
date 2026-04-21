@@ -2,8 +2,10 @@ import {
   type AdminPaymentTableRow,
   AdminPaymentsDataTable,
 } from "@/components/admin/admin-payments-data-table";
+import { TableScroll } from "@/components/ui/table-scroll";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -41,24 +43,24 @@ export default async function AdminPaymentsPage({
   }));
 
   return (
-    <div className="max-w-6xl space-y-8">
-      <DisplayHeading as="h1" className="text-4xl">
+    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
         Payments
       </DisplayHeading>
 
-      {(error || loadError) && (
-        <div
-          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
-          role="alert"
-        >
-          {loadError ?? error}
-        </div>
-      )}
+      {error || loadError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Could not load payments</AlertTitle>
+          <AlertDescription>{loadError ?? error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {payments.length === 0 && !loadError ? (
         <p className="text-on-surface-variant">No payment records yet.</p>
-      ) : (
-        <AdminPaymentsDataTable rows={paymentRows} />
+      ) : loadError ? null : (
+        <TableScroll>
+          <AdminPaymentsDataTable rows={paymentRows} />
+        </TableScroll>
       )}
     </div>
   );

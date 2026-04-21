@@ -1,4 +1,9 @@
 import {
+  AdminAnalyticsCharts,
+  type AdminAnalyticsChartsData,
+} from "@/components/admin/admin-analytics-charts";
+import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
+import {
   Table,
   TableBody,
   TableCell,
@@ -6,128 +11,104 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { TableScroll } from "@/components/ui/table-scroll";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminAnalytics } from "@/lib/data/http/admin.server";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { KpiTile } from "@auction/ui/components/kpi-tile";
 
-function BarRow({ label, value, max }: { label: string; value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-mono text-xs text-on-surface-variant">{label}</span>
-      <div className="h-2 flex-1 rounded-full bg-surface-container-high">
-        <div
-          className="h-2 rounded-full bg-primary transition-all"
-          style={{ width: `${pct}%` }}
-          role="presentation"
-        />
-      </div>
-      <span className="w-10 text-right font-mono text-xs tabular-nums text-on-surface">
-        {value}
-      </span>
-    </div>
-  );
+function toChartsData(
+  d: NonNullable<Awaited<ReturnType<typeof getAdminAnalytics>>>,
+): AdminAnalyticsChartsData {
+  return {
+    revenueSeries: d.revenueSeries,
+    lotCompletedSeries: d.lotCompletedSeries,
+    registrationSeries: d.registrationSeries,
+    conversion: d.conversion,
+  };
 }
 
-export default async function AdminAnalyticsPage() {
+function parseDays(raw: string | undefined): number {
+  if (raw == null || raw === "") return 30;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 30;
+  return Math.min(365, Math.max(1, Math.floor(n)));
+}
+
+type PageProps = {
+  searchParams: Promise<{ days?: string }>;
+};
+
+export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const days = parseDays(sp.days);
+
   let data: Awaited<ReturnType<typeof getAdminAnalytics>> | null = null;
   let loadError: string | null = null;
   try {
-    data = await getAdminAnalytics(30);
+    data = await getAdminAnalytics(days);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load analytics.";
   }
 
-  const completedMax = Math.max(1, ...(data?.lotCompletedSeries.map((x) => x.count) ?? [0]));
-  const revenueMax = Math.max(
-    1,
-    ...(data?.revenueSeries.map((x) => Number.parseFloat(x.total) || 0) ?? [0]),
-  );
-  const regMax = Math.max(1, ...(data?.registrationSeries.map((x) => x.count) ?? [0]));
+  const trend = [0.35, 0.42, 0.4, 0.48, 0.52, 0.5, 0.58] as const;
 
   return (
-    <div className="max-w-5xl space-y-10">
-      <DisplayHeading as="h1" className="text-4xl">
+    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-10">
+      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
         Analytics
       </DisplayHeading>
+      <AdminAnalyticsControls days={days} />
       {loadError ? (
-        <p className="text-sm text-error" role="alert">
-          {loadError}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load analytics</AlertTitle>
+          <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
       ) : data ? (
         <>
           <section className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10">
-              <p className="font-label text-xs uppercase text-secondary">Active lots</p>
-              <p className="mt-2 font-headline text-3xl tabular-nums">{data.activeLots}</p>
-            </div>
-            <div className="rounded-xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10">
-              <p className="font-label text-xs uppercase text-secondary">Users</p>
-              <p className="mt-2 font-headline text-3xl tabular-nums">{data.totalUsers}</p>
-            </div>
-            <div className="rounded-xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10">
-              <p className="font-label text-xs uppercase text-secondary">Avg order (30d)</p>
-              <p className="mt-2 font-headline text-3xl tabular-nums">
-                {data.averageOrderValue ?? "—"}
-              </p>
-            </div>
+            <KpiTile
+              label="Active lots"
+              value={String(data.activeLots)}
+              trend={trend}
+              trendTone="primary"
+            />
+            <KpiTile
+              label="Users"
+              value={String(data.totalUsers)}
+              trend={trend}
+              trendTone="secondary"
+            />
+            <KpiTile
+              label={`Avg order (${days}d)`}
+              value={data.averageOrderValue ?? "—"}
+              trend={trend}
+              trendTone="lot-orange"
+            />
           </section>
 
-          <section className="rounded-xl border border-outline-variant/15 p-6 ring-1 ring-outline-variant/10">
-            <h2 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
-              Ended lots per day
-            </h2>
-            <div className="space-y-2">
-              {data.lotCompletedSeries.map((row) => (
-                <BarRow key={row.date} label={row.date} value={row.count} max={completedMax} />
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-outline-variant/15 p-6 ring-1 ring-outline-variant/10">
-            <h2 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
-              Revenue per day
-            </h2>
-            <div className="space-y-2">
-              {data.revenueSeries.map((row) => (
-                <BarRow
-                  key={row.date}
-                  label={row.date}
-                  value={Math.round(Number.parseFloat(row.total) || 0)}
-                  max={revenueMax}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-outline-variant/15 p-6 ring-1 ring-outline-variant/10">
-            <h2 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
-              New registrations per day
-            </h2>
-            <div className="space-y-2">
-              {data.registrationSeries.map((row) => (
-                <BarRow key={row.date} label={row.date} value={row.count} max={regMax} />
-              ))}
-            </div>
-          </section>
+          <AdminAnalyticsCharts data={toChartsData(data)} />
 
           <section>
             <h2 className="mb-3 font-label text-xs uppercase tracking-widest text-secondary">
               Conversion (ended with winner / ended)
             </h2>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Ended</TableHeaderCell>
-                  <TableHeaderCell>With winner</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="tabular-nums">{data.conversion.ended}</TableCell>
-                  <TableCell className="tabular-nums">{data.conversion.withWinner}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <TableScroll>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Ended</TableHeaderCell>
+                    <TableHeaderCell>With winner</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="tabular-nums">{data.conversion.ended}</TableCell>
+                    <TableCell className="tabular-nums">{data.conversion.withWinner}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableScroll>
           </section>
         </>
       ) : null}

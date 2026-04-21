@@ -1,15 +1,24 @@
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
 export type EmptyStateProps = {
   icon?: React.ReactNode;
+  /** Larger decorative slot (illustration, empty artwork, etc.) */
+  illustration?: React.ReactNode;
   title: string;
   description?: string;
   action?: React.ReactNode;
   className?: string;
 };
 
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  illustration,
+  title,
+  description,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -17,6 +26,9 @@ export function EmptyState({ icon, title, description, action, className }: Empt
         className,
       )}
     >
+      {illustration ? (
+        <div className="mb-6 max-w-xs text-on-surface-variant [&_svg]:max-h-32">{illustration}</div>
+      ) : null}
       {icon ? <div className="mb-4 text-primary [&_svg]:size-12">{icon}</div> : null}
       <h3 className="font-headline text-xl text-on-surface">{title}</h3>
       {description ? (
