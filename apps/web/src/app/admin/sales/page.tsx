@@ -1,52 +1,88 @@
-import {
-  type AdminSaleTableRow,
-  AdminSalesDataTable,
-} from "@/components/admin/admin-sales-data-table";
-import { TableScroll } from "@/components/ui/table-scroll";
-import { DisplayHeading } from "@/components/ui/typography";
+import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
+import type { SaleStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
-export default async function AdminSalesPage() {
+const statuses: (SaleStatus | "all")[] = [
+  "all",
+  "draft",
+  "scheduled",
+  "active",
+  "ended",
+  "cancelled",
+];
+
+export default async function AdminSalesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; error?: string }>;
+}) {
+  const sp = await searchParams;
+  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const statusFilter =
+    sp.status === "all" || !sp.status ? undefined : (sp.status as SaleStatus);
+
   let rows: Awaited<ReturnType<typeof getAdminSalesList>> = [];
   let err: string | null = null;
   try {
-    rows = await getAdminSalesList({ limit: 100 });
+    rows = await getAdminSalesList({
+      limit: 100,
+      ...(statusFilter ? { status: statusFilter } : {}),
+    });
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load sales.";
   }
 
-  const saleRows: AdminSaleTableRow[] = rows.map(({ sale, lots }) => ({
-    saleId: sale.id,
-    title: sale.title,
-    status: sale.status,
-    lotCount: lots.length,
-  }));
+  const boardRows = rows.map(toAdminSaleBoardRow);
+
+  const statusChips = (
+    <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
+      <legend className="sr-only">Filter by status</legend>
+      {statuses.map((s) => {
+        const qs = new URLSearchParams();
+        if (s !== "all") qs.set("status", s);
+        const href = qs.toString() ? `/admin/sales?${qs.toString()}` : "/admin/sales";
+        const active = (s === "all" && !sp.status) || sp.status === s;
+        return (
+          <Link
+            key={s}
+            href={href}
+            className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+              active
+                ? "bg-primary text-on-primary ring-primary"
+                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+            }`}
+          >
+            {s}
+          </Link>
+        );
+      })}
+    </fieldset>
+  );
 
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
-      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
-        Sales
-      </DisplayHeading>
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <p className="max-w-2xl font-body text-sm text-on-surface-variant">
-          Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots,
-          publish, or cancel from each sale page.
-        </p>
-        <Link
-          href="/admin/sales/new"
-          className="shrink-0 font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-        >
-          New sale
-        </Link>
-      </div>
+      <PageHeader
+        title="Sales"
+        description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
+        actions={
+          <Link
+            href="/admin/sales/new"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95"
+          >
+            New sale
+          </Link>
+        }
+      />
 
-      {err ? (
+      {err || error ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load sales</AlertTitle>
-          <AlertDescription>{err}</AlertDescription>
+          <AlertDescription>{err ?? error}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -57,7 +93,7 @@ export default async function AdminSalesPage() {
           action={
             <Link
               href="/admin/sales/new"
-              className="inline-flex items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-semibold uppercase tracking-[0.3em] text-on-primary shadow-sm hover:opacity-95"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-8 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95"
             >
               New sale
             </Link>
@@ -65,10 +101,19 @@ export default async function AdminSalesPage() {
         />
       ) : null}
 
-      {!err && rows.length > 0 ? (
-        <TableScroll>
-          <AdminSalesDataTable rows={saleRows} />
-        </TableScroll>
+      {!err && boardRows.length > 0 ? (
+        <AdminSalesBoard
+          rows={boardRows}
+          statusChips={statusChips}
+          toolbarEnd={
+            <Link
+              href="/sales"
+              className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
+            >
+              Public sales
+            </Link>
+          }
+        />
       ) : null}
     </div>
   );

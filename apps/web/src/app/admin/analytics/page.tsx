@@ -3,6 +3,7 @@ import {
   type AdminAnalyticsChartsData,
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
+import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
 import {
   Table,
   TableBody,
@@ -12,10 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableScroll } from "@/components/ui/table-scroll";
-import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminAnalytics } from "@/lib/data/http/admin.server";
+import {
+  compareCountSeriesHalves,
+  compareSeriesHalves,
+  formatPctChange,
+  pctToDeltaTone,
+  sparklineForCounts,
+  sparklineForMoney,
+  winRatePercent,
+} from "@/lib/data/view-models/admin-analytics.vm";
+import { formatMoney } from "@/lib/format-currency";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { KpiTile } from "@auction/ui/components/kpi-tile";
+import { CompareDelta, KpiTile, PageHeader, StatStrip } from "@auction/ui";
 
 function toChartsData(
   d: NonNullable<Awaited<ReturnType<typeof getAdminAnalytics>>>,
@@ -51,14 +61,28 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     loadError = e instanceof Error ? e.message : "Could not load analytics.";
   }
 
-  const trend = [0.35, 0.42, 0.4, 0.48, 0.52, 0.5, 0.58] as const;
+  const revHalf = data ? compareSeriesHalves(data.revenueSeries) : null;
+  const lotHalf = data ? compareCountSeriesHalves(data.lotCompletedSeries) : null;
+  const regHalf = data ? compareCountSeriesHalves(data.registrationSeries) : null;
+
+  const totalRev = data
+    ? data.revenueSeries.reduce((a, r) => a + (Number.parseFloat(r.total) || 0), 0)
+    : 0;
+  const totalEndedLots = data
+    ? data.lotCompletedSeries.reduce((a, r) => a + (r.count || 0), 0)
+    : 0;
+  const totalRegs = data
+    ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0)
+    : 0;
 
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-10">
-      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
-        Analytics
-      </DisplayHeading>
+      <PageHeader
+        title="Analytics"
+        description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
+      />
       <AdminAnalyticsControls days={days} />
+      {data ? <AdminAnalyticsExport data={toChartsData(data)} days={days} /> : null}
       {loadError ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load analytics</AlertTitle>
@@ -66,26 +90,74 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         </Alert>
       ) : data ? (
         <>
-          <section className="grid gap-4 sm:grid-cols-3">
+          <StatStrip>
             <KpiTile
-              label="Active lots"
-              value={String(data.activeLots)}
-              trend={trend}
+              label={`GMV (${days}d window)`}
+              value={formatMoney(totalRev)}
+              delta={
+                <CompareDelta
+                  label={formatPctChange(revHalf?.pctChange ?? null)}
+                  tone={pctToDeltaTone(revHalf?.pctChange ?? null)}
+                />
+              }
+              deltaTone="neutral"
+              trend={sparklineForMoney(data.sparklines?.revenue, data.revenueSeries)}
               trendTone="primary"
             />
             <KpiTile
-              label="Users"
+              label="Ended lots (series)"
+              value={String(totalEndedLots)}
+              delta={
+                <CompareDelta
+                  label={formatPctChange(lotHalf?.pctChange ?? null)}
+                  tone={pctToDeltaTone(lotHalf?.pctChange ?? null)}
+                />
+              }
+              deltaTone="neutral"
+              trend={sparklineForCounts(data.sparklines?.lotCompleted, data.lotCompletedSeries)}
+              trendTone="lot-orange"
+            />
+            <KpiTile
+              label="New registrations"
+              value={String(totalRegs)}
+              delta={
+                <CompareDelta
+                  label={formatPctChange(regHalf?.pctChange ?? null)}
+                  tone={pctToDeltaTone(regHalf?.pctChange ?? null)}
+                />
+              }
+              deltaTone="neutral"
+              trend={sparklineForCounts(data.sparklines?.registrations, data.registrationSeries)}
+              trendTone="secondary"
+            />
+            <KpiTile
+              label="Hammer rate"
+              value={winRatePercent(data.conversion.ended, data.conversion.withWinner)}
+              delta={
+                <CompareDelta
+                  label={`${data.conversion.withWinner} / ${data.conversion.ended} ended`}
+                  tone="neutral"
+                />
+              }
+              deltaTone="neutral"
+            />
+            <KpiTile
+              label="Active lots"
+              value={String(data.activeLots)}
+              trendTone="primary"
+            />
+            <KpiTile
+              label="Total users"
               value={String(data.totalUsers)}
-              trend={trend}
               trendTone="secondary"
             />
             <KpiTile
               label={`Avg order (${days}d)`}
               value={data.averageOrderValue ?? "—"}
-              trend={trend}
+              trend={sparklineForMoney(data.sparklines?.revenue, data.revenueSeries)}
               trendTone="lot-orange"
             />
-          </section>
+          </StatStrip>
 
           <AdminAnalyticsCharts data={toChartsData(data)} />
 

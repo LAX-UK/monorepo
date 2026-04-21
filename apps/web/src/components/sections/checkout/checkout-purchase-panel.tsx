@@ -212,10 +212,11 @@ export function CheckoutPurchasePanel({
               </p>
             ) : null}
             <Button
+              id="checkout-complete-purchase"
               type="submit"
               variant="primary"
               disabled={form.formState.isSubmitting}
-              className="w-full py-5"
+              className="w-full min-h-11 scroll-mt-28 py-5"
             >
               {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
             </Button>

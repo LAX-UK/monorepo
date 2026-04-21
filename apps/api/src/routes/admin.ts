@@ -57,6 +57,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ data });
   });
 
+  r.get("/metrics/today", async (c) => {
+    const data = await container.adminMetricsService.getTodaySnapshot();
+    return c.json({ data });
+  });
+
+  r.get("/metrics/live", async (c) => {
+    const bidsPerMinute = await container.adminMetricsService.getBidsPerMinute();
+    return c.json({ data: { bidsPerMinute } });
+  });
+
   r.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.adminUserService.list({

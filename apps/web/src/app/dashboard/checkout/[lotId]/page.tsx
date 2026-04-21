@@ -66,7 +66,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           )}
         </div>
 
-        <div className="w-full flex-1 px-0 pb-20 pt-10 lg:w-1/2 lg:px-16 lg:pt-16">
+        <div className="w-full flex-1 px-0 pb-28 pt-10 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
           <div className="mx-auto max-w-xl lg:mx-0">
             <h1 className="mb-3 font-headline text-4xl tracking-tight text-on-surface lg:text-5xl">
               {auction.title}
@@ -123,6 +123,19 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">
+        <div>
+          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">Total due</p>
+          <p className="font-headline text-lg tabular-nums text-primary">{formatMoney(total.toFixed(2))}</p>
+        </div>
+        <a
+          href="#checkout-complete-purchase"
+          className="inline-flex min-h-11 min-w-[10rem] items-center justify-center rounded-md bg-primary px-5 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm"
+        >
+          Pay
+        </a>
       </div>
     </div>
   );

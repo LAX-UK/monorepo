@@ -150,3 +150,22 @@ export { SectionCta } from "./components/ui/section-cta.js";
 export type { SectionCtaProps } from "./components/ui/section-cta.js";
 export { StickyBidBar } from "./components/ui/sticky-bid-bar.js";
 export type { StickyBidBarProps } from "./components/ui/sticky-bid-bar.js";
+export { CompareDelta } from "./components/ui/compare-delta.js";
+export type { CompareDeltaProps, CompareDeltaTone } from "./components/ui/compare-delta.js";
+export { StatStrip } from "./components/ui/stat-strip.js";
+export type { StatStripProps } from "./components/ui/stat-strip.js";
+export { TimelineStages } from "./components/ui/timeline-stages.js";
+export type { TimelineStage, TimelineStagesProps } from "./components/ui/timeline-stages.js";
+export { BulkActionBar } from "./components/ui/bulk-action-bar.js";
+export type { BulkActionBarProps } from "./components/ui/bulk-action-bar.js";
+export { InlineActionMenu } from "./components/ui/inline-action-menu.js";
+export type { InlineActionMenuItem, InlineActionMenuProps } from "./components/ui/inline-action-menu.js";
+export { LiveTicker } from "./components/ui/live-ticker.js";
+export type { LiveTickerProps } from "./components/ui/live-ticker.js";
+export { ReviewSplitPane } from "./components/ui/review-split-pane.js";
+export type { ReviewSplitPaneProps } from "./components/ui/review-split-pane.js";
+export { EntityTableShell } from "./components/ui/entity-table-shell.js";
+export type {
+  EntityTableResponsiveMode,
+  EntityTableShellProps,
+} from "./components/ui/entity-table-shell.js";

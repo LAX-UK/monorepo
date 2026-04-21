@@ -36,7 +36,8 @@ export function AdminAnalyticsCharts({ data }: Props) {
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="@container min-w-0">
+      <div className="grid grid-cols-1 gap-6 @[720px]:grid-cols-2">
       <Card className="border-outline-variant/15">
         <CardHeader>
           <CardTitle className="font-headline text-lg">Revenue (series)</CardTitle>
@@ -69,6 +70,7 @@ export function AdminAnalyticsCharts({ data }: Props) {
           <ChartRenderer kind="donut" data={donut} size={160} />
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

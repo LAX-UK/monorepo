@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/** Dashboard “Bidding preferences” (subset of notification prefs + optional client-only max bid hint). */
+export const biddingPreferencesPatchSchema = z.object({
+  outbidInApp: z.boolean().optional(),
+  outbidPush: z.boolean().optional(),
+  endingSoonPush: z.boolean().optional(),
+  defaultMaxBidAmount: z.string().max(32).nullable().optional(),
+});
+
 export const notificationPreferencePatchSchema = z.object({
   outbidInApp: z.boolean().optional(),
   wonInApp: z.boolean().optional(),

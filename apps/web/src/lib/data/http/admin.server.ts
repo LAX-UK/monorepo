@@ -110,7 +110,35 @@ export type AdminAnalyticsPayload = {
   averageOrderValue: string | null;
   registrationSeries: { date: string; count: number }[];
   totalUsers: number;
+  sparklines?: {
+    revenue: readonly number[];
+    lotCompleted: readonly number[];
+    registrations: readonly number[];
+  };
 };
+
+export type AdminTodayMetricsPayload = {
+  liveLots: number;
+  endingWithinHour: number;
+  draftLots: number;
+  pendingSubmissions: number;
+  stalePendingPayments: number;
+  revenueToday: string;
+};
+
+export async function getAdminMetricsToday(): Promise<AdminTodayMetricsPayload> {
+  const res = await authedServerFetch("/admin/metrics/today");
+  if (!res.ok) throw new Error(`Failed to load admin metrics: ${res.status}`);
+  const body = (await res.json()) as { data: AdminTodayMetricsPayload };
+  return body.data;
+}
+
+export async function getAdminMetricsLive(): Promise<{ bidsPerMinute: number }> {
+  const res = await authedServerFetch("/admin/metrics/live");
+  if (!res.ok) throw new Error(`Failed to load live metrics: ${res.status}`);
+  const body = (await res.json()) as { data: { bidsPerMinute: number } };
+  return body.data;
+}
 
 export async function getAdminAnalytics(days = 30): Promise<AdminAnalyticsPayload> {
   const res = await authedServerFetch(`/admin/analytics?days=${encodeURIComponent(String(days))}`);

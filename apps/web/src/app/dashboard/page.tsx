@@ -2,6 +2,7 @@ import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
+import { isDashboardV2Enabled } from "@/lib/feature-flags/dashboard-v2";
 import { formatMoney } from "@/lib/format-currency";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
@@ -70,7 +71,7 @@ async function DashboardHomeContent() {
     formatMoney,
   });
 
-  return <DashboardOverviewView vm={vm} />;
+  return <DashboardOverviewView vm={vm} featureV2={isDashboardV2Enabled()} />;
 }
 
 export default function DashboardHomePage() {

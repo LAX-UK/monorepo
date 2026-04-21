@@ -37,6 +37,8 @@ export type DashboardOverviewVm = {
   settlementsDue: PortfolioRow[];
   liveCount: number;
   acquiredCount: number;
+  /** Smart primary action for hero CTA */
+  primaryCta: { label: string; href: string } | null;
 };
 
 function stubTrend(seed: number): readonly number[] {
@@ -125,6 +127,30 @@ export function buildDashboardOverviewVm(input: {
     return portfolioSettlementLabel(row) !== "Paid";
   });
 
+  let primaryCta: { label: string; href: string } | null = null;
+  const firstSettlement = settlementsDue[0];
+  if (firstSettlement) {
+    primaryCta = {
+      label: `Pay for “${firstSettlement.lot.title}”`,
+      href: `/dashboard/checkout/${firstSettlement.lot.id}`,
+    };
+  } else {
+    const outbidLot = activeLots.find((lot) => activeLotBidHints[lot.id] === "outbid");
+    if (outbidLot) {
+      primaryCta = {
+        label: `Re-bid on “${outbidLot.title}”`,
+        href: `/artwork/${outbidLot.id}`,
+      };
+    } else {
+      const w = watchlist.find((x) => x.lot && x.lot.status === "active")?.lot;
+      if (w) {
+        primaryCta = { label: `Lot ending: “${w.title}”`, href: `/artwork/${w.id}` };
+      } else {
+        primaryCta = { label: "Start a submission", href: "/dashboard/submissions/new" };
+      }
+    }
+  }
+
   return {
     firstName,
     userId: user?.id ?? "",
@@ -146,5 +172,6 @@ export function buildDashboardOverviewVm(input: {
     settlementsDue,
     liveCount: activeLots.length,
     acquiredCount: portfolio.length,
+    primaryCta,
   };
 }

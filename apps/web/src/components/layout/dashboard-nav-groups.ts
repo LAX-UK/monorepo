@@ -7,6 +7,7 @@ export const dashboardNavGroups: readonly NavGroup[] = [
       { href: "/dashboard", label: "Overview", icon: "dashboard" },
       { href: "/dashboard/bids", label: "Active Bids", icon: "gavel" },
       { href: "/dashboard/portfolio", label: "Portfolio", icon: "palette" },
+      { href: "/dashboard/artist-follow", label: "Artists", icon: "person" },
       { href: "/dashboard/notifications", label: "Notifications", icon: "notifications" },
     ],
   },

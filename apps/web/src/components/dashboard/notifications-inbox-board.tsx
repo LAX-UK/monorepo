@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
 import type { UserNotification } from "@auction/types";
-import { DataTable } from "@auction/ui/components/data-table";
+import { BulkActionBar, DataTable } from "@auction/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -298,7 +298,9 @@ export function NotificationsInboxBoard() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div
+      className={`mx-auto max-w-5xl px-4 py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}
+    >
       <PageHeader
         title="Notifications"
         description="Manage alerts for bids, wins, and saved lots. Updates in real time when you are online."
@@ -324,20 +326,45 @@ export function NotificationsInboxBoard() {
           placeholder="Filter by type (e.g. outbid)"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="max-w-xs bg-surface-container-lowest"
+          className="max-w-xs min-h-11 bg-surface-container-lowest text-base md:text-sm"
         />
       </div>
 
-      {selected.size > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" variant="primary" onClick={() => void markReadMany()}>
-            Mark read ({selected.size})
+      <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+        {(
+          [
+            { key: "", label: "All types" },
+            { key: "outbid", label: "Outbid" },
+            { key: "lot_won", label: "Won" },
+            { key: "lot_lost", label: "Lost" },
+            { key: "payment_due", label: "Payment" },
+          ] as const
+        ).map((chip) => (
+          <button
+            key={chip.label}
+            type="button"
+            onClick={() => setTypeFilter(chip.key)}
+            className={`shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+              typeFilter === chip.key
+                ? "bg-primary text-on-primary ring-primary"
+                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <BulkActionBar count={selected.size}>
+          <Button type="button" variant="primary" className="min-h-11" onClick={() => void markReadMany()}>
+            Mark read
           </Button>
-          <Button type="button" variant="secondary" onClick={() => void archiveMany()}>
-            Archive ({selected.size})
+          <Button type="button" variant="secondary" className="min-h-11" onClick={() => void archiveMany()}>
+            Archive
           </Button>
-        </div>
-      ) : null}
+        </BulkActionBar>
+      </div>
 
       <div className="mt-6">
         {loading ? (

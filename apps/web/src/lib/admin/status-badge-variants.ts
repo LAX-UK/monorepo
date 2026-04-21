@@ -1,4 +1,4 @@
-import type { PaymentStatus } from "@auction/types";
+import type { PaymentStatus, SaleStatus } from "@auction/types";
 
 /** Matches `StatusBadge` `variant` prop in `@auction/ui`. */
 export type AdminStatusBadgeVariant =
@@ -11,6 +11,23 @@ export type AdminStatusBadgeVariant =
 
 /** Maps catalog lot lifecycle to `StatusBadge` variants (OCP: extend map, not callers). */
 export function lotStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "active":
+      return "live";
+    case "scheduled":
+      return "info";
+    case "draft":
+      return "neutral";
+    case "ended":
+      return "success";
+    case "cancelled":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export function saleStatusToBadgeVariant(status: SaleStatus): AdminStatusBadgeVariant {
   switch (status) {
     case "active":
       return "live";

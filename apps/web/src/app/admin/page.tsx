@@ -1,87 +1,102 @@
-import { Button } from "@/components/ui/button";
-import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
-import { BodyText, DisplayHeading, LabelCaps } from "@auction/ui";
-import { Button as UiButton } from "@auction/ui/components/button";
-import { KpiTile } from "@auction/ui/components/kpi-tile";
-import { ChevronRight } from "lucide-react";
-import Link from "next/link";
+import {
+  type AdminActivityRow,
+  type AdminAttentionRow,
+  AdminOperationsHomeView,
+} from "@/components/admin/admin-operations-home-view";
+import {
+  getAdminLotList,
+  getAdminMetricsLive,
+  getAdminMetricsToday,
+  getAdminPaymentList,
+} from "@/lib/data/http/admin.server";
+import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 
 export default async function AdminHomePage() {
-  let draftCount = 0;
-  let activeCount = 0;
-  let paymentCount = 0;
+  let metrics = {
+    liveLots: 0,
+    endingWithinHour: 0,
+    draftLots: 0,
+    pendingSubmissions: 0,
+    stalePendingPayments: 0,
+    revenueToday: "0",
+  };
+  let bidsPerMinute = 0;
+  let activeLotIds: string[] = [];
+  let payments: Awaited<ReturnType<typeof getAdminPaymentList>> = [];
+  let subs: Awaited<ReturnType<typeof getAdminSubmissions>> = [];
+  let drafts: Awaited<ReturnType<typeof getAdminLotList>> = [];
+  let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
+
   try {
-    const [drafts, active, payments] = await Promise.all([
-      getAdminLotList({ status: "draft", limit: 100 }),
-      getAdminLotList({ status: "active", limit: 100 }),
+    const [m, live, active, pay, underReview, draftRows, recent] = await Promise.all([
+      getAdminMetricsToday(),
+      getAdminMetricsLive(),
+      getAdminLotList({ status: "active", limit: 20, sort: "endingAsc" }),
       getAdminPaymentList(),
+      getAdminSubmissions({ status: "under_review", limit: 8 }),
+      getAdminLotList({ status: "draft", limit: 30 }),
+      getAdminLotList({ limit: 12, sort: "endingAsc" }),
     ]);
-    draftCount = drafts.length;
-    activeCount = active.length;
-    paymentCount = payments.length;
+    metrics = m;
+    bidsPerMinute = live.bidsPerMinute;
+    activeLotIds = active.map((a) => a.id);
+    payments = pay;
+    subs = underReview;
+    drafts = draftRows;
+    recentLots = recent;
   } catch {
-    // overview still renders; cards show zeros
+    /* overview still renders */
   }
 
-  const trend = [0.32, 0.38, 0.36, 0.44, 0.5, 0.48, 0.55] as const;
+  const now = Date.now();
+  const hourMs = 60 * 60_000;
+  const stalePay = payments.filter(
+    (p) => p.status === "pending" && now - p.createdAt.getTime() > 48 * hourMs,
+  );
+
+  const attention: AdminAttentionRow[] = [];
+  for (const s of subs.slice(0, 4)) {
+    attention.push({
+      id: `sub-${s.id}`,
+      title: s.title ?? "Submission",
+      hint: "Under review",
+      href: `/admin/submissions/${s.id}`,
+      ctaLabel: "Review",
+    });
+  }
+  for (const p of stalePay.slice(0, 3)) {
+    attention.push({
+      id: `pay-${p.id}`,
+      title: `Payment ${p.id.slice(0, 8)}…`,
+      hint: "Pending > 48h",
+      href: "/admin/payments",
+      ctaLabel: "Open",
+    });
+  }
+  for (const d of drafts.filter((l) => l.startTime.getTime() < now).slice(0, 3)) {
+    attention.push({
+      id: `draft-${d.id}`,
+      title: d.title,
+      hint: "Draft · start in the past",
+      href: `/admin/lots/${d.id}`,
+      ctaLabel: "Publish",
+    });
+  }
+
+  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({
+    id: l.id,
+    title: l.title,
+    meta: `${l.status} · ends ${l.endTime.toISOString().slice(0, 16)}`,
+    href: `/admin/lots/${l.id}`,
+  }));
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-10">
-      <header className="space-y-3 border-b border-outline-variant/10 pb-8">
-        <LabelCaps className="text-lot-orange">Admin · Operations</LabelCaps>
-        <DisplayHeading
-          as="h1"
-          className="text-4xl font-semibold text-brand-900 dark:text-on-surface"
-        >
-          Operations
-        </DisplayHeading>
-        <BodyText className="max-w-2xl text-brand-500 dark:text-on-surface-variant">
-          Create and publish lots, review settlements, and process refunds when needed.
-        </BodyText>
-      </header>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <KpiTile
-          label="Draft lots"
-          value={String(draftCount)}
-          trend={trend}
-          trendTone="secondary"
-        />
-        <KpiTile
-          label="Live lots"
-          value={String(activeCount)}
-          trend={trend}
-          trendTone="primary"
-          emphasize
-        />
-        <KpiTile
-          label="Payment rows"
-          value={String(paymentCount)}
-          trend={trend}
-          trendTone="lot-orange"
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button variant="primary" asChild>
-          <Link href="/admin/lots/new">New lot</Link>
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link href="/admin/lots">All lots</Link>
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link href="/admin/sales">Sales</Link>
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link href="/admin/payments">Payments</Link>
-        </Button>
-        <UiButton variant="chevron" asChild>
-          <Link href="/admin/submissions" className="inline-flex items-center gap-2 py-3">
-            Submissions
-            <ChevronRight className="size-5 shrink-0" aria-hidden />
-          </Link>
-        </UiButton>
-      </div>
-    </div>
+    <AdminOperationsHomeView
+      metrics={metrics}
+      bidsPerMinute={bidsPerMinute}
+      activeLotIds={activeLotIds}
+      attention={attention}
+      activity={activity}
+    />
   );
 }

@@ -6,6 +6,30 @@ import { createLotSchema, updateLotSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+export async function adminBulkLotsAction(formData: FormData): Promise<void> {
+  const raw = String(formData.get("payload") ?? "").trim();
+  let parsed: { ids: string[]; op: "publish" | "cancel" };
+  try {
+    parsed = JSON.parse(raw) as { ids: string[]; op: "publish" | "cancel" };
+  } catch {
+    redirect(`/admin/lots?error=${encodeURIComponent("Invalid bulk payload")}`);
+  }
+  if (!Array.isArray(parsed.ids) || parsed.ids.length === 0) {
+    redirect(`/admin/lots?error=${encodeURIComponent("No lots selected")}`);
+  }
+  const res = await authedServerFetch("/lots/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: parsed.ids.slice(0, 50), op: parsed.op }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    redirect(`/admin/lots?error=${encodeURIComponent(readApiError(body, "Bulk operation failed"))}`);
+  }
+  revalidatePath("/admin/lots");
+  redirect("/admin/lots");
+}
+
 export async function adminPublishLotAction(formData: FormData): Promise<void> {
   const id = String(formData.get("lotId") ?? "").trim();
   if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);

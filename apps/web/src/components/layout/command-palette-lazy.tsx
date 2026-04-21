@@ -5,7 +5,9 @@ import type { ComponentProps } from "react";
 
 const CommandPaletteDynamic = dynamic(
   () =>
-    import("@/components/layout/command-palette").then((mod) => ({ default: mod.CommandPalette })),
+    import("@/components/layout/command-palette").then((mod) => ({
+      default: mod.CommandPalette,
+    })),
   { ssr: false },
 );
 

@@ -28,6 +28,8 @@ export function Toaster() {
       visibleToasts={3}
       closeButton
       richColors
+      offset="max(12px, env(safe-area-inset-top))"
+      mobileOffset="max(5rem, env(safe-area-inset-bottom))"
       toastOptions={{
         classNames: {
           toast: "font-body",

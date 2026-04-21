@@ -67,6 +67,14 @@ export class PaymentService {
     return this.payments.listByBuyerId(buyerId);
   }
 
+  countPendingOlderThanHours(hours: number): Promise<number> {
+    return this.payments.countPendingOlderThanHours(hours);
+  }
+
+  sumCapturedBetween(start: Date, end: Date): Promise<string> {
+    return this.payments.sumCapturedBetween(start, end);
+  }
+
   async refundPayment(
     _adminUserId: string,
     userRole: string,

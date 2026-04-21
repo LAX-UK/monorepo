@@ -8,7 +8,11 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { breadcrumbsForPath } from "@/lib/navigation/dashboard-breadcrumbs";
-import { createLocalStorageSidebarCollapsedStore } from "@/lib/preferences/preferences-store";
+import {
+  createLocalStorageSidebarCollapsedStore,
+  createTableDensityStore,
+  type DashboardTableDensity,
+} from "@/lib/preferences/preferences-store";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -38,6 +42,26 @@ import {
   useState,
 } from "react";
 
+const TableDensityContext = createContext<{
+  density: DashboardTableDensity;
+  setDensity: (d: DashboardTableDensity) => void;
+} | null>(null);
+
+/** Table/card density from dashboard shell (md+); mobile is always comfortable. */
+export function useTableDensity(): {
+  density: DashboardTableDensity;
+  setDensity: (d: DashboardTableDensity) => void;
+} {
+  const ctx = useContext(TableDensityContext);
+  if (!ctx) {
+    return {
+      density: "comfortable",
+      setDensity: () => {},
+    };
+  }
+  return ctx;
+}
+
 export type DashboardShellSidebarProps = {
   onNavigate: () => void;
   mobileOpen: boolean;
@@ -61,6 +85,8 @@ type Props = {
   mobileTitle?: string;
   sidebar: ReactNode;
   accountMenu?: "collector" | "admin";
+  /** Extra actions in desktop top bar (e.g. primary CTA) */
+  pageActions?: ReactNode;
 };
 
 function AdminAccountMenuItems() {
@@ -90,15 +116,29 @@ export function DashboardShell({
   mobileTitle = "Dashboard",
   sidebar,
   accountMenu = "collector",
+  pageActions,
 }: Props) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [tableDensity, setTableDensityState] = useState<DashboardTableDensity>("comfortable");
 
   useEffect(() => {
     const store = createLocalStorageSidebarCollapsedStore();
     setDesktopSidebarCollapsed(store.getCollapsed());
   }, []);
+
+  useEffect(() => {
+    const store = createTableDensityStore();
+    setTableDensityState(store.getDensity());
+  }, []);
+
+  const setTableDensity = useCallback((d: DashboardTableDensity) => {
+    createTableDensityStore().setDensity(d);
+    setTableDensityState(d);
+  }, []);
+
+  const paletteVariant = accountMenu === "admin" ? "admin" : "dashboard";
 
   const toggleDesktopSidebarCollapsed = useCallback(() => {
     setDesktopSidebarCollapsed((prev) => {
@@ -126,11 +166,18 @@ export function DashboardShell({
 
   return (
     <TooltipProvider delayDuration={200}>
+      <TableDensityContext.Provider value={{ density: tableDensity, setDensity: setTableDensity }}>
       <div
         className="flex min-h-screen bg-surface font-body text-on-surface"
         style={{ ["--sidebar-width" as string]: sidebarWidth }}
       >
-        <CommandPaletteLazy variant="dashboard" />
+        <a
+          href="#main-content"
+          className="fixed left-4 top-4 z-[60] -translate-y-[120%] rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary focus:translate-y-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
+        >
+          Skip to content
+        </a>
+        <CommandPaletteLazy variant={paletteVariant} />
         <div
           className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-3 backdrop-blur-md lg:hidden"
           role="banner"
@@ -222,6 +269,38 @@ export function DashboardShell({
               </Breadcrumb>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {pageActions ? (
+                <div className="mr-1 flex max-w-md flex-wrap items-center justify-end gap-2">
+                  {pageActions}
+                </div>
+              ) : null}
+              <div className="hidden items-center gap-1 md:flex" title="Table row density (md and up)">
+                <span className="sr-only">Table density</span>
+                <button
+                  type="button"
+                  aria-pressed={tableDensity === "comfortable"}
+                  onClick={() => setTableDensity("comfortable")}
+                  className={`rounded-md border px-2 py-2 font-label text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    tableDensity === "comfortable"
+                      ? "border-primary bg-surface-container-high text-on-surface"
+                      : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low"
+                  }`}
+                >
+                  Comfort
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={tableDensity === "compact"}
+                  onClick={() => setTableDensity("compact")}
+                  className={`rounded-md border px-2 py-2 font-label text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    tableDensity === "compact"
+                      ? "border-primary bg-surface-container-high text-on-surface"
+                      : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low"
+                  }`}
+                >
+                  Compact
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={openCommandPalette}
@@ -278,6 +357,7 @@ export function DashboardShell({
           </div>
         </div>
       </div>
+      </TableDensityContext.Provider>
     </TooltipProvider>
   );
 }

@@ -28,4 +28,8 @@ export interface IPaymentWriteRepository {
   listAll(): Promise<PaymentRecord[]>;
   /** Payments where the user is the buyer (portfolio). */
   listByBuyerId(buyerId: string): Promise<PaymentRecord[]>;
+  /** Pending rows created at least `hours` ago (admin SLA). */
+  countPendingOlderThanHours(hours: number): Promise<number>;
+  /** Sum captured payment amounts in `[start, end]`. */
+  sumCapturedBetween(start: Date, end: Date): Promise<string>;
 }

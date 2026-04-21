@@ -10,6 +10,7 @@ import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
+import type { AdminMetricsService } from "./admin-metrics.service.js";
 
 const ANTI_SNIPING_EXTENSION_MS = 30_000;
 const MAX_PROXY_ROUNDS = 100;
@@ -32,6 +33,7 @@ export class BidService {
     private readonly notifications: NotificationService,
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly lotJobs: LotJobSchedulerPort | null,
+    private readonly adminMetrics: AdminMetricsService | null = null,
   ) {}
 
   async placeBid(
@@ -147,6 +149,8 @@ export class BidService {
           : { ...lot, currentPrice: displayPrice };
 
       await this.cache.set(`lot:${lotId}:currentPrice`, displayPrice, 3600);
+
+      void this.adminMetrics?.recordBidPlaced();
 
       const outbidMeta =
         prevWinnerId && prevWinnerId !== created.bidderId

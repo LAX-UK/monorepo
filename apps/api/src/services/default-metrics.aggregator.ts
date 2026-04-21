@@ -32,6 +32,16 @@ export class DefaultMetricsAggregator implements IMetricsAggregator {
       users.getActiveUserCount(),
     ]);
 
+    const last7 = (nums: number[]): readonly number[] => {
+      const slice = nums.slice(-7);
+      if (slice.length === 0) return [];
+      const max = Math.max(...slice, 1e-9);
+      return slice.map((x) => x / max);
+    };
+    const revenueNums = revenueSeries.map((r) => Number.parseFloat(r.total) || 0);
+    const completedNums = lotCompletedSeries.map((r) => r.count);
+    const regNums = registrationSeries.map((r) => r.count);
+
     return {
       activeLots,
       lotCompletedSeries,
@@ -40,6 +50,11 @@ export class DefaultMetricsAggregator implements IMetricsAggregator {
       averageOrderValue,
       registrationSeries,
       totalUsers,
+      sparklines: {
+        revenue: last7(revenueNums),
+        lotCompleted: last7(completedNums),
+        registrations: last7(regNums),
+      },
     };
   }
 }

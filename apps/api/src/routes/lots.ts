@@ -2,6 +2,7 @@ import type { CreateLotInput } from "@auction/types";
 import {
   archiveCountQuerySchema,
   archiveSummaryQuerySchema,
+  bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
   listLotsQuerySchema,
@@ -40,6 +41,28 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       offset: query.offset,
     });
     return c.json({ data: data.map((lotRow) => maskLotForPublicView(lotRow, role)) });
+  });
+
+  r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = c.get("userRole") ?? "user";
+    if (role !== "admin") {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const { ids, op } = c.req.valid("json");
+    const errors: string[] = [];
+    for (const id of ids) {
+      if (op === "publish") {
+        const res = await container.lotService.publish(userId, role, id);
+        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+      } else {
+        const res = await container.lotService.cancel(userId, role, id);
+        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+      }
+    }
+    return c.json({
+      data: { attempted: ids.length, failed: errors.length, errors },
+    });
   });
 
   r.get("/archive/summary", zValidator("query", archiveSummaryQuerySchema), async (c) => {

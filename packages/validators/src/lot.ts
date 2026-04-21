@@ -73,6 +73,12 @@ export const cancelLotBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const bulkLotsBodySchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(50),
+  op: z.enum(["publish", "cancel"]),
+  reason: z.string().max(500).optional(),
+});
+
 /** Lot rows nested under `POST /sales` (no `saleId`; set server-side). */
 export const createNestedLotForSaleSchema = createLotSchema
   .omit({ saleId: true })

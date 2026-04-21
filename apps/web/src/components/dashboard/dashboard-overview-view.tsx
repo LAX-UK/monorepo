@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@auction/ui/components/card";
 import { KpiTile } from "@auction/ui/components/kpi-tile";
+import { TimelineStages } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ChevronRight } from "lucide-react";
 import Image from "next/image";
@@ -22,6 +23,8 @@ import Link from "next/link";
 
 type Props = {
   vm: DashboardOverviewVm;
+  /** When false, hides v2-only blocks (rollback via `NEXT_PUBLIC_DASHBOARD_V2`). */
+  featureV2?: boolean;
 };
 
 function bidHintBadge(hint: "high" | "outbid" | "none") {
@@ -30,7 +33,7 @@ function bidHintBadge(hint: "high" | "outbid" | "none") {
   return null;
 }
 
-export function DashboardOverviewView({ vm }: Props) {
+export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
   const now = Date.now();
   const { errors } = vm;
   const hasErrors = !!(
@@ -73,14 +76,19 @@ export function DashboardOverviewView({ vm }: Props) {
             {vm.kpi.activeBidsCount === 1 ? "" : "s"}
           </BodyText>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
+        <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-4 py-2">
             <LiveDot size="sm" />
             <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface">
               Live saleroom
             </span>
           </div>
-          <Button variant="secondary" asChild>
+          {featureV2 && vm.primaryCta ? (
+            <Button variant="primary" className="w-full min-h-11 sm:w-auto" asChild>
+              <Link href={vm.primaryCta.href}>{vm.primaryCta.label}</Link>
+            </Button>
+          ) : null}
+          <Button variant="secondary" className="w-full min-h-11 sm:w-auto" asChild>
             <Link href="/dashboard/submissions/new">New submission</Link>
           </Button>
         </div>
@@ -117,6 +125,35 @@ export function DashboardOverviewView({ vm }: Props) {
           trendTone="primary"
         />
       </div>
+
+      {featureV2 ? (
+        <section className="mb-10 rounded-2xl border border-outline-variant/15 bg-surface-container-low/40 px-6 py-8 dark:bg-surface-container-low/40 md:px-10">
+          <div className="mx-auto flex max-w-3xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <DisplayHeading
+                as="h2"
+                className="text-xl font-semibold text-brand-900 dark:text-on-surface"
+              >
+                Account health
+              </DisplayHeading>
+              <BodyText className="mt-1 text-sm text-brand-500 dark:text-on-surface-variant">
+                Complete profile, alert settings, and payout readiness as you scale bidding.
+              </BodyText>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="secondary" asChild>
+                <Link href="/dashboard/settings/profile">Profile</Link>
+              </Button>
+              <Button variant="secondary" asChild>
+                <Link href="/dashboard/settings/notifications">Alerts</Link>
+              </Button>
+              <Button variant="secondary" asChild>
+                <Link href="/dashboard/settings/bidding">Bidding</Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mb-14 rounded-2xl border border-primary/20 bg-hero-cream/80 px-6 py-10 dark:bg-surface-container-low/60 dark:border-outline-variant/20 md:px-10">
         <div className="mx-auto flex max-w-3xl flex-col gap-4 text-center md:text-left">
@@ -171,7 +208,7 @@ export function DashboardOverviewView({ vm }: Props) {
               {errors.active ? "Live inventory unavailable." : "No active auctions right now."}
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
               {vm.activeLots.map((a) => {
                 const img = a.images[0];
                 const ms = a.endTime.getTime() - now;
@@ -239,10 +276,35 @@ export function DashboardOverviewView({ vm }: Props) {
                 {vm.settlementsDue.slice(0, 4).map((row) => {
                   const a = row.lot;
                   const img = a.images[0];
+                  const label = portfolioSettlementLabel(row);
+                  const stageIdx =
+                    label === "Paid" || label === "Payment authorized"
+                      ? 2
+                      : label.includes("Refund")
+                        ? 0
+                        : 1;
                   return (
                     <div
                       key={a.id}
-                      className="flex items-center justify-between gap-3 rounded-lg bg-surface-container-low/60 p-2"
+                      className="flex flex-col gap-3 rounded-lg bg-surface-container-low/60 p-3"
+                    >
+                      {featureV2 ? (
+                        <TimelineStages
+                          activeIndex={stageIdx}
+                          stages={[
+                            { id: "inv", label: "Invoice" },
+                            { id: "pay", label: "Paid" },
+                            { id: "ship", label: "Shipping" },
+                            { id: "done", label: "Delivered" },
+                          ]}
+                        />
+                      ) : (
+                        <p className="font-label text-[10px] uppercase tracking-wider text-secondary">
+                          {label}
+                        </p>
+                      )}
+                    <div
+                      className="flex items-center justify-between gap-3"
                     >
                       <Link
                         href={`/dashboard/checkout/${a.id}`}
@@ -267,6 +329,7 @@ export function DashboardOverviewView({ vm }: Props) {
                       >
                         <Link href={`/dashboard/checkout/${a.id}`}>Pay</Link>
                       </UiButton>
+                    </div>
                     </div>
                   );
                 })}
@@ -380,42 +443,6 @@ export function DashboardOverviewView({ vm }: Props) {
                       </li>
                     );
                   })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="font-headline text-xl">Artists you follow</CardTitle>
-              <UiButton variant="chevron" asChild>
-                <Link href="/artist/featured" className="inline-flex gap-1 text-xs">
-                  Directory
-                  <ChevronRight className="size-4" aria-hidden />
-                </Link>
-              </UiButton>
-            </CardHeader>
-            <CardContent>
-              {vm.artistFollowPreview.length === 0 ? (
-                <p className="font-body text-sm text-on-surface-variant">
-                  Follow artists from their public profile to see them here.
-                </p>
-              ) : (
-                <ul className="space-y-3">
-                  {vm.artistFollowPreview.map((row) => (
-                    <li key={row.watchlistId}>
-                      <Link
-                        href={`/artist/${row.artistId}`}
-                        className="flex items-center justify-between rounded-lg p-2 font-body text-sm text-on-surface transition-colors hover:bg-surface-container-high/80"
-                      >
-                        <span className="truncate">Artist profile</span>
-                        <ChevronRight
-                          className="size-4 shrink-0 text-on-surface-variant"
-                          aria-hidden
-                        />
-                      </Link>
-                    </li>
-                  ))}
                 </ul>
               )}
             </CardContent>

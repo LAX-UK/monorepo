@@ -1,37 +1,117 @@
-import { AdminUsersDataTable } from "@/components/admin/admin-users-data-table";
-import { Button } from "@/components/ui/button";
-import { TableScroll } from "@/components/ui/table-scroll";
-import { DisplayHeading } from "@/components/ui/typography";
+import {
+  AdminUsersBoard,
+  type AdminUsersKpiStrip,
+} from "@/components/admin/admin-users-board";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Toolbar } from "@auction/ui/components/toolbar";
+import { PageHeader } from "@auction/ui/components/page-header";
+import Link from "next/link";
+
+function adminUsersHref(parts: { q?: string; role?: "admin" | "user"; suspended?: boolean }) {
+  const p = new URLSearchParams();
+  if (parts.q != null && parts.q !== "") p.set("q", parts.q);
+  if (parts.role) p.set("role", parts.role);
+  if (parts.suspended) p.set("suspended", "1");
+  const s = p.toString();
+  return s ? `/admin/users?${s}` : "/admin/users";
+}
 
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; q?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; role?: string; suspended?: string }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const q = sp.q?.trim() ?? "";
+  const roleFilter = sp.role === "admin" || sp.role === "user" ? sp.role : undefined;
+  const suspendedOnly = sp.suspended === "1";
 
-  let rows: Awaited<ReturnType<typeof getAdminUserList>>["rows"] = [];
+  let rawRows: Awaited<ReturnType<typeof getAdminUserList>>["rows"] = [];
   let total = 0;
   let loadError: string | null = null;
   try {
-    const data = await getAdminUserList(q ? { q, limit: 50, offset: 0 } : { limit: 50, offset: 0 });
-    rows = data.rows;
+    const data = await getAdminUserList(q ? { q, limit: 100, offset: 0 } : { limit: 100, offset: 0 });
+    rawRows = data.rows;
     total = data.total;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load users.";
   }
 
+  const kpis: AdminUsersKpiStrip = {
+    totalMatches: total,
+    adminsOnPage: rawRows.filter((r) => r.role === "admin").length,
+    suspendedOnPage: rawRows.filter((r) => r.suspendedAt).length,
+    pageCount: rawRows.length,
+  };
+
+  let rows = rawRows;
+  if (roleFilter) rows = rows.filter((r) => r.role === roleFilter);
+  if (suspendedOnly) rows = rows.filter((r) => r.suspendedAt);
+
+  const chipCommon = (extra: { role?: "admin" | "user"; suspended?: boolean }) =>
+    adminUsersHref({
+      ...(q !== "" ? { q } : {}),
+      ...extra,
+    });
+
+  const roleChips = (
+    <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
+      <legend className="sr-only">Filter by role</legend>
+      <Link
+        href={chipCommon({ suspended: suspendedOnly })}
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          !roleFilter
+            ? "bg-primary text-on-primary ring-primary"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        All roles
+      </Link>
+      <Link
+        href={chipCommon({ role: "admin", suspended: suspendedOnly })}
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          roleFilter === "admin"
+            ? "bg-primary text-on-primary ring-primary"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        Admins
+      </Link>
+      <Link
+        href={chipCommon({ role: "user", suspended: suspendedOnly })}
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          roleFilter === "user"
+            ? "bg-primary text-on-primary ring-primary"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        Users
+      </Link>
+      <Link
+        href={
+          suspendedOnly
+            ? chipCommon({ ...(roleFilter ? { role: roleFilter } : {}) })
+            : chipCommon({ ...(roleFilter ? { role: roleFilter } : {}), suspended: true })
+        }
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          suspendedOnly
+            ? "bg-primary text-on-primary ring-primary"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        {suspendedOnly ? "Suspended only ✓" : "Suspended only"}
+      </Link>
+    </fieldset>
+  );
+
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
-      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
-        Users
-      </DisplayHeading>
+      <PageHeader
+        title="Users"
+        description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."
+      />
 
       {error || loadError ? (
         <Alert variant="destructive">
@@ -41,52 +121,44 @@ export default async function AdminUsersPage({
       ) : null}
 
       {!loadError ? (
-        <Toolbar
-          className="flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
-          filters={
-            <form
-              method="get"
-              className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+        <form
+          method="get"
+          className="flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+        >
+          {roleFilter ? <input type="hidden" name="role" value={roleFilter} /> : null}
+          {suspendedOnly ? <input type="hidden" name="suspended" value="1" /> : null}
+          <div className="grid min-w-0 flex-1 gap-1">
+            <label
+              htmlFor="admin-users-server-q"
+              className="font-label text-xs uppercase tracking-widest text-secondary"
             >
-              <div className="grid min-w-0 flex-1 gap-1 sm:min-w-[16rem]">
-                <label
-                  htmlFor="admin-users-q"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
-                >
-                  Search
-                </label>
-                <input
-                  id="admin-users-q"
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Name or email"
-                  className="rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface"
-                />
-              </div>
-              <Button type="submit" variant="secondary" className="w-full sm:w-auto">
-                Search
-              </Button>
-            </form>
-          }
-        />
-      ) : null}
-
-      {!loadError ? (
-        <p className="font-body text-xs text-on-surface-variant">Total: {total}</p>
+              Server search
+            </label>
+            <input
+              id="admin-users-server-q"
+              name="q"
+              defaultValue={q}
+              placeholder="Name or email"
+              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="min-h-11 rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary"
+          >
+            Search
+          </button>
+        </form>
       ) : null}
 
       {!loadError && rows.length === 0 ? (
         <EmptyState
           title="No users"
-          description="Try a different search query or clear the filter."
+          description="Try a different search query or clear filters."
         />
       ) : null}
 
-      {!loadError && rows.length > 0 ? (
-        <TableScroll>
-          <AdminUsersDataTable rows={rows} />
-        </TableScroll>
-      ) : null}
+      {!loadError && rows.length > 0 ? <AdminUsersBoard rows={rows} kpis={kpis} roleChips={roleChips} /> : null}
     </div>
   );
 }

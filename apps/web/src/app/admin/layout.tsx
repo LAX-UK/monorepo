@@ -1,3 +1,4 @@
+import { AdminBottomNav } from "@/components/layout/admin-bottom-nav";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -28,13 +29,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <DashboardShell
-      user={user}
-      mobileTitle="Admin"
-      accountMenu="admin"
-      sidebar={<AdminSidebar user={user} pendingSubmissionCount={pendingSubmissionCount} />}
-    >
-      {children}
-    </DashboardShell>
+    <>
+      <DashboardShell
+        user={user}
+        mobileTitle="Admin"
+        accountMenu="admin"
+        sidebar={<AdminSidebar user={user} pendingSubmissionCount={pendingSubmissionCount} />}
+      >
+        <div className="pb-20 lg:pb-0">{children}</div>
+      </DashboardShell>
+      <AdminBottomNav />
+    </>
   );
 }

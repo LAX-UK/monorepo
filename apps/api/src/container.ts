@@ -49,6 +49,7 @@ import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { AddressService } from "./services/address.service.js";
+import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { BidService } from "./services/bid.service.js";
@@ -118,6 +119,7 @@ export type Container = {
   addressService: AddressService;
   analyticsService: AnalyticsService;
   adminUserService: AdminUserService;
+  adminMetricsService: AdminMetricsService;
   httpErrorHandler: ErrorHandlerService;
   itemSubmissionRepository: IItemSubmissionRepository;
   itemSubmissionService: IItemSubmissionService;
@@ -235,15 +237,6 @@ export function createContainer(env: Env): Container {
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler);
 
-  const bidService = new BidService(
-    repoFactory,
-    strategyFactory,
-    cache,
-    notificationService,
-    notificationDispatcher,
-    lotJobScheduler,
-  );
-
   const categoryService = new CategoryService(categoryRepo);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
@@ -252,6 +245,23 @@ export function createContainer(env: Env): Container {
     paymentRepo,
     notificationDispatcher,
     notificationFactory,
+  );
+
+  const adminMetricsService = new AdminMetricsService(
+    repoFactory,
+    redis,
+    itemSubmissionService,
+    paymentService,
+  );
+
+  const bidService = new BidService(
+    repoFactory,
+    strategyFactory,
+    cache,
+    notificationService,
+    notificationDispatcher,
+    lotJobScheduler,
+    adminMetricsService,
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
@@ -326,6 +336,7 @@ export function createContainer(env: Env): Container {
     addressService,
     analyticsService,
     adminUserService,
+    adminMetricsService,
     httpErrorHandler,
     itemSubmissionRepository,
     itemSubmissionService,

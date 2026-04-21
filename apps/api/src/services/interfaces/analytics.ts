@@ -31,6 +31,12 @@ export type AdminAnalyticsDashboard = {
   averageOrderValue: string | null;
   registrationSeries: UserMetricPoint[];
   totalUsers: number;
+  /** Last 7 points normalized 0–1 for sparklines (optional for older clients). */
+  sparklines?: {
+    revenue: readonly number[];
+    lotCompleted: readonly number[];
+    registrations: readonly number[];
+  };
 };
 
 export interface IMetricsAggregator {

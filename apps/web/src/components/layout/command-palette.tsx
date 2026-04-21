@@ -43,6 +43,24 @@ const dashboardSections: PaletteSection[] = [
   },
 ];
 
+const adminSections: PaletteSection[] = [
+  {
+    id: "admin-pages",
+    heading: "Admin",
+    items: [
+      { id: "a-home", href: "/admin", label: "Operations home" },
+      { id: "a-lots", href: "/admin/lots", label: "Lots & auctions" },
+      { id: "a-new-lot", href: "/admin/lots/new", label: "New lot" },
+      { id: "a-sales", href: "/admin/sales", label: "Sales" },
+      { id: "a-subs", href: "/admin/submissions", label: "Submissions" },
+      { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-users", href: "/admin/users", label: "Users" },
+      { id: "a-analytics", href: "/admin/analytics", label: "Analytics" },
+      { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
+    ],
+  },
+];
+
 function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
   const t = query.trim().toLowerCase();
   if (!t) return items;
@@ -52,8 +70,16 @@ function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
   );
 }
 
-function buildVisibleSections(variant: "marketing" | "dashboard", query: string): PaletteSection[] {
-  const base = variant === "dashboard" ? dashboardSections : marketingSections;
+function buildVisibleSections(
+  variant: "marketing" | "dashboard" | "admin",
+  query: string,
+): PaletteSection[] {
+  const base =
+    variant === "dashboard"
+      ? dashboardSections
+      : variant === "admin"
+        ? adminSections
+        : marketingSections;
   const q = query.trim();
   const out: PaletteSection[] = [];
   for (const sec of base) {
@@ -63,16 +89,44 @@ function buildVisibleSections(variant: "marketing" | "dashboard", query: string)
     }
   }
   if (q) {
+    const actionItems: PaletteItem[] = [
+      {
+        id: "action-search-all",
+        href: `/search?q=${encodeURIComponent(q)}`,
+        label: `Search all lots for "${q}"`,
+      },
+    ];
+    if (variant === "admin") {
+      actionItems.push(
+        {
+          id: "action-admin-lots-q",
+          href: `/admin/lots?q=${encodeURIComponent(q)}`,
+          label: `Lots list · title contains "${q}"`,
+        },
+        {
+          id: "action-admin-users-q",
+          href: `/admin/users?q=${encodeURIComponent(q)}`,
+          label: `Users · search "${q}"`,
+        },
+      );
+      const maybeUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.exec(q);
+      if (maybeUuid) {
+        const id = maybeUuid[0];
+        actionItems.push(
+          { id: "action-open-lot", href: `/admin/lots/${id}`, label: `Open lot ${id}`, hint: "UUID" },
+          {
+            id: "action-publish-lot",
+            href: `/admin/lots/${id}#publish`,
+            label: `Lot detail (publish) · ${id.slice(0, 8)}…`,
+          },
+        );
+      }
+    }
     out.push({
       id: "actions",
       heading: "Actions",
-      items: [
-        {
-          id: "action-search-all",
-          href: `/search?q=${encodeURIComponent(q)}`,
-          label: `Search all lots for "${q}"`,
-        },
-      ],
+      items: actionItems,
     });
   }
   return out;
@@ -83,7 +137,7 @@ function flattenItems(sections: PaletteSection[]): PaletteItem[] {
 }
 
 type Props = {
-  variant: "marketing" | "dashboard";
+  variant: "marketing" | "dashboard" | "admin";
 };
 
 export function CommandPalette({ variant }: Props) {

@@ -2,6 +2,7 @@ import {
   addressIdParamSchema,
   createAddressBodySchema,
   notificationIdUuidParamSchema,
+  biddingPreferencesPatchSchema,
   notificationPreferencePatchSchema,
   pushSubscriptionBodySchema,
   pushUnsubscribeBodySchema,
@@ -307,6 +308,22 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       const data = await container.notificationPreferenceRepository.upsert(
         userId,
         body as NotificationPreferenceInput,
+      );
+      return c.json({ data });
+    },
+  );
+
+  r.patch(
+    "/me/bidding-preferences",
+    requireAuth,
+    zValidator("json", biddingPreferencesPatchSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const { defaultMaxBidAmount: _clientOnly, ...patch } = body;
+      const data = await container.notificationPreferenceRepository.upsert(
+        userId,
+        patch as NotificationPreferenceInput,
       );
       return c.json({ data });
     },

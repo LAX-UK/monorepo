@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
+import { TimelineStages } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -13,6 +14,7 @@ export type PortfolioLotCardVm = {
   image: string | null;
   hammerLabel: string;
   settlementLabel: string;
+  settlementStageIndex: number;
   medium: string | null;
   dimensions: string | null;
   paymentStatus: string | null;
@@ -104,6 +106,15 @@ export function PortfolioLotGrid({ items }: Props) {
       >
         {active ? (
           <div className="space-y-4 font-body text-sm text-on-surface-variant">
+            <TimelineStages
+              activeIndex={active.settlementStageIndex}
+              stages={[
+                { id: "inv", label: "Invoice" },
+                { id: "pay", label: "Paid" },
+                { id: "ship", label: "Shipping" },
+                { id: "done", label: "Delivered" },
+              ]}
+            />
             {active.medium ? (
               <p>
                 <span className="font-label text-xs uppercase tracking-widest text-on-surface">

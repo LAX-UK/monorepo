@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
   CreatePaymentRow,
@@ -82,5 +82,24 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .where(eq(payment.buyerId, buyerId))
       .orderBy(desc(payment.createdAt));
     return rows.map(mapRow);
+  }
+
+  async countPendingOlderThanHours(hours: number): Promise<number> {
+    const cutoff = new Date(Date.now() - hours * 3_600_000);
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(payment)
+      .where(and(eq(payment.status, "pending"), lte(payment.createdAt, cutoff)));
+    return row?.n ?? 0;
+  }
+
+  async sumCapturedBetween(start: Date, end: Date): Promise<string> {
+    const [row] = await this.db
+      .select({ s: sql<string>`coalesce(sum(${payment.amount}), 0)::text` })
+      .from(payment)
+      .where(
+        and(eq(payment.status, "captured"), gte(payment.createdAt, start), lte(payment.createdAt, end)),
+      );
+    return row?.s ?? "0";
   }
 }

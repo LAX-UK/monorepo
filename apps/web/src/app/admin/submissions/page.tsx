@@ -1,16 +1,12 @@
-import {
-  type AdminSubmissionTableRow,
-  AdminSubmissionsDataTable,
-} from "@/components/admin/admin-submissions-data-table";
-import { TableScroll } from "@/components/ui/table-scroll";
-import { DisplayHeading } from "@/components/ui/typography";
+import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
+import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
-import { Toolbar } from "@auction/ui/components/toolbar";
+import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 function adminSubmissionsHref(parts: { status?: ItemSubmissionStatus; q?: string }): string {
@@ -20,6 +16,16 @@ function adminSubmissionsHref(parts: { status?: ItemSubmissionStatus; q?: string
   const s = p.toString();
   return s ? `/admin/submissions?${s}` : "/admin/submissions";
 }
+
+const statusChips: { value: ItemSubmissionStatus | ""; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "submitted", label: "Submitted" },
+  { value: "under_review", label: "Under review" },
+  { value: "converted", label: "Converted" },
+  { value: "rejected", label: "Rejected" },
+  { value: "withdrawn", label: "Withdrawn" },
+  { value: "draft", label: "Draft" },
+];
 
 export default async function AdminSubmissionsPage({
   searchParams,
@@ -66,74 +72,70 @@ export default async function AdminSubmissionsPage({
     ...(status != null ? { status } : {}),
   });
 
+  const filterForm = (
+    <div className="flex w-full flex-col gap-4">
+      <div className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+        {statusChips.map((chip) => {
+          const href = adminSubmissionsHref({
+            ...(chip.value ? { status: chip.value as ItemSubmissionStatus } : {}),
+            ...(initialQ ? { q: initialQ } : {}),
+          });
+          const active =
+            (chip.value === "" && status === undefined) || (chip.value !== "" && chip.value === status);
+          return (
+            <Link
+              key={chip.label}
+              href={href}
+              className={`shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+                active
+                  ? "bg-primary text-on-primary ring-primary"
+                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+              }`}
+            >
+              {chip.label}
+            </Link>
+          );
+        })}
+      </div>
+      <form
+        method="get"
+        className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+      >
+        {status ? <input type="hidden" name="status" value={status} /> : null}
+        <div className="grid min-w-0 flex-1 gap-1 sm:max-w-md">
+          <label
+            htmlFor="admin-submissions-q"
+            className="font-label text-xs uppercase tracking-widest text-secondary"
+          >
+            Title contains (server)
+          </label>
+          <Input
+            id="admin-submissions-q"
+            name="q"
+            defaultValue={initialQ}
+            placeholder="Apply to narrow API result…"
+            className="min-h-11 bg-surface-container-low text-base md:text-sm"
+          />
+        </div>
+        <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
+          Apply title filter
+        </Button>
+      </form>
+    </div>
+  );
+
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
-      <DisplayHeading as="h1" className="text-4xl text-brand-900 dark:text-on-surface">
-        Submissions
-      </DisplayHeading>
-      <p className="font-body text-sm text-on-surface-variant">
-        Review seller intake. Start review on submitted items, then approve (creates a draft lot) or
-        reject with a clear reason.
-      </p>
+      <PageHeader
+        title="Submissions"
+        description="Review seller intake. Start review on submitted items, then approve (creates a draft lot) or reject with a clear reason."
+      />
 
       {error || loadError ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load submissions</AlertTitle>
           <AlertDescription>{loadError ?? error}</AlertDescription>
         </Alert>
-      ) : null}
-
-      {!loadError ? (
-        <Toolbar
-          className="flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
-          filters={
-            <form
-              method="get"
-              className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
-            >
-              <div className="grid min-w-[200px] flex-1 gap-1">
-                <label
-                  htmlFor="admin-submissions-status"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
-                >
-                  Status
-                </label>
-                <select
-                  id="admin-submissions-status"
-                  name="status"
-                  defaultValue={status ?? ""}
-                  className="rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface"
-                >
-                  <option value="">All</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="under_review">Under review</option>
-                  <option value="converted">Converted</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="withdrawn">Withdrawn</option>
-                  <option value="draft">Draft</option>
-                </select>
-              </div>
-              <div className="grid min-w-0 flex-1 gap-1 sm:max-w-md">
-                <label
-                  htmlFor="admin-submissions-q"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
-                >
-                  Title contains
-                </label>
-                <Input
-                  id="admin-submissions-q"
-                  name="q"
-                  defaultValue={initialQ}
-                  placeholder="Filter loaded rows…"
-                  className="bg-surface-container-low"
-                />
-              </div>
-              <Button type="submit" variant="secondary" className="w-full sm:w-auto">
-                Apply filters
-              </Button>
-            </form>
-          }
-        />
       ) : null}
 
       {!loadError && rows.length === 0 ? (
@@ -156,9 +158,7 @@ export default async function AdminSubmissionsPage({
       ) : null}
 
       {!loadError && submissionRows.length > 0 ? (
-        <TableScroll>
-          <AdminSubmissionsDataTable rows={submissionRows} />
-        </TableScroll>
+        <AdminSubmissionsBoard rows={submissionRows} filterForm={filterForm} />
       ) : null}
     </div>
   );
