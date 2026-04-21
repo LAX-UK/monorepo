@@ -167,53 +167,53 @@ export function HeaderMegaNav({ sections, pathname, onOpenChange, logo, trailing
       }}
     >
       <div className="flex items-center justify-between gap-4">
-        {logo}
+        <div className="flex min-w-0 items-center gap-9">
+          {logo}
 
-        <nav className="hidden items-center justify-center gap-9 lg:flex" aria-label="Primary">
-          {sections.map((item, index) => {
-            const active = navItemActive(pathname, item.href);
-            const open = openIndex === index;
-            return (
-              <div key={item.href} className="flex flex-col items-center">
-                <button
-                  type="button"
-                  ref={(el) => {
-                    triggerRefs.current[index] = el;
-                  }}
-                  className={cn(
-                    "group flex items-center gap-1 border-b-2 border-transparent pb-1 font-label text-sm font-medium uppercase leading-[21px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none",
-                    active || open ? "text-brand-900" : "text-nav-text hover:text-brand-900",
-                    active || open
-                      ? "border-brand-900"
-                      : "border-transparent hover:border-brand-900/40",
-                  )}
-                  aria-haspopup="true"
-                  aria-expanded={open}
-                  aria-controls={open ? MEGAMENU_PANEL_ID : undefined}
-                  onMouseEnter={() => {
-                    scheduleOpenHover(index);
-                  }}
-                  onClick={() => {
-                    clearOpenHover();
-                    clearCloseHover();
-                    setOpenIndex((cur) => (cur === index ? null : index));
-                  }}
-                  onKeyDown={(e) => onTriggerKeyDown(e, index)}
-                >
-                  <span>{item.label}</span>
-                  <MaterialIcon
-                    name="expand_more"
+          <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary">
+            {sections.map((item, index) => {
+              const active = navItemActive(pathname, item.href);
+              const open = openIndex === index;
+              return (
+                <div key={item.href} className="flex flex-col items-start">
+                  <button
+                    type="button"
+                    ref={(el) => {
+                      triggerRefs.current[index] = el;
+                    }}
                     className={cn(
-                      "text-base! transition-transform motion-reduce:transition-none",
-                      open ? "rotate-180" : "rotate-0",
+                      "group flex items-center gap-1 border-b-2 border-transparent pb-1 font-label text-sm font-medium uppercase leading-[21px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none",
+                      active || open ? "text-brand-900" : "text-nav-text hover:text-brand-900",
+                      open ? "border-brand-900" : "border-transparent hover:border-brand-900/40",
                     )}
-                    aria-hidden
-                  />
-                </button>
-              </div>
-            );
-          })}
-        </nav>
+                    aria-haspopup="true"
+                    aria-expanded={open}
+                    aria-controls={open ? MEGAMENU_PANEL_ID : undefined}
+                    onMouseEnter={() => {
+                      scheduleOpenHover(index);
+                    }}
+                    onClick={() => {
+                      clearOpenHover();
+                      clearCloseHover();
+                      setOpenIndex((cur) => (cur === index ? null : index));
+                    }}
+                    onKeyDown={(e) => onTriggerKeyDown(e, index)}
+                  >
+                    <span>{item.label}</span>
+                    <MaterialIcon
+                      name="expand_more"
+                      className={cn(
+                        "text-base! transition-transform motion-reduce:transition-none",
+                        open ? "rotate-180" : "rotate-0",
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
+        </div>
 
         {trailing}
       </div>
