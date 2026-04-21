@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { accountNavLinks } from "./header-account-nav";
 import { navItemActive, utilityNav } from "./header-nav-config";
-import { HeaderSearch } from "./header-search";
+import { HeaderSearchForm } from "./header-search";
 import { LaxLogo } from "./lax-logo";
 import { LogoutButton } from "./logout-button";
 import { ThemeToggle } from "./theme-toggle";
@@ -47,8 +47,8 @@ export function MobileNavDrawer({
     if (!open) setExpandedIndex(null);
   }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset expanded sections when the route changes
   useEffect(() => {
-    void pathname;
     setExpandedIndex(null);
   }, [pathname]);
 
@@ -71,7 +71,7 @@ export function MobileNavDrawer({
             </Link>
           </div>
 
-          <HeaderSearch variant="mobile" inputId="mobile-nav-search" />
+          <HeaderSearchForm inputId="mobile-nav-search" />
 
           <nav aria-label="Mobile primary">
             <ul className="flex flex-col gap-1">

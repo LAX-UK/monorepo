@@ -1,68 +1,69 @@
 "use client";
 
+import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { cn } from "@auction/ui";
+import { useEffect, useState } from "react";
 
-type HeaderSearchProps = {
-  variant: "desktop" | "mobile";
-  /** Used for desktop label association; mobile uses `${inputId}-field`. */
-  inputId?: string;
-  className?: string;
-};
+export function HeaderSearchTrigger({ className = "" }: { className?: string }) {
+  const [isMac, setIsMac] = useState(true);
 
-export function HeaderSearch({
-  variant,
-  inputId = "site-header-search",
+  useEffect(() => {
+    setIsMac(typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={openCommandPalette}
+      className={cn(
+        "hidden min-h-10 min-w-0 flex-1 items-center gap-2 border-b border-brand-200 text-left md:flex lg:w-[231px] lg:flex-none",
+        className,
+      )}
+      aria-haspopup="dialog"
+      aria-label="Search"
+    >
+      <MaterialIcon name="search" className="shrink-0 text-brand-900 dark:text-on-surface" />
+      <span className="min-w-0 flex-1 truncate py-2 font-label text-sm font-medium leading-[21px] text-brand-200 dark:text-on-surface-variant">
+        Search lots, artists, sales…
+      </span>
+      <kbd className="hidden shrink-0 rounded border border-brand-200/80 bg-transparent px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-brand-900 sm:inline dark:border-outline-variant/50 dark:text-on-surface">
+        {isMac ? "⌘K" : "Ctrl+K"}
+      </kbd>
+    </button>
+  );
+}
+
+export function HeaderSearchForm({
   className = "",
-}: HeaderSearchProps) {
-  if (variant === "desktop") {
-    return (
-      <form
-        action="/search"
-        method="get"
-        className={`hidden min-w-0 flex-1 items-center border-b border-brand-200 md:flex lg:w-[231px] lg:flex-none ${className}`}
-      >
-        <label htmlFor={inputId} className="sr-only">
-          Search
-        </label>
-        <input
-          id={inputId}
-          name="q"
-          type="search"
-          placeholder="Search"
-          className="min-w-0 flex-1 bg-transparent py-2 font-label text-sm font-medium leading-[21px] text-brand-900 placeholder:text-brand-200 focus:outline-none"
-          autoComplete="off"
-        />
-        <button
-          type="submit"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-brand-900 hover:bg-page-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
-          aria-label="Submit search"
-        >
-          <MaterialIcon name="search" />
-        </button>
-      </form>
-    );
-  }
-
-  const mobileFieldId = `${inputId}-mobile-field`;
+  inputId = "mobile-nav-search",
+}: {
+  className?: string;
+  inputId?: string;
+}) {
+  const fieldId = `${inputId}-field`;
 
   return (
     <form
       action="/search"
       method="get"
-      className={`flex gap-2 border-b border-brand-200 pb-3 ${className}`}
+      className={cn("flex gap-2 border-b border-brand-200 pb-3", className)}
     >
-      <label htmlFor={mobileFieldId} className="sr-only">
+      <label htmlFor={fieldId} className="sr-only">
         Search
       </label>
       <input
-        id={mobileFieldId}
+        id={fieldId}
         name="q"
         type="search"
         placeholder="Search"
-        className="min-w-0 flex-1 bg-transparent font-label text-sm uppercase text-brand-900 placeholder:text-brand-200 focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent font-label text-sm uppercase text-brand-900 placeholder:text-brand-200 focus:outline-none dark:text-on-surface dark:placeholder:text-on-surface-variant"
         autoComplete="off"
       />
-      <button type="submit" className="font-label text-xs font-semibold uppercase text-brand-900">
+      <button
+        type="submit"
+        className="font-label text-xs font-semibold uppercase text-brand-900 dark:text-on-surface"
+      >
         Go
       </button>
     </form>

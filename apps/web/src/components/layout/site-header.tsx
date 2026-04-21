@@ -8,9 +8,8 @@ import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CommandPaletteTrigger } from "./command-palette-trigger";
 import { HeaderMegaNav } from "./header-mega-nav";
-import { HeaderSearch } from "./header-search";
+import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
@@ -28,8 +27,8 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
   const [megaOpen, setMegaOpen] = useState(false);
   const pathname = usePathname();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {
-    void pathname;
     setMenuOpen(false);
   }, [pathname]);
 
@@ -57,8 +56,7 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
           }
           trailing={
             <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
-              <CommandPaletteTrigger />
-              <HeaderSearch variant="desktop" />
+              <HeaderSearchTrigger />
               <ThemeToggle />
               {user ? <NotificationBell /> : null}
               <button

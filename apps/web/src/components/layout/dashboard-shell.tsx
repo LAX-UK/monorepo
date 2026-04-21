@@ -1,5 +1,6 @@
 "use client";
 
+import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -81,10 +82,6 @@ function AdminAccountMenuItems() {
       </DropdownMenuItem>
     </>
   );
-}
-
-function openCommandPalette() {
-  window.dispatchEvent(new Event("lax-command-palette-open"));
 }
 
 export function DashboardShell({
