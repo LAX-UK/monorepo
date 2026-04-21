@@ -1,3 +1,4 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Lot } from "@auction/types";
@@ -7,9 +8,10 @@ import Link from "next/link";
 type Props = {
   auctions: Lot[];
   currentId: string;
+  currentUserId?: string | null;
 };
 
-export function RelatedLots({ auctions, currentId }: Props) {
+export function RelatedLots({ auctions, currentId, currentUserId = null }: Props) {
   const related = auctions.filter((a) => a.id !== currentId).slice(0, 6);
   if (related.length === 0) return null;
 
@@ -39,6 +41,10 @@ export function RelatedLots({ auctions, currentId }: Props) {
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   ) : null}
+                  <OwnerBadge
+                    owned={Boolean(currentUserId && a.sellerId === currentUserId)}
+                    className="absolute right-2 top-2"
+                  />
                 </div>
                 <div className="p-4">
                   <h3 className="font-headline text-lg font-light text-on-surface group-hover:italic">

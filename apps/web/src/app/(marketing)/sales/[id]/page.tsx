@@ -1,4 +1,6 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { metadataForSale } from "@/lib/seo/metadata-factory";
@@ -25,10 +27,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function SaleDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const bundle = await getServerSaleWithLots(id).catch(() => null);
+  const [bundle, session] = await Promise.all([
+    getServerSaleWithLots(id).catch(() => null),
+    getServerSessionUser(),
+  ]);
   if (!bundle) notFound();
 
   const { sale, lots } = bundle;
+  const currentUserId = session?.id ?? null;
   const hero = sale.coverImages[0];
   const base = getSiteUrl();
   const crumbs = breadcrumbJsonLd([
@@ -115,6 +121,10 @@ export default async function SaleDetailPage({ params }: PageProps) {
                           sizes="(max-width: 768px) 100vw, 33vw"
                         />
                       ) : null}
+                      <OwnerBadge
+                        owned={Boolean(currentUserId && lot.sellerId === currentUserId)}
+                        className="absolute right-3 top-3"
+                      />
                       {lot.lotNumber != null ? (
                         <span className="absolute left-3 top-3 rounded-sm bg-surface/90 px-2 py-1 font-label text-[0.65rem] font-bold uppercase tracking-wider">
                           Lot {lot.lotNumber}

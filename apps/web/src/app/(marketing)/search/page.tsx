@@ -1,4 +1,6 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -27,7 +29,8 @@ type PageProps = {
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q = "", offset: offsetRaw = "0" } = await searchParams;
   const offset = Math.max(0, Number.parseInt(String(offsetRaw), 10) || 0);
-  const reader = await getServerLotReader();
+  const [reader, session] = await Promise.all([getServerLotReader(), getServerSessionUser()]);
+  const currentUserId = session?.id ?? null;
   let auctions: Lot[] = [];
   let loadError: string | null = null;
   try {
@@ -131,66 +134,70 @@ export default async function SearchPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <>
-        <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((a) => {
-            const img = a.images[0];
-            return (
-              <li key={a.id}>
-                <Link
-                  href={`/artwork/${a.id}`}
-                  className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="relative aspect-[4/5] bg-surface-container-low">
-                    {img ? (
-                      <Image
-                        src={img}
-                        alt={a.title}
-                        fill
-                        placeholder="blur"
-                        blurDataURL={TINY_IMAGE_BLUR}
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, 33vw"
+          <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((a) => {
+              const img = a.images[0];
+              return (
+                <li key={a.id}>
+                  <Link
+                    href={`/artwork/${a.id}`}
+                    className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="relative aspect-[4/5] bg-surface-container-low">
+                      {img ? (
+                        <Image
+                          src={img}
+                          alt={a.title}
+                          fill
+                          placeholder="blur"
+                          blurDataURL={TINY_IMAGE_BLUR}
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          sizes="(max-width: 640px) 100vw, 33vw"
+                        />
+                      ) : null}
+                      <OwnerBadge
+                        owned={Boolean(currentUserId && a.sellerId === currentUserId)}
+                        className="absolute right-3 top-3"
                       />
-                    ) : null}
-                  </div>
-                  <div className="p-5">
-                    <h2 className="font-headline text-xl font-light text-on-surface group-hover:italic">
-                      {a.title}
-                    </h2>
-                    <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
-                      {formatMoney(a.currentPrice)}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <nav
-          className="mt-12 flex flex-wrap items-center justify-center gap-6 border-t border-outline-variant/15 pt-10 font-label text-xs font-semibold uppercase tracking-widest"
-          aria-label="Search results pagination"
-        >
-          {hasPrev ? (
-            <Link
-              href={`/search?offset=${prevOffset}${qParam}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Previous
-            </Link>
-          ) : (
-            <span className="text-on-surface-variant/40">Previous</span>
-          )}
-          {hasNext ? (
-            <Link
-              href={`/search?offset=${nextOffset}${qParam}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Next
-            </Link>
-          ) : (
-            <span className="text-on-surface-variant/40">Next</span>
-          )}
-        </nav>
+                    </div>
+                    <div className="p-5">
+                      <h2 className="font-headline text-xl font-light text-on-surface group-hover:italic">
+                        {a.title}
+                      </h2>
+                      <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
+                        {formatMoney(a.currentPrice)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <nav
+            className="mt-12 flex flex-wrap items-center justify-center gap-6 border-t border-outline-variant/15 pt-10 font-label text-xs font-semibold uppercase tracking-widest"
+            aria-label="Search results pagination"
+          >
+            {hasPrev ? (
+              <Link
+                href={`/search?offset=${prevOffset}${qParam}`}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Previous
+              </Link>
+            ) : (
+              <span className="text-on-surface-variant/40">Previous</span>
+            )}
+            {hasNext ? (
+              <Link
+                href={`/search?offset=${nextOffset}${qParam}`}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Next
+              </Link>
+            ) : (
+              <span className="text-on-surface-variant/40">Next</span>
+            )}
+          </nav>
         </>
       )}
     </main>

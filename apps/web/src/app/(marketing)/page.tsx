@@ -5,6 +5,7 @@ import { LaxHero } from "@/components/sections/home/lax-hero";
 import { LaxUpcomingAuctions } from "@/components/sections/home/lax-upcoming-auctions";
 import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
 import { SITE_TAGLINE } from "@/lib/brand";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -21,12 +22,14 @@ type PageProps = {
 };
 
 async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: string }) {
-  const { heroState, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
+  const [{ heroState, lotCards, auctionVm, artistCards, saleMetaLine }, session] =
+    await Promise.all([getHomeData(), getServerSessionUser()]);
+  const currentUserId = session?.id ?? null;
   return (
     <>
       <LaxHero state={heroState} twitchParentHost={twitchParentHost} />
-      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
-      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
+      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} currentUserId={currentUserId} />
+      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} currentUserId={currentUserId} /> : null}
       <LaxArtists items={artistCards} />
       <HomeNewsletter />
     </>
@@ -43,10 +46,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
       <Suspense
         fallback={
-          <div
-            className="min-h-[50vh] w-full animate-pulse bg-surface-container-low"
-            aria-hidden
-          />
+          <div className="min-h-[50vh] w-full animate-pulse bg-surface-container-low" aria-hidden />
         }
       >
         <MarketingHomeContent twitchParentHost={twitchParentHost} />

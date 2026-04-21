@@ -1,6 +1,7 @@
 "use client";
 
-import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
+import { BidGate } from "@/components/bid/bid-gate";
+import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
 import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidDisplay } from "@/components/sections/artwork/bid-display";
@@ -11,8 +12,8 @@ import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
 import { formatCountdownClock } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import type { Lot } from "@auction/types";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,7 +52,7 @@ export function ArtworkBidPanel({
   const [amount, setAmount] = useState("");
   const [maxAuto, setMaxAuto] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<BidErrorPresentation | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [bidSuccess, setBidSuccess] = useState(false);
@@ -133,6 +134,8 @@ export function ArtworkBidPanel({
     return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }, [endTime]);
 
+  const ownLot = Boolean(sessionUser?.id && sessionUser.id === auction.sellerId);
+
   const isWinning = Boolean(
     sessionUser?.id &&
       leadingBidderId &&
@@ -144,13 +147,13 @@ export function ArtworkBidPanel({
     setError(null);
     const n = Number.parseFloat(amount);
     if (Number.isNaN(n) || n + 1e-9 < minNumeric) {
-      setError(`Enter at least ${formatMoney(minNumeric.toFixed(2))}`);
+      setError(clientBidError(`Enter at least ${formatMoney(minNumeric.toFixed(2))}`));
       return;
     }
     const maxN = maxAuto.trim() === "" ? undefined : Number.parseFloat(maxAuto);
     if (maxN !== undefined) {
       if (Number.isNaN(maxN) || maxN < n) {
-        setError("Max auto-bid must be greater than or equal to your bid.");
+        setError(clientBidError("Max auto-bid must be greater than or equal to your bid."));
         return;
       }
     }
@@ -161,7 +164,7 @@ export function ArtworkBidPanel({
     setError(null);
     const n = Number.parseFloat(amount);
     if (Number.isNaN(n)) {
-      setError("Invalid amount");
+      setError(clientBidError("Invalid amount"));
       return;
     }
     const maxN = maxAuto.trim() === "" ? undefined : Number.parseFloat(maxAuto);
@@ -173,7 +176,7 @@ export function ArtworkBidPanel({
     });
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(mapBidError(result.error));
       setStep(1);
       return;
     }
@@ -225,55 +228,44 @@ export function ArtworkBidPanel({
   const live = lotStatus === "active";
 
   return (
-    <div className="mb-20 min-w-0 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
-      {endedBanner ? (
-        <output
-          className="mb-6 block rounded-lg border border-primary/30 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/20"
-          aria-live="polite"
-        >
-          {endedBanner}
-        </output>
-      ) : null}
-
-      <BidDisplay
-        currentPrice={currentPrice}
-        remainingLabel={remainingLabel}
-        msRemaining={msRemaining}
-        minNextBid={minNumeric.toFixed(2)}
-        saleEndLocalLabel={saleEndLocalLabel}
-        live={live}
-        isWinning={isWinning}
-        priceFlash={priceFlash}
-      />
-
-      <div
-        id="bid-interactive-anchor"
-        tabIndex={-1}
-        className="scroll-mt-28 outline-none focus:outline-none"
-      >
-        {bidSuccess ? (
-          <output className="mb-8 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
-            Bid placed successfully.
-          </output>
-        ) : null}
-
-        {!live ? (
-          <p className="font-body text-secondary">This auction is not accepting bids.</p>
-        ) : !sessionUser ? (
-          <div className="rounded-lg bg-surface-container-high/80 p-8 text-center ring-1 ring-outline-variant/10">
-            <p className="mb-4 font-body text-sm text-on-surface-variant">
-              Sign in to place a bid on this lot.
-            </p>
-            <Link
-              href={`/login?next=${encodeURIComponent(loginNext)}`}
-              className="inline-flex w-full items-center justify-center bg-gradient-to-br from-primary to-primary-container py-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95"
+    <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
+      {({ decision }) => (
+        <div className="mb-20 min-w-0 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
+          {endedBanner ? (
+            <output
+              className="mb-6 block rounded-lg border border-primary/30 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/20"
+              aria-live="polite"
             >
-              Sign in to bid
-            </Link>
-          </div>
-        ) : (
-          <BuyerGate user={sessionUser}>
-            {step === 1 ? (
+              {endedBanner}
+            </output>
+          ) : null}
+
+          <BidDisplay
+            currentPrice={currentPrice}
+            remainingLabel={remainingLabel}
+            msRemaining={msRemaining}
+            minNextBid={minNumeric.toFixed(2)}
+            saleEndLocalLabel={saleEndLocalLabel}
+            live={live}
+            ownLot={ownLot}
+            isWinning={isWinning}
+            priceFlash={priceFlash}
+          />
+
+          <div
+            id="bid-interactive-anchor"
+            tabIndex={-1}
+            className="scroll-mt-28 outline-none focus:outline-none"
+          >
+            {bidSuccess ? (
+              <output className="mb-8 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+                Bid placed successfully.
+              </output>
+            ) : null}
+
+            {decision.kind === "block" ? (
+              decision.render()
+            ) : step === 1 ? (
               <BidForm
                 auctionType={auction.auctionType}
                 minNumeric={minNumeric}
@@ -295,60 +287,22 @@ export function ArtworkBidPanel({
                 onConfirm={onConfirm}
               />
             )}
-          </BuyerGate>
-        )}
-      </div>
-
-      <BidHistory entries={history} />
-      <ArtworkTrustStrip />
-
-      {live ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/25 bg-surface-container-lowest/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md lg:hidden dark:border-outline-variant/20 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)]">
-          <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
-                Current bid
-              </p>
-              <p
-                className={`truncate font-headline text-lg text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
-              >
-                {formatMoney(currentPrice)}
-              </p>
-            </div>
-            {!sessionUser ? (
-              <Link
-                href={`/login?next=${encodeURIComponent(loginNext)}`}
-                className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm"
-              >
-                Sign in
-              </Link>
-            ) : isAdminBuyerBlocked(sessionUser) ? (
-              <Link
-                href="/admin"
-                className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-              >
-                Admin
-              </Link>
-            ) : step === 1 ? (
-              <button
-                type="button"
-                onClick={scrollToBid}
-                className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                Place bid
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={scrollToBid}
-                className="shrink-0 border border-primary/40 px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                Confirm bid
-              </button>
-            )}
           </div>
+
+          <BidHistory entries={history} />
+          <ArtworkTrustStrip />
+
+          <BidStickyMobileBar
+            live={live}
+            decision={decision}
+            loginNextPath={loginNext}
+            step={step}
+            currentPriceLabel={formatMoney(currentPrice)}
+            priceFlash={priceFlash}
+            onScrollToBid={scrollToBid}
+          />
         </div>
-      ) : null}
-    </div>
+      )}
+    </BidGate>
   );
 }

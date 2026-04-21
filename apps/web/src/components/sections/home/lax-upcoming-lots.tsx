@@ -1,3 +1,4 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
@@ -10,9 +11,10 @@ import Link from "next/link";
 type Props = {
   items: LotCardVM[];
   saleMetaLine: string;
+  currentUserId?: string | null;
 };
 
-export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
+export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: Props) {
   return (
     <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-8">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
@@ -63,6 +65,10 @@ export function LaxUpcomingLots({ items, saleMetaLine }: Props) {
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
                     ) : null}
+                    <OwnerBadge
+                      owned={Boolean(currentUserId && item.sellerId === currentUserId)}
+                      className="absolute right-3 top-3"
+                    />
                   </div>
                 </Link>
                 <div className="flex flex-col gap-3">

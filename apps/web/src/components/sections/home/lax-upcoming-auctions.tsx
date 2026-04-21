@@ -1,3 +1,4 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { UpcomingAuctionVM } from "@/components/sections/home/home-view-models";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
@@ -8,9 +9,10 @@ import Link from "next/link";
 
 type Props = {
   auction: UpcomingAuctionVM;
+  currentUserId?: string | null;
 };
 
-export function LaxUpcomingAuctions({ auction }: Props) {
+export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
   return (
     <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-20 md:px-8">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
@@ -90,12 +92,17 @@ export function LaxUpcomingAuctions({ auction }: Props) {
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col justify-start gap-3 py-1">
                     <div className="flex flex-col gap-1">
-                      <Link
-                        href={lot.href}
-                        className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
-                      >
-                        {lot.title}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={lot.href}
+                          className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
+                        >
+                          {lot.title}
+                        </Link>
+                        <OwnerBadge
+                          owned={Boolean(currentUserId && lot.sellerId === currentUserId)}
+                        />
+                      </div>
                       <BodyText className="text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
                         {lot.artistName}
                       </BodyText>

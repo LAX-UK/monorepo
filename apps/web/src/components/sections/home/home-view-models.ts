@@ -72,6 +72,7 @@ export type LotCardVM = {
   imageUrl: string | null;
   /** Alt text when `imageUrl` is set */
   imageAlt: string;
+  sellerId: string;
 };
 
 export type AuctionFeaturedLotVM = {
@@ -83,6 +84,7 @@ export type AuctionFeaturedLotVM = {
   priceFormatted: string;
   imageUrl: string | null;
   imageAlt: string;
+  sellerId: string;
 };
 
 export type UpcomingAuctionVM = {
@@ -180,6 +182,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
+    sellerId: lot.sellerId,
   };
 }
 
@@ -199,6 +202,7 @@ function toAuctionFeaturedLotVM(lot: Lot): AuctionFeaturedLotVM {
     priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
+    sellerId: lot.sellerId,
   };
 }
 

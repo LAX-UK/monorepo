@@ -11,9 +11,10 @@ const OFFSET_PATTERN = ["", "lg:mt-16", "", "md:-mt-8", "lg:mt-24", ""] as const
 
 type Props = {
   items: ArchiveLotVM[];
+  currentUserId?: string | null;
 };
 
-export function PastAuctionsGrid({ items }: Props) {
+export function PastAuctionsGrid({ items, currentUserId = null }: Props) {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-screen-2xl rounded-xl border border-outline-variant/15 bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10">
@@ -49,6 +50,7 @@ export function PastAuctionsGrid({ items }: Props) {
           auction={row.auction}
           sellerName={row.sellerName}
           gridOffsetClass={OFFSET_PATTERN[i % OFFSET_PATTERN.length] ?? ""}
+          isOwner={Boolean(currentUserId && row.auction.sellerId === currentUserId)}
         />
       ))}
     </section>

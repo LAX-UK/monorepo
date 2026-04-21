@@ -1,6 +1,8 @@
+import { BidErrorView } from "@/components/bid/bid-error-view";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
+import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
 
 type Props = {
@@ -12,7 +14,7 @@ type Props = {
   onMaxAutoChange: (value: string) => void;
   onReview: () => void;
   onUseMinimum: () => void;
-  error: string | null;
+  error: BidErrorPresentation | null;
 };
 
 const CHIP_ADDS = [500, 1000, 5000] as const;
@@ -102,11 +104,7 @@ export function BidForm({
           </div>
         </div>
       ) : null}
-      {error ? (
-        <p className="text-sm text-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <BidErrorView error={error} />
       <Button type="button" variant="primary" className="w-full py-6" onClick={onReview}>
         Review bid amount
       </Button>

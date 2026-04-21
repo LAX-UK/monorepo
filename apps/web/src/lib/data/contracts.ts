@@ -52,6 +52,8 @@ export type SessionUser = {
   email: string;
   name: string;
   role: string;
+  /** When true (if API exposes it), bidding UI is blocked client-side. */
+  suspended?: boolean;
 };
 
 /** Session / “who am I” without exposing auth client (DIP). */

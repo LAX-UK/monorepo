@@ -1,5 +1,7 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { metadataForSeller } from "@/lib/seo/metadata-factory";
 import type { Lot } from "@auction/types";
@@ -50,9 +52,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArtistPage({ params }: PageProps) {
   const { id } = await params;
-  const sellerLots = await loadSellerLots(id);
   const reader = await getServerArtistReader();
-  const artist = await reader.getById(id);
+  const [sellerLots, artist, session] = await Promise.all([
+    loadSellerLots(id),
+    reader.getById(id),
+    getServerSessionUser(),
+  ]);
+  const currentUserId = session?.id ?? null;
 
   if (!artist) {
     const publicReader = await getServerPublicUserReader();
@@ -96,12 +102,15 @@ export default async function ArtistPage({ params }: PageProps) {
                 key={a.id}
                 className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-4 ring-1 ring-outline-variant/10"
               >
-                <Link
-                  href={`/artwork/${a.id}`}
-                  className="font-headline text-lg text-on-surface hover:text-primary"
-                >
-                  {a.title}
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/artwork/${a.id}`}
+                    className="font-headline text-lg text-on-surface hover:text-primary"
+                  >
+                    {a.title}
+                  </Link>
+                  <OwnerBadge owned={Boolean(currentUserId && a.sellerId === currentUserId)} />
+                </div>
                 <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
                   {a.status}
                 </p>
@@ -218,12 +227,15 @@ export default async function ArtistPage({ params }: PageProps) {
               key={a.id}
               className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-4 ring-1 ring-outline-variant/10"
             >
-              <Link
-                href={`/artwork/${a.id}`}
-                className="font-headline text-lg text-on-surface hover:text-primary"
-              >
-                {a.title}
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/artwork/${a.id}`}
+                  className="font-headline text-lg text-on-surface hover:text-primary"
+                >
+                  {a.title}
+                </Link>
+                <OwnerBadge owned={Boolean(currentUserId && a.sellerId === currentUserId)} />
+              </div>
               <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
                 {a.status}
               </p>

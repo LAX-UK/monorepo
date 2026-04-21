@@ -1,3 +1,4 @@
+import { BidDisplayStatusBanner } from "@/components/sections/artwork/bid-display-status-banner";
 import { formatMoney } from "@/lib/format-currency";
 import Link from "next/link";
 
@@ -10,6 +11,8 @@ type Props = {
   /** Human-readable local end time, e.g. for timezone clarity. */
   saleEndLocalLabel: string;
   live?: boolean;
+  /** Viewer is the lot seller (takes precedence over {@link isWinning}). */
+  ownLot?: boolean;
   /** Logged-in user currently holds the winning bid. */
   isWinning?: boolean;
   /** Brief CSS animation on the price when it changes. */
@@ -34,30 +37,33 @@ export function BidDisplay({
   minNextBid,
   saleEndLocalLabel,
   live,
+  ownLot = false,
   isWinning,
   priceFlash,
 }: Props) {
   const timerClass = countdownUrgencyClass(msRemaining);
+  const status = ownLot
+    ? ({ kind: "owner" } as const)
+    : isWinning
+      ? ({ kind: "winning" } as const)
+      : null;
 
   return (
     <div className="mb-12 space-y-6">
-      {isWinning ? (
-        <output
-          className="block rounded-lg border border-primary/35 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/25"
-          aria-live="polite"
-        >
-          <span className="font-label text-xs font-bold uppercase tracking-widest text-primary">
-            You&apos;re winning
-          </span>
-          <p className="mt-1 text-on-surface">Your bid is currently the high bid on this lot.</p>
-        </output>
-      ) : null}
+      <BidDisplayStatusBanner status={status} />
 
       <div className="flex min-w-0 flex-col gap-6">
         <div className="min-w-0 overflow-hidden rounded-lg bg-surface-container-high/50 p-6 ring-1 ring-outline-variant/10">
-          <span className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary">
-            Current high bid
-          </span>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              Current high bid
+            </span>
+            {ownLot ? (
+              <span className="rounded-md bg-primary-container/30 px-2 py-0.5 font-label text-[0.65rem] font-bold uppercase tracking-widest text-primary ring-1 ring-primary/20">
+                Your listing
+              </span>
+            ) : null}
+          </div>
           <span
             aria-live="polite"
             aria-atomic="true"

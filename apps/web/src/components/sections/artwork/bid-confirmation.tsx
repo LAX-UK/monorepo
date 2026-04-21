@@ -1,11 +1,13 @@
+import { BidErrorView } from "@/components/bid/bid-error-view";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-currency";
+import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import Link from "next/link";
 
 type Props = {
   amount: string;
   maxAuto: string | null;
-  error: string | null;
+  error: BidErrorPresentation | null;
   submitting: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -40,11 +42,7 @@ export function BidConfirmation({
           .
         </p>
       </div>
-      {error ? (
-        <p className="text-sm text-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <BidErrorView error={error} />
       <div className="flex gap-4">
         <Button type="button" variant="secondary" className="flex-1 py-6" onClick={onCancel}>
           Cancel

@@ -1,5 +1,5 @@
 import type { BaseSyntheticEvent } from "react";
-import type { UseFormReturn, FieldValues } from "react-hook-form";
+import type { FieldValues, UseFormReturn } from "react-hook-form";
 
 /** Contract for RHF-backed form hooks (views depend on this shape only). */
 export type FormController<V extends FieldValues, R = void> = {

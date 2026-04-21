@@ -8,6 +8,7 @@ import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-
 import { buildArchivePageQuery } from "@/lib/archive/build-archive-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -54,12 +55,14 @@ export default async function ArchivePage({ searchParams }: PageProps) {
   let totalCount = 0;
 
   try {
-    const [catReader, metricsReader, auctionReader, publicReader] = await Promise.all([
+    const [catReader, metricsReader, auctionReader, publicReader, session] = await Promise.all([
       getServerCategoryReader(),
       getServerArchiveMetricsReader(),
       getServerLotReader(),
       getServerPublicUserReader(),
+      getServerSessionUser(),
     ]);
+    const currentUserId = session?.id ?? null;
 
     categories = await catReader.list();
     const [summary, count, list] = await Promise.all([
@@ -103,7 +106,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={categories} />
         </Suspense>
-        <PastAuctionsGrid items={items} />
+        <PastAuctionsGrid items={items} currentUserId={currentUserId} />
         <Suspense fallback={null}>
           <ArchivePagination page={q.page} totalPages={totalPages} />
         </Suspense>

@@ -1,3 +1,4 @@
+import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import type { Lot } from "@auction/types";
@@ -16,9 +17,15 @@ type Props = {
   auction: Lot;
   sellerName: string;
   gridOffsetClass?: string;
+  isOwner?: boolean;
 };
 
-export function PastAuctionCard({ auction, sellerName, gridOffsetClass = "" }: Props) {
+export function PastAuctionCard({
+  auction,
+  sellerName,
+  gridOffsetClass = "",
+  isOwner = false,
+}: Props) {
   const img = auction.images[0];
   return (
     <div className={`group ${gridOffsetClass}`}>
@@ -45,9 +52,12 @@ export function PastAuctionCard({ auction, sellerName, gridOffsetClass = "" }: P
             <span className="block font-label text-[0.625rem] uppercase tracking-[0.2em] text-on-surface-variant">
               Lot No. {lotNo(auction.id)} · {closingCaption(auction.endTime)}
             </span>
-            <h3 className="font-headline text-2xl tracking-tight text-on-surface transition-colors group-hover:text-primary">
-              {auction.title}
-            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-headline text-2xl tracking-tight text-on-surface transition-colors group-hover:text-primary">
+                {auction.title}
+              </h3>
+              <OwnerBadge owned={isOwner} />
+            </div>
             <p className="text-sm font-light text-on-surface-variant">{sellerName}</p>
           </div>
           <div className="text-right">

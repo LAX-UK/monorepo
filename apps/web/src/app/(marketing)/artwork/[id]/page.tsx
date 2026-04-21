@@ -99,6 +99,7 @@ export default async function ArtworkPage({ params }: PageProps) {
           sellerHref={sellerHref}
           sellerName={sellerName}
           relatedAuctions={relatedRaw}
+          currentUserId={session?.id ?? null}
           watchSlot={
             <ArtworkWatchToggle
               lotId={auction.id}

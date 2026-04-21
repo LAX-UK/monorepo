@@ -26,6 +26,8 @@ type Props = {
   sellerHref: string;
   sellerName: string;
   relatedAuctions: Lot[];
+  /** Signed-in user id for “Your listing” on related lots. */
+  currentUserId?: string | null;
 };
 
 export function ArtworkSplitView({
@@ -36,6 +38,7 @@ export function ArtworkSplitView({
   sellerHref,
   sellerName,
   relatedAuctions,
+  currentUserId = null,
 }: Props) {
   const live = auction.status === "active";
 
@@ -234,7 +237,11 @@ export function ArtworkSplitView({
           <section aria-label="Bidding" className="border-t border-outline-variant/10 pt-10">
             {bidPanel}
           </section>
-          <RelatedLots auctions={relatedAuctions} currentId={auction.id} />
+          <RelatedLots
+            auctions={relatedAuctions}
+            currentId={auction.id}
+            currentUserId={currentUserId}
+          />
         </div>
       </div>
     </main>
