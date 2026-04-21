@@ -8,6 +8,7 @@ import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CommandPaletteTrigger } from "./command-palette-trigger";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearch } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
@@ -55,7 +56,8 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
             </Link>
           }
           trailing={
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[320px] lg:flex-none">
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
+              <CommandPaletteTrigger />
               <HeaderSearch variant="desktop" />
               <ThemeToggle />
               {user ? <NotificationBell /> : null}

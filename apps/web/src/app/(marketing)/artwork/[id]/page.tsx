@@ -1,3 +1,4 @@
+import { ShareButton } from "@/components/marketing/share-button";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
@@ -9,7 +10,8 @@ import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { metadataForLot } from "@/lib/seo/metadata-factory";
-import { breadcrumbJsonLd, lotProductJsonLd } from "@/lib/seo/structured-data";
+import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
+import { getSiteUrl } from "@/lib/site-url";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -46,16 +48,14 @@ export default async function ArtworkPage({ params }: PageProps) {
   const [initialBids, seller, relatedRaw, watchlist] = await Promise.all([
     getServerLotBids(id, 30).catch(() => []),
     publicReader.getById(auction.sellerId).catch(() => null),
-    auction.categoryId
-      ? reader
-          .list({
-            categoryId: auction.categoryId,
-            limit: 8,
-            status: "active",
-            sort: "endingAsc",
-          })
-          .catch(() => [])
-      : Promise.resolve([]),
+    reader
+      .list({
+        sellerId: auction.sellerId,
+        limit: 12,
+        status: "active",
+        sort: "endingAsc",
+      })
+      .catch(() => []),
     watchlistPromise,
   ]);
 
@@ -81,7 +81,8 @@ export default async function ArtworkPage({ params }: PageProps) {
     { name: "Search", path: "/search" },
     { name: auction.title, path: `/artwork/${auction.id}` },
   ]);
-  const jsonLdText = JSON.stringify([lotProductJsonLd(auction), crumbs]).replace(/</g, "\\u003c");
+  const jsonLdText = jsonLdScript(lotProductJsonLd(auction), crumbs);
+  const shareUrl = `${getSiteUrl()}/artwork/${auction.id}`;
 
   return (
     <main id="main-content">
@@ -101,11 +102,14 @@ export default async function ArtworkPage({ params }: PageProps) {
           relatedAuctions={relatedRaw}
           currentUserId={session?.id ?? null}
           watchSlot={
-            <ArtworkWatchToggle
-              lotId={auction.id}
-              initialWatching={watching}
-              isAuthenticated={Boolean(session)}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <ArtworkWatchToggle
+                lotId={auction.id}
+                initialWatching={watching}
+                isAuthenticated={Boolean(session)}
+              />
+              <ShareButton url={shareUrl} title={auction.title} />
+            </div>
           }
           bidPanel={
             <ArtworkBidPanel

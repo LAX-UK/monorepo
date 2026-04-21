@@ -17,7 +17,10 @@ export function LaxHeroLot({ lot }: Props) {
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
-        <RevealOnMount className="absolute inset-0 overflow-hidden" innerClassName="absolute inset-0">
+        <RevealOnMount
+          className="absolute inset-0 overflow-hidden"
+          innerClassName="absolute inset-0"
+        >
           <Image
             src={lot.heroImageUrl}
             alt={lot.imageAlt}
@@ -63,7 +66,11 @@ export function LaxHeroLot({ lot }: Props) {
               </div>
               <div className="flex flex-row flex-wrap gap-8">
                 <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
-                <StatTile label="Current Highest Bid" value={lot.currentBidFormatted} tone="white" />
+                <StatTile
+                  label="Current Highest Bid"
+                  value={lot.currentBidFormatted}
+                  tone="white"
+                />
                 <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
               </div>
             </div>
@@ -82,20 +89,37 @@ export function LaxHeroLot({ lot }: Props) {
                   <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
                 </Link>
               </Button>
-              <Button
-                variant="liveJoin"
-                size="xl"
-                className="min-h-[44px] min-w-0 sm:min-w-[200px]"
-                asChild
-              >
-                <Link
-                  href={artworkHref}
-                  className="inline-flex items-center justify-center gap-[11px]"
+              {lot.isAuctionLive ? (
+                <Button
+                  variant="liveJoin"
+                  size="xl"
+                  className="min-h-[44px] min-w-0 sm:min-w-[200px]"
+                  asChild
                 >
-                  <LiveDot className="h-5 w-5" />
-                  Join Live Stream
-                </Link>
-              </Button>
+                  <Link
+                    href={artworkHref}
+                    className="inline-flex items-center justify-center gap-[11px]"
+                  >
+                    <LiveDot className="h-5 w-5" />
+                    Join Live Stream
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="xl"
+                  className="min-h-[44px] min-w-0 border-white/80 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white sm:min-w-[200px] dark:border-white/80"
+                  asChild
+                >
+                  <Link
+                    href={artworkHref}
+                    className="inline-flex items-center justify-center gap-[11px]"
+                  >
+                    View lot
+                    <ArrowRight className="!size-5 shrink-0 text-white" aria-hidden />
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>

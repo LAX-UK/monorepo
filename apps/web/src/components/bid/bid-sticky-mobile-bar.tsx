@@ -1,6 +1,7 @@
 "use client";
 
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
+import { StickyBidBar } from "@auction/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -84,20 +85,18 @@ export function BidStickyMobileBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/25 bg-surface-container-lowest/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md lg:hidden dark:border-outline-variant/20 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)]">
-      <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
-            Current bid
-          </p>
-          <p
-            className={`truncate font-headline text-lg text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
-          >
-            {currentPriceLabel}
-          </p>
-        </div>
-        {right}
+    <StickyBidBar className="lg:hidden">
+      <div className="min-w-0">
+        <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+          Current bid
+        </p>
+        <p
+          className={`truncate font-headline text-lg text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
+        >
+          {currentPriceLabel}
+        </p>
       </div>
-    </div>
+      {right}
+    </StickyBidBar>
   );
 }

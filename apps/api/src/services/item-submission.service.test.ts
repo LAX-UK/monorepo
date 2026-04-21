@@ -143,6 +143,7 @@ describe("ItemSubmissionService", () => {
       winnerId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      marketingDetails: {},
     };
     const convertedSubmission = {
       ...under,

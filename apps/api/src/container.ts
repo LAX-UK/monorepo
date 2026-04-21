@@ -46,6 +46,7 @@ import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
+import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
@@ -81,6 +82,7 @@ import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
+import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { LotStrategyFactory } from "./strategies/strategy.factory.js";
 
@@ -104,6 +106,7 @@ export type Container = {
   paymentService: PaymentService;
   userService: UserService;
   watchlistService: WatchlistService;
+  artistWatchlistService: ArtistWatchlistService;
   notificationService: NotificationService;
   notificationPreferenceRepository: INotificationPreferenceRepository;
   pushSubscriptionRepository: IPushSubscriptionRepository;
@@ -142,6 +145,7 @@ export function createContainer(env: Env): Container {
   const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
   const categoryRepo = new DrizzleCategoryRepository(db);
   const watchlistRepo = new DrizzleWatchlistRepository(db);
+  const artistWatchlistRepo = new DrizzleArtistWatchlistRepository(db);
   const notificationReadRepo = new DrizzleNotificationReadRepository(db);
   const notificationWriteRepo = new DrizzleNotificationWriteRepository(db);
   const paymentRepo = new DrizzlePaymentRepository(db);
@@ -251,6 +255,7 @@ export function createContainer(env: Env): Container {
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
+  const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, userRepo);
   const profileService = new ProfileService(profileRepo, profileRepo);
   const addressService = new AddressService(addressRepo);
 
@@ -309,6 +314,7 @@ export function createContainer(env: Env): Container {
     paymentService,
     userService,
     watchlistService,
+    artistWatchlistService,
     notificationService,
     notificationPreferenceRepository,
     pushSubscriptionRepository,

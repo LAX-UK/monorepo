@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { lot } from "@auction/db/schema";
+import { lot, user } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
 import { mapLotRow } from "../lib/mappers.js";
@@ -102,6 +102,7 @@ export class DrizzleLotRepository implements ILotRepository {
         ...(input.lotNumber !== undefined && input.lotNumber !== null
           ? { lotNumber: input.lotNumber }
           : {}),
+        marketingDetails: {},
       })
       .returning();
     if (!row) throw new Error("Failed to create lot");
@@ -110,6 +111,19 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async list(filter: ListLotsFilter) {
     const whereClause = listWhere(filter);
+
+    if (filter.sort === "sellerAsc") {
+      const rows = await this.db
+        .select({ lotRow: lot })
+        .from(lot)
+        .innerJoin(user, eq(lot.sellerId, user.id))
+        .where(whereClause)
+        .orderBy(asc(user.name), desc(lot.endTime))
+        .limit(filter.limit)
+        .offset(filter.offset);
+      return rows.map((r) => mapLotRow(r.lotRow));
+    }
+
     const orderBy = listOrderBy(filter.sort);
 
     const rows = await this.db

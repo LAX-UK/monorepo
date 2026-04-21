@@ -1,34 +1,16 @@
 import "server-only";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
 import type { Bid, Lot, PaymentStatus, PortfolioRow } from "@auction/types";
-import { cookies } from "next/headers";
-import { getServerApiBase } from "./hc-server";
+
+import { authedServerFetch } from "./authed-fetch.server";
 
 export type BidWithLot = {
   bid: Bid;
   lot: Lot | null;
 };
 
-async function cookieHeader(): Promise<string> {
-  const jar = await cookies();
-  return jar
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-}
-
-async function authedFetch(path: string): Promise<Response> {
-  const cookie = await cookieHeader();
-  const headers = new Headers();
-  if (cookie) headers.set("Cookie", cookie);
-  return fetch(`${getServerApiBase()}${path}`, {
-    headers,
-    credentials: "include",
-  });
-}
-
 export async function getServerMyBids(): Promise<BidWithLot[]> {
-  const res = await authedFetch("/users/me/bids");
+  const res = await authedServerFetch("/users/me/bids");
   if (!res.ok) {
     throw new Error(`Failed to load bids: ${res.status}`);
   }
@@ -46,7 +28,7 @@ function isPaymentStatus(s: string): s is PaymentStatus {
 }
 
 export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
-  const res = await authedFetch("/users/me/portfolio");
+  const res = await authedServerFetch("/users/me/portfolio");
   if (!res.ok) {
     throw new Error(`Failed to load portfolio: ${res.status}`);
   }
@@ -70,7 +52,7 @@ export type WatchlistWithLotRow = {
 };
 
 export async function getServerMyWatchlist(): Promise<WatchlistWithLotRow[]> {
-  const res = await authedFetch("/users/me/watchlist");
+  const res = await authedServerFetch("/users/me/watchlist");
   if (!res.ok) {
     throw new Error(`Failed to load watchlist: ${res.status}`);
   }
@@ -87,5 +69,26 @@ export async function getServerMyWatchlist(): Promise<WatchlistWithLotRow[]> {
     lotId: row.lotId,
     createdAt: new Date(row.createdAt),
     lot: row.lot ? parseLot(row.lot) : null,
+  }));
+}
+
+export type ArtistFollowRow = {
+  watchlistId: string;
+  artistId: string;
+  createdAt: Date;
+};
+
+export async function getServerMyArtistFollows(): Promise<ArtistFollowRow[]> {
+  const res = await authedServerFetch("/users/me/artist-watchlist");
+  if (!res.ok) {
+    throw new Error(`Failed to load followed artists: ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    data: Array<{ id: string; artistId: string; createdAt: string }>;
+  };
+  return body.data.map((row) => ({
+    watchlistId: row.id,
+    artistId: row.artistId,
+    createdAt: new Date(row.createdAt),
   }));
 }

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -69,6 +70,11 @@ export const lot = pgTable(
     }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    /** Catalog/marketing JSON (estimate, provenance, image alts, …) — see `LotMarketingDetails` in @auction/types */
+    marketingDetails: jsonb("marketing_details")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
   },
   (table) => [
     index("lot_seller_id_idx").on(table.sellerId),

@@ -177,7 +177,8 @@ export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
 export function toLotCardVM(lot: Lot): LotCardVM {
   const artistName = artistLineFromLot(lot);
   const { label, value } = lotPriceDisplay(lot);
-  const startTime = lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
+  const startTime =
+    lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
   const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
   return {
     id: lot.id,

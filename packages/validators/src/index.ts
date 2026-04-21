@@ -10,5 +10,6 @@ export * from "./forgot-password.js";
 export * from "./newsletter.js";
 export * from "./user.js";
 export * from "./watchlist.js";
+export * from "./artist-watchlist.js";
 export * from "./item-submission.js";
 export * from "./money-compare.js";

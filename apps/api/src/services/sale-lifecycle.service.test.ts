@@ -55,6 +55,7 @@ function childLot(status: Lot["status"], id = "l1"): Lot {
     winnerId: null,
     createdAt: now,
     updatedAt: now,
+    marketingDetails: {},
   };
 }
 

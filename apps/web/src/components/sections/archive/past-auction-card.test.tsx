@@ -30,6 +30,7 @@ const auction: Lot = {
   winnerId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  marketingDetails: {},
 };
 
 describe("PastAuctionCard", () => {

@@ -31,6 +31,7 @@ const lot = {
   winnerId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  marketingDetails: {},
 };
 
 describe("BidGate", () => {

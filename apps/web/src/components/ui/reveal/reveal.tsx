@@ -1,7 +1,11 @@
 "use client";
 
+import {
+  type RevealTrigger,
+  defaultInViewTrigger,
+  eagerTrigger,
+} from "@/components/ui/reveal/triggers";
 import { useReveal } from "@/components/ui/reveal/use-reveal";
-import { defaultInViewTrigger, eagerTrigger, type RevealTrigger } from "@/components/ui/reveal/triggers";
 import { cn } from "@auction/ui";
 import type { CSSProperties, ReactNode } from "react";
 

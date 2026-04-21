@@ -12,7 +12,7 @@ export const metadata: Metadata = metadataForStatic({
 
 export default function LegalHubPage() {
   return (
-    <LegalPage title="Legal">
+    <LegalPage title="Legal" lastUpdated="21 April 2026">
       <p>Key policies for collectors using LAX London Auction House Ltd.</p>
       <ul className="list-inside list-disc space-y-3 text-on-surface">
         <li>

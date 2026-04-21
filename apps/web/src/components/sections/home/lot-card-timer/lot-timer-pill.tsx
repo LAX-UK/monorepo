@@ -1,5 +1,5 @@
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { cn, LiveDot } from "@auction/ui";
+import { LiveDot, cn } from "@auction/ui";
 import type { LotTimerState } from "./classify";
 
 function assertNever(x: never): never {

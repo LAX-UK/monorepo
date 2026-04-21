@@ -32,7 +32,9 @@ export const createLotSchema = z.object({
   lotNumber: z.coerce.number().int().positive().nullable().optional(),
 });
 
-const listSort = z.enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc"]).optional();
+const listSort = z
+  .enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc", "sellerAsc"])
+  .optional();
 
 export const listLotsQuerySchema = z.object({
   status: z.enum(lotStatuses).optional(),

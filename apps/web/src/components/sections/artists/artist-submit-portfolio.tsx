@@ -1,3 +1,4 @@
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { SITE_NAME } from "@/lib/brand";
 import Link from "next/link";
 
@@ -23,13 +24,11 @@ export function ArtistSubmitPortfolio() {
           <ul className="space-y-4">
             {benefits.map((text) => (
               <li key={text} className="flex items-center gap-4">
-                <span
-                  className="material-symbols-outlined select-none text-primary"
-                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}
+                <MaterialIcon
+                  name="check_circle"
+                  className="select-none text-primary"
                   aria-hidden
-                >
-                  check_circle
-                </span>
+                />
                 <span className="font-label text-sm font-semibold uppercase tracking-wide text-on-surface">
                   {text}
                 </span>

@@ -33,7 +33,13 @@ function bidHintBadge(hint: "high" | "outbid" | "none") {
 export function DashboardOverviewView({ vm }: Props) {
   const now = Date.now();
   const { errors } = vm;
-  const hasErrors = !!(errors.active || errors.portfolio || errors.watchlist || errors.bids);
+  const hasErrors = !!(
+    errors.active ||
+    errors.portfolio ||
+    errors.watchlist ||
+    errors.artistFollow ||
+    errors.bids
+  );
 
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)]">
@@ -45,6 +51,7 @@ export function DashboardOverviewView({ vm }: Props) {
               {errors.active ? <li>Live inventory: {errors.active}</li> : null}
               {errors.portfolio ? <li>Portfolio: {errors.portfolio}</li> : null}
               {errors.watchlist ? <li>Watchlist: {errors.watchlist}</li> : null}
+              {errors.artistFollow ? <li>Followed artists: {errors.artistFollow}</li> : null}
               {errors.bids ? <li>Bids: {errors.bids}</li> : null}
             </ul>
           </AlertDescription>
@@ -373,6 +380,42 @@ export function DashboardOverviewView({ vm }: Props) {
                       </li>
                     );
                   })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="font-headline text-xl">Artists you follow</CardTitle>
+              <UiButton variant="chevron" asChild>
+                <Link href="/artist/featured" className="inline-flex gap-1 text-xs">
+                  Directory
+                  <ChevronRight className="size-4" aria-hidden />
+                </Link>
+              </UiButton>
+            </CardHeader>
+            <CardContent>
+              {vm.artistFollowPreview.length === 0 ? (
+                <p className="font-body text-sm text-on-surface-variant">
+                  Follow artists from their public profile to see them here.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {vm.artistFollowPreview.map((row) => (
+                    <li key={row.watchlistId}>
+                      <Link
+                        href={`/artist/${row.artistId}`}
+                        className="flex items-center justify-between rounded-lg p-2 font-body text-sm text-on-surface transition-colors hover:bg-surface-container-high/80"
+                      >
+                        <span className="truncate">Artist profile</span>
+                        <ChevronRight
+                          className="size-4 shrink-0 text-on-surface-variant"
+                          aria-hidden
+                        />
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               )}
             </CardContent>

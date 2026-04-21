@@ -12,6 +12,8 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -86,22 +88,32 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     );
     const sellerNames = new Map(nameEntries);
 
-    let items: ArchiveLotVM[] = auctions.map((a) => ({
+    const items: ArchiveLotVM[] = auctions.map((a) => ({
       auction: a,
       sellerName: sellerNames.get(a.sellerId) ?? "Private seller",
     }));
 
-    if (q.sortMode === "artist") {
-      items = [...items].sort((a, b) => a.sellerName.localeCompare(b.sellerName));
-    }
-
     const totalPages = Math.max(1, Math.ceil(totalCount / q.pageSize));
+
+    const base = getSiteUrl();
+    const crumbs = breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Past auctions", path: "/archive" },
+    ]);
+    const itemsLd =
+      auctions.length > 0
+        ? itemListJsonLd(auctions.map((a) => ({ name: a.title, url: `${base}/artwork/${a.id}` })))
+        : null;
+    const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, itemsLd] : [crumbs]));
 
     return (
       <main
         id="main-content"
         className="bg-surface px-8 pb-24 pt-[var(--section-pt)] text-on-surface md:px-20"
       >
+        <script type="application/ld+json" suppressHydrationWarning>
+          {jsonLdText}
+        </script>
         <PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={categories} />

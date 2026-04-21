@@ -16,6 +16,15 @@ export function SignInForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+      {searchParams.get("registered") === "1" ? (
+        <output
+          className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
+          aria-live="polite"
+        >
+          Account created — you can sign in below. If email verification is required, check your
+          inbox.
+        </output>
+      ) : null}
       {searchParams.get("auth") === "required" ? (
         <p className="rounded-sm border border-brand-300 bg-surface-container-low px-4 py-3 font-footer-links text-sm text-brand-500 dark:border-outline-variant dark:bg-surface-container dark:text-on-surface-variant">
           Please sign in to continue.

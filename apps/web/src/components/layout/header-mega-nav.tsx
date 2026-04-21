@@ -20,7 +20,13 @@ type HeaderMegaNavProps = {
   trailing: ReactNode;
 };
 
-export function HeaderMegaNav({ sections, pathname, onOpenChange, logo, trailing }: HeaderMegaNavProps) {
+export function HeaderMegaNav({
+  sections,
+  pathname,
+  onOpenChange,
+  logo,
+  trailing,
+}: HeaderMegaNavProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const openHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -186,6 +192,7 @@ export function HeaderMegaNav({ sections, pathname, onOpenChange, logo, trailing
                       active || open ? "text-brand-900" : "text-nav-text hover:text-brand-900",
                       open ? "border-brand-900" : "border-transparent hover:border-brand-900/40",
                     )}
+                    aria-current={active ? "page" : undefined}
                     aria-haspopup="true"
                     aria-expanded={open}
                     aria-controls={open ? MEGAMENU_PANEL_ID : undefined}
@@ -230,7 +237,9 @@ export function HeaderMegaNav({ sections, pathname, onOpenChange, logo, trailing
       >
         <div className="mx-auto max-w-[1440px] px-6 md:px-10">
           <div className="header-megamenu__inner">
-            {section ? <HeaderMegaMenuPanelContent section={section} onNavigate={closeMenu} /> : null}
+            {section ? (
+              <HeaderMegaMenuPanelContent section={section} onNavigate={closeMenu} />
+            ) : null}
           </div>
         </div>
       </section>

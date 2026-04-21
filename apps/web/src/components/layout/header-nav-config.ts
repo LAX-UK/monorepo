@@ -1,3 +1,5 @@
+import { linkIsCurrent } from "@/lib/nav/is-current";
+
 export const primaryNav = [
   { href: "/", label: "Upcoming Auctions" },
   { href: "/archive", label: "Past Auctions" },
@@ -24,15 +26,14 @@ export function emptyMegaMenuSections(): MegaMenuSection[] {
 }
 
 export const utilityNav = [
-  { href: "/terms", label: "FAQs" },
+  { href: "/faq", label: "FAQs" },
   { href: "/contact", label: "Contact us" },
   { href: "/about", label: "About us" },
 ] as const;
 
 export function navItemActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
   if (href === "/artist/featured") return pathname.startsWith("/artist");
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return linkIsCurrent(pathname, href);
 }
 
 export const linkTop =

@@ -1,4 +1,5 @@
 import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
+import { ArtworkMarketingBlocks } from "@/components/sections/artwork/artwork-marketing-blocks";
 import { RelatedLots } from "@/components/sections/artwork/related-lots";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { formatMoney } from "@/lib/format-currency";
@@ -43,9 +44,16 @@ export function ArtworkSplitView({
   const live = auction.status === "active";
 
   return (
-    <main id="main-content" className="flex min-h-screen flex-col pt-24 lg:flex-row lg:pt-0">
-      <div className="h-[60vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:w-1/2">
-        <ArtworkImageStage title={auction.title} images={auction.images} />
+    <section
+      aria-labelledby="lot-heading"
+      className="flex min-h-screen flex-col pt-24 lg:flex-row lg:pt-0"
+    >
+      <div className="h-[45vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:w-1/2">
+        <ArtworkImageStage
+          title={auction.title}
+          images={auction.images}
+          imageAlts={auction.marketingDetails.imageAlts}
+        />
       </div>
       <div className="w-full min-w-0 overflow-y-auto overflow-x-hidden px-8 pb-28 pt-8 lg:w-1/2 lg:px-24 lg:pb-20 lg:pt-32">
         <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
@@ -132,7 +140,10 @@ export function ArtworkSplitView({
                 </span>
               )}
             </div>
-            <h1 className="mb-4 font-headline text-4xl tracking-tight text-on-surface lg:text-6xl">
+            <h1
+              id="lot-heading"
+              className="mb-4 font-headline text-4xl tracking-tight text-on-surface lg:text-6xl"
+            >
               {auction.title}
             </h1>
             <p className="mb-2 font-headline text-xl italic text-secondary">
@@ -154,6 +165,7 @@ export function ArtworkSplitView({
               View portfolio
               <MaterialIcon name="arrow_forward" className="text-sm" />
             </Link>
+            <ArtworkMarketingBlocks auction={auction} />
             <section
               aria-labelledby="lot-details-heading"
               className="mb-12 rounded-xl bg-surface-container-low/60 p-6 ring-1 ring-outline-variant/15 sm:p-8 dark:bg-surface-container-low/30"
@@ -241,9 +253,10 @@ export function ArtworkSplitView({
             auctions={relatedAuctions}
             currentId={auction.id}
             currentUserId={currentUserId}
+            heading="More from this seller"
           />
         </div>
       </div>
-    </main>
+    </section>
   );
 }

@@ -13,12 +13,14 @@ async function DashboardHomeContent() {
   let active: Awaited<ReturnType<typeof c.activeLots.listActivePreview>> = [];
   let portfolio: Awaited<ReturnType<typeof c.portfolio.listMine>> = [];
   let watchlist: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
+  let artistFollow: Awaited<ReturnType<typeof c.artistFollow.listMine>> = [];
   let bidRows: Awaited<ReturnType<typeof c.bids.listMine>> = [];
 
   const errors = {
     active: null as string | null,
     portfolio: null as string | null,
     watchlist: null as string | null,
+    artistFollow: null as string | null,
     bids: null as string | null,
   };
 
@@ -44,6 +46,13 @@ async function DashboardHomeContent() {
   }
 
   try {
+    artistFollow = await c.artistFollow.listMine();
+  } catch (e) {
+    artistFollow = [];
+    errors.artistFollow = e instanceof Error ? e.message : "Could not load followed artists.";
+  }
+
+  try {
     bidRows = await c.bids.listMine();
   } catch (e) {
     bidRows = [];
@@ -55,6 +64,7 @@ async function DashboardHomeContent() {
     activeLots: active,
     portfolio,
     watchlist,
+    artistFollow,
     bidRows,
     errors,
     formatMoney,

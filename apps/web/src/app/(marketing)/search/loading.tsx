@@ -2,7 +2,7 @@ export default function SearchLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[1920px] px-6 pb-24 pt-28 md:px-16"
+      className="mx-auto max-w-[1920px] bg-surface px-6 pb-24 pt-[var(--section-pt)] md:px-16"
       aria-busy="true"
       aria-label="Loading search"
     >

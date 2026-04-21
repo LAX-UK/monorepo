@@ -24,14 +24,17 @@ export function inViewTrigger(options?: IntersectionObserverInit): RevealTrigger
         onReveal();
         return () => {};
       }
-      const io = new IntersectionObserver((entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            onReveal();
-            io.unobserve(e.target);
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) {
+              onReveal();
+              io.unobserve(e.target);
+            }
           }
-        }
-      }, { ...defaultInViewOptions, ...options });
+        },
+        { ...defaultInViewOptions, ...options },
+      );
       io.observe(el);
       return () => io.disconnect();
     },

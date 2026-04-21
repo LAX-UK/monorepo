@@ -1,8 +1,8 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
+import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { LotCardTimer } from "@/components/sections/home/lot-card-timer";
 import { RevealInView } from "@/components/ui/reveal";
-import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -53,8 +53,11 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item, index) => (
-              <article key={item.id} className="flex flex-col gap-4">
-                <Link href={item.href} className="group block">
+              <article key={item.id} className="flex flex-col">
+                <Link
+                  href={item.href}
+                  className="group flex flex-col gap-4 outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                >
                   <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                     {item.imageUrl ? (
                       <RevealInView
@@ -68,42 +71,47 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                           fill
                           placeholder="blur"
                           blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         />
                       </RevealInView>
-                    ) : null}
-                    <LotCardTimer status={item.status} startTime={item.startTime} endTime={item.endTime} />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center bg-brand-800/80 font-label text-xs uppercase tracking-widest text-brand-200 dark:bg-surface-container-high dark:text-on-surface-variant">
+                        Image coming soon
+                      </span>
+                    )}
+                    <LotCardTimer
+                      status={item.status}
+                      startTime={item.startTime}
+                      endTime={item.endTime}
+                    />
                     <OwnerBadge
                       owned={Boolean(currentUserId && item.sellerId === currentUserId)}
                       className="absolute right-3 top-3"
                     />
                   </div>
+                  <div className="flex flex-col gap-3">
+                    <p className="font-label text-sm font-bold uppercase leading-4 text-lot-orange">
+                      {item.lotLabel}
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      <h3 className="font-headline text-xl font-semibold leading-6 text-brand-900 underline-offset-2 group-hover:underline dark:text-on-surface">
+                        {item.title}
+                      </h3>
+                      <BodyText className="text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
+                        {item.artistName}
+                      </BodyText>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
+                        {item.priceLabel}
+                      </span>
+                      <span className="font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant">
+                        {item.priceFormatted}
+                      </span>
+                    </div>
+                  </div>
                 </Link>
-                <div className="flex flex-col gap-3">
-                  <p className="font-label text-sm font-bold uppercase leading-4 text-lot-orange">
-                    {item.lotLabel}
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    <Link
-                      href={item.href}
-                      className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
-                    >
-                      {item.title}
-                    </Link>
-                    <BodyText className="text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
-                      {item.artistName}
-                    </BodyText>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
-                      {item.priceLabel}
-                    </span>
-                    <span className="font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant">
-                      {item.priceFormatted}
-                    </span>
-                  </div>
-                </div>
               </article>
             ))}
           </div>

@@ -13,7 +13,7 @@ export type ListLotsParams = {
   limit?: number;
   offset?: number;
   /** API sort: default createdDesc; endingAsc for live urgency; hammerDesc/endedDesc for archive. */
-  sort?: "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc";
+  sort?: "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc" | "sellerAsc";
 };
 
 /** Aggregates for past / ended lots (ISP: separate from row listing). */

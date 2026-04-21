@@ -12,7 +12,7 @@ export function AuthFooterLink({ prefix, linkText, href }: AuthFooterLinkProps) 
       <span>{prefix}</span>
       <Link
         href={href}
-        className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-[3px] dark:text-primary"
+        className="inline-flex min-h-11 items-center font-medium text-brand-900 underline decoration-brand-900 underline-offset-[3px] dark:text-primary"
       >
         {linkText}
       </Link>

@@ -9,6 +9,7 @@ type RHFPasswordFieldProps<TFieldValues extends FieldValues> = {
   name: FieldPath<TFieldValues>;
   label: string;
   autoComplete?: string;
+  ariaDescribedByExtra?: string;
 };
 
 export function RHFPasswordField<TFieldValues extends FieldValues>({
@@ -16,6 +17,7 @@ export function RHFPasswordField<TFieldValues extends FieldValues>({
   name,
   label,
   autoComplete = "current-password",
+  ariaDescribedByExtra,
 }: RHFPasswordFieldProps<TFieldValues>) {
   return (
     <Controller
@@ -26,6 +28,7 @@ export function RHFPasswordField<TFieldValues extends FieldValues>({
           {...field}
           label={label}
           autoComplete={autoComplete}
+          {...(ariaDescribedByExtra ? { ariaDescribedByExtra } : {})}
           {...optionalString("error", fieldState.error?.message)}
         />
       )}

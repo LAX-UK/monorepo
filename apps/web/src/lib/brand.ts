@@ -3,7 +3,8 @@
 export const SITE_NAME = "LAX London Auction House Ltd";
 export const SITE_SHORT_NAME = "LAX";
 export const SITE_TAGLINE = "Fine art auctions in London — curated lots and live bidding.";
-export const SITE_LEGAL_NAME = "Lax Limited Auction House Ltd";
+/** Legal entity name for copyright — aligned with `SITE_NAME` for public-facing consistency. */
+export const SITE_LEGAL_NAME = SITE_NAME;
 
 /** Static mark in `apps/web/public/` */
 export const SITE_LOGO_PATH = "/logo.svg";

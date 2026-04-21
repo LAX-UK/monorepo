@@ -9,6 +9,8 @@ import {
   updateAddressBodySchema,
   updateProfileSchema,
   userIdParamSchema,
+  artistWatchlistArtistIdParamSchema,
+  artistWatchlistBodySchema,
   watchlistBodySchema,
   watchlistLotIdParamSchema,
 } from "@auction/validators";
@@ -116,6 +118,34 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       const userId = c.get("userId") as string;
       const { lotId } = c.req.valid("param");
       await container.watchlistService.remove(userId, lotId);
+      return c.body(null, 204);
+    },
+  );
+
+  r.get("/me/artist-watchlist", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const rows = await container.artistWatchlistService.list(userId);
+    return c.json({ data: rows.map((r) => ({ artistId: r.artistId, id: r.id, createdAt: r.createdAt })) });
+  });
+
+  r.post("/me/artist-watchlist", requireAuth, zValidator("json", artistWatchlistBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { artistId } = c.req.valid("json");
+    const row = await container.artistWatchlistService.add(userId, artistId);
+    if (!row) {
+      return c.json({ error: "Artist not found" }, 404);
+    }
+    return c.json({ data: row }, 201);
+  });
+
+  r.delete(
+    "/me/artist-watchlist/:artistId",
+    requireAuth,
+    zValidator("param", artistWatchlistArtistIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { artistId } = c.req.valid("param");
+      await container.artistWatchlistService.remove(userId, artistId);
       return c.body(null, 204);
     },
   );

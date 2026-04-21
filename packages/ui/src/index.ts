@@ -135,3 +135,18 @@ export type {
 } from "./components/ui/date-range-picker.js";
 export { Toaster } from "./components/ui/sonner.js";
 export { SidebarInset, SidebarTrigger } from "./components/ui/sidebar.js";
+export { FilterChip } from "./components/ui/filter-chip.js";
+export type { FilterChipProps } from "./components/ui/filter-chip.js";
+export { MarketingPagination } from "./components/ui/marketing-pagination.js";
+export type {
+  MarketingPaginationPage,
+  MarketingPaginationProps,
+} from "./components/ui/marketing-pagination.js";
+export { Countdown } from "./components/ui/countdown.js";
+export type { CountdownProps } from "./components/ui/countdown.js";
+export { TocNav } from "./components/ui/toc-nav.js";
+export type { TocNavItem, TocNavProps } from "./components/ui/toc-nav.js";
+export { SectionCta } from "./components/ui/section-cta.js";
+export type { SectionCtaProps } from "./components/ui/section-cta.js";
+export { StickyBidBar } from "./components/ui/sticky-bid-bar.js";
+export type { StickyBidBarProps } from "./components/ui/sticky-bid-bar.js";

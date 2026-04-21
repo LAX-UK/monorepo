@@ -1,13 +1,13 @@
 "use client";
 
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
-import { RevealOnMount } from "@/components/ui/reveal";
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { cn, DisplayHeading, LabelCaps } from "@auction/ui";
+import { RevealOnMount } from "@/components/ui/reveal";
+import { DisplayHeading, LabelCaps, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 
 const AUTO_MS = 7000;
 
@@ -46,7 +46,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
     return () => window.clearInterval(t);
   }, [n, paused]);
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
+  const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       go(-1);
@@ -64,7 +64,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       aria-label="Upcoming salerooms"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: carousel must receive focus for ArrowLeft/ArrowRight
       tabIndex={0}
-      className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream outline-none dark:bg-surface-container-low md:min-h-[min(100svh,760px)]"
+      className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -106,11 +106,13 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
           aria-hidden
         />
         <div className="relative flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
-          <fieldset
+          {/* biome-ignore lint/a11y/useSemanticElements: carousel slide uses WAI-ARIA group, not a form fieldset */}
+          <div
+            role="group"
             aria-roledescription="slide"
+            aria-label={`${index + 1} of ${n}`}
             className="m-0 flex min-w-0 max-w-[684px] flex-col gap-8 border-0 p-0 md:gap-14"
           >
-            <legend className="sr-only">{`Slide ${index + 1} of ${n}`}</legend>
             <div className="flex flex-col gap-6">
               <LabelCaps className="text-base font-medium leading-6 tracking-normal text-white">
                 {current.modeBadge}
@@ -151,16 +153,16 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
               ) : null}
             </div>
             {n > 1 ? (
-              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Slide indicators">
+              // biome-ignore lint/a11y/useSemanticElements: dot toolbar is a control group, not a form fieldset
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Choose slide">
                 {slides.map((s, i) => (
                   <button
                     key={s.id}
                     type="button"
-                    role="tab"
-                    aria-selected={i === index}
-                    aria-label={`Go to slide ${i + 1}`}
+                    aria-pressed={i === index}
+                    aria-label={`Slide ${i + 1} of ${n}`}
                     className={cn(
-                      "h-2.5 w-2.5 rounded-full transition-colors motion-reduce:transition-none",
+                      "h-2.5 w-2.5 rounded-full transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold",
                       i === index ? "bg-brand-100" : "bg-brand-400/50 hover:bg-brand-300",
                     )}
                     onClick={() => setIndex(i)}
@@ -171,7 +173,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
             <p className="sr-only" aria-live="polite" aria-atomic="true">
               {current.title}
             </p>
-          </fieldset>
+          </div>
         </div>
       </div>
     </section>

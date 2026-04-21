@@ -51,7 +51,7 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                       fill
                       placeholder="blur"
                       blurDataURL={TINY_IMAGE_BLUR}
-                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                       sizes="(max-width: 1024px) 100vw, 853px"
                     />
                   </RevealInView>

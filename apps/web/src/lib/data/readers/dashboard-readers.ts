@@ -1,4 +1,8 @@
-import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
+import type {
+  ArtistFollowRow,
+  BidWithLot,
+  WatchlistWithLotRow,
+} from "@/lib/data/http/dashboard.server";
 import type { Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
 
@@ -13,6 +17,10 @@ export type DashboardPortfolioReader = {
 
 export type DashboardWatchlistReader = {
   listMine(): Promise<WatchlistWithLotRow[]>;
+};
+
+export type DashboardArtistFollowReader = {
+  listMine(): Promise<ArtistFollowRow[]>;
 };
 
 export type DashboardActiveLotsReader = {

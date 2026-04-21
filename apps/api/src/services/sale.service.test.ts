@@ -56,6 +56,7 @@ describe("SaleService.create", () => {
       winnerId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      marketingDetails: {},
     };
 
     const lotCreate = vi.fn().mockResolvedValue(createdLot);

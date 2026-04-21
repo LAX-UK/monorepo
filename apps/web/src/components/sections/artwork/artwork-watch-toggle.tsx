@@ -57,6 +57,7 @@ export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: 
     <button
       type="button"
       disabled={busy}
+      aria-pressed={watching}
       onClick={() => void toggle()}
       className={`inline-flex items-center gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-50 ${
         watching

@@ -11,14 +11,14 @@ export function SignUpLegalConsent({ control }: { control: Control<SignUpFormVal
     <RHFCheckboxField control={control} name="acceptTerms">
       I agree to {SITE_SHORT_NAME}{" "}
       <Link
-        href="/legal"
+        href="/terms"
         className="font-medium text-brand-900 underline underline-offset-2 dark:text-primary"
       >
-        Terms of Use
+        Terms of sale
       </Link>
       . I confirm that I have read and understood the{" "}
       <Link
-        href="/legal"
+        href="/privacy"
         className="font-medium text-brand-900 underline underline-offset-2 dark:text-primary"
       >
         Privacy Notice

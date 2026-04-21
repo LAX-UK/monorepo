@@ -9,16 +9,23 @@ type Props = {
   auctions: Lot[];
   currentId: string;
   currentUserId?: string | null;
+  /** Section heading (e.g. “More from this seller”) */
+  heading?: string;
 };
 
-export function RelatedLots({ auctions, currentId, currentUserId = null }: Props) {
+export function RelatedLots({
+  auctions,
+  currentId,
+  currentUserId = null,
+  heading = "More from this seller",
+}: Props) {
   const related = auctions.filter((a) => a.id !== currentId).slice(0, 6);
   if (related.length === 0) return null;
 
   return (
     <section className="mt-24 border-t border-outline-variant/15 pt-16">
       <h2 className="mb-10 font-headline text-2xl tracking-tight text-on-surface md:text-3xl">
-        Related acquisitions
+        {heading}
       </h2>
       <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {related.map((a) => {
@@ -37,7 +44,7 @@ export function RelatedLots({ auctions, currentId, currentUserId = null }: Props
                       fill
                       placeholder="blur"
                       blurDataURL={TINY_IMAGE_BLUR}
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   ) : null}

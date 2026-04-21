@@ -26,7 +26,7 @@ export function useSignUpController() {
   const onSubmit = form.handleSubmit(async (data) => {
     const result = await run(data);
     if (result.ok) {
-      router.push("/login?next=/dashboard");
+      router.push("/login?registered=1&next=/dashboard");
       router.refresh();
     }
   });

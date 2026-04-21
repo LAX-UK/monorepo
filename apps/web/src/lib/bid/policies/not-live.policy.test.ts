@@ -31,6 +31,7 @@ const base = (): BidPolicyContext => ({
     winnerId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    marketingDetails: {},
   },
   lotStatus: "ended",
   loginNextPath: "/artwork/l1",

@@ -3,6 +3,7 @@ import type {
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
+  LotMarketingDetails,
   NotificationPreference,
   Sale,
   UserNotification,
@@ -30,8 +31,7 @@ export function parseSale(raw: unknown): Sale {
     coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
-    streamUrl:
-      o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
+    streamUrl: o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
     status: o.status as Sale["status"],
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),
@@ -44,6 +44,11 @@ export function parseSale(raw: unknown): Sale {
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
   };
+}
+
+function parseMarketingDetails(raw: unknown): LotMarketingDetails {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as LotMarketingDetails;
 }
 
 export function parseLot(raw: unknown): Lot {
@@ -88,6 +93,7 @@ export function parseLot(raw: unknown): Lot {
     winnerId: o.winnerId == null ? null : String(o.winnerId),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
+    marketingDetails: parseMarketingDetails(o.marketingDetails),
   };
 }
 

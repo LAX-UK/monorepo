@@ -1,7 +1,7 @@
 "use client";
 
 import { useNow } from "@/hooks/use-now";
-import { classifyLotTimerState, type LotTimerInputs } from "./classify";
+import { type LotTimerInputs, classifyLotTimerState } from "./classify";
 import { formatRemaining } from "./format";
 import { LotTimerPill } from "./lot-timer-pill";
 

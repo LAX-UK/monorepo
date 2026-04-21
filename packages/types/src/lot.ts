@@ -5,6 +5,21 @@ export type LotAuctionType = (typeof lotAuctionTypes)[number];
 export const lotStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type LotStatus = (typeof lotStatuses)[number];
 
+/** Optional marketing / catalog enrichment (stored as JSON on `lot`). */
+export type LotMarketingDetails = {
+  estimate?: { low: string; high: string; currency: string };
+  conditionReport?: {
+    summary?: string;
+    details?: string;
+    downloadUrl?: string;
+  };
+  provenance?: { period?: string; note: string }[];
+  /** When set, canonical “artist” profile id for related-lot rails (often same as sellerId). */
+  sellerArtistId?: string | null;
+  /** Parallel alts for `images[index]` when provided */
+  imageAlts?: (string | undefined)[];
+};
+
 export type Lot = {
   id: string;
   saleId: string | null;
@@ -37,6 +52,7 @@ export type Lot = {
   winnerId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  marketingDetails: LotMarketingDetails;
 };
 
 export type CreateLotInput = {

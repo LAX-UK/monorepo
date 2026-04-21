@@ -19,6 +19,9 @@ export function RHFInput<TFieldValues extends FieldValues>({
   type = "text",
   autoComplete,
 }: RHFInputProps<TFieldValues>) {
+  const inputMode =
+    type === "email" ? "email" : type === "tel" ? "tel" : type === "number" ? "decimal" : undefined;
+
   return (
     <Controller
       control={control}
@@ -29,6 +32,7 @@ export function RHFInput<TFieldValues extends FieldValues>({
           label={label}
           type={type}
           autoComplete={autoComplete}
+          {...(inputMode ? { inputMode } : {})}
           {...optionalString("error", fieldState.error?.message)}
         />
       )}

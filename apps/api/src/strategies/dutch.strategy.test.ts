@@ -33,6 +33,7 @@ function mkLot(overrides: Partial<Lot> = {}): Lot {
     winnerId: null,
     createdAt: now,
     updatedAt: now,
+    marketingDetails: {},
     ...overrides,
   };
 }

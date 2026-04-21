@@ -11,7 +11,13 @@ import type {
   SaleStatus,
 } from "@auction/types";
 
-export type ListLotsSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc";
+export type ListLotsSort =
+  | "createdDesc"
+  | "endingAsc"
+  | "hammerDesc"
+  | "endedDesc"
+  /** Seller display name A–Z (joins user; stable tie-break on endTime desc). */
+  | "sellerAsc";
 
 export type ListLotsFilter = {
   status?: LotStatus | undefined;

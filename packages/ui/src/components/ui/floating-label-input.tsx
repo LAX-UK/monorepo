@@ -6,6 +6,8 @@ import { cn } from "../../lib/utils.js";
 export type FloatingLabelInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
+  /** Space-separated ids for `aria-describedby` (e.g. hint + live region), merged after error id when present */
+  ariaDescribedByExtra?: string;
   containerClassName?: string;
   inputClassName?: string;
   endAdornment?: React.ReactNode;
@@ -16,6 +18,7 @@ export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLab
     {
       label,
       error,
+      ariaDescribedByExtra,
       className = "",
       containerClassName = "",
       inputClassName = "",
@@ -29,8 +32,17 @@ export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLab
     },
     ref,
   ) {
+    const { "aria-describedby": userDescribedBy, ...restInput } = rest;
     const genId = React.useId();
     const inputId = id ?? genId;
+    const errorId = error ? `${inputId}-error` : undefined;
+    const extraIds = ariaDescribedByExtra?.trim().split(/\s+/).filter(Boolean) ?? [];
+    const describedByIds = [...(errorId ? [errorId] : []), ...extraIds];
+    const merged =
+      [...describedByIds, ...(userDescribedBy ? String(userDescribedBy).split(/\s+/) : [])].filter(
+        Boolean,
+      );
+    const ariaDescribedByMerged = merged.length > 0 ? merged.join(" ") : undefined;
     const strVal = value === undefined || value === null ? "" : String(value);
     const [focused, setFocused] = React.useState(false);
     const float = focused || strVal.length > 0;
@@ -61,7 +73,9 @@ export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLab
             id={inputId}
             value={value}
             disabled={disabled}
-            {...rest}
+            {...(error ? { "aria-invalid": true as const } : {})}
+            {...(ariaDescribedByMerged ? { "aria-describedby": ariaDescribedByMerged } : {})}
+            {...restInput}
             className={cn(
               "w-full border-0 bg-transparent pb-1 font-footer-links text-base leading-6 tracking-[0.5px] text-on-surface outline-none placeholder:text-transparent focus-visible:outline-none disabled:cursor-not-allowed",
               endAdornment ? "pr-10" : "",
@@ -83,7 +97,7 @@ export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLab
           ) : null}
         </div>
         {error ? (
-          <p role="alert" className="mt-1 font-footer-links text-xs text-error">
+          <p id={errorId} role="alert" className="mt-1 font-footer-links text-xs text-error">
             {error}
           </p>
         ) : null}

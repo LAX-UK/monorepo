@@ -6,7 +6,7 @@ import { siteCopyrightLine } from "@/lib/brand";
 const aboutLinks = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
-  { href: "/terms", label: "Terms" },
+  { href: "/terms", label: "Terms of sale" },
   { href: "/sitemap.xml", label: "Sitemap" },
 ];
 
@@ -19,15 +19,15 @@ const serviceLinks = [
 const policyLinks = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/legal", label: "Legal" },
-  { href: "/terms", label: "Terms of use" },
+  { href: "/terms", label: "Terms of sale" },
   { href: "/shipping", label: "Shipping" },
 ];
 
 export function SiteFooter() {
   const linkClass =
-    "font-footer-links text-base font-medium leading-6 text-brand-800 transition-colors hover:text-brand-900";
+    "font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary";
   const headingClass =
-    "font-label text-base font-bold uppercase leading-6 tracking-normal text-brand-800";
+    "font-label text-base font-bold uppercase leading-6 tracking-normal text-on-surface";
 
   return (
     <footer className="w-full bg-footer-bg">
@@ -58,7 +58,12 @@ export function SiteFooter() {
           <div className="flex flex-col gap-6">
             <h2 className={headingClass}>Contact us</h2>
             <div className="flex flex-col gap-2">
-              <p className={linkClass}>Join Us</p>
+              <a
+                href="/register"
+                className={`${linkClass} inline-flex min-h-11 items-center underline-offset-2 hover:underline`}
+              >
+                Join us
+              </a>
               <FooterSocials />
             </div>
           </div>
@@ -66,7 +71,7 @@ export function SiteFooter() {
         <div className="h-px w-full max-w-[1280px] bg-divider" aria-hidden />
         <div className="flex max-w-[1280px] flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <LaxLogo variant="header" className="opacity-90" />
-          <p className="font-label text-sm font-medium leading-5 text-brand-500">
+          <p className="font-label text-sm font-medium leading-5 text-on-surface-variant">
             {siteCopyrightLine()}
           </p>
         </div>

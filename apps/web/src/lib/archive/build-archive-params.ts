@@ -38,7 +38,7 @@ function parseSort(v: string | undefined): ArchiveSortMode {
 
 /**
  * Map URL search params to API list params for the past-auctions grid.
- * Artist A–Z uses `endedDesc` from the API; caller re-sorts the current page by seller name.
+ * Artist A–Z uses server-side `sellerAsc` (seller display name).
  */
 export function buildArchivePageQuery(
   searchParams: Record<string, string | string[] | undefined>,
@@ -48,7 +48,8 @@ export function buildArchivePageQuery(
   const categoryId = firstString(searchParams.categoryId) || undefined;
   const sortMode = parseSort(firstString(searchParams.sort));
 
-  const apiSort: ListLotsParams["sort"] = sortMode === "hammer" ? "hammerDesc" : "endedDesc";
+  const apiSort: ListLotsParams["sort"] =
+    sortMode === "hammer" ? "hammerDesc" : sortMode === "artist" ? "sellerAsc" : "endedDesc";
 
   const listParams: ListLotsParams = {
     status: "ended",

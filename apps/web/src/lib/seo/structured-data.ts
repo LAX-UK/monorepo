@@ -29,6 +29,67 @@ export function organizationJsonLd(): Record<string, unknown> {
     name: SITE_NAME,
     url: base,
     description: SITE_TAGLINE,
+    logo: `${base}/logo.svg`,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "1 Curator Mews",
+      addressLocality: "London",
+      postalCode: "W1K 1AA",
+      addressCountry: "GB",
+    },
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: "concierge@laxauction.house",
+        telephone: "+44-20-7946-0958",
+        areaServed: "GB",
+        availableLanguage: ["English"],
+      },
+    ],
+    sameAs: [`${base}/contact`, `${base}/about`],
+  };
+}
+
+export function personJsonLd(opts: {
+  name: string;
+  url: string;
+  image?: string;
+  description?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: opts.name,
+    url: opts.url,
+    ...(opts.image ? { image: opts.image } : {}),
+    ...(opts.description ? { description: opts.description } : {}),
+  };
+}
+
+export function localBusinessJsonLd(): Record<string, unknown> {
+  const base = getSiteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: SITE_NAME,
+    url: base,
+    description: SITE_TAGLINE,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "1 Curator Mews",
+      addressLocality: "London",
+      postalCode: "W1K 1AA",
+      addressCountry: "GB",
+    },
+    telephone: "+44-20-7946-0958",
+    email: "concierge@laxauction.house",
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
+    },
   };
 }
 
@@ -77,4 +138,16 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]): Recor
       item: `${base}${item.path.startsWith("/") ? item.path : `/${item.path}`}`,
     })),
   };
+}
+
+/** Safe inline JSON-LD for `<script type="application/ld+json">` (escapes `<`). */
+export function jsonLdScript(...items: Array<Record<string, unknown> | null | undefined>): string {
+  const payload = items.filter(Boolean) as Record<string, unknown>[];
+  const json =
+    payload.length === 0
+      ? "{}"
+      : payload.length === 1
+        ? JSON.stringify(payload[0])
+        : JSON.stringify(payload);
+  return json.replace(/</g, "\\u003c");
 }

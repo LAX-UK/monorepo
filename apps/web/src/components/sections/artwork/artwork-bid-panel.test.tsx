@@ -42,6 +42,7 @@ const lot = (sellerId: string): Lot => ({
   winnerId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  marketingDetails: {},
 });
 
 describe("ArtworkBidPanel", () => {

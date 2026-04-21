@@ -299,6 +299,22 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: {
+        estimate: { low: "140000.00", high: "190000.00", currency: "USD" },
+        conditionReport: {
+          summary:
+            "Excellent overall condition; stable paint layer with minor craquelure in lower quadrant (documented).",
+        },
+        provenance: [
+          { period: "2022", note: "Acquired from the artist's studio by the consignor." },
+          { note: "Private collection, London." },
+        ],
+        sellerArtistId: ALICE_ID,
+        imageAlts: [
+          "Ethereal Form & Found Light — installation view",
+          "Ethereal Form & Found Light — detail of gold leaf",
+        ],
+      },
     },
     {
       id: L.winter,

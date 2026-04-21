@@ -30,7 +30,7 @@ export function PastAuctionCard({
   return (
     <div className={`group ${gridOffsetClass}`}>
       <Link href={`/artwork/${auction.id}`} className="block">
-        <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 group-hover:scale-[0.98]">
+        <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 motion-safe:group-hover:scale-[0.98] motion-reduce:group-hover:scale-100">
           {img ? (
             <Image
               src={img}
@@ -38,7 +38,7 @@ export function PastAuctionCard({
               fill
               placeholder="blur"
               blurDataURL={TINY_IMAGE_BLUR}
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           ) : (

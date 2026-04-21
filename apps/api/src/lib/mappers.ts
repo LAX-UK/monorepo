@@ -5,6 +5,7 @@ import type {
   ItemSubmissionStatus,
   Lot,
   LotAuctionType,
+  LotMarketingDetails,
   LotStatus,
   Sale,
   SaleDeliveryMode,
@@ -16,6 +17,11 @@ type LotRow = InferSelectModel<typeof lot>;
 type BidRow = InferSelectModel<typeof bid>;
 type SaleRow = InferSelectModel<typeof sale>;
 type ItemSubmissionRow = InferSelectModel<typeof itemSubmission>;
+
+function parseMarketingDetails(raw: unknown): LotMarketingDetails {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as LotMarketingDetails;
+}
 
 export function mapLotRow(row: LotRow): Lot {
   return {
@@ -46,6 +52,7 @@ export function mapLotRow(row: LotRow): Lot {
     winnerId: row.winnerId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    marketingDetails: parseMarketingDetails(row.marketingDetails),
   };
 }
 

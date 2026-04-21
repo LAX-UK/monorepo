@@ -1,4 +1,8 @@
-import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
+import type {
+  ArtistFollowRow,
+  BidWithLot,
+  WatchlistWithLotRow,
+} from "@/lib/data/http/dashboard.server";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
@@ -7,6 +11,7 @@ export type DashboardOverviewErrors = {
   active: string | null;
   portfolio: string | null;
   watchlist: string | null;
+  artistFollow: string | null;
   bids: string | null;
 };
 
@@ -28,6 +33,7 @@ export type DashboardOverviewVm = {
   activeLotBidHints: Record<string, "high" | "outbid" | "none">;
   wonLotsSidebar: PortfolioRow[];
   watchPreview: WatchlistWithLotRow[];
+  artistFollowPreview: ArtistFollowRow[];
   settlementsDue: PortfolioRow[];
   liveCount: number;
   acquiredCount: number;
@@ -46,11 +52,13 @@ export function buildDashboardOverviewVm(input: {
   activeLots: Lot[];
   portfolio: PortfolioRow[];
   watchlist: WatchlistWithLotRow[];
+  artistFollow: ArtistFollowRow[];
   bidRows: BidWithLot[];
   errors: DashboardOverviewErrors;
   formatMoney: (amount: string) => string;
 }): DashboardOverviewVm {
-  const { user, activeLots, portfolio, watchlist, bidRows, errors, formatMoney } = input;
+  const { user, activeLots, portfolio, watchlist, artistFollow, bidRows, errors, formatMoney } =
+    input;
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
   const totalSpent = portfolio.reduce(
     (sum, row) => sum + Number.parseFloat(row.lot.currentPrice),
@@ -111,6 +119,7 @@ export function buildDashboardOverviewVm(input: {
 
   const wonLotsSidebar = portfolio.filter((row) => row.lot.status === "ended").slice(0, 4);
   const watchPreview = watchlist.filter((w) => w.lot).slice(0, 4);
+  const artistFollowPreview = artistFollow.slice(0, 8);
   const settlementsDue = portfolio.filter((row) => {
     if (row.lot.status !== "ended") return false;
     return portfolioSettlementLabel(row) !== "Paid";
@@ -133,6 +142,7 @@ export function buildDashboardOverviewVm(input: {
     activeLotBidHints,
     wonLotsSidebar,
     watchPreview,
+    artistFollowPreview,
     settlementsDue,
     liveCount: activeLots.length,
     acquiredCount: portfolio.length,

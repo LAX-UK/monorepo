@@ -31,6 +31,7 @@ const baseCtx = (): BidPolicyContext => ({
     winnerId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    marketingDetails: {},
   },
   lotStatus: "active",
   loginNextPath: "/artwork/lot1",

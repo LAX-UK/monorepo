@@ -8,6 +8,7 @@ import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -31,7 +32,7 @@ export function HomeNewsletter() {
   });
 
   return (
-    <section className="mx-auto max-w-5xl px-6 py-32 text-center md:px-20">
+    <section className="mx-auto max-w-[var(--container-max,1440px)] px-8 py-24 text-center md:py-32 md:px-8">
       <h2 className="mb-10 font-headline text-4xl font-light italic text-on-surface md:text-5xl">
         The Curator&apos;s Letter
       </h2>
@@ -41,11 +42,13 @@ export function HomeNewsletter() {
       </p>
 
       {done ? (
-        <Alert className="mx-auto max-w-xl border-0 bg-transparent text-center">
-          <AlertDescription className="font-body text-sm text-primary">
-            Thank you — you&apos;re on the list. We&apos;ll be in touch shortly.
-          </AlertDescription>
-        </Alert>
+        <output
+          className="mx-auto block max-w-xl px-4 text-center font-body text-sm text-primary"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          Thank you — you&apos;re on the list. We&apos;ll be in touch shortly.
+        </output>
       ) : (
         <Form {...form}>
           <form onSubmit={onSubmit} className="mx-auto max-w-xl text-left" noValidate>
@@ -68,7 +71,6 @@ export function HomeNewsletter() {
                           type="email"
                           autoComplete="email"
                           disabled={loading}
-                          aria-label="Email for invitation"
                         />
                       </FormControl>
                       <FormMessage className="mt-4 text-sm text-error" />
@@ -85,6 +87,16 @@ export function HomeNewsletter() {
                 {loading ? "Subscribing…" : "Subscribe"}
               </Button>
             </div>
+            <p className="mt-4 text-center font-footer-links text-xs leading-relaxed text-on-surface-variant">
+              By subscribing you agree to our{" "}
+              <Link
+                href="/privacy"
+                className="font-medium text-primary underline underline-offset-2 hover:opacity-90"
+              >
+                Privacy Policy
+              </Link>
+              . We only use your email for auction-related updates.
+            </p>
           </form>
         </Form>
       )}

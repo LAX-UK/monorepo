@@ -15,11 +15,7 @@ export function LiveIndicatorRow({
   announceUpdates = false,
 }: LiveIndicatorRowProps) {
   const textMuted =
-    tone === "dark"
-      ? "text-brand-200"
-      : tone === "light"
-        ? "text-brand-400"
-        : "text-white/90";
+    tone === "dark" ? "text-brand-200" : tone === "light" ? "text-brand-400" : "text-white/90";
   const dividerBg =
     tone === "dark" ? "bg-black/78" : tone === "light" ? "bg-brand-400/78" : "bg-white/45";
 

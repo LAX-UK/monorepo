@@ -1,7 +1,7 @@
 import { ThemeInit } from "@/components/layout/theme-init";
 import { Toaster } from "@/components/ui/toaster";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
-import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
+import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 import { DM_Sans, Montserrat, Poppins } from "next/font/google";
 import type { ReactNode } from "react";
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-const rootJsonLd = JSON.stringify([organizationJsonLd(), websiteJsonLd()]).replace(/</g, "\\u003c");
+const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
