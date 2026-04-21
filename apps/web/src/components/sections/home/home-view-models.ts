@@ -4,7 +4,7 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, LotStatus, Sale } from "@auction/types";
 import type { StreamEmbedProvider } from "@auction/validators";
 import {
   HERO_FALLBACK_IMG,
@@ -73,6 +73,11 @@ export type LotCardVM = {
   /** Alt text when `imageUrl` is set */
   imageAlt: string;
   sellerId: string;
+  status: LotStatus;
+  /** ISO 8601 — used by client lot timer */
+  startTime: string;
+  /** ISO 8601 — used by client lot timer */
+  endTime: string;
 };
 
 export type AuctionFeaturedLotVM = {
@@ -172,6 +177,8 @@ export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
 export function toLotCardVM(lot: Lot): LotCardVM {
   const artistName = artistLineFromLot(lot);
   const { label, value } = lotPriceDisplay(lot);
+  const startTime = lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
+  const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
@@ -183,6 +190,9 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
     sellerId: lot.sellerId,
+    status: lot.status,
+    startTime,
+    endTime,
   };
 }
 

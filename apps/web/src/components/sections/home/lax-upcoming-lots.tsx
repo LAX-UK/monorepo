@@ -1,5 +1,6 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
+import { LotCardTimer } from "@/components/sections/home/lot-card-timer";
 import { RevealInView } from "@/components/ui/reveal";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
@@ -72,6 +73,7 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                         />
                       </RevealInView>
                     ) : null}
+                    <LotCardTimer status={item.status} startTime={item.startTime} endTime={item.endTime} />
                     <OwnerBadge
                       owned={Boolean(currentUserId && item.sellerId === currentUserId)}
                       className="absolute right-3 top-3"
