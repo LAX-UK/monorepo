@@ -28,7 +28,7 @@ export default async function FeaturedArtistsPage() {
     ]);
     const crumbText = jsonLdScript(crumbs);
     return (
-      <main id="main-content">
+      <main id="main-content" className="pt-[var(--header-height)]">
         <script type="application/ld+json" suppressHydrationWarning>
           {crumbText}
         </script>
@@ -68,7 +68,7 @@ export default async function FeaturedArtistsPage() {
   const jsonLdText = jsonLdScript(crumbs, rosterLd);
 
   return (
-    <main id="main-content">
+    <main id="main-content" className="pt-[var(--header-height)]">
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>

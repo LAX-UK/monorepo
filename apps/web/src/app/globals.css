@@ -133,8 +133,9 @@
   --section-gutter-sm: 1.5rem;
   --section-gutter-md: 2.5rem;
   --section-gutter-lg: 2.5rem;
-  --section-pt: 7rem;
-  --section-pt-tight: 8rem;
+  /* Top inset for full-bleed pages; always clears the fixed header. */
+  --section-pt: calc(var(--header-height) + 3rem);
+  --section-pt-tight: calc(var(--header-height) + 1.5rem);
   --text-display-lg: clamp(2.25rem, 4vw + 1rem, 3.75rem);
   --text-display-md: clamp(1.75rem, 2vw + 1rem, 2.5rem);
   --text-title-section: 2.5rem;

@@ -85,7 +85,7 @@ export default async function ArtworkPage({ params }: PageProps) {
   const shareUrl = `${getSiteUrl()}/artwork/${auction.id}`;
 
   return (
-    <main id="main-content">
+    <main id="main-content" className="pt-[var(--header-height)]">
       <script
         id={`auction-jsonld-${auction.id}`}
         type="application/ld+json"

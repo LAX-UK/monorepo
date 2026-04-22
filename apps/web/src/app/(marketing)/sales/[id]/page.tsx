@@ -217,7 +217,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     : `/login?next=${encodeURIComponent(basePath)}`;
 
   return (
-    <main id="main-content" className="bg-page-bg pb-32 pt-20 dark:bg-background lg:pb-24">
+    <main
+      id="main-content"
+      className="bg-page-bg pb-32 pt-[var(--section-pt-tight)] dark:bg-background lg:pb-24"
+    >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
