@@ -4,6 +4,12 @@
  * `mappers.ts` are the only place raw `Sale` / `Lot` types are read (DIP).
  */
 
+export type SaleHeroStatusBadge =
+  | { kind: "live"; label: string }
+  | { kind: "upcoming"; label: string }
+  | { kind: "ended"; label: string }
+  | null;
+
 export type SaleHeroVM = {
   id: string;
   title: string;
@@ -24,6 +30,8 @@ export type SaleHeroVM = {
   biddingStartsShort: string | null;
   /** Shown next to the live dot in the date row. */
   liveLabel: string;
+  /** Hero headline pill: live / upcoming / ended (Figma), or null for draft/cancelled. */
+  statusBadge: SaleHeroStatusBadge;
 };
 
 export type SaleLotCardVM = {

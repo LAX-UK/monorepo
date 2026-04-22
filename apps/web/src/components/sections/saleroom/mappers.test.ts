@@ -86,6 +86,37 @@ describe("mapSaleToHeroVM", () => {
     expect(vm.registrationClosesShort).toBeNull();
     expect(vm.biddingStartsShort).toBeTruthy();
   });
+
+  it("sets statusBadge: scheduled → upcoming, active → live, ended → ended", () => {
+    const scheduled = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/s", now });
+    expect(scheduled.statusBadge).toEqual({ kind: "upcoming", label: "Upcoming Auction" });
+
+    const active = mapSaleToHeroVM(
+      { ...baseSale, status: "active" },
+      { totalLots: 1, shareUrl: "/s", now },
+    );
+    expect(active.statusBadge).toEqual({ kind: "live", label: "Live Auction" });
+
+    const ended = mapSaleToHeroVM(
+      { ...baseSale, status: "ended" },
+      { totalLots: 1, shareUrl: "/s", now },
+    );
+    expect(ended.statusBadge).toEqual({ kind: "ended", label: "Ended" });
+  });
+
+  it("sets statusBadge to null for draft and cancelled", () => {
+    const draft = mapSaleToHeroVM(
+      { ...baseSale, status: "draft" },
+      { totalLots: 1, shareUrl: "/s", now },
+    );
+    expect(draft.statusBadge).toBeNull();
+
+    const cancelled = mapSaleToHeroVM(
+      { ...baseSale, status: "cancelled" },
+      { totalLots: 1, shareUrl: "/s", now },
+    );
+    expect(cancelled.statusBadge).toBeNull();
+  });
 });
 
 describe("mapSaleToOverviewVM", () => {

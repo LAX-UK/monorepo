@@ -5,51 +5,53 @@ import type { SaleHeroVM } from "./view-models";
 
 type Props = {
   hero: SaleHeroVM;
-  meta: ReactNode;
+  headline: ReactNode;
+  statusLines: ReactNode;
   toolbar: ReactNode;
   actions: ReactNode;
 };
 
 /**
- * Layout shell only: two-column hero (image | content). Slots for meta, toolbar, primary actions.
- * No business logic — OCP + SRP.
+ * Layout shell: left column = headline + image; right = status rows, toolbar, actions (Figma 1440).
+ * Mobile: stacked headline → image → status → toolbar → actions.
  */
-export function SaleroomHero({ hero, meta, toolbar, actions }: Props) {
+export function SaleroomHero({ hero, headline, statusLines, toolbar, actions }: Props) {
   return (
     <section className="bg-page-bg dark:bg-background">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-8 py-8 lg:flex-row lg:items-stretch lg:gap-6">
-        <div className="relative aspect-[655/424] w-full shrink-0 overflow-hidden bg-[#E5E5E5] dark:bg-surface-container-high lg:w-[min(100%,655px)] lg:max-w-[655px]">
-          {hero.coverImage ? (
-            <Image
-              src={hero.coverImage}
-              alt={hero.title}
-              fill
-              priority
-              placeholder="blur"
-              blurDataURL={TINY_IMAGE_BLUR}
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 655px"
-            />
-          ) : (
-            <div
-              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-surface-container-highest dark:to-surface-dim"
-              aria-hidden
-            >
-              <span className="px-4 text-center text-lg font-semibold text-neutral-700 dark:text-on-surface-variant">
-                {hero.title}
-              </span>
-            </div>
-          )}
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-8 p-8 lg:flex-row lg:gap-6">
+        <div className="flex w-full shrink-0 flex-col gap-6 lg:w-[655px]">
+          {headline}
+          <div className="relative aspect-[655/424] w-full overflow-hidden bg-[#E5E5E5] dark:bg-surface-container-high">
+            {hero.coverImage ? (
+              <Image
+                src={hero.coverImage}
+                alt={hero.title}
+                fill
+                priority
+                placeholder="blur"
+                blurDataURL={TINY_IMAGE_BLUR}
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 655px"
+              />
+            ) : (
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-surface-container-highest dark:to-surface-dim"
+                aria-hidden
+              >
+                <span className="px-4 text-center text-lg font-semibold text-neutral-700 dark:text-on-surface-variant">
+                  {hero.title}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-10">
-          {meta}
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 flex-1">{toolbar}</div>
-            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-10">
-              {actions}
-            </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-end gap-10 lg:items-end">
+          <div className="flex w-full flex-col gap-10 lg:items-end">
+            {statusLines}
+            <div className="flex w-full min-w-0 justify-end">{toolbar}</div>
           </div>
+          {actions}
         </div>
       </div>
     </section>

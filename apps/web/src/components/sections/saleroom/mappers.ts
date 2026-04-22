@@ -1,7 +1,13 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { Lot, Sale } from "@auction/types";
-import type { RelatedSaleVM, SaleHeroVM, SaleLotCardVM, SaleOverviewVM } from "./view-models";
+import type {
+  RelatedSaleVM,
+  SaleHeroStatusBadge,
+  SaleHeroVM,
+  SaleLotCardVM,
+  SaleOverviewVM,
+} from "./view-models";
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -79,6 +85,15 @@ export function mapSaleToHeroVM(
   const biddingStartsShort =
     sale.status === "scheduled" ? formatRelativeShort(sale.startTime, opts.now) : null;
 
+  const statusBadge: SaleHeroStatusBadge =
+    sale.status === "active"
+      ? { kind: "live", label: "Live Auction" }
+      : sale.status === "scheduled"
+        ? { kind: "upcoming", label: "Upcoming Auction" }
+        : sale.status === "ended"
+          ? { kind: "ended", label: "Ended" }
+          : null;
+
   return {
     id: sale.id,
     title: sale.title,
@@ -97,6 +112,7 @@ export function mapSaleToHeroVM(
     registrationClosesShort,
     biddingStartsShort,
     liveLabel: "Live Auction",
+    statusBadge,
   };
 }
 

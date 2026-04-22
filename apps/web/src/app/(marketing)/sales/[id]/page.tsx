@@ -7,7 +7,8 @@ import {
 } from "@/components/sections/saleroom/mappers";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
-import { SaleroomHeroMeta } from "@/components/sections/saleroom/saleroom-hero-meta";
+import { SaleroomHeroHeadline } from "@/components/sections/saleroom/saleroom-hero-headline";
+import { SaleroomHeroStatusLines } from "@/components/sections/saleroom/saleroom-hero-meta";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
@@ -228,7 +229,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
       <SaleroomHero
         hero={heroVM}
-        meta={<SaleroomHeroMeta hero={heroVM} />}
+        headline={<SaleroomHeroHeadline hero={heroVM} />}
+        statusLines={<SaleroomHeroStatusLines hero={heroVM} />}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
