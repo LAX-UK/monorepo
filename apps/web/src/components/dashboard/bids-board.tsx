@@ -3,18 +3,29 @@
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
 import { formatMoney } from "@/lib/format-currency";
+import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import { Toolbar } from "@auction/ui/components/toolbar";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
 import { type BidBoardRow, type BidTab, parseBidTab } from "./bid-board-rows";
 
 function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
@@ -147,11 +158,13 @@ export function BidsBoard({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [draftQ, setDraftQ] = useState(initialQ);
-
+  const searchForm = useForm<{ q: string }>({
+    resolver: zodResolver(urlTitleSearchSchema),
+    defaultValues: { q: initialQ },
+  });
   useEffect(() => {
-    setDraftQ(initialQ);
-  }, [initialQ]);
+    searchForm.reset({ q: initialQ });
+  }, [initialQ, searchForm]);
 
   const tab = parseBidTab(searchParams.get("tab"), initialTab);
   const appliedQ = (searchParams.get("q") ?? "").trim().slice(0, 200);
@@ -170,15 +183,18 @@ export function BidsBoard({
     [pathname, router, searchParams],
   );
 
-  const applySearch = useCallback(() => {
-    replaceQuery((p) => {
-      const trimmed = draftQ.trim().slice(0, 200);
-      if (trimmed) p.set("q", trimmed);
-      else p.delete("q");
-      if (tab !== "active") p.set("tab", tab);
-      else p.delete("tab");
-    });
-  }, [draftQ, replaceQuery, tab]);
+  const applySearch = useCallback(
+    (q: string) => {
+      replaceQuery((p) => {
+        const trimmed = q.trim().slice(0, 200);
+        if (trimmed) p.set("q", trimmed);
+        else p.delete("q");
+        if (tab !== "active") p.set("tab", tab);
+        else p.delete("tab");
+      });
+    },
+    [replaceQuery, tab],
+  );
 
   const onTabChange = useCallback(
     (v: string) => {
@@ -209,32 +225,41 @@ export function BidsBoard({
       <Toolbar
         className="mb-6"
         search={
-          <form
-            className="flex flex-col gap-3 sm:flex-row sm:items-end"
-            onSubmit={(e) => {
-              e.preventDefault();
-              applySearch();
-            }}
-          >
-            <div className="min-w-0 flex-1 space-y-2">
-              <label
-                htmlFor="bids-q"
-                className="font-label text-xs uppercase tracking-widest text-secondary"
-              >
-                Filter by lot title
-              </label>
-              <Input
-                id="bids-q"
-                value={draftQ}
-                onChange={(e) => setDraftQ(e.target.value)}
-                placeholder="e.g. oil on canvas"
-                className="bg-surface-container-low"
+          <Form {...searchForm}>
+            <form
+              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              onSubmit={searchForm.handleSubmit((v) => {
+                applySearch(v.q);
+              })}
+            >
+              <FormField
+                control={searchForm.control}
+                name="q"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 flex-1 space-y-2">
+                    <FormLabel
+                      htmlFor="bids-q"
+                      className="font-label text-xs uppercase tracking-widest text-secondary"
+                    >
+                      Filter by lot title
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        id="bids-q"
+                        placeholder="e.g. oil on canvas"
+                        className="bg-surface-container-low"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <Button type="submit" variant="secondary">
-              Apply
-            </Button>
-          </form>
+              <Button type="submit" variant="secondary">
+                Apply
+              </Button>
+            </form>
+          </Form>
         }
         filters={
           <p className="font-body text-xs text-on-surface-variant">
@@ -276,7 +301,7 @@ export function BidsBoard({
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    setDraftQ("");
+                    searchForm.setValue("q", "");
                     replaceQuery((p) => {
                       p.delete("q");
                       if (tab !== "active") p.set("tab", tab);
@@ -306,7 +331,7 @@ export function BidsBoard({
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    setDraftQ("");
+                    searchForm.setValue("q", "");
                     replaceQuery((p) => {
                       p.delete("q");
                       p.set("tab", "won");
@@ -336,7 +361,7 @@ export function BidsBoard({
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    setDraftQ("");
+                    searchForm.setValue("q", "");
                     replaceQuery((p) => {
                       p.delete("q");
                       p.set("tab", "lost");

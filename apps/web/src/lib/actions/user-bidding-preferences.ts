@@ -1,34 +1,52 @@
 "use server";
 
-import { readApiError } from "@/lib/actions/_utils";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
+import {
+  type ActionResult,
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
+import { biddingPreferencesPatchSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+
+export async function updateBiddingPreferencesFromValuesAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  const parsed = biddingPreferencesPatchSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { biddingPrefs } = getWriteContainer();
+  const r = await biddingPrefs.patch(parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/dashboard/settings/bidding");
+  return actionSuccess();
+}
 
 export async function updateBiddingPreferencesAction(formData: FormData): Promise<void> {
-  const outbidInApp = formData.get("outbidInApp") === "on" || formData.get("outbidInApp") === "true";
+  const outbidInApp =
+    formData.get("outbidInApp") === "on" || formData.get("outbidInApp") === "true";
   const outbidPush = formData.get("outbidPush") === "on" || formData.get("outbidPush") === "true";
   const endingSoonPush =
     formData.get("endingSoonPush") === "on" || formData.get("endingSoonPush") === "true";
   const defaultMaxBidAmountRaw = String(formData.get("defaultMaxBidAmount") ?? "").trim();
   const defaultMaxBidAmount = defaultMaxBidAmountRaw === "" ? null : defaultMaxBidAmountRaw;
-
-  const res = await authedServerFetch("/users/me/bidding-preferences", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      outbidInApp,
-      outbidPush,
-      endingSoonPush,
-      defaultMaxBidAmount,
-    }),
+  const { biddingPrefs } = getWriteContainer();
+  const r = await biddingPrefs.patch({
+    outbidInApp,
+    outbidPush,
+    endingSoonPush,
+    defaultMaxBidAmount: defaultMaxBidAmount ?? undefined,
   });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/dashboard/settings/bidding?error=${encodeURIComponent(readApiError(body, "Update failed"))}`,
-    );
+  if (!r.ok) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/dashboard/settings/bidding?error=${encodeURIComponent(r.message)}`);
   }
   revalidatePath("/dashboard/settings/bidding");
+  const { redirect } = await import("next/navigation");
   redirect("/dashboard/settings/bidding?saved=1");
 }

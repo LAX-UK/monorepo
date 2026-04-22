@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
+import { changePasswordAction } from "@/lib/actions/change-password";
 import {
   Form,
   FormControl,
@@ -10,36 +11,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { type PasswordChangeFormValues, passwordChangeFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { type FieldPath, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
-
-const passwordChangeSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Enter your current password"),
-    newPassword: z.string().min(8, "Use at least 8 characters"),
-    confirmPassword: z.string().min(1, "Confirm your new password"),
-  })
-  .refine((d) => d.newPassword === d.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
+const defaultValues: PasswordChangeFormValues = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+};
 
 export function SecurityPasswordForm() {
-  const form = useForm<PasswordChangeValues>({
-    resolver: zodResolver(passwordChangeSchema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
+  const form = useForm<PasswordChangeFormValues>({
+    resolver: zodResolver(passwordChangeFormSchema),
+    defaultValues,
   });
 
   return (
@@ -48,28 +34,24 @@ export function SecurityPasswordForm() {
         className="space-y-6"
         onSubmit={form.handleSubmit(async (values) => {
           form.clearErrors("root");
-          const res = await fetch(`${apiBase()}/api/auth/change-password`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              currentPassword: values.currentPassword,
-              newPassword: values.newPassword,
-              revokeOtherSessions: false,
-            }),
-          });
-          const body = (await res.json().catch(() => ({}))) as { message?: string };
-          if (!res.ok) {
-            form.setError("root", {
-              message:
-                typeof body.message === "string" ? body.message : "Could not change password",
+          const r = await changePasswordAction(values);
+          if (r.ok) {
+            form.reset();
+            toast.success("Password updated", {
+              description: "You can use your new password next time you sign in.",
             });
             return;
           }
-          form.reset();
-          toast.success("Password updated", {
-            description: "You can use your new password next time you sign in.",
-          });
+          if (r.fieldErrors) {
+            for (const [key, msgs] of Object.entries(r.fieldErrors)) {
+              if (msgs?.[0]) {
+                form.setError(key as FieldPath<PasswordChangeFormValues>, { message: msgs[0] });
+              }
+            }
+          } else {
+            form.setError("root", { message: r.error });
+            toast.error(r.error);
+          }
         })}
       >
         <FormField

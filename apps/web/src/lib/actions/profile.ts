@@ -1,60 +1,118 @@
 "use server";
 
-import { readApiError } from "@/lib/actions/_utils";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
+import {
+  type ActionResult,
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
+import { createAddressBodySchema, updateProfileNameFormSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { z } from "zod";
 
-export async function updateProfileNameAction(formData: FormData): Promise<void> {
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) redirect("/dashboard/settings/profile?error=Name+required");
-  const res = await authedServerFetch("/users/me/profile", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/dashboard/settings/profile?error=${encodeURIComponent(readApiError(body, "Update failed"))}`,
-    );
+const createAddressWithDefaultSchema = createAddressBodySchema.extend({
+  isDefault: z.boolean().optional(),
+});
+
+export async function updateProfileNameFromValuesAction(input: {
+  name: string;
+}): Promise<ActionResult<void>> {
+  const parsed = updateProfileNameFormSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { profile } = getWriteContainer();
+  const r = await profile.updateProfile({ name: parsed.data.name });
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
   }
   revalidatePath("/dashboard/settings/profile");
   revalidatePath("/dashboard");
+  return actionSuccess();
+}
+
+export async function createAddressFromValuesAction(
+  input: z.infer<typeof createAddressWithDefaultSchema>,
+): Promise<ActionResult<void>> {
+  const parsed = createAddressWithDefaultSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const d = parsed.data;
+  const { profile } = getWriteContainer();
+  const r = await profile.createAddress({
+    label: d.label,
+    line1: d.line1,
+    line2: d.line2,
+    city: d.city,
+    state: d.state,
+    postalCode: d.postalCode,
+    country: d.country,
+    isDefault: d.isDefault ?? false,
+  });
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/dashboard/settings/profile");
+  return actionSuccess();
+}
+
+export async function updateProfileNameAction(formData: FormData): Promise<void> {
+  const name = String(formData.get("name") ?? "").trim();
+  const parsed = updateProfileNameFormSchema.safeParse({ name });
+  if (!parsed.success) {
+    const { redirect } = await import("next/navigation");
+    redirect("/dashboard/settings/profile?error=Name+required");
+    return;
+  }
+  const { profile } = getWriteContainer();
+  const r = await profile.updateProfile({ name: parsed.data.name });
+  if (!r.ok) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/dashboard/settings/profile?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard");
+  const { redirect } = await import("next/navigation");
   redirect("/dashboard/settings/profile");
 }
 
 export async function createAddressAction(formData: FormData): Promise<void> {
-  const label = String(formData.get("label") ?? "").trim();
-  const line1 = String(formData.get("line1") ?? "").trim();
-  const city = String(formData.get("city") ?? "").trim();
-  const postalCode = String(formData.get("postalCode") ?? "").trim();
-  const country = String(formData.get("country") ?? "").trim();
-  if (!label || !line1 || !city || !postalCode || !country) {
+  const raw = {
+    label: String(formData.get("label") ?? "").trim(),
+    line1: String(formData.get("line1") ?? "").trim(),
+    line2: String(formData.get("line2") ?? "").trim() || undefined,
+    city: String(formData.get("city") ?? "").trim(),
+    state: String(formData.get("state") ?? "").trim() || undefined,
+    postalCode: String(formData.get("postalCode") ?? "").trim(),
+    country: String(formData.get("country") ?? "").trim(),
+    isDefault: formData.get("isDefault") === "on",
+  };
+  const parsed = createAddressWithDefaultSchema.safeParse(raw);
+  if (!parsed.success) {
+    const { redirect } = await import("next/navigation");
     redirect("/dashboard/settings/profile?error=Fill+required+address+fields");
+    return;
   }
-  const line2 = String(formData.get("line2") ?? "").trim() || undefined;
-  const state = String(formData.get("state") ?? "").trim() || undefined;
-  const res = await authedServerFetch("/users/me/addresses", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      label,
-      line1,
-      line2,
-      city,
-      state,
-      postalCode,
-      country,
-      isDefault: formData.get("isDefault") === "on",
-    }),
+  const d = parsed.data;
+  const { profile } = getWriteContainer();
+  const r = await profile.createAddress({
+    label: d.label,
+    line1: d.line1,
+    line2: d.line2,
+    city: d.city,
+    state: d.state,
+    postalCode: d.postalCode,
+    country: d.country,
+    isDefault: d.isDefault ?? false,
   });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/dashboard/settings/profile?error=${encodeURIComponent(readApiError(body, "Address failed"))}`,
-    );
+  if (!r.ok) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/dashboard/settings/profile?error=${encodeURIComponent(r.message)}`);
   }
   revalidatePath("/dashboard/settings/profile");
+  const { redirect } = await import("next/navigation");
   redirect("/dashboard/settings/profile");
 }

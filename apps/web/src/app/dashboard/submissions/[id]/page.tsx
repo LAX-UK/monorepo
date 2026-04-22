@@ -1,25 +1,15 @@
 import { EditSubmissionForm } from "@/components/dashboard/edit-submission-form";
-import { Button } from "@/components/ui/button";
+import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
-import { submitForReviewAction, withdrawSubmissionAction } from "@/lib/actions/submissions";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getSubmissionForUser } from "@/lib/data/http/submissions.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function SubmissionDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
-}) {
+export default async function SubmissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
   const s = await getSubmissionForUser(id);
   if (!s) notFound();
 
@@ -44,13 +34,6 @@ export default async function SubmissionDetailPage({
         </DisplayHeading>
         <SubmissionStatusBadge status={s.status} />
       </div>
-      {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Something went wrong</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-
       {!editable ? (
         <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant">
           <p>{s.description ?? "No description."}</p>
@@ -88,22 +71,11 @@ export default async function SubmissionDetailPage({
         />
       )}
 
-      <div className="flex flex-wrap gap-3">
-        {canSubmit ? (
-          <form action={submitForReviewAction}>
-            <input type="hidden" name="submissionId" value={s.id} />
-            <Button type="submit">Submit for review</Button>
-          </form>
-        ) : null}
-        {canWithdraw ? (
-          <form action={withdrawSubmissionAction}>
-            <input type="hidden" name="submissionId" value={s.id} />
-            <Button type="submit" variant="secondary">
-              Withdraw
-            </Button>
-          </form>
-        ) : null}
-      </div>
+      <SubmissionWorkflowActions
+        submissionId={s.id}
+        canSubmit={canSubmit}
+        canWithdraw={canWithdraw}
+      />
     </div>
   );
 }

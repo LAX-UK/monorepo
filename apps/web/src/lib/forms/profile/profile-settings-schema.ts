@@ -1,20 +1,14 @@
+/**
+ * Re-exports from @auction/validators (SSOT). Local names preserved for existing imports.
+ */
+import { createAddressBodySchema } from "@auction/validators";
+import { updateProfileNameFormSchema } from "@auction/validators";
 import { z } from "zod";
 
-export const profileDisplayNameFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(200),
-});
+export { updateProfileNameFormSchema as profileDisplayNameFormSchema };
+export type ProfileDisplayNameFormValues = z.infer<typeof updateProfileNameFormSchema>;
 
-export type ProfileDisplayNameFormValues = z.infer<typeof profileDisplayNameFormSchema>;
-
-export const newAddressFormSchema = z.object({
-  label: z.string().min(1).max(80),
-  line1: z.string().min(1).max(200),
-  line2: z.string().max(200),
-  city: z.string().min(1).max(120),
-  state: z.string().max(120),
-  postalCode: z.string().min(1).max(32),
-  country: z.string().min(2).max(120),
+export const newAddressFormSchema = createAddressBodySchema.extend({
   isDefault: z.boolean(),
 });
-
 export type NewAddressFormValues = z.infer<typeof newAddressFormSchema>;

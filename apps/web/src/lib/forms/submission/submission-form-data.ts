@@ -1,6 +1,37 @@
-import type { NewSubmissionFormValues } from "./submission-form-schema";
+import { splitSubmissionUrlLines } from "@auction/validators";
+import type { ItemSubmissionFormValues } from "@auction/validators";
 
-export function createSubmissionFormData(values: NewSubmissionFormValues): FormData {
+export function formValuesToCreateItemSubmissionInput(values: ItemSubmissionFormValues) {
+  const imagesRaw = splitSubmissionUrlLines(values.imagesText);
+  return {
+    title: values.title.trim(),
+    description: values.description.trim() || undefined,
+    medium: values.medium.trim() || undefined,
+    dimensions: values.dimensions.trim() || undefined,
+    images: imagesRaw.length > 0 ? imagesRaw : undefined,
+    askingPrice: values.askingPrice.trim() || undefined,
+    reservePrice: values.reservePrice.trim() || undefined,
+    categoryId: values.categoryId,
+    submitterNotes: values.submitterNotes.trim() || undefined,
+  };
+}
+
+export function formValuesToUpdateItemSubmissionInput(values: ItemSubmissionFormValues) {
+  const base = formValuesToCreateItemSubmissionInput(values);
+  return {
+    title: base.title || undefined,
+    description: base.description,
+    medium: base.medium,
+    dimensions: base.dimensions,
+    images: base.images,
+    askingPrice: base.askingPrice,
+    reservePrice: base.reservePrice,
+    categoryId: base.categoryId,
+    submitterNotes: base.submitterNotes,
+  };
+}
+
+export function createSubmissionFormData(values: ItemSubmissionFormValues): FormData {
   const fd = new FormData();
   fd.set("title", values.title.trim());
   fd.set("description", values.description.trim());
@@ -16,7 +47,7 @@ export function createSubmissionFormData(values: NewSubmissionFormValues): FormD
 
 export function updateSubmissionFormData(
   submissionId: string,
-  values: NewSubmissionFormValues,
+  values: ItemSubmissionFormValues,
 ): FormData {
   const fd = createSubmissionFormData(values);
   fd.set("submissionId", submissionId);

@@ -13,3 +13,5 @@ export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
 export * from "./item-submission.js";
 export * from "./money-compare.js";
+export * from "./password-change.js";
+export * from "./checkout.js";

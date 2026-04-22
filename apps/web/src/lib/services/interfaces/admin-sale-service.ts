@@ -1,0 +1,16 @@
+import type { cancelSaleBodySchema, createSaleSchema, updateSaleSchema } from "@auction/validators";
+import type { z } from "zod";
+import type { ServiceResult } from "../http/service-result";
+
+export type CreateSaleInput = z.infer<typeof createSaleSchema>;
+export type UpdateSaleInput = z.infer<typeof updateSaleSchema>;
+export type CancelSaleBody = z.infer<typeof cancelSaleBodySchema>;
+
+export interface IAdminSaleService {
+  create(input: CreateSaleInput): Promise<ServiceResult<{ id: string }>>;
+  update(id: string, input: UpdateSaleInput): Promise<ServiceResult<Record<string, unknown>>>;
+  publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
+  cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
+  attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
+  detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
+}

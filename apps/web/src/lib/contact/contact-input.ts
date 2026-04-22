@@ -9,6 +9,12 @@ export const contactSchema = z.object({
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
+/** RHF + honeypot `website` (ignored when non-empty). */
+export const contactFormValuesSchema = contactSchema.extend({
+  website: z.string().optional(),
+});
+export type ContactFormValues = z.infer<typeof contactFormValuesSchema>;
+
 export function isContactHoneypotFilled(formData: FormData): boolean {
   return String(formData.get("website") ?? "").trim().length > 0;
 }

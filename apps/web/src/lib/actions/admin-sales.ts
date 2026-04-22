@@ -1,10 +1,17 @@
 "use server";
 
-import { authedJsonRedirect } from "@/lib/actions/_helpers";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import {
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+  type ActionResult,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { z } from "zod";
 
 function splitUrlLines(raw: string): string[] {
   return raw
@@ -37,25 +44,17 @@ export async function adminCreateSaleAction(formData: FormData): Promise<void> {
   });
   if (!parsed.success) {
     redirect(
-      `/admin/sales/new?error=${encodeURIComponent(parsed.error.issues.map((e: { message: string }) => e.message).join("; "))}`,
+      `/admin/sales/new?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
     );
   }
-  const res = await authedServerFetch("/sales", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(parsed.data),
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/admin/sales/new?error=${encodeURIComponent(String((body as { error?: string }).error ?? "Create failed"))}`,
-    );
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.create(parsed.data);
+  if (!r.ok) {
+    redirect(`/admin/sales/new?error=${encodeURIComponent(r.message)}`);
   }
-  const id = String((body as { data?: { id?: string } }).data?.id ?? "");
   revalidatePath("/admin/sales");
   revalidatePath("/");
-  if (id) redirect(`/admin/sales/${id}`);
-  redirect("/admin/sales");
+  redirect(`/admin/sales/${r.data.id}`);
 }
 
 export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
@@ -88,42 +87,46 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   });
   if (!parsed.success) {
     redirect(
-      `/admin/sales/${id}/edit?error=${encodeURIComponent(parsed.error.issues.map((e: { message: string }) => e.message).join("; "))}`,
+      `/admin/sales/${id}/edit?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
     );
   }
-  await authedJsonRedirect({
-    path: `/sales/${encodeURIComponent(id)}`,
-    method: "PATCH",
-    json: parsed.data,
-    okRedirect: `/admin/sales/${id}`,
-    errRedirect: `/admin/sales/${id}/edit`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
-  });
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.update(id, parsed.data);
+  if (!r.ok) {
+    redirect(`/admin/sales/${id}/edit?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  redirect(`/admin/sales/${id}`);
 }
 
 export async function adminPublishSaleAction(formData: FormData): Promise<void> {
   const id = String(formData.get("saleId") ?? "").trim();
   if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
-  await authedJsonRedirect({
-    path: `/sales/${encodeURIComponent(id)}/publish`,
-    method: "POST",
-    okRedirect: `/admin/sales/${id}`,
-    errRedirect: `/admin/sales/${id}`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
-  });
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.publish(id);
+  if (!r.ok) {
+    redirect(`/admin/sales/${id}?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  redirect(`/admin/sales/${id}`);
 }
 
 export async function adminCancelSaleAction(formData: FormData): Promise<void> {
   const id = String(formData.get("saleId") ?? "").trim();
   if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
-  await authedJsonRedirect({
-    path: `/sales/${encodeURIComponent(id)}/cancel`,
-    method: "POST",
-    json: {},
-    okRedirect: `/admin/sales/${id}`,
-    errRedirect: `/admin/sales/${id}`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${id}`, "/"],
-  });
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.cancel(id, {});
+  if (!r.ok) {
+    redirect(`/admin/sales/${id}?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  redirect(`/admin/sales/${id}`);
 }
 
 export async function adminAttachLotToSaleAction(formData: FormData): Promise<void> {
@@ -131,13 +134,15 @@ export async function adminAttachLotToSaleAction(formData: FormData): Promise<vo
   const lotId = String(formData.get("lotId") ?? "").trim();
   if (!saleId || !lotId)
     redirect(`/admin/sales?error=${encodeURIComponent("Missing sale or lot")}`);
-  await authedJsonRedirect({
-    path: `/sales/${encodeURIComponent(saleId)}/lots/attach/${encodeURIComponent(lotId)}`,
-    method: "POST",
-    okRedirect: `/admin/sales/${saleId}`,
-    errRedirect: `/admin/sales/${saleId}`,
-    revalidatePaths: ["/admin/sales", `/admin/sales/${saleId}`, "/admin/lots"],
-  });
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.attachLot(saleId, lotId);
+  if (!r.ok) {
+    redirect(`/admin/sales/${saleId}?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${saleId}`);
+  revalidatePath("/admin/lots");
+  redirect(`/admin/sales/${saleId}`);
 }
 
 export async function adminDetachLotFromSaleAction(formData: FormData): Promise<void> {
@@ -145,18 +150,125 @@ export async function adminDetachLotFromSaleAction(formData: FormData): Promise<
   const lotId = String(formData.get("lotId") ?? "").trim();
   if (!saleId || !lotId)
     redirect(`/admin/sales?error=${encodeURIComponent("Missing sale or lot")}`);
-  const res = await authedServerFetch(
-    `/sales/${encodeURIComponent(saleId)}/lots/${encodeURIComponent(lotId)}`,
-    { method: "DELETE" },
-  );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/admin/sales/${saleId}?error=${encodeURIComponent(String((body as { error?: string }).error ?? "Detach failed"))}`,
-    );
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.detachLot(saleId, lotId);
+  if (!r.ok) {
+    redirect(`/admin/sales/${saleId}?error=${encodeURIComponent(r.message)}`);
   }
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${saleId}`);
   revalidatePath("/admin/lots");
   redirect(`/admin/sales/${saleId}`);
+}
+
+export async function adminCreateSaleResultAction(
+  input: z.infer<typeof createSaleSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = createSaleSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.create(parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath("/");
+  return actionSuccess({ id: r.data.id });
+}
+
+export async function adminUpdateSaleResultAction(
+  saleId: string,
+  input: z.infer<typeof updateSaleSchema>,
+): Promise<ActionResult<void>> {
+  const id = saleId.trim();
+  if (!id) {
+    return actionFailure("Missing sale");
+  }
+  const parsed = updateSaleSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.update(id, parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  return actionSuccess();
+}
+
+export async function adminPublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const id = saleId.trim();
+  if (!id) {
+    return actionFailure("Missing sale");
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.publish(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  return actionSuccess();
+}
+
+export async function adminCancelSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const id = saleId.trim();
+  if (!id) {
+    return actionFailure("Missing sale");
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.cancel(id, {});
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/");
+  return actionSuccess();
+}
+
+export async function adminAttachLotToSaleResultAction(
+  saleId: string,
+  lotId: string,
+): Promise<ActionResult<void>> {
+  const sid = saleId.trim();
+  const lid = lotId.trim();
+  if (!sid || !lid) {
+    return actionFailure("Missing sale or lot");
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.attachLot(sid, lid);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${sid}`);
+  revalidatePath("/admin/lots");
+  return actionSuccess();
+}
+
+export async function adminDetachLotFromSaleResultAction(
+  saleId: string,
+  lotId: string,
+): Promise<ActionResult<void>> {
+  const sid = saleId.trim();
+  const lid = lotId.trim();
+  if (!sid || !lid) {
+    return actionFailure("Missing sale or lot");
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.detachLot(sid, lid);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${sid}`);
+  revalidatePath("/admin/lots");
+  return actionSuccess();
 }

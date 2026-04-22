@@ -1,5 +1,6 @@
 import { ThemeInit } from "@/components/layout/theme-init";
 import { Toaster } from "@/components/ui/toaster";
+import { SITE_SHORT_NAME } from "@/lib/brand";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
@@ -29,6 +30,19 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   ...rootMetadataBase(),
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicons/favicon.ico" },
+      { url: "/favicons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/favicons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: SITE_SHORT_NAME,
+  },
 };
 
 const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());

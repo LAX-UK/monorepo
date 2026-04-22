@@ -6,6 +6,11 @@ export const updateProfileSchema = z.object({
   image: z.string().url().nullable().optional(),
 });
 
+/** RHF: display name only. */
+export const updateProfileNameFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200),
+});
+
 export const setRoleSchema = z.object({
   userId: z.string().min(1).max(191),
   role: z.enum(userRoles),

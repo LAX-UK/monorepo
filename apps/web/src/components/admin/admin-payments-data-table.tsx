@@ -1,12 +1,18 @@
 "use client";
 
-import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
+import { Button } from "@/components/ui/button";
+import {
+  adminCapturePaymentResultAction,
+  adminRefundPaymentResultAction,
+} from "@/lib/actions/admin";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { PaymentStatus } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useTransition } from "react";
+import { toast } from "sonner";
 
 export type AdminPaymentTableRow = {
   id: string;
@@ -18,6 +24,87 @@ export type AdminPaymentTableRow = {
   platformFee: string;
   status: PaymentStatus;
 };
+
+type PaymentActionsProps = { id: string; status: PaymentStatus; fullWidth?: boolean };
+
+export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsProps) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  if (status === "refunded") {
+    return <span className="text-on-surface-variant">Refunded</span>;
+  }
+
+  const runCapture = () => {
+    startTransition(() => {
+      void (async () => {
+        const r = await adminCapturePaymentResultAction(id);
+        if (r.ok) {
+          toast.success("Marked captured");
+          router.refresh();
+          return;
+        }
+        toast.error(r.error);
+      })();
+    });
+  };
+  const runRefund = () => {
+    startTransition(() => {
+      void (async () => {
+        const r = await adminRefundPaymentResultAction(id);
+        if (r.ok) {
+          toast.success("Refunded");
+          router.refresh();
+          return;
+        }
+        toast.error(r.error);
+      })();
+    });
+  };
+
+  if (fullWidth) {
+    return (
+      <div className="flex flex-col gap-3 border-t border-outline-variant/15 pt-4">
+        {(status === "pending" || status === "authorized") && (
+          <Button type="button" className="min-h-11 w-full" disabled={pending} onClick={runCapture}>
+            Mark captured
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-11 w-full text-error"
+          disabled={pending}
+          onClick={runRefund}
+        >
+          Refund
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap justify-end gap-3">
+      {(status === "pending" || status === "authorized") && (
+        <button
+          type="button"
+          disabled={pending}
+          className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          onClick={runCapture}
+        >
+          Mark captured
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={pending}
+        className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline disabled:opacity-50"
+        onClick={runRefund}
+      >
+        Refund
+      </button>
+    </div>
+  );
+}
 
 function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
   return [
@@ -50,36 +137,9 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => {
-        const p = row.original;
-        if (p.status === "refunded") {
-          return <span className="text-on-surface-variant">Refunded</span>;
-        }
-        return (
-          <div className="flex flex-wrap justify-end gap-3">
-            {(p.status === "pending" || p.status === "authorized") && (
-              <form action={adminCapturePaymentAction} className="inline">
-                <input type="hidden" name="paymentId" value={p.id} />
-                <button
-                  type="submit"
-                  className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-                >
-                  Mark captured
-                </button>
-              </form>
-            )}
-            <form action={adminRefundPaymentAction} className="inline">
-              <input type="hidden" name="paymentId" value={p.id} />
-              <button
-                type="submit"
-                className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline"
-              >
-                Refund
-              </button>
-            </form>
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <AdminPaymentActions id={row.original.id} status={row.original.status} />
+      ),
       enableSorting: false,
     },
   ];

@@ -2,6 +2,7 @@
 
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
 import { Button } from "@/components/ui/button";
+import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -13,20 +14,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import {
+  type CheckoutTermsAcceptanceValues,
+  checkoutTermsAcceptanceSchema,
+} from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
-
-const checkoutFormSchema = z.object({
-  termsAccepted: z.boolean().refine((v) => v === true, {
-    message: "You must accept the terms to continue.",
-  }),
-});
-
-type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
 
 type Props = {
   sessionUser: SessionUser;
@@ -36,10 +32,6 @@ type Props = {
   total: string;
   premiumPercentLabel: string;
 };
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 function settlementsEmail(): string {
   return process.env.NEXT_PUBLIC_SETTLEMENTS_EMAIL?.trim() || "settlements@example.com";
@@ -58,8 +50,8 @@ export function CheckoutPurchasePanel({
   premiumPercentLabel,
 }: Props) {
   const [submitted, setSubmitted] = useState(false);
-  const form = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutFormSchema),
+  const form = useForm<CheckoutTermsAcceptanceValues>({
+    resolver: zodResolver(checkoutTermsAcceptanceSchema),
     defaultValues: { termsAccepted: false },
   });
 
@@ -155,28 +147,16 @@ export function CheckoutPurchasePanel({
             className="space-y-6"
             onSubmit={form.handleSubmit(async () => {
               form.clearErrors("root");
-              try {
-                const res = await fetch(`${apiBase()}/payments`, {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ lotId }),
-                });
-                const json = (await res.json().catch(() => ({}))) as { error?: string };
-                if (!res.ok) {
-                  notifyAdminCannotBuyIfNeeded(json.error, res.status);
-                  form.setError("root", {
-                    message: json.error ?? "Could not start payment",
-                  });
-                  return;
-                }
-                setSubmitted(true);
-                toast.success("Payment record created", {
-                  description: "Our settlements team will follow up with next steps.",
-                });
-              } catch {
-                form.setError("root", { message: "Network error" });
+              const r = await createCheckoutPaymentAction(lotId);
+              if (!r.ok) {
+                notifyAdminCannotBuyIfNeeded(r.error, r.status ?? 500);
+                form.setError("root", { message: r.error });
+                return;
               }
+              setSubmitted(true);
+              toast.success("Payment record created", {
+                description: "Our settlements team will follow up with next steps.",
+              });
             })}
           >
             <FormField

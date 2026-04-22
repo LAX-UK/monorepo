@@ -1,5 +1,7 @@
 import "server-only";
 
+export { getWriteContainer, type WriteServiceContainer } from "./write-container.server";
+
 import {
   getServerMyArtistFollows,
   getServerMyBids,

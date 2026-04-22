@@ -1,11 +1,12 @@
 "use client";
 
-import { updateProfileNameAction } from "@/lib/actions/profile";
+import { updateProfileNameFromValuesAction } from "@/lib/actions/profile";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { profileNameToFormData } from "./profile-form-data";
+import { type FieldPath, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
   type ProfileDisplayNameFormValues,
   profileDisplayNameFormSchema,
@@ -15,6 +16,7 @@ export function useProfileNameController(
   initialName: string,
 ): FormController<ProfileDisplayNameFormValues> {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const form = useForm<ProfileDisplayNameFormValues>({
     resolver: zodResolver(profileDisplayNameFormSchema),
     defaultValues: { name: initialName },
@@ -23,7 +25,21 @@ export function useProfileNameController(
 
   const onSubmit = form.handleSubmit((values) => {
     startTransition(async () => {
-      await updateProfileNameAction(profileNameToFormData(values));
+      const r = await updateProfileNameFromValuesAction({ name: values.name.trim() });
+      if (r.ok) {
+        toast.success("Profile updated");
+        router.refresh();
+        return;
+      }
+      if (r.fieldErrors) {
+        for (const [key, msgs] of Object.entries(r.fieldErrors)) {
+          if (msgs?.[0]) {
+            form.setError(key as FieldPath<ProfileDisplayNameFormValues>, { message: msgs[0] });
+          }
+        }
+      } else {
+        toast.error(r.error);
+      }
     });
   });
 

@@ -1,21 +1,29 @@
 "use server";
 
-import { authedJsonRedirect } from "@/lib/actions/_helpers";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import {
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+  type ActionResult,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { z } from "zod";
 
 export async function adminStartSubmissionReviewAction(formData: FormData): Promise<void> {
   const id = String(formData.get("submissionId") ?? "").trim();
   if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
-  await authedJsonRedirect({
-    path: `/submissions/${encodeURIComponent(id)}/review/start`,
-    method: "POST",
-    okRedirect: `/admin/submissions/${id}`,
-    errRedirect: `/admin/submissions/${id}`,
-    revalidatePaths: ["/admin/submissions", `/admin/submissions/${id}`],
-  });
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.startReview(id);
+  if (!r.ok) {
+    redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/submissions");
+  revalidatePath(`/admin/submissions/${id}`);
+  redirect(`/admin/submissions/${id}`);
 }
 
 export async function adminApproveSubmissionAction(formData: FormData): Promise<void> {
@@ -27,18 +35,12 @@ export async function adminApproveSubmissionAction(formData: FormData): Promise<
   if (!parsed.success) {
     redirect(`/admin/submissions/${id}?error=${encodeURIComponent("Invalid form")}`);
   }
-  const res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}/approve`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(parsed.data),
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    redirect(
-      `/admin/submissions/${id}?error=${encodeURIComponent(String((body as { error?: string }).error ?? "Approve failed"))}`,
-    );
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.approve(id, parsed.data);
+  if (!r.ok) {
+    redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
   }
-  const lotId = String((body as { data?: { lot?: { id?: string } } }).data?.lot?.id ?? "");
+  const lotId = r.data.lotId;
   revalidatePath("/admin/submissions");
   revalidatePath(`/admin/submissions/${id}`);
   revalidatePath("/admin/lots");
@@ -58,12 +60,75 @@ export async function adminRejectSubmissionAction(formData: FormData): Promise<v
   if (!parsed.success) {
     redirect(`/admin/submissions/${id}?error=${encodeURIComponent("Invalid form")}`);
   }
-  await authedJsonRedirect({
-    path: `/submissions/${encodeURIComponent(id)}/reject`,
-    method: "POST",
-    json: parsed.data,
-    okRedirect: `/admin/submissions/${id}`,
-    errRedirect: `/admin/submissions/${id}`,
-    revalidatePaths: ["/admin/submissions", `/admin/submissions/${id}`],
-  });
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.reject(id, parsed.data);
+  if (!r.ok) {
+    redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+  }
+  revalidatePath("/admin/submissions");
+  revalidatePath(`/admin/submissions/${id}`);
+  redirect(`/admin/submissions/${id}`);
+}
+
+export async function adminStartSubmissionReviewResultAction(
+  submissionId: string,
+): Promise<ActionResult<void>> {
+  const id = submissionId.trim();
+  if (!id) {
+    return actionFailure("Missing submission");
+  }
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.startReview(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/submissions");
+  revalidatePath(`/admin/submissions/${id}`);
+  return actionSuccess();
+}
+
+export async function adminApproveSubmissionResultAction(
+  submissionId: string,
+  body: z.infer<typeof approveSubmissionBodySchema>,
+): Promise<ActionResult<{ lotId: string | undefined }>> {
+  const id = submissionId.trim();
+  if (!id) {
+    return actionFailure("Missing submission");
+  }
+  const parsed = approveSubmissionBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.approve(id, parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  const lotId = r.data.lotId;
+  revalidatePath("/admin/submissions");
+  revalidatePath(`/admin/submissions/${id}`);
+  revalidatePath("/admin/lots");
+  return actionSuccess({ lotId });
+}
+
+export async function adminRejectSubmissionResultAction(
+  submissionId: string,
+  body: z.infer<typeof rejectSubmissionBodySchema>,
+): Promise<ActionResult<void>> {
+  const id = submissionId.trim();
+  if (!id) {
+    return actionFailure("Missing submission");
+  }
+  const parsed = rejectSubmissionBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminSubmissions } = getWriteContainer();
+  const r = await adminSubmissions.reject(id, parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/submissions");
+  revalidatePath(`/admin/submissions/${id}`);
+  return actionSuccess();
 }

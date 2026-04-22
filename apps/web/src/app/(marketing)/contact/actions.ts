@@ -1,9 +1,16 @@
 "use server";
 
 import { consoleContactDispatcher } from "@/lib/contact/contact-dispatcher";
-import { isContactHoneypotFilled, parseContactFormData } from "@/lib/contact/contact-input";
+import {
+  contactFormValuesSchema,
+  contactSchema,
+  isContactHoneypotFilled,
+  parseContactFormData,
+} from "@/lib/contact/contact-input";
+import { actionFailure, actionSuccess, type ActionResult } from "@/lib/forms/form-result";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
 import { headers } from "next/headers";
+import type { z } from "zod";
 
 const rateLimiter = createInMemorySlidingWindowRateLimiter({
   windowMs: 60_000,
@@ -40,4 +47,27 @@ export async function submitContactForm(
   await consoleContactDispatcher.dispatch(parsed.data);
 
   return { ok: true };
+}
+
+export async function submitContactFormResult(
+  values: z.infer<typeof contactFormValuesSchema>,
+): Promise<ActionResult<void>> {
+  const pre = contactFormValuesSchema.safeParse(values);
+  if (!pre.success) {
+    return actionFailure("Please check the form and try again.");
+  }
+  const { website, ...rest } = pre.data;
+  if (String(website ?? "").trim()) {
+    return actionSuccess();
+  }
+  const parsed = contactSchema.safeParse(rest);
+  if (!parsed.success) {
+    return actionFailure("Please check the form and try again.");
+  }
+  const key = await rateLimitKey();
+  if (!rateLimiter.consume(key)) {
+    return actionFailure("Too many submissions. Please wait a minute and try again.");
+  }
+  await consoleContactDispatcher.dispatch(parsed.data);
+  return actionSuccess();
 }

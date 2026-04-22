@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
+import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search";
 import type { UserNotification } from "@auction/types";
 import { BulkActionBar, DataTable } from "@auction/ui";
 import {
@@ -12,13 +13,23 @@ import {
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { Tabs, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 function apiBase(): string {
@@ -31,7 +42,11 @@ const PAGE = 25;
 
 export function NotificationsInboxBoard() {
   const [tab, setTab] = useState<Tab>("all");
-  const [typeFilter, setTypeFilter] = useState("");
+  const typeForm = useForm({
+    resolver: zodResolver(notificationTypeFilterFormSchema),
+    defaultValues: { type: "" },
+  });
+  const typeFilter = typeForm.watch("type") ?? "";
   const [items, setItems] = useState<UserNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -298,9 +313,7 @@ export function NotificationsInboxBoard() {
   );
 
   return (
-    <div
-      className={`mx-auto max-w-5xl px-4 py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}
-    >
+    <div className={`mx-auto max-w-5xl px-4 py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}>
       <PageHeader
         title="Notifications"
         description="Manage alerts for bids, wins, and saved lots. Updates in real time when you are online."
@@ -321,13 +334,28 @@ export function NotificationsInboxBoard() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Input
-          type="search"
-          placeholder="Filter by type (e.g. outbid)"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="max-w-xs min-h-11 bg-surface-container-lowest text-base md:text-sm"
-        />
+        <Form {...typeForm}>
+          <form className="max-w-xs" onSubmit={(e) => e.preventDefault()}>
+            <FormField
+              control={typeForm.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="sr-only">Filter by type</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="search"
+                      placeholder="Filter by type (e.g. outbid)"
+                      className="min-h-11 bg-surface-container-lowest text-base md:text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
       </div>
 
       <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
@@ -343,7 +371,7 @@ export function NotificationsInboxBoard() {
           <button
             key={chip.label}
             type="button"
-            onClick={() => setTypeFilter(chip.key)}
+            onClick={() => typeForm.setValue("type", chip.key)}
             className={`shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
               typeFilter === chip.key
                 ? "bg-primary text-on-primary ring-primary"
@@ -357,10 +385,20 @@ export function NotificationsInboxBoard() {
 
       <div className="mt-4">
         <BulkActionBar count={selected.size}>
-          <Button type="button" variant="primary" className="min-h-11" onClick={() => void markReadMany()}>
+          <Button
+            type="button"
+            variant="primary"
+            className="min-h-11"
+            onClick={() => void markReadMany()}
+          >
             Mark read
           </Button>
-          <Button type="button" variant="secondary" className="min-h-11" onClick={() => void archiveMany()}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-11"
+            onClick={() => void archiveMany()}
+          >
             Archive
           </Button>
         </BulkActionBar>

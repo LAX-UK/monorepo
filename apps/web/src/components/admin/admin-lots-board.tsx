@@ -2,7 +2,7 @@
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
 import { useTableDensity } from "@/components/layout/dashboard-shell";
-import { adminBulkLotsAction } from "@/lib/actions/admin";
+import { adminBulkLotsResultAction } from "@/lib/actions/admin";
 import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
@@ -18,7 +18,9 @@ import {
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 function lotColumns(): ColumnDef<AdminLotTableRow>[] {
   return [
@@ -113,6 +115,8 @@ export function AdminLotsBoard({
   layoutToggle,
 }: Props) {
   const { density } = useTableDensity();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
@@ -127,9 +131,22 @@ export function AdminLotsBoard({
 
   const columns = useMemo(() => lotColumns(), []);
 
-  const bulkPayload = useCallback(
-    (op: "publish" | "cancel") => JSON.stringify({ ids: selectedIds, op }),
-    [selectedIds],
+  const runBulk = useCallback(
+    (op: "publish" | "cancel") => {
+      startTransition(() => {
+        void (async () => {
+          const r = await adminBulkLotsResultAction({ ids: selectedIds, op });
+          if (r.ok) {
+            toast.success(op === "publish" ? "Published" : "Cancelled");
+            setRowSelection({});
+            router.refresh();
+            return;
+          }
+          toast.error(r.error);
+        })();
+      });
+    },
+    [selectedIds, router],
   );
 
   if (viewPipeline) {
@@ -225,18 +242,22 @@ export function AdminLotsBoard({
         }
       />
       <BulkActionBar count={selectedIds.length}>
-        <form action={adminBulkLotsAction}>
-          <input type="hidden" name="payload" value={bulkPayload("publish")} readOnly />
-          <Button type="submit" variant="secondary" disabled={selectedIds.length === 0}>
-            Publish
-          </Button>
-        </form>
-        <form action={adminBulkLotsAction}>
-          <input type="hidden" name="payload" value={bulkPayload("cancel")} readOnly />
-          <Button type="submit" variant="secondary" disabled={selectedIds.length === 0}>
-            Cancel
-          </Button>
-        </form>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={selectedIds.length === 0 || pending}
+          onClick={() => runBulk("publish")}
+        >
+          Publish
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={selectedIds.length === 0 || pending}
+          onClick={() => runBulk("cancel")}
+        >
+          Cancel
+        </Button>
       </BulkActionBar>
     </div>
   );

@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  adminSetUserRoleAction,
-  adminSuspendUserAction,
-  adminUnsuspendUserAction,
-} from "@/lib/actions/admin";
+import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import type { UserRole } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -25,25 +22,7 @@ function userColumns(): ColumnDef<AdminUserRow>[] {
       header: "Role",
       cell: ({ row }) => {
         const u = row.original;
-        return (
-          <form action={adminSetUserRoleAction} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="userId" value={u.id} />
-            <select
-              name="role"
-              defaultValue={u.role}
-              className="rounded border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-xs"
-            >
-              <option value="user">user</option>
-              <option value="admin">admin</option>
-            </select>
-            <button
-              type="submit"
-              className="font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-            >
-              Save
-            </button>
-          </form>
-        );
+        return <UserRoleAction userId={u.id} defaultRole={u.role as UserRole} layout="row" />;
       },
       enableSorting: false,
     },
@@ -62,23 +41,8 @@ function userColumns(): ColumnDef<AdminUserRow>[] {
       cell: ({ row }) => {
         const u = row.original;
         return (
-          <div className="text-right text-xs">
-            {u.suspendedAt ? (
-              <form action={adminUnsuspendUserAction} className="inline">
-                <input type="hidden" name="userId" value={u.id} />
-                <button type="submit" className="text-primary underline-offset-2 hover:underline">
-                  Unsuspend
-                </button>
-              </form>
-            ) : (
-              <form action={adminSuspendUserAction} className="inline">
-                <input type="hidden" name="userId" value={u.id} />
-                <input type="hidden" name="reason" value="Admin action" />
-                <button type="submit" className="text-error underline-offset-2 hover:underline">
-                  Suspend
-                </button>
-              </form>
-            )}
+          <div className="flex justify-end text-xs">
+            <UserSuspendAction userId={u.id} suspendedAt={u.suspendedAt} />
           </div>
         );
       },

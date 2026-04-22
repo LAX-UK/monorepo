@@ -1,11 +1,12 @@
 "use client";
 
-import { createSubmissionAction } from "@/lib/actions/submissions";
+import { createSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { createSubmissionFormData } from "./submission-form-data";
+import { type FieldPath, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { type NewSubmissionFormValues, newSubmissionFormSchema } from "./submission-form-schema";
 
 const defaultValues: NewSubmissionFormValues = {
@@ -22,6 +23,7 @@ const defaultValues: NewSubmissionFormValues = {
 
 export function useCreateSubmissionController(): FormController<NewSubmissionFormValues> {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const form = useForm<NewSubmissionFormValues>({
     resolver: zodResolver(newSubmissionFormSchema),
     defaultValues,
@@ -30,7 +32,21 @@ export function useCreateSubmissionController(): FormController<NewSubmissionFor
 
   const onSubmit = form.handleSubmit((values) => {
     startTransition(async () => {
-      await createSubmissionAction(createSubmissionFormData(values));
+      const r = await createSubmissionFromValuesAction(values);
+      if (r.ok) {
+        toast.success("Submission created");
+        router.push(r.data?.redirectTo ?? "/dashboard/submissions");
+        return;
+      }
+      if (r.fieldErrors) {
+        for (const [key, msgs] of Object.entries(r.fieldErrors)) {
+          if (msgs?.[0]) {
+            form.setError(key as FieldPath<NewSubmissionFormValues>, { message: msgs[0] });
+          }
+        }
+      } else {
+        toast.error(r.error);
+      }
     });
   });
 

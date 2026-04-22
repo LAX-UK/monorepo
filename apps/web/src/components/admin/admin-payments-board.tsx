@@ -1,10 +1,12 @@
 "use client";
 
-import { adminCapturePaymentAction, adminRefundPaymentAction } from "@/lib/actions/admin";
-import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import {
+  AdminPaymentActions,
+  type AdminPaymentTableRow,
+} from "@/components/admin/admin-payments-data-table";
 import { useTableDensity } from "@/components/layout/dashboard-shell";
-import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
-import type { PaymentStatus } from "@auction/types";
+import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { adminPaymentLocalSearchSchema } from "@/lib/forms/schemas/url-search";
 import {
   Button,
   DataTable,
@@ -16,12 +18,25 @@ import {
   SheetTitle,
   StatusBadge,
 } from "@auction/ui";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
-function paymentColumns(onOpen: (row: AdminPaymentTableRow) => void): ColumnDef<AdminPaymentTableRow>[] {
+function paymentColumns(
+  onOpen: (row: AdminPaymentTableRow) => void,
+): ColumnDef<AdminPaymentTableRow>[] {
   return [
     {
       accessorKey: "lotTitle",
@@ -118,26 +133,7 @@ function PaymentDrawerContent({ p, onClose }: { p: AdminPaymentTableRow; onClose
         </div>
       </dl>
 
-      <div className="flex flex-col gap-3 border-t border-outline-variant/15 pt-4">
-        {(p.status === "pending" || p.status === "authorized") && (
-          <form action={adminCapturePaymentAction} className="w-full">
-            <input type="hidden" name="paymentId" value={p.id} />
-            <Button type="submit" className="min-h-11 w-full">
-              Mark captured
-            </Button>
-          </form>
-        )}
-        {p.status !== "refunded" ? (
-          <form action={adminRefundPaymentAction} className="w-full">
-            <input type="hidden" name="paymentId" value={p.id} />
-            <Button type="submit" variant="secondary" className="min-h-11 w-full text-error">
-              Refund
-            </Button>
-          </form>
-        ) : (
-          <p className="text-sm text-on-surface-variant">This payment was refunded.</p>
-        )}
-      </div>
+      <AdminPaymentActions id={p.id} status={p.status} fullWidth />
     </div>
   );
 }
@@ -150,7 +146,11 @@ type Props = {
 export function AdminPaymentsBoard({ rows, statusChips }: Props) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminPaymentTableRow | null>(null);
-  const [q, setQ] = useState("");
+  const searchForm = useForm({
+    resolver: zodResolver(adminPaymentLocalSearchSchema),
+    defaultValues: { q: "" },
+  });
+  const q = searchForm.watch("q") ?? "";
 
   const onOpen = useCallback((row: AdminPaymentTableRow) => setSelected(row), []);
 
@@ -186,7 +186,12 @@ export function AdminPaymentsBoard({ rows, statusChips }: Props) {
           </div>
           <p className="mt-2 font-mono text-[10px] text-on-surface-variant">{p.buyerId}</p>
           <p className="mt-1 tabular-nums text-sm">{p.amount}</p>
-          <Button type="button" variant="secondary" className="mt-3 min-h-11 w-full" onClick={() => setSelected(p)}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-3 min-h-11 w-full"
+            onClick={() => setSelected(p)}
+          >
             Manage payment
           </Button>
         </li>
@@ -201,18 +206,36 @@ export function AdminPaymentsBoard({ rows, statusChips }: Props) {
         density={density}
         filters={statusChips}
         search={
-          <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
-            <label htmlFor="admin-pay-q" className="font-label text-xs uppercase tracking-widest text-secondary">
-              Search
-            </label>
-            <input
-              id="admin-pay-q"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Lot title, buyer ID, payment ID…"
-              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
-            />
-          </div>
+          <Form {...searchForm}>
+            <form
+              className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md"
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <FormField
+                control={searchForm.control}
+                name="q"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel
+                      htmlFor="admin-pay-q"
+                      className="font-label text-xs uppercase tracking-widest text-secondary"
+                    >
+                      Search
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        id="admin-pay-q"
+                        placeholder="Lot title, buyer ID, payment ID…"
+                        className="min-h-11 text-base md:text-sm"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
         }
         table={
           <DataTable
@@ -231,7 +254,9 @@ export function AdminPaymentsBoard({ rows, statusChips }: Props) {
             <>
               <SheetHeader>
                 <SheetTitle>Payment</SheetTitle>
-                <SheetDescription>Capture or refund from this drawer on any screen size.</SheetDescription>
+                <SheetDescription>
+                  Capture or refund from this drawer on any screen size.
+                </SheetDescription>
               </SheetHeader>
               <PaymentDrawerContent p={selected} onClose={() => setSelected(null)} />
             </>

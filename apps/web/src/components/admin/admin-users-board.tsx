@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  adminSetUserRoleAction,
-  adminSuspendUserAction,
-  adminUnsuspendUserAction,
-} from "@/lib/actions/admin";
+import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import type { UserRole } from "@auction/types";
 import {
   Button,
   DataTable,
@@ -57,25 +54,7 @@ function userColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow>
       header: "Role",
       cell: ({ row }) => {
         const u = row.original;
-        return (
-          <form action={adminSetUserRoleAction} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="userId" value={u.id} />
-            <select
-              name="role"
-              defaultValue={u.role}
-              className="min-h-11 rounded border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-xs"
-            >
-              <option value="user">user</option>
-              <option value="admin">admin</option>
-            </select>
-            <button
-              type="submit"
-              className="min-h-11 font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-            >
-              Save
-            </button>
-          </form>
-        );
+        return <UserRoleAction userId={u.id} defaultRole={u.role as UserRole} layout="row" />;
       },
       enableSorting: false,
     },
@@ -144,39 +123,11 @@ function UserDrawerContent({ u }: { u: AdminUserRow }) {
 
       <div className="space-y-4 border-t border-outline-variant/15 pt-4">
         <p className="font-label text-xs uppercase tracking-widest text-secondary">Role</p>
-        <form action={adminSetUserRoleAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <input type="hidden" name="userId" value={u.id} />
-          <select
-            name="role"
-            defaultValue={u.role}
-            className="min-h-11 w-full rounded border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm sm:flex-1"
-          >
-            <option value="user">user</option>
-            <option value="admin">admin</option>
-          </select>
-          <Button type="submit" className="min-h-11 w-full sm:w-auto">
-            Save role
-          </Button>
-        </form>
+        <UserRoleAction userId={u.id} defaultRole={u.role as UserRole} layout="block" />
       </div>
 
       <div className="border-t border-outline-variant/15 pt-4">
-        {u.suspendedAt ? (
-          <form action={adminUnsuspendUserAction}>
-            <input type="hidden" name="userId" value={u.id} />
-            <Button type="submit" variant="secondary" className="min-h-11 w-full">
-              Unsuspend account
-            </Button>
-          </form>
-        ) : (
-          <form action={adminSuspendUserAction}>
-            <input type="hidden" name="userId" value={u.id} />
-            <input type="hidden" name="reason" value="Admin action" />
-            <Button type="submit" variant="secondary" className="min-h-11 w-full text-error">
-              Suspend account
-            </Button>
-          </form>
-        )}
+        <UserSuspendAction userId={u.id} suspendedAt={u.suspendedAt} fullWidthButton />
       </div>
     </div>
   );
