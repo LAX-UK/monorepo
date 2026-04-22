@@ -25,7 +25,7 @@ function apiBase(): string {
 }
 
 const outlinedClass =
-  "box-border inline-flex h-10 min-w-[117px] items-center justify-center gap-2.5 border border-[#0A0A0A] bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] rounded-[4px] hover:bg-transparent hover:opacity-90";
+  "box-border inline-flex h-10 min-w-[117px] items-center justify-center gap-2.5 rounded-[4px] border border-brand-800 bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-on-surface/80 dark:text-on-surface";
 
 export function SaleroomFollowToggle({
   saleId,
@@ -61,7 +61,7 @@ export function SaleroomFollowToggle({
       return (
         <Link
           href={`/login?next=/sales/${encodeURIComponent(saleId)}`}
-          className={`${outlinedClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]`}
+          className={`${outlinedClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
           <BellRing className="size-4 shrink-0" aria-hidden />
           {label ?? "Follow"}

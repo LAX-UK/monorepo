@@ -1,17 +1,17 @@
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import {
-  mapBidderRowVM,
   mapLotToCardVM,
   mapSaleToHeroVM,
+  mapSaleToOverviewVM,
   mapSaleToRelatedVM,
 } from "@/components/sections/saleroom/mappers";
-import { SaleroomBiddersPanel } from "@/components/sections/saleroom/saleroom-bidders-panel";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
 import { SaleroomHeroMeta } from "@/components/sections/saleroom/saleroom-hero-meta";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
+import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomPaginator } from "@/components/sections/saleroom/saleroom-paginator";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
 import {
@@ -20,11 +20,8 @@ import {
   type TabKey,
 } from "@/components/sections/saleroom/saleroom-tabs";
 import { SITE_TAGLINE } from "@/lib/brand";
-import {
-  getServerRelatedSales,
-  getServerSaleBidders,
-  getServerSaleFollowState,
-} from "@/lib/data/http/saleroom.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
 import {
   type SaleLotsPage,
   getServerSaleLotsPage,
@@ -34,6 +31,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForSale, metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { getSiteUrl } from "@/lib/site-url";
+import type { Category } from "@auction/types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -45,7 +43,6 @@ type PageProps = {
 };
 
 const CATALOG_PAGE_SIZE = 12;
-const BIDDERS_PAGE_SIZE = 24;
 const CATALOG_SORT = "lot" as const;
 
 function firstString(v: string | string[] | undefined): string | undefined {
@@ -60,7 +57,8 @@ function parsePage(raw: string | undefined): number {
 }
 
 function parseTab(raw: string | undefined): TabKey {
-  return raw === "bidders" ? "bidders" : "catalog";
+  if (raw === "catalog") return "catalog";
+  return "overview";
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -124,11 +122,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const isCatalogLoadAll = pageRaw === "all" && tab === "catalog";
   const pageNum = isCatalogLoadAll ? 1 : parsePage(pageRaw);
 
-  const [bundle, session] = await Promise.all([
+  const [bundle, session, categories] = await Promise.all([
     getServerSaleWithLots(id).catch(() => null),
     getServerSessionUser(),
+    getServerCategoryReader()
+      .then((r) => r.list())
+      .catch((): Category[] => []),
   ]);
   if (!bundle) notFound();
+
+  const categoryId = bundle.sale.categoryId ?? null;
+  const categoryLabel =
+    categoryId && categories.length > 0
+      ? (categories.find((c) => c.id === categoryId)?.name ?? null)
+      : null;
 
   const lotsPage =
     tab === "catalog"
@@ -140,14 +147,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           sort: CATALOG_SORT,
         }).catch(() => null);
   if (!lotsPage) notFound();
-
-  const categoryId = bundle.sale.categoryId ?? null;
-  const bidders =
-    tab === "bidders"
-      ? await getServerSaleBidders({ id, page: pageNum, pageSize: BIDDERS_PAGE_SIZE }).catch(
-          () => null,
-        )
-      : null;
 
   const [follow, relatedSales] = await Promise.all([
     session
@@ -168,12 +167,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     shareUrl,
     now,
   });
+  const overviewVM = mapSaleToOverviewVM(bundle.sale, {
+    lotsTotal: lotsPage.total,
+    categoryLabel,
+  });
 
   const tabs: TabDescriptor[] = [
-    { key: "catalog", label: "Browse lots", count: lotsPage.total },
-    typeof bidders?.total === "number"
-      ? { key: "bidders", label: "Registered bidders", count: bidders.total }
-      : { key: "bidders", label: "Registered bidders" },
+    { key: "overview", label: "Overview" },
+    { key: "catalog", label: "Browse Lots", count: lotsPage.total },
   ];
 
   const shownLots = isCatalogLoadAll
@@ -198,7 +199,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   ]);
 
   const itemsLd =
-    lotVMs.length > 0
+    tab === "catalog" && lotVMs.length > 0
       ? itemListJsonLd(
           lotVMs.map((lot) => ({
             name: lot.title,
@@ -215,7 +216,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     : `/login?next=${encodeURIComponent(basePath)}`;
 
   return (
-    <main id="main-content" className="bg-[#F1F1F3] pb-32 pt-(--section-pt) lg:pb-24">
+    <main id="main-content" className="bg-page-bg pb-32 pt-20 dark:bg-background lg:pb-24">
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
@@ -240,10 +241,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      <section
-        id="catalog"
-        className="mx-auto max-w-[1440px] px-4 pb-0 pt-10 sm:px-6 md:px-8 md:pt-20"
-      >
+      <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-20 sm:px-6 md:px-8">
         <SaleroomTabs
           tabs={tabs}
           activeTab={tab}
@@ -274,33 +272,13 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
               />
             </>
           ) : (
-            <>
-              {bidders ? (
-                <SaleroomBiddersPanel
-                  bidders={bidders.items.map(mapBidderRowVM)}
-                  total={bidders.total}
-                />
-              ) : (
-                <SaleroomBiddersPanel bidders={[]} total={0} />
-              )}
-              {bidders ? (
-                <SaleroomPaginator
-                  shown={Math.min(pageNum * BIDDERS_PAGE_SIZE, bidders.total)}
-                  total={bidders.total}
-                  page={pageNum}
-                  pageSize={BIDDERS_PAGE_SIZE}
-                  basePath={basePath}
-                  preservedQuery={preservedQuery}
-                  unitLabel="bidders"
-                />
-              ) : null}
-            </>
+            <SaleroomOverviewPanel overview={overviewVM} />
           )}
         </SaleroomTabs>
       </section>
 
       {relatedVMs.length > 0 ? (
-        <section className="mx-auto mt-16 max-w-[1440px] px-4 sm:px-6 md:px-8">
+        <section className="mx-auto mt-20 max-w-[1440px] px-4 sm:px-6 md:px-8">
           <SaleroomRelatedAuctions related={relatedVMs} />
         </section>
       ) : null}

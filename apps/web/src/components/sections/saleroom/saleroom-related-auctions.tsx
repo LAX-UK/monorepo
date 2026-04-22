@@ -20,16 +20,19 @@ export function SaleroomRelatedAuctions({
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <h2
           id="related-auctions-title"
-          className="text-4xl font-semibold leading-[60px] tracking-tight text-[#050505] md:text-[40px]"
+          className="text-[40px] font-semibold leading-[60px] tracking-tight text-brand-900 dark:text-on-surface"
         >
           {title}
         </h2>
         <Link
           href={viewAllHref}
-          className="inline-flex min-h-6 items-center gap-2.5 text-center font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-[#050505] underline-offset-4 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-6 items-center gap-2.5 text-center font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-brand-900 underline underline-offset-4 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
         >
           View all
-          <ChevronRight className="size-5 shrink-0" aria-hidden />
+          <ChevronRight
+            className="size-5 shrink-0 text-brand-900 dark:text-on-surface"
+            aria-hidden
+          />
         </Link>
       </div>
       <ul className="m-0 flex list-none flex-col gap-0 p-0">

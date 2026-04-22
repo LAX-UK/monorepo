@@ -20,10 +20,14 @@ export function SaleroomPrintButton({ appearance = "default" }: Props) {
       <button
         type="button"
         onClick={print}
-        className="inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-[#1C170D] transition-opacity hover:opacity-80"
+        className="inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text transition-opacity hover:opacity-80 dark:text-on-surface"
         aria-label="Print catalogue"
       >
-        <Printer className="size-5 shrink-0 text-black" strokeWidth={1} aria-hidden />
+        <Printer
+          className="size-5 shrink-0 text-black dark:text-on-surface"
+          strokeWidth={1}
+          aria-hidden
+        />
         Print
       </button>
     );

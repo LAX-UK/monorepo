@@ -17,54 +17,6 @@ async function authedInit(init: RequestInit = {}): Promise<RequestInit> {
   return init;
 }
 
-export type BidderRow = {
-  maskedName: string;
-  firstBidAt: Date;
-};
-
-export type SaleBiddersPage = {
-  items: BidderRow[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export type GetSaleBiddersParams = {
-  id: string;
-  page?: number;
-  pageSize?: number;
-};
-
-export async function getServerSaleBidders(
-  params: GetSaleBiddersParams,
-): Promise<SaleBiddersPage | null> {
-  const pageSize = Math.min(Math.max(params.pageSize ?? 20, 1), 100);
-  const page = Math.max(params.page ?? 1, 1);
-  const offset = (page - 1) * pageSize;
-  const base = getServerApiBase();
-  const url = `${base}/sales/${encodeURIComponent(params.id)}/bidders?limit=${pageSize}&offset=${offset}`;
-  const res = await fetch(url, await authedInit({ cache: "no-store" }));
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load sale bidders: ${res.status}`);
-  const body = (await res.json()) as {
-    data: {
-      items: { maskedName: string; firstBidAt: string }[];
-      total: number;
-      limit: number;
-      offset: number;
-    };
-  };
-  return {
-    items: body.data.items.map((i) => ({
-      maskedName: i.maskedName,
-      firstBidAt: new Date(i.firstBidAt),
-    })),
-    total: body.data.total,
-    limit: body.data.limit,
-    offset: body.data.offset,
-  };
-}
-
 /**
  * Returns `isFollowing` for the current viewer (anonymous callers always get `false`).
  * SSR only reads this for authenticated users (see page orchestrator).

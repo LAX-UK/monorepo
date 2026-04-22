@@ -40,12 +40,16 @@ export function ShareButton({ url, title, className, appearance = "default", lab
         onClick={() => void share()}
         className={
           className ??
-          "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-[#1C170D] transition-opacity hover:opacity-80"
+          "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text transition-opacity hover:opacity-80 dark:text-on-surface"
         }
       >
         {label ?? (
           <>
-            <Share2 className="size-5 shrink-0 text-black" aria-hidden />
+            <Share2
+              className="size-5 shrink-0 text-black dark:text-on-surface"
+              strokeWidth={1}
+              aria-hidden
+            />
             {done ? "Copied" : "Share"}
           </>
         )}

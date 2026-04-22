@@ -16,9 +16,9 @@ type Props = {
  */
 export function SaleroomHero({ hero, meta, toolbar, actions }: Props) {
   return (
-    <section className="bg-[#F1F1F3]">
+    <section className="bg-page-bg dark:bg-background">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-8 py-8 lg:flex-row lg:items-stretch lg:gap-6">
-        <div className="relative aspect-[655/424] w-full shrink-0 overflow-hidden bg-[#0A0A0A] lg:w-[min(100%,655px)] lg:max-w-[655px]">
+        <div className="relative aspect-[655/424] w-full shrink-0 overflow-hidden bg-[#E5E5E5] dark:bg-surface-container-high lg:w-[min(100%,655px)] lg:max-w-[655px]">
           {hero.coverImage ? (
             <Image
               src={hero.coverImage}
@@ -32,10 +32,10 @@ export function SaleroomHero({ hero, meta, toolbar, actions }: Props) {
             />
           ) : (
             <div
-              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-950"
+              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-surface-container-highest dark:to-surface-dim"
               aria-hidden
             >
-              <span className="px-4 text-center text-lg font-semibold text-white/80">
+              <span className="px-4 text-center text-lg font-semibold text-neutral-700 dark:text-on-surface-variant">
                 {hero.title}
               </span>
             </div>

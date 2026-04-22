@@ -1,9 +1,8 @@
-import { Badge } from "@auction/ui/components/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export type TabKey = "catalog" | "bidders";
+export type TabKey = "overview" | "catalog";
 
 export type TabDescriptor = {
   key: TabKey;
@@ -40,7 +39,7 @@ export function SaleroomTabs({ tabs, activeTab, basePath, preservedQuery, childr
     <Tabs value={activeTab} className="w-full">
       <TabsList
         aria-label="Saleroom sections"
-        className="mb-10 flex h-auto w-full justify-start gap-12 rounded-none border-b border-[#D1D1D1] bg-transparent p-0"
+        className="mb-12 flex h-auto w-full justify-start gap-12 rounded-none border-b border-brand-100 bg-transparent p-0 dark:border-outline-variant/30"
       >
         {tabs.map((tab) => {
           const active = tab.key === activeTab;
@@ -50,17 +49,21 @@ export function SaleroomTabs({ tabs, activeTab, basePath, preservedQuery, childr
               key={tab.key}
               value={tab.key}
               asChild
-              className="relative inline-flex min-h-10 items-center gap-1.5 rounded-none border-0 border-b-[1.5px] border-transparent bg-transparent px-0 py-2.5 font-['DM_Sans',sans-serif] text-lg font-semibold uppercase leading-[21px] text-[#1C170D] shadow-none data-[state=active]:border-b-[#000000] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              className="relative inline-flex min-h-10 items-center gap-1.5 rounded-none border-0 border-b-[1.5px] border-transparent bg-transparent px-0 py-2.5 font-['DM_Sans',sans-serif] text-lg font-semibold uppercase leading-[21px] text-nav-text shadow-none data-[state=active]:border-b-black data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:text-on-surface dark:data-[state=active]:border-b-on-surface"
             >
-              <Link href={href} className={active ? "text-[#1C170D]" : "text-[#1C170D]/80"}>
+              <Link
+                href={href}
+                className={
+                  active
+                    ? "text-nav-text dark:text-on-surface"
+                    : "text-nav-text/80 dark:text-on-surface/80"
+                }
+              >
                 {tab.label}
                 {typeof tab.count === "number" ? (
-                  <Badge
-                    variant={active ? "default" : "secondary"}
-                    className="ml-1 rounded-full px-2 py-0.5 text-xs font-bold normal-case"
-                  >
-                    {tab.count}
-                  </Badge>
+                  <span className="ml-1 text-lg font-semibold uppercase leading-[21px] text-nav-text dark:text-on-surface">
+                    ({tab.count})
+                  </span>
                 ) : null}
               </Link>
             </TabsTrigger>

@@ -22,7 +22,7 @@ function apiBase(): string {
 }
 
 const lotBtnClass =
-  "box-border inline-flex h-10 flex-1 min-w-0 items-center justify-center border border-[#A3A3A3] bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] rounded-[4px] hover:bg-transparent hover:opacity-90";
+  "box-border inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-[4px] border border-brand-200 bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
 
 export function ArtworkWatchToggle({
   lotId,
@@ -60,7 +60,7 @@ export function ArtworkWatchToggle({
       return (
         <Link
           href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
-          className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]`}
+          className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
           Follow
         </Link>

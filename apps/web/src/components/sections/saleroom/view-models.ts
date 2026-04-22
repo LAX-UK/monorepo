@@ -62,7 +62,18 @@ export type RelatedSaleVM = {
   dateLine: string;
 };
 
-export type BidderRowVM = {
-  maskedName: string;
-  joinedLabel: string;
+/** Overview tab: all salient sale fields for the read-only marketing panel. */
+export type SaleOverviewVM = {
+  description: string | null;
+  startLabel: string;
+  endLabel: string;
+  previewLabel: string | null;
+  formatLabel: string;
+  buyerPremiumLabel: string;
+  categoryLabel: string | null;
+  lotsLabel: string;
+  tags: string[];
+  streamUrl: string | null;
+  showLiveStream: boolean;
+  terms: string | null;
 };

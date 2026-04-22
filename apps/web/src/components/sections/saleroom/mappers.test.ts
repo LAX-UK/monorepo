@@ -1,6 +1,11 @@
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { mapBidderRowVM, mapLotToCardVM, mapSaleToHeroVM, mapSaleToRelatedVM } from "./mappers";
+import {
+  mapLotToCardVM,
+  mapSaleToHeroVM,
+  mapSaleToOverviewVM,
+  mapSaleToRelatedVM,
+} from "./mappers";
 
 const baseSale: Sale = {
   id: "sale-1",
@@ -75,6 +80,23 @@ describe("mapSaleToHeroVM", () => {
     expect(vm.biddingStartsShort).toBeNull();
     expect(vm.registrationClosesShort).toBeNull();
   });
+
+  it("does not show a separate registration row (no registrationEnd on Sale)", () => {
+    const vm = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/sales/sale-1", now });
+    expect(vm.registrationClosesShort).toBeNull();
+    expect(vm.biddingStartsShort).toBeTruthy();
+  });
+});
+
+describe("mapSaleToOverviewVM", () => {
+  it("maps sale fields and category label", () => {
+    const vm = mapSaleToOverviewVM(baseSale, { lotsTotal: 5, categoryLabel: "Contemporary" });
+    expect(vm.lotsLabel).toBe("5 lots");
+    expect(vm.categoryLabel).toBe("Contemporary");
+    expect(vm.buyerPremiumLabel).toBe("25%");
+    expect(vm.formatLabel).toBe("Hybrid");
+    expect(vm.showLiveStream).toBe(false);
+  });
 });
 
 describe("mapLotToCardVM", () => {
@@ -116,16 +138,5 @@ describe("mapSaleToRelatedVM", () => {
   it("pluralises item count", () => {
     expect(mapSaleToRelatedVM(baseSale, 1).itemsLabel).toBe("1 lot");
     expect(mapSaleToRelatedVM(baseSale, 3).itemsLabel).toBe("3 lots");
-  });
-});
-
-describe("mapBidderRowVM", () => {
-  it("formats joined label from firstBidAt", () => {
-    const vm = mapBidderRowVM({
-      maskedName: "Alex R.",
-      firstBidAt: new Date("2026-05-10T12:00:00Z"),
-    });
-    expect(vm.maskedName).toBe("Alex R.");
-    expect(vm.joinedLabel).toMatch(/2026/);
   });
 });

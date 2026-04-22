@@ -1,7 +1,7 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { Lot, Sale } from "@auction/types";
-import type { BidderRowVM, RelatedSaleVM, SaleHeroVM, SaleLotCardVM } from "./view-models";
+import type { RelatedSaleVM, SaleHeroVM, SaleLotCardVM, SaleOverviewVM } from "./view-models";
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -44,21 +44,38 @@ export function formatHeroDateLine(sale: Sale): string {
   return `${range} | ${time}`.toUpperCase();
 }
 
-export function mapSaleToHeroVM(
-  sale: Sale,
-  opts: { totalLots: number; shareUrl: string; now: Date },
-): SaleHeroVM {
+function formatBuyerPremiumDisplay(rate: string): string {
+  const n = Number.parseFloat(rate);
+  if (Number.isFinite(n) && n > 0 && n <= 1) {
+    return `${Math.round(n * 100)}%`;
+  }
+  return rate;
+}
+
+function formatDeliveryModeLabel(sale: Sale): string {
+  if (sale.deliveryMode === "online") return "Online";
+  if (sale.deliveryMode === "hybrid") return "Hybrid";
+  return "On-site";
+}
+
+function saleTags(sale: Sale): string[] {
   const tags: string[] = [];
   if (sale.deliveryMode === "online") tags.push("Online");
   else if (sale.deliveryMode === "hybrid") tags.push("Hybrid");
   else tags.push("Onsite");
   if (sale.streamUrl) tags.push("Live stream");
+  return tags;
+}
 
+export function mapSaleToHeroVM(
+  sale: Sale,
+  opts: { totalLots: number; shareUrl: string; now: Date },
+): SaleHeroVM {
+  const tags = saleTags(sale);
   const isLive = sale.status === "active";
   const dateLine = formatHeroDateLine(sale);
 
-  const registrationClosesShort =
-    sale.status === "scheduled" ? formatRelativeShort(sale.startTime, opts.now) : null;
+  const registrationClosesShort: string | null = null;
   const biddingStartsShort =
     sale.status === "scheduled" ? formatRelativeShort(sale.startTime, opts.now) : null;
 
@@ -136,9 +153,23 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number): RelatedSaleVM 
   };
 }
 
-export function mapBidderRowVM(row: { maskedName: string; firstBidAt: Date }): BidderRowVM {
+export function mapSaleToOverviewVM(
+  sale: Sale,
+  opts: { lotsTotal: number; categoryLabel: string | null },
+): SaleOverviewVM {
+  const tags = saleTags(sale);
   return {
-    maskedName: row.maskedName,
-    joinedLabel: row.firstBidAt.toLocaleDateString(undefined, DATE_OPTS),
+    description: sale.description,
+    startLabel: formatLongDateTime(sale.startTime),
+    endLabel: formatLongDateTime(sale.endTime),
+    previewLabel: sale.previewStartTime ? formatLongDateTime(sale.previewStartTime) : null,
+    formatLabel: formatDeliveryModeLabel(sale),
+    buyerPremiumLabel: formatBuyerPremiumDisplay(sale.buyerPremiumRate),
+    categoryLabel: opts.categoryLabel,
+    lotsLabel: `${opts.lotsTotal} ${opts.lotsTotal === 1 ? "lot" : "lots"}`,
+    tags,
+    streamUrl: sale.streamUrl,
+    showLiveStream: Boolean(sale.status === "active" && sale.streamUrl),
+    terms: sale.terms,
   };
 }

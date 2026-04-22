@@ -67,46 +67,53 @@ export function SaleroomPaginator({
 
   return (
     <div className="mx-auto flex w-full max-w-[233px] flex-col items-stretch gap-4 py-10 text-center">
-      <p className="text-center text-xs leading-4 text-[#474747]">
+      <p className="text-center text-xs leading-4 text-brand-400 dark:text-on-surface-variant">
         Showing {shown}/{total}
         <span className="sr-only">
           {" "}
           {percent}% of {unitLabel} loaded
         </span>
       </p>
-      <div className="relative h-[5px] w-full overflow-hidden bg-[#D1D1D1]" aria-hidden>
+      <div
+        className="relative h-[5px] w-full overflow-hidden bg-brand-100 dark:bg-surface-container"
+        aria-hidden
+      >
         <div
-          className="h-full bg-[#050505] transition-[width] duration-300"
+          className="h-full bg-brand-900 transition-[width] duration-300 dark:bg-on-surface"
           style={{ width: `${percent}%` }}
         />
       </div>
       {hasMore ? (
-        <Button
-          asChild
-          variant="ghost"
-          className="h-10 w-full min-w-0 border border-[#A3A3A3] bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] hover:bg-transparent"
-        >
-          <Link
-            href={nextHref}
-            rel="next"
-            prefetch={false}
-            className="inline-flex items-center justify-center"
+        <div className="flex justify-center">
+          <Button
+            asChild
+            variant="ghost"
+            className="h-10 w-[148px] min-w-0 border border-brand-200 bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent dark:border-outline-variant/50 dark:text-on-surface"
           >
-            Load More
-            <ChevronDown className="ml-1 size-4" aria-hidden />
-            <span className="sr-only">
-              — next {remaining} {unitLabel}
-            </span>
-          </Link>
-        </Button>
+            <Link
+              href={nextHref}
+              rel="next"
+              prefetch={false}
+              className="inline-flex items-center justify-center"
+            >
+              Load More
+              <ChevronDown className="ml-1 size-4" aria-hidden />
+              <span className="sr-only">
+                — next {remaining} {unitLabel}
+              </span>
+            </Link>
+          </Button>
+        </div>
       ) : null}
       {canLoadAll && hasMore ? (
-        <Link
-          href={loadAllHref}
-          className="text-center font-['DM_Sans',sans-serif] text-base font-normal leading-6 tracking-[0.8px] text-[#050505] underline decoration-[#050505] underline-offset-2"
-        >
-          Load all
-        </Link>
+        <div className="flex justify-center">
+          <Link
+            href={loadAllHref}
+            className="inline-block w-[148px] text-center font-['DM_Sans',sans-serif] text-base font-normal leading-6 tracking-[0.8px] text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-on-surface dark:decoration-on-surface"
+          >
+            Load all
+          </Link>
+        </div>
       ) : null}
     </div>
   );

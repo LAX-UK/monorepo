@@ -23,9 +23,9 @@ function MetaStack({
 }: { label: string; value: string; strongValue?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-xs leading-4 text-[#474747]">{label}</span>
+      <span className="text-xs leading-4 text-brand-400 dark:text-on-surface-variant">{label}</span>
       <span
-        className={`text-sm leading-6 text-[#474747] ${strongValue ? "font-semibold text-[#050505]" : "font-medium"}`}
+        className={`text-sm leading-6 text-brand-400 dark:text-on-surface-variant ${strongValue ? "font-semibold text-brand-900 dark:text-on-surface" : "font-medium"}`}
       >
         {value}
       </span>
@@ -35,9 +35,11 @@ function MetaStack({
 
 function MetaInline({ label, value }: { label: string; value: string }) {
   return (
-    <p className="whitespace-nowrap text-xs leading-4 text-[#474747]">
+    <p className="text-xs leading-4 text-brand-400 dark:text-on-surface-variant">
       <span>{label} </span>
-      <span className="text-sm font-semibold leading-6 text-[#050505]">{value}</span>
+      <span className="text-sm font-semibold leading-6 text-brand-900 dark:text-on-surface">
+        {value}
+      </span>
     </p>
   );
 }
@@ -50,7 +52,7 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
     <article className="group flex h-full w-full min-w-0 max-w-[320px] flex-col gap-4">
       <Link
         href={lot.href}
-        className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-[#0A0A0A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-[#E5E5E5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
         aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
       >
         {lot.imageUrl ? (
@@ -63,7 +65,7 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
           />
         ) : (
           <div
-            className="absolute inset-0 flex items-center justify-center text-xs text-white/50"
+            className="absolute inset-0 flex items-center justify-center text-xs text-neutral-500 dark:text-on-surface-variant"
             aria-hidden
           >
             No image
@@ -73,21 +75,23 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         {lot.lotLabel ? (
-          <p className="text-sm font-bold uppercase leading-4 text-[#E17100]">{lot.lotLabel}</p>
+          <p className="text-sm font-bold uppercase leading-4 text-lot-orange">{lot.lotLabel}</p>
         ) : null}
         <div>
           <Link
             href={lot.href}
-            className="block text-xl font-semibold leading-6 text-[#050505] hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="line-clamp-2 block text-xl font-semibold leading-6 text-brand-900 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
           >
             {lot.title}
           </Link>
           {lot.artistOrMedium ? (
-            <p className="mt-1 text-sm font-light leading-4 text-[#191919]">{lot.artistOrMedium}</p>
+            <p className="line-clamp-1 mt-1 text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
+              {lot.artistOrMedium}
+            </p>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-start gap-x-8 gap-y-2 text-xs text-[#474747] sm:gap-x-10">
+        <div className="flex flex-col gap-2 text-xs text-brand-400 dark:text-on-surface-variant">
           {lot.estimateValue ? (
             <MetaStack label="Estimate" value={lot.estimateValue} />
           ) : (
