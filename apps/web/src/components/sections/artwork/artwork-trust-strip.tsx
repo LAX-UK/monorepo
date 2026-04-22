@@ -3,7 +3,7 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 const items = [
   { icon: "verified" as const, label: "Certificate of authenticity" },
   { icon: "local_shipping" as const, label: "Insured white-glove shipping" },
-  { icon: "shield" as const, label: "Secure escrow settlement" },
+  { icon: "shield" as const, label: "Protected payment handling" },
 ];
 
 export function ArtworkTrustStrip() {

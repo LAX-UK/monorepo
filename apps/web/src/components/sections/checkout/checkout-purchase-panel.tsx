@@ -125,7 +125,7 @@ export function CheckoutPurchasePanel({
           <span className="material-symbols-outlined text-base text-primary" aria-hidden>
             security
           </span>
-          Secure escrow
+          Payment protection
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="material-symbols-outlined text-base text-primary" aria-hidden>
