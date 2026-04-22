@@ -10,8 +10,8 @@ type Props = {
  */
 export function LotMediaBlock({ lot }: Props) {
   return (
-    <div className="w-full max-w-[786px] overflow-hidden bg-[#0A0A0A]">
-      <div className="min-h-[280px] w-full sm:min-h-[360px] lg:min-h-[420px]">
+    <div className="relative w-full max-w-[786px] aspect-[786/502] overflow-hidden bg-[#0A0A0A]">
+      <div className="absolute inset-0 min-h-0">
         <ArtworkImageStage
           title={lot.title}
           images={lot.images}

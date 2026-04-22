@@ -3,7 +3,7 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { formatCountdownClock } from "@/lib/format-countdown";
+import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { Button } from "@auction/ui/components/button";
@@ -62,7 +62,7 @@ export function LotMoreFromRail({
       <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {rail.cards.map((c) => {
           const endMs = new Date(c.endTime).getTime() - Date.now();
-          const closing = formatCountdownClock(endMs);
+          const closing = formatCountdownForDisplay(endMs);
           return (
             <li key={c.id} className="min-w-0 max-w-[320px]">
               <div className="flex flex-col gap-4">

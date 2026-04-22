@@ -15,7 +15,7 @@ import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-st
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
-import { formatCountdownClock } from "@/lib/format-countdown";
+import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import type { Lot } from "@auction/types";
@@ -138,7 +138,7 @@ export function ArtworkBidPanel({
     return () => window.clearTimeout(t);
   }, [bidSuccess]);
 
-  const remainingLabel = formatCountdownClock(endTime - now);
+  const remainingLabel = formatCountdownForDisplay(endTime - now);
 
   const saleEndLocalLabel = useMemo(() => {
     const d = new Date(endTime);

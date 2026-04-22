@@ -18,10 +18,7 @@ export function LotBreadcrumbTabs({ vm }: Props) {
       <Link href={vm.firstSegmentHref} className="shrink-0 transition-opacity hover:opacity-80">
         {vm.firstSegmentLabel}
       </Link>
-      <ChevronRight
-        className="size-5 shrink-0 rotate-[-90deg] text-[#0A0A0A] dark:text-on-surface"
-        aria-hidden
-      />
+      <ChevronRight className="size-5 shrink-0 text-[#0A0A0A] dark:text-on-surface" aria-hidden />
       {vm.saleHref && vm.saleTitle ? (
         <>
           <Link
@@ -31,7 +28,7 @@ export function LotBreadcrumbTabs({ vm }: Props) {
             {vm.saleTitle}
           </Link>
           <ChevronRight
-            className="size-5 shrink-0 rotate-[-90deg] text-[#0A0A0A] dark:text-on-surface"
+            className="size-5 shrink-0 text-[#0A0A0A] dark:text-on-surface"
             aria-hidden
           />
         </>
