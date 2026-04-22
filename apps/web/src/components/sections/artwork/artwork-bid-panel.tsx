@@ -3,10 +3,15 @@
 import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
 import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
+import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
-import { BidDisplay } from "@/components/sections/artwork/bid-display";
+import type { BidDisplayStatus } from "@/components/sections/artwork/bid-display-status-banner";
 import { BidForm } from "@/components/sections/artwork/bid-form";
 import { BidHistory, type BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
+import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-details-inline";
+import { LotHighestBidderBanner } from "@/components/sections/artwork/redesign/lot-highest-bidder-banner";
+import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -20,12 +25,16 @@ import { toast } from "sonner";
 type Props = {
   auction: Lot;
   initialHistory: BidHistoryEntry[];
-  /** Current winning bidder from SSR (null if unknown / sealed). */
   initialLeadingBidderId?: string | null;
   sessionUser: SessionUser | null;
+  summarySeed: LotSummarySeedVM;
+  initialUserMaxAuto: string | null;
 };
 
 const HISTORY_CAP = 20;
+
+const FIGMA_PRIMARY =
+  "bg-[#050505] text-[#D1D1D1] hover:bg-[#0A0A0A] border border-[#0A0A0A] rounded px-8 py-4 text-base font-semibold leading-6 tracking-[0.8px]";
 
 function nextMinBidAmount(auction: Lot, currentPriceStr: string): number {
   const cur = Number.parseFloat(currentPriceStr);
@@ -45,6 +54,8 @@ export function ArtworkBidPanel({
   initialHistory,
   initialLeadingBidderId = null,
   sessionUser,
+  summarySeed,
+  initialUserMaxAuto,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -61,6 +72,7 @@ export function ArtworkBidPanel({
   const [leadingBidderId, setLeadingBidderId] = useState<string | null>(initialLeadingBidderId);
   const [priceFlash, setPriceFlash] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
+  const [lastKnownMaxAuto, setLastKnownMaxAuto] = useState<string | null>(initialUserMaxAuto);
 
   const triggerPriceFlash = useCallback(() => {
     setPriceFlash(true);
@@ -127,7 +139,6 @@ export function ArtworkBidPanel({
   }, [bidSuccess]);
 
   const remainingLabel = formatCountdownClock(endTime - now);
-  const msRemaining = endTime - now;
 
   const saleEndLocalLabel = useMemo(() => {
     const d = new Date(endTime);
@@ -142,6 +153,12 @@ export function ArtworkBidPanel({
       sessionUser.id === leadingBidderId &&
       lotStatus === "active",
   );
+
+  const bannerStatus: BidDisplayStatus = ownLot
+    ? { kind: "owner" }
+    : isWinning
+      ? { kind: "winning" }
+      : null;
 
   const onReview = useCallback(() => {
     setError(null);
@@ -182,6 +199,7 @@ export function ArtworkBidPanel({
     }
     setCurrentPrice(result.bid.amount);
     setLeadingBidderId(result.bid.bidderId);
+    setLastKnownMaxAuto(result.bid.maxAutoBidAmount ?? null);
     triggerPriceFlash();
     pushHistory({
       id: result.bid.id,
@@ -226,39 +244,42 @@ export function ArtworkBidPanel({
   }, []);
 
   const live = lotStatus === "active";
+  const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
   return (
     <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
       {({ decision }) => (
-        <div className="mb-20 min-w-0 rounded-xl bg-surface-container-lowest/90 p-8 shadow-lg ring-1 ring-outline-variant/10 lg:p-12">
-          {endedBanner ? (
-            <output
-              className="mb-6 block rounded-lg border border-primary/30 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/20"
-              aria-live="polite"
-            >
-              {endedBanner}
-            </output>
-          ) : null}
-
-          <BidDisplay
+        <div className="min-w-0 max-w-[550px]">
+          <LotInfoStack
+            estimateLine={summarySeed.estimateLine}
             currentPrice={currentPrice}
-            remainingLabel={remainingLabel}
-            msRemaining={msRemaining}
-            minNextBid={minNumeric.toFixed(2)}
-            saleEndLocalLabel={saleEndLocalLabel}
-            live={live}
-            ownLot={ownLot}
-            isWinning={isWinning}
-            priceFlash={priceFlash}
+            bidCount={history.length}
+            closingLabel={remainingLabel}
           />
+
+          <div className="mt-6">
+            <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
+          </div>
+
+          {auction.auctionType === "english" || auction.auctionType === "buy_it_now" ? (
+            <div className="mt-6">
+              <LotAutoBidPanel
+                auctionType={auction.auctionType}
+                maxAuto={maxAuto}
+                onMaxAutoChange={setMaxAuto}
+                serverMaxAuto={lastKnownMaxAuto}
+                disabled={gateBlocked(decision)}
+              />
+            </div>
+          ) : null}
 
           <div
             id="bid-interactive-anchor"
             tabIndex={-1}
-            className="scroll-mt-28 outline-none focus:outline-none"
+            className="mt-6 scroll-mt-28 outline-none focus:outline-none"
           >
             {bidSuccess ? (
-              <output className="mb-8 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+              <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
                 Bid placed successfully.
               </output>
             ) : null}
@@ -276,6 +297,8 @@ export function ArtworkBidPanel({
                 onReview={onReview}
                 onUseMinimum={onUseMinimum}
                 error={error}
+                showMaxAutoField={false}
+                reviewButtonClassName={FIGMA_PRIMARY}
               />
             ) : (
               <BidConfirmation
@@ -289,8 +312,37 @@ export function ArtworkBidPanel({
             )}
           </div>
 
+          <div className="mt-6">
+            <LotDetailsInline
+              lot={auction}
+              minNextBid={minNumeric.toFixed(2)}
+              saleEndLocalLabel={saleEndLocalLabel}
+              currentPrice={currentPrice}
+            />
+            <p className="mt-3 text-xs leading-relaxed text-on-surface-variant">
+              Minimum next bid{" "}
+              <span className="font-medium text-on-surface">
+                {formatMoney(minNumeric.toFixed(2))}
+              </span>
+              {live ? (
+                <>
+                  {" "}
+                  · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price plus
+                  buyer&apos;s premium; see{" "}
+                  <a href="/shipping" className="text-primary underline">
+                    shipping
+                  </a>
+                  .
+                </>
+              ) : null}
+            </p>
+          </div>
+
           <BidHistory entries={history} />
-          <ArtworkTrustStrip />
+
+          <div className="mt-8">
+            <ArtworkTrustStrip />
+          </div>
 
           <BidStickyMobileBar
             live={live}

@@ -58,6 +58,14 @@ describe("ArtworkBidPanel", () => {
           name: "Seller",
           role: "user",
         }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other",
+        }}
+        initialUserMaxAuto={null}
       />,
     );
     expect(screen.getByText(/this is your listing/i)).toBeInTheDocument();
@@ -75,6 +83,14 @@ describe("ArtworkBidPanel", () => {
           name: "Buyer",
           role: "user",
         }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other",
+        }}
+        initialUserMaxAuto={null}
       />,
     );
     expect(screen.getByRole("button", { name: /review bid amount/i })).toBeInTheDocument();

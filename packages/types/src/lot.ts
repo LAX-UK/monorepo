@@ -18,6 +18,10 @@ export type LotMarketingDetails = {
   sellerArtistId?: string | null;
   /** Parallel alts for `images[index]` when provided */
   imageAlts?: (string | undefined)[];
+  /** Optional exhibition history (authoring via marketing JSON; no column migration). */
+  exhibitions?: { year?: string; venue: string; note?: string }[];
+  /** Optional per-lot artist blurb; falls back to public profile when added later. */
+  artistNote?: string;
 };
 
 export type Lot = {

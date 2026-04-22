@@ -9,6 +9,9 @@ export type BidHistoryEntry = {
 
 type Props = {
   entries: BidHistoryEntry[];
+  hideHeading?: boolean;
+  /** When true, omit top border/margins (e.g. inside an accordion). */
+  compact?: boolean;
 };
 
 function maskBidder(id: string): string {
@@ -25,12 +28,14 @@ function formatRelative(at: number): string {
   return rtf.format(Math.round(diffSec / 86_400), "day");
 }
 
-export function BidHistory({ entries }: Props) {
+export function BidHistory({ entries, hideHeading = false, compact = false }: Props) {
   return (
-    <div className="mt-10 border-t border-outline-variant/15 pt-10">
-      <h3 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
-        Bid history
-      </h3>
+    <div className={compact ? "" : "mt-10 border-t border-outline-variant/15 pt-10"}>
+      {hideHeading ? null : (
+        <h3 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
+          Bid history
+        </h3>
+      )}
       {entries.length === 0 ? (
         <output className="block font-body text-sm text-on-surface-variant">No bids yet.</output>
       ) : (

@@ -1,6 +1,12 @@
-import { ShareButton } from "@/components/marketing/share-button";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
+import {
+  findUserLatestBidMeta,
+  mapLotToAccordionBlocks,
+  mapLotToHeroVM,
+  mapLotToSummarySeed,
+  mapSiblingsToRailVM,
+} from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
@@ -45,19 +51,26 @@ export default async function ArtworkPage({ params }: PageProps) {
         .catch(() => [])
     : Promise.resolve([]);
 
-  const [initialBids, seller, relatedRaw, watchlist] = await Promise.all([
-    getServerLotBids(id, 30).catch(() => []),
-    publicReader.getById(auction.sellerId).catch(() => null),
-    reader
-      .list({
-        sellerId: auction.sellerId,
-        limit: 12,
-        status: "active",
-        sort: "endingAsc",
-      })
-      .catch(() => []),
-    watchlistPromise,
-  ]);
+  const [initialBids, seller, relatedRaw, watchlist, saleBundle, artistForAccordion] =
+    await Promise.all([
+      getServerLotBids(id, 30).catch(() => []),
+      publicReader.getById(auction.sellerId).catch(() => null),
+      reader
+        .list({
+          sellerId: auction.sellerId,
+          limit: 12,
+          status: "active",
+          sort: "endingAsc",
+        })
+        .catch(() => []),
+      watchlistPromise,
+      auction.saleId
+        ? getServerSaleWithLots(auction.saleId).catch(() => null)
+        : Promise.resolve(null),
+      publicReader
+        .getById(auction.marketingDetails.sellerArtistId ?? auction.sellerId)
+        .catch(() => null),
+    ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
     id: b.id,
@@ -68,13 +81,20 @@ export default async function ArtworkPage({ params }: PageProps) {
   const initialLeadingBidderId = initialBids.find((b) => b.isWinning)?.bidderId ?? null;
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
-  let parentSale: { id: string; title: string } | null = null;
-  if (auction.saleId) {
-    const bundle = await getServerSaleWithLots(auction.saleId).catch(() => null);
-    if (bundle) parentSale = { id: bundle.sale.id, title: bundle.sale.title };
-  }
+  const watchedLotIds = watchlist.map((w) => w.lotId);
+  const parentSale = saleBundle ? { id: saleBundle.sale.id, title: saleBundle.sale.title } : null;
+  const saleLots = saleBundle?.lots ?? null;
   const sellerName = seller?.name ?? "Private seller";
+  const shareUrl = `${getSiteUrl()}/artwork/${auction.id}`;
+
   const sellerHref = `/artist/${auction.sellerId}`;
+  const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref);
+  const heroVM = mapLotToHeroVM(auction, parentSale, saleLots);
+  const marketingBlocks = mapLotToAccordionBlocks(auction, artistForAccordion);
+  const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
+    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  );
+  const userMaxMeta = findUserLatestBidMeta(session?.id, initialBids);
 
   const crumbs = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -82,7 +102,6 @@ export default async function ArtworkPage({ params }: PageProps) {
     { name: auction.title, path: `/artwork/${auction.id}` },
   ]);
   const jsonLdText = jsonLdScript(lotProductJsonLd(auction), crumbs);
-  const shareUrl = `${getSiteUrl()}/artwork/${auction.id}`;
 
   return (
     <main id="main-content" className="pt-[var(--header-height)]">
@@ -96,20 +115,21 @@ export default async function ArtworkPage({ params }: PageProps) {
       <LotPortsProvider>
         <ArtworkSplitView
           auction={auction}
-          parentSale={parentSale}
-          sellerHref={sellerHref}
-          sellerName={sellerName}
-          relatedAuctions={relatedRaw}
+          heroVM={heroVM}
+          summarySeed={summarySeed}
+          marketingAccordionBlocks={marketingBlocks}
+          rail={rail}
+          isAuthenticated={Boolean(session)}
+          watchedLotIds={watchedLotIds}
           currentUserId={session?.id ?? null}
-          watchSlot={
-            <div className="flex flex-wrap items-center gap-3">
-              <ArtworkWatchToggle
-                lotId={auction.id}
-                initialWatching={watching}
-                isAuthenticated={Boolean(session)}
-              />
-              <ShareButton url={shareUrl} title={auction.title} />
-            </div>
+          shareUrl={shareUrl}
+          followSlot={
+            <ArtworkWatchToggle
+              lotId={auction.id}
+              initialWatching={watching}
+              isAuthenticated={Boolean(session)}
+              appearance="outlined-block"
+            />
           }
           bidPanel={
             <ArtworkBidPanel
@@ -117,6 +137,8 @@ export default async function ArtworkPage({ params }: PageProps) {
               initialHistory={initialHistory}
               initialLeadingBidderId={initialLeadingBidderId}
               sessionUser={session}
+              summarySeed={summarySeed}
+              initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
             />
           }
         />

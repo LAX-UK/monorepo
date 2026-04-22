@@ -3,6 +3,7 @@ import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
 type Props = {
@@ -15,6 +16,10 @@ type Props = {
   onReview: () => void;
   onUseMinimum: () => void;
   error: BidErrorPresentation | null;
+  /** When false, max auto-bid is captured elsewhere (e.g. `LotAutoBidPanel`). */
+  showMaxAutoField?: boolean;
+  className?: string;
+  reviewButtonClassName?: string;
 };
 
 const CHIP_ADDS = [500, 1000, 5000] as const;
@@ -29,13 +34,16 @@ export function BidForm({
   onReview,
   onUseMinimum,
   error,
+  showMaxAutoField = true,
+  className,
+  reviewButtonClassName,
 }: Props) {
   const minStr = minNumeric.toFixed(2);
 
   const showIncrementChips = auctionType === "english" || auctionType === "buy_it_now";
 
   return (
-    <div className="space-y-8">
+    <div className={cn("space-y-8", className)}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
           Quick bid
@@ -87,7 +95,7 @@ export function BidForm({
           />
         </div>
       </div>
-      {auctionType === "english" || auctionType === "buy_it_now" ? (
+      {showMaxAutoField && (auctionType === "english" || auctionType === "buy_it_now") ? (
         <div>
           <label
             htmlFor="bid-max-auto"
@@ -109,7 +117,11 @@ export function BidForm({
         </div>
       ) : null}
       <BidErrorView error={error} />
-      <Button type="button" className="h-auto w-full py-6" onClick={onReview}>
+      <Button
+        type="button"
+        className={cn("h-auto w-full py-6", reviewButtonClassName)}
+        onClick={onReview}
+      >
         Review bid amount
       </Button>
     </div>
