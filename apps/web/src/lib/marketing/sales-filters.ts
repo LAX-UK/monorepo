@@ -1,10 +1,12 @@
-export const SALE_FILTERS = ["all", "active", "scheduled", "ended"] as const;
+export const SALE_FILTERS = ["all", "current", "active", "scheduled", "ended"] as const;
 export type SaleFilter = (typeof SALE_FILTERS)[number];
 
 export function parseSaleFilter(v: string | string[] | undefined): SaleFilter {
   const s = typeof v === "string" ? v : Array.isArray(v) ? v[0] : undefined;
-  if (s === "active" || s === "scheduled" || s === "ended") return s;
-  return "all";
+  if (s === "active" || s === "scheduled" || s === "ended" || s === "current" || s === "all") {
+    return s;
+  }
+  return "current";
 }
 
 export function parseSalesCategoryId(
@@ -22,9 +24,13 @@ export function parseSalesCategoryId(
 }
 
 export function salesHref(filter: SaleFilter, categoryId?: string): string {
-  const basePath = filter === "all" ? "/sales" : `/sales?filter=${filter}`;
-  if (!categoryId) return basePath;
-  return basePath.includes("?")
-    ? `${basePath}&categoryId=${encodeURIComponent(categoryId)}`
-    : `${basePath}?categoryId=${encodeURIComponent(categoryId)}`;
+  const q = new URLSearchParams();
+  if (filter !== "all") {
+    q.set("filter", filter);
+  }
+  if (categoryId) {
+    q.set("categoryId", categoryId);
+  }
+  const qs = q.toString();
+  return qs ? `/sales?${qs}` : "/sales";
 }
