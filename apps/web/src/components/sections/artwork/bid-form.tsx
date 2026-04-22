@@ -1,9 +1,9 @@
 import { BidErrorView } from "@/components/bid/bid-error-view";
-import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   auctionType: LotAuctionType;
@@ -40,26 +40,30 @@ export function BidForm({
         <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
           Quick bid
         </span>
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onUseMinimum}
-          className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container"
+          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
           {auctionType === "dutch" ? `Accept ${formatMoney(minStr)}` : `Min ${formatMoney(minStr)}`}
-        </button>
+        </Button>
         {showIncrementChips
           ? CHIP_ADDS.map((add) => {
               const v = minNumeric + add;
               const label = add >= 1000 ? `+$${add / 1000}k` : `+$${add}`;
               return (
-                <button
+                <Button
                   key={add}
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => onAmountChange(v.toFixed(2))}
-                  className="rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 transition-colors hover:bg-primary hover:text-on-primary"
+                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
                 >
                   {label}
-                </button>
+                </Button>
               );
             })
           : null}
@@ -105,7 +109,7 @@ export function BidForm({
         </div>
       ) : null}
       <BidErrorView error={error} />
-      <Button type="button" variant="primary" className="w-full py-6" onClick={onReview}>
+      <Button type="button" className="h-auto w-full py-6" onClick={onReview}>
         Review bid amount
       </Button>
     </div>

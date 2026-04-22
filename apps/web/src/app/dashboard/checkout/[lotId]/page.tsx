@@ -127,8 +127,12 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">
         <div>
-          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">Total due</p>
-          <p className="font-headline text-lg tabular-nums text-primary">{formatMoney(total.toFixed(2))}</p>
+          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+            Total due
+          </p>
+          <p className="font-headline text-lg tabular-nums text-primary">
+            {formatMoney(total.toFixed(2))}
+          </p>
         </div>
         <a
           href="#checkout-complete-purchase"

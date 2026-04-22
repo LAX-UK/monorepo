@@ -1,6 +1,7 @@
 "use client";
 
 import { useLogout } from "@/lib/auth/use-logout";
+import { Button } from "@auction/ui/components/button";
 import type { ButtonHTMLAttributes } from "react";
 
 type LogoutButtonProps = Omit<
@@ -24,14 +25,15 @@ export function LogoutButton({
   );
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       disabled={pending}
       onClick={() => void logout()}
       className={className}
       {...rest}
     >
       {pending ? "Signing out…" : "Log out"}
-    </button>
+    </Button>
   );
 }

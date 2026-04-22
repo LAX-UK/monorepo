@@ -22,7 +22,10 @@ type Props = {
 
 export function AdminAnalyticsExport({ data, days }: Props) {
   const onExportRevenue = () => {
-    const rows: string[][] = [["date", "revenue"], ...data.revenueSeries.map((r) => [r.date, r.total])];
+    const rows: string[][] = [
+      ["date", "revenue"],
+      ...data.revenueSeries.map((r) => [r.date, r.total]),
+    ];
     downloadCsv(`analytics-revenue-${days}d.csv`, rows);
   };
 

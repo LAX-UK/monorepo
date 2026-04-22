@@ -81,7 +81,8 @@ export default async function AdminSubmissionsPage({
             ...(initialQ ? { q: initialQ } : {}),
           });
           const active =
-            (chip.value === "" && status === undefined) || (chip.value !== "" && chip.value === status);
+            (chip.value === "" && status === undefined) ||
+            (chip.value !== "" && chip.value === status);
           return (
             <Link
               key={chip.label}

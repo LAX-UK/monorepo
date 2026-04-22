@@ -5,6 +5,7 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { useForgotPasswordController } from "@/lib/auth/hooks/use-forgot-password-controller";
+import { Button } from "@auction/ui/components/button";
 
 export function ForgotPasswordForm() {
   const { form, onSubmit, loading, bannerError, submittedEmail, resend, cooldown } =
@@ -20,14 +21,15 @@ export function ForgotPasswordForm() {
           If an account exists for <span className="font-medium">{submittedEmail}</span>, we&apos;ve
           sent reset instructions.
         </output>
-        <button
+        <Button
           type="button"
-          className="min-h-11 rounded-md border border-outline-variant/40 px-4 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="outline"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-widest text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => void resend()}
           disabled={cooldown > 0 || loading}
         >
           {cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend email"}
-        </button>
+        </Button>
         <AuthFooterLink prefix="Remembered it?" linkText="Log in" href="/login" />
       </div>
     );

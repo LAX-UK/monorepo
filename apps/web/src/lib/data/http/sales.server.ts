@@ -38,17 +38,76 @@ export async function getServerSalesList(params: ListSalesQuery = {}): Promise<S
   }));
 }
 
-export type SaleWithLots = { sale: Sale; lots: Lot[] };
+export type SaleViewerState = {
+  isFollowing: boolean;
+};
+
+export type SaleWithLots = { sale: Sale; lots: Lot[]; viewer?: SaleViewerState };
 
 export async function getServerSaleWithLots(id: string): Promise<SaleWithLots | null> {
   const client = await getServerHc();
   const res = await client.sales[":id"].$get({ param: { id } });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] } };
-  return {
+  const body = (await res.json()) as {
+    data: { sale: unknown; lots: unknown[]; viewer?: { isFollowing?: boolean } };
+  };
+  const base = {
     sale: parseSale(body.data.sale),
     lots: body.data.lots.map(parseLot),
+  };
+  return body.data.viewer
+    ? { ...base, viewer: { isFollowing: Boolean(body.data.viewer.isFollowing) } }
+    : base;
+}
+
+export type SaleLotsPage = {
+  items: Lot[];
+  total: number;
+  limit: number;
+  offset: number;
+  sort: "lot" | "priceAsc" | "priceDesc" | "endingAsc";
+};
+
+export type GetSaleLotsPageParams = {
+  id: string;
+  page?: number;
+  pageSize?: number;
+  sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc";
+};
+
+/** Server-side paginated lots for the saleroom catalog. SSR-friendly, security-capped limits. */
+export async function getServerSaleLotsPage(
+  params: GetSaleLotsPageParams,
+): Promise<SaleLotsPage | null> {
+  const pageSize = Math.min(Math.max(params.pageSize ?? 12, 1), 48);
+  const page = Math.max(params.page ?? 1, 1);
+  const offset = (page - 1) * pageSize;
+  const sort = params.sort ?? "lot";
+
+  const jar = await (await import("next/headers")).cookies();
+  const cookieHeader = jar
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+
+  const base = getServerApiBase();
+  const url = `${base}/sales/${encodeURIComponent(params.id)}/lots?limit=${pageSize}&offset=${offset}&sort=${sort}`;
+  const init: RequestInit = cookieHeader
+    ? { headers: { Cookie: cookieHeader }, cache: "no-store" }
+    : { cache: "no-store" };
+  const res = await fetch(url, init);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load sale lots: ${res.status}`);
+  const body = (await res.json()) as {
+    data: { items: unknown[]; total: number; limit: number; offset: number; sort: string };
+  };
+  return {
+    items: body.data.items.map(parseLot),
+    total: body.data.total,
+    limit: body.data.limit,
+    offset: body.data.offset,
+    sort: (body.data.sort as SaleLotsPage["sort"]) ?? "lot",
   };
 }
 

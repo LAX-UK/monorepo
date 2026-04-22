@@ -1,15 +1,9 @@
 "use client";
 
-import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { useTableDensity } from "@/components/layout/dashboard-shell";
-import {
-  DataTable,
-  EntityTableShell,
-  InlineActionMenu,
-  Sparkline,
-  StatusBadge,
-} from "@auction/ui";
+import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { SaleStatus } from "@auction/types";
+import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -173,7 +167,10 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
       filters={statusChips}
       search={
         <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
-          <label htmlFor="admin-sales-q" className="font-label text-xs uppercase tracking-widest text-secondary">
+          <label
+            htmlFor="admin-sales-q"
+            className="font-label text-xs uppercase tracking-widest text-secondary"
+          >
             Filter title
           </label>
           <input

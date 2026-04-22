@@ -1,9 +1,7 @@
-import {
-  AdminUsersBoard,
-  type AdminUsersKpiStrip,
-} from "@/components/admin/admin-users-board";
+import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -32,7 +30,9 @@ export default async function AdminUsersPage({
   let total = 0;
   let loadError: string | null = null;
   try {
-    const data = await getAdminUserList(q ? { q, limit: 100, offset: 0 } : { limit: 100, offset: 0 });
+    const data = await getAdminUserList(
+      q ? { q, limit: 100, offset: 0 } : { limit: 100, offset: 0 },
+    );
     rawRows = data.rows;
     total = data.total;
   } catch (e) {
@@ -142,23 +142,22 @@ export default async function AdminUsersPage({
               className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
             />
           </div>
-          <button
+          <Button
             type="submit"
             className="min-h-11 rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary"
           >
             Search
-          </button>
+          </Button>
         </form>
       ) : null}
 
       {!loadError && rows.length === 0 ? (
-        <EmptyState
-          title="No users"
-          description="Try a different search query or clear filters."
-        />
+        <EmptyState title="No users" description="Try a different search query or clear filters." />
       ) : null}
 
-      {!loadError && rows.length > 0 ? <AdminUsersBoard rows={rows} kpis={kpis} roleChips={roleChips} /> : null}
+      {!loadError && rows.length > 0 ? (
+        <AdminUsersBoard rows={rows} kpis={kpis} roleChips={roleChips} />
+      ) : null}
     </div>
   );
 }

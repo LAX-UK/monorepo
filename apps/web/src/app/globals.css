@@ -72,6 +72,34 @@
   --color-inverse-primary: #e9c176;
   --color-background: #f9f9f9;
 
+  /* shadcn/ui variable bridge — maps shadcn new-york tokens to existing Material-like tokens.
+     Keep these as var() references so dark-mode overrides on the source tokens flow through.
+     See packages/ui/src/components/ui/* for consumers (bg-primary, border, ring, popover, etc.). */
+  --color-foreground: var(--color-on-surface);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-secondary-foreground: var(--color-on-secondary);
+  --color-accent: var(--color-surface-container-high);
+  --color-accent-foreground: var(--color-on-surface);
+  --color-muted: var(--color-surface-container);
+  --color-muted-foreground: var(--color-on-surface-variant);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-on-surface);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-on-surface);
+  --color-border: var(--color-outline-variant);
+  --color-input: var(--color-input-border);
+  --color-ring: var(--color-primary);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: var(--color-on-error);
+  --color-sidebar: var(--color-surface-container-low);
+  --color-sidebar-foreground: var(--color-on-surface);
+  --color-sidebar-primary: var(--color-primary);
+  --color-sidebar-primary-foreground: var(--color-on-primary);
+  --color-sidebar-accent: var(--color-surface-container-high);
+  --color-sidebar-accent-foreground: var(--color-on-surface);
+  --color-sidebar-border: var(--color-outline-variant);
+  --color-sidebar-ring: var(--color-primary);
+
   /* Semantic marketing + auth (single source; use these in new code) */
   --color-cta-bg: #050505;
   --color-cta-on: #f1f1f3;
@@ -95,6 +123,8 @@
 }
 
 :root {
+  /* shadcn calendar cell sizing */
+  --cell-size: 2rem;
   /* Fixed marketing header offset — keep in sync with site-header layout */
   --header-height: 114px;
   --container-max: 1440px;

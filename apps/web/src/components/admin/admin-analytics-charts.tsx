@@ -38,38 +38,38 @@ export function AdminAnalyticsCharts({ data }: Props) {
   return (
     <div className="@container min-w-0">
       <div className="grid grid-cols-1 gap-6 @[720px]:grid-cols-2">
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Revenue (series)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartRenderer kind="line" data={revenueLine} height={180} />
-        </CardContent>
-      </Card>
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Ended lots per day</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartRenderer kind="bar" data={endedBars} height={180} />
-        </CardContent>
-      </Card>
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">New registrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartRenderer kind="bar" data={regBars} height={180} />
-        </CardContent>
-      </Card>
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Conversion</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartRenderer kind="donut" data={donut} size={160} />
-        </CardContent>
-      </Card>
+        <Card className="border-outline-variant/15">
+          <CardHeader>
+            <CardTitle className="font-headline text-lg">Revenue (series)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartRenderer kind="line" data={revenueLine} height={180} />
+          </CardContent>
+        </Card>
+        <Card className="border-outline-variant/15">
+          <CardHeader>
+            <CardTitle className="font-headline text-lg">Ended lots per day</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartRenderer kind="bar" data={endedBars} height={180} />
+          </CardContent>
+        </Card>
+        <Card className="border-outline-variant/15">
+          <CardHeader>
+            <CardTitle className="font-headline text-lg">New registrations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartRenderer kind="bar" data={regBars} height={180} />
+          </CardContent>
+        </Card>
+        <Card className="border-outline-variant/15">
+          <CardHeader>
+            <CardTitle className="font-headline text-lg">Conversion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartRenderer kind="donut" data={donut} size={160} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

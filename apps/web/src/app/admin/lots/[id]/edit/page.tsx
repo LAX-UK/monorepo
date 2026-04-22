@@ -1,11 +1,13 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
-import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
+import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-export default async function AdminEditAuctionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminEditAuctionPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auction = await getAdminLotById(id).catch(() => null);
   if (!auction) notFound();

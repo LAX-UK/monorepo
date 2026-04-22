@@ -1,15 +1,16 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
+import { BarChart3, ClipboardList, Gavel, LayoutDashboard, Wallet } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs = [
-  { href: "/admin", label: "Home", icon: "dashboard" as const },
-  { href: "/admin/lots", label: "Lots", icon: "gavel" as const },
-  { href: "/admin/submissions", label: "Intake", icon: "assignment" as const },
-  { href: "/admin/payments", label: "Pay", icon: "account_balance_wallet" as const },
-  { href: "/admin/analytics", label: "Stats", icon: "bar_chart" as const },
+const tabs: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/admin", label: "Home", icon: LayoutDashboard },
+  { href: "/admin/lots", label: "Lots", icon: Gavel },
+  { href: "/admin/submissions", label: "Intake", icon: ClipboardList },
+  { href: "/admin/payments", label: "Pay", icon: Wallet },
+  { href: "/admin/analytics", label: "Stats", icon: BarChart3 },
 ];
 
 export function AdminBottomNav() {
@@ -20,6 +21,7 @@ export function AdminBottomNav() {
       aria-label="Admin sections"
     >
       {tabs.map((t) => {
+        const Icon = t.icon;
         const active =
           t.href === "/admin"
             ? pathname === "/admin"
@@ -33,7 +35,7 @@ export function AdminBottomNav() {
             }`}
             aria-current={active ? "page" : undefined}
           >
-            <MaterialIcon name={t.icon} className="text-xl" />
+            <Icon className="size-6" aria-hidden />
             <span className="truncate">{t.label}</span>
           </Link>
         );

@@ -2,9 +2,10 @@
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -59,16 +60,18 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
               <HeaderSearchTrigger />
               <ThemeToggle />
               {user ? <NotificationBell /> : null}
-              <button
+              <Button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-brand-800 transition-colors hover:bg-page-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold lg:hidden dark:text-on-surface"
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px] text-brand-800 hover:bg-page-bg lg:hidden dark:text-on-surface"
                 aria-haspopup="dialog"
                 aria-expanded={menuOpen}
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
                 onClick={() => setMenuOpen((o) => !o)}
               >
-                <MaterialIcon name={menuOpen ? "close" : "menu"} />
-              </button>
+                {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
+              </Button>
             </div>
           }
         />

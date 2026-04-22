@@ -1,7 +1,14 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { Button } from "@auction/ui/components/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@auction/ui/components/tooltip";
+import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
@@ -122,7 +129,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
   }
 
   return (
-    <>
+    <TooltipProvider delayDuration={400}>
       <div
         className="group relative h-full touch-pan-y"
         onTouchStart={(e) => {
@@ -151,26 +158,35 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
           onClick={openLightbox}
         />
         <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
-        <button
-          type="button"
-          data-lightbox-opener="true"
-          onClick={openLightbox}
-          className="pointer-events-auto absolute bottom-6 right-6 flex items-center gap-2 rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface shadow-md backdrop-blur-sm transition-colors hover:bg-primary hover:text-on-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <MaterialIcon name="fullscreen" className="text-base" aria-hidden />
-          Expand
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-lightbox-opener="true"
+              onClick={openLightbox}
+              className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
+            >
+              <Maximize2 className="size-4" aria-hidden />
+              Expand
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Open fullscreen view</TooltipContent>
+        </Tooltip>
         {hasMany ? (
           <div className="pointer-events-auto absolute bottom-6 left-6 flex gap-1">
             {images.map((u, i) => (
-              <button
+              <Button
                 key={u}
                 type="button"
+                variant="ghost"
+                size="icon"
                 aria-label={`Show image ${i + 1} of ${images.length}`}
                 aria-current={i === index ? "true" : undefined}
                 onClick={() => setIndex(i)}
-                className={`flex min-h-11 min-w-11 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  i === index ? "bg-primary" : "bg-white/50 hover:bg-white/80"
+                className={`min-h-11 min-w-11 rounded-full ${
+                  i === index ? "bg-primary hover:bg-primary" : "bg-white/50 hover:bg-white/80"
                 }`}
               >
                 <span className="sr-only">Image {i + 1}</span>
@@ -178,7 +194,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
                   className={`block h-2.5 w-2.5 rounded-full ${i === index ? "bg-white" : "bg-on-surface"}`}
                   aria-hidden
                 />
-              </button>
+              </Button>
             ))}
           </div>
         ) : null}
@@ -208,15 +224,22 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
               {index + 1} / {images.length}
             </p>
           ) : null}
-          <button
-            type="button"
-            data-lightbox-focus="true"
-            className="absolute right-4 top-4 z-10 rounded-md p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label="Close fullscreen"
-            onClick={close}
-          >
-            <MaterialIcon name="close" className="text-3xl" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                data-lightbox-focus="true"
+                className="absolute right-4 top-4 z-10 text-white/80 hover:bg-white/10 hover:text-white"
+                aria-label="Close fullscreen"
+                onClick={close}
+              >
+                <X className="size-6" aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close (Esc)</TooltipContent>
+          </Tooltip>
           <div className="relative h-[min(85dvh,900px)] min-h-[200px] w-full max-w-6xl shrink-0">
             <Image
               src={img}
@@ -230,26 +253,40 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
           </div>
           {hasMany ? (
             <>
-              <button
-                type="button"
-                className="absolute left-4 top-1/2 z-10 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none"
-                aria-label="Previous image"
-                onClick={() => go(-1)}
-              >
-                <MaterialIcon name="chevron_left" />
-              </button>
-              <button
-                type="button"
-                className="absolute right-4 top-1/2 z-10 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none"
-                aria-label="Next image"
-                onClick={() => go(1)}
-              >
-                <MaterialIcon name="chevron_right" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-4 top-1/2 z-10 min-h-11 min-w-11 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 hover:text-white motion-reduce:transition-none"
+                    aria-label="Previous image"
+                    onClick={() => go(-1)}
+                  >
+                    <ChevronLeft aria-hidden />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Previous (←)</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-4 top-1/2 z-10 min-h-11 min-w-11 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 hover:text-white motion-reduce:transition-none"
+                    aria-label="Next image"
+                    onClick={() => go(1)}
+                  >
+                    <ChevronRight aria-hidden />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Next (→)</TooltipContent>
+              </Tooltip>
             </>
           ) : null}
         </div>
       </dialog>
-    </>
+    </TooltipProvider>
   );
 }

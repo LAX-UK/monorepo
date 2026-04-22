@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
 import { BodyText, LabelCaps } from "@auction/ui";
 import {
-  Button as UiButton,
   Card,
   CardContent,
   CardDescription,
@@ -16,6 +15,7 @@ import {
   KpiTile,
   PageHeader,
   StatStrip,
+  Button as UiButton,
 } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -128,7 +128,11 @@ export function AdminOperationsHomeView({
                       {row.hint}
                     </p>
                   </div>
-                  <Button variant="primary" className="shrink-0 text-xs uppercase tracking-widest" asChild>
+                  <Button
+                    variant="primary"
+                    className="shrink-0 text-xs uppercase tracking-widest"
+                    asChild
+                  >
                     <Link href={row.href}>{row.ctaLabel}</Link>
                   </Button>
                 </li>
@@ -144,7 +148,10 @@ export function AdminOperationsHomeView({
               <CardDescription>Redis 1m counter plus room pulse on active lots.</CardDescription>
             </CardHeader>
             <CardContent>
-              <AdminLiveBidActivity initialBidsPerMinute={bidsPerMinute} activeLotIds={activeLotIds} />
+              <AdminLiveBidActivity
+                initialBidsPerMinute={bidsPerMinute}
+                activeLotIds={activeLotIds}
+              />
             </CardContent>
           </Card>
         </aside>

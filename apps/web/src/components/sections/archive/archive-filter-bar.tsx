@@ -2,6 +2,14 @@
 
 import type { Category } from "@auction/types";
 import { FilterChip } from "@auction/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
+import { Separator } from "@auction/ui/components/separator";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useTransition } from "react";
 
@@ -103,21 +111,29 @@ export function ArchiveFilterBar({ categories }: Props) {
           </div>
         </div>
 
+        <Separator orientation="vertical" className="hidden h-12 md:block" />
+
         <div className="ml-auto flex flex-col gap-2">
           <span className="font-label text-[0.625rem] uppercase tracking-[0.2em] text-on-surface-variant">
             Sort by
           </span>
-          <select
-            aria-label="Sort archive"
-            disabled={pending}
+          <Select
             value={sort}
-            onChange={(e) => setParams({ sort: e.target.value })}
-            className="cursor-pointer border-none bg-transparent p-0 font-label text-xs font-medium uppercase tracking-[0.2em] text-on-surface focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            disabled={pending}
+            onValueChange={(value) => setParams({ sort: value })}
           >
-            <option value="hammer">Hammer price (high to low)</option>
-            <option value="recent">Most recent</option>
-            <option value="artist">Artist name (A to Z)</option>
-          </select>
+            <SelectTrigger
+              aria-label="Sort archive"
+              className="h-auto cursor-pointer border-none bg-transparent p-0 font-label text-xs font-medium uppercase tracking-[0.2em] text-on-surface shadow-none focus:ring-0 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hammer">Hammer price (high to low)</SelectItem>
+              <SelectItem value="recent">Most recent</SelectItem>
+              <SelectItem value="artist">Artist name (A to Z)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </section>

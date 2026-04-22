@@ -1,6 +1,6 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
-import { emptyAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import { DisplayHeading } from "@/components/ui/typography";
+import { emptyAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 
 export default function AdminNewAuctionPage() {

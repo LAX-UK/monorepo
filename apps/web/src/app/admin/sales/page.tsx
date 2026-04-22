@@ -23,8 +23,7 @@ export default async function AdminSalesPage({
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const statusFilter =
-    sp.status === "all" || !sp.status ? undefined : (sp.status as SaleStatus);
+  const statusFilter = sp.status === "all" || !sp.status ? undefined : (sp.status as SaleStatus);
 
   let rows: Awaited<ReturnType<typeof getAdminSalesList>> = [];
   let err: string | null = null;

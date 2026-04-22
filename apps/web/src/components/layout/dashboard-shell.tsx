@@ -4,7 +4,6 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { breadcrumbsForPath } from "@/lib/navigation/dashboard-breadcrumbs";
@@ -17,6 +16,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@auction/ui/components/breadcrumb";
+import { Button } from "@auction/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { ChevronDown, Home, Menu, PanelLeft, PanelLeftClose, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -174,34 +175,38 @@ export function DashboardShell({
             className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-outline-variant/15 bg-surface-container-lowest/95 px-3 backdrop-blur-md lg:hidden"
             role="banner"
           >
-            <button
+            <Button
               type="button"
-              className="rounded-md p-2 text-on-surface transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              variant="ghost"
+              size="icon"
+              className="text-on-surface hover:bg-surface-container-low"
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
               onClick={() => setMobileNavOpen((o) => !o)}
             >
-              <MaterialIcon name={mobileNavOpen ? "close" : "menu"} />
-            </button>
+              {mobileNavOpen ? <X aria-hidden /> : <Menu aria-hidden />}
+            </Button>
             <span className="min-w-0 flex-1 truncate text-center font-headline text-sm font-semibold tracking-tight text-on-surface">
               {mobileTitle}
             </span>
             <div className="flex shrink-0 items-center gap-1">
-              <button
+              <Button
                 type="button"
-                className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                variant="ghost"
+                size="icon"
+                className="text-secondary hover:bg-surface-container-low hover:text-primary"
                 aria-label="Open quick search"
                 onClick={openCommandPalette}
               >
-                <MaterialIcon name="search" />
-              </button>
+                <Search aria-hidden />
+              </Button>
               <NotificationBell />
               <Link
                 href="/"
                 className="rounded-md p-2 text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 aria-label="Back to gallery"
               >
-                <MaterialIcon name="home" />
+                <Home aria-hidden />
               </Link>
             </div>
           </div>
@@ -222,17 +227,21 @@ export function DashboardShell({
           <div className="min-h-screen flex-1 pt-14 lg:pt-0 lg:pl-[var(--sidebar-width)]">
             <div className="hidden items-center justify-between gap-4 border-b border-outline-variant/10 px-6 py-3 lg:flex lg:px-10">
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <button
+                <Button
                   type="button"
-                  className="hidden shrink-0 rounded-md border border-outline-variant/20 bg-surface-container-low px-2 py-2 text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:inline-flex"
+                  variant="outline"
+                  size="icon"
+                  className="hidden shrink-0 border-outline-variant/20 bg-surface-container-low text-on-surface hover:bg-surface-container-high lg:inline-flex"
                   aria-label={desktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                   aria-pressed={desktopSidebarCollapsed}
                   onClick={toggleDesktopSidebarCollapsed}
                 >
-                  <MaterialIcon
-                    name={desktopSidebarCollapsed ? "panel_left" : "panel_left_close"}
-                  />
-                </button>
+                  {desktopSidebarCollapsed ? (
+                    <PanelLeft aria-hidden />
+                  ) : (
+                    <PanelLeftClose aria-hidden />
+                  )}
+                </Button>
                 <Breadcrumb>
                   <BreadcrumbList>
                     {crumbs.map((c, i) => (
@@ -268,28 +277,32 @@ export function DashboardShell({
                     {pageActions}
                   </div>
                 ) : null}
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={openCommandPalette}
-                  className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 font-label text-xs uppercase tracking-widest text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="h-auto gap-2 rounded-full border-outline-variant/20 bg-surface-container-low px-3 py-1.5 font-label text-xs uppercase tracking-widest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                 >
-                  <MaterialIcon name="search" className="text-base" />
+                  <Search className="size-4" aria-hidden />
                   <span className="hidden sm:inline">Search</span>
                   <kbd className="hidden rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] sm:inline">
                     {isMac ? "⌘" : "Ctrl"}+K
                   </kbd>
-                </button>
+                </Button>
                 <ThemeToggle />
                 <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button
+                    <Button
                       type="button"
-                      className="flex max-w-[12rem] items-center gap-2 rounded-md border border-outline-variant/20 bg-surface-container-low px-3 py-1.5 text-left text-sm text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto max-w-[12rem] justify-start gap-2 border-outline-variant/20 bg-surface-container-low px-3 py-1.5 text-left text-sm text-on-surface hover:bg-surface-container-high"
                     >
                       <span className="truncate font-medium">{user.name}</span>
-                      <MaterialIcon name="expand_more" className="shrink-0 text-base opacity-70" />
-                    </button>
+                      <ChevronDown className="size-4 shrink-0 opacity-70" aria-hidden />
+                    </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="truncate font-normal text-on-surface-variant">

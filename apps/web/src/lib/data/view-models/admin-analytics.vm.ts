@@ -20,7 +20,8 @@ export function compareSeriesHalves<T extends { total: string }>(series: T[]): H
   const mid = Math.floor(series.length / 2) || 1;
   const previous = sumMoneySeries(series.slice(0, mid));
   const current = sumMoneySeries(series.slice(mid));
-  const pctChange = previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : null;
+  const pctChange =
+    previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : null;
   return { current, previous, pctChange };
 }
 
@@ -31,7 +32,8 @@ export function compareCountSeriesHalves(series: { count: number }[]): HalfWindo
   const mid = Math.floor(series.length / 2) || 1;
   const previous = sumCountSeries(series.slice(0, mid));
   const current = sumCountSeries(series.slice(mid));
-  const pctChange = previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : null;
+  const pctChange =
+    previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : null;
   return { current, previous, pctChange };
 }
 

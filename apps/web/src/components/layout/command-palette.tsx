@@ -1,6 +1,7 @@
 "use client";
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -114,7 +115,12 @@ function buildVisibleSections(
       if (maybeUuid) {
         const id = maybeUuid[0];
         actionItems.push(
-          { id: "action-open-lot", href: `/admin/lots/${id}`, label: `Open lot ${id}`, hint: "UUID" },
+          {
+            id: "action-open-lot",
+            href: `/admin/lots/${id}`,
+            label: `Open lot ${id}`,
+            hint: "UUID",
+          },
           {
             id: "action-publish-lot",
             href: `/admin/lots/${id}#publish`,
@@ -265,9 +271,10 @@ export function CommandPalette({ variant }: Props) {
       }}
     >
       <div className="flex min-h-full items-start justify-center px-4 pt-[15vh]">
-        <button
+        <Button
           type="button"
-          className="fixed inset-0 cursor-default"
+          variant="ghost"
+          className="fixed inset-0 h-auto cursor-default rounded-none px-0 py-0 hover:bg-transparent"
           tabIndex={-1}
           aria-hidden
           onClick={close}

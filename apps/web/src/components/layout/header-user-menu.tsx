@@ -1,9 +1,10 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { SessionUser } from "@/lib/data/contracts";
+import { Button } from "@auction/ui/components/button";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -96,10 +97,11 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
-      <button
+      <Button
         ref={triggerRef}
         type="button"
-        className="flex max-w-[200px] items-center gap-2 rounded-md py-1 pl-1 pr-2 text-left transition-colors hover:bg-page-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:hover:bg-surface-container-low"
+        variant="ghost"
+        className="h-auto max-w-[200px] justify-start gap-2 py-1 pl-1 pr-2 text-left hover:bg-page-bg motion-reduce:transition-none dark:hover:bg-surface-container-low"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={MENU_ID}
@@ -116,12 +118,11 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         <span className="hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight text-brand-900 sm:inline dark:text-on-surface">
           {displayName}
         </span>
-        <MaterialIcon
-          name="expand_more"
+        <ChevronDown
           className={`shrink-0 text-base! text-brand-900 transition-transform motion-reduce:transition-none dark:text-on-surface ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
-      </button>
+      </Button>
 
       {open ? (
         <div

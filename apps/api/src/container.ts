@@ -42,6 +42,8 @@ import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.reposit
 import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
+import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.reader.js";
+import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
@@ -79,6 +81,8 @@ import { PaymentService } from "./services/payment.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
+import { SaleBiddersService } from "./services/sale-bidders.service.js";
+import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { UploadService } from "./services/upload.service.js";
@@ -97,6 +101,8 @@ export type Container = {
   repoFactory: IRepositoryFactory;
   lotService: LotService;
   saleService: SaleService;
+  saleFollowService: SaleFollowService;
+  saleBiddersService: SaleBiddersService;
   lotLifecycleService: LotLifecycleService;
   saleLifecycleService: SaleLifecycleService;
   lotJobScheduler: ILotJobScheduler;
@@ -237,6 +243,11 @@ export function createContainer(env: Env): Container {
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler);
 
+  const saleFollowRepo = new DrizzleSaleFollowRepository(db);
+  const saleBiddersReader = new DrizzleSaleBiddersReader(db);
+  const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
+  const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
+
   const categoryService = new CategoryService(categoryRepo);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
@@ -314,6 +325,8 @@ export function createContainer(env: Env): Container {
     repoFactory,
     lotService,
     saleService,
+    saleFollowService,
+    saleBiddersService,
     lotLifecycleService,
     saleLifecycleService,
     lotJobScheduler,

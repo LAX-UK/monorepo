@@ -1,10 +1,10 @@
 "use client";
 
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -133,22 +133,26 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
               </Button>
               {n > 1 ? (
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold dark:border-outline-variant/20 dark:text-on-surface"
+                    variant="outline"
+                    size="icon"
+                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-outline-variant/20 dark:text-on-surface"
                     aria-label="Previous saleroom"
                     onClick={() => go(-1)}
                   >
-                    <MaterialIcon name="chevron_left" />
-                  </button>
-                  <button
+                    <ChevronLeft aria-hidden />
+                  </Button>
+                  <Button
                     type="button"
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold dark:border-outline-variant/20 dark:text-on-surface"
+                    variant="outline"
+                    size="icon"
+                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-outline-variant/20 dark:text-on-surface"
                     aria-label="Next saleroom"
                     onClick={() => go(1)}
                   >
-                    <MaterialIcon name="chevron_right" />
-                  </button>
+                    <ChevronRight aria-hidden />
+                  </Button>
                 </div>
               ) : null}
             </div>
@@ -156,13 +160,15 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
               // biome-ignore lint/a11y/useSemanticElements: dot toolbar is a control group, not a form fieldset
               <div className="flex flex-wrap gap-2" role="group" aria-label="Choose slide">
                 {slides.map((s, i) => (
-                  <button
+                  <Button
                     key={s.id}
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     aria-pressed={i === index}
                     aria-label={`Slide ${i + 1} of ${n}`}
                     className={cn(
-                      "h-2.5 w-2.5 rounded-full transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold",
+                      "h-2.5 w-2.5 min-w-0 rounded-full p-0 hover:bg-transparent motion-reduce:transition-none",
                       i === index ? "bg-brand-100" : "bg-brand-400/50 hover:bg-brand-300",
                     )}
                     onClick={() => setIndex(i)}

@@ -93,3 +93,19 @@ export const saleLotIdParamSchema = z.object({
   id: z.string().uuid(),
   lotId: z.string().uuid(),
 });
+
+/** Saleroom paginated lots — matches API `ListLotsSort` mapping. */
+export const listSaleLotsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(48).optional().default(40),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+  sort: z.enum(["lot", "priceAsc", "priceDesc", "endingAsc"]).optional().default("lot"),
+});
+
+export type ListSaleLotsQuery = z.infer<typeof listSaleLotsQuerySchema>;
+
+export const listSaleBiddersQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+export type ListSaleBiddersQuery = z.infer<typeof listSaleBiddersQuerySchema>;

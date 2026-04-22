@@ -2,7 +2,6 @@
 
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
-import { Textarea } from "@auction/ui/components/textarea";
 import {
   adminCreateSaleResultAction,
   adminUpdateSaleResultAction,
@@ -14,6 +13,7 @@ import {
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
 import { saleDeliveryModes } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -22,10 +22,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Textarea } from "@auction/ui/components/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
+import { type FieldPath, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 type Props = {
@@ -189,7 +190,11 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
                 >
                   {saleDeliveryModes.map((m) => (
                     <option key={m} value={m}>
-                      {m === "onsite" ? "Onsite only" : m === "online" ? "Online only" : "Online + onsite (hybrid)"}
+                      {m === "onsite"
+                        ? "Onsite only"
+                        : m === "online"
+                          ? "Online only"
+                          : "Online + onsite (hybrid)"}
                     </option>
                   ))}
                 </select>
@@ -321,17 +326,13 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
           </p>
         ) : null}
 
-        <button
+        <Button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-gradient-to-br from-primary to-primary-container py-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md hover:opacity-95 disabled:opacity-60"
+          className="h-auto w-full rounded-md bg-gradient-to-br from-primary to-primary-container py-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md hover:opacity-95 disabled:opacity-60"
         >
-          {pending
-            ? "Saving…"
-            : mode === "create"
-              ? "Create draft sale"
-              : "Save"}
-        </button>
+          {pending ? "Saving…" : mode === "create" ? "Create draft sale" : "Save"}
+        </Button>
       </form>
     </Form>
   );

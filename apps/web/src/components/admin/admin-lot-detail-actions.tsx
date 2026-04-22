@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  adminCancelLotResultAction,
-  adminPublishLotResultAction,
-} from "@/lib/actions/admin";
+import { adminCancelLotResultAction, adminPublishLotResultAction } from "@/lib/actions/admin";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -31,7 +29,7 @@ export function AdminLotDetailActions({ lotId, canPublish, canCancel, showEditDr
         </Link>
       ) : null}
       {canPublish ? (
-        <button
+        <Button
           type="button"
           disabled={pending}
           onClick={() => {
@@ -47,14 +45,15 @@ export function AdminLotDetailActions({ lotId, canPublish, canCancel, showEditDr
               })();
             });
           }}
-          className="inline-flex items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95 disabled:opacity-60"
+          className="h-auto rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95 disabled:opacity-60"
         >
           Publish
-        </button>
+        </Button>
       ) : null}
       {canCancel ? (
-        <button
+        <Button
           type="button"
+          variant="outline"
           disabled={pending}
           onClick={() => {
             startTransition(() => {
@@ -69,10 +68,10 @@ export function AdminLotDetailActions({ lotId, canPublish, canCancel, showEditDr
               })();
             });
           }}
-          className="inline-flex items-center justify-center rounded-md border border-error/40 px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-error hover:bg-error/10 disabled:opacity-60"
+          className="h-auto rounded-md border border-error/40 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-error hover:bg-error/10 hover:text-error disabled:opacity-60"
         >
           Cancel auction
-        </button>
+        </Button>
       ) : null}
     </div>
   );

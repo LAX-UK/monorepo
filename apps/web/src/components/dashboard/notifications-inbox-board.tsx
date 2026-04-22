@@ -6,6 +6,7 @@ import { parseUserNotification } from "@/lib/data/http/parse";
 import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search";
 import type { UserNotification } from "@auction/types";
 import { BulkActionBar, DataTable } from "@auction/ui";
+import { Button as ShadButton } from "@auction/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -273,13 +274,15 @@ export function NotificationsInboxBoard() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
+                <ShadButton
                   type="button"
-                  className="inline-flex size-9 items-center justify-center rounded-md text-on-surface hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 rounded-md text-on-surface hover:bg-surface-container-high"
                   aria-label="Row actions"
                 >
                   <MoreHorizontal className="size-4" />
-                </button>
+                </ShadButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
@@ -368,18 +371,20 @@ export function NotificationsInboxBoard() {
             { key: "payment_due", label: "Payment" },
           ] as const
         ).map((chip) => (
-          <button
+          <ShadButton
             key={chip.label}
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => typeForm.setValue("type", chip.key)}
-            className={`shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+            className={`h-auto shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 ${
               typeFilter === chip.key
-                ? "bg-primary text-on-primary ring-primary"
+                ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
                 : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
             }`}
           >
             {chip.label}
-          </button>
+          </ShadButton>
         ))}
       </div>
 
@@ -437,10 +442,11 @@ export function NotificationsInboxBoard() {
                           className="mt-1 shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         />
-                        <button
+                        <ShadButton
                           type="button"
+                          variant="ghost"
                           onClick={() => setFocusedId(n.id)}
-                          className="min-w-0 flex-1 rounded-md text-left transition-colors hover:bg-surface-container-high/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                          className="h-auto min-w-0 flex-1 flex-col items-start justify-start rounded-md px-2 py-2 text-left hover:bg-surface-container-high/40"
                         >
                           <span
                             className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
@@ -459,7 +465,7 @@ export function NotificationsInboxBoard() {
                           <p className="mt-2 font-body text-xs text-on-surface-variant/90">
                             {n.type} · {new Date(n.createdAt).toLocaleString()}
                           </p>
-                        </button>
+                        </ShadButton>
                       </div>
                     );
                   })}

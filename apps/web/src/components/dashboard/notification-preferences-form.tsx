@@ -1,7 +1,8 @@
 "use client";
 
-import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { NotificationPushEnableButton } from "@/components/dashboard/notification-push-enable-button";
+import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
+import type { NotificationPreference } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -13,10 +14,9 @@ import {
 } from "@auction/ui/components/form";
 import { Switch } from "@auction/ui/components/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { NotificationPreference } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
-import { useForm, type ControllerRenderProps, type FieldPath } from "react-hook-form";
+import { type ControllerRenderProps, type FieldPath, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -36,7 +36,10 @@ const notificationPreferencesFormSchema = z.object({
 
 type NotificationPreferencesFormValues = z.infer<typeof notificationPreferencesFormSchema>;
 
-type BooleanNotificationFieldName = Exclude<keyof NotificationPreferencesFormValues, "quietStart" | "quietEnd">;
+type BooleanNotificationFieldName = Exclude<
+  keyof NotificationPreferencesFormValues,
+  "quietStart" | "quietEnd"
+>;
 
 function prefsToFormValues(prefs: NotificationPreference): NotificationPreferencesFormValues {
   return {
@@ -70,7 +73,10 @@ function rowSwitchField(
     <FormItem className="space-y-0">
       <div className="flex items-center justify-between gap-4 border-b border-outline-variant/10 py-3">
         <div className="min-w-0">
-          <FormLabel htmlFor={field.name} className="cursor-pointer font-body text-sm font-normal text-on-surface">
+          <FormLabel
+            htmlFor={field.name}
+            className="cursor-pointer font-body text-sm font-normal text-on-surface"
+          >
             {label}
           </FormLabel>
         </div>
@@ -89,24 +95,28 @@ function rowSwitchField(
   );
 }
 
-export function NotificationPreferencesForm({ initial }: { initial: NotificationPreference | null }) {
+export function NotificationPreferencesForm({
+  initial,
+}: { initial: NotificationPreference | null }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<NotificationPreferencesFormValues>({
     resolver: zodResolver(notificationPreferencesFormSchema),
-    defaultValues: initial ? prefsToFormValues(initial) : {
-      outbidInApp: true,
-      wonInApp: true,
-      lostInApp: true,
-      endingSoonInApp: true,
-      watchlistInApp: true,
-      paymentInApp: true,
-      outbidPush: false,
-      wonPush: false,
-      endingSoonPush: false,
-      quietStart: "",
-      quietEnd: "",
-    },
+    defaultValues: initial
+      ? prefsToFormValues(initial)
+      : {
+          outbidInApp: true,
+          wonInApp: true,
+          lostInApp: true,
+          endingSoonInApp: true,
+          watchlistInApp: true,
+          paymentInApp: true,
+          outbidPush: false,
+          wonPush: false,
+          endingSoonPush: false,
+          quietStart: "",
+          quietEnd: "",
+        },
   });
 
   useEffect(() => {
@@ -127,7 +137,9 @@ export function NotificationPreferencesForm({ initial }: { initial: Notification
         onSubmit={form.handleSubmit((values) => {
           startTransition(() => {
             void (async () => {
-              const r = await updateNotificationPreferencesFromValuesAction(formValuesToPatch(values));
+              const r = await updateNotificationPreferencesFromValuesAction(
+                formValuesToPatch(values),
+              );
               if (r.ok) {
                 toast.success("Preferences saved");
                 router.replace("/dashboard/settings/notifications?saved=1");
@@ -137,7 +149,9 @@ export function NotificationPreferencesForm({ initial }: { initial: Notification
               if (r.fieldErrors) {
                 for (const [key, msgs] of Object.entries(r.fieldErrors)) {
                   if (msgs?.[0]) {
-                    form.setError(key as FieldPath<NotificationPreferencesFormValues>, { message: msgs[0] });
+                    form.setError(key as FieldPath<NotificationPreferencesFormValues>, {
+                      message: msgs[0],
+                    });
                   }
                 }
               } else {

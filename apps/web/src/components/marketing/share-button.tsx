@@ -1,7 +1,7 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { Button } from "@auction/ui/components/button";
+import { Share2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 type Props = {
@@ -30,7 +30,7 @@ export function ShareButton({ url, title, className }: Props) {
 
   return (
     <Button type="button" variant="outline" className={className} onClick={() => void share()}>
-      <MaterialIcon name="share" className="text-base" aria-hidden />
+      <Share2 className="text-base" aria-hidden />
       {done ? "Copied" : "Share"}
     </Button>
   );

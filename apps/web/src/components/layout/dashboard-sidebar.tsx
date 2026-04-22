@@ -4,13 +4,13 @@ import { dashboardNavGroups } from "@/components/layout/dashboard-nav-groups";
 import { useShellContext } from "@/components/layout/dashboard-shell";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { useIsLg } from "@/hooks/use-is-lg";
 import { SITE_SHORT_NAME } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
-import { LabelCaps } from "@auction/ui";
+import { LabelCaps, cn } from "@auction/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -21,14 +21,14 @@ type Props = {
 function NavLink({
   href,
   label,
-  icon,
+  icon: Icon,
   active,
   collapsed,
   onNav,
 }: {
   href: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   active: boolean;
   collapsed: boolean;
   onNav: () => void;
@@ -47,7 +47,7 @@ function NavLink({
           : "border-transparent text-on-surface hover:bg-surface-container-low/80"
       }`}
     >
-      <MaterialIcon name={icon} className={`text-lg ${collapsed ? "" : "mr-3"}`} />
+      <Icon className={cn("size-5 shrink-0", collapsed ? "" : "mr-3")} aria-hidden />
       {!collapsed ? <span className="truncate">{label}</span> : null}
     </Link>
   );

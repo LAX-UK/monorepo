@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@auction/ui/components/button";
+
 export default function GlobalError({
   error,
   reset,
@@ -14,13 +16,13 @@ export default function GlobalError({
         <p className="mt-2 text-sm text-on-surface-variant">
           {process.env.NODE_ENV === "development" ? error.message : "Please try again."}
         </p>
-        <button
+        <Button
           type="button"
           className="mt-6 rounded-md bg-primary px-4 py-2 text-sm text-on-primary"
           onClick={() => reset()}
         >
           Try again
-        </button>
+        </Button>
       </body>
     </html>
   );

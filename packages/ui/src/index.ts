@@ -169,3 +169,55 @@ export type {
   EntityTableResponsiveMode,
   EntityTableShellProps,
 } from "./components/ui/entity-table-shell.js";
+export { Badge, badgeVariants } from "./components/ui/badge.js";
+export { Progress } from "./components/ui/progress.js";
+export {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarBadge,
+  AvatarGroup,
+  AvatarGroupCount,
+} from "./components/ui/avatar.js";
+export { RadioGroup, RadioGroupItem } from "./components/ui/radio-group.js";
+export { ScrollArea, ScrollBar } from "./components/ui/scroll-area.js";
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./components/ui/accordion.js";
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
+} from "./components/ui/popover.js";
+export {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "./components/ui/hover-card.js";
+export { Toggle, toggleVariants } from "./components/ui/toggle.js";
+export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group.js";
+export {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "./components/ui/collapsible.js";
+export { AspectRatio } from "./components/ui/aspect-ratio.js";
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+} from "./components/ui/command.js";
+export { Calendar, CalendarDayButton } from "./components/ui/calendar.js";

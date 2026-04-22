@@ -1,5 +1,5 @@
-import { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import { saleDeliveryModes } from "@auction/types";
+import { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import { z } from "zod";
 
 function splitUrlLines(raw: string): string[] {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -32,13 +33,14 @@ function AuthToastInner() {
         >
           Sign in
         </Link>
-        <button
+        <Button
           type="button"
-          className="font-label text-xs uppercase tracking-widest text-inverse-on-surface/70 underline"
+          variant="link"
+          className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-inverse-on-surface/70 underline hover:text-inverse-on-surface"
           onClick={() => setVisible(false)}
         >
           Dismiss
-        </button>
+        </Button>
       </div>
     </div>
   );

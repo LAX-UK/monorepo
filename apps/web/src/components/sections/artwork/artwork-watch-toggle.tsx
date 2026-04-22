@@ -1,7 +1,8 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
+import { Button } from "@auction/ui/components/button";
+import { Bookmark, BookmarkPlus, Eye } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
@@ -47,26 +48,31 @@ export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: 
         href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
         className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
       >
-        <MaterialIcon name="visibility" className="text-base" />
+        <Eye className="size-4" aria-hidden />
         Sign in to watch
       </Link>
     );
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       disabled={busy}
       aria-pressed={watching}
       onClick={() => void toggle()}
-      className={`inline-flex items-center gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-50 ${
+      className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-widest ${
         watching
-          ? "bg-primary-container/30 text-primary"
+          ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"
           : "bg-surface-container-high text-on-surface hover:bg-surface-container"
       }`}
     >
-      <MaterialIcon name={watching ? "bookmark" : "bookmark_add"} className="text-base" />
+      {watching ? (
+        <Bookmark className="size-4" aria-hidden />
+      ) : (
+        <BookmarkPlus className="size-4" aria-hidden />
+      )}
       {watching ? "Watching" : "Watch lot"}
-    </button>
+    </Button>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -48,13 +49,14 @@ export function DeferredLiveIframe({ title, src, posterUrl, posterAlt, className
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" aria-hidden />
       <div className="absolute inset-0 flex items-center justify-center p-6">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => setPlay(true)}
-          className="rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold uppercase tracking-widest text-white backdrop-blur-sm transition-colors hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="h-auto rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold uppercase tracking-widest text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
         >
           Watch live
-        </button>
+        </Button>
       </div>
     </div>
   );

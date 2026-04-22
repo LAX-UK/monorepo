@@ -45,6 +45,33 @@ export class SaleService {
     return { sale, lots };
   }
 
+  /** Paginated lots for a sale; used by the saleroom catalog (server-side pagination). */
+  async listLotsPage(
+    saleId: string,
+    opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
+  ): Promise<{ items: Lot[]; total: number } | null> {
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) return null;
+    const all = await this.lotRepo.findBySaleId(saleId);
+    const sorted = [...all];
+    const parse = (p: string) => Number.parseFloat(p) || 0;
+    switch (opts.sort ?? "lot") {
+      case "priceAsc":
+        sorted.sort((a, b) => parse(a.currentPrice) - parse(b.currentPrice));
+        break;
+      case "priceDesc":
+        sorted.sort((a, b) => parse(b.currentPrice) - parse(a.currentPrice));
+        break;
+      case "endingAsc":
+        sorted.sort((a, b) => a.endTime.getTime() - b.endTime.getTime());
+        break;
+      default:
+        sorted.sort((a, b) => (a.lotNumber ?? 999_999) - (b.lotNumber ?? 999_999));
+    }
+    const items = sorted.slice(opts.offset, opts.offset + opts.limit);
+    return { items, total: sorted.length };
+  }
+
   async list(
     filter: Parameters<ISaleRepository["list"]>[0],
   ): Promise<{ sale: Sale; lots: Lot[] }[]> {

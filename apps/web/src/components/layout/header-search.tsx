@@ -1,8 +1,9 @@
 "use client";
 
 import { openCommandPalette } from "@/components/layout/command-palette-events";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function HeaderSearchTrigger({ className = "" }: { className?: string }) {
@@ -13,24 +14,25 @@ export function HeaderSearchTrigger({ className = "" }: { className?: string }) 
   }, []);
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={openCommandPalette}
       className={cn(
-        "hidden min-h-10 min-w-0 flex-1 items-center gap-2 border-b border-brand-200 text-left md:flex lg:w-[231px] lg:flex-none",
+        "hidden min-h-10 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b border-brand-200 px-0 py-0 text-left hover:bg-transparent md:flex lg:w-[231px] lg:flex-none",
         className,
       )}
       aria-haspopup="dialog"
       aria-label="Search"
     >
-      <MaterialIcon name="search" className="shrink-0 text-brand-900 dark:text-on-surface" />
+      <Search className="shrink-0 text-brand-900 dark:text-on-surface" aria-hidden />
       <span className="min-w-0 flex-1 truncate py-2 font-label text-sm font-medium leading-[21px] text-brand-200 dark:text-on-surface-variant">
         Search lots, artists, sales…
       </span>
       <kbd className="hidden shrink-0 rounded border border-brand-200/80 bg-transparent px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-brand-900 sm:inline dark:border-outline-variant/50 dark:text-on-surface">
         {isMac ? "⌘K" : "Ctrl+K"}
       </kbd>
-    </button>
+    </Button>
   );
 }
 
@@ -60,12 +62,14 @@ export function HeaderSearchForm({
         className="min-w-0 flex-1 bg-transparent font-label text-sm uppercase text-brand-900 placeholder:text-brand-200 focus:outline-none dark:text-on-surface dark:placeholder:text-on-surface-variant"
         autoComplete="off"
       />
-      <button
+      <Button
         type="submit"
-        className="font-label text-xs font-semibold uppercase text-brand-900 dark:text-on-surface"
+        variant="ghost"
+        size="sm"
+        className="h-auto px-0 py-0 font-label text-xs font-semibold uppercase text-brand-900 hover:bg-transparent dark:text-on-surface"
       >
         Go
-      </button>
+      </Button>
     </form>
   );
 }

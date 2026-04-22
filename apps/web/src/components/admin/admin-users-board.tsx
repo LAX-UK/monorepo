@@ -33,13 +33,14 @@ function userColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow>
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
-        <button
+        <Button
           type="button"
-          className="max-w-[12rem] truncate text-left font-medium text-primary underline-offset-2 hover:underline"
+          variant="link"
+          className="h-auto max-w-[12rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
           onClick={() => onOpen(row.original)}
         >
           {row.original.name}
-        </button>
+        </Button>
       ),
     },
     {
@@ -163,13 +164,18 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
           key={u.id}
           className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
         >
-          <button type="button" className="w-full text-left" onClick={() => setSelected(u)}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto w-full flex-col items-start justify-start rounded-none px-0 py-0 text-left hover:bg-transparent"
+            onClick={() => setSelected(u)}
+          >
             <p className="font-headline text-base text-on-surface">{u.name}</p>
             <p className="mt-1 truncate text-xs text-on-surface-variant">{u.email}</p>
             <p className="mt-2 font-label text-[10px] uppercase text-secondary">
               {u.role} · {u.suspendedAt ? "Suspended" : "Active"}
             </p>
-          </button>
+          </Button>
         </li>
       ))}
     </ul>
@@ -189,7 +195,10 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
         filters={roleChips}
         search={
           <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
-            <label htmlFor="admin-users-q" className="font-label text-xs uppercase tracking-widest text-secondary">
+            <label
+              htmlFor="admin-users-q"
+              className="font-label text-xs uppercase tracking-widest text-secondary"
+            >
               Filter loaded rows
             </label>
             <input
@@ -213,7 +222,9 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
             <>
               <SheetHeader>
                 <SheetTitle>User</SheetTitle>
-                <SheetDescription>Role changes and suspension from one touch-friendly panel.</SheetDescription>
+                <SheetDescription>
+                  Role changes and suspension from one touch-friendly panel.
+                </SheetDescription>
               </SheetHeader>
               <UserDrawerContent u={selected} />
             </>

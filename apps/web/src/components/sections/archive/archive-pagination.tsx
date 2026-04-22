@@ -1,7 +1,7 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { MarketingPagination } from "@auction/ui";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -49,7 +49,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
           href: page <= 1 ? null : buildHref(searchParams, prev),
           label: (
             <>
-              <MaterialIcon name="west" className="text-sm" aria-hidden />
+              <ChevronLeft className="text-sm" aria-hidden />
               Previous
             </>
           ),
@@ -59,7 +59,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
           label: (
             <>
               Next
-              <MaterialIcon name="east" className="text-sm" aria-hidden />
+              <ChevronRight className="text-sm" aria-hidden />
             </>
           ),
         }}

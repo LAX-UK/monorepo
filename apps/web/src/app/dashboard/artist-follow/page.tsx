@@ -1,6 +1,6 @@
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { BodyText, DisplayHeading, LabelCaps } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { getServerDataContainer } from "@/lib/data/container.server";
 import Link from "next/link";
 
 export default async function ArtistFollowPage() {

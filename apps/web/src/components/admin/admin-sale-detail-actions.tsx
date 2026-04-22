@@ -2,13 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { DisplayHeading } from "@/components/ui/typography";
-import type { ActionResult } from "@/lib/forms/form-result";
 import {
   adminAttachLotToSaleResultAction,
   adminCancelSaleResultAction,
   adminDetachLotFromSaleResultAction,
   adminPublishSaleResultAction,
 } from "@/lib/actions/admin-sales";
+import type { ActionResult } from "@/lib/forms/form-result";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -106,9 +106,7 @@ export function AdminSaleDetailActions({
                   type="button"
                   disabled={pending}
                   variant="secondary"
-                  onClick={() =>
-                    run(() => adminDetachLotFromSaleResultAction(saleId, l.id))
-                  }
+                  onClick={() => run(() => adminDetachLotFromSaleResultAction(saleId, l.id))}
                 >
                   Detach
                 </Button>

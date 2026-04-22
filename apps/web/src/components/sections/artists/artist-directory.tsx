@@ -1,9 +1,11 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { artistEyebrowText } from "@/lib/artists/display";
 import { ALPHABET_LETTERS, filterArtistsDirectory, lettersPresent } from "@/lib/artists/filter";
 import type { ArtistProfile } from "@/lib/data/contracts";
+import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
+import { ChevronDown, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -53,34 +55,38 @@ export function ArtistDirectory({ artists }: Props) {
               Filter by
             </span>
             <div className="flex gap-4 md:gap-6">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setLetter("ALL");
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className={`shrink-0 text-xs font-medium transition-colors ${
+                className={`h-auto shrink-0 rounded-none px-0 py-0 text-xs font-medium hover:bg-transparent ${
                   letter === "ALL"
                     ? "font-bold text-primary"
                     : "text-on-secondary-container hover:text-primary"
                 }`}
               >
                 ALL
-              </button>
+              </Button>
               {ALPHABET_LETTERS.map((L) => {
                 const has = presentLetters.has(L);
                 const active = letter === L;
                 return (
-                  <button
+                  <Button
                     key={L}
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={!has}
                     onClick={() => {
                       if (!has) return;
                       setLetter(L);
                       setVisibleCount(PAGE_SIZE);
                     }}
-                    className={`shrink-0 text-xs font-medium transition-colors ${
+                    className={`h-auto shrink-0 rounded-none px-0 py-0 text-xs font-medium hover:bg-transparent ${
                       !has
                         ? "cursor-default text-stone-300 dark:text-stone-600"
                         : active
@@ -89,24 +95,24 @@ export function ArtistDirectory({ artists }: Props) {
                     }`}
                   >
                     {L}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
-            <MaterialIcon name="search" className="text-lg text-outline" />
+            <Search className="size-4 text-outline" aria-hidden />
             <label htmlFor="artist-search" className="sr-only">
               Search artists
             </label>
-            <input
+            <Input
               id="artist-search"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setVisibleCount(PAGE_SIZE);
               }}
-              className="w-36 border-none bg-transparent font-body text-xs tracking-wider placeholder:text-outline-variant focus:ring-0 md:w-44"
+              className="h-auto w-36 border-none bg-transparent px-0 py-0 font-body text-xs tracking-wider shadow-none placeholder:text-outline-variant focus-visible:ring-0 md:w-44"
               placeholder="Search artists..."
               type="search"
               autoComplete="off"
@@ -160,17 +166,15 @@ export function ArtistDirectory({ artists }: Props) {
 
         {canLoadMore ? (
           <div className="mt-32 flex justify-center">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="group flex items-center gap-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-surface transition-colors hover:text-primary"
+              className="group h-auto gap-4 rounded-none px-0 py-0 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-surface hover:bg-transparent hover:text-primary"
             >
               <span>Load more artists</span>
-              <MaterialIcon
-                name="expand_more"
-                className="transition-transform group-hover:translate-y-1"
-              />
-            </button>
+              <ChevronDown className="transition-transform group-hover:translate-y-1" aria-hidden />
+            </Button>
           </div>
         ) : null}
       </section>

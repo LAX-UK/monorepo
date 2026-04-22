@@ -7,7 +7,7 @@ import {
   isContactHoneypotFilled,
   parseContactFormData,
 } from "@/lib/contact/contact-input";
-import { actionFailure, actionSuccess, type ActionResult } from "@/lib/forms/form-result";
+import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
 import { headers } from "next/headers";
 import type { z } from "zod";

@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   adminSetUserRoleResultAction,
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
 import type { UserRole } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -56,7 +56,12 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
             </option>
           ))}
         </select>
-        <Button type="button" disabled={pending} className="min-h-11 w-full sm:w-auto" onClick={runSave}>
+        <Button
+          type="button"
+          disabled={pending}
+          className="min-h-11 w-full sm:w-auto"
+          onClick={runSave}
+        >
           Save role
         </Button>
       </div>
@@ -78,21 +83,30 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
           </option>
         ))}
       </select>
-      <button
+      <Button
         type="button"
+        variant="link"
         disabled={pending}
-        className="min-h-11 font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
+        className="h-auto min-h-11 px-0 py-0 font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
         onClick={runSave}
       >
         Save
-      </button>
+      </Button>
     </div>
   );
 }
 
-type UserSuspendActionProps = { userId: string; suspendedAt: string | null; fullWidthButton?: boolean };
+type UserSuspendActionProps = {
+  userId: string;
+  suspendedAt: string | null;
+  fullWidthButton?: boolean;
+};
 
-export function UserSuspendAction({ userId, suspendedAt, fullWidthButton }: UserSuspendActionProps) {
+export function UserSuspendAction({
+  userId,
+  suspendedAt,
+  fullWidthButton,
+}: UserSuspendActionProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 

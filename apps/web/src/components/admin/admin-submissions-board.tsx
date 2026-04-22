@@ -1,8 +1,8 @@
 "use client";
 
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { useTableDensity } from "@/components/layout/dashboard-shell";
+import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DataTable, EntityTableShell } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -27,14 +27,18 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
       accessorKey: "sellerPreview",
       header: "Seller",
       cell: ({ row }) => (
-        <span className="font-body text-xs text-on-surface-variant">{row.original.sellerPreview}</span>
+        <span className="font-body text-xs text-on-surface-variant">
+          {row.original.sellerPreview}
+        </span>
       ),
     },
     {
       accessorKey: "createdAtLabel",
       header: "Created",
       cell: ({ row }) => (
-        <span className="font-body text-xs text-on-surface-variant">{row.original.createdAtLabel}</span>
+        <span className="font-body text-xs text-on-surface-variant">
+          {row.original.createdAtLabel}
+        </span>
       ),
     },
     {

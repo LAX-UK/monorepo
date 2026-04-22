@@ -2,8 +2,9 @@
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { navItemActive } from "@/components/layout/header-nav-config";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -182,13 +183,15 @@ export function HeaderMegaNav({
               const open = openIndex === index;
               return (
                 <div key={item.href} className="flex flex-col items-start">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     ref={(el) => {
                       triggerRefs.current[index] = el;
                     }}
                     className={cn(
-                      "group flex items-center gap-1 border-b-2 border-transparent pb-1 font-label text-sm font-medium uppercase leading-[21px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none",
+                      "group h-auto gap-1 rounded-none border-b-2 border-transparent px-0 pb-1 font-label text-sm font-medium uppercase leading-[21px] hover:bg-transparent motion-reduce:transition-none",
                       active || open ? "text-brand-900" : "text-nav-text hover:text-brand-900",
                       open ? "border-brand-900" : "border-transparent hover:border-brand-900/40",
                     )}
@@ -207,15 +210,14 @@ export function HeaderMegaNav({
                     onKeyDown={(e) => onTriggerKeyDown(e, index)}
                   >
                     <span>{item.label}</span>
-                    <MaterialIcon
-                      name="expand_more"
+                    <ChevronDown
                       className={cn(
                         "text-base! transition-transform motion-reduce:transition-none",
                         open ? "rotate-180" : "rotate-0",
                       )}
                       aria-hidden
                     />
-                  </button>
+                  </Button>
                 </div>
               );
             })}

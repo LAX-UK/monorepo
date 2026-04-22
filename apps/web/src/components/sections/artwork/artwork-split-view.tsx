@@ -1,9 +1,9 @@
 import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
 import { ArtworkMarketingBlocks } from "@/components/sections/artwork/artwork-marketing-blocks";
 import { RelatedLots } from "@/components/sections/artwork/related-lots";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { formatMoney } from "@/lib/format-currency";
 import type { Lot } from "@auction/types";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -118,7 +118,7 @@ export function ArtworkSplitView({
             href="/"
             className="mb-12 flex items-center gap-2 font-label text-xs uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
           >
-            <MaterialIcon name="arrow_back" className="text-sm" />
+            <ArrowLeft className="text-sm" aria-hidden />
             Back to gallery
           </Link>
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">{watchSlot}</div>
@@ -163,7 +163,7 @@ export function ArtworkSplitView({
               className="mb-8 inline-flex items-center gap-1 font-label text-xs font-bold uppercase tracking-widest text-primary"
             >
               View portfolio
-              <MaterialIcon name="arrow_forward" className="text-sm" />
+              <ArrowRight className="text-sm" aria-hidden />
             </Link>
             <ArtworkMarketingBlocks auction={auction} />
             <section

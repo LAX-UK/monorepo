@@ -1,15 +1,16 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
+import { Gavel, LayoutDashboard, Palette, Store, User } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs = [
-  { href: "/dashboard", label: "Home", icon: "dashboard" as const },
-  { href: "/dashboard/bids", label: "Bids", icon: "gavel" as const },
-  { href: "/dashboard/portfolio", label: "Collection", icon: "palette" as const },
-  { href: "/dashboard/submissions", label: "Sell", icon: "storefront" as const },
-  { href: "/dashboard/settings/profile", label: "You", icon: "person" as const },
+const tabs: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/dashboard/bids", label: "Bids", icon: Gavel },
+  { href: "/dashboard/portfolio", label: "Collection", icon: Palette },
+  { href: "/dashboard/submissions", label: "Sell", icon: Store },
+  { href: "/dashboard/settings/profile", label: "You", icon: User },
 ];
 
 export function DashboardBottomNav() {
@@ -20,6 +21,7 @@ export function DashboardBottomNav() {
       aria-label="Dashboard sections"
     >
       {tabs.map((t) => {
+        const Icon = t.icon;
         const active =
           t.href === "/dashboard"
             ? pathname === "/dashboard"
@@ -33,7 +35,7 @@ export function DashboardBottomNav() {
             }`}
             aria-current={active ? "page" : undefined}
           >
-            <MaterialIcon name={t.icon} className="text-xl" />
+            <Icon className="size-6" aria-hidden />
             <span className="truncate">{t.label}</span>
           </Link>
         );

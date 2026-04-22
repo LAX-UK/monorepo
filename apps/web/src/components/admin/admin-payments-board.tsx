@@ -42,13 +42,14 @@ function paymentColumns(
       accessorKey: "lotTitle",
       header: "Lot",
       cell: ({ row }) => (
-        <button
+        <Button
           type="button"
-          className="max-w-[14rem] truncate text-left font-medium text-primary underline-offset-2 hover:underline"
+          variant="link"
+          className="h-auto max-w-[14rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
           onClick={() => onOpen(row.original)}
         >
           {row.original.lotTitle}
-        </button>
+        </Button>
       ),
     },
     {
@@ -175,13 +176,14 @@ export function AdminPaymentsBoard({ rows, statusChips }: Props) {
           className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
         >
           <div className="flex items-start justify-between gap-2">
-            <button
+            <Button
               type="button"
-              className="min-h-11 min-w-0 flex-1 text-left font-headline text-base text-on-surface hover:text-primary"
+              variant="ghost"
+              className="h-auto min-h-11 min-w-0 flex-1 justify-start rounded-none px-0 py-0 text-left font-headline text-base text-on-surface hover:bg-transparent hover:text-primary"
               onClick={() => setSelected(p)}
             >
               {p.lotTitle}
-            </button>
+            </Button>
             <StatusBadge variant={paymentStatusToBadgeVariant(p.status)}>{p.status}</StatusBadge>
           </div>
           <p className="mt-2 font-mono text-[10px] text-on-surface-variant">{p.buyerId}</p>

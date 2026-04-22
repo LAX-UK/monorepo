@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatCountdownClock } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { BodyText, DisplayHeading, LabelCaps, LiveDot, SectionHeader } from "@auction/ui";
+import { TimelineStages } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button as UiButton } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/components/button";
 import {
   Card,
   CardContent,
@@ -15,7 +15,6 @@ import {
   CardTitle,
 } from "@auction/ui/components/card";
 import { KpiTile } from "@auction/ui/components/kpi-tile";
-import { TimelineStages } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ChevronRight } from "lucide-react";
 import Image from "next/image";
@@ -84,11 +83,11 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
             </span>
           </div>
           {featureV2 && vm.primaryCta ? (
-            <Button variant="primary" className="w-full min-h-11 sm:w-auto" asChild>
+            <Button className="min-h-11 w-full sm:w-auto" asChild>
               <Link href={vm.primaryCta.href}>{vm.primaryCta.label}</Link>
             </Button>
           ) : null}
-          <Button variant="secondary" className="w-full min-h-11 sm:w-auto" asChild>
+          <Button variant="secondary" className="min-h-11 w-full sm:w-auto" asChild>
             <Link href="/dashboard/submissions/new">New submission</Link>
           </Button>
         </div>
@@ -168,7 +167,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
             for scheduling and publication.
           </BodyText>
           <div>
-            <Button variant="primary" asChild>
+            <Button asChild>
               <Link href="/dashboard/submissions/new">Start a submission</Link>
             </Button>
           </div>
@@ -194,12 +193,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
               </DisplayHeading>
             }
             action={
-              <UiButton variant="chevron" asChild>
+              <Button variant="chevron" asChild>
                 <Link href="/" className="inline-flex items-center gap-2 py-3">
                   Browse gallery
                   <ChevronRight className="size-5 shrink-0" aria-hidden />
                 </Link>
-              </UiButton>
+              </Button>
             }
           />
 
@@ -303,33 +302,31 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
                           {label}
                         </p>
                       )}
-                    <div
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <Link
-                        href={`/dashboard/checkout/${a.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-3"
-                      >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                          {img ? (
-                            <Image src={img} alt="" fill className="object-cover" sizes="48px" />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-headline text-sm">{a.title}</p>
-                          <p className="font-label text-[10px] uppercase tracking-wider text-lot-orange">
-                            {portfolioSettlementLabel(row)}
-                          </p>
-                        </div>
-                      </Link>
-                      <UiButton
-                        className="shrink-0 text-xs uppercase tracking-widest"
-                        size="sm"
-                        asChild
-                      >
-                        <Link href={`/dashboard/checkout/${a.id}`}>Pay</Link>
-                      </UiButton>
-                    </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <Link
+                          href={`/dashboard/checkout/${a.id}`}
+                          className="flex min-w-0 flex-1 items-center gap-3"
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+                            {img ? (
+                              <Image src={img} alt="" fill className="object-cover" sizes="48px" />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-headline text-sm">{a.title}</p>
+                            <p className="font-label text-[10px] uppercase tracking-wider text-lot-orange">
+                              {portfolioSettlementLabel(row)}
+                            </p>
+                          </div>
+                        </Link>
+                        <Button
+                          className="shrink-0 text-xs uppercase tracking-widest"
+                          size="sm"
+                          asChild
+                        >
+                          <Link href={`/dashboard/checkout/${a.id}`}>Pay</Link>
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -340,7 +337,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="font-headline text-xl">Won lots</CardTitle>
-              <UiButton variant="chevron" asChild>
+              <Button variant="chevron" asChild>
                 <Link
                   href="/dashboard/portfolio"
                   className="inline-flex items-center gap-1 text-xs"
@@ -348,7 +345,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
                   Portfolio
                   <ChevronRight className="size-4" aria-hidden />
                 </Link>
-              </UiButton>
+              </Button>
             </CardHeader>
             <CardContent>
               {vm.wonLotsSidebar.length === 0 ? (
@@ -396,12 +393,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="font-headline text-xl">Watchlist</CardTitle>
-              <UiButton variant="chevron" asChild>
+              <Button variant="chevron" asChild>
                 <Link href="/" className="inline-flex items-center gap-1 text-xs">
                   Gallery
                   <ChevronRight className="size-4" aria-hidden />
                 </Link>
-              </UiButton>
+              </Button>
             </CardHeader>
             <CardContent>
               {vm.watchPreview.length === 0 ? (

@@ -1,15 +1,16 @@
 "use client";
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
-import { MaterialIcon } from "@/components/ui/material-icon";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { accountNavLinks } from "./header-account-nav";
@@ -84,9 +85,10 @@ export function MobileNavDrawer({
                     key={section.href}
                     className="border-b border-nav-border pb-2 last:border-b-0"
                   >
-                    <button
+                    <Button
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 py-2 text-left font-label text-sm font-medium uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
+                      variant="ghost"
+                      className="h-auto w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
                       aria-expanded={expanded}
                       aria-controls={panelId}
                       onClick={() => setExpandedIndex(expanded ? null : index)}
@@ -94,15 +96,14 @@ export function MobileNavDrawer({
                       <span className={active ? "text-brand-900" : "text-nav-text"}>
                         {section.label}
                       </span>
-                      <MaterialIcon
-                        name="expand_more"
+                      <ChevronDown
                         className={cn(
                           "shrink-0 text-brand-900 transition-transform motion-reduce:transition-none dark:text-on-surface",
                           expanded ? "rotate-180" : "rotate-0",
                         )}
                         aria-hidden
                       />
-                    </button>
+                    </Button>
                     {expanded ? (
                       <div
                         id={panelId}

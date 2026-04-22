@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   badge?: number;
 };
 

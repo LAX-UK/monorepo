@@ -1,12 +1,12 @@
 "use client";
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
+import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
 import { useTableDensity } from "@/components/layout/dashboard-shell";
-import { adminBulkLotsResultAction } from "@/lib/actions/admin";
-import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
-import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
+import { adminBulkLotsResultAction } from "@/lib/actions/admin";
+import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { Lot } from "@auction/types";
 import {
   BulkActionBar,
@@ -17,8 +17,8 @@ import {
 } from "@auction/ui";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -152,9 +152,7 @@ export function AdminLotsBoard({
   if (viewPipeline) {
     return (
       <div className="space-y-8">
-        {listError || urlError ? (
-          <p className="text-live-red">{listError ?? urlError}</p>
-        ) : null}
+        {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
         {layoutToggle}
         {fullLots.length === 0 && !listError ? (
           <p className="text-on-surface-variant">No auctions loaded.</p>
@@ -167,9 +165,7 @@ export function AdminLotsBoard({
 
   return (
     <div className="space-y-8">
-      {listError || urlError ? (
-        <p className="text-live-red">{listError ?? urlError}</p>
-      ) : null}
+      {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
       <EntityTableShell
         density={density}
         filters={
@@ -207,7 +203,10 @@ export function AdminLotsBoard({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <Link href={`/admin/lots/${r.id}`} className="font-headline text-sm text-primary">
+                    <Link
+                      href={`/admin/lots/${r.id}`}
+                      className="font-headline text-sm text-primary"
+                    >
                       {r.title}
                     </Link>
                     <p className="mt-1 font-label text-[10px] uppercase text-on-surface-variant">
@@ -215,7 +214,9 @@ export function AdminLotsBoard({
                     </p>
                     <p className="mt-1 font-headline text-sm tabular-nums">{r.currentPrice}</p>
                     <div className="mt-2">
-                      <StatusBadge variant={lotStatusToBadgeVariant(r.status)}>{r.status}</StatusBadge>
+                      <StatusBadge variant={lotStatusToBadgeVariant(r.status)}>
+                        {r.status}
+                      </StatusBadge>
                     </div>
                   </div>
                   <InlineActionMenu

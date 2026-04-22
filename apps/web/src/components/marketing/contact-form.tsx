@@ -68,12 +68,7 @@ export function ContactForm() {
           render={({ field }) => (
             <FormItem className="hidden" aria-hidden>
               <FormControl>
-                <Input
-                  tabIndex={-1}
-                  autoComplete="off"
-                  className="hidden"
-                  {...field}
-                />
+                <Input tabIndex={-1} autoComplete="off" className="hidden" {...field} />
               </FormControl>
             </FormItem>
           )}
@@ -183,7 +178,11 @@ export function ContactForm() {
           )}
         />
 
-        <AuthSubmitButton loading={isSubmitting} loadingLabel="Sending…" className="w-full sm:w-auto">
+        <AuthSubmitButton
+          loading={isSubmitting}
+          loadingLabel="Sending…"
+          className="w-full sm:w-auto"
+        >
           Send message
         </AuthSubmitButton>
       </form>

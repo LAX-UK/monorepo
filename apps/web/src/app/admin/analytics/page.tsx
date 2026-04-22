@@ -24,8 +24,8 @@ import {
   winRatePercent,
 } from "@/lib/data/view-models/admin-analytics.vm";
 import { formatMoney } from "@/lib/format-currency";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { CompareDelta, KpiTile, PageHeader, StatStrip } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 function toChartsData(
   d: NonNullable<Awaited<ReturnType<typeof getAdminAnalytics>>>,
@@ -68,12 +68,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const totalRev = data
     ? data.revenueSeries.reduce((a, r) => a + (Number.parseFloat(r.total) || 0), 0)
     : 0;
-  const totalEndedLots = data
-    ? data.lotCompletedSeries.reduce((a, r) => a + (r.count || 0), 0)
-    : 0;
-  const totalRegs = data
-    ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0)
-    : 0;
+  const totalEndedLots = data ? data.lotCompletedSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
+  const totalRegs = data ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
 
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-10">
@@ -141,16 +137,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
               }
               deltaTone="neutral"
             />
-            <KpiTile
-              label="Active lots"
-              value={String(data.activeLots)}
-              trendTone="primary"
-            />
-            <KpiTile
-              label="Total users"
-              value={String(data.totalUsers)}
-              trendTone="secondary"
-            />
+            <KpiTile label="Active lots" value={String(data.activeLots)} trendTone="primary" />
+            <KpiTile label="Total users" value={String(data.totalUsers)} trendTone="secondary" />
             <KpiTile
               label={`Avg order (${days}d)`}
               value={data.averageOrderValue ?? "—"}

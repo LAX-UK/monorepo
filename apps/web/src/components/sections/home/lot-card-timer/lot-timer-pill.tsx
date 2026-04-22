@@ -1,5 +1,5 @@
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { LiveDot, cn } from "@auction/ui";
+import { Clock } from "lucide-react";
 import type { LotTimerState } from "./classify";
 
 function assertNever(x: never): never {
@@ -51,7 +51,7 @@ export function LotTimerPill({ state, clockText }: { state: LotTimerState; clock
     case "opensSoon":
       return (
         <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_LIVE)}>
-          <MaterialIcon name="schedule" className="size-4 shrink-0 text-accent-gold" aria-hidden />
+          <Clock className="size-4 shrink-0 text-accent-gold" aria-hidden />
           <span className="min-w-0">
             <span>Opens in </span>
             <span className="tabular-nums" aria-hidden>

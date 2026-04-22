@@ -144,6 +144,62 @@
     "./components/typography": {
       "types": "./dist/components/typography.d.ts",
       "default": "./dist/components/typography.js"
+    },
+    "./components/badge": {
+      "types": "./dist/components/ui/badge.d.ts",
+      "default": "./dist/components/ui/badge.js"
+    },
+    "./components/progress": {
+      "types": "./dist/components/ui/progress.d.ts",
+      "default": "./dist/components/ui/progress.js"
+    },
+    "./components/avatar": {
+      "types": "./dist/components/ui/avatar.d.ts",
+      "default": "./dist/components/ui/avatar.js"
+    },
+    "./components/radio-group": {
+      "types": "./dist/components/ui/radio-group.d.ts",
+      "default": "./dist/components/ui/radio-group.js"
+    },
+    "./components/scroll-area": {
+      "types": "./dist/components/ui/scroll-area.d.ts",
+      "default": "./dist/components/ui/scroll-area.js"
+    },
+    "./components/accordion": {
+      "types": "./dist/components/ui/accordion.d.ts",
+      "default": "./dist/components/ui/accordion.js"
+    },
+    "./components/popover": {
+      "types": "./dist/components/ui/popover.d.ts",
+      "default": "./dist/components/ui/popover.js"
+    },
+    "./components/hover-card": {
+      "types": "./dist/components/ui/hover-card.d.ts",
+      "default": "./dist/components/ui/hover-card.js"
+    },
+    "./components/toggle": {
+      "types": "./dist/components/ui/toggle.d.ts",
+      "default": "./dist/components/ui/toggle.js"
+    },
+    "./components/toggle-group": {
+      "types": "./dist/components/ui/toggle-group.d.ts",
+      "default": "./dist/components/ui/toggle-group.js"
+    },
+    "./components/collapsible": {
+      "types": "./dist/components/ui/collapsible.d.ts",
+      "default": "./dist/components/ui/collapsible.js"
+    },
+    "./components/aspect-ratio": {
+      "types": "./dist/components/ui/aspect-ratio.d.ts",
+      "default": "./dist/components/ui/aspect-ratio.js"
+    },
+    "./components/command": {
+      "types": "./dist/components/ui/command.d.ts",
+      "default": "./dist/components/ui/command.js"
+    },
+    "./components/calendar": {
+      "types": "./dist/components/ui/calendar.d.ts",
+      "default": "./dist/components/ui/calendar.js"
     }
   },
   "scripts": {
@@ -170,7 +226,11 @@
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^1.8.0",
+    "radix-ui": "^1.4.3",
+    "react-day-picker": "^9.14.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0"
   },

@@ -1,5 +1,5 @@
 import { lotAuctionTypes } from "@auction/types";
-import { createLotSchema, type CreateLotInput, updateLotSchema } from "@auction/validators";
+import { type CreateLotInput, createLotSchema, updateLotSchema } from "@auction/validators";
 import type { z } from "zod";
 import { z as zod } from "zod";
 
@@ -39,7 +39,8 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
     buyNowPrice: (v.buyNowPrice && String(v.buyNowPrice).trim()) || undefined,
     buyerPremiumRate: (v.buyerPremiumRate && String(v.buyerPremiumRate).trim()) || undefined,
     minBidIncrement: (v.minBidIncrement && String(v.minBidIncrement).trim()) || undefined,
-    dutchDecrementAmount: (v.dutchDecrementAmount && String(v.dutchDecrementAmount).trim()) || undefined,
+    dutchDecrementAmount:
+      (v.dutchDecrementAmount && String(v.dutchDecrementAmount).trim()) || undefined,
     dutchDecrementIntervalMs:
       v.dutchDecrementIntervalMs && String(v.dutchDecrementIntervalMs).trim()
         ? Number.parseInt(String(v.dutchDecrementIntervalMs).trim(), 10)

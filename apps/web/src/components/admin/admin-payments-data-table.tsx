@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   adminCapturePaymentResultAction,
   adminRefundPaymentResultAction,
 } from "@/lib/actions/admin";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { PaymentStatus } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -85,23 +85,25 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
   return (
     <div className="flex flex-wrap justify-end gap-3">
       {(status === "pending" || status === "authorized") && (
-        <button
+        <Button
           type="button"
+          variant="link"
           disabled={pending}
-          className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
           onClick={runCapture}
         >
           Mark captured
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         type="button"
+        variant="link"
         disabled={pending}
-        className="font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline disabled:opacity-50"
+        className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline disabled:opacity-50"
         onClick={runRefund}
       >
         Refund
-      </button>
+      </Button>
     </div>
   );
 }
@@ -137,9 +139,7 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <AdminPaymentActions id={row.original.id} status={row.original.status} />
-      ),
+      cell: ({ row }) => <AdminPaymentActions id={row.original.id} status={row.original.status} />,
       enableSorting: false,
     },
   ];

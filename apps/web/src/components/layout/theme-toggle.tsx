@@ -1,6 +1,7 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
+import { Button } from "@auction/ui/components/button";
+import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "theme";
@@ -24,14 +25,16 @@ export function ThemeToggle() {
   }, []);
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={toggle}
-      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       aria-pressed={isDark}
     >
-      <MaterialIcon name={isDark ? "light_mode" : "dark_mode"} />
-    </button>
+      {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
+    </Button>
   );
 }

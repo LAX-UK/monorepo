@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { TimelineStages } from "@auction/ui";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
-import { TimelineStages } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";

@@ -6,7 +6,9 @@ import { ReviewSplitPane } from "@auction/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function AdminSubmissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminSubmissionDetailPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await getAdminSubmissionById(id);
   if (!s) notFound();
@@ -21,7 +23,9 @@ export default async function AdminSubmissionDetailPage({ params }: { params: Pr
       </div>
       <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm">
         <p>
-          <span className="font-label text-xs uppercase tracking-widest text-secondary">Seller</span>{" "}
+          <span className="font-label text-xs uppercase tracking-widest text-secondary">
+            Seller
+          </span>{" "}
           {s.sellerId}
         </p>
         <p>{s.description ?? "—"}</p>
@@ -32,7 +36,9 @@ export default async function AdminSubmissionDetailPage({ params }: { params: Pr
           Asking: {s.askingPrice ?? "—"} · Reserve: {s.reservePrice ?? "—"}
         </p>
         <div>
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Image URLs</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+            Image URLs
+          </p>
           {s.images.length === 0 ? (
             <p className="text-on-surface-variant">None</p>
           ) : (
@@ -49,7 +55,9 @@ export default async function AdminSubmissionDetailPage({ params }: { params: Pr
         </div>
         {s.submitterNotes ? (
           <p>
-            <span className="font-label text-xs uppercase tracking-widest text-secondary">Seller notes</span>
+            <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              Seller notes
+            </span>
             <br />
             {s.submitterNotes}
           </p>

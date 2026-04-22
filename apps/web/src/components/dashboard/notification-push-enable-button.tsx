@@ -2,6 +2,7 @@
 
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { registerPushSubscription } from "@/lib/push/subscribe";
+import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,7 +27,10 @@ export function NotificationPushEnableButton({ saveDisabled = false }: { saveDis
       }
       await registerPushSubscription(key);
       toast.success("Browser notifications enabled");
-      const r = await updateNotificationPreferencesFromValuesAction({ outbidPush: true, wonPush: true });
+      const r = await updateNotificationPreferencesFromValuesAction({
+        outbidPush: true,
+        wonPush: true,
+      });
       if (!r.ok) {
         toast.error(r.error);
         return;
@@ -41,14 +45,14 @@ export function NotificationPushEnableButton({ saveDisabled = false }: { saveDis
 
   return (
     <div className="mt-4">
-      <button
+      <Button
         type="button"
         disabled={pushBusy || saveDisabled}
         onClick={() => void onEnablePush()}
-        className="rounded-md bg-primary px-4 py-3 font-label text-xs uppercase tracking-widest text-on-primary disabled:opacity-50"
+        className="h-auto rounded-md bg-primary px-4 py-3 font-label text-xs uppercase tracking-widest text-on-primary disabled:opacity-50"
       >
         {pushBusy ? "Working…" : "Enable browser push"}
-      </button>
+      </Button>
     </div>
   );
 }

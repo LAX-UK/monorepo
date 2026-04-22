@@ -1,12 +1,13 @@
 "use client";
 
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseUserNotification } from "@/lib/data/http/parse";
 import type { UserNotification } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
+import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -100,29 +101,31 @@ export function NotificationBell() {
         aria-busy="true"
         aria-label="Loading notifications"
       >
-        <MaterialIcon name="notifications" className="animate-pulse text-secondary" />
+        <Bell className="animate-pulse text-secondary" aria-hidden />
       </div>
     );
   }
 
   return (
     <div className="relative" ref={wrapRef}>
-      <button
+      <Button
         ref={triggerRef}
         type="button"
-        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-secondary transition-colors hover:bg-surface-container-low hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        variant="ghost"
+        size="icon"
+        className="relative min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
         aria-label="Notifications"
         aria-expanded={open}
         aria-controls={MENU_ID}
         onClick={() => setOpen((o) => !o)}
       >
-        <MaterialIcon name="notifications" />
+        <Bell aria-hidden />
         {unread > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
-      </button>
+      </Button>
       {open ? (
         <section
           id={MENU_ID}
@@ -131,13 +134,15 @@ export function NotificationBell() {
         >
           {unread > 0 ? (
             <div className="flex justify-end border-b border-outline-variant/10 px-4 py-2">
-              <button
+              <Button
                 type="button"
-                className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+                variant="ghost"
+                size="sm"
+                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-primary hover:bg-transparent hover:underline"
                 onClick={() => void markAllRead()}
               >
                 Mark all read
-              </button>
+              </Button>
             </div>
           ) : null}
           <div className="max-h-80 overflow-y-auto">
@@ -166,13 +171,15 @@ export function NotificationBell() {
                       View lot
                     </Link>
                   ) : !n.read ? (
-                    <button
+                    <Button
                       type="button"
-                      className="mt-2 font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-secondary hover:bg-transparent hover:text-primary"
                       onClick={() => void markRead(n.id)}
                     >
                       Mark read
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               ))

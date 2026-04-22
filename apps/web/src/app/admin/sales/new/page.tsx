@@ -1,6 +1,6 @@
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
-import { emptyAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
 import { DisplayHeading } from "@/components/ui/typography";
+import { emptyAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
 import Link from "next/link";
 
 export default function AdminNewSalePage() {

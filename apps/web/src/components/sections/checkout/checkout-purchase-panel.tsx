@@ -1,10 +1,11 @@
 "use client";
 
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
-import { Button } from "@/components/ui/button";
 import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
+import { Button } from "@auction/ui/components/button";
+import { Card, CardContent } from "@auction/ui/components/card";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -14,11 +15,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Separator } from "@auction/ui/components/separator";
 import {
   type CheckoutTermsAcceptanceValues,
   checkoutTermsAcceptanceSchema,
 } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -73,70 +76,70 @@ export function CheckoutPurchasePanel({
 
   return (
     <div className="space-y-10">
-      <div className="rounded-xl bg-surface-container-low p-8 shadow-sm ring-1 ring-outline-variant/10 max-lg:sticky max-lg:top-4 max-lg:z-10 max-lg:shadow-md">
-        <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
-          Order summary
-        </h2>
-        <dl className="space-y-4 font-body text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-on-surface-variant">Hammer price</dt>
-            <dd className="font-headline text-lg tabular-nums text-on-surface">{hammer}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-on-surface-variant">
-              Buyer&apos;s premium ({premiumPercentLabel})
-            </dt>
-            <dd className="font-headline text-lg tabular-nums text-primary">{buyerPremium}</dd>
-          </div>
-          <div className="flex justify-between gap-4 border-t border-outline-variant/10 pt-4">
-            <dt className="text-on-surface-variant">Shipping &amp; logistics</dt>
-            <dd className="font-label text-xs uppercase tracking-widest text-secondary">
-              Quoted after payment
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4 border-t border-outline-variant/15 pt-6">
-            <dt className="font-headline text-xl text-on-surface">Total due</dt>
-            <dd className="font-headline text-3xl tabular-nums text-primary">{total}</dd>
-          </div>
-        </dl>
-      </div>
+      <Card className="bg-surface-container-low shadow-sm ring-1 ring-outline-variant/10 max-lg:sticky max-lg:top-4 max-lg:z-10 max-lg:shadow-md">
+        <CardContent className="p-8 pt-8">
+          <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
+            Order summary
+          </h2>
+          <dl className="space-y-4 font-body text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-on-surface-variant">Hammer price</dt>
+              <dd className="font-headline text-lg tabular-nums text-on-surface">{hammer}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-on-surface-variant">
+                Buyer&apos;s premium ({premiumPercentLabel})
+              </dt>
+              <dd className="font-headline text-lg tabular-nums text-primary">{buyerPremium}</dd>
+            </div>
+            <Separator className="bg-outline-variant/10" />
+            <div className="flex justify-between gap-4">
+              <dt className="text-on-surface-variant">Shipping &amp; logistics</dt>
+              <dd className="font-label text-xs uppercase tracking-widest text-secondary">
+                Quoted after payment
+              </dd>
+            </div>
+            <Separator className="bg-outline-variant/15" />
+            <div className="flex justify-between gap-4 pt-2">
+              <dt className="font-headline text-xl text-on-surface">Total due</dt>
+              <dd className="font-headline text-3xl tabular-nums text-primary">{total}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-xl bg-surface-container-high/40 p-8 ring-1 ring-outline-variant/10">
-        <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
-          Payment
-        </h2>
-        <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
-          High-value lots are settled by bank transfer. Card payments may be available for
-          qualifying invoices—your specialist will confirm options and any processing fees.
-        </p>
-        <p className="font-body text-sm text-on-surface">
-          <span className="font-label text-xs uppercase tracking-widest text-primary">
-            Concierge
-          </span>
-          <br />
-          {settlementsEmail()}
-          <br />
-          <span className="text-on-surface-variant">{settlementsPhone()}</span>
-        </p>
-      </div>
+      <Card className="bg-surface-container-high/40 ring-1 ring-outline-variant/10">
+        <CardContent className="p-8 pt-8">
+          <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
+            Payment
+          </h2>
+          <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
+            High-value lots are settled by bank transfer. Card payments may be available for
+            qualifying invoices—your specialist will confirm options and any processing fees.
+          </p>
+          <p className="font-body text-sm text-on-surface">
+            <span className="font-label text-xs uppercase tracking-widest text-primary">
+              Concierge
+            </span>
+            <br />
+            {settlementsEmail()}
+            <br />
+            <span className="text-on-surface-variant">{settlementsPhone()}</span>
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-outline-variant/10 py-6 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
         <span className="inline-flex items-center gap-2">
-          <span className="material-symbols-outlined text-base text-primary" aria-hidden>
-            security
-          </span>
+          <ShieldCheck className="size-4 text-primary" aria-hidden />
           Payment protection
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="material-symbols-outlined text-base text-primary" aria-hidden>
-            verified
-          </span>
+          <VerifiedIcon className="size-4 text-primary" aria-hidden />
           Certificate included
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="material-symbols-outlined text-base text-primary" aria-hidden>
-            local_shipping
-          </span>
+          <Truck className="size-4 text-primary" aria-hidden />
           Insured shipping
         </span>
       </div>
@@ -194,9 +197,8 @@ export function CheckoutPurchasePanel({
             <Button
               id="checkout-complete-purchase"
               type="submit"
-              variant="primary"
               disabled={form.formState.isSubmitting}
-              className="w-full min-h-11 scroll-mt-28 py-5"
+              className="h-auto min-h-11 w-full scroll-mt-28 py-5"
             >
               {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
             </Button>

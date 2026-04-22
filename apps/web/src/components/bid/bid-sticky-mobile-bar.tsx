@@ -2,6 +2,7 @@
 
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { StickyBidBar } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -64,23 +65,24 @@ export function BidStickyMobileBar({
     }
   } else if (step === 1) {
     right = (
-      <button
+      <Button
         type="button"
         onClick={onScrollToBid}
-        className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="h-auto shrink-0 rounded-none bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm hover:from-primary hover:to-primary-container"
       >
         Place bid
-      </button>
+      </Button>
     );
   } else {
     right = (
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={onScrollToBid}
-        className="shrink-0 border border-primary/40 px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-primary hover:bg-transparent hover:text-primary"
       >
         Confirm bid
-      </button>
+      </Button>
     );
   }
 

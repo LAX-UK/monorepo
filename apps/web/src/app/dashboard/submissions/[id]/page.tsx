@@ -8,7 +8,9 @@ import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submissi
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function SubmissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SubmissionDetailPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await getSubmissionForUser(id);
   if (!s) notFound();

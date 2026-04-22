@@ -1,5 +1,5 @@
-import { MaterialIcon } from "@/components/ui/material-icon";
 import { SITE_NAME } from "@/lib/brand";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 const benefits = [
@@ -24,11 +24,7 @@ export function ArtistSubmitPortfolio() {
           <ul className="space-y-4">
             {benefits.map((text) => (
               <li key={text} className="flex items-center gap-4">
-                <MaterialIcon
-                  name="check_circle"
-                  className="select-none text-primary"
-                  aria-hidden
-                />
+                <CheckCircle2 className="select-none text-primary" aria-hidden />
                 <span className="font-label text-sm font-semibold uppercase tracking-wide text-on-surface">
                   {text}
                 </span>

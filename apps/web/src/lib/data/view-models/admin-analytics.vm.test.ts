@@ -46,7 +46,10 @@ describe("admin-analytics.vm", () => {
   });
 
   it("sparklineForCounts derives from series", () => {
-    const s = [{ date: "1", count: 0 }, { date: "2", count: 4 }];
+    const s = [
+      { date: "1", count: 0 },
+      { date: "2", count: 4 },
+    ];
     expect(sparklineForCounts(undefined, s)).toEqual([0, 1]);
   });
 
