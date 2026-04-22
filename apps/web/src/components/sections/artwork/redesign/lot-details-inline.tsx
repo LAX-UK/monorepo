@@ -10,24 +10,38 @@ type Props = {
   saleEndLocalLabel: string;
   /** Live current high bid (client state) */
   currentPrice: string;
+  /** Inside marketing accordion: hide duplicate title, reduce padding. */
+  variant?: "default" | "accordion";
 };
 
 /**
  * Figma “LOT DETAILS” block: catalog + reserve + open/close, plus policy links.
  */
-export function LotDetailsInline({ lot, minNextBid, saleEndLocalLabel, currentPrice }: Props) {
+export function LotDetailsInline({
+  lot,
+  minNextBid,
+  saleEndLocalLabel,
+  currentPrice,
+  variant = "default",
+}: Props) {
+  const embedded = variant === "accordion";
   const specParts = [lot.auctionType.replaceAll("_", " "), lot.medium, lot.dimensions].filter(
     Boolean,
   );
 
   return (
-    <section aria-labelledby="inline-lot-details" className="w-full max-w-[550px] space-y-4 py-8">
-      <h2
-        id="inline-lot-details"
-        className="text-center text-lg font-medium uppercase leading-[21px] text-[#1C170D] dark:text-on-surface"
-      >
-        Lot details
-      </h2>
+    <section
+      aria-labelledby={embedded ? undefined : "inline-lot-details"}
+      className={embedded ? "w-full space-y-4 py-0" : "w-full max-w-[550px] space-y-4 py-8"}
+    >
+      {embedded ? null : (
+        <h2
+          id="inline-lot-details"
+          className="text-center text-lg font-medium uppercase leading-[21px] text-[#1C170D] dark:text-on-surface"
+        >
+          Lot details
+        </h2>
+      )}
       {lot.description ? (
         <p className="whitespace-pre-wrap text-sm leading-[150%] text-[#191919] dark:text-brand-500">
           {lot.description}

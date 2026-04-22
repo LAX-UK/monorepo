@@ -10,6 +10,7 @@ import type {
   Sale,
   SaleStatus,
 } from "@auction/types";
+import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 
 export type ListLotsSort =
   | "createdDesc"
@@ -65,6 +66,8 @@ export interface ILotRepository {
   updateStatus(id: string, status: Lot["status"]): Promise<void>;
   /** Partial update for editable fields (e.g. draft lots). */
   update(id: string, input: Partial<CreateLotInput>): Promise<Lot>;
+  /** Merge marketing JSONB for the four managed keys; preserves other marketing keys. */
+  updateMarketingDetails(id: string, patch: UpdateLotMarketingDetailsInput): Promise<Lot>;
   setWinner(id: string, winnerId: string): Promise<void>;
   /** Lifecycle: scheduled lots whose start time has passed. */
   findScheduledToActivate(asOf: Date): Promise<Lot[]>;

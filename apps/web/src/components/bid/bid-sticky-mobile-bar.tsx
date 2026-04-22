@@ -1,6 +1,8 @@
 "use client";
 
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
+import { countdownTier } from "@/lib/format-countdown";
+import { cn } from "@auction/ui";
 import { StickyBidBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -14,6 +16,10 @@ type Props = {
   currentPriceLabel: string;
   priceFlash: boolean;
   onScrollToBid: () => void;
+  /** Same label as the lot info stack “Closing” row. */
+  remainingLabel: string;
+  /** ms until close (for urgency color on the timer line). */
+  msRemaining: number;
 };
 
 export function BidStickyMobileBar({
@@ -24,10 +30,13 @@ export function BidStickyMobileBar({
   currentPriceLabel,
   priceFlash,
   onScrollToBid,
+  remainingLabel,
+  msRemaining,
 }: Props) {
   if (!live) return null;
 
   const next = encodeURIComponent(loginNextPath);
+  const closeUrgent = countdownTier(msRemaining) !== "normal";
 
   let right: ReactNode;
   if (decision.kind === "block") {
@@ -96,6 +105,14 @@ export function BidStickyMobileBar({
           className={`truncate font-headline text-lg text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
         >
           {currentPriceLabel}
+        </p>
+        <p
+          className={cn(
+            "mt-0.5 truncate font-label text-[0.7rem] tabular-nums font-semibold uppercase tracking-wider",
+            closeUrgent ? "text-error" : "text-on-surface-variant",
+          )}
+        >
+          Closes {remainingLabel}
         </p>
       </div>
       {right}

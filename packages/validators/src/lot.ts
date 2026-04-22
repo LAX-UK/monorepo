@@ -85,3 +85,30 @@ export const createNestedLotForSaleSchema = createLotSchema
   .extend({ sellerId: z.string().min(1).max(191) });
 
 export type CreateNestedLotForSaleInput = z.infer<typeof createNestedLotForSaleSchema>;
+
+/** Marketing / catalog copy (subset of `LotMarketingDetails`). */
+export const conditionReportSchema = z.object({
+  summary: z.string().max(5000).optional(),
+  details: z.string().max(10_000).optional(),
+  downloadUrl: z.string().url().max(2048).optional(),
+});
+
+export const provenanceEntrySchema = z.object({
+  period: z.string().max(120).optional(),
+  note: z.string().min(1).max(500),
+});
+
+export const exhibitionEntrySchema = z.object({
+  year: z.string().max(20).optional(),
+  venue: z.string().min(1).max(200),
+  note: z.string().max(500).optional(),
+});
+
+export const updateLotMarketingDetailsSchema = z.object({
+  conditionReport: conditionReportSchema.nullable().optional(),
+  provenance: z.array(provenanceEntrySchema).max(50).nullable().optional(),
+  exhibitions: z.array(exhibitionEntrySchema).max(50).nullable().optional(),
+  artistNote: z.string().max(5000).nullable().optional(),
+});
+
+export type UpdateLotMarketingDetailsInput = z.infer<typeof updateLotMarketingDetailsSchema>;

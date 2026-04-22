@@ -1,6 +1,14 @@
 import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import type { Bid, Lot, LotMarketingDetails } from "@auction/types";
+import type { ReactNode } from "react";
+import { lotMarketingSection } from "./lot-marketing-sections";
+
+/** Ids for programmatic accordion items (see `buildArtworkPageAccordionBlocks`). */
+export const ARTWORK_PAGE_ACCORDION_IDS = {
+  lotDetails: "lot-details",
+  bidHistory: "bid-history",
+} as const;
 
 export type LotHeroVM = {
   firstSegmentHref: string;
@@ -38,7 +46,10 @@ export type LotRelatedRailVM = {
 export type AccordionBlock = {
   id: string;
   title: string;
-  content: string;
+  /** Marketing copy (plain). Omit when `contentNode` is set. */
+  content?: string;
+  /** Rich content (e.g. lot details, bid history). When set, overrides `content`. */
+  contentNode?: ReactNode;
   /** When true, block is omitted from render */
   hidden: boolean;
 };
@@ -105,6 +116,8 @@ export type LotSummarySeedVM = {
   estimateLine: string | null;
   sellerName: string;
   sellerHref: string;
+  /** Public profile / OAuth image when available */
+  sellerImageUrl: string | null;
 };
 
 /**
@@ -114,6 +127,7 @@ export function mapLotToSummarySeed(
   lot: Lot,
   sellerName: string,
   sellerHref: string,
+  sellerImageUrl: string | null = null,
 ): LotSummarySeedVM {
   const est = lot.marketingDetails.estimate;
   const estimateLine = est
@@ -125,15 +139,19 @@ export function mapLotToSummarySeed(
     estimateLine,
     sellerName,
     sellerHref,
+    sellerImageUrl,
   };
 }
 
-function formatProvenanceList(items: NonNullable<LotMarketingDetails["provenance"]>): string {
+/** Plain text for accordion / search; shared with other surfaces that need the same copy. */
+export function formatProvenanceList(
+  items: NonNullable<LotMarketingDetails["provenance"]>,
+): string {
   if (!items.length) return "";
   return items.map((p) => (p.period ? `${p.period}: ` : "") + p.note).join("\n\n");
 }
 
-function formatExhibitions(list: NonNullable<LotMarketingDetails["exhibitions"]>): string {
+export function formatExhibitions(list: NonNullable<LotMarketingDetails["exhibitions"]>): string {
   if (!list.length) return "";
   return list
     .map((e: { year?: string; venue: string; note?: string }) => {
@@ -141,6 +159,16 @@ function formatExhibitions(list: NonNullable<LotMarketingDetails["exhibitions"]>
       return e.note ? `${line}\n${e.note}` : line;
     })
     .join("\n\n");
+}
+
+/** Same body text as the “About artist” accordion item. */
+export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): string {
+  const md = lot.marketingDetails;
+  const aboutName = artist?.name ?? "";
+  return (
+    md.artistNote?.trim() ||
+    (aboutName ? `${aboutName}. See the seller/artist profile for more context.` : "")
+  );
 }
 
 /**
@@ -155,33 +183,30 @@ export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): Ac
   const prov = formatProvenanceList(md.provenance ?? []);
   const ex = formatExhibitions(md.exhibitions ?? []);
 
-  const aboutName = artist?.name ?? "";
-  const aboutText =
-    md.artistNote?.trim() ||
-    (aboutName ? `${aboutName}. See the seller/artist profile for more context.` : "");
+  const aboutText = aboutArtistBlockContent(lot, artist);
 
   return [
     {
-      id: "condition",
-      title: "Condition report",
+      id: lotMarketingSection.condition.id,
+      title: lotMarketingSection.condition.title,
       content: crText,
       hidden: crText.trim() === "",
     },
     {
-      id: "provenance",
-      title: "Provenance",
+      id: lotMarketingSection.provenance.id,
+      title: lotMarketingSection.provenance.title,
       content: prov,
       hidden: !prov.trim(),
     },
     {
-      id: "exhibited",
-      title: "Exhibited",
+      id: lotMarketingSection.exhibited.id,
+      title: lotMarketingSection.exhibited.title,
       content: ex,
       hidden: !ex.trim(),
     },
     {
-      id: "artist",
-      title: "About artist",
+      id: lotMarketingSection.artist.id,
+      title: lotMarketingSection.artist.title,
       content: aboutText,
       hidden: !aboutText.trim(),
     },

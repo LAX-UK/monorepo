@@ -7,6 +7,7 @@ import {
   createLotSchema,
   listLotsQuerySchema,
   lotIdParamSchema,
+  updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -123,6 +124,23 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const { id } = c.req.valid("param");
       const body = c.req.valid("json") as Partial<CreateLotInput>;
       const result = await container.lotService.update(role, id, body);
+      return result.match(
+        (lot) => c.json({ data: lot }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.put(
+    "/:id/marketing-details",
+    requireAuth,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", updateLotMarketingDetailsSchema),
+    async (c) => {
+      const role = c.get("userRole") ?? "user";
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await container.lotService.updateMarketingDetails(role, id, body);
       return result.match(
         (lot) => c.json({ data: lot }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),

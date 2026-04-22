@@ -2,13 +2,13 @@ import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import {
   findUserLatestBidMeta,
-  mapLotToAccordionBlocks,
   mapLotToHeroVM,
   mapLotToSummarySeed,
   mapSiblingsToRailVM,
 } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/build-artwork-accordion-blocks";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerLotBids, getServerLotReader } from "@/lib/data/http/lots.server";
@@ -88,9 +88,13 @@ export default async function ArtworkPage({ params }: PageProps) {
   const shareUrl = `${getSiteUrl()}/artwork/${auction.id}`;
 
   const sellerHref = `/artist/${auction.sellerId}`;
-  const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref);
+  const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref, seller?.image ?? null);
   const heroVM = mapLotToHeroVM(auction, parentSale, saleLots);
-  const marketingBlocks = mapLotToAccordionBlocks(auction, artistForAccordion);
+  const marketingBlocks = buildArtworkPageAccordionBlocks({
+    lot: auction,
+    artist: artistForAccordion,
+    initialHistory,
+  });
   const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
     l.sellerId === auction.sellerId ? sellerName : "Seller",
   );
@@ -102,6 +106,18 @@ export default async function ArtworkPage({ params }: PageProps) {
     { name: auction.title, path: `/artwork/${auction.id}` },
   ]);
   const jsonLdText = jsonLdScript(lotProductJsonLd(auction), crumbs);
+
+  const saleContext = saleBundle
+    ? {
+        backHref: `/sales/${saleBundle.sale.id}`,
+        title: saleBundle.sale.title,
+        lotCount: saleBundle.lots?.length ?? 0,
+        closesLabel: new Date(saleBundle.sale.endTime).toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }),
+      }
+    : null;
 
   return (
     <main id="main-content" className="pt-[var(--header-height)]">
@@ -119,6 +135,7 @@ export default async function ArtworkPage({ params }: PageProps) {
           summarySeed={summarySeed}
           marketingAccordionBlocks={marketingBlocks}
           rail={rail}
+          saleContext={saleContext}
           isAuthenticated={Boolean(session)}
           watchedLotIds={watchedLotIds}
           currentUserId={session?.id ?? null}

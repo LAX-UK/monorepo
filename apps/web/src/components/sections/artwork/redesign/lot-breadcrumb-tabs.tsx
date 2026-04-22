@@ -13,12 +13,12 @@ export function LotBreadcrumbTabs({ vm }: Props) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex min-h-10 flex-wrap items-center gap-2 text-[14px] font-medium leading-[21px] uppercase text-[#1C170D] dark:text-on-surface"
+      className="flex min-h-10 flex-wrap items-center gap-2 text-sm font-medium leading-5 uppercase text-on-surface"
     >
       <Link href={vm.firstSegmentHref} className="shrink-0 transition-opacity hover:opacity-80">
         {vm.firstSegmentLabel}
       </Link>
-      <ChevronRight className="size-5 shrink-0 text-[#0A0A0A] dark:text-on-surface" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />
       {vm.saleHref && vm.saleTitle ? (
         <>
           <Link
@@ -27,10 +27,7 @@ export function LotBreadcrumbTabs({ vm }: Props) {
           >
             {vm.saleTitle}
           </Link>
-          <ChevronRight
-            className="size-5 shrink-0 text-[#0A0A0A] dark:text-on-surface"
-            aria-hidden
-          />
+          <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />
         </>
       ) : null}
       {vm.lotNumberLabel ? <span className="shrink-0">{vm.lotNumberLabel}</span> : null}

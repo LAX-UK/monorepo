@@ -39,7 +39,11 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
       {entries.length === 0 ? (
         <output className="block font-body text-sm text-on-surface-variant">No bids yet.</output>
       ) : (
-        <ul className="max-h-52 space-y-3 overflow-y-auto pr-1">
+        <ul
+          className="max-h-52 space-y-3 overflow-y-auto pr-1"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {entries.map((e) => (
             <li
               key={`${e.id}-${e.at}`}

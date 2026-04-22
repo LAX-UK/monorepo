@@ -32,8 +32,8 @@ export function LotAutoBidPanel({
     maxAuto.trim() !== "" ? maxAuto : serverMaxAuto && serverMaxAuto !== "" ? serverMaxAuto : null;
 
   return (
-    <div className="w-full max-w-[550px] rounded border border-[#474747] bg-surface-container-low/40 p-4 dark:border-outline-variant">
-      <p className="mb-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-[#0A0A0A] dark:text-on-surface">
+    <div className="w-full max-w-[550px] rounded border border-outline-variant bg-surface-container-low/40 p-4">
+      <p className="mb-1 font-label text-xs font-semibold uppercase tracking-wide text-on-surface">
         Auto-bid
       </p>
       {activeLabel ? (
@@ -48,8 +48,8 @@ export function LotAutoBidPanel({
       <label htmlFor="lot-auto-bid-max" className="sr-only">
         Max auto-bid amount
       </label>
-      <div className="flex items-center gap-2 border-b border-[#A3A3A3] py-2 dark:border-outline-variant">
-        <span className="font-headline text-lg text-[#050505] dark:text-on-surface">$</span>
+      <div className="flex items-center gap-2 border-b border-outline-variant py-2">
+        <span className="font-headline text-lg text-on-surface">$</span>
         <UnderlineInput
           id="lot-auto-bid-max"
           inputMode="decimal"

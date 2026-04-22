@@ -1,4 +1,5 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
+import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
@@ -11,9 +12,11 @@ export default async function AdminEditAuctionPage({
   const { id } = await params;
   const auction = await getAdminLotById(id).catch(() => null);
   if (!auction) notFound();
-  if (auction.status !== "draft") {
+  if (auction.status === "ended" || auction.status === "cancelled") {
     redirect(`/admin/lots/${id}`);
   }
+
+  const isDraft = auction.status === "draft";
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -24,10 +27,19 @@ export default async function AdminEditAuctionPage({
         ← Lot detail
       </Link>
       <DisplayHeading as="h1" className="text-4xl">
-        Edit draft
+        {isDraft ? "Edit draft" : "Edit catalog copy"}
       </DisplayHeading>
+      {isDraft ? null : (
+        <p className="font-body text-sm text-on-surface-variant">
+          Core auction fields (price, times) are locked after publish. You can still update
+          condition, provenance, exhibitions, and the artist note below.
+        </p>
+      )}
 
-      <AdminLotForm mode="edit" lotId={id} defaultValues={lotToAdminLotFormValues(auction)} />
+      {isDraft ? (
+        <AdminLotForm mode="edit" lotId={id} defaultValues={lotToAdminLotFormValues(auction)} />
+      ) : null}
+      <AdminLotMarketingForm lotId={id} marketingDetails={auction.marketingDetails} />
     </div>
   );
 }

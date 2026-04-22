@@ -1,7 +1,9 @@
 import type { Database } from "@auction/db";
 import { lot, user } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
+import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
+import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
 import { mapLotRow } from "../lib/mappers.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -288,6 +290,19 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.lotNumber !== undefined) patch.lotNumber = input.lotNumber;
 
     const [row] = await this.db.update(lot).set(patch).where(eq(lot.id, id)).returning();
+    if (!row) throw new Error("Lot update failed");
+    return mapLotRow(row);
+  }
+
+  async updateMarketingDetails(id: string, patch: UpdateLotMarketingDetailsInput): Promise<Lot> {
+    const current = await this.findById(id);
+    if (!current) throw new Error("Lot not found");
+    const next = mergeLotMarketingDetailsPatch(current.marketingDetails, patch);
+    const [row] = await this.db
+      .update(lot)
+      .set({ marketingDetails: next, updatedAt: new Date() })
+      .where(eq(lot.id, id))
+      .returning();
     if (!row) throw new Error("Lot update failed");
     return mapLotRow(row);
   }

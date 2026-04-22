@@ -50,6 +50,11 @@ export default async function AdminAuctionDetailPage({
         canPublish={canPublish}
         canCancel={canCancel}
         showEditDraft={auction.status === "draft"}
+        showEditCatalog={
+          auction.status === "draft" ||
+          auction.status === "scheduled" ||
+          auction.status === "active"
+        }
       />
 
       <section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
   Tooltip,
@@ -130,72 +131,115 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div
-        className="group relative h-full touch-pan-y"
-        onTouchStart={(e) => {
-          touchStartX.current = e.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(e) => {
-          const start = touchStartX.current;
-          touchStartX.current = null;
-          if (start == null || !hasMany) return;
-          const end = e.changedTouches[0]?.clientX;
-          if (end == null) return;
-          const dx = end - start;
-          if (dx > SWIPE_PX) go(-1);
-          else if (dx < -SWIPE_PX) go(1);
-        }}
-      >
-        <Image
-          src={img}
-          alt={altAt(index, "hero")}
-          fill
-          priority
-          placeholder="blur"
-          blurDataURL={TINY_IMAGE_BLUR}
-          className="cursor-zoom-in bg-surface-container-low object-cover transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
-          sizes="50vw"
-          onClick={openLightbox}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-lightbox-opener="true"
-              onClick={openLightbox}
-              className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
-            >
-              <Maximize2 className="size-4" aria-hidden />
-              Expand
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Open fullscreen view</TooltipContent>
-        </Tooltip>
-        {hasMany ? (
-          <div className="pointer-events-auto absolute bottom-6 left-6 flex gap-1">
-            {images.map((u, i) => (
+      <div className="flex h-full min-h-0 flex-col">
+        <div
+          className="group relative min-h-0 flex-1 touch-pan-y"
+          onTouchStart={(e) => {
+            touchStartX.current = e.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            const start = touchStartX.current;
+            touchStartX.current = null;
+            if (start == null || !hasMany) return;
+            const end = e.changedTouches[0]?.clientX;
+            if (end == null) return;
+            const dx = end - start;
+            if (dx > SWIPE_PX) go(-1);
+            else if (dx < -SWIPE_PX) go(1);
+          }}
+        >
+          <Image
+            src={img}
+            alt={altAt(index, "hero")}
+            fill
+            priority
+            placeholder="blur"
+            blurDataURL={TINY_IMAGE_BLUR}
+            className="cursor-zoom-in bg-surface-container-low object-cover transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
+            sizes="(min-width: 1024px) 58vw, 100vw"
+            onClick={openLightbox}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
-                key={u}
                 type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`Show image ${i + 1} of ${images.length}`}
-                aria-current={i === index ? "true" : undefined}
-                onClick={() => setIndex(i)}
-                className={`min-h-11 min-w-11 rounded-full ${
-                  i === index ? "bg-primary hover:bg-primary" : "bg-white/50 hover:bg-white/80"
-                }`}
+                variant="secondary"
+                size="sm"
+                data-lightbox-opener="true"
+                onClick={openLightbox}
+                className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
               >
-                <span className="sr-only">Image {i + 1}</span>
-                <span
-                  className={`block h-2.5 w-2.5 rounded-full ${i === index ? "bg-white" : "bg-on-surface"}`}
-                  aria-hidden
-                />
+                <Maximize2 className="size-4" aria-hidden />
+                Expand
               </Button>
-            ))}
+            </TooltipTrigger>
+            <TooltipContent>Open fullscreen view</TooltipContent>
+          </Tooltip>
+          {hasMany ? (
+            <div className="pointer-events-auto absolute bottom-6 left-6 flex gap-1 md:hidden">
+              {images.map((u, i) => {
+                return (
+                  <Button
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable index for nav dots; URLs may repeat
+                    key={`${u}__${i}`}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Show image ${i + 1} of ${images.length}`}
+                    aria-current={i === index ? "true" : undefined}
+                    onClick={() => setIndex(i)}
+                    className={`min-h-11 min-w-11 rounded-full ${
+                      i === index ? "bg-primary hover:bg-primary" : "bg-white/50 hover:bg-white/80"
+                    }`}
+                  >
+                    <span className="sr-only">Image {i + 1}</span>
+                    <span
+                      className={`block h-2.5 w-2.5 rounded-full ${i === index ? "bg-white" : "bg-on-surface"}`}
+                      aria-hidden
+                    />
+                  </Button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+        {hasMany ? (
+          <div
+            className="hidden max-w-full shrink-0 border-t border-white/10 bg-surface-container-low/40 px-2 py-2 md:block"
+            aria-label="Image thumbnails"
+          >
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+              {images.map((u, i) => {
+                return (
+                  <button
+                    type="button"
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable index for thumbs; URLs may repeat
+                    key={`thumb-${u}__${i}`}
+                    onClick={() => setIndex(i)}
+                    aria-label={`Show image ${i + 1} of ${images.length}`}
+                    aria-current={i === index ? "true" : undefined}
+                    className={cn(
+                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-md",
+                      "ring-2 ring-offset-2 ring-offset-surface-container-lowest transition-shadow",
+                      i === index
+                        ? "ring-primary"
+                        : "ring-transparent hover:ring-outline-variant/40",
+                    )}
+                  >
+                    <Image
+                      src={u}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                      placeholder="blur"
+                      blurDataURL={TINY_IMAGE_BLUR}
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : null}
       </div>

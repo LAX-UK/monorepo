@@ -1,3 +1,5 @@
+"use client";
+
 import { BidErrorView } from "@/components/bid/bid-error-view";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
@@ -5,6 +7,7 @@ import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { useId } from "react";
 
 type Props = {
   auctionType: LotAuctionType;
@@ -39,8 +42,12 @@ export function BidForm({
   reviewButtonClassName,
 }: Props) {
   const minStr = minNumeric.toFixed(2);
+  const amountInputId = useId();
 
   const showIncrementChips = auctionType === "english" || auctionType === "buy_it_now";
+
+  const previewNum = Number.parseFloat(amount.trim() === "" ? minStr : amount);
+  const previewForConfirm = Number.isFinite(previewNum) ? previewNum.toFixed(2) : minStr;
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -75,10 +82,21 @@ export function BidForm({
               );
             })
           : null}
+        {showIncrementChips ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:text-primary"
+            onClick={() => document.getElementById(amountInputId)?.focus()}
+          >
+            Enter custom
+          </Button>
+        ) : null}
       </div>
       <div>
         <label
-          htmlFor="bid-amount"
+          htmlFor={amountInputId}
           className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
         >
           Enter bid amount (min. {formatMoney(minStr)})
@@ -86,7 +104,7 @@ export function BidForm({
         <div className="flex items-center border-b-2 border-outline-variant/40 py-4 transition-colors focus-within:border-primary">
           <span className="mr-4 font-headline text-2xl text-on-surface">$</span>
           <UnderlineInput
-            id="bid-amount"
+            id={amountInputId}
             inputMode="decimal"
             placeholder="0.00"
             value={amount}
@@ -117,13 +135,18 @@ export function BidForm({
         </div>
       ) : null}
       <BidErrorView error={error} />
-      <Button
-        type="button"
-        className={cn("h-auto w-full py-6", reviewButtonClassName)}
-        onClick={onReview}
-      >
-        Review bid amount
-      </Button>
+      <div className="space-y-2">
+        <Button
+          type="button"
+          className={cn("h-auto w-full py-6", reviewButtonClassName)}
+          onClick={onReview}
+        >
+          Review bid
+        </Button>
+        <p className="text-center text-xs text-on-surface-variant">
+          You&apos;ll confirm {formatMoney(previewForConfirm)} before it&apos;s placed.
+        </p>
+      </div>
     </div>
   );
 }

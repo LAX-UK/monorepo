@@ -1,7 +1,15 @@
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+function sellerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return (parts[0]?.slice(0, 2) ?? "?").toUpperCase();
+  return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
+}
 
 type Props = {
   seed: LotSummarySeedVM;
@@ -12,34 +20,55 @@ type Props = {
  * Figma: kicker (optional) + title; children = info stack + bid region.
  */
 export function LotRightSummary({ seed, children }: Props) {
+  const av = seed.sellerImageUrl?.trim();
   return (
-    <div className="flex w-full max-w-[550px] flex-col gap-10">
+    <div className="flex w-full max-w-[550px] flex-col gap-6">
       <div className="flex flex-col gap-2.5">
         {seed.kicker ? (
-          <p className="text-base leading-4 text-[#191919] dark:text-brand-500">{seed.kicker}</p>
+          <p className="text-base leading-4 text-on-surface dark:text-brand-500">{seed.kicker}</p>
         ) : null}
         <h1
           id="lot-heading"
-          className="text-2xl font-semibold leading-6 text-[#050505] dark:text-on-surface"
+          className="text-2xl font-semibold leading-6 text-on-surface dark:text-on-surface"
         >
           {seed.title}
         </h1>
-        <p className="text-base text-[#191919] dark:text-brand-500">
+        <div className="flex min-w-0 items-center gap-2">
+          {av ? (
+            <Image
+              src={av}
+              width={20}
+              height={20}
+              alt=""
+              className="size-5 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-[9px] font-bold leading-none text-on-surface"
+              aria-hidden
+            >
+              {sellerInitials(seed.sellerName)}
+            </span>
+          )}
+          <div className="min-w-0 flex flex-1 items-center gap-2">
+            <Link
+              href={seed.sellerHref}
+              className="min-w-0 truncate border-b border-transparent text-base font-medium text-on-surface transition-colors hover:border-primary hover:text-primary dark:text-brand-500"
+            >
+              {seed.sellerName}
+            </Link>
+            <span className="shrink-0 rounded-sm bg-surface-container-high px-1.5 py-0.5 font-label text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              Verified
+            </span>
+          </div>
           <Link
             href={seed.sellerHref}
-            className="border-b border-transparent font-medium text-[#191919] transition-colors hover:border-primary hover:text-primary dark:text-brand-500"
+            className="shrink-0 text-primary"
+            aria-label="View portfolio"
           >
-            {seed.sellerName}
+            <ArrowRight className="size-4" aria-hidden />
           </Link>
-          <span className="ml-1 text-sm text-on-surface-variant">· Verified seller</span>
-        </p>
-        <Link
-          href={seed.sellerHref}
-          className="inline-flex w-fit items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary"
-        >
-          View portfolio
-          <ArrowRight className="size-3" aria-hidden />
-        </Link>
+        </div>
       </div>
       {children}
     </div>

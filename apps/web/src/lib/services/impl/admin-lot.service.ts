@@ -6,6 +6,7 @@ import type {
   CreateLotInput,
   IAdminLotService,
   UpdateLotInput,
+  UpdateLotMarketingDetailsInput,
 } from "../interfaces/admin-lot-service";
 
 function readLotId(body: unknown): string | undefined {
@@ -37,6 +38,20 @@ export class AdminLotService implements IAdminLotService {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
+  }
+
+  async updateMarketingDetails(
+    id: string,
+    input: UpdateLotMarketingDetailsInput,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/lots/${encodeURIComponent(id)}/marketing-details`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    );
   }
 
   async publish(id: string): Promise<ServiceResult<Record<string, unknown>>> {

@@ -14,6 +14,7 @@ import {
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
+  updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -229,6 +230,29 @@ export async function adminCreateLotResultAction(
   }
   revalidatePath("/admin/lots");
   return actionSuccess({ id: r.data.id });
+}
+
+export async function adminUpdateLotMarketingDetailsResultAction(
+  lotId: string,
+  input: z.infer<typeof updateLotMarketingDetailsSchema>,
+): Promise<ActionResult<void>> {
+  const id = lotId.trim();
+  if (!id) {
+    return actionFailure("Missing lot");
+  }
+  const parsed = updateLotMarketingDetailsSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminLots } = getWriteContainer();
+  const r = await adminLots.updateMarketingDetails(id, parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${id}`);
+  revalidatePath(`/artwork/${id}`);
+  return actionSuccess();
 }
 
 export async function adminUpdateLotResultAction(

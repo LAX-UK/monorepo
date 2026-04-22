@@ -7,18 +7,19 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import type { BidDisplayStatus } from "@/components/sections/artwork/bid-display-status-banner";
 import { BidForm } from "@/components/sections/artwork/bid-form";
-import { BidHistory, type BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
-import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-details-inline";
 import { LotHighestBidderBanner } from "@/components/sections/artwork/redesign/lot-highest-bidder-banner";
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
+import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import type { Lot } from "@auction/types";
+import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,20 +35,7 @@ type Props = {
 const HISTORY_CAP = 20;
 
 const FIGMA_PRIMARY =
-  "bg-[#050505] text-[#D1D1D1] hover:bg-[#0A0A0A] border border-[#0A0A0A] rounded px-8 py-4 text-base font-semibold leading-6 tracking-[0.8px]";
-
-function nextMinBidAmount(auction: Lot, currentPriceStr: string): number {
-  const cur = Number.parseFloat(currentPriceStr);
-  if (auction.auctionType === "dutch") return cur;
-  const start = Number.parseFloat(auction.startingPrice);
-  const inc = Number.parseFloat(auction.minBidIncrement);
-  const step = Number.isFinite(inc) && inc > 0 ? inc : 0.01;
-  const next = cur + step;
-  if (auction.auctionType === "sealed") {
-    return Number.isFinite(start) ? Math.max(next, start) : next;
-  }
-  return next;
-}
+  "rounded border border-outline bg-on-surface px-8 py-4 text-base font-semibold leading-6 tracking-wide text-on-surface-variant shadow-sm transition-colors hover:bg-surface-container-highest";
 
 export function ArtworkBidPanel({
   auction,
@@ -73,6 +61,9 @@ export function ArtworkBidPanel({
   const [priceFlash, setPriceFlash] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [lastKnownMaxAuto, setLastKnownMaxAuto] = useState<string | null>(initialUserMaxAuto);
+  const [autoBidOpen, setAutoBidOpen] = useState(() =>
+    Boolean(initialUserMaxAuto && initialUserMaxAuto.trim() !== ""),
+  );
 
   const triggerPriceFlash = useCallback(() => {
     setPriceFlash(true);
@@ -80,7 +71,7 @@ export function ArtworkBidPanel({
   }, []);
 
   const minNumeric = useMemo(
-    () => nextMinBidAmount(auction, currentPrice),
+    () => getMinNextBidAmount(auction, currentPrice),
     [auction, currentPrice],
   );
 
@@ -250,76 +241,90 @@ export function ArtworkBidPanel({
     <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
       {({ decision }) => (
         <div className="min-w-0 max-w-[550px]">
-          <LotInfoStack
-            estimateLine={summarySeed.estimateLine}
-            currentPrice={currentPrice}
-            bidCount={history.length}
-            closingLabel={remainingLabel}
-          />
+          <div className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 shadow-[0_1px_0_rgba(0,0,0,0.04)] lg:p-7 dark:bg-surface-container-low/40">
+            <LotInfoStack
+              estimateLine={summarySeed.estimateLine}
+              currentPrice={currentPrice}
+              bidCount={history.length}
+              reservePrice={auction.reservePrice}
+              closingLabel={remainingLabel}
+              msRemaining={endTime - now}
+              saleEndLocalLabel={saleEndLocalLabel}
+              endAtIso={new Date(endTime).toISOString()}
+            />
 
-          <div className="mt-6">
-            <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
-          </div>
-
-          {auction.auctionType === "english" || auction.auctionType === "buy_it_now" ? (
-            <div className="mt-6">
-              <LotAutoBidPanel
-                auctionType={auction.auctionType}
-                maxAuto={maxAuto}
-                onMaxAutoChange={setMaxAuto}
-                serverMaxAuto={lastKnownMaxAuto}
-                disabled={gateBlocked(decision)}
-              />
+            <div className="mt-4">
+              <ArtworkTrustStrip compact />
             </div>
-          ) : null}
 
-          <div
-            id="bid-interactive-anchor"
-            tabIndex={-1}
-            className="mt-6 scroll-mt-28 outline-none focus:outline-none"
-          >
-            {bidSuccess ? (
-              <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
-                Bid placed successfully.
-              </output>
+            <div className="mt-6">
+              <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
+            </div>
+
+            {auction.auctionType === "english" || auction.auctionType === "buy_it_now" ? (
+              <details
+                className="group mt-6"
+                open={autoBidOpen}
+                onToggle={(e) => setAutoBidOpen((e.target as HTMLDetailsElement).open)}
+              >
+                <summary className="cursor-pointer list-none font-label text-xs font-bold uppercase tracking-widest text-primary hover:underline [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-1">
+                    Set a max auto-bid
+                    <ChevronDown className="size-3 transition-transform duration-200 group-open:rotate-180" />
+                  </span>
+                </summary>
+                <div className="mt-3">
+                  <LotAutoBidPanel
+                    auctionType={auction.auctionType}
+                    maxAuto={maxAuto}
+                    onMaxAutoChange={setMaxAuto}
+                    serverMaxAuto={lastKnownMaxAuto}
+                    disabled={gateBlocked(decision)}
+                  />
+                </div>
+              </details>
             ) : null}
 
-            {decision.kind === "block" ? (
-              decision.render()
-            ) : step === 1 ? (
-              <BidForm
-                auctionType={auction.auctionType}
-                minNumeric={minNumeric}
-                amount={amount}
-                maxAuto={maxAuto}
-                onAmountChange={setAmount}
-                onMaxAutoChange={setMaxAuto}
-                onReview={onReview}
-                onUseMinimum={onUseMinimum}
-                error={error}
-                showMaxAutoField={false}
-                reviewButtonClassName={FIGMA_PRIMARY}
-              />
-            ) : (
-              <BidConfirmation
-                amount={amount}
-                maxAuto={maxAuto.trim() === "" ? null : maxAuto}
-                error={error}
-                submitting={submitting}
-                onCancel={() => setStep(1)}
-                onConfirm={onConfirm}
-              />
-            )}
-          </div>
+            <div
+              id="bid-interactive-anchor"
+              tabIndex={-1}
+              className="mt-6 scroll-mt-28 outline-none focus:outline-none"
+            >
+              {bidSuccess ? (
+                <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+                  Bid placed successfully.
+                </output>
+              ) : null}
 
-          <div className="mt-6">
-            <LotDetailsInline
-              lot={auction}
-              minNextBid={minNumeric.toFixed(2)}
-              saleEndLocalLabel={saleEndLocalLabel}
-              currentPrice={currentPrice}
-            />
-            <p className="mt-3 text-xs leading-relaxed text-on-surface-variant">
+              {decision.kind === "block" ? (
+                decision.render()
+              ) : step === 1 ? (
+                <BidForm
+                  auctionType={auction.auctionType}
+                  minNumeric={minNumeric}
+                  amount={amount}
+                  maxAuto={maxAuto}
+                  onAmountChange={setAmount}
+                  onMaxAutoChange={setMaxAuto}
+                  onReview={onReview}
+                  onUseMinimum={onUseMinimum}
+                  error={error}
+                  showMaxAutoField={false}
+                  reviewButtonClassName={FIGMA_PRIMARY}
+                />
+              ) : (
+                <BidConfirmation
+                  amount={amount}
+                  maxAuto={maxAuto.trim() === "" ? null : maxAuto}
+                  error={error}
+                  submitting={submitting}
+                  onCancel={() => setStep(1)}
+                  onConfirm={onConfirm}
+                />
+              )}
+            </div>
+
+            <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
               Minimum next bid{" "}
               <span className="font-medium text-on-surface">
                 {formatMoney(minNumeric.toFixed(2))}
@@ -338,12 +343,6 @@ export function ArtworkBidPanel({
             </p>
           </div>
 
-          <BidHistory entries={history} />
-
-          <div className="mt-8">
-            <ArtworkTrustStrip />
-          </div>
-
           <BidStickyMobileBar
             live={live}
             decision={decision}
@@ -352,6 +351,8 @@ export function ArtworkBidPanel({
             currentPriceLabel={formatMoney(currentPrice)}
             priceFlash={priceFlash}
             onScrollToBid={scrollToBid}
+            remainingLabel={remainingLabel}
+            msRemaining={endTime - now}
           />
         </div>
       )}

@@ -12,8 +12,16 @@ import { LotMediaBlock } from "@/components/sections/artwork/redesign/lot-media-
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import { LotNavArrows } from "@/components/sections/artwork/redesign/lot-nav-arrows";
 import { LotRightSummary } from "@/components/sections/artwork/redesign/lot-right-summary";
+import { LotSaleContext } from "@/components/sections/artwork/redesign/lot-sale-context";
 import type { Lot } from "@auction/types";
 import type { ReactNode } from "react";
+
+export type ArtworkSaleContextVM = {
+  backHref: string;
+  title: string;
+  lotCount: number;
+  closesLabel: string;
+};
 
 type Props = {
   auction: Lot;
@@ -27,6 +35,8 @@ type Props = {
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   currentUserId?: string | null;
+  /** Parent sale (when the lot is in a sale). Renders a bar above the two-column grid. */
+  saleContext?: ArtworkSaleContextVM | null;
 };
 
 export function ArtworkSplitView({
@@ -41,6 +51,7 @@ export function ArtworkSplitView({
   isAuthenticated,
   watchedLotIds,
   currentUserId = null,
+  saleContext = null,
 }: Props) {
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
@@ -50,13 +61,24 @@ export function ArtworkSplitView({
           <LotNavArrows vm={heroVM} />
         </div>
 
-        <div className="mt-6 flex w-full flex-col items-start gap-8 lg:mt-10 lg:flex-row lg:gap-10">
-          <div className="flex w-full min-w-0 max-w-[786px] flex-col gap-6 lg:gap-8">
+        {saleContext ? (
+          <div className="mt-4">
+            <LotSaleContext
+              backHref={saleContext.backHref}
+              title={saleContext.title}
+              lotCount={saleContext.lotCount}
+              closesLabel={saleContext.closesLabel}
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid w-full grid-cols-1 items-start gap-8 lg:mt-10 lg:grid-cols-[minmax(0,786fr)_minmax(0,550fr)] lg:gap-10">
+          <div className="flex w-full min-w-0 flex-col gap-6 lg:gap-8">
             <LotMediaBlock lot={auction} />
             <LotMarketingAccordion blocks={marketingAccordionBlocks} />
           </div>
 
-          <div className="w-full min-w-0 max-w-[550px] flex-1 pb-24">
+          <div className="w-full min-w-0 pb-24">
             <LotRightSummary seed={summarySeed}>{bidPanel}</LotRightSummary>
             <div className="mt-6">
               <LotActionsRow
@@ -65,7 +87,7 @@ export function ArtworkSplitView({
                   <ShareButton
                     url={shareUrl}
                     title={auction.title}
-                    className="h-10 w-full min-h-10 border-[#474747] font-['DM_Sans',sans-serif] text-base font-semibold"
+                    className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
                   />
                 }
               />

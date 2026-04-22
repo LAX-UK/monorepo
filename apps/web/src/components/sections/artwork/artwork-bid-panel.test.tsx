@@ -64,12 +64,13 @@ describe("ArtworkBidPanel", () => {
           estimateLine: null,
           sellerName: "Seller",
           sellerHref: "/artist/other",
+          sellerImageUrl: null,
         }}
         initialUserMaxAuto={null}
       />,
     );
     expect(screen.getByText(/this is your listing/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /review bid amount/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
   it("shows bid form for a buyer", () => {
@@ -89,10 +90,11 @@ describe("ArtworkBidPanel", () => {
           estimateLine: null,
           sellerName: "Seller",
           sellerHref: "/artist/other",
+          sellerImageUrl: null,
         }}
         initialUserMaxAuto={null}
       />,
     );
-    expect(screen.getByRole("button", { name: /review bid amount/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
 });

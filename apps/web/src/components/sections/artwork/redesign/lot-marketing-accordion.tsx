@@ -25,19 +25,25 @@ export function LotMarketingAccordion({ blocks, extraItem = null }: Props) {
       <Accordion type="multiple" className="w-full space-y-0">
         {visible.map((b) => (
           <AccordionItem key={b.id} value={b.id} className="border-0">
-            <AccordionTrigger className="py-0 text-left font-['DM_Sans',sans-serif] text-lg font-medium uppercase leading-[21px] text-[#1C170D] hover:no-underline dark:text-on-surface [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-[#0A0A0A] dark:[&>svg]:text-on-surface">
+            <AccordionTrigger className="py-0 text-left font-['DM_Sans',sans-serif] text-lg font-medium uppercase leading-[21px] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {b.title}
             </AccordionTrigger>
             <AccordionContent>
-              <BodyText className="pt-4 text-sm leading-[135%] text-[#191919] dark:text-brand-500">
-                {b.content}
-              </BodyText>
+              {b.contentNode != null ? (
+                <div className="pt-4 text-sm leading-[135%] text-on-surface dark:text-brand-500">
+                  {b.contentNode}
+                </div>
+              ) : (
+                <BodyText className="pt-4 text-sm leading-[135%] text-on-surface dark:text-brand-500">
+                  {b.content ?? ""}
+                </BodyText>
+              )}
             </AccordionContent>
           </AccordionItem>
         ))}
         {extraItem ? (
           <AccordionItem value={extraItem.id} className="border-0">
-            <AccordionTrigger className="py-0 text-left text-lg font-medium uppercase text-[#1C170D] hover:no-underline dark:text-on-surface [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-[#0A0A0A] dark:[&>svg]:text-on-surface">
+            <AccordionTrigger className="py-0 text-left text-lg font-medium uppercase text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {extraItem.title}
             </AccordionTrigger>
             <AccordionContent>

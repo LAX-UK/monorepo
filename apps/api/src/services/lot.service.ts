@@ -1,4 +1,5 @@
 import type { CreateLotInput, Lot } from "@auction/types";
+import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -104,6 +105,23 @@ export class LotService {
       return err(new LotError("endTime must be after startTime"));
     }
     const updated = await this.lotRepo.update(lotId, input);
+    return ok(updated);
+  }
+
+  async updateMarketingDetails(
+    userRole: string,
+    lotId: string,
+    patch: UpdateLotMarketingDetailsInput,
+  ): Promise<Result<Lot, LotError | AuthzError>> {
+    if (userRole !== "admin") {
+      return err(new AuthzError("Only admins can update marketing details", 403));
+    }
+    const a = await this.lotRepo.findById(lotId);
+    if (!a) return err(new LotError("Lot not found", 404));
+    if (a.status === "cancelled" || a.status === "ended") {
+      return err(new LotError("Cannot update marketing details for this lot", 400));
+    }
+    const updated = await this.lotRepo.updateMarketingDetails(lotId, patch);
     return ok(updated);
   }
 

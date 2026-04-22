@@ -79,7 +79,7 @@ export function LotMoreFromRail({
                         placeholder="blur"
                         blurDataURL={TINY_IMAGE_BLUR}
                         className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, 25vw"
+                        sizes="(max-width: 1023px) 100vw, 42vw"
                       />
                     ) : (
                       <div className="absolute inset-0 bg-surface-container-low" />
