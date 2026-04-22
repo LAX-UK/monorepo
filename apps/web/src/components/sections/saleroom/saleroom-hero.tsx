@@ -1,23 +1,24 @@
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleHeroVM } from "./view-models";
 
 type Props = {
   hero: SaleHeroVM;
+  meta: ReactNode;
+  toolbar: ReactNode;
   actions: ReactNode;
 };
 
 /**
- * Presentational hero — accepts view-model data only (DIP). Action bar is composed by caller
- * via `actions` slot so the hero itself stays open for extension and closed for modification.
+ * Layout shell only: two-column hero (image | content). Slots for meta, toolbar, primary actions.
+ * No business logic — OCP + SRP.
  */
-export function SaleroomHero({ hero, actions }: Props) {
+export function SaleroomHero({ hero, meta, toolbar, actions }: Props) {
   return (
-    <section className="relative overflow-hidden bg-surface-container-low">
-      <div className="relative grid min-h-[56vh] grid-cols-1 lg:min-h-[64vh] lg:grid-cols-[3fr_2fr]">
-        <div className="relative h-[280px] w-full bg-surface-container-high lg:h-full">
+    <section className="bg-[#F1F1F3]">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-8 py-8 lg:flex-row lg:items-stretch lg:gap-6">
+        <div className="relative aspect-[655/424] w-full shrink-0 overflow-hidden bg-[#0A0A0A] lg:w-[min(100%,655px)] lg:max-w-[655px]">
           {hero.coverImage ? (
             <Image
               src={hero.coverImage}
@@ -27,104 +28,28 @@ export function SaleroomHero({ hero, actions }: Props) {
               placeholder="blur"
               blurDataURL={TINY_IMAGE_BLUR}
               className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 60vw"
+              sizes="(max-width: 1024px) 100vw, 655px"
             />
           ) : (
             <div
-              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface-container-high to-surface-container-low"
+              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-950"
               aria-hidden
             >
-              <span className="font-headline text-2xl text-on-surface-variant">{hero.title}</span>
+              <span className="px-4 text-center text-lg font-semibold text-white/80">
+                {hero.title}
+              </span>
             </div>
           )}
         </div>
 
-        <div className="relative flex flex-col gap-6 bg-surface px-6 py-10 md:px-12 lg:py-16">
-          <nav
-            aria-label="Breadcrumb"
-            className="font-label text-xs uppercase tracking-widest text-on-surface-variant"
-          >
-            <Link
-              href="/sales"
-              className="hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              Auctions
-            </Link>
-            <span className="mx-2" aria-hidden>
-              /
-            </span>
-            <span className="text-on-surface" aria-current="page">
-              {hero.title}
-            </span>
-          </nav>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {hero.isLive ? (
-              <span
-                className="inline-flex items-center gap-2 rounded-full bg-error-container/70 px-3 py-1 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-error-container"
-                aria-label="Live auction in progress"
-              >
-                <span
-                  className="inline-block h-2 w-2 animate-pulse rounded-full bg-error"
-                  aria-hidden
-                />
-                Live now
-              </span>
-            ) : null}
-            {hero.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full border border-outline-variant/40 px-3 py-1 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant"
-              >
-                {tag}
-              </span>
-            ))}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-10">
+          {meta}
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 flex-1">{toolbar}</div>
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-10">
+              {actions}
+            </div>
           </div>
-
-          <h1 className="font-headline text-3xl leading-tight text-on-surface md:text-5xl">
-            {hero.title}
-          </h1>
-
-          {hero.description ? (
-            <p className="max-w-xl font-body text-on-surface-variant">{hero.description}</p>
-          ) : null}
-
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-outline-variant/30 py-6 text-sm">
-            <div>
-              <dt className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
-                Dates
-              </dt>
-              <dd className="mt-1 font-headline text-base text-on-surface">{hero.startEndLabel}</dd>
-            </div>
-            <div>
-              <dt className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
-                Lots
-              </dt>
-              <dd className="mt-1 font-headline text-base text-on-surface">{hero.itemsLabel}</dd>
-            </div>
-            {hero.biddingStartsLabel ? (
-              <div>
-                <dt className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
-                  Bidding starts
-                </dt>
-                <dd className="mt-1 font-headline text-base text-on-surface">
-                  {hero.biddingStartsLabel}
-                </dd>
-              </div>
-            ) : null}
-            {hero.registrationClosesLabel ? (
-              <div>
-                <dt className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
-                  Registration closes
-                </dt>
-                <dd className="mt-1 font-headline text-base text-on-surface">
-                  {hero.registrationClosesLabel}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-
-          {actions}
         </div>
       </div>
     </section>

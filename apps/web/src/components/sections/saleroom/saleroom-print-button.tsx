@@ -4,11 +4,31 @@ import { Button } from "@auction/ui/components/button";
 import { Printer } from "lucide-react";
 import { useCallback } from "react";
 
+type Props = {
+  /** "text" matches Figma hero toolbar (no border, uppercase label). */
+  appearance?: "default" | "text";
+};
+
 /** Thin client wrapper around `window.print()` — kept as its own component (SRP). */
-export function SaleroomPrintButton() {
+export function SaleroomPrintButton({ appearance = "default" }: Props) {
   const print = useCallback(() => {
     if (typeof window !== "undefined") window.print();
   }, []);
+
+  if (appearance === "text") {
+    return (
+      <button
+        type="button"
+        onClick={print}
+        className="inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-[#1C170D] transition-opacity hover:opacity-80"
+        aria-label="Print catalogue"
+      >
+        <Printer className="size-5 shrink-0 text-black" strokeWidth={1} aria-hidden />
+        Print
+      </button>
+    );
+  }
+
   return (
     <Button
       type="button"

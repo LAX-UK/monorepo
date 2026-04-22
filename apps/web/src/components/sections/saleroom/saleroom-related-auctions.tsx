@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { SaleroomRelatedAuctionCard } from "./saleroom-related-auction-card";
 import type { RelatedSaleVM } from "./view-models";
@@ -10,31 +11,30 @@ type Props = {
 
 export function SaleroomRelatedAuctions({
   related,
-  title = "Related auctions",
+  title = "Related Auctions",
   viewAllHref = "/sales",
 }: Props) {
   if (related.length === 0) return null;
   return (
-    <section aria-labelledby="related-auctions-title" className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4">
+    <section aria-labelledby="related-auctions-title" className="flex flex-col gap-12">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <h2
           id="related-auctions-title"
-          className="font-headline text-2xl text-on-surface md:text-3xl"
+          className="text-4xl font-semibold leading-[60px] tracking-tight text-[#050505] md:text-[40px]"
         >
           {title}
         </h2>
         <Link
           href={viewAllHref}
-          className="inline-flex min-h-9 items-center gap-1 font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-6 items-center gap-2.5 text-center font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-[#050505] underline-offset-4 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          View all auctions
+          View all
+          <ChevronRight className="size-5 shrink-0" aria-hidden />
         </Link>
       </div>
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <ul className="m-0 flex list-none flex-col gap-0 p-0">
         {related.map((sale) => (
-          <li key={sale.id}>
-            <SaleroomRelatedAuctionCard sale={sale} />
-          </li>
+          <SaleroomRelatedAuctionCard key={sale.id} sale={sale} />
         ))}
       </ul>
     </section>

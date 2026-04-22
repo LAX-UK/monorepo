@@ -53,42 +53,47 @@ const baseLot: Lot = {
   },
 };
 
+const now = new Date("2026-01-15T12:00:00Z");
+
 describe("mapSaleToHeroVM", () => {
   it("emits onsite / hybrid / online tags and live-stream tag when streamUrl set", () => {
-    const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1" });
+    const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1", now });
     expect(vm.tags).toContain("Hybrid");
     expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
+    expect(vm.dateLine).toBeTruthy();
   });
 
   it("marks active sales as live and suppresses bidding-starts label", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
-      { totalLots: 1, shareUrl: "/sales/sale-1" },
+      { totalLots: 1, shareUrl: "/sales/sale-1", now },
     );
     expect(vm.isLive).toBe(true);
     expect(vm.biddingStartsLabel).toBeNull();
     expect(vm.itemsLabel).toBe("1 lot");
+    expect(vm.biddingStartsShort).toBeNull();
+    expect(vm.registrationClosesShort).toBeNull();
   });
 });
 
 describe("mapLotToCardVM", () => {
-  it("includes estimate label and owner detection", () => {
-    const vm = mapLotToCardVM(baseLot, { viewerUserId: "seller-1" });
+  it("includes estimate value and owner detection", () => {
+    const vm = mapLotToCardVM(baseLot, { viewerUserId: "seller-1", now, initialWatching: false });
     expect(vm.lotLabel).toBe("Lot 7");
-    expect(vm.estimateLabel).toMatch(/Est\./);
+    expect(vm.estimateValue).toBeTruthy();
     expect(vm.viewerOwnsLot).toBe(true);
     expect(vm.isLive).toBe(true);
   });
 
   it("returns null estimate when marketing details absent", () => {
-    const vm = mapLotToCardVM({ ...baseLot, marketingDetails: {} }, { viewerUserId: null });
-    expect(vm.estimateLabel).toBeNull();
+    const vm = mapLotToCardVM({ ...baseLot, marketingDetails: {} }, { viewerUserId: null, now });
+    expect(vm.estimateValue).toBeNull();
     expect(vm.viewerOwnsLot).toBe(false);
   });
 
   it("labels final bid when lot has ended", () => {
-    const vm = mapLotToCardVM({ ...baseLot, status: "ended" }, { viewerUserId: null });
+    const vm = mapLotToCardVM({ ...baseLot, status: "ended" }, { viewerUserId: null, now });
     expect(vm.currentBidLabel).toBe("Final bid");
     expect(vm.closingLabel).toBeNull();
     expect(vm.isLive).toBe(false);

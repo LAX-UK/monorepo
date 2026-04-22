@@ -17,6 +17,13 @@ export type SaleHeroVM = {
   shareUrl: string;
   itemsLabel: string;
   tags: string[];
+  /** Uppercased one-line: date range | time | location (or empty tail if unknown). */
+  dateLine: string;
+  /** Short relative copy e.g. "10 days" for registration / bidding rows. */
+  registrationClosesShort: string | null;
+  biddingStartsShort: string | null;
+  /** Shown next to the live dot in the date row. */
+  liveLabel: string;
 };
 
 export type SaleLotCardVM = {
@@ -26,12 +33,21 @@ export type SaleLotCardVM = {
   title: string;
   imageUrl: string | null;
   imageAlt: string;
-  estimateLabel: string | null;
+  /** Raw estimate value line (e.g. "$1,200,000") for the Estimate column. */
+  estimateValue: string | null;
   currentBidLabel: string;
   currentBidValue: string;
+  /** e.g. "17 bids" — may be "—" when unknown. */
+  bidsCountLabel: string | null;
   closingLabel: string | null;
+  /** Short relative e.g. "2 days" for the Closing row. */
+  closingShort: string | null;
   isLive: boolean;
   viewerOwnsLot: boolean;
+  /** Secondary line under title: artist if known, else medium, else null. */
+  artistOrMedium: string | null;
+  /** Initial watch state for the Follow control. */
+  viewerIsWatching: boolean;
 };
 
 export type RelatedSaleVM = {
@@ -42,6 +58,8 @@ export type RelatedSaleVM = {
   dateLabel: string;
   itemsLabel: string;
   imageUrl: string | null;
+  /** Uppercased date line for related row header (alias of dateLabel for Figma). */
+  dateLine: string;
 };
 
 export type BidderRowVM = {

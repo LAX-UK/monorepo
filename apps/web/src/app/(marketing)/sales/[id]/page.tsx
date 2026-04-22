@@ -8,6 +8,8 @@ import {
 import { SaleroomBiddersPanel } from "@/components/sections/saleroom/saleroom-bidders-panel";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
+import { SaleroomHeroMeta } from "@/components/sections/saleroom/saleroom-hero-meta";
+import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
 import { SaleroomPaginator } from "@/components/sections/saleroom/saleroom-paginator";
@@ -44,8 +46,7 @@ type PageProps = {
 
 const CATALOG_PAGE_SIZE = 12;
 const BIDDERS_PAGE_SIZE = 24;
-const ALLOWED_SORTS = ["lot", "priceAsc", "priceDesc", "endingAsc"] as const;
-type CatalogSort = (typeof ALLOWED_SORTS)[number];
+const CATALOG_SORT = "lot" as const;
 
 function firstString(v: string | string[] | undefined): string | undefined {
   if (v === undefined) return undefined;
@@ -53,12 +54,9 @@ function firstString(v: string | string[] | undefined): string | undefined {
 }
 
 function parsePage(raw: string | undefined): number {
+  if (raw === "all") return 1;
   const n = Number.parseInt(raw ?? "1", 10);
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 500) : 1;
-}
-
-function parseSort(raw: string | undefined): CatalogSort {
-  return (ALLOWED_SORTS as readonly string[]).includes(raw ?? "") ? (raw as CatalogSort) : "lot";
 }
 
 function parseTab(raw: string | undefined): TabKey {
@@ -83,25 +81,75 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
+async function loadCatalogLotsPage(
+  id: string,
+  tab: TabKey,
+  pageRaw: string | undefined,
+): Promise<SaleLotsPage> {
+  const isAll = pageRaw === "all" && tab === "catalog";
+  const pageNum = isAll ? 1 : parsePage(pageRaw);
+
+  if (isAll) {
+    const p = await getServerSaleLotsPage({
+      id,
+      page: 1,
+      pageSize: CATALOG_PAGE_SIZE,
+      sort: CATALOG_SORT,
+    });
+    if (!p) throw new Error("notfound");
+    const cap = Math.min(48, p.total);
+    if (cap > p.items.length) {
+      const full = await getServerSaleLotsPage({ id, page: 1, pageSize: cap, sort: CATALOG_SORT });
+      if (!full) throw new Error("notfound");
+      return full;
+    }
+    return p;
+  }
+
+  const p = await getServerSaleLotsPage({
+    id,
+    page: pageNum,
+    pageSize: CATALOG_PAGE_SIZE,
+    sort: CATALOG_SORT,
+  });
+  if (!p) throw new Error("notfound");
+  return p;
+}
+
 export default async function SaleDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const sp = await searchParams;
   const tab = parseTab(firstString(sp.tab));
-  const page = parsePage(firstString(sp.page));
-  const sort = parseSort(firstString(sp.sort));
+  const pageRaw = firstString(sp.page);
+  const isCatalogLoadAll = pageRaw === "all" && tab === "catalog";
+  const pageNum = isCatalogLoadAll ? 1 : parsePage(pageRaw);
 
-  const [bundle, lotsPage, session] = await Promise.all([
+  const [bundle, session] = await Promise.all([
     getServerSaleWithLots(id).catch(() => null),
-    getServerSaleLotsPage({ id, page, pageSize: CATALOG_PAGE_SIZE, sort }).catch(() => null),
     getServerSessionUser(),
   ]);
-  if (!bundle || !lotsPage) notFound();
+  if (!bundle) notFound();
+
+  const lotsPage =
+    tab === "catalog"
+      ? await loadCatalogLotsPage(id, tab, pageRaw).catch(() => null)
+      : await getServerSaleLotsPage({
+          id,
+          page: 1,
+          pageSize: CATALOG_PAGE_SIZE,
+          sort: CATALOG_SORT,
+        }).catch(() => null);
+  if (!lotsPage) notFound();
 
   const categoryId = bundle.sale.categoryId ?? null;
-  const [bidders, follow, relatedSales] = await Promise.all([
+  const bidders =
     tab === "bidders"
-      ? getServerSaleBidders({ id, page, pageSize: BIDDERS_PAGE_SIZE }).catch(() => null)
-      : Promise.resolve(null),
+      ? await getServerSaleBidders({ id, page: pageNum, pageSize: BIDDERS_PAGE_SIZE }).catch(
+          () => null,
+        )
+      : null;
+
+  const [follow, relatedSales] = await Promise.all([
     session
       ? getServerSaleFollowState(id).catch(() => ({ isFollowing: false }))
       : Promise.resolve({ isFollowing: false }),
@@ -112,24 +160,26 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const viewerUserId = session?.id ?? null;
   const shareUrl = `${base}/sales/${bundle.sale.id}`;
   const basePath = `/sales/${bundle.sale.id}`;
-  const preservedQuery: Array<[string, string]> = [
-    ["tab", tab],
-    ["sort", sort],
-  ];
+  const preservedQuery: Array<[string, string]> = [["tab", tab]];
 
+  const now = new Date();
   const heroVM = mapSaleToHeroVM(bundle.sale, {
     totalLots: lotsPage.total,
     shareUrl,
+    now,
   });
 
   const tabs: TabDescriptor[] = [
-    { key: "catalog", label: "Catalog", count: lotsPage.total },
+    { key: "catalog", label: "Browse lots", count: lotsPage.total },
     typeof bidders?.total === "number"
       ? { key: "bidders", label: "Registered bidders", count: bidders.total }
       : { key: "bidders", label: "Registered bidders" },
   ];
 
-  const shownLots = Math.min(page * CATALOG_PAGE_SIZE, lotsPage.total);
+  const shownLots = isCatalogLoadAll
+    ? Math.min(lotsPage.items.length, lotsPage.total)
+    : Math.min(pageNum * CATALOG_PAGE_SIZE, lotsPage.total);
+
   const accumulatedLotIds = new Set<string>();
   const lotVMs = lotsPage.items
     .filter((lot) => {
@@ -137,7 +187,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       accumulatedLotIds.add(lot.id);
       return true;
     })
-    .map((lot) => mapLotToCardVM(lot, { viewerUserId }));
+    .map((lot) => mapLotToCardVM(lot, { viewerUserId, now, initialWatching: false }));
 
   const relatedVMs = relatedSales.map((r) => mapSaleToRelatedVM(r.sale, r.lotCount));
 
@@ -147,7 +197,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     { name: bundle.sale.title, path: basePath },
   ]);
 
-  // Structured data lists only the current page of lots to keep payload small (SEO + perf).
   const itemsLd =
     lotVMs.length > 0
       ? itemListJsonLd(
@@ -166,7 +215,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     : `/login?next=${encodeURIComponent(basePath)}`;
 
   return (
-    <main id="main-content" className="bg-surface pb-32 pt-(--section-pt) lg:pb-24">
+    <main id="main-content" className="bg-[#F1F1F3] pb-32 pt-(--section-pt) lg:pb-24">
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
@@ -178,11 +227,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
       <SaleroomHero
         hero={heroVM}
+        meta={<SaleroomHeroMeta hero={heroVM} />}
+        toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
             saleId={bundle.sale.id}
-            saleTitle={bundle.sale.title}
-            shareUrl={shareUrl}
             isAuthenticated={isAuthenticated}
             initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
             registerHref={registerHref}
@@ -191,7 +240,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      <section id="catalog" className="mx-auto max-w-screen-2xl px-6 pt-10 md:px-20">
+      <section
+        id="catalog"
+        className="mx-auto max-w-[1440px] px-4 pb-0 pt-10 sm:px-6 md:px-8 md:pt-20"
+      >
         <SaleroomTabs
           tabs={tabs}
           activeTab={tab}
@@ -200,20 +252,25 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         >
           {tab === "catalog" ? (
             <>
-              <CatalogSortBar basePath={basePath} activeSort={sort} tab={tab} />
               <SaleroomLotsGrid
                 lots={lotVMs}
                 renderActions={(lot) => (
-                  <SaleroomLotActions lotId={lot.id} isAuthenticated={isAuthenticated} compact />
+                  <SaleroomLotActions
+                    lotId={lot.id}
+                    isAuthenticated={isAuthenticated}
+                    initialWatching={lot.viewerIsWatching}
+                    compact
+                  />
                 )}
               />
               <SaleroomPaginator
                 shown={shownLots}
                 total={lotsPage.total}
-                page={page}
+                page={pageNum}
                 pageSize={CATALOG_PAGE_SIZE}
                 basePath={basePath}
                 preservedQuery={preservedQuery}
+                showLoadAll={!isCatalogLoadAll}
               />
             </>
           ) : (
@@ -228,9 +285,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
               )}
               {bidders ? (
                 <SaleroomPaginator
-                  shown={Math.min(page * BIDDERS_PAGE_SIZE, bidders.total)}
+                  shown={Math.min(pageNum * BIDDERS_PAGE_SIZE, bidders.total)}
                   total={bidders.total}
-                  page={page}
+                  page={pageNum}
                   pageSize={BIDDERS_PAGE_SIZE}
                   basePath={basePath}
                   preservedQuery={preservedQuery}
@@ -243,52 +300,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       </section>
 
       {relatedVMs.length > 0 ? (
-        <section className="mx-auto mt-16 max-w-screen-2xl px-6 md:px-20">
+        <section className="mx-auto mt-16 max-w-[1440px] px-4 sm:px-6 md:px-8">
           <SaleroomRelatedAuctions related={relatedVMs} />
         </section>
       ) : null}
     </main>
-  );
-}
-
-function CatalogSortBar({
-  basePath,
-  activeSort,
-  tab,
-}: {
-  basePath: string;
-  activeSort: CatalogSort;
-  tab: TabKey;
-}) {
-  const links: Array<{ key: CatalogSort; label: string }> = [
-    { key: "lot", label: "Catalog order" },
-    { key: "endingAsc", label: "Ending soon" },
-    { key: "priceDesc", label: "Price · High" },
-    { key: "priceAsc", label: "Price · Low" },
-  ];
-  return (
-    <nav aria-label="Sort catalog" className="mb-6 flex flex-wrap gap-2">
-      {links.map(({ key, label }) => {
-        const qs = new URLSearchParams({ tab });
-        if (key !== "lot") qs.set("sort", key);
-        const href = `${basePath}?${qs.toString()}`;
-        const active = activeSort === key;
-        return (
-          <a
-            key={key}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-              active
-                ? "border-primary bg-primary/10 text-on-surface"
-                : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40 hover:text-on-surface"
-            }`}
-          >
-            {label}
-          </a>
-        );
-      })}
-    </nav>
   );
 }
 

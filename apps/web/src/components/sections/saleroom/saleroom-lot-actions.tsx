@@ -6,30 +6,43 @@ import Link from "next/link";
 type Props = {
   lotId: string;
   isAuthenticated: boolean;
-  /** Compact variant keeps the action bar inside 4-col cards without overflowing. */
+  initialWatching: boolean;
+  /** Compact variant kept for API compatibility; both use equal flex buttons in Figma. */
   compact?: boolean;
 };
 
+const bidClass =
+  "box-border h-10 min-w-0 flex-1 border border-[#A3A3A3] bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] rounded-[4px] hover:bg-transparent";
+
 /**
- * Per-lot actions slot. OCP: the lot card accepts any ReactNode as actions,
- * so callers can swap Bid/Watch for Results/Unavailable without forking the card.
+ * Per-lot actions: Bid + Follow (watch). OCP: `SaleroomLotCard` still accepts any `actions` slot.
  */
-export function SaleroomLotActions({ lotId, isAuthenticated, compact = true }: Props) {
-  const sizeClasses = compact
-    ? "min-h-9 h-auto px-3 py-1.5 text-[0.7rem]"
-    : "min-h-11 h-auto px-4 py-2 text-xs";
+export function SaleroomLotActions({
+  lotId,
+  isAuthenticated,
+  initialWatching,
+  compact: _c,
+}: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-row items-stretch gap-6">
       <Button
         asChild
-        className={`${sizeClasses} gap-1 rounded-full font-label font-bold uppercase tracking-widest`}
+        variant="ghost"
+        className={`min-w-0 flex-1 ${bidClass} px-6 shadow-none hover:opacity-90`}
       >
-        <Link href={`/artwork/${lotId}`}>
-          <Gavel className="size-3.5" aria-hidden />
+        <Link className="w-full justify-center" href={`/artwork/${lotId}`}>
+          <Gavel className="mr-2.5 size-4 shrink-0" aria-hidden />
           Bid
         </Link>
       </Button>
-      <ArtworkWatchToggle lotId={lotId} initialWatching={false} isAuthenticated={isAuthenticated} />
+      <div className="min-w-0 flex-1 [&>a]:flex [&>button]:flex [&>a]:w-full [&>button]:w-full">
+        <ArtworkWatchToggle
+          lotId={lotId}
+          isAuthenticated={isAuthenticated}
+          initialWatching={initialWatching}
+          appearance="outlined-block"
+        />
+      </div>
     </div>
   );
 }

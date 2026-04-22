@@ -33,18 +33,14 @@ function buildHref(basePath: string, tab: TabKey, preserved: Array<[string, stri
 }
 
 /**
- * SSR-friendly tab container built on shadcn `Tabs`.
- * State lives in the URL (`?tab=`) so tabs are shareable and SEO-safe;
- * each trigger is a `<Link>` via `asChild`, so no client JS is required
- * for navigation. The Radix root is controlled (`value`) without an
- * `onValueChange` handler because the URL is the source of truth.
+ * SSR-friendly tab container — URL is source of truth (`?tab=`).
  */
 export function SaleroomTabs({ tabs, activeTab, basePath, preservedQuery, children }: Props) {
   return (
     <Tabs value={activeTab} className="w-full">
       <TabsList
         aria-label="Saleroom sections"
-        className="sticky top-0 z-10 mb-8 flex h-auto w-full justify-start gap-6 rounded-none border-b border-outline-variant/40 bg-surface/90 p-0 px-6 backdrop-blur md:px-20"
+        className="mb-10 flex h-auto w-full justify-start gap-12 rounded-none border-b border-[#D1D1D1] bg-transparent p-0"
       >
         {tabs.map((tab) => {
           const active = tab.key === activeTab;
@@ -54,14 +50,14 @@ export function SaleroomTabs({ tabs, activeTab, basePath, preservedQuery, childr
               key={tab.key}
               value={tab.key}
               asChild
-              className="relative inline-flex min-h-12 items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-0 py-3 font-label text-sm font-semibold uppercase tracking-widest text-on-surface-variant shadow-none transition-colors hover:text-on-surface data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-on-surface data-[state=active]:shadow-none"
+              className="relative inline-flex min-h-10 items-center gap-1.5 rounded-none border-0 border-b-[1.5px] border-transparent bg-transparent px-0 py-2.5 font-['DM_Sans',sans-serif] text-lg font-semibold uppercase leading-[21px] text-[#1C170D] shadow-none data-[state=active]:border-b-[#000000] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             >
-              <Link href={href}>
+              <Link href={href} className={active ? "text-[#1C170D]" : "text-[#1C170D]/80"}>
                 {tab.label}
                 {typeof tab.count === "number" ? (
                   <Badge
                     variant={active ? "default" : "secondary"}
-                    className="ml-1 rounded-full px-2 py-0.5 text-[0.65rem] font-bold"
+                    className="ml-1 rounded-full px-2 py-0.5 text-xs font-bold normal-case"
                   >
                     {tab.count}
                   </Badge>

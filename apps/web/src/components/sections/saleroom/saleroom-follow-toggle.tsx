@@ -13,11 +13,19 @@ type Props = {
   size?: "sm" | "lg";
   /** Optional label override (e.g. for a hero CTA). */
   label?: string;
+  /**
+   * `outlined-block` — Figma saleroom hero: 40px height, square corners, #0A0A0A border.
+   * `rounded` (default) — pill / existing marketing style.
+   */
+  appearance?: "rounded" | "outlined-block";
 };
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
+
+const outlinedClass =
+  "box-border inline-flex h-10 min-w-[117px] items-center justify-center gap-2.5 border border-[#0A0A0A] bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] rounded-[4px] hover:bg-transparent hover:opacity-90";
 
 export function SaleroomFollowToggle({
   saleId,
@@ -25,6 +33,7 @@ export function SaleroomFollowToggle({
   isAuthenticated,
   size = "lg",
   label,
+  appearance = "rounded",
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
@@ -48,6 +57,17 @@ export function SaleroomFollowToggle({
     size === "lg" ? "min-h-11 px-5 py-2.5 text-xs" : "min-h-9 px-3 py-1.5 text-[0.7rem]";
 
   if (!isAuthenticated) {
+    if (appearance === "outlined-block") {
+      return (
+        <Link
+          href={`/login?next=/sales/${encodeURIComponent(saleId)}`}
+          className={`${outlinedClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]`}
+        >
+          <BellRing className="size-4 shrink-0" aria-hidden />
+          {label ?? "Follow"}
+        </Link>
+      );
+    }
     return (
       <Link
         href={`/login?next=/sales/${encodeURIComponent(saleId)}`}
@@ -56,6 +76,26 @@ export function SaleroomFollowToggle({
         <BellRing className="size-4" aria-hidden />
         {label ?? "Sign in to follow"}
       </Link>
+    );
+  }
+
+  if (appearance === "outlined-block") {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={busy}
+        aria-pressed={following}
+        onClick={() => void toggle()}
+        className={`${outlinedClass} ${following ? "bg-primary-container/20" : ""}`}
+      >
+        {following ? (
+          <BellRing className="size-4 shrink-0" aria-hidden />
+        ) : (
+          <Bell className="size-4 shrink-0" aria-hidden />
+        )}
+        {label ? (following ? "Following" : label) : following ? "Following" : "Follow sale"}
+      </Button>
     );
   }
 

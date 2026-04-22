@@ -1,5 +1,4 @@
 import { Button } from "@auction/ui/components/button";
-import { Progress } from "@auction/ui/components/progress";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 
@@ -17,6 +16,8 @@ type Props = {
   preservedQuery?: Array<[string, string]>;
   /** Optional label override ("lots" vs "bidders"). */
   unitLabel?: string;
+  /** When true, show underlined "Load all" (maps to `page=all` on the route). */
+  showLoadAll?: boolean;
 };
 
 function buildNextHref(
@@ -33,11 +34,18 @@ function buildNextHref(
   return `${basePath}?${qs.toString()}`;
 }
 
+function buildLoadAllHref(basePath: string, preserved: Array<[string, string]> = []): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of preserved) {
+    if (k === "page") continue;
+    if (v) qs.set(k, v);
+  }
+  qs.set("page", "all");
+  return `${basePath}?${qs.toString()}`;
+}
+
 /**
- * Server-pagination friendly "Load more" control.
- * Uses shadcn `Progress` for the completion bar and `Button asChild`
- * with a `<Link rel="next">` so crawlers can follow paging without
- * any client JS. No "Load all" (performance + SEO + security).
+ * Figma: narrow column, flat progress, Load more, optional Load all.
  */
 export function SaleroomPaginator({
   shown,
@@ -47,35 +55,58 @@ export function SaleroomPaginator({
   basePath,
   preservedQuery,
   unitLabel = "lots",
+  showLoadAll = false,
 }: Props) {
   const hasMore = shown < total;
   const nextPage = page + 1;
   const percent = total === 0 ? 0 : Math.min(100, Math.round((shown / total) * 100));
   const nextHref = buildNextHref(basePath, nextPage, preservedQuery);
+  const loadAllHref = buildLoadAllHref(basePath, preservedQuery);
   const remaining = Math.min(pageSize, Math.max(0, total - shown));
+  const canLoadAll = showLoadAll && total > 0;
 
   return (
-    <div className="flex flex-col items-center gap-4 py-10">
-      <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
-        Showing {shown} of {total} {unitLabel}
+    <div className="mx-auto flex w-full max-w-[233px] flex-col items-stretch gap-4 py-10 text-center">
+      <p className="text-center text-xs leading-4 text-[#474747]">
+        Showing {shown}/{total}
+        <span className="sr-only">
+          {" "}
+          {percent}% of {unitLabel} loaded
+        </span>
       </p>
-      <Progress
-        value={percent}
-        className="h-1 w-full max-w-xl bg-surface-container-high"
-        aria-label={`${percent}% of ${unitLabel} loaded`}
-      />
+      <div className="relative h-[5px] w-full overflow-hidden bg-[#D1D1D1]" aria-hidden>
+        <div
+          className="h-full bg-[#050505] transition-[width] duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
       {hasMore ? (
         <Button
           asChild
-          variant="outline"
-          className="min-h-11 rounded-full border-outline-variant/60 bg-surface-container-low px-6 py-2.5 font-label text-xs font-bold uppercase tracking-widest text-on-surface hover:border-primary hover:text-primary"
+          variant="ghost"
+          className="h-10 w-full min-w-0 border border-[#A3A3A3] bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] hover:bg-transparent"
         >
-          <Link href={nextHref} rel="next" prefetch={false}>
-            Load more
-            <ChevronDown className="size-4" aria-hidden />
-            <span className="sr-only">— next {remaining} items</span>
+          <Link
+            href={nextHref}
+            rel="next"
+            prefetch={false}
+            className="inline-flex items-center justify-center"
+          >
+            Load More
+            <ChevronDown className="ml-1 size-4" aria-hidden />
+            <span className="sr-only">
+              — next {remaining} {unitLabel}
+            </span>
           </Link>
         </Button>
+      ) : null}
+      {canLoadAll && hasMore ? (
+        <Link
+          href={loadAllHref}
+          className="text-center font-['DM_Sans',sans-serif] text-base font-normal leading-6 tracking-[0.8px] text-[#050505] underline decoration-[#050505] underline-offset-2"
+        >
+          Load all
+        </Link>
       ) : null}
     </div>
   );

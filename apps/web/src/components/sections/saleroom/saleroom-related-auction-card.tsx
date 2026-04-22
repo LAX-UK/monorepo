@@ -1,5 +1,6 @@
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
-import { Calendar, ImageIcon, Package } from "lucide-react";
+import { Button } from "@auction/ui/components/button";
+import { ImageIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { RelatedSaleVM } from "./view-models";
@@ -9,56 +10,50 @@ type Props = {
 };
 
 /**
- * Horizontal card for related auctions (image left, meta right) — matches Figma.
+ * Full-width horizontal row: image | meta | Explore (Figma).
  */
 export function SaleroomRelatedAuctionCard({ sale }: Props) {
   return (
-    <Link
-      href={sale.href}
-      className="group grid grid-cols-[120px_1fr] gap-4 rounded-lg bg-surface-container-low/50 p-4 ring-1 ring-outline-variant/20 transition-all hover:ring-outline-variant/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:grid-cols-[160px_1fr]"
-    >
-      <div className="relative aspect-[4/3] overflow-hidden rounded bg-surface-container-high">
+    <li className="flex flex-col gap-6 border-b border-[#D1D1D1] py-8 last:border-b-0 lg:flex-row lg:items-stretch lg:gap-6">
+      <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-neutral-200 sm:h-[240px] lg:h-[300px] lg:w-[435px] lg:max-w-[435px]">
         {sale.imageUrl ? (
           <Image
             src={sale.imageUrl}
             alt={sale.title}
             fill
-            sizes="(max-width: 640px) 30vw, 160px"
+            sizes="(max-width: 1024px) 100vw, 435px"
             placeholder="blur"
             blurDataURL={TINY_IMAGE_BLUR}
-            className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
+            className="object-cover"
           />
         ) : (
           <div
-            className="absolute inset-0 flex items-center justify-center text-xs text-on-surface-variant"
+            className="absolute inset-0 flex items-center justify-center text-neutral-500"
             aria-hidden
           >
-            <ImageIcon className="size-6" aria-hidden />
+            <ImageIcon className="size-8" aria-hidden />
           </div>
         )}
       </div>
-      <div className="flex flex-col justify-between gap-2 py-1">
-        <div>
-          <p className="font-label text-[0.6rem] uppercase tracking-widest text-primary">
-            {sale.kindLabel}
-          </p>
-          <h3 className="mt-1 line-clamp-2 font-headline text-base text-on-surface group-hover:text-primary">
-            {sale.title}
-          </h3>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-10">
+        <div className="mx-auto flex w-full max-w-[460px] flex-col items-start gap-10 self-stretch">
+          <p className="text-base uppercase leading-4 text-[#191919]">{sale.dateLine}</p>
+          <div className="flex flex-col gap-4">
+            <p className="text-base leading-4 text-[#191919]">{sale.kindLabel}</p>
+            <h3 className="text-2xl font-semibold leading-6 text-[#050505]">{sale.title}</h3>
+            <p className="text-base uppercase leading-4 text-[#191919]">{sale.itemsLabel}</p>
+          </div>
         </div>
-        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
-          <div className="flex items-center gap-1">
-            <Calendar className="text-xs" aria-hidden />
-            <dt className="sr-only">Dates</dt>
-            <dd>{sale.dateLabel}</dd>
-          </div>
-          <div className="flex items-center gap-1">
-            <Package className="text-xs" aria-hidden />
-            <dt className="sr-only">Items</dt>
-            <dd>{sale.itemsLabel}</dd>
-          </div>
-        </dl>
+        <div className="flex justify-end">
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 min-w-[125px] rounded-[4px] border border-[#0A0A0A] bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-[#0A0A0A] hover:bg-transparent"
+          >
+            <Link href={sale.href}>Explore</Link>
+          </Button>
+        </div>
       </div>
-    </Link>
+    </li>
   );
 }

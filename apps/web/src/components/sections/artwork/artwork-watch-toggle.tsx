@@ -10,13 +10,26 @@ type Props = {
   lotId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
+  /**
+   * `outlined-block` — saleroom lot card: 40px, light border #A3A3A3, 4px radius.
+   * `default` — existing card / detail rail (unchanged for LSP).
+   */
+  appearance?: "default" | "outlined-block";
 };
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: Props) {
+const lotBtnClass =
+  "box-border inline-flex h-10 flex-1 min-w-0 items-center justify-center border border-[#A3A3A3] bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] rounded-[4px] hover:bg-transparent hover:opacity-90";
+
+export function ArtworkWatchToggle({
+  lotId,
+  initialWatching,
+  isAuthenticated,
+  appearance = "default",
+}: Props) {
   const [watching, setWatching] = useState(initialWatching);
   const [busy, setBusy] = useState(false);
 
@@ -43,6 +56,16 @@ export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: 
   }, [lotId, busy, isAuthenticated, watching]);
 
   if (!isAuthenticated) {
+    if (appearance === "outlined-block") {
+      return (
+        <Link
+          href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
+          className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]`}
+        >
+          Follow
+        </Link>
+      );
+    }
     return (
       <Link
         href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
@@ -51,6 +74,21 @@ export function ArtworkWatchToggle({ lotId, initialWatching, isAuthenticated }: 
         <Eye className="size-4" aria-hidden />
         Sign in to watch
       </Link>
+    );
+  }
+
+  if (appearance === "outlined-block") {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={busy}
+        aria-pressed={watching}
+        onClick={() => void toggle()}
+        className={`${lotBtnClass} ${watching ? "border-primary/40 bg-primary/5" : ""}`}
+      >
+        {watching ? "Following" : "Follow"}
+      </Button>
     );
   }
 

@@ -1,57 +1,44 @@
-import { ShareButton } from "@/components/marketing/share-button";
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
-import { SaleroomPrintButton } from "@/components/sections/saleroom/saleroom-print-button";
-import { Button } from "@auction/ui/components/button";
 import { UserCheck } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
   saleId: string;
-  saleTitle: string;
-  shareUrl: string;
   isAuthenticated: boolean;
   initialFollowing: boolean;
-  /** Hero CTA — deep-links to register flow or resolves inside logged-in experience. */
   registerHref: string;
   showRegisterCta: boolean;
 };
 
+const btnClass =
+  "box-border inline-flex h-10 min-w-0 items-center justify-center border border-[#0A0A0A] bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-[#0A0A0A] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A] rounded-[4px]";
+
 /**
- * Hero action bar — Register, Follow, Share, Print.
- * SRP: composes focused actions; each child owns its own logic.
- * The Register CTA uses shadcn `Button asChild` so the link inherits
- * primary-button styling with keyboard focus rings.
+ * Register to Bid + sale Follow — hero CTAs only (SRP).
  */
 export function SaleroomHeroActions({
   saleId,
-  saleTitle,
-  shareUrl,
   isAuthenticated,
   initialFollowing,
   registerHref,
   showRegisterCta,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-10 sm:w-auto">
       {showRegisterCta ? (
-        <Button
-          asChild
-          className="h-auto min-h-11 rounded-full px-6 py-2.5 font-label text-xs font-bold uppercase tracking-widest"
-        >
-          <Link href={registerHref}>
-            <UserCheck className="size-4" aria-hidden />
-            Register to bid
-          </Link>
-        </Button>
+        <Link href={registerHref} className={btnClass}>
+          <UserCheck className="mr-2.5 size-4 shrink-0" aria-hidden />
+          Register to Bid
+        </Link>
       ) : null}
       <SaleroomFollowToggle
         saleId={saleId}
         initialFollowing={initialFollowing}
         isAuthenticated={isAuthenticated}
         size="lg"
+        appearance="outlined-block"
+        label="Follow"
       />
-      <ShareButton url={shareUrl} title={saleTitle} className="rounded-full" />
-      <SaleroomPrintButton />
     </div>
   );
 }

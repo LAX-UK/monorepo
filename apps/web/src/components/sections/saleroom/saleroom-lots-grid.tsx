@@ -10,7 +10,7 @@ type Props = {
 };
 
 /**
- * Pure layout component. 4-col at lg, 2-col at sm, 1-col mobile — matches Figma.
+ * Pure layout: Figma 4-up at xl; 32px column gap, 49px row gap.
  */
 export function SaleroomLotsGrid({
   lots,
@@ -21,9 +21,9 @@ export function SaleroomLotsGrid({
     return <p className="py-12 text-center text-on-surface-variant">{emptyMessage}</p>;
   }
   return (
-    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <ul className="grid list-none grid-cols-1 justify-items-stretch gap-x-8 gap-y-12 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {lots.map((lot) => (
-        <li key={lot.id}>
+        <li key={lot.id} className="flex min-w-0 justify-center sm:justify-start">
           <SaleroomLotCard lot={lot} actions={renderActions?.(lot)} />
         </li>
       ))}
