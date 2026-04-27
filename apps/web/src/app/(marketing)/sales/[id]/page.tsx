@@ -201,15 +201,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, itemsLd] : [crumbs]));
 
   const isAuthenticated = Boolean(session);
-  const showRegisterCta = !isAuthenticated || heroVM.status === "scheduled";
-  const registerHref = isAuthenticated
-    ? `${basePath}#catalog`
-    : `/login?next=${encodeURIComponent(basePath)}`;
 
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-32 pt-[var(--section-pt-tight)] dark:bg-background lg:pb-24"
+      className="bg-page-bg pb-32 pt-(--section-pt-tight) dark:bg-background lg:pb-24"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
@@ -217,7 +213,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       <SaleMobileSummaryBar
         end={bundle.sale.endTime}
         saleTitle={bundle.sale.title}
-        showRegisterCta={!isAuthenticated}
       />
 
       <SaleroomHero
@@ -230,8 +225,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             saleId={bundle.sale.id}
             isAuthenticated={isAuthenticated}
             initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-            registerHref={registerHref}
-            showRegisterCta={showRegisterCta}
           />
         }
       />

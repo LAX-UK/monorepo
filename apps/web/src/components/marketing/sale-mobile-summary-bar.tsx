@@ -1,17 +1,13 @@
 "use client";
 
 import { Countdown, StickyBidBar } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 
 type Props = {
   end: Date;
   saleTitle: string;
-  /** When false, hides the register CTA (e.g. signed-in users). */
-  showRegisterCta?: boolean;
 };
 
-export function SaleMobileSummaryBar({ end, saleTitle, showRegisterCta = true }: Props) {
+export function SaleMobileSummaryBar({ end, saleTitle }: Props) {
   return (
     <StickyBidBar className="lg:hidden" innerClassName="max-w-screen-2xl">
       <div className="min-w-0">
@@ -24,11 +20,6 @@ export function SaleMobileSummaryBar({ end, saleTitle, showRegisterCta = true }:
           className="font-headline text-sm text-on-surface tabular-nums md:text-base"
         />
       </div>
-      {showRegisterCta ? (
-        <Button variant="cta" className="h-10 shrink-0 px-4 text-xs" asChild>
-          <Link href="/register">Register to bid</Link>
-        </Button>
-      ) : null}
     </StickyBidBar>
   );
 }
