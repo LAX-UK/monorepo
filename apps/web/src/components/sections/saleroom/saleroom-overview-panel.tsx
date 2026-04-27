@@ -3,6 +3,8 @@ import type { SaleOverviewVM } from "./view-models";
 
 type Props = {
   overview: SaleOverviewVM;
+  /** When true, omit the “About this sale” copy (moved to hero). */
+  hideDescription?: boolean;
 };
 
 function Fact({ label, value }: { label: string; value: string }) {
@@ -19,10 +21,10 @@ function Fact({ label, value }: { label: string; value: string }) {
 /**
  * Read-only marketing overview: all salient `Sale` fields. Data via `SaleOverviewVM` (DIP).
  */
-export function SaleroomOverviewPanel({ overview }: Props) {
+export function SaleroomOverviewPanel({ overview, hideDescription = false }: Props) {
   return (
     <div className="mx-auto w-full max-w-[960px]">
-      {overview.description ? (
+      {hideDescription ? null : overview.description ? (
         <div className="mb-10">
           <h2 className="mb-3 text-lg font-semibold text-brand-900 dark:text-on-surface">
             About this sale

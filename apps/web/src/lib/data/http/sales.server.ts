@@ -80,7 +80,8 @@ export type GetSaleLotsPageParams = {
 export async function getServerSaleLotsPage(
   params: GetSaleLotsPageParams,
 ): Promise<SaleLotsPage | null> {
-  const pageSize = Math.min(Math.max(params.pageSize ?? 12, 1), 48);
+  /** Capped to API `listSaleLotsQuerySchema` max (48). Default 40  / API default. */
+  const pageSize = Math.min(Math.max(params.pageSize ?? 40, 1), 48);
   const page = Math.max(params.page ?? 1, 1);
   const offset = (page - 1) * pageSize;
   const sort = params.sort ?? "lot";

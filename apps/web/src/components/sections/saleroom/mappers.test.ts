@@ -68,47 +68,60 @@ const baseLot: Lot = {
 };
 
 const now = new Date("2026-01-15T12:00:00Z");
+const defaultHeroOpts = { shareUrl: "/s", now, categoryLabel: null as string | null };
 
 describe("mapSaleToHeroVM", () => {
   it("emits onsite / online tags and live-stream tag when streamUrl set", () => {
-    const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1", now });
+    const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1", now, categoryLabel: null });
     expect(vm.tags).toContain("Onsite");
     expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
-    expect(vm.dateLine).toBeTruthy();
+    expect(vm.dateLine).toContain("THELAX SALEROOM");
   });
 
-  it("marks active sales as live and suppresses bidding-starts label", () => {
+  it("marks active sales as live and shows a live bidding short label", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
-      { totalLots: 1, shareUrl: "/sales/sale-1", now },
+      { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null },
     );
     expect(vm.isLive).toBe(true);
     expect(vm.biddingStartsLabel).toBeNull();
     expect(vm.itemsLabel).toBe("1 lot");
-    expect(vm.biddingStartsShort).toBeNull();
+    expect(vm.biddingStartsShort).toBe("Live now");
+    expect(vm.rightColumnLabel).toBe("Bidding");
     expect(vm.registrationClosesShort).toBeNull();
   });
 
-  it("does not show a separate registration row (no registrationEnd on Sale)", () => {
-    const vm = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/sales/sale-1", now });
+  it("uses previewStartTime for the left preview cell when set", () => {
+    const vm = mapSaleToHeroVM(
+      { ...baseSale, previewStartTime: new Date("2026-05-20T12:00:00Z") },
+      { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null },
+    );
+    expect(vm.leftColumnLabel).toBe("Preview opens");
+    expect(vm.registrationClosesShort).toBeTruthy();
+  });
+
+  it("scheduled: bidding row without preview", () => {
+    const vm = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null });
     expect(vm.registrationClosesShort).toBeNull();
+    expect(vm.leftColumnLabel).toBeNull();
     expect(vm.biddingStartsShort).toBeTruthy();
+    expect(vm.rightColumnLabel).toBe("Bidding starts");
   });
 
   it("sets statusBadge: scheduled → upcoming, active → live, ended → ended", () => {
-    const scheduled = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/s", now });
+    const scheduled = mapSaleToHeroVM(baseSale, { totalLots: 1, ...defaultHeroOpts });
     expect(scheduled.statusBadge).toEqual({ kind: "upcoming", label: "Upcoming Auction" });
 
     const active = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
-      { totalLots: 1, shareUrl: "/s", now },
+      { totalLots: 1, ...defaultHeroOpts },
     );
     expect(active.statusBadge).toEqual({ kind: "live", label: "Live Auction" });
 
     const ended = mapSaleToHeroVM(
       { ...baseSale, status: "ended" },
-      { totalLots: 1, shareUrl: "/s", now },
+      { totalLots: 1, ...defaultHeroOpts },
     );
     expect(ended.statusBadge).toEqual({ kind: "ended", label: "Ended" });
   });
@@ -116,13 +129,13 @@ describe("mapSaleToHeroVM", () => {
   it("sets statusBadge to null for draft and cancelled", () => {
     const draft = mapSaleToHeroVM(
       { ...baseSale, status: "draft" },
-      { totalLots: 1, shareUrl: "/s", now },
+      { totalLots: 1, ...defaultHeroOpts },
     );
     expect(draft.statusBadge).toBeNull();
 
     const cancelled = mapSaleToHeroVM(
       { ...baseSale, status: "cancelled" },
-      { totalLots: 1, shareUrl: "/s", now },
+      { totalLots: 1, ...defaultHeroOpts },
     );
     expect(cancelled.statusBadge).toBeNull();
   });

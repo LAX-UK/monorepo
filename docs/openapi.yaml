@@ -3,10 +3,17 @@ info:
   title: Auction API
   version: 1.0.0
   description: |
-    Hono REST API for auctions, bids, payments, and users. Auth at `/api/auth/*` (Better Auth).
+    Hono REST API for sales, lots, bids, payments, submissions, users, and admin operations.
+    Authentication is handled by Better Auth at `/api/auth/*`.
 servers:
-  - url: http://localhost:3001
+  - url: http://localhost:8787
 paths:
+  /health/live:
+    get:
+      summary: Process liveness check without DB or Redis dependency checks
+      responses:
+        "200":
+          description: OK
   /health:
     get:
       summary: Liveness and dependency checks
@@ -14,97 +21,228 @@ paths:
         "200":
           description: OK
         "503":
-          description: Degraded (DB or Redis failure)
+          description: Degraded because DB or Redis is unavailable
   /metrics:
     get:
-      summary: Basic counters (e.g. active auctions)
+      summary: Basic counters, including activeLots
       responses:
         "200":
           description: JSON metrics
-  /auctions:
+
+  /lots:
     get:
-      summary: List auctions (filters via query)
+      summary: List lots with status, category, seller, winner, sale, archive, search, sort, and pagination filters
     post:
-      summary: Create draft auction (auth)
-  /auctions/{id}:
+      summary: Create a draft standalone lot (admin)
+  /lots/bulk:
+    post:
+      summary: Bulk publish or cancel lots (admin)
+  /lots/archive/summary:
     get:
-      summary: Get auction by id
+      summary: Ended lot hammer aggregate for archive pages
+  /lots/archive/count:
+    get:
+      summary: Count ended lots matching archive filters
+  /lots/{id}:
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-  /auctions/{id}/bids:
+      - $ref: "#/components/parameters/LotId"
     get:
-      summary: Bid history (sealed + active hides bids except admin)
-  /auctions/{id}/publish:
+      summary: Get lot by id
+    patch:
+      summary: Update a draft lot (admin)
+  /lots/{id}/publish:
+    parameters:
+      - $ref: "#/components/parameters/LotId"
     post:
-      summary: Publish draft → scheduled and schedule BullMQ jobs (seller, auth)
-  /auctions/{id}/cancel:
+      summary: Publish draft lot to scheduled and schedule BullMQ lifecycle jobs (admin)
+  /lots/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/LotId"
     post:
-      summary: Cancel auction (seller or admin, auth)
+      summary: Cancel a draft, scheduled, or active lot (admin)
       requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                reason:
-                  type: string
-                  maxLength: 500
+        $ref: "#/components/requestBodies/OptionalReason"
+  /lots/{id}/marketing-details:
+    parameters:
+      - $ref: "#/components/parameters/LotId"
+    put:
+      summary: Update lot catalog/marketing details (admin)
+  /lots/{id}/bids:
+    parameters:
+      - $ref: "#/components/parameters/LotId"
+    get:
+      summary: Bid history for a lot; active sealed lots hide bids except for admins
+
+  /sales:
+    get:
+      summary: List sales with status/statuses, category, sort, and pagination filters
+    post:
+      summary: Create a draft sale, optionally with nested draft lots (admin)
+  /sales/{id}:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    get:
+      summary: Get sale with child lots and viewer follow state
+    patch:
+      summary: Update a draft sale (admin)
+  /sales/{id}/lots:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    get:
+      summary: Paginated lots for a sale
+    post:
+      summary: Add a draft lot to a draft sale (admin)
+  /sales/{id}/bidders:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    get:
+      summary: Paginated masked bidder list for a sale
+  /sales/{id}/follow:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    get:
+      summary: Get current user's sale follow state (auth)
+    post:
+      summary: Follow sale (auth)
+    delete:
+      summary: Unfollow sale (auth)
+  /sales/{id}/publish:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    post:
+      summary: Publish draft sale and draft child lots to scheduled (admin)
+  /sales/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    post:
+      summary: Cancel sale and cancellable child lots (admin)
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalReason"
+  /sales/{id}/mark-ended:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    post:
+      summary: Manually end an onsite sale and its scheduled/active lots (admin)
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalReason"
+  /sales/{id}/lots/attach/{lotId}:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+      - $ref: "#/components/parameters/SaleLotId"
+    post:
+      summary: Attach an existing draft standalone lot to a draft sale (admin)
+  /sales/{id}/lots/{lotId}:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+      - $ref: "#/components/parameters/SaleLotId"
+    delete:
+      summary: Detach a lot from a draft sale (admin)
+  /sales/{id}/lots/{lotId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+      - $ref: "#/components/parameters/SaleLotId"
+    post:
+      summary: Cancel a lot within a sale (admin)
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalReason"
+  /sales/{id}/lots/{lotId}/status:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+      - $ref: "#/components/parameters/SaleLotId"
+    post:
+      summary: Set allowed admin override status for a lot within a sale
+
   /bids:
     post:
-      summary: Place bid (auth). Optional header Idempotency-Key (24h dedupe).
+      summary: Place bid on a lot (auth); supports Idempotency-Key header with 24h Redis dedupe
+
   /payments:
-    post:
-      summary: Create pending payment for winner (auth). When Xero is connected, response includes checkoutUrl for online invoice.
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      paymentId:
-                        type: string
-                        format: uuid
-                      clientSecret:
-                        type: string
-                        nullable: true
-                      checkoutUrl:
-                        type: string
-                        nullable: true
-                        description: Xero online invoice URL when configured and connected
-  /admin/integrations/xero/status:
     get:
-      summary: Xero connection summary (admin, auth)
-  /admin/integrations/xero/oauth/consent-url:
-    get:
-      summary: Start Xero OAuth — returns consent URL (admin, auth)
-  /admin/integrations/xero/oauth/complete:
+      summary: List all payments (admin)
     post:
-      summary: Complete Xero OAuth with full callback URL (admin, auth)
-  /admin/integrations/xero/disconnect:
+      summary: Create or reuse a pending payment for the winning bidder; returns Xero checkoutUrl when configured
+  /payments/{id}/capture:
+    parameters:
+      - $ref: "#/components/parameters/PaymentId"
     post:
-      summary: Remove stored Xero tokens (admin, auth)
-  /admin/payments/{id}/xero-sync:
-    post:
-      summary: Pull invoice state from Xero and update local payment if paid (admin, auth)
-  /webhooks/xero:
-    post:
-      summary: Xero webhooks (signed with X-Xero-Signature); configure XERO_WEBHOOK_KEY on API
+      summary: Mark payment captured manually (admin)
   /payments/{id}/refund:
+    parameters:
+      - $ref: "#/components/parameters/PaymentId"
     post:
-      summary: Refund payment (admin only, auth; DB status only until a gateway is integrated)
+      summary: Mark payment refunded manually (admin; DB status only until a gateway is integrated)
+
+  /submissions:
+    post:
+      summary: Create a draft seller item submission (auth)
   /categories:
     get:
       summary: List categories
   /users/me/notifications:
     get:
-      summary: List notifications (auth)
+      summary: List current user's notifications (auth)
+  /uploads:
+    post:
+      summary: Create an upload or upload URL depending on configured upload backend (auth)
+
+  /admin/integrations/xero/status:
+    get:
+      summary: Xero connection summary (admin)
+  /admin/integrations/xero/oauth/consent-url:
+    get:
+      summary: Start Xero OAuth and return consent URL (admin)
+  /admin/integrations/xero/oauth/complete:
+    post:
+      summary: Complete Xero OAuth with full callback URL (admin)
+  /admin/integrations/xero/disconnect:
+    post:
+      summary: Remove stored Xero tokens (admin)
+  /admin/payments/{id}/xero-sync:
+    parameters:
+      - $ref: "#/components/parameters/PaymentId"
+    post:
+      summary: Pull invoice state from Xero and update local payment when paid (admin)
+  /webhooks/xero:
+    post:
+      summary: Xero webhook endpoint signed with X-Xero-Signature
+
+components:
+  parameters:
+    LotId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SaleId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SaleLotId:
+      name: lotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PaymentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBodies:
+    OptionalReason:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason:
+                type: string
+                maxLength: 500

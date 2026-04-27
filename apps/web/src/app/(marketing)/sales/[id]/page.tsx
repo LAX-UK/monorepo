@@ -5,21 +5,17 @@ import {
   mapSaleToOverviewVM,
   mapSaleToRelatedVM,
 } from "@/components/sections/saleroom/mappers";
+import { SaleroomCatalogHeading } from "@/components/sections/saleroom/saleroom-catalog-heading";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
 import { SaleroomHeroHeadline } from "@/components/sections/saleroom/saleroom-hero-headline";
-import { SaleroomHeroStatusLines } from "@/components/sections/saleroom/saleroom-hero-meta";
+import { SaleroomHeroOverview } from "@/components/sections/saleroom/saleroom-hero-meta";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomPaginator } from "@/components/sections/saleroom/saleroom-paginator";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
-import {
-  SaleroomTabs,
-  type TabDescriptor,
-  type TabKey,
-} from "@/components/sections/saleroom/saleroom-tabs";
 import { SITE_TAGLINE } from "@/lib/brand";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
@@ -34,7 +30,7 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category } from "@auction/types";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export const revalidate = 0;
 
@@ -43,7 +39,7 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const CATALOG_PAGE_SIZE = 12;
+const CATALOG_PAGE_SIZE = 40;
 const CATALOG_SORT = "lot" as const;
 
 function firstString(v: string | string[] | undefined): string | undefined {
@@ -55,11 +51,6 @@ function parsePage(raw: string | undefined): number {
   if (raw === "all") return 1;
   const n = Number.parseInt(raw ?? "1", 10);
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 500) : 1;
-}
-
-function parseTab(raw: string | undefined): TabKey {
-  if (raw === "catalog") return "catalog";
-  return "overview";
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -80,14 +71,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
+function redirectPathStrippingOverviewTab(
+  id: string,
+  sp: Record<string, string | string[] | undefined>,
+): void {
+  const tab = firstString(sp.tab);
+  if (tab !== "overview") return;
+  const qs = new URLSearchParams();
+  const page = firstString(sp.page);
+  if (page) qs.set("page", page);
+  const q = qs.toString();
+  redirect(q ? `/sales/${id}?${q}` : `/sales/${id}`);
+}
+
 async function loadCatalogLotsPage(
   id: string,
-  tab: TabKey,
   pageRaw: string | undefined,
 ): Promise<SaleLotsPage> {
-  const isAll = pageRaw === "all" && tab === "catalog";
-  const pageNum = isAll ? 1 : parsePage(pageRaw);
-
+  const isAll = pageRaw === "all";
   if (isAll) {
     const p = await getServerSaleLotsPage({
       id,
@@ -105,6 +106,7 @@ async function loadCatalogLotsPage(
     return p;
   }
 
+  const pageNum = parsePage(pageRaw);
   const p = await getServerSaleLotsPage({
     id,
     page: pageNum,
@@ -118,9 +120,10 @@ async function loadCatalogLotsPage(
 export default async function SaleDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const sp = await searchParams;
-  const tab = parseTab(firstString(sp.tab));
+  redirectPathStrippingOverviewTab(id, sp);
+
   const pageRaw = firstString(sp.page);
-  const isCatalogLoadAll = pageRaw === "all" && tab === "catalog";
+  const isCatalogLoadAll = pageRaw === "all";
   const pageNum = isCatalogLoadAll ? 1 : parsePage(pageRaw);
 
   const [bundle, session, categories] = await Promise.all([
@@ -138,15 +141,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       ? (categories.find((c) => c.id === categoryId)?.name ?? null)
       : null;
 
-  const lotsPage =
-    tab === "catalog"
-      ? await loadCatalogLotsPage(id, tab, pageRaw).catch(() => null)
-      : await getServerSaleLotsPage({
-          id,
-          page: 1,
-          pageSize: CATALOG_PAGE_SIZE,
-          sort: CATALOG_SORT,
-        }).catch(() => null);
+  const lotsPage = await loadCatalogLotsPage(id, pageRaw).catch(() => null);
   if (!lotsPage) notFound();
 
   const [follow, relatedSales] = await Promise.all([
@@ -160,23 +155,18 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const viewerUserId = session?.id ?? null;
   const shareUrl = `${base}/sales/${bundle.sale.id}`;
   const basePath = `/sales/${bundle.sale.id}`;
-  const preservedQuery: Array<[string, string]> = [["tab", tab]];
 
   const now = new Date();
   const heroVM = mapSaleToHeroVM(bundle.sale, {
     totalLots: lotsPage.total,
     shareUrl,
     now,
+    categoryLabel,
   });
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
     lotsTotal: lotsPage.total,
     categoryLabel,
   });
-
-  const tabs: TabDescriptor[] = [
-    { key: "overview", label: "Overview" },
-    { key: "catalog", label: "Browse Lots", count: lotsPage.total },
-  ];
 
   const shownLots = isCatalogLoadAll
     ? Math.min(lotsPage.items.length, lotsPage.total)
@@ -200,7 +190,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   ]);
 
   const itemsLd =
-    tab === "catalog" && lotVMs.length > 0
+    lotVMs.length > 0
       ? itemListJsonLd(
           lotVMs.map((lot) => ({
             name: lot.title,
@@ -233,7 +223,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       <SaleroomHero
         hero={heroVM}
         headline={<SaleroomHeroHeadline hero={heroVM} />}
-        statusLines={<SaleroomHeroStatusLines hero={heroVM} />}
+        overview={<SaleroomHeroOverview hero={heroVM} />}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
@@ -247,39 +237,34 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       />
 
       <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-20 sm:px-6 md:px-8">
-        <SaleroomTabs
-          tabs={tabs}
-          activeTab={tab}
-          basePath={basePath}
-          preservedQuery={preservedQuery}
-        >
-          {tab === "catalog" ? (
-            <>
-              <SaleroomLotsGrid
-                lots={lotVMs}
-                renderActions={(lot) => (
-                  <SaleroomLotActions
-                    lotId={lot.id}
-                    isAuthenticated={isAuthenticated}
-                    initialWatching={lot.viewerIsWatching}
-                    compact
-                  />
-                )}
-              />
-              <SaleroomPaginator
-                shown={shownLots}
-                total={lotsPage.total}
-                page={pageNum}
-                pageSize={CATALOG_PAGE_SIZE}
-                basePath={basePath}
-                preservedQuery={preservedQuery}
-                showLoadAll={!isCatalogLoadAll}
-              />
-            </>
-          ) : (
-            <SaleroomOverviewPanel overview={overviewVM} />
+        <SaleroomCatalogHeading totalLots={lotsPage.total} />
+        <SaleroomLotsGrid
+          lots={lotVMs}
+          renderActions={(lot) => (
+            <SaleroomLotActions
+              lotId={lot.id}
+              isAuthenticated={isAuthenticated}
+              initialWatching={lot.viewerIsWatching}
+              compact
+            />
           )}
-        </SaleroomTabs>
+        />
+        <SaleroomPaginator
+          shown={shownLots}
+          total={lotsPage.total}
+          page={pageNum}
+          pageSize={CATALOG_PAGE_SIZE}
+          basePath={basePath}
+          preservedQuery={[]}
+          showLoadAll={!isCatalogLoadAll}
+        />
+      </section>
+
+      <section
+        className="mx-auto max-w-[1440px] px-4 pb-0 pt-20 sm:px-6 md:px-8"
+        aria-label="Additional sale information"
+      >
+        <SaleroomOverviewPanel overview={overviewVM} hideDescription />
       </section>
 
       {relatedVMs.length > 0 ? (

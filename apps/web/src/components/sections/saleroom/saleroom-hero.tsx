@@ -6,16 +6,17 @@ import type { SaleHeroVM } from "./view-models";
 type Props = {
   hero: SaleHeroVM;
   headline: ReactNode;
-  statusLines: ReactNode;
+  /** Right column: Figma “Overview” block. */
+  overview: ReactNode;
   toolbar: ReactNode;
   actions: ReactNode;
 };
 
 /**
- * Layout shell: left column = headline + image; right = status rows, toolbar, actions (Figma 1440).
- * Mobile: stacked headline → image → status → toolbar → actions.
+ * Layout shell: left column = headline + image; right = overview, toolbar, actions (Figma 1440).
+ * Mobile: stacked headline → image → overview → toolbar → actions.
  */
-export function SaleroomHero({ hero, headline, statusLines, toolbar, actions }: Props) {
+export function SaleroomHero({ hero, headline, overview, toolbar, actions }: Props) {
   return (
     <section className="bg-page-bg dark:bg-background">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-8 p-8 lg:flex-row lg:gap-6">
@@ -48,7 +49,7 @@ export function SaleroomHero({ hero, headline, statusLines, toolbar, actions }: 
 
         <div className="flex min-w-0 flex-1 flex-col justify-end gap-10 lg:items-end">
           <div className="flex w-full flex-col gap-10 lg:items-end">
-            {statusLines}
+            {overview}
             <div className="flex w-full min-w-0 justify-end">{toolbar}</div>
           </div>
           {actions}

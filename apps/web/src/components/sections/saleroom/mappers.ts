@@ -48,11 +48,23 @@ export function formatRelativeShort(target: Date, now: Date): string {
   return "Soon";
 }
 
-/** One uppercased line: date range | time (no location — none on `Sale`). */
+function heroLocationSegment(sale: Sale): string | null {
+  if (sale.deliveryMode === "online") return "Online";
+  return (
+    sale.locationCity?.trim() ||
+    sale.locationName?.trim() ||
+    sale.locationCounty?.trim() ||
+    null
+  );
+}
+
+/** Uppercased line: date range | time | location or format (from `Sale`). */
 export function formatHeroDateLine(sale: Sale): string {
   const range = formatSaleDateLabel(sale.startTime, sale.endTime);
   const time = sale.startTime.toLocaleTimeString(undefined, TIME_OPTS);
-  return `${range} | ${time}`.toUpperCase();
+  const loc = heroLocationSegment(sale);
+  const tail = loc ? ` | ${loc}` : "";
+  return `${range} | ${time}${tail}`.toUpperCase();
 }
 
 function formatBuyerPremiumDisplay(rate: string): string {
@@ -76,17 +88,37 @@ function saleTags(sale: Sale): string[] {
   return tags;
 }
 
+function buildHeroOverviewMetaLine(sale: Sale, categoryLabel: string | null): string | null {
+  const mode = formatDeliveryModeLabel(sale);
+  const premium = formatBuyerPremiumDisplay(sale.buyerPremiumRate);
+  const parts = [mode, premium];
+  if (categoryLabel?.trim()) parts.push(categoryLabel.trim());
+  return parts.join(" · ");
+}
+
 export function mapSaleToHeroVM(
   sale: Sale,
-  opts: { totalLots: number; shareUrl: string; now: Date },
+  opts: { totalLots: number; shareUrl: string; now: Date; categoryLabel: string | null },
 ): SaleHeroVM {
   const tags = saleTags(sale);
   const isLive = sale.status === "active";
   const dateLine = formatHeroDateLine(sale);
+  const overviewMetaLine = buildHeroOverviewMetaLine(sale, opts.categoryLabel);
 
-  const registrationClosesShort: string | null = null;
-  const biddingStartsShort =
-    sale.status === "scheduled" ? formatRelativeShort(sale.startTime, opts.now) : null;
+  const registrationClosesShort = sale.previewStartTime
+    ? formatRelativeShort(sale.previewStartTime, opts.now)
+    : null;
+  const leftColumnLabel: "Preview opens" | null = sale.previewStartTime ? "Preview opens" : null;
+
+  let biddingStartsShort: string | null = null;
+  let rightColumnLabel: "Bidding" | "Bidding starts" | null = null;
+  if (sale.status === "active") {
+    biddingStartsShort = "Live now";
+    rightColumnLabel = "Bidding";
+  } else if (sale.status === "scheduled") {
+    biddingStartsShort = formatRelativeShort(sale.startTime, opts.now);
+    rightColumnLabel = "Bidding starts";
+  }
 
   const statusBadge: SaleHeroStatusBadge =
     sale.status === "active"
@@ -114,6 +146,9 @@ export function mapSaleToHeroVM(
     dateLine,
     registrationClosesShort,
     biddingStartsShort,
+    leftColumnLabel,
+    rightColumnLabel,
+    overviewMetaLine,
     liveLabel: "Live Auction",
     statusBadge,
   };

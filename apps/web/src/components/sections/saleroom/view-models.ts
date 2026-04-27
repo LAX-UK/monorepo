@@ -25,9 +25,19 @@ export type SaleHeroVM = {
   tags: string[];
   /** Uppercased one-line: date range | time | location (or empty tail if unknown). */
   dateLine: string;
-  /** Short relative copy e.g. "10 days" for registration / bidding rows. */
+  /**
+   * Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
+   */
   registrationClosesShort: string | null;
+  /**
+   * Bidding state: relative to `startTime` when scheduled, "Live now" when active, else null.
+   */
   biddingStartsShort: string | null;
+  /** Shown in the left bordered cell when `registrationClosesShort` is the preview value. */
+  leftColumnLabel: "Preview opens" | null;
+  rightColumnLabel: "Bidding" | "Bidding starts" | null;
+  /** Subtle one-line: format, buyer’s premium, optional category. */
+  overviewMetaLine: string | null;
   /** Shown next to the live dot in the date row. */
   liveLabel: string;
   /** Hero headline pill: live / upcoming / ended (Figma), or null for draft/cancelled. */
@@ -45,7 +55,7 @@ export type SaleLotCardVM = {
   estimateValue: string | null;
   currentBidLabel: string;
   currentBidValue: string;
-  /** e.g. "17 bids" — may be "—" when unknown. */
+  /** Public lot payloads omit bid count; keep null until the API adds it. */
   bidsCountLabel: string | null;
   closingLabel: string | null;
   /** Short relative e.g. "2 days" for the Closing row. */
