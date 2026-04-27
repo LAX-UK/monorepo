@@ -1,6 +1,11 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { Lot, Sale } from "@auction/types";
+import {
+  formatPostalAddressLines,
+  hasStructuredAddress,
+  resolveOnsiteMapUrl,
+} from "@auction/validators";
 import type {
   RelatedSaleVM,
   SaleHeroStatusBadge,
@@ -60,14 +65,12 @@ function formatBuyerPremiumDisplay(rate: string): string {
 
 function formatDeliveryModeLabel(sale: Sale): string {
   if (sale.deliveryMode === "online") return "Online";
-  if (sale.deliveryMode === "hybrid") return "Hybrid";
   return "On-site";
 }
 
 function saleTags(sale: Sale): string[] {
   const tags: string[] = [];
   if (sale.deliveryMode === "online") tags.push("Online");
-  else if (sale.deliveryMode === "hybrid") tags.push("Hybrid");
   else tags.push("Onsite");
   if (sale.streamUrl) tags.push("Live stream");
   return tags;
@@ -156,12 +159,7 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number): RelatedSaleVM 
     id: sale.id,
     href: `/sales/${sale.id}`,
     title: sale.title,
-    kindLabel:
-      sale.deliveryMode === "online"
-        ? "Online auction"
-        : sale.deliveryMode === "hybrid"
-          ? "Hybrid auction"
-          : "Live auction",
+    kindLabel: sale.deliveryMode === "online" ? "Online auction" : "Live auction",
     dateLabel,
     dateLine: dateLabel.toUpperCase(),
     itemsLabel: `${lotCount} ${lotCount === 1 ? "lot" : "lots"}`,
@@ -174,6 +172,16 @@ export function mapSaleToOverviewVM(
   opts: { lotsTotal: number; categoryLabel: string | null },
 ): SaleOverviewVM {
   const tags = saleTags(sale);
+  const addressLines = formatPostalAddressLines(sale);
+  const resolvedMapUrl = resolveOnsiteMapUrl(sale);
+  const hasAnyLocationInfo = Boolean(
+    sale.locationName ||
+      sale.locationAddress ||
+      hasStructuredAddress(sale) ||
+      addressLines.length > 0 ||
+      resolvedMapUrl,
+  );
+  const showLocation = sale.deliveryMode === "onsite" && hasAnyLocationInfo;
   return {
     description: sale.description,
     startLabel: formatLongDateTime(sale.startTime),
@@ -187,5 +195,11 @@ export function mapSaleToOverviewVM(
     streamUrl: sale.streamUrl,
     showLiveStream: Boolean(sale.status === "active" && sale.streamUrl),
     terms: sale.terms,
+    locationName: sale.locationName,
+    locationAddress: sale.locationAddress,
+    locationMapUrl: sale.locationMapUrl,
+    locationAddressLines: addressLines,
+    resolvedMapUrl,
+    showLocation,
   };
 }

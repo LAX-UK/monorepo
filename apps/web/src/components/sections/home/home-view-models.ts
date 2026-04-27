@@ -40,7 +40,7 @@ export type HeroSaleSlideVM = {
   dateLabel: string;
   coverImageUrl: string | null;
   coverImageAlt: string;
-  modeBadge: "Online" | "Onsite" | "Online + Onsite";
+  modeBadge: "Online" | "Onsite";
 };
 
 export type HeroStateVM =
@@ -119,11 +119,7 @@ function heroImageAlt(title: string, artistName: string): string {
 
 export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
   const modeBadge: HeroSaleSlideVM["modeBadge"] =
-    sale.deliveryMode === "online"
-      ? "Online"
-      : sale.deliveryMode === "hybrid"
-        ? "Online + Onsite"
-        : "Onsite";
+    sale.deliveryMode === "online" ? "Online" : "Onsite";
   return {
     id: sale.id,
     href: `/sales/${sale.id}`,

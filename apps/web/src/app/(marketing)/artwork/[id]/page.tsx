@@ -1,4 +1,5 @@
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
+import { ArtworkOnsitePanel } from "@/components/sections/artwork/artwork-onsite-panel";
 import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import {
   findUserLatestBidMeta,
@@ -119,6 +120,25 @@ export default async function ArtworkPage({ params }: PageProps) {
       }
     : null;
 
+  // Onsite (in-person) sales are catalog-only on the website. Render a
+  // dedicated read-only panel so bid controls + bid hooks are not mounted at
+  // all, which is the strongest UI-side guarantee against accidental online
+  // bidding on these lots.
+  const isOnsiteSale = saleBundle?.sale.deliveryMode === "onsite";
+  const bidPanel =
+    isOnsiteSale && saleBundle ? (
+      <ArtworkOnsitePanel auction={auction} sale={saleBundle.sale} summarySeed={summarySeed} />
+    ) : (
+      <ArtworkBidPanel
+        auction={auction}
+        initialHistory={initialHistory}
+        initialLeadingBidderId={initialLeadingBidderId}
+        sessionUser={session}
+        summarySeed={summarySeed}
+        initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
+      />
+    );
+
   return (
     <main id="main-content" className="pt-[var(--header-height)]">
       <script
@@ -148,16 +168,7 @@ export default async function ArtworkPage({ params }: PageProps) {
               appearance="outlined-block"
             />
           }
-          bidPanel={
-            <ArtworkBidPanel
-              auction={auction}
-              initialHistory={initialHistory}
-              initialLeadingBidderId={initialLeadingBidderId}
-              sessionUser={session}
-              summarySeed={summarySeed}
-              initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
-            />
-          }
+          bidPanel={bidPanel}
         />
       </LotPortsProvider>
     </main>

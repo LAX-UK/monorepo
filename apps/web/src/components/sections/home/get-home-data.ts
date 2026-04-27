@@ -80,11 +80,11 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     const activeRows = await getServerSalesList({ status: "active", limit: 10 });
     for (const row of activeRows) {
       const { sale } = row;
-      if (sale.deliveryMode === "onsite") continue;
+      if (sale.deliveryMode !== "onsite") continue;
       if (!sale.streamUrl) continue;
       const embed = parseStreamEmbedUrl(sale.streamUrl);
       if (!embed) continue;
-      const modeLabel = sale.deliveryMode === "hybrid" ? "Online + Onsite" : "Online";
+      const modeLabel = "Onsite";
       return {
         ...base,
         heroState: {

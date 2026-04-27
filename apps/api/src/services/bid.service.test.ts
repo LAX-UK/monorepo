@@ -6,6 +6,7 @@ import { BidService } from "./bid.service.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
 import { NotificationService } from "./notification.service.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
@@ -276,6 +277,82 @@ describe("BidService.placeBid", () => {
     expect(lotRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
     expect(cancelLotJobs).toHaveBeenCalledWith("auc-1");
     expect(notifyLotEnded).toHaveBeenCalledOnce();
+  });
+
+  it("rejects bid when parent sale is onsite (read-only)", async () => {
+    const lotRepo = baseLotRepo({
+      // findByIdForUpdate should NOT be reached when the sale-mode gate denies
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot()),
+    });
+    const bidRepo = baseBidRepo();
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const bidNotif = { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) };
+    const lotNotif = {
+      notifyLotExtended: vi.fn().mockResolvedValue(undefined),
+      notifyLotEnded: vi.fn().mockResolvedValue(undefined),
+    };
+    const notifications = new NotificationService(bidNotif, lotNotif);
+    const saleModeLookup: ISaleModeLookup = {
+      findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
+    };
+    const service = new BidService(
+      createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      null,
+      null,
+      saleModeLookup,
+    );
+
+    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(BidError);
+      expect(result.error.message).toBe("Lot is not accepting bids");
+      expect(result.error.status).toBe(400);
+    }
+    expect(saleModeLookup.findSaleModeForLot).toHaveBeenCalledWith("auc-1");
+    expect(lotRepo.findByIdForUpdate).not.toHaveBeenCalled();
+    expect(bidRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("allows bid when parent sale is online", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
+    const notifications = new NotificationService(
+      { notifyBidPlaced },
+      { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
+    );
+    const saleModeLookup: ISaleModeLookup = {
+      findSaleModeForLot: vi.fn().mockResolvedValue("online"),
+    };
+    const service = new BidService(
+      createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      null,
+      null,
+      saleModeLookup,
+    );
+
+    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    expect(result.isOk()).toBe(true);
+    expect(saleModeLookup.findSaleModeForLot).toHaveBeenCalledWith("auc-1");
+    expect(lotRepo.findByIdForUpdate).toHaveBeenCalled();
+    expect(bidRepo.create).toHaveBeenCalledOnce();
   });
 
   it("ends buy-it-now lot when bid meets buy-now price", async () => {

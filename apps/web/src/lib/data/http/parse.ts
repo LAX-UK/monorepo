@@ -18,7 +18,8 @@ function toDate(value: unknown): Date {
 
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   const v = typeof raw === "string" ? raw : "";
-  if (v === "online" || v === "onsite" || v === "hybrid") return v;
+  if (v === "online" || v === "onsite") return v;
+  if (v === "hybrid") return "online";
   return "onsite";
 }
 
@@ -32,6 +33,26 @@ export function parseSale(raw: unknown): Sale {
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
     streamUrl: o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
+    locationName: o.locationName == null || o.locationName === "" ? null : String(o.locationName),
+    locationAddress:
+      o.locationAddress == null || o.locationAddress === "" ? null : String(o.locationAddress),
+    locationMapUrl:
+      o.locationMapUrl == null || o.locationMapUrl === "" ? null : String(o.locationMapUrl),
+    locationAddressLine1:
+      o.locationAddressLine1 == null || o.locationAddressLine1 === ""
+        ? null
+        : String(o.locationAddressLine1),
+    locationAddressLine2:
+      o.locationAddressLine2 == null || o.locationAddressLine2 === ""
+        ? null
+        : String(o.locationAddressLine2),
+    locationCity: o.locationCity == null || o.locationCity === "" ? null : String(o.locationCity),
+    locationCounty:
+      o.locationCounty == null || o.locationCounty === "" ? null : String(o.locationCounty),
+    locationPostcode:
+      o.locationPostcode == null || o.locationPostcode === "" ? null : String(o.locationPostcode),
+    locationCountry:
+      o.locationCountry == null || o.locationCountry === "" ? null : String(o.locationCountry),
     status: o.status as Sale["status"],
     startTime: toDate(o.startTime),
     endTime: toDate(o.endTime),

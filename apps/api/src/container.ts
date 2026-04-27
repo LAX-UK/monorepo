@@ -31,6 +31,7 @@ import {
   DrizzleAdminUserRoleManager,
   DrizzleAdminUserSuspender,
 } from "./repositories/drizzle-admin-user.reader.js";
+import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
@@ -44,16 +45,17 @@ import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-s
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
 import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.reader.js";
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
+import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
-import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
+import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
@@ -84,10 +86,10 @@ import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
+import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
-import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { LotStrategyFactory } from "./strategies/strategy.factory.js";
 
@@ -106,6 +108,7 @@ export type Container = {
   lotLifecycleService: LotLifecycleService;
   saleLifecycleService: SaleLifecycleService;
   lotJobScheduler: ILotJobScheduler;
+  saleStatusTransitionService: SaleStatusTransitionService;
   bidService: BidService;
   categoryService: CategoryService;
   dashboardQueryService: DashboardQueryService;
@@ -242,6 +245,11 @@ export function createContainer(env: Env): Container {
   );
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler);
+  const saleStatusTransitionService = new SaleStatusTransitionService(
+    saleRepo,
+    lotRepo,
+    lotJobScheduler,
+  );
 
   const saleFollowRepo = new DrizzleSaleFollowRepository(db);
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
@@ -265,6 +273,8 @@ export function createContainer(env: Env): Container {
     paymentService,
   );
 
+  const saleModeLookup = new DrizzleSaleModeLookup(db);
+
   const bidService = new BidService(
     repoFactory,
     strategyFactory,
@@ -273,6 +283,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher,
     lotJobScheduler,
     adminMetricsService,
+    saleModeLookup,
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
@@ -330,6 +341,7 @@ export function createContainer(env: Env): Container {
     lotLifecycleService,
     saleLifecycleService,
     lotJobScheduler,
+    saleStatusTransitionService,
     bidService,
     categoryService,
     dashboardQueryService,

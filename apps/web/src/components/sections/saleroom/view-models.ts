@@ -84,4 +84,13 @@ export type SaleOverviewVM = {
   streamUrl: string | null;
   showLiveStream: boolean;
   terms: string | null;
+  /** Onsite event location (venue name, address, optional map link). */
+  locationName: string | null;
+  locationAddress: string | null;
+  locationMapUrl: string | null;
+  /** Lines of the formatted postal address (preferring structured fields). */
+  locationAddressLines: string[];
+  /** Resolved Google Maps URL (custom override, else generated from address). */
+  resolvedMapUrl: string | null;
+  showLocation: boolean;
 };

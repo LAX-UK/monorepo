@@ -1,9 +1,11 @@
+import type { LotStatus } from "@auction/types";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import { type ServiceResult, serviceSuccess } from "../http/service-result";
 import type {
   CancelSaleBody,
   CreateSaleInput,
   IAdminSaleService,
+  MarkSaleEndedBody,
   UpdateSaleInput,
 } from "../interfaces/admin-sale-service";
 
@@ -66,6 +68,48 @@ export class AdminSaleService implements IAdminSaleService {
     return this.api.json<Record<string, unknown>>(
       `/sales/${encodeURIComponent(saleId)}/lots/${encodeURIComponent(lotId)}`,
       { method: "DELETE" },
+    );
+  }
+
+  async markEnded(
+    id: string,
+    body: MarkSaleEndedBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(`/sales/${encodeURIComponent(id)}/mark-ended`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+  }
+
+  async cancelLot(
+    saleId: string,
+    lotId: string,
+    body: CancelSaleBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/sales/${encodeURIComponent(saleId)}/lots/${encodeURIComponent(lotId)}/cancel`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      },
+    );
+  }
+
+  async setLotStatus(
+    saleId: string,
+    lotId: string,
+    status: LotStatus,
+    reason?: string,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/sales/${encodeURIComponent(saleId)}/lots/${encodeURIComponent(lotId)}/status`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, reason }),
+      },
     );
   }
 }

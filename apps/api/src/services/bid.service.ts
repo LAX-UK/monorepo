@@ -1,16 +1,17 @@
 import type { Bid, Lot } from "@auction/types";
-import { moneyGte } from "@auction/validators";
+import { moneyGte, saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
+import type { AdminMetricsService } from "./admin-metrics.service.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
-import type { AdminMetricsService } from "./admin-metrics.service.js";
 
 const ANTI_SNIPING_EXTENSION_MS = 30_000;
 const MAX_PROXY_ROUNDS = 100;
@@ -34,6 +35,7 @@ export class BidService {
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly lotJobs: LotJobSchedulerPort | null,
     private readonly adminMetrics: AdminMetricsService | null = null,
+    private readonly saleModeLookup: ISaleModeLookup | null = null,
   ) {}
 
   async placeBid(
@@ -43,6 +45,15 @@ export class BidService {
     maxAutoBidAmount?: number,
   ): Promise<Result<Bid, BidError>> {
     try {
+      // Read-only mode gate: reject bids targeting lots whose parent sale is
+      // marketing-only (onsite). Done outside the bid transaction so it stays
+      // a fast deny-path that does not contend with `findByIdForUpdate`.
+      if (this.saleModeLookup) {
+        const saleMode = await this.saleModeLookup.findSaleModeForLot(lotId);
+        if (saleMode && !saleModeAllowsBidding(saleMode)) {
+          return err(new BidError("Lot is not accepting bids", 400));
+        }
+      }
       let prevWinnerId: string | null = null;
       const { created, lot, nextEnd, endedEarly } = await this.repos.runInTransaction(
         async ({ lot: lots, bid: bids }) => {

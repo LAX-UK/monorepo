@@ -3,6 +3,7 @@ import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
 } from "@auction/validators";
+import { getSaleModeCapabilities } from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
@@ -25,12 +26,18 @@ export class SaleService {
     if (input.endTime <= input.startTime) {
       throw new LotError("endTime must be after startTime");
     }
+    const mode = input.deliveryMode ?? "onsite";
+    const caps = getSaleModeCapabilities(mode);
     const sale = await this.saleRepo.create({ ...input, createdBy: adminId });
     if (input.lots?.length) {
       for (const row of input.lots) {
         const { sellerId, ...lotFields } = row;
+        const inherited = caps.inheritsLotTiming
+          ? { startTime: input.startTime, endTime: input.endTime }
+          : {};
         await this.lotRepo.create(sellerId, {
           ...lotFields,
+          ...inherited,
           saleId: sale.id,
         });
       }
@@ -108,19 +115,36 @@ export class SaleService {
     if (lots.length === 0) {
       return err(new LotError("Sale must have at least one lot to publish"));
     }
+    const caps = getSaleModeCapabilities(sale.deliveryMode);
     for (const l of lots) {
       if (l.status !== "draft") {
         return err(new LotError("All lots in the sale must be draft to publish"));
       }
-      if (l.startTime.getTime() <= Date.now()) {
+      if (!caps.inheritsLotTiming && l.startTime.getTime() <= Date.now()) {
         return err(new LotError("Each lot startTime must be in the future to publish"));
+      }
+    }
+
+    if (caps.inheritsLotTiming) {
+      for (const l of lots) {
+        if (
+          l.startTime.getTime() !== sale.startTime.getTime() ||
+          l.endTime.getTime() !== sale.endTime.getTime()
+        ) {
+          await this.lotRepo.update(l.id, {
+            startTime: sale.startTime,
+            endTime: sale.endTime,
+          });
+        }
       }
     }
 
     await this.saleRepo.updateStatus(saleId, "scheduled");
     for (const l of lots) {
       await this.lotRepo.updateStatus(l.id, "scheduled");
-      await this.jobScheduler?.scheduleLot(l.id, l.startTime, l.endTime);
+      const lotStart = caps.inheritsLotTiming ? sale.startTime : l.startTime;
+      const lotEnd = caps.inheritsLotTiming ? sale.endTime : l.endTime;
+      await this.jobScheduler?.scheduleLot(l.id, lotStart, lotEnd);
     }
     const updatedSale = await this.saleRepo.findById(saleId);
     if (!updatedSale) return err(new LotError("Sale not found", 404));
@@ -168,10 +192,18 @@ export class SaleService {
       return err(new LotError("Lots can only be added while the sale is draft"));
     }
     const { sellerId, ...lotFields } = row;
-    if (lotFields.endTime <= lotFields.startTime) {
+    const caps = getSaleModeCapabilities(sale.deliveryMode);
+    const startTime = caps.inheritsLotTiming ? sale.startTime : lotFields.startTime;
+    const endTime = caps.inheritsLotTiming ? sale.endTime : lotFields.endTime;
+    if (endTime <= startTime) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const created = await this.lotRepo.create(sellerId, { ...lotFields, saleId });
+    const created = await this.lotRepo.create(sellerId, {
+      ...lotFields,
+      startTime,
+      endTime,
+      saleId,
+    });
     return ok(created);
   }
 
@@ -199,7 +231,11 @@ export class SaleService {
     const inSale = await this.lotRepo.findBySaleId(saleId);
     const maxNum = inSale.reduce((m, l) => Math.max(m, l.lotNumber ?? 0), 0);
     const lotNumber = maxNum + 1;
-    const updated = await this.lotRepo.update(lotId, { saleId, lotNumber });
+    const caps = getSaleModeCapabilities(sale.deliveryMode);
+    const timingPatch = caps.inheritsLotTiming
+      ? { startTime: sale.startTime, endTime: sale.endTime }
+      : {};
+    const updated = await this.lotRepo.update(lotId, { saleId, lotNumber, ...timingPatch });
     return ok(updated);
   }
 
@@ -244,8 +280,28 @@ export class SaleService {
     }
     const normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
     const nextDelivery = patch.deliveryMode ?? sale.deliveryMode;
-    if (nextDelivery === "onsite") {
+    const caps = getSaleModeCapabilities(nextDelivery);
+    if (!caps.allowsStreamUrl) {
       normalized.streamUrl = null;
+    }
+    if (!caps.allowsLocation) {
+      normalized.locationName = null;
+      normalized.locationAddress = null;
+      normalized.locationMapUrl = null;
+      normalized.locationAddressLine1 = null;
+      normalized.locationAddressLine2 = null;
+      normalized.locationCity = null;
+      normalized.locationCounty = null;
+      normalized.locationPostcode = null;
+      normalized.locationCountry = null;
+    }
+    if (caps.inheritsLotTiming) {
+      const lots = await this.lotRepo.findBySaleId(saleId);
+      for (const l of lots) {
+        if (l.status === "draft") {
+          await this.lotRepo.update(l.id, { startTime: nextStart, endTime: nextEnd });
+        }
+      }
     }
     const updated = await this.saleRepo.update(saleId, normalized);
     return ok(updated);

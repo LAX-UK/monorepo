@@ -68,6 +68,43 @@ export function SaleroomOverviewPanel({ overview }: Props) {
         </div>
       ) : null}
 
+      {overview.showLocation ? (
+        <div className="mb-10">
+          <h3 className="mb-3 text-lg font-semibold text-brand-900 dark:text-on-surface">Venue</h3>
+          {overview.locationName ? (
+            <p className="text-base leading-6 text-brand-500 dark:text-on-surface">
+              {overview.locationName}
+            </p>
+          ) : null}
+          {overview.locationAddressLines.length > 0 ? (
+            <address className="mt-1 text-base not-italic leading-6 text-brand-500 dark:text-on-surface-variant">
+              {overview.locationAddressLines.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </address>
+          ) : overview.locationAddress ? (
+            <p className="mt-1 whitespace-pre-line text-base leading-6 text-brand-500 dark:text-on-surface-variant">
+              {overview.locationAddress}
+            </p>
+          ) : null}
+          {overview.resolvedMapUrl ? (
+            <p className="mt-2 text-base">
+              <a
+                href={overview.resolvedMapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 font-semibold text-brand-900 underline underline-offset-2 hover:opacity-80 dark:text-on-surface"
+              >
+                <ExternalLink className="size-4 shrink-0" aria-hidden />
+                {overview.locationMapUrl ? "Open map" : "Get directions"}
+              </a>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {overview.showLiveStream && overview.streamUrl ? (
         <p className="mb-10 text-base">
           <a

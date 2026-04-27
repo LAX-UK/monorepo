@@ -22,6 +22,15 @@ export const adminSaleFormValuesSchema = z.object({
   categoryId: z.string(),
   deliveryMode: z.enum(saleDeliveryModes),
   streamUrl: z.string().max(500),
+  locationName: z.string().max(500),
+  locationAddress: z.string().max(500),
+  locationMapUrl: z.string().max(2048),
+  locationAddressLine1: z.string().max(500),
+  locationAddressLine2: z.string().max(500),
+  locationCity: z.string().max(500),
+  locationCounty: z.string().max(500),
+  locationPostcode: z.string().max(16),
+  locationCountry: z.string().max(120),
   startTime: z.string().min(1, "Start is required"),
   endTime: z.string().min(1, "End is required"),
   previewStartTime: z.string(),
@@ -31,15 +40,67 @@ export const adminSaleFormValuesSchema = z.object({
 
 export type AdminSaleFormValues = z.infer<typeof adminSaleFormValuesSchema>;
 
+type LocationFormFieldKey =
+  | "locationName"
+  | "locationAddress"
+  | "locationMapUrl"
+  | "locationAddressLine1"
+  | "locationAddressLine2"
+  | "locationCity"
+  | "locationCounty"
+  | "locationPostcode"
+  | "locationCountry";
+
+const LOCATION_FORM_KEYS: readonly LocationFormFieldKey[] = [
+  "locationName",
+  "locationAddress",
+  "locationMapUrl",
+  "locationAddressLine1",
+  "locationAddressLine2",
+  "locationCity",
+  "locationCounty",
+  "locationPostcode",
+  "locationCountry",
+];
+
+function pickLocationCreate(
+  values: AdminSaleFormValues,
+  isOnsite: boolean,
+): Partial<Record<LocationFormFieldKey, string | undefined>> {
+  const out: Partial<Record<LocationFormFieldKey, string | undefined>> = {};
+  for (const k of LOCATION_FORM_KEYS) {
+    out[k] = isOnsite ? values[k].trim() || undefined : undefined;
+  }
+  return out;
+}
+
+function pickLocationUpdate(
+  values: AdminSaleFormValues,
+  isOnsite: boolean,
+): Partial<Record<LocationFormFieldKey, string | null>> {
+  const out: Partial<Record<LocationFormFieldKey, string | null>> = {};
+  for (const k of LOCATION_FORM_KEYS) {
+    if (!isOnsite) {
+      out[k] = null;
+      continue;
+    }
+    const trimmed = values[k].trim();
+    out[k] = trimmed === "" ? null : trimmed;
+  }
+  return out;
+}
+
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   const coverRaw = values.coverImages.trim();
+  const isOnsite = values.deliveryMode === "onsite";
   return createSaleSchema.safeParse({
     title: values.title.trim(),
     description: values.description.trim() || undefined,
     coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
-    streamUrl: values.streamUrl.trim() || undefined,
+    streamUrl: isOnsite ? values.streamUrl.trim() || undefined : undefined,
+    ...pickLocationCreate(values, isOnsite),
     startTime: new Date(values.startTime),
     endTime: new Date(values.endTime),
     previewStartTime: values.previewStartTime.trim()
@@ -53,13 +114,15 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
 export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
   const coverRaw = values.coverImages.trim();
   const streamRaw = values.streamUrl.trim();
+  const isOnsite = values.deliveryMode === "onsite";
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
     coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
-    streamUrl: streamRaw === "" ? null : streamRaw || undefined,
+    streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,
+    ...pickLocationUpdate(values, isOnsite),
     startTime: values.startTime.trim() ? new Date(values.startTime) : undefined,
     endTime: values.endTime.trim() ? new Date(values.endTime) : undefined,
     previewStartTime: values.previewStartTime.trim()

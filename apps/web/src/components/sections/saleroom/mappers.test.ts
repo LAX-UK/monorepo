@@ -13,8 +13,17 @@ const baseSale: Sale = {
   description: "Curated highlights",
   coverImages: ["https://cdn/image.jpg"],
   categoryId: null,
-  deliveryMode: "hybrid",
+  deliveryMode: "onsite",
   streamUrl: "https://example.com/stream",
+  locationName: "TheLax Saleroom",
+  locationAddress: "12 King Street, London",
+  locationMapUrl: null,
+  locationAddressLine1: null,
+  locationAddressLine2: null,
+  locationCity: null,
+  locationCounty: null,
+  locationPostcode: null,
+  locationCountry: null,
   status: "scheduled",
   startTime: new Date("2026-06-01T18:00:00Z"),
   endTime: new Date("2026-06-01T21:00:00Z"),
@@ -61,9 +70,9 @@ const baseLot: Lot = {
 const now = new Date("2026-01-15T12:00:00Z");
 
 describe("mapSaleToHeroVM", () => {
-  it("emits onsite / hybrid / online tags and live-stream tag when streamUrl set", () => {
+  it("emits onsite / online tags and live-stream tag when streamUrl set", () => {
     const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1", now });
-    expect(vm.tags).toContain("Hybrid");
+    expect(vm.tags).toContain("Onsite");
     expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
     expect(vm.dateLine).toBeTruthy();
@@ -125,8 +134,54 @@ describe("mapSaleToOverviewVM", () => {
     expect(vm.lotsLabel).toBe("5 lots");
     expect(vm.categoryLabel).toBe("Contemporary");
     expect(vm.buyerPremiumLabel).toBe("25%");
-    expect(vm.formatLabel).toBe("Hybrid");
+    expect(vm.formatLabel).toBe("On-site");
     expect(vm.showLiveStream).toBe(false);
+    expect(vm.showLocation).toBe(true);
+    expect(vm.locationName).toBe("TheLax Saleroom");
+  });
+
+  it("prefers structured UK address lines and generates a Google Maps URL", () => {
+    const sale: Sale = {
+      ...baseSale,
+      locationAddress: null,
+      locationName: "Sotheby's London",
+      locationAddressLine1: "34 New Bond Street",
+      locationCity: "London",
+      locationPostcode: "W1A 2AA",
+      locationCountry: "United Kingdom",
+    };
+    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    expect(vm.showLocation).toBe(true);
+    expect(vm.locationAddressLines).toEqual([
+      "34 New Bond Street",
+      "London",
+      "W1A 2AA",
+      "United Kingdom",
+    ]);
+    expect(vm.resolvedMapUrl).toMatch(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
+    expect(vm.resolvedMapUrl).toContain("Sotheby");
+  });
+
+  it("hides location for online sales even when fields are populated", () => {
+    const sale: Sale = {
+      ...baseSale,
+      deliveryMode: "online",
+      locationAddressLine1: "Should not show",
+    };
+    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    expect(vm.showLocation).toBe(false);
+  });
+
+  it("uses an explicit locationMapUrl override when provided", () => {
+    const sale: Sale = {
+      ...baseSale,
+      locationMapUrl: "https://maps.example.com/custom-pin",
+      locationAddressLine1: "1 Test Street",
+      locationCity: "London",
+      locationPostcode: "SW1Y 6QU",
+    };
+    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    expect(vm.resolvedMapUrl).toBe("https://maps.example.com/custom-pin");
   });
 });
 
@@ -154,15 +209,12 @@ describe("mapLotToCardVM", () => {
 });
 
 describe("mapSaleToRelatedVM", () => {
-  it("labels onsite/online/hybrid auctions distinctly", () => {
+  it("labels onsite and online auctions distinctly", () => {
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "online" }, 10).kindLabel).toBe(
       "Online auction",
     );
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "onsite" }, 10).kindLabel).toBe(
       "Live auction",
-    );
-    expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "hybrid" }, 10).kindLabel).toBe(
-      "Hybrid auction",
     );
   });
 

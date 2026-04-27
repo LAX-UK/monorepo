@@ -47,8 +47,6 @@ function mapDeliveryToAuctionTypeLabel(mode: Sale["deliveryMode"]): string {
       return "Online Auction";
     case "onsite":
       return "Live Auction";
-    case "hybrid":
-      return "Hybrid Auction";
   }
 }
 

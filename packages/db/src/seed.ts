@@ -238,9 +238,10 @@ async function main() {
         "Curated evening session anchored in contemporary painting and sculpture — flagship live window.",
       coverImages: [IMG.a, IMG.b, IMG.a],
       categoryId: CAT.paintings,
-      deliveryMode: "hybrid",
-      // Hero live stream (preview). To patch an existing DB without reseed:
-      // UPDATE sale SET stream_url = 'https://www.youtube.com/watch?v=AtO699gsFS8&t=11s' WHERE delivery_mode != 'onsite';
+      deliveryMode: "onsite",
+      locationName: "TheLax Mayfair Saleroom",
+      locationAddress: "12 King Street, St James's, London SW1Y 6QU",
+      locationMapUrl: "https://maps.google.com/?q=12+King+Street+London",
       streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
       status: "active",
       startTime: activeStart,
@@ -259,7 +260,7 @@ async function main() {
       coverImages: [IMG.c, IMG.d],
       categoryId: null,
       deliveryMode: "online",
-      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
+      streamUrl: null,
       status: "active",
       startTime: scheduledStart,
       endTime: scheduledEnd,

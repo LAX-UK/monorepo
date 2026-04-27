@@ -33,6 +33,15 @@ export class DrizzleSaleRepository implements ISaleRepository {
         categoryId: input.categoryId ?? null,
         deliveryMode: input.deliveryMode ?? "onsite",
         streamUrl: input.streamUrl ?? null,
+        locationName: input.locationName ?? null,
+        locationAddress: input.locationAddress ?? null,
+        locationMapUrl: input.locationMapUrl ?? null,
+        locationAddressLine1: input.locationAddressLine1 ?? null,
+        locationAddressLine2: input.locationAddressLine2 ?? null,
+        locationCity: input.locationCity ?? null,
+        locationCounty: input.locationCounty ?? null,
+        locationPostcode: input.locationPostcode ?? null,
+        locationCountry: input.locationCountry ?? null,
         startTime: input.startTime,
         endTime: input.endTime,
         previewStartTime: input.previewStartTime ?? null,
@@ -50,8 +59,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async list(filter: ListSalesFilter): Promise<Sale[]> {
     const whereClause = listWhere(filter);
-    const order =
-      filter.sort === "startAsc" ? asc(sale.startTime) : desc(sale.createdAt);
+    const order = filter.sort === "startAsc" ? asc(sale.startTime) : desc(sale.createdAt);
     const rows = await this.db
       .select()
       .from(sale)
@@ -82,6 +90,20 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.terms !== undefined) rowPatch.terms = patch.terms ?? null;
     if (patch.deliveryMode !== undefined) rowPatch.deliveryMode = patch.deliveryMode;
     if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;
+    if (patch.locationName !== undefined) rowPatch.locationName = patch.locationName ?? null;
+    if (patch.locationAddress !== undefined)
+      rowPatch.locationAddress = patch.locationAddress ?? null;
+    if (patch.locationMapUrl !== undefined) rowPatch.locationMapUrl = patch.locationMapUrl ?? null;
+    if (patch.locationAddressLine1 !== undefined)
+      rowPatch.locationAddressLine1 = patch.locationAddressLine1 ?? null;
+    if (patch.locationAddressLine2 !== undefined)
+      rowPatch.locationAddressLine2 = patch.locationAddressLine2 ?? null;
+    if (patch.locationCity !== undefined) rowPatch.locationCity = patch.locationCity ?? null;
+    if (patch.locationCounty !== undefined) rowPatch.locationCounty = patch.locationCounty ?? null;
+    if (patch.locationPostcode !== undefined)
+      rowPatch.locationPostcode = patch.locationPostcode ?? null;
+    if (patch.locationCountry !== undefined)
+      rowPatch.locationCountry = patch.locationCountry ?? null;
 
     const [row] = await this.db.update(sale).set(rowPatch).where(eq(sale.id, id)).returning();
     if (!row) throw new Error("Sale update failed");

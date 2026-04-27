@@ -17,6 +17,8 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
   const canPublish = sale.status === "draft";
   const canCancel =
     sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
+  const isOnsite = sale.deliveryMode === "onsite";
+  const canMarkOnsiteEnded = isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -30,15 +32,23 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
         {sale.title}
       </DisplayHeading>
       <p className="font-label text-xs uppercase tracking-widest text-secondary">
-        {sale.status} · {lots.length} lot{lots.length === 1 ? "" : "s"}
+        {sale.status} · {sale.deliveryMode} · {lots.length} lot{lots.length === 1 ? "" : "s"}
       </p>
 
       <AdminSaleDetailActions
         saleId={id}
+        saleStatus={sale.status}
+        deliveryMode={sale.deliveryMode}
         canEdit={canEdit}
         canPublish={canPublish}
         canCancel={canCancel}
-        lots={lots}
+        canMarkOnsiteEnded={canMarkOnsiteEnded}
+        lots={lots.map((l) => ({
+          id: l.id,
+          title: l.title,
+          lotNumber: l.lotNumber,
+          status: l.status,
+        }))}
         draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
       />
     </div>

@@ -5,8 +5,10 @@ import {
   listSaleBiddersQuerySchema,
   listSaleLotsQuerySchema,
   listSalesQuerySchema,
+  markSaleEndedBodySchema,
   saleIdParamSchema,
   saleLotIdParamSchema,
+  updateLotStatusBodySchema,
   updateSaleSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -100,42 +102,27 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
-  r.post(
-    "/:id/follow",
-    requireAuth,
-    zValidator("param", saleIdParamSchema),
-    async (c) => {
-      const userId = c.get("userId") as string;
-      const { id } = c.req.valid("param");
-      const row = await container.saleFollowService.follow(userId, id);
-      if (!row) return c.json({ error: "Not found" }, 404);
-      return c.json({ data: { isFollowing: true } });
-    },
-  );
+  r.post("/:id/follow", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { id } = c.req.valid("param");
+    const row = await container.saleFollowService.follow(userId, id);
+    if (!row) return c.json({ error: "Not found" }, 404);
+    return c.json({ data: { isFollowing: true } });
+  });
 
-  r.delete(
-    "/:id/follow",
-    requireAuth,
-    zValidator("param", saleIdParamSchema),
-    async (c) => {
-      const userId = c.get("userId") as string;
-      const { id } = c.req.valid("param");
-      await container.saleFollowService.unfollow(userId, id);
-      return c.json({ data: { isFollowing: false } });
-    },
-  );
+  r.delete("/:id/follow", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { id } = c.req.valid("param");
+    await container.saleFollowService.unfollow(userId, id);
+    return c.json({ data: { isFollowing: false } });
+  });
 
-  r.get(
-    "/:id/follow",
-    requireAuth,
-    zValidator("param", saleIdParamSchema),
-    async (c) => {
-      const userId = c.get("userId") as string;
-      const { id } = c.req.valid("param");
-      const isFollowing = await container.saleFollowService.isFollowing(userId, id);
-      return c.json({ data: { isFollowing } });
-    },
-  );
+  r.get("/:id/follow", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { id } = c.req.valid("param");
+    const isFollowing = await container.saleFollowService.isFollowing(userId, id);
+    return c.json({ data: { isFollowing } });
+  });
 
   r.post("/", requireAuth, zValidator("json", createSaleSchema), async (c) => {
     const role = c.get("userRole") ?? "user";
@@ -242,6 +229,67 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const result = await container.saleService.detachLot(role, id, lotId);
       return result.match(
         () => c.body(null, 204),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.post(
+    "/:id/mark-ended",
+    requireAuth,
+    zValidator("param", saleIdParamSchema),
+    zValidator("json", markSaleEndedBodySchema),
+    async (c) => {
+      const role = c.get("userRole") ?? "user";
+      const { id } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const result = await container.saleStatusTransitionService.markOnsiteSaleEnded(
+        role,
+        id,
+        reason,
+      );
+      return result.match(
+        (data) => c.json({ data }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.post(
+    "/:id/lots/:lotId/cancel",
+    requireAuth,
+    zValidator("param", saleLotIdParamSchema),
+    zValidator("json", cancelSaleBodySchema),
+    async (c) => {
+      const role = c.get("userRole") ?? "user";
+      const { id, lotId } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const result = await container.saleStatusTransitionService.cancelLot(role, id, lotId, reason);
+      return result.match(
+        (lot) => c.json({ data: lot }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  r.post(
+    "/:id/lots/:lotId/status",
+    requireAuth,
+    zValidator("param", saleLotIdParamSchema),
+    zValidator("json", updateLotStatusBodySchema),
+    async (c) => {
+      const role = c.get("userRole") ?? "user";
+      const { id, lotId } = c.req.valid("param");
+      const { status, reason } = c.req.valid("json");
+      const result = await container.saleStatusTransitionService.setLotStatus(
+        role,
+        id,
+        lotId,
+        status,
+        reason,
+      );
+      return result.match(
+        (lot) => c.json({ data: lot }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
       );
     },

@@ -11,7 +11,7 @@ export const saleStatusEnum = pgEnum("sale_status", [
   "cancelled",
 ]);
 
-export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite", "hybrid"]);
+export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite"]);
 
 export const sale = pgTable(
   "sale",
@@ -25,6 +25,15 @@ export const sale = pgTable(
     }),
     deliveryMode: saleDeliveryModeEnum("delivery_mode").notNull().default("onsite"),
     streamUrl: text("stream_url"),
+    locationName: text("location_name"),
+    locationAddress: text("location_address"),
+    locationMapUrl: text("location_map_url"),
+    locationAddressLine1: text("location_address_line1"),
+    locationAddressLine2: text("location_address_line2"),
+    locationCity: text("location_city"),
+    locationCounty: text("location_county"),
+    locationPostcode: text("location_postcode"),
+    locationCountry: text("location_country"),
     status: saleStatusEnum("status").notNull().default("draft"),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
