@@ -50,6 +50,10 @@ export default async function AdminPaymentsPage({
       amount: p.amount,
       platformFee: p.platformFee,
       status: p.status,
+      xeroInvoiceNumber: p.xeroInvoiceNumber,
+      xeroOnlineInvoiceUrl: p.xeroOnlineInvoiceUrl,
+      xeroSyncStatus: p.xeroSyncStatus,
+      xeroLastError: p.xeroLastError,
     }))
     .filter((row) => !statusFilter || row.status === statusFilter);
 

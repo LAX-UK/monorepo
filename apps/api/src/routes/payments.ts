@@ -27,7 +27,17 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     const body = c.req.valid("json");
     const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
     return result.match(
-      (data) => c.json({ data }, 201),
+      (data) =>
+        c.json(
+          {
+            data: {
+              paymentId: data.paymentId,
+              clientSecret: data.clientSecret,
+              checkoutUrl: data.checkoutUrl,
+            },
+          },
+          201,
+        ),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });

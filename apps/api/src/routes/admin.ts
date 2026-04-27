@@ -4,6 +4,7 @@ import {
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
   adminUserListQuerySchema,
+  paymentIdParamSchema,
   userIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -12,8 +13,10 @@ import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { AuthzError } from "../lib/errors.js";
+import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { attachXeroAdminRoutes } from "./xero-admin.js";
 
 const activityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -137,6 +140,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       return c.json({ data });
     },
   );
+
+  r.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
+    const role = c.get("userRole") ?? "user";
+    const { id } = c.req.valid("param");
+    const result = await container.paymentService.syncPaymentFromXeroAsAdmin(role, id);
+    return result.match(
+      (data) => c.json({ data }),
+      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+    );
+  });
+
+  attachXeroAdminRoutes(r, container);
 
   return r;
 }

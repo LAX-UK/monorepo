@@ -23,6 +23,10 @@ export type AdminPaymentTableRow = {
   amount: string;
   platformFee: string;
   status: PaymentStatus;
+  xeroInvoiceNumber: string | null;
+  xeroOnlineInvoiceUrl: string | null;
+  xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
+  xeroLastError: string | null;
 };
 
 type PaymentActionsProps = { id: string; status: PaymentStatus; fullWidth?: boolean };
@@ -126,6 +130,24 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
       accessorKey: "amount",
       header: "Amount",
       cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
+    },
+    {
+      id: "xero",
+      header: "Xero",
+      cell: ({ row }) =>
+        row.original.xeroOnlineInvoiceUrl ? (
+          <a
+            href={row.original.xeroOnlineInvoiceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+          >
+            Invoice
+          </a>
+        ) : (
+          <span className="text-on-surface-variant">—</span>
+        ),
+      enableSorting: false,
     },
     {
       accessorKey: "status",

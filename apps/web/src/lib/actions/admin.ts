@@ -1,5 +1,6 @@
 "use server";
 
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -365,6 +366,25 @@ export async function adminRefundPaymentResultAction(
   return actionSuccess();
 }
 
+export async function adminPaymentXeroSyncResultAction(
+  paymentId: string,
+): Promise<ActionResult<void>> {
+  const id = paymentId.trim();
+  if (!id) {
+    return actionFailure("Missing payment");
+  }
+  const { adminPayments } = getWriteContainer();
+  const r = await adminPayments.xeroSync(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  if (!r.data.ok) {
+    return actionFailure(r.data.error ?? "Xero sync failed");
+  }
+  revalidatePath("/admin/payments");
+  return actionSuccess();
+}
+
 export async function adminSetUserRoleResultAction(
   userId: string,
   body: z.infer<typeof adminSetRoleBodySchema>,
@@ -419,4 +439,22 @@ export async function adminUnsuspendUserResultAction(userId: string): Promise<Ac
   }
   revalidatePath("/admin/users");
   return actionSuccess();
+}
+
+export async function adminXeroOAuthStartAction(): Promise<void> {
+  const res = await authedServerFetch("/admin/integrations/xero/oauth/consent-url");
+  if (!res.ok) {
+    redirect(`/admin/integrations/xero?error=${encodeURIComponent("Could not start Xero OAuth")}`);
+  }
+  const body = (await res.json()) as { data: { url: string } };
+  redirect(body.data.url);
+}
+
+export async function adminXeroDisconnectAction(): Promise<void> {
+  const res = await authedServerFetch("/admin/integrations/xero/disconnect", { method: "POST" });
+  if (!res.ok) {
+    redirect(`/admin/integrations/xero?error=${encodeURIComponent("Disconnect failed")}`);
+  }
+  revalidatePath("/admin/integrations/xero");
+  redirect("/admin/integrations/xero");
 }

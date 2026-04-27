@@ -156,6 +156,11 @@ export function CheckoutPurchasePanel({
                 form.setError("root", { message: r.error });
                 return;
               }
+              const checkoutUrl = r.ok ? (r.data?.checkoutUrl ?? null) : null;
+              if (checkoutUrl) {
+                window.location.assign(checkoutUrl);
+                return;
+              }
               setSubmitted(true);
               toast.success("Payment record created", {
                 description: "Our settlements team will follow up with next steps.",

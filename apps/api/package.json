@@ -36,6 +36,7 @@
     "ioredis": "^5.4.2",
     "neverthrow": "^8.1.1",
     "web-push": "^3.6.7",
+    "xero-node": "^9.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

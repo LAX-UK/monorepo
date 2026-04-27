@@ -38,6 +38,7 @@ import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.read
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
+import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.repository.js";
 import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
@@ -51,6 +52,10 @@ import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.re
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
+import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
+import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
+import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
+import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
@@ -66,11 +71,13 @@ import type { IItemSubmissionService } from "./services/interfaces/item-submissi
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
+import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
 import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IPushSender } from "./services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
+import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
@@ -91,9 +98,11 @@ import { SaleService } from "./services/sale.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
+import { XeroOAuthService } from "./services/xero-oauth.service.js";
 import { LotStrategyFactory } from "./strategies/strategy.factory.js";
 
 export type Container = {
+  env: Env;
   db: ReturnType<typeof createDb>;
   redis: Redis;
   /** Exposed for web push subscription (public key only). */
@@ -114,6 +123,9 @@ export type Container = {
   dashboardQueryService: DashboardQueryService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
+  accountingProvider: IPaymentAccountingProvider;
+  xeroOAuthService: XeroOAuthService | null;
+  xeroWebhookEventRepository: IXeroWebhookEventRepository;
   userService: UserService;
   watchlistService: WatchlistService;
   artistWatchlistService: ArtistWatchlistService;
@@ -259,12 +271,49 @@ export function createContainer(env: Env): Container {
   const categoryService = new CategoryService(categoryRepo);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
+
+  const xeroConnRepo = new DrizzleXeroConnectionRepository(db);
+  const paymentExtRepo = new DrizzlePaymentExternalRefRepository(db);
+  const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
+
+  const xeroEnvEnabled = Boolean(
+    env.XERO_CLIENT_ID && env.XERO_CLIENT_SECRET && env.XERO_REDIRECT_URI,
+  );
+
+  const paymentServiceRef: { current?: PaymentService } = {};
+
+  const accountingProvider: IPaymentAccountingProvider = xeroEnvEnabled
+    ? new XeroAccountingProvider(
+        {
+          XERO_CLIENT_ID: env.XERO_CLIENT_ID,
+          XERO_CLIENT_SECRET: env.XERO_CLIENT_SECRET,
+          XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
+          XERO_DEFAULT_REVENUE_ACCOUNT_CODE: env.XERO_DEFAULT_REVENUE_ACCOUNT_CODE,
+          XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
+          XERO_INVOICE_DUE_DAYS: env.XERO_INVOICE_DUE_DAYS,
+        },
+        xeroConnRepo,
+        paymentExtRepo,
+        async (paymentId) => {
+          const svc = paymentServiceRef.current;
+          if (svc) {
+            await svc.markCapturedFromProviderSync(paymentId);
+          }
+        },
+      )
+    : new NoOpAccountingProvider();
+
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
     notificationDispatcher,
     notificationFactory,
+    userRepo,
+    accountingProvider,
   );
+  paymentServiceRef.current = paymentService;
+
+  const xeroOAuthService = xeroEnvEnabled ? new XeroOAuthService(redis, env, xeroConnRepo) : null;
 
   const adminMetricsService = new AdminMetricsService(
     repoFactory,
@@ -328,6 +377,7 @@ export function createContainer(env: Env): Container {
   );
 
   return {
+    env,
     db,
     redis,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
@@ -347,6 +397,9 @@ export function createContainer(env: Env): Container {
     dashboardQueryService,
     notificationQueryService,
     paymentService,
+    accountingProvider,
+    xeroOAuthService,
+    xeroWebhookEventRepository,
     userService,
     watchlistService,
     artistWatchlistService,

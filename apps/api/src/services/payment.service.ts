@@ -1,8 +1,9 @@
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
+import type { ILotRepository, IUserRepository } from "./interfaces/repositories.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
@@ -13,16 +14,23 @@ export class PaymentService {
     private readonly payments: IPaymentWriteRepository,
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly notificationFactory: NotificationFactory,
+    private readonly users: IUserRepository,
+    private readonly accounting: IPaymentAccountingProvider,
   ) {}
 
   /**
-   * Record a pending settlement for a won lot. No payment processor yet — `clientSecret` is always null
-   * until a gateway is integrated (response shape kept for future client compatibility).
+   * Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
+   * and returns `checkoutUrl` for redirect to Xero. `clientSecret` remains null until a card gateway exists.
    */
   async createPendingForWinner(
     buyerId: string,
     lotId: string,
-  ): Promise<Result<{ paymentId: string; clientSecret: string | null }, AuthzError | LotError>> {
+  ): Promise<
+    Result<
+      { paymentId: string; clientSecret: string | null; checkoutUrl: string | null },
+      AuthzError | LotError
+    >
+  > {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
       return err(new LotError("Lot not found", 404));
@@ -36,7 +44,24 @@ export class PaymentService {
 
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
-      return ok({ paymentId: existing.id, clientSecret: null });
+      let checkoutUrl: string | null = null;
+      if (this.accounting.isConfigured()) {
+        checkoutUrl = await this.accounting.getCheckoutUrlIfAny(existing.id);
+        if (!checkoutUrl) {
+          const buyer = await this.users.findById(buyerId);
+          if (buyer?.email) {
+            const r = await this.accounting.createCheckoutForWinner({
+              paymentId: existing.id,
+              lot,
+              buyerEmail: buyer.email,
+              buyerName: buyer.name,
+              amount: existing.amount,
+            });
+            checkoutUrl = r.checkoutUrl ?? null;
+          }
+        }
+      }
+      return ok({ paymentId: existing.id, clientSecret: null, checkoutUrl });
     }
 
     const total = this.totalDue(lot);
@@ -52,7 +77,22 @@ export class PaymentService {
       stripePaymentIntentId: null,
     });
 
-    return ok({ paymentId: created.id, clientSecret: null });
+    let checkoutUrl: string | null = null;
+    if (this.accounting.isConfigured()) {
+      const buyer = await this.users.findById(buyerId);
+      if (buyer?.email) {
+        const r = await this.accounting.createCheckoutForWinner({
+          paymentId: created.id,
+          lot,
+          buyerEmail: buyer.email,
+          buyerName: buyer.name,
+          amount: created.amount,
+        });
+        checkoutUrl = r.checkoutUrl ?? null;
+      }
+    }
+
+    return ok({ paymentId: created.id, clientSecret: null, checkoutUrl });
   }
 
   async listAllForAdmin(userRole: string): Promise<Result<PaymentRecord[], AuthzError>> {
@@ -109,6 +149,38 @@ export class PaymentService {
       return ok(undefined);
     }
     await this.payments.updateStatus(paymentId, "captured");
+    await this.dispatchPaymentReceived(p);
+    return ok(undefined);
+  }
+
+  /**
+   * Marks a payment captured when Xero reports the linked invoice as paid (webhook / sync).
+   * Does not perform admin authorization — only call from trusted integration code.
+   */
+  async markCapturedFromProviderSync(paymentId: string): Promise<void> {
+    const p = await this.payments.findById(paymentId);
+    if (!p || p.status === "captured" || p.status === "refunded") {
+      return;
+    }
+    await this.payments.updateStatus(paymentId, "captured");
+    await this.dispatchPaymentReceived(p);
+  }
+
+  async syncPaymentFromXeroAsAdmin(
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
+    if (userRole !== "admin") {
+      return err(new AuthzError("Only admins can sync Xero payments", 403));
+    }
+    const r = await this.accounting.syncPaymentFromProvider(paymentId);
+    if (!r.ok) {
+      return ok({ ok: false, error: r.error ?? "Xero sync failed" });
+    }
+    return ok({ ok: true });
+  }
+
+  private async dispatchPaymentReceived(p: PaymentRecord): Promise<void> {
     const lot = await this.lots.findById(p.lotId);
     if (lot && this.notificationDispatcher) {
       await this.notificationDispatcher.dispatch(
@@ -116,7 +188,6 @@ export class PaymentService {
         notificationRowToPayload(this.notificationFactory.createPaymentReceived(lot, p.buyerId)),
       );
     }
-    return ok(undefined);
   }
 
   private totalDue(lot: Lot): number {

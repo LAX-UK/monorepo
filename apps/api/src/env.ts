@@ -33,6 +33,21 @@ const envSchema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     /** Public URL prefix for objects (e.g. https://cdn.example.com or R2 public bucket URL). */
     S3_PUBLIC_BASE_URL: z.string().url().optional(),
+    /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
+    XERO_CLIENT_ID: z.string().optional(),
+    XERO_CLIENT_SECRET: z.string().optional(),
+    /** Must match a redirect URI registered in the Xero developer portal (e.g. https://api.example.com/admin/integrations/xero/callback). */
+    XERO_REDIRECT_URI: z.string().url().optional(),
+    /** Webhook signing key from Xero (optional until webhooks are configured). */
+    XERO_WEBHOOK_KEY: z.string().optional(),
+    /** Chart of accounts revenue code for invoice line items (org-specific). */
+    XERO_DEFAULT_REVENUE_ACCOUNT_CODE: z.string().min(1).default("200"),
+    /** Xero tax type for line items (e.g. OUTPUT2, NONE). Org-specific. */
+    XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
+    /** Days after invoice date for due date. */
+    XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+    /** After OAuth, redirect browser here (web app), e.g. https://app.example.com/admin/integrations/xero */
+    XERO_POST_CONNECT_WEB_REDIRECT: z.string().url().optional(),
   })
   .superRefine((e, ctx) => {
     if (e.STORAGE_DRIVER === "s3") {
@@ -41,6 +56,18 @@ const envSchema = z
           code: z.ZodIssueCode.custom,
           message:
             "S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY are required when STORAGE_DRIVER=s3",
+        });
+      }
+    }
+    const hasXeroId = Boolean(e.XERO_CLIENT_ID && e.XERO_CLIENT_ID.length > 0);
+    const hasXeroSecret = Boolean(e.XERO_CLIENT_SECRET && e.XERO_CLIENT_SECRET.length > 0);
+    const hasXeroRedirect = Boolean(e.XERO_REDIRECT_URI);
+    if (hasXeroId || hasXeroSecret || hasXeroRedirect) {
+      if (!hasXeroId || !hasXeroSecret || !hasXeroRedirect) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "XERO_CLIENT_ID, XERO_CLIENT_SECRET, and XERO_REDIRECT_URI must all be set together when enabling Xero OAuth",
         });
       }
     }

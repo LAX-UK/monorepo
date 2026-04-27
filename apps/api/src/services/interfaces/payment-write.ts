@@ -17,6 +17,11 @@ export type PaymentRecord = {
   stripePaymentIntentId: string | null;
   status: "pending" | "authorized" | "captured" | "refunded";
   createdAt: Date;
+  /** Populated for admin listing when a Xero invoice row exists. */
+  xeroInvoiceNumber?: string | null;
+  xeroOnlineInvoiceUrl?: string | null;
+  xeroSyncStatus?: "pending_sync" | "synced" | "error" | null;
+  xeroLastError?: string | null;
 };
 
 export interface IPaymentWriteRepository {

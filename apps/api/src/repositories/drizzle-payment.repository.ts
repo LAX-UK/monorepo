@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { payment } from "@auction/db/schema";
+import { payment, paymentExternalRef } from "@auction/db/schema";
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
@@ -10,7 +10,15 @@ import type {
 
 type Row = InferSelectModel<typeof payment>;
 
-function mapRow(row: Row): PaymentRecord {
+function mapRow(
+  row: Row,
+  xero?: {
+    xeroInvoiceNumber: string | null;
+    xeroOnlineInvoiceUrl: string | null;
+    xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
+    xeroLastError: string | null;
+  } | null,
+): PaymentRecord {
   return {
     id: row.id,
     lotId: row.lotId,
@@ -21,6 +29,10 @@ function mapRow(row: Row): PaymentRecord {
     stripePaymentIntentId: row.stripePaymentIntentId,
     status: row.status,
     createdAt: row.createdAt,
+    xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
+    xeroOnlineInvoiceUrl: xero?.xeroOnlineInvoiceUrl ?? null,
+    xeroSyncStatus: xero?.xeroSyncStatus ?? null,
+    xeroLastError: xero?.xeroLastError ?? null,
   };
 }
 
@@ -41,13 +53,13 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .returning();
     if (!created) throw new Error("Payment insert failed");
-    return mapRow(created);
+    return mapRow(created, null);
   }
 
   async findById(id: string): Promise<PaymentRecord | null> {
     const rows = await this.db.select().from(payment).where(eq(payment.id, id)).limit(1);
     const row = rows[0];
-    return row ? mapRow(row) : null;
+    return row ? mapRow(row, null) : null;
   }
 
   async findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null> {
@@ -63,7 +75,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       )
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row) : null;
+    return row ? mapRow(row, null) : null;
   }
 
   async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
@@ -71,8 +83,25 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   }
 
   async listAll(): Promise<PaymentRecord[]> {
-    const rows = await this.db.select().from(payment).orderBy(desc(payment.createdAt));
-    return rows.map(mapRow);
+    const rows = await this.db
+      .select({
+        payment,
+        refInvoiceNumber: paymentExternalRef.xeroInvoiceNumber,
+        refOnlineUrl: paymentExternalRef.onlineInvoiceUrl,
+        refSyncStatus: paymentExternalRef.syncStatus,
+        refLastError: paymentExternalRef.lastError,
+      })
+      .from(payment)
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId))
+      .orderBy(desc(payment.createdAt));
+    return rows.map((r) =>
+      mapRow(r.payment, {
+        xeroInvoiceNumber: r.refInvoiceNumber ?? null,
+        xeroOnlineInvoiceUrl: r.refOnlineUrl ?? null,
+        xeroSyncStatus: r.refSyncStatus ?? null,
+        xeroLastError: r.refLastError ?? null,
+      }),
+    );
   }
 
   async listByBuyerId(buyerId: string): Promise<PaymentRecord[]> {
@@ -81,7 +110,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .from(payment)
       .where(eq(payment.buyerId, buyerId))
       .orderBy(desc(payment.createdAt));
-    return rows.map(mapRow);
+    return rows.map((row) => mapRow(row, null));
   }
 
   async countPendingOlderThanHours(hours: number): Promise<number> {

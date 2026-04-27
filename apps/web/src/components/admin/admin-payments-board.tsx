@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminPaymentXeroPanel } from "@/components/admin/admin-payment-xero-panel";
 import {
   AdminPaymentActions,
   type AdminPaymentTableRow,
@@ -63,6 +64,25 @@ function paymentColumns(
       accessorKey: "amount",
       header: "Amount",
       cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
+    },
+    {
+      id: "xero",
+      header: "Xero",
+      cell: ({ row }) =>
+        row.original.xeroOnlineInvoiceUrl ? (
+          <a
+            href={row.original.xeroOnlineInvoiceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Invoice
+          </a>
+        ) : (
+          <span className="text-on-surface-variant">—</span>
+        ),
+      enableSorting: false,
     },
     {
       accessorKey: "status",
@@ -133,6 +153,14 @@ function PaymentDrawerContent({ p, onClose }: { p: AdminPaymentTableRow; onClose
           </dd>
         </div>
       </dl>
+
+      <AdminPaymentXeroPanel
+        id={p.id}
+        xeroInvoiceNumber={p.xeroInvoiceNumber}
+        xeroOnlineInvoiceUrl={p.xeroOnlineInvoiceUrl}
+        xeroSyncStatus={p.xeroSyncStatus}
+        xeroLastError={p.xeroLastError}
+      />
 
       <AdminPaymentActions id={p.id} status={p.status} fullWidth />
     </div>

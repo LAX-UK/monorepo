@@ -12,6 +12,7 @@ export * from "./artist-watchlist.js";
 export * from "./sale-follow.js";
 export * from "./item-submissions.js";
 export * from "./user-address.js";
+export * from "./xero-integration.js";
 export {
   bidRelations,
   categoryRelations,

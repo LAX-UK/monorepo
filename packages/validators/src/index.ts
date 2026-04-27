@@ -17,3 +17,4 @@ export * from "./item-submission.js";
 export * from "./money-compare.js";
 export * from "./password-change.js";
 export * from "./checkout.js";
+export * from "./xero.js";

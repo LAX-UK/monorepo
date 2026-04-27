@@ -59,7 +59,46 @@ paths:
       summary: Place bid (auth). Optional header Idempotency-Key (24h dedupe).
   /payments:
     post:
-      summary: Create pending payment for winner (auth)
+      summary: Create pending payment for winner (auth). When Xero is connected, response includes checkoutUrl for online invoice.
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: string
+                        format: uuid
+                      clientSecret:
+                        type: string
+                        nullable: true
+                      checkoutUrl:
+                        type: string
+                        nullable: true
+                        description: Xero online invoice URL when configured and connected
+  /admin/integrations/xero/status:
+    get:
+      summary: Xero connection summary (admin, auth)
+  /admin/integrations/xero/oauth/consent-url:
+    get:
+      summary: Start Xero OAuth — returns consent URL (admin, auth)
+  /admin/integrations/xero/oauth/complete:
+    post:
+      summary: Complete Xero OAuth with full callback URL (admin, auth)
+  /admin/integrations/xero/disconnect:
+    post:
+      summary: Remove stored Xero tokens (admin, auth)
+  /admin/payments/{id}/xero-sync:
+    post:
+      summary: Pull invoice state from Xero and update local payment if paid (admin, auth)
+  /webhooks/xero:
+    post:
+      summary: Xero webhooks (signed with X-Xero-Signature); configure XERO_WEBHOOK_KEY on API
   /payments/{id}/refund:
     post:
       summary: Refund payment (admin only, auth; DB status only until a gateway is integrated)

@@ -19,6 +19,7 @@ import { createSaleRoutes } from "./routes/sales.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
+import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
@@ -86,7 +87,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/payments", createPaymentRoutes(container, authenticator))
     .route("/submissions", createSubmissionRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
-    .route("/admin", createAdminRoutes(container, authenticator));
+    .route("/admin", createAdminRoutes(container, authenticator))
+    .route("/webhooks", createXeroWebhookRoutes(container));
 
   return routed;
 }

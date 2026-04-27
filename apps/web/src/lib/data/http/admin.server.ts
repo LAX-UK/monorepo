@@ -16,16 +16,25 @@ export type AdminPaymentRow = {
   platformFee: string;
   status: PaymentStatus;
   createdAt: Date;
+  xeroInvoiceNumber: string | null;
+  xeroOnlineInvoiceUrl: string | null;
+  xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
+  xeroLastError: string | null;
 };
 
 function isPaymentStatus(s: string): s is PaymentStatus {
   return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
 }
 
+function isXeroSyncStatus(s: unknown): s is NonNullable<AdminPaymentRow["xeroSyncStatus"]> {
+  return s === "pending_sync" || s === "synced" || s === "error";
+}
+
 function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
   const o = raw as Record<string, unknown>;
   const status = typeof o.status === "string" && isPaymentStatus(o.status) ? o.status : "pending";
   const lotId = o.lotId != null ? String(o.lotId) : String(o.auctionId ?? "");
+  const xeroSync = o.xeroSyncStatus;
   return {
     id: String(o.id ?? ""),
     lotId,
@@ -35,6 +44,10 @@ function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
     platformFee: String(o.platformFee ?? "0"),
     status,
     createdAt: o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? "")),
+    xeroInvoiceNumber: o.xeroInvoiceNumber != null ? String(o.xeroInvoiceNumber) : null,
+    xeroOnlineInvoiceUrl: o.xeroOnlineInvoiceUrl != null ? String(o.xeroOnlineInvoiceUrl) : null,
+    xeroSyncStatus: isXeroSyncStatus(xeroSync) ? xeroSync : null,
+    xeroLastError: o.xeroLastError != null ? String(o.xeroLastError) : null,
   };
 }
 
@@ -100,6 +113,23 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAdminPaymentRow);
+}
+
+export type AdminXeroIntegrationStatus = {
+  connected: boolean;
+  tenantId: string | null;
+  tenantName: string | null;
+  expiresAt: string | null;
+  oauthConfigured: boolean;
+};
+
+export async function getAdminXeroIntegrationStatus(): Promise<AdminXeroIntegrationStatus> {
+  const res = await authedServerFetch("/admin/integrations/xero/status");
+  if (!res.ok) {
+    throw new Error(`Failed to load Xero status: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminXeroIntegrationStatus };
+  return body.data;
 }
 
 export type AdminAnalyticsPayload = {

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Gavel,
   LayoutDashboard,
+  Plug,
   Users,
   Wallet,
 } from "lucide-react";
@@ -41,6 +42,7 @@ export function getAdminNavGroups(pendingSubmissionCount: number): readonly NavG
       items: [
         { href: "/admin/payments", label: "Payments", icon: Wallet },
         { href: "/admin/users", label: "Users", icon: Users },
+        { href: "/admin/integrations/xero", label: "Xero", icon: Plug },
       ],
     },
   ] as const;
