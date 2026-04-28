@@ -18,6 +18,7 @@ const { Pool } = pg;
 const SEED_PASSWORD = "Password123!";
 
 const ADMIN_ID = "admin-seed-001";
+const ACCOUNTANT_ID = "accountant-seed-001";
 const ALICE_ID = "user-seed-001";
 const BOB_ID = "user-seed-002";
 const CAROL_ID = "user-seed-003";
@@ -89,6 +90,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     session,
     account,
     verification,
+    userInvitation,
     user,
   } = schema;
   await db.delete(payment);
@@ -102,6 +104,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(session);
   await db.delete(account);
   await db.delete(verification);
+  await db.delete(userInvitation);
   await db.delete(user);
 }
 
@@ -157,8 +160,18 @@ async function main() {
       email: "eleanor.pereira@curator.test",
       emailVerified: true,
       image: null,
-      role: "admin",
+      role: "administrator",
       createdAt: new Date(now - 180 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ACCOUNTANT_ID,
+      name: "Erin Ledger",
+      email: "erin.ledger@curator.test",
+      emailVerified: true,
+      image: null,
+      role: "accountant",
+      createdAt: new Date(now - 150 * day),
       updatedAt: stamp,
     },
     {
@@ -167,7 +180,7 @@ async function main() {
       email: "alice.volkov@curator.test",
       emailVerified: true,
       image: null,
-      role: "user",
+      role: "client",
       createdAt: new Date(now - 120 * day),
       updatedAt: stamp,
     },
@@ -177,7 +190,7 @@ async function main() {
       email: "robert.thorne@curator.test",
       emailVerified: true,
       image: null,
-      role: "user",
+      role: "client",
       createdAt: new Date(now - 90 * day),
       updatedAt: stamp,
     },
@@ -187,7 +200,7 @@ async function main() {
       email: "carolina.price@curator.test",
       emailVerified: true,
       image: null,
-      role: "user",
+      role: "client",
       createdAt: new Date(now - 45 * day),
       updatedAt: stamp,
     },
@@ -197,6 +210,7 @@ async function main() {
     .insert(account)
     .values([
       credentialAccount(ADMIN_ID),
+      credentialAccount(ACCOUNTANT_ID),
       credentialAccount(ALICE_ID),
       credentialAccount(BOB_ID),
       credentialAccount(CAROL_ID),

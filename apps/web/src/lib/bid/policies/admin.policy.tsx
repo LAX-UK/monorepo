@@ -12,7 +12,7 @@ export const adminPolicy: BidPolicy = {
     }
     return {
       kind: "block",
-      viewId: "admin",
+      viewId: "staff-no-bid",
       render: () => <AdminCannotBuyNotice />,
     };
   },

@@ -10,7 +10,7 @@ const lotId = "00000000-0000-4000-8000-000000000001";
 const submissionId = "00000000-0000-4000-8000-000000000002";
 
 const adminAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "admin-user", role: "admin" }),
+  getSessionUser: async () => ({ id: "admin-user", role: "administrator" }),
 };
 
 function minimalContainer(partial: Record<string, unknown>): Container {
@@ -22,7 +22,7 @@ function minimalContainer(partial: Record<string, unknown>): Container {
 }
 
 describe("admin session on buyer-gated POST routes", () => {
-  it("POST /bids returns 403 admin_cannot_buy before bid service", async () => {
+  it("POST /bids returns 403 bidding_not_allowed_for_role before bid service", async () => {
     const bidService = { placeBid: vi.fn() };
     const app = new Hono().route(
       "/bids",
@@ -39,11 +39,11 @@ describe("admin session on buyer-gated POST routes", () => {
       body: JSON.stringify({ lotId, amount: 100, maxAutoBidAmount: undefined }),
     });
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({ error: "admin_cannot_buy" });
+    await expect(res.json()).resolves.toEqual({ error: "bidding_not_allowed_for_role" });
     expect(bidService.placeBid).not.toHaveBeenCalled();
   });
 
-  it("POST /payments returns 403 admin_cannot_buy before payment service", async () => {
+  it("POST /payments returns 403 bidding_not_allowed_for_role before payment service", async () => {
     const paymentService = { createPendingForWinner: vi.fn(), listAllForAdmin: vi.fn() };
     const app = new Hono().route(
       "/payments",
@@ -60,11 +60,11 @@ describe("admin session on buyer-gated POST routes", () => {
       body: JSON.stringify({ lotId }),
     });
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({ error: "admin_cannot_buy" });
+    await expect(res.json()).resolves.toEqual({ error: "bidding_not_allowed_for_role" });
     expect(paymentService.createPendingForWinner).not.toHaveBeenCalled();
   });
 
-  it("POST /submissions/:id/submit returns 403 admin_cannot_buy before submission service", async () => {
+  it("POST /submissions/:id/submit returns 403 bidding_not_allowed_for_role before submission service", async () => {
     const itemSubmissionService = { submitForReview: vi.fn() };
     const app = new Hono().route(
       "/submissions",
@@ -81,7 +81,7 @@ describe("admin session on buyer-gated POST routes", () => {
       body: "{}",
     });
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({ error: "admin_cannot_buy" });
+    await expect(res.json()).resolves.toEqual({ error: "bidding_not_allowed_for_role" });
     expect(itemSubmissionService.submitForReview).not.toHaveBeenCalled();
   });
 });

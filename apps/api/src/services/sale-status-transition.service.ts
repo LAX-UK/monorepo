@@ -1,4 +1,4 @@
-import type { Lot, LotStatus, Sale } from "@auction/types";
+import { roleHasCapability, type Lot, type LotStatus, type Sale, type UserRole } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
@@ -30,8 +30,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     saleId: string,
     _reason?: string,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can change sale status", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can change sale status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -65,8 +65,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     lotId: string,
     _reason?: string,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can cancel lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can cancel lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -91,8 +91,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     status: LotStatus,
     _reason?: string,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can change lot status", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can change lot status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));

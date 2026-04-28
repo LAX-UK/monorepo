@@ -38,6 +38,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       lastName: body.lastName,
       email: body.email,
       password: body.password,
+      ...(body.inviteToken !== undefined ? { inviteToken: body.inviteToken } : {}),
       ...(body.mobile !== undefined ? { mobile: body.mobile } : {}),
     });
     if (!result.ok) {

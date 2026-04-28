@@ -1,4 +1,9 @@
 import type { SessionUser } from "@/lib/data/contracts";
+import {
+  canAccessFinanceAdminRoutes,
+  canAccessPlatformAdminRoutes,
+  type UserRole,
+} from "@auction/types";
 
 export type AccountNavLink = { href: string; label: string };
 
@@ -12,8 +17,11 @@ const BASE: AccountNavLink[] = [
 
 export function accountNavLinks(user: SessionUser): AccountNavLink[] {
   const out = [...BASE];
-  if (user.role === "admin") {
+  const role = user.role as UserRole;
+  if (canAccessPlatformAdminRoutes(role)) {
     out.push({ href: "/admin", label: "Admin panel" });
+  } else if (canAccessFinanceAdminRoutes(role)) {
+    out.push({ href: "/admin/payments", label: "Finance admin" });
   }
   return out;
 }

@@ -1,18 +1,23 @@
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
+import { userRoles, type UserRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
-function adminUsersHref(parts: { q?: string; role?: "admin" | "user"; suspended?: boolean }) {
+function adminUsersHref(parts: { q?: string; role?: UserRole; suspended?: boolean }) {
   const p = new URLSearchParams();
   if (parts.q != null && parts.q !== "") p.set("q", parts.q);
   if (parts.role) p.set("role", parts.role);
   if (parts.suspended) p.set("suspended", "1");
   const s = p.toString();
   return s ? `/admin/users?${s}` : "/admin/users";
+}
+
+function isUserRole(s: string | undefined): s is UserRole {
+  return s != null && (userRoles as readonly string[]).includes(s);
 }
 
 export default async function AdminUsersPage({
@@ -23,7 +28,7 @@ export default async function AdminUsersPage({
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const q = sp.q?.trim() ?? "";
-  const roleFilter = sp.role === "admin" || sp.role === "user" ? sp.role : undefined;
+  const roleFilter = isUserRole(sp.role) ? sp.role : undefined;
   const suspendedOnly = sp.suspended === "1";
 
   let rawRows: Awaited<ReturnType<typeof getAdminUserList>>["rows"] = [];
@@ -41,7 +46,7 @@ export default async function AdminUsersPage({
 
   const kpis: AdminUsersKpiStrip = {
     totalMatches: total,
-    adminsOnPage: rawRows.filter((r) => r.role === "admin").length,
+    adminsOnPage: rawRows.filter((r) => r.role === "administrator").length,
     suspendedOnPage: rawRows.filter((r) => r.suspendedAt).length,
     pageCount: rawRows.length,
   };
@@ -50,7 +55,7 @@ export default async function AdminUsersPage({
   if (roleFilter) rows = rows.filter((r) => r.role === roleFilter);
   if (suspendedOnly) rows = rows.filter((r) => r.suspendedAt);
 
-  const chipCommon = (extra: { role?: "admin" | "user"; suspended?: boolean }) =>
+  const chipCommon = (extra: { role?: UserRole; suspended?: boolean }) =>
     adminUsersHref({
       ...(q !== "" ? { q } : {}),
       ...extra,
@@ -69,26 +74,23 @@ export default async function AdminUsersPage({
       >
         All roles
       </Link>
-      <Link
-        href={chipCommon({ role: "admin", suspended: suspendedOnly })}
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-          roleFilter === "admin"
-            ? "bg-primary text-on-primary ring-primary"
-            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-        }`}
-      >
-        Admins
-      </Link>
-      <Link
-        href={chipCommon({ role: "user", suspended: suspendedOnly })}
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-          roleFilter === "user"
-            ? "bg-primary text-on-primary ring-primary"
-            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-        }`}
-      >
-        Users
-      </Link>
+      {userRoles.map((role) => (
+        <Link
+          key={role}
+          href={chipCommon({ role, suspended: suspendedOnly })}
+          className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+            roleFilter === role
+              ? "bg-primary text-on-primary ring-primary"
+              : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+          }`}
+        >
+          {role === "administrator"
+            ? "Administrators"
+            : role === "accountant"
+              ? "Accountants"
+              : "Clients"}
+        </Link>
+      ))}
       <Link
         href={
           suspendedOnly

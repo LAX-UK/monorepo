@@ -48,6 +48,12 @@ const envSchema = z
     XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
     /** After OAuth, redirect browser here (web app), e.g. https://app.example.com/admin/integrations/xero */
     XERO_POST_CONNECT_WEB_REDIRECT: z.string().url().optional(),
+    /**
+     * Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
+     * Expected to accept payloads like: { to, subject, text }.
+     */
+    INVITE_EMAIL_WEBHOOK_URL: z.string().url().optional(),
+    INVITE_EMAIL_FROM: z.string().min(3).optional(),
   })
   .superRefine((e, ctx) => {
     if (e.STORAGE_DRIVER === "s3") {

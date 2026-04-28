@@ -1,13 +1,16 @@
 import { toast } from "sonner";
 
-export const ADMIN_CANNOT_BUY_TITLE = "Admin account";
+export const ADMIN_CANNOT_BUY_TITLE = "Staff account";
 
 export const ADMIN_CANNOT_BUY_DESCRIPTION =
-  "Administrator accounts cannot place bids or buy artworks. Sign in with a collector account to participate.";
+  "Staff accounts cannot place bids or buy artworks. Sign in with a client (collector) account to participate.";
 
-/** API returns `{ error: "admin_cannot_buy" }` with 403 from buyer-gated mutations. */
+/** API returns `{ error: "bidding_not_allowed_for_role" }` (legacy: `admin_cannot_buy`) with 403 from buyer-gated mutations. */
 export function isAdminCannotBuyApiError(error: string | undefined, status: number): boolean {
-  return status === 403 && error === "admin_cannot_buy";
+  return (
+    status === 403 &&
+    (error === "bidding_not_allowed_for_role" || error === "admin_cannot_buy")
+  );
 }
 
 export function toastAdminCannotBuy(): void {

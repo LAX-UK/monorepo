@@ -95,6 +95,7 @@ describe("ItemSubmissionService", () => {
     } as unknown as IItemSubmissionRepository;
     const users: IUserRepository = {
       listIdsByRole: vi.fn().mockResolvedValue(["admin-a", "admin-b"]),
+      updateRoleById: vi.fn().mockResolvedValue(undefined),
     } as unknown as IUserRepository;
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
@@ -171,7 +172,7 @@ describe("ItemSubmissionService", () => {
       db,
       {} as IItemSubmissionRepository,
       {} as ILotRepository,
-      {} as IUserRepository,
+      {} as unknown as IUserRepository,
       dispatcher,
     );
     const r = await svc.approve("admin-1", "sub-1", "Nice work");
@@ -215,7 +216,7 @@ describe("ItemSubmissionService", () => {
       stubDb,
       submissions,
       {} as ILotRepository,
-      {} as IUserRepository,
+      {} as unknown as IUserRepository,
       dispatcher,
     );
     const r = await svc.reject("admin-1", "sub-1", "Not suitable", "See policy");
@@ -239,7 +240,7 @@ describe("ItemSubmissionService", () => {
       stubDb,
       submissions,
       {} as ILotRepository,
-      {} as IUserRepository,
+      {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
     );
     const ok = await svc.getForSeller("alice", "s1");

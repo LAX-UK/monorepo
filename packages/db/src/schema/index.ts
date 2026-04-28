@@ -1,4 +1,5 @@
 export * from "./auth.js";
+export * from "./user-invitation.js";
 export * from "./lots.js";
 export * from "./sales.js";
 export * from "./bids.js";

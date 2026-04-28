@@ -4,6 +4,7 @@ export type RegistrationInput = {
   email: string;
   password: string;
   mobile?: string;
+  inviteToken?: string | undefined;
 };
 
 export interface IRegistrationValidator {

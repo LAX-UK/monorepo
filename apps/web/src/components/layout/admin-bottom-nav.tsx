@@ -1,11 +1,13 @@
 "use client";
 
-import { BarChart3, ClipboardList, Gavel, LayoutDashboard, Wallet } from "lucide-react";
+import type { SessionUser } from "@/lib/data/contracts";
+import { canAccessPlatformAdminRoutes, type UserRole } from "@auction/types";
+import { BarChart3, ClipboardList, Gavel, LayoutDashboard, Plug, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs: { href: string; label: string; icon: LucideIcon }[] = [
+const platformTabs: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin", label: "Home", icon: LayoutDashboard },
   { href: "/admin/lots", label: "Lots", icon: Gavel },
   { href: "/admin/submissions", label: "Intake", icon: ClipboardList },
@@ -13,8 +15,17 @@ const tabs: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/analytics", label: "Stats", icon: BarChart3 },
 ];
 
-export function AdminBottomNav() {
+const financeTabs: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/admin/payments", label: "Pay", icon: Wallet },
+  { href: "/admin/integrations/xero", label: "Xero", icon: Plug },
+];
+
+type Props = { user: SessionUser };
+
+export function AdminBottomNav({ user }: Props) {
   const pathname = usePathname();
+  const role = user.role as UserRole;
+  const tabs = canAccessPlatformAdminRoutes(role) ? platformTabs : financeTabs;
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-outline-variant/15 bg-surface-container-lowest/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-md lg:hidden"

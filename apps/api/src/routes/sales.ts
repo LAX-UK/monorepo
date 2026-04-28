@@ -11,6 +11,7 @@ import {
   updateLotStatusBodySchema,
   updateSaleSchema,
 } from "@auction/validators";
+import { roleHasCapability, type UserRole } from "@auction/types";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
@@ -125,9 +126,9 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
   });
 
   r.post("/", requireAuth, zValidator("json", createSaleSchema), async (c) => {
-    const role = c.get("userRole") ?? "user";
-    if (role !== "admin") {
-      return c.json({ error: "Only admins can create sales" }, 403);
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    if (!roleHasCapability(role, "auction.manage")) {
+      return c.json({ error: "Only administrators can create sales" }, 403);
     }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
@@ -148,7 +149,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleIdParamSchema),
     zValidator("json", updateSaleSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const result = await container.saleService.updateDraft(role, id, patch);
@@ -161,7 +162,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
 
   r.post("/:id/publish", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
-    const role = c.get("userRole") ?? "user";
+    const role = (c.get("userRole") ?? "client") as UserRole;
     const { id } = c.req.valid("param");
     const result = await container.saleService.publish(userId, role, id);
     return result.match(
@@ -177,7 +178,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("json", cancelSaleBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const result = await container.saleService.cancel(userId, role, id);
       return result.match(
@@ -193,7 +194,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleIdParamSchema),
     zValidator("json", createNestedLotForSaleSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const result = await container.saleService.addLot(role, id, body);
@@ -209,7 +210,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     requireAuth,
     zValidator("param", saleLotIdParamSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id, lotId } = c.req.valid("param");
       const result = await container.saleService.attachExistingLot(role, id, lotId);
       return result.match(
@@ -224,7 +225,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     requireAuth,
     zValidator("param", saleLotIdParamSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id, lotId } = c.req.valid("param");
       const result = await container.saleService.detachLot(role, id, lotId);
       return result.match(
@@ -240,7 +241,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleIdParamSchema),
     zValidator("json", markSaleEndedBodySchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const result = await container.saleStatusTransitionService.markOnsiteSaleEnded(
@@ -261,7 +262,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleLotIdParamSchema),
     zValidator("json", cancelSaleBodySchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id, lotId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const result = await container.saleStatusTransitionService.cancelLot(role, id, lotId, reason);
@@ -278,7 +279,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleLotIdParamSchema),
     zValidator("json", updateLotStatusBodySchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id, lotId } = c.req.valid("param");
       const { status, reason } = c.req.valid("json");
       const result = await container.saleStatusTransitionService.setLotStatus(

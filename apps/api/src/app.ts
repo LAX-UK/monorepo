@@ -10,6 +10,7 @@ import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
@@ -78,6 +79,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.all("/api/auth/*", (c) => container.auth.handler(c.req.raw));
 
   const routed = app
+    .route("/invitations", createPublicInvitationRoutes(container))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))

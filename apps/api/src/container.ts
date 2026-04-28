@@ -20,6 +20,7 @@ import { RedisNotificationSender } from "./infrastructure/redis-notification.sen
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
 import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
+import { createTransactionalMailer } from "./infrastructure/transactional-mailer.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
@@ -51,6 +52,7 @@ import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
+import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
@@ -90,6 +92,7 @@ import { PaymentService } from "./services/payment.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
+import { InvitationService } from "./services/invitation.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
@@ -136,6 +139,7 @@ export type Container = {
   notificationFactory: NotificationFactory;
   userSuspensionChecker: IUserSuspensionChecker;
   registrationService: RegistrationService;
+  invitationService: InvitationService;
   profileService: ProfileService;
   addressService: AddressService;
   analyticsService: AnalyticsService;
@@ -340,11 +344,22 @@ export function createContainer(env: Env): Container {
   const profileService = new ProfileService(profileRepo, profileRepo);
   const addressService = new AddressService(addressRepo);
 
+  const transactionalMailer = createTransactionalMailer(env);
+  const invitationRepository = new DrizzleUserInvitationRepository(db);
+  const invitationService = new InvitationService(
+    db,
+    invitationRepository,
+    userRepo,
+    transactionalMailer,
+    env.WEB_ORIGIN,
+  );
+
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
     new BetterAuthEmailSignupPersister(auth),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
+    invitationService,
   );
 
   const lotMetrics = new DrizzleLotMetricsReader(db);
@@ -410,6 +425,7 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     userSuspensionChecker,
     registrationService,
+    invitationService,
     profileService,
     addressService,
     analyticsService,
