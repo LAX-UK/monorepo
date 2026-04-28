@@ -12,11 +12,11 @@ const lotId = "00000000-0000-4000-8000-000000000001";
 const noAuth: IAuthenticator = { getSessionUser: async () => null };
 
 const adminAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "ad", role: "admin" }),
+  getSessionUser: async () => ({ id: "ad", role: "administrator" }),
 };
 
 const userAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "u1", role: "user" }),
+  getSessionUser: async () => ({ id: "u1", role: "client" }),
 };
 
 const sampleLot: Lot = {
@@ -62,8 +62,8 @@ function makeContainer() {
       create: vi.fn(),
       update: vi.fn(),
       updateMarketingDetails: vi.fn(async (role: string) => {
-        if (role !== "admin") {
-          return err(new AuthzError("Only admins can update marketing details", 403));
+        if (role !== "administrator") {
+          return err(new AuthzError("Only administrators can update marketing details", 403));
         }
         return ok(sampleLot);
       }),

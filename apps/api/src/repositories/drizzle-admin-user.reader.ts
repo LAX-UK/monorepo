@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
 import { session, user } from "@auction/db/schema";
 import { count, desc, eq, ilike, or } from "drizzle-orm";
-import { AuthzError } from "../lib/errors.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -83,10 +82,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
   constructor(private readonly db: Database) {}
 
-  async setRole(actorRole: string, userId: string, role: string): Promise<void> {
-    if (actorRole !== "admin") {
-      throw new AuthzError("Forbidden");
-    }
+  async setRole(_actorRole: string, userId: string, role: string): Promise<void> {
     await this.db.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, userId));
   }
 }

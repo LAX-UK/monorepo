@@ -1,4 +1,4 @@
-import type { CreateLotInput } from "@auction/types";
+import { roleHasCapability, type CreateLotInput, type UserRole } from "@auction/types";
 import {
   archiveCountQuerySchema,
   archiveSummaryQuerySchema,
@@ -46,8 +46,8 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
     const userId = c.get("userId") as string;
-    const role = c.get("userRole") ?? "user";
-    if (role !== "admin") {
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    if (!roleHasCapability(role, "auction.manage")) {
       return c.json({ error: "Forbidden" }, 403);
     }
     const { ids, op } = c.req.valid("json");
@@ -88,7 +88,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
 
   r.post("/:id/publish", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
-    const role = c.get("userRole") ?? "user";
+    const role = (c.get("userRole") ?? "client") as UserRole;
     const { id } = c.req.valid("param");
     const result = await container.lotService.publish(userId, role, id);
     return result.match(
@@ -104,7 +104,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     zValidator("json", cancelLotBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const result = await container.lotService.cancel(userId, role, id);
       return result.match(
@@ -120,7 +120,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     zValidator("param", lotIdParamSchema),
     zValidator("json", updateLotSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json") as Partial<CreateLotInput>;
       const result = await container.lotService.update(role, id, body);
@@ -137,7 +137,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     zValidator("param", lotIdParamSchema),
     zValidator("json", updateLotMarketingDetailsSchema),
     async (c) => {
-      const role = c.get("userRole") ?? "user";
+      const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const result = await container.lotService.updateMarketingDetails(role, id, body);
@@ -158,9 +158,9 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const parsed = Number.parseInt(raw ?? "50", 10);
     const limit = Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
 
-    const role = c.get("userRole");
+    const role = (c.get("userRole") ?? "client") as UserRole;
     if (lot.auctionType === "sealed" && lot.status === "active") {
-      if (role !== "admin") {
+      if (!roleHasCapability(role, "auction.manage")) {
         return c.json({ data: [] });
       }
     }
@@ -180,9 +180,9 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   });
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {
-    const role = c.get("userRole") ?? "user";
-    if (role !== "admin") {
-      return c.json({ error: "Only admins can create lots" }, 403);
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    if (!roleHasCapability(role, "auction.manage")) {
+      return c.json({ error: "Only administrators can create lots" }, 403);
     }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");

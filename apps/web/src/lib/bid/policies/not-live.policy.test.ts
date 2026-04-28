@@ -3,7 +3,7 @@ import { notLivePolicy } from "./not-live.policy";
 import type { BidPolicyContext } from "./types";
 
 const base = (): BidPolicyContext => ({
-  user: { id: "u1", email: "a@b.c", name: "A", role: "user" },
+  user: { id: "u1", email: "a@b.c", name: "A", role: "client" },
   lot: {
     id: "l1",
     saleId: null,

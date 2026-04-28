@@ -1,3 +1,4 @@
+import { roleHasCapability, type UserRole } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
 import type {
   AdminUserListFilter,
@@ -24,8 +25,11 @@ export class AdminUserService {
   }
 
   async setRole(actorRole: string, actorUserId: string, targetUserId: string, role: string) {
-    if (targetUserId === actorUserId && role !== "admin") {
+    if (targetUserId === actorUserId && role !== "administrator") {
       throw new AuthzError("Cannot demote yourself");
+    }
+    if (!roleHasCapability(actorRole as UserRole, "user.invite")) {
+      throw new AuthzError("Forbidden");
     }
     await this.roles.setRole(actorRole, targetUserId, role);
   }

@@ -1,16 +1,33 @@
 import type { NavGroup, NavItem } from "@/lib/navigation/nav-types";
+import type { UserRole } from "@auction/types";
+import { canAccessPlatformAdminRoutes } from "@auction/types";
 import {
   BarChart3,
   Calendar,
   ClipboardList,
   Gavel,
   LayoutDashboard,
+  MailPlus,
   Plug,
   Users,
   Wallet,
 } from "lucide-react";
 
-export function getAdminNavGroups(pendingSubmissionCount: number): readonly NavGroup[] {
+export function getAdminNavGroups(role: UserRole, pendingSubmissionCount: number): readonly NavGroup[] {
+  const financeOnly: readonly NavGroup[] = [
+    {
+      title: "Finance",
+      items: [
+        { href: "/admin/payments", label: "Payments", icon: Wallet },
+        { href: "/admin/integrations/xero", label: "Xero", icon: Plug },
+      ],
+    },
+  ];
+
+  if (!canAccessPlatformAdminRoutes(role)) {
+    return financeOnly;
+  }
+
   const submissions: NavItem =
     pendingSubmissionCount > 0
       ? {
@@ -43,6 +60,7 @@ export function getAdminNavGroups(pendingSubmissionCount: number): readonly NavG
         { href: "/admin/payments", label: "Payments", icon: Wallet },
         { href: "/admin/users", label: "Users", icon: Users },
         { href: "/admin/integrations/xero", label: "Xero", icon: Plug },
+        { href: "/admin/invitations", label: "Invitations", icon: MailPlus },
       ],
     },
   ] as const;

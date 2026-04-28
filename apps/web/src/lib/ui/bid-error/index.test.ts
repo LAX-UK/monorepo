@@ -8,10 +8,12 @@ describe("mapBidError", () => {
     expect(r.message).toContain("seller");
   });
 
-  it("maps admin code", () => {
-    const r = mapBidError("admin_cannot_buy");
-    expect(r.title).toBeDefined();
-    expect(r.severity).toBe("info");
+  it("maps staff / role gate codes", () => {
+    for (const code of ["admin_cannot_buy", "bidding_not_allowed_for_role"] as const) {
+      const r = mapBidError(code);
+      expect(r.title).toBeDefined();
+      expect(r.severity).toBe("info");
+    }
   });
 
   it("passes through unknown errors as error severity", () => {

@@ -56,7 +56,7 @@ describe("ArtworkBidPanel", () => {
           id: sellerId,
           email: "a@b.co",
           name: "Seller",
-          role: "user",
+          role: "client",
         }}
         summarySeed={{
           title: "Piece",
@@ -82,7 +82,7 @@ describe("ArtworkBidPanel", () => {
           id: "buyer-1",
           email: "b@b.co",
           name: "Buyer",
-          role: "user",
+          role: "client",
         }}
         summarySeed={{
           title: "Piece",

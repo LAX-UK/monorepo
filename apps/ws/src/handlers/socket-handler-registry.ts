@@ -1,3 +1,4 @@
+import { normalizeUserRoleOrClient, roleHasCapability, type UserRole } from "@auction/types";
 import type { Server, Socket } from "socket.io";
 import type { WsEnv } from "../env.js";
 
@@ -49,7 +50,8 @@ async function handleJoinLot(
   }
   const me = await resolveSessionUser(socket, ctx.env);
   socket.data.userId = me?.id;
-  socket.data.isAdmin = me?.role === "admin";
+  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
+  socket.data.isAdmin = role != null && roleHasCapability(role, "platform.admin.full");
   await socket.join(roomForLot(lotId));
   ack?.({ ok: true });
 }
@@ -76,7 +78,8 @@ async function handleJoinUser(socket: Socket, ctx: HandlerContext, _payload: unk
     return;
   }
   socket.data.userId = me.id;
-  socket.data.isAdmin = me.role === "admin";
+  const role = normalizeUserRoleOrClient(me.role) as UserRole;
+  socket.data.isAdmin = roleHasCapability(role, "platform.admin.full");
   await socket.join(roomForUser(me.id));
   ack?.({ ok: true });
 }

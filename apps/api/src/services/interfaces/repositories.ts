@@ -139,6 +139,7 @@ export type UserProfileRow = {
 export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
   listIdsByRole(role: string): Promise<string[]>;
+  updateRoleById(userId: string, role: string): Promise<void>;
   /** Public directory rows (no email) for marketing / mega-menu. */
   listPublicProfiles(params: {
     limit: number;

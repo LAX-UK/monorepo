@@ -57,7 +57,7 @@ function createSut(overrides: { lot?: Partial<Lot> } = {}) {
 describe("LotService.updateMarketingDetails", () => {
   it("returns 403 for non-admin", async () => {
     const { svc, findById, updateMarketingDetails } = createSut({});
-    const r = await svc.updateMarketingDetails("user", lotId, { artistNote: "z" });
+    const r = await svc.updateMarketingDetails("client", lotId, { artistNote: "z" });
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error).toBeInstanceOf(AuthzError);
     expect(findById).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe("LotService.updateMarketingDetails", () => {
   it("returns 404 when lot missing", async () => {
     const { svc, findById } = createSut({});
     findById.mockResolvedValueOnce(null);
-    const r = await svc.updateMarketingDetails("admin", lotId, { artistNote: "z" });
+    const r = await svc.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
     expect(r.isErr()).toBe(true);
     if (r.isErr() && r.error instanceof LotError) {
       expect(r.error.status).toBe(404);
@@ -76,17 +76,17 @@ describe("LotService.updateMarketingDetails", () => {
 
   it("returns 400 for ended or cancelled", async () => {
     const { svc: s1 } = createSut({ lot: { status: "ended" } });
-    const r1 = await s1.updateMarketingDetails("admin", lotId, { artistNote: "z" });
+    const r1 = await s1.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
     expect(r1.isErr()).toBe(true);
 
     const { svc: s2 } = createSut({ lot: { status: "cancelled" } });
-    const r2 = await s2.updateMarketingDetails("admin", lotId, { artistNote: "z" });
+    const r2 = await s2.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
     expect(r2.isErr()).toBe(true);
   });
 
   it("updates via repo for admin and allowed status", async () => {
     const { svc, updateMarketingDetails } = createSut({});
-    const r = await svc.updateMarketingDetails("admin", lotId, { artistNote: "new" });
+    const r = await svc.updateMarketingDetails("administrator", lotId, { artistNote: "new" });
     expect(r.isOk()).toBe(true);
     expect(updateMarketingDetails).toHaveBeenCalledWith(lotId, { artistNote: "new" });
   });

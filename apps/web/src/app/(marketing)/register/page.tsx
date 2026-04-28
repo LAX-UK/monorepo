@@ -14,12 +14,19 @@ function SignUpFormFallback() {
   return <div className="h-64 animate-pulse rounded-md bg-surface-container-high" aria-hidden />;
 }
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
+  const sp = await searchParams;
+  const inviteToken =
+    typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
   return (
     <main id="main-content">
       <AuthLayout title="SIGN UP">
         <Suspense fallback={<SignUpFormFallback />}>
-          <SignUpForm />
+          <SignUpForm {...(inviteToken != null ? { inviteToken } : {})} />
         </Suspense>
       </AuthLayout>
     </main>

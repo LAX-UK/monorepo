@@ -3,6 +3,11 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
+import {
+  canAccessPlatformAdminRoutes,
+  canAccessStaffAdminShell,
+  type UserRole,
+} from "@auction/types";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -17,15 +22,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!user) {
     redirect("/login?next=/admin&auth=required");
   }
-  if (user.role !== "admin") {
+  if (!canAccessStaffAdminShell(user.role as UserRole)) {
     redirect("/dashboard");
   }
 
   let pendingSubmissionCount = 0;
-  try {
-    pendingSubmissionCount = await getAdminSubmissionPendingCount();
-  } catch {
-    pendingSubmissionCount = 0;
+  if (canAccessPlatformAdminRoutes(user.role as UserRole)) {
+    try {
+      pendingSubmissionCount = await getAdminSubmissionPendingCount();
+    } catch {
+      pendingSubmissionCount = 0;
+    }
   }
 
   return (
@@ -38,7 +45,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       >
         <div className="pb-20 lg:pb-0">{children}</div>
       </DashboardShell>
-      <AdminBottomNav />
+      <AdminBottomNav user={user} />
     </>
   );
 }

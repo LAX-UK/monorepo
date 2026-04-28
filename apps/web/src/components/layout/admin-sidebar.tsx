@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useIsLg } from "@/hooks/use-is-lg";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { UserRole } from "@auction/types";
 import { LabelCaps, cn } from "@auction/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
@@ -96,7 +97,7 @@ function AdminNavBody({
   const isLg = useIsLg();
   const { desktopSidebarCollapsed } = useShellContext();
   const collapsed = isLg && desktopSidebarCollapsed;
-  const groups = getAdminNavGroups(pendingSubmissionCount);
+  const groups = getAdminNavGroups(user.role as UserRole, pendingSubmissionCount);
 
   return (
     <>

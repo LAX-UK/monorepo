@@ -5,6 +5,8 @@ export const registerBodySchema = z.object({
   lastName: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(8).max(128),
+  /** When present, signup assigns the invited role after successful account creation. */
+  inviteToken: z.string().min(16).max(512).optional(),
   mobile: z
     .string()
     .trim()

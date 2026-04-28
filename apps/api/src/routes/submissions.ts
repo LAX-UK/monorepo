@@ -1,4 +1,5 @@
 import type { UpdateItemSubmissionInput } from "@auction/types";
+import { roleHasCapability, type UserRole } from "@auction/types";
 import {
   adminSubmissionNotesSchema,
   approveSubmissionBodySchema,
@@ -10,25 +11,19 @@ import {
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import { requireBuyerRole, requireBuyerRoleUnlessAdmin } from "../middleware/require-buyer-role.js";
+import {
+  requireBuyerRole,
+  requireBuyerRoleUnlessAdministrator,
+} from "../middleware/require-buyer-role.js";
+import { requirePlatformAdmin } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createSubmissionRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
-  });
-
-  const requireAdmin = createMiddleware<{
-    Variables: { userId?: string; userRole?: string };
-  }>(async (c, next) => {
-    if (c.get("userRole") !== "admin") {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-    await next();
   });
 
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
@@ -57,7 +52,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.get(
     "/",
     requireAuth,
-    requireAdmin,
+    requirePlatformAdmin,
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -73,9 +68,9 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
 
   r.get("/:id", requireAuth, zValidator("param", submissionIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const role = c.get("userRole") ?? "user";
+    const role = (c.get("userRole") ?? "client") as UserRole;
     const userId = c.get("userId") as string;
-    if (role === "admin") {
+    if (roleHasCapability(role, "platform.admin.full")) {
       const result = await container.itemSubmissionService.getForAdmin(id);
       return result.match(
         (data) => c.json({ data }),
@@ -92,11 +87,11 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.patch(
     "/:id",
     requireAuth,
-    requireBuyerRoleUnlessAdmin,
+    requireBuyerRoleUnlessAdministrator,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
     const { id } = c.req.valid("param");
-    const role = c.get("userRole") ?? "user";
+    const role = (c.get("userRole") ?? "client") as UserRole;
     const userId = c.get("userId") as string;
     let raw: unknown = {};
     try {
@@ -104,7 +99,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     } catch {
       raw = {};
     }
-    if (role === "admin") {
+    if (roleHasCapability(role, "platform.admin.full")) {
       const parsed = adminSubmissionNotesSchema.safeParse(raw);
       if (!parsed.success) {
         return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
@@ -172,7 +167,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/review/start",
     requireAuth,
-    requireAdmin,
+    requirePlatformAdmin,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const adminId = c.get("userId") as string;
@@ -188,7 +183,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/approve",
     requireAuth,
-    requireAdmin,
+    requirePlatformAdmin,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", approveSubmissionBodySchema),
     async (c) => {
@@ -206,7 +201,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/reject",
     requireAuth,
-    requireAdmin,
+    requirePlatformAdmin,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", rejectSubmissionBodySchema),
     async (c) => {

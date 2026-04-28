@@ -51,13 +51,13 @@ export function BidStickyMobileBar({
           </Link>
         );
         break;
-      case "admin":
+      case "staff-no-bid":
         right = (
           <Link
             href="/admin"
             className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
           >
-            Admin
+            Staff
           </Link>
         );
         break;

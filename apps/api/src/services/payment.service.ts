@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import { roleHasCapability, type Lot, type UserRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
@@ -96,8 +96,8 @@ export class PaymentService {
   }
 
   async listAllForAdmin(userRole: string): Promise<Result<PaymentRecord[], AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can list payments", 403));
+    if (!roleHasCapability(userRole as UserRole, "finance.read")) {
+      return err(new AuthzError("Forbidden", 403));
     }
     const rows = await this.payments.listAll();
     return ok(rows);
@@ -120,8 +120,8 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
   ): Promise<Result<void, AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can refund payments", 403));
+    if (!roleHasCapability(userRole as UserRole, "finance.write")) {
+      return err(new AuthzError("Forbidden", 403));
     }
     const p = await this.payments.findById(paymentId);
     if (!p) {
@@ -138,8 +138,8 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
   ): Promise<Result<void, AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can confirm payment capture", 403));
+    if (!roleHasCapability(userRole as UserRole, "finance.write")) {
+      return err(new AuthzError("Forbidden", 403));
     }
     const p = await this.payments.findById(paymentId);
     if (!p) {
@@ -170,8 +170,8 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can sync Xero payments", 403));
+    if (!roleHasCapability(userRole as UserRole, "finance.write")) {
+      return err(new AuthzError("Forbidden", 403));
     }
     const r = await this.accounting.syncPaymentFromProvider(paymentId);
     if (!r.ok) {

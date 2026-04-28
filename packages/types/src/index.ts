@@ -6,4 +6,5 @@ export * from "./notification.js";
 export * from "./bid.js";
 export * from "./socket.js";
 export * from "./user.js";
+export * from "./role-policy.js";
 export * from "./item-submission.js";
