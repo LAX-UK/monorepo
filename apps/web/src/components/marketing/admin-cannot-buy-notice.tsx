@@ -1,10 +1,12 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { ADMIN_CANNOT_BUY_DESCRIPTION, ADMIN_CANNOT_BUY_TITLE } from "@/lib/ui/admin-cannot-buy";
+import { roleHasCapability, type UserRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { ReactNode } from "react";
 
 export function isAdminBuyerBlocked(user: SessionUser | null | undefined): boolean {
-  return user?.role === "admin";
+  if (!user) return false;
+  return !roleHasCapability(user.role as UserRole, "bid.place");
 }
 
 export function AdminCannotBuyNotice({ className }: { className?: string }) {

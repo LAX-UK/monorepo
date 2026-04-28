@@ -186,7 +186,7 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
       <StatStrip className="mb-2">
         <KpiTile label="Total (server)" value={kpis.totalMatches} />
         <KpiTile label="On this page" value={kpis.pageCount} />
-        <KpiTile label="Admins (page)" value={kpis.adminsOnPage} />
+        <KpiTile label="Administrators (page)" value={kpis.adminsOnPage} />
         <KpiTile label="Suspended (page)" value={kpis.suspendedOnPage} />
       </StatStrip>
 

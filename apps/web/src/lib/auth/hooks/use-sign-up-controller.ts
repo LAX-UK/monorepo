@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export function useSignUpController() {
+export function useSignUpController(opts?: { inviteToken?: string }) {
   const router = useRouter();
   const { run, loading, bannerError } = useAuthSubmit(signUpService);
 
@@ -24,7 +24,11 @@ export function useSignUpController() {
   });
 
   const onSubmit = form.handleSubmit(async (data) => {
-    const result = await run(data);
+    const payload = {
+      ...data,
+      ...(opts?.inviteToken ? { inviteToken: opts.inviteToken } : {}),
+    };
+    const result = await run(payload);
     if (result.ok) {
       router.push("/login?registered=1&next=/dashboard");
       router.refresh();

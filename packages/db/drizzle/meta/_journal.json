@@ -120,6 +120,13 @@
       "when": 1777400000000,
       "tag": "0016_xero_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0017_v1_roles_and_invitations",
+      "breakpoints": true
     }
   ]
 }

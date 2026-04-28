@@ -1,4 +1,5 @@
-export const userRoles = ["user", "admin"] as const;
+/** Persisted V1 roles (see specs/003-role-model-invites). */
+export const userRoles = ["administrator", "accountant", "client"] as const;
 export type UserRole = (typeof userRoles)[number];
 
 export type AppUser = {

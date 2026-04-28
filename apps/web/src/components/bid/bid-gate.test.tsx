@@ -39,7 +39,7 @@ describe("BidGate", () => {
     const allowOnly: BidPolicy[] = [{ id: "a", evaluate: () => ({ kind: "allow" }) }];
     render(
       <BidGate
-        user={{ id: "u", email: "e", name: "n", role: "user" }}
+        user={{ id: "u", email: "e", name: "n", role: "client" }}
         lot={lot}
         lotStatus="active"
         loginNextPath="/artwork/l1"
@@ -66,7 +66,7 @@ describe("BidGate", () => {
     ];
     render(
       <BidGate
-        user={{ id: "u", email: "e", name: "n", role: "user" }}
+        user={{ id: "u", email: "e", name: "n", role: "client" }}
         lot={lot}
         lotStatus="active"
         loginNextPath="/x"

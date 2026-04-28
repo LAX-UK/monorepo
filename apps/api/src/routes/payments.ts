@@ -14,7 +14,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
   r.get("/", requireAuth, async (c) => {
-    const role = c.get("userRole") ?? "user";
+    const role = c.get("userRole") ?? "client";
     const result = await container.paymentService.listAllForAdmin(role);
     return result.match(
       (data) => c.json({ data }),
@@ -43,7 +43,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
   });
 
   r.post("/:id/capture", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
-    const role = c.get("userRole") ?? "user";
+    const role = c.get("userRole") ?? "client";
     const { id } = c.req.valid("param");
     const result = await container.paymentService.markCapturedByAdmin(role, id);
     return result.match(
@@ -54,7 +54,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
 
   r.post("/:id/refund", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
-    const role = c.get("userRole") ?? "user";
+    const role = c.get("userRole") ?? "client";
     const { id } = c.req.valid("param");
     const result = await container.paymentService.refundPayment(userId, role, id);
     return result.match(

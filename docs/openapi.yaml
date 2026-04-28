@@ -178,6 +178,7 @@ paths:
   /categories:
     get:
       summary: List categories
+      description: Returns category taxonomy nodes. Each `parentId` is either `null` or references another returned category id; invalid legacy hierarchy links are not exposed to clients.
   /users/me/notifications:
     get:
       summary: List current user's notifications (auth)

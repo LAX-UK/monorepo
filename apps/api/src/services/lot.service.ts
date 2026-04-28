@@ -1,4 +1,4 @@
-import type { CreateLotInput, Lot } from "@auction/types";
+import { roleHasCapability, type CreateLotInput, type Lot, type UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
@@ -36,8 +36,8 @@ export class LotService {
     userRole: string,
     lotId: string,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can publish lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can publish lots", 403));
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -61,8 +61,8 @@ export class LotService {
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can cancel lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can cancel lots", 403));
     }
     if (!CANCELLABLE.has(a.status)) {
       return err(new LotError("This lot cannot be cancelled"));
@@ -91,8 +91,8 @@ export class LotService {
     lotId: string,
     input: Partial<CreateLotInput>,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can edit lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can edit lots", 403));
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -113,8 +113,8 @@ export class LotService {
     lotId: string,
     patch: UpdateLotMarketingDetailsInput,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can update marketing details", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can update marketing details", 403));
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));

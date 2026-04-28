@@ -5,13 +5,13 @@ import {
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
-import type { UserRole } from "@auction/types";
+import { userRoles, type UserRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-const roleOptions: UserRole[] = ["user", "admin"];
+const roleOptions: UserRole[] = [...userRoles];
 
 type RoleLayout = "row" | "block";
 

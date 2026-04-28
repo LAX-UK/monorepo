@@ -3,7 +3,7 @@ import { evaluateBidPolicies } from "./evaluate-bid-policies";
 import type { BidPolicy, BidPolicyContext } from "./policies/types";
 
 const ctx = (over: Partial<BidPolicyContext> = {}): BidPolicyContext => ({
-  user: { id: "u1", email: "a@b.c", name: "A", role: "user" },
+  user: { id: "u1", email: "a@b.c", name: "A", role: "client" },
   lot: {
     id: "lot1",
     saleId: null,

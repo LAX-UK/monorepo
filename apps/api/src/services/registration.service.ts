@@ -6,6 +6,7 @@ import type {
   IWelcomeNotifier,
   RegistrationInput,
 } from "./interfaces/registration.js";
+import { InvitationService } from "./invitation.service.js";
 
 export class RegistrationService implements IRegistrationService {
   constructor(
@@ -13,12 +14,19 @@ export class RegistrationService implements IRegistrationService {
     private readonly emailSignup: IEmailSignupPersister,
     private readonly userProfile: IUserProfilePersister,
     private readonly welcome: IWelcomeNotifier,
+    private readonly invitations: InvitationService,
   ) {}
 
   async register(input: RegistrationInput) {
     const v = this.validator.validate(input);
     if (!v.ok) {
       return { ok: false as const, message: v.message, status: 400 };
+    }
+    if (input.inviteToken) {
+      const invite = await this.invitations.validateForRegistration(input.inviteToken, input.email);
+      if (invite.isErr()) {
+        return { ok: false as const, message: invite.error.message, status: invite.error.status as 400 };
+      }
     }
     const displayName = `${input.firstName} ${input.lastName}`.trim();
     const signup = await this.emailSignup.signUpEmail({
@@ -40,6 +48,16 @@ export class RegistrationService implements IRegistrationService {
         userId: signup.userId,
         message: profile.message,
       });
+    }
+    if (input.inviteToken) {
+      const consumed = await this.invitations.consumeInviteForNewUser(
+        input.inviteToken,
+        signup.userId,
+        input.email,
+      );
+      if (consumed.isErr()) {
+        return { ok: false as const, message: consumed.error.message, status: consumed.error.status as 400 };
+      }
     }
     await this.welcome.notifyWelcome(signup.userId, input.email);
     return { ok: true as const, userId: signup.userId };

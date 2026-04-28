@@ -2,6 +2,7 @@ import { DashboardBottomNav } from "@/components/layout/dashboard-bottom-nav";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { canAccessPlatformAdminRoutes, canAccessStaffAdminShell, type UserRole } from "@auction/types";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -16,8 +17,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   if (!user) {
     redirect("/login?next=/dashboard&auth=required");
   }
-  if (user.role === "admin") {
-    redirect("/admin");
+  const role = user.role as UserRole;
+  if (canAccessStaffAdminShell(role)) {
+    redirect(canAccessPlatformAdminRoutes(role) ? "/admin" : "/admin/payments");
   }
 
   return (

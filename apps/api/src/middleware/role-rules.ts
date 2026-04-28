@@ -11,7 +11,7 @@ export const buyerRoleProtectedOperations = [
   {
     method: "PATCH" as const,
     route: "submissions/:id",
-    description: "seller branch only; admins skip via requireBuyerRoleUnlessAdmin",
+    description: "seller branch only; platform administrators skip via requireBuyerRoleUnlessAdministrator",
   },
   { method: "POST" as const, route: "uploads/image", description: "submission image upload" },
 ] as const;

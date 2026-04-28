@@ -3,7 +3,7 @@ import { sellerOwnLotPolicy } from "./seller-own-lot.policy";
 import type { BidPolicyContext } from "./types";
 
 const baseCtx = (): BidPolicyContext => ({
-  user: { id: "seller-1", email: "s@x.y", name: "S", role: "user" },
+  user: { id: "seller-1", email: "s@x.y", name: "S", role: "client" },
   lot: {
     id: "lot1",
     saleId: null,
@@ -47,7 +47,7 @@ describe("sellerOwnLotPolicy", () => {
   it("allows when user is a different id", () => {
     const d = sellerOwnLotPolicy.evaluate({
       ...baseCtx(),
-      user: { id: "buyer", email: "b@x.y", name: "B", role: "user" },
+      user: { id: "buyer", email: "b@x.y", name: "B", role: "client" },
     });
     expect(d.kind).toBe("allow");
   });

@@ -1,4 +1,4 @@
-import type { CreateSaleInput, Lot, Sale } from "@auction/types";
+import { roleHasCapability, type CreateSaleInput, type Lot, type Sale, type UserRole } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
@@ -100,8 +100,8 @@ export class SaleService {
     userRole: string,
     saleId: string,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can publish sales", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can publish sales", 403));
     }
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return err(new LotError("Sale not found", 404));
@@ -157,8 +157,8 @@ export class SaleService {
     userRole: string,
     saleId: string,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can cancel sales", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can cancel sales", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -183,8 +183,8 @@ export class SaleService {
     saleId: string,
     row: CreateNestedLotForSaleInput,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can add lots to a sale", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can add lots to a sale", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -212,8 +212,8 @@ export class SaleService {
     saleId: string,
     lotId: string,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can attach lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can attach lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -244,8 +244,8 @@ export class SaleService {
     saleId: string,
     lotId: string,
   ): Promise<Result<void, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can detach lots", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can detach lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -265,8 +265,8 @@ export class SaleService {
     saleId: string,
     patch: UpdateSaleBody,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (userRole !== "admin") {
-      return err(new AuthzError("Only admins can edit sales", 403));
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can edit sales", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRequireBuyerRole, createRequireBuyerRoleUnlessAdmin } from "./require-buyer-role.js";
+import {
+  createRequireBuyerRole,
+  createRequireBuyerRoleUnlessAdministrator,
+} from "./require-buyer-role.js";
 import type { RoleSource } from "./role-source.js";
 
 function roleSource(role: string | null): RoleSource {
@@ -9,26 +12,39 @@ function roleSource(role: string | null): RoleSource {
 }
 
 describe("createRequireBuyerRole", () => {
-  it("returns 403 when role is admin", async () => {
-    const mw = createRequireBuyerRole(roleSource("admin"));
+  it("returns 403 when role is administrator", async () => {
+    const mw = createRequireBuyerRole(roleSource("administrator"));
     const json = vi.fn((body: unknown, status?: number) => ({ body, status }));
     const next = vi.fn();
     const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
-      key === "userRole" ? "admin" : undefined,
+      key === "userRole" ? "administrator" : undefined,
     );
     await mw(c, next as never);
-    expect(json).toHaveBeenCalledWith({ error: "admin_cannot_buy" }, 403);
+    expect(json).toHaveBeenCalledWith({ error: "bidding_not_allowed_for_role" }, 403);
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("calls next when role is user", async () => {
-    const mw = createRequireBuyerRole(roleSource("user"));
+  it("returns 403 when role is accountant", async () => {
+    const mw = createRequireBuyerRole(roleSource("accountant"));
     const json = vi.fn();
     const next = vi.fn();
     const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
-      key === "userRole" ? "user" : undefined,
+      key === "userRole" ? "accountant" : undefined,
+    );
+    await mw(c, next as never);
+    expect(json).toHaveBeenCalledWith({ error: "bidding_not_allowed_for_role" }, 403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("calls next when role is client", async () => {
+    const mw = createRequireBuyerRole(roleSource("client"));
+    const json = vi.fn();
+    const next = vi.fn();
+    const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
+    (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+      key === "userRole" ? "client" : undefined,
     );
     await mw(c, next as never);
     expect(json).not.toHaveBeenCalled();
@@ -36,18 +52,30 @@ describe("createRequireBuyerRole", () => {
   });
 });
 
-describe("createRequireBuyerRoleUnlessAdmin", () => {
-  it("skips buyer gate for admin", async () => {
-    const mw = createRequireBuyerRoleUnlessAdmin(roleSource("admin"));
+describe("createRequireBuyerRoleUnlessAdministrator", () => {
+  it("skips buyer gate for administrator", async () => {
+    const mw = createRequireBuyerRoleUnlessAdministrator(roleSource("administrator"));
     const json = vi.fn();
     const next = vi.fn();
     const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
-      key === "userRole" ? "admin" : undefined,
+      key === "userRole" ? "administrator" : undefined,
     );
     await mw(c, next as never);
     expect(json).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalled();
   });
 
+  it("does not skip buyer gate for accountant", async () => {
+    const mw = createRequireBuyerRoleUnlessAdministrator(roleSource("accountant"));
+    const json = vi.fn();
+    const next = vi.fn();
+    const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
+    (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+      key === "userRole" ? "accountant" : undefined,
+    );
+    await mw(c, next as never);
+    expect(json).toHaveBeenCalledWith({ error: "bidding_not_allowed_for_role" }, 403);
+    expect(next).not.toHaveBeenCalled();
+  });
 });

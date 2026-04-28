@@ -33,7 +33,7 @@ export function createAuth(env: AuthEnv) {
         role: {
           type: "string",
           required: false,
-          defaultValue: "user",
+          defaultValue: "client",
           input: false,
         },
       },

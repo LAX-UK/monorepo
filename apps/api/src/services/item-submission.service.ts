@@ -5,6 +5,7 @@ import type {
   Lot,
   UpdateItemSubmissionInput,
 } from "@auction/types";
+import { roleHasCapability, type UserRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
@@ -47,7 +48,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     const s = await this.submissions.findById(submissionId);
     if (!s) return err(new SubmissionError("Not found", 404));
 
-    if (role === "admin") {
+    if (roleHasCapability(role as UserRole, "platform.admin.full")) {
       if (!adminNotes) {
         return err(new SubmissionError("Invalid update body", 400));
       }
@@ -86,7 +87,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       return err(new SubmissionError("Only drafts can be submitted for review"));
     }
     const updated = await this.submissions.update(id, { status: "submitted" });
-    const admins = await this.users.listIdsByRole("admin");
+    const admins = await this.users.listIdsByRole("administrator");
     for (const aid of admins) {
       await this.dispatcher.dispatch(aid, {
         type: "submission_received_for_review",

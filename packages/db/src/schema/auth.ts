@@ -13,7 +13,7 @@ export const user = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
-    role: text("role").notNull().default("user"),
+    role: text("role").notNull().default("client"),
     suspendedAt: timestamp("suspended_at", { mode: "date", withTimezone: true }),
     suspendedReason: text("suspended_reason"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
