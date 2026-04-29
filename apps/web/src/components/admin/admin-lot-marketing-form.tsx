@@ -42,7 +42,7 @@ export function AdminLotMarketingForm({ lotId, marketingDetails }: Props) {
     defaultValues: marketingDetailsToFormValues(marketingDetails),
   });
   return (
-    <div className="space-y-8 rounded-xl border border-outline-variant/20 bg-surface-container-lowest/40 p-6">
+    <div className="space-y-8 rounded-sm border border-outline-variant/20 bg-surface-container-lowest/40 p-6">
       <div>
         <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
         <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Lot story</h2>

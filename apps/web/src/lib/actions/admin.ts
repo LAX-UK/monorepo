@@ -461,15 +461,12 @@ export async function adminXeroDisconnectAction(): Promise<void> {
   redirect("/admin/integrations/xero");
 }
 
-export async function adminCreateInvitationAction(formData: FormData): Promise<void> {
-  const parsed = adminCreateInvitationBodySchema.safeParse({
-    email: String(formData.get("email") ?? "").trim(),
-    targetRole: String(formData.get("targetRole") ?? "").trim(),
-  });
+export async function adminCreateInvitationResultAction(
+  values: unknown,
+): Promise<ActionResult<void>> {
+  const parsed = adminCreateInvitationBodySchema.safeParse(values);
   if (!parsed.success) {
-    redirect(
-      `/admin/invitations?error=${encodeURIComponent(firstZodErrorMessage(parsed.error))}`,
-    );
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
   }
   const res = await authedServerFetch("/admin/invitations", {
     method: "POST",
@@ -478,11 +475,20 @@ export async function adminCreateInvitationAction(formData: FormData): Promise<v
   });
   if (!res.ok) {
     const payload = (await res.json().catch(() => ({}))) as { error?: string };
-    redirect(
-      `/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not create invite")}`,
-    );
+    return actionFailure(payload.error ?? "Could not create invite", undefined, res.status);
   }
   revalidatePath("/admin/invitations");
+  return actionSuccess();
+}
+
+export async function adminCreateInvitationAction(formData: FormData): Promise<void> {
+  const r = await adminCreateInvitationResultAction({
+    email: String(formData.get("email") ?? "").trim(),
+    targetRole: String(formData.get("targetRole") ?? "").trim(),
+  });
+  if (!r.ok) {
+    redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
+  }
   redirect("/admin/invitations");
 }
 
@@ -497,9 +503,7 @@ export async function adminRevokeInvitationAction(formData: FormData): Promise<v
   });
   if (!res.ok) {
     const payload = (await res.json().catch(() => ({}))) as { error?: string };
-    redirect(
-      `/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not revoke")}`,
-    );
+    redirect(`/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not revoke")}`);
   }
   revalidatePath("/admin/invitations");
   redirect("/admin/invitations");
@@ -516,9 +520,7 @@ export async function adminResendInvitationAction(formData: FormData): Promise<v
   });
   if (!res.ok) {
     const payload = (await res.json().catch(() => ({}))) as { error?: string };
-    redirect(
-      `/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not resend")}`,
-    );
+    redirect(`/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not resend")}`);
   }
   revalidatePath("/admin/invitations");
   redirect("/admin/invitations");

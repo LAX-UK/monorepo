@@ -33,11 +33,11 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const img = auction.images[0];
 
   return (
-    <div className="min-h-screen mx-auto w-full max-w-[var(--container-inner,1376px)]">
+    <div className="mx-auto min-h-screen w-full max-w-(--container-inner,1376px)">
       <div className="mb-10">
         <Link
           href="/dashboard/portfolio"
-          className="inline-flex items-center gap-2 font-label text-xs uppercase tracking-[0.2em] text-secondary transition-colors hover:text-primary"
+          className="inline-flex items-center gap-2 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary"
         >
           <span className="material-symbols-outlined text-sm" aria-hidden>
             arrow_back
@@ -77,7 +77,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
             <section
               aria-labelledby="checkout-flow-heading"
-              className="rounded-xl bg-surface-container-low/50 p-6 ring-1 ring-outline-variant/15 sm:p-8"
+              className="rounded-sm border border-outline-variant/15 bg-surface-container-low/40 p-6 sm:p-8"
             >
               <h2 id="checkout-flow-heading" className="sr-only">
                 Invoice and payment

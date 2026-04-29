@@ -63,13 +63,10 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
       <header className="mb-10 flex flex-col gap-6 border-b border-outline-variant/10 pb-10 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
           <LabelCaps className="text-lot-orange">Signed in · Collector</LabelCaps>
-          <DisplayHeading
-            as="h1"
-            className="text-4xl font-semibold tracking-tight text-brand-900 dark:text-on-surface"
-          >
+          <DisplayHeading as="h1" className="text-4xl font-semibold tracking-tight text-on-surface">
             Welcome back, {vm.firstName}.
           </DisplayHeading>
-          <BodyText className="max-w-xl text-brand-500 dark:text-on-surface-variant">
+          <BodyText className="max-w-xl text-on-surface-variant">
             {vm.liveCount} live lots · {vm.acquiredCount} acquired work
             {vm.acquiredCount === 1 ? "" : "s"} · {vm.kpi.activeBidsCount} active bid
             {vm.kpi.activeBidsCount === 1 ? "" : "s"}
@@ -126,16 +123,13 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
       </div>
 
       {featureV2 ? (
-        <section className="mb-10 rounded-2xl border border-outline-variant/15 bg-surface-container-low/40 px-6 py-8 dark:bg-surface-container-low/40 md:px-10">
+        <section className="mb-10 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 px-5 py-6 md:px-8">
           <div className="mx-auto flex max-w-3xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <DisplayHeading
-                as="h2"
-                className="text-xl font-semibold text-brand-900 dark:text-on-surface"
-              >
+              <DisplayHeading as="h2" className="text-xl font-semibold text-on-surface">
                 Account health
               </DisplayHeading>
-              <BodyText className="mt-1 text-sm text-brand-500 dark:text-on-surface-variant">
+              <BodyText className="mt-1 text-sm text-on-surface-variant">
                 Complete profile, alert settings, and payout readiness as you scale bidding.
               </BodyText>
             </div>
@@ -154,15 +148,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
         </section>
       ) : null}
 
-      <section className="mb-14 rounded-2xl border border-primary/20 bg-hero-cream/80 px-6 py-10 dark:bg-surface-container-low/60 dark:border-outline-variant/20 md:px-10">
+      <section className="mb-14 rounded-sm border border-outline-variant/15 bg-surface-container-low/25 px-5 py-8 md:px-8">
         <div className="mx-auto flex max-w-3xl flex-col gap-4 text-center md:text-left">
-          <DisplayHeading
-            as="h2"
-            className="text-2xl font-semibold text-brand-900 dark:text-on-surface"
-          >
+          <DisplayHeading as="h2" className="text-2xl font-semibold text-on-surface">
             Sell with LAX London Auction House Ltd
           </DisplayHeading>
-          <BodyText className="text-brand-500 dark:text-on-surface-variant">
+          <BodyText className="text-on-surface-variant">
             Submit item details for specialist review. When approved, we create a draft catalog lot
             for scheduling and publication.
           </BodyText>
@@ -185,10 +176,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
               </span>
             }
             heading={
-              <DisplayHeading
-                as="h2"
-                className="text-3xl font-semibold text-brand-900 dark:text-on-surface"
-              >
+              <DisplayHeading as="h2" className="text-3xl font-semibold text-on-surface">
                 Live inventory
               </DisplayHeading>
             }
@@ -242,12 +230,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
                       </p>
                       <Link
                         href={`/artwork/${a.id}`}
-                        className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
+                        className="font-headline text-xl font-semibold leading-6 text-on-surface hover:underline"
                       >
                         {a.title}
                       </Link>
                       {a.medium ? (
-                        <BodyText className="text-sm font-light text-brand-500 dark:text-on-surface-variant">
+                        <BodyText className="text-sm font-light text-on-surface-variant">
                           {a.medium}
                         </BodyText>
                       ) : null}
@@ -266,7 +254,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
 
         <aside className="space-y-8 lg:col-span-4">
           {vm.settlementsDue.length > 0 ? (
-            <Card className="border-lot-orange/30">
+            <Card className="border border-outline-variant/15 shadow-none border-lot-orange/30">
               <CardHeader>
                 <CardTitle className="font-headline text-xl">Settlements due</CardTitle>
                 <CardDescription>Won lots awaiting payment or completion.</CardDescription>
@@ -334,7 +322,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
             </Card>
           ) : null}
 
-          <Card>
+          <Card className="border border-outline-variant/15 shadow-none">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="font-headline text-xl">Won lots</CardTitle>
               <Button variant="chevron" asChild>
@@ -390,7 +378,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-outline-variant/15 shadow-none">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="font-headline text-xl">Watchlist</CardTitle>
               <Button variant="chevron" asChild>
@@ -445,7 +433,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-outline-variant/15 shadow-none">
             <CardHeader>
               <CardTitle className="font-headline text-xl">Account</CardTitle>
             </CardHeader>

@@ -133,7 +133,7 @@ export function AdminSaleDetailActions({
             ? "Onsite lots inherit the auction's start/end window."
             : "Online lots run on their own schedule and accept bids when active."}
         </p>
-        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-xl border border-outline-variant/15">
+        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-sm border border-outline-variant/15">
           {lots.map((l) => {
             const transitions = LOT_TRANSITION_OPTIONS[l.status];
             return (

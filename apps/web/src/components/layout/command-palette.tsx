@@ -1,7 +1,10 @@
 "use client";
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
+import type { SessionUser } from "@/lib/data/contracts";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -44,7 +47,7 @@ const dashboardSections: PaletteSection[] = [
   },
 ];
 
-const adminSections: PaletteSection[] = [
+const adminPlatformSections: PaletteSection[] = [
   {
     id: "admin-pages",
     heading: "Admin",
@@ -62,6 +65,19 @@ const adminSections: PaletteSection[] = [
   },
 ];
 
+/** Finance-only staff: same routes as sidebar, no platform shortcuts. */
+const adminFinanceSections: PaletteSection[] = [
+  {
+    id: "admin-finance",
+    heading: "Finance admin",
+    items: [
+      { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-xero", href: "/admin/integrations/xero", label: "Xero" },
+      { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
+    ],
+  },
+];
+
 function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
   const t = query.trim().toLowerCase();
   if (!t) return items;
@@ -71,15 +87,23 @@ function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
   );
 }
 
+function isAdminFinanceOnly(sessionUser: SessionUser | null | undefined): boolean {
+  if (!sessionUser) return false;
+  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole);
+}
+
 function buildVisibleSections(
   variant: "marketing" | "dashboard" | "admin",
   query: string,
+  sessionUser?: SessionUser | null,
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
       ? dashboardSections
       : variant === "admin"
-        ? adminSections
+        ? isAdminFinanceOnly(sessionUser)
+          ? adminFinanceSections
+          : adminPlatformSections
         : marketingSections;
   const q = query.trim();
   const out: PaletteSection[] = [];
@@ -97,7 +121,7 @@ function buildVisibleSections(
         label: `Search all lots for "${q}"`,
       },
     ];
-    if (variant === "admin") {
+    if (variant === "admin" && !isAdminFinanceOnly(sessionUser)) {
       actionItems.push(
         {
           id: "action-admin-lots-q",
@@ -144,9 +168,11 @@ function flattenItems(sections: PaletteSection[]): PaletteItem[] {
 
 type Props = {
   variant: "marketing" | "dashboard" | "admin";
+  /** When variant is admin, used to hide platform-only shortcuts for finance-only roles. */
+  sessionUser?: SessionUser | null;
 };
 
-export function CommandPalette({ variant }: Props) {
+export function CommandPalette({ variant, sessionUser = null }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -156,7 +182,10 @@ export function CommandPalette({ variant }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const visibleSections = useMemo(() => buildVisibleSections(variant, query), [variant, query]);
+  const visibleSections = useMemo(
+    () => buildVisibleSections(variant, query, sessionUser),
+    [variant, query, sessionUser],
+  );
   const flatItems = useMemo(() => flattenItems(visibleSections), [visibleSections]);
 
   const close = useCallback(() => setOpen(false), []);
@@ -300,7 +329,7 @@ export function CommandPalette({ variant }: Props) {
             <label htmlFor="palette-query" className="sr-only">
               Search
             </label>
-            <input
+            <Input
               ref={inputRef}
               id="palette-query"
               type="search"
@@ -314,7 +343,7 @@ export function CommandPalette({ variant }: Props) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onInputKeyDown}
               placeholder="Filter pages or search lots…"
-              className="w-full rounded-lg border border-outline-variant/25 bg-surface-container-high/60 px-3 py-2.5 font-body text-sm text-on-surface placeholder:text-on-surface-variant/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="h-auto min-h-11 w-full rounded-lg border border-outline-variant/25 bg-surface-container-high/60 py-2.5 font-body text-sm shadow-sm placeholder:text-on-surface-variant/70 focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
           <div

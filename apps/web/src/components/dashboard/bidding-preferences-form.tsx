@@ -10,6 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,12 +96,11 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center space-y-0">
                 <FormControl>
-                  <input
+                  <Checkbox
                     id="outbidInApp"
-                    type="checkbox"
                     checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="mt-1 size-5 shrink-0 rounded border border-outline-variant text-primary focus-visible:outline focus-visible:ring-2 focus-visible:ring-primary"
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                    className="mt-1 size-5"
                   />
                 </FormControl>
               </FormItem>
@@ -122,12 +122,11 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center space-y-0">
                 <FormControl>
-                  <input
+                  <Checkbox
                     id="outbidPush"
-                    type="checkbox"
                     checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="mt-1 size-5 shrink-0 rounded border border-outline-variant text-primary focus-visible:outline focus-visible:ring-2 focus-visible:ring-primary"
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                    className="mt-1 size-5"
                   />
                 </FormControl>
               </FormItem>
@@ -146,12 +145,11 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center space-y-0">
                 <FormControl>
-                  <input
+                  <Checkbox
                     id="endingSoonPush"
-                    type="checkbox"
                     checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="mt-1 size-5 shrink-0 rounded border border-outline-variant text-primary focus-visible:outline focus-visible:ring-2 focus-visible:ring-primary"
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                    className="mt-1 size-5"
                   />
                 </FormControl>
               </FormItem>

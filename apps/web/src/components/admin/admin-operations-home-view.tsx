@@ -120,7 +120,7 @@ export function AdminOperationsHomeView({
               {attention.map((row) => (
                 <li
                   key={row.id}
-                  className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-low/40 px-3 py-2"
+                  className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/40 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-headline text-sm text-on-surface">{row.title}</p>
@@ -198,7 +198,7 @@ export function AdminOperationsHomeView({
                 <li key={r.id}>
                   <Link
                     href={r.href}
-                    className="flex min-h-11 flex-col gap-1 rounded-lg border border-outline-variant/15 bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
+                    className="flex min-h-11 flex-col gap-1 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
                   >
                     <span className="font-headline text-sm text-on-surface">{r.title}</span>
                     <span className="text-xs text-on-surface-variant">{r.meta}</span>

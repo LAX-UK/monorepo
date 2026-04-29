@@ -15,7 +15,7 @@ export function SettingsSectionNav() {
   return (
     <SectionNav
       aria-label="Settings sections"
-      className="rounded-sm border border-outline-variant/20 bg-white px-2 py-2"
+      className="rounded-sm border border-outline-variant/20 bg-card px-2 py-2"
       items={items.map((item) => ({
         ...item,
         active: pathname === item.href || pathname.startsWith(`${item.href}/`),

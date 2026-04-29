@@ -1,10 +1,7 @@
-import {
-  adminCreateInvitationAction,
-  adminResendInvitationAction,
-  adminRevokeInvitationAction,
-} from "@/lib/actions/admin";
+import { AdminInviteForm } from "@/components/admin/admin-invite-form";
+import { adminResendInvitationAction, adminRevokeInvitationAction } from "@/lib/actions/admin";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
-import { userRoles, type UserRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -45,42 +42,9 @@ export default async function AdminInvitationsPage({
         </Alert>
       ) : null}
 
-      <section className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-6">
+      <section className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest p-6">
         <h2 className="font-headline text-lg text-on-surface">New invitation</h2>
-        <form action={adminCreateInvitationAction} className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="grid min-w-0 flex-1 gap-1">
-            <label htmlFor="invite-email" className="font-label text-xs uppercase tracking-widest text-secondary">
-              Email
-            </label>
-            <input
-              id="invite-email"
-              name="email"
-              type="email"
-              required
-              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
-            />
-          </div>
-          <div className="grid min-w-0 gap-1 sm:w-56">
-            <label htmlFor="invite-role" className="font-label text-xs uppercase tracking-widest text-secondary">
-              Role
-            </label>
-            <select
-              id="invite-role"
-              name="targetRole"
-              required
-              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface"
-            >
-              {userRoles.map((r) => (
-                <option key={r} value={r}>
-                  {roleLabel(r)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" className="min-h-11 font-label text-xs uppercase tracking-widest">
-            Send invite
-          </Button>
-        </form>
+        <AdminInviteForm />
       </section>
 
       <section>
@@ -88,9 +52,12 @@ export default async function AdminInvitationsPage({
         {rows.length === 0 ? (
           <p className="mt-2 font-body text-sm text-on-surface-variant">No pending invitations.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/15">
+          <ul className="mt-4 divide-y divide-outline-variant/15 rounded-sm border border-outline-variant/15">
             {rows.map((inv) => (
-              <li key={inv.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={inv.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div>
                   <p className="font-medium text-on-surface">{inv.email}</p>
                   <p className="font-body text-xs text-on-surface-variant">
@@ -100,13 +67,23 @@ export default async function AdminInvitationsPage({
                 <div className="flex flex-wrap gap-2">
                   <form action={adminResendInvitationAction}>
                     <input type="hidden" name="invitationId" value={inv.id} />
-                    <Button type="submit" variant="outline" size="sm" className="font-label text-[10px] uppercase">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      className="font-label text-[10px] uppercase"
+                    >
                       Resend
                     </Button>
                   </form>
                   <form action={adminRevokeInvitationAction}>
                     <input type="hidden" name="invitationId" value={inv.id} />
-                    <Button type="submit" variant="outline" size="sm" className="font-label text-[10px] uppercase">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      className="font-label text-[10px] uppercase"
+                    >
                       Revoke
                     </Button>
                   </form>

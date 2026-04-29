@@ -40,12 +40,12 @@ function NavLink({
       onClick={onNav}
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
-      className={`flex items-center border-l-4 transition-all ${
+      className={`flex items-center border-l-[3px] transition-colors ${
         collapsed ? "justify-center px-2 py-3" : "px-3 py-2.5"
       } text-xs font-medium uppercase tracking-[0.18em] ${
         active
-          ? "border-black bg-black/[0.03] text-black"
-          : "border-transparent text-on-surface/85 hover:bg-black/[0.025] hover:text-black"
+          ? "border-primary bg-surface-container-low text-on-surface"
+          : "border-transparent text-on-surface-variant hover:bg-surface-container-low/70 hover:text-on-surface"
       }`}
     >
       <Icon className={cn("size-5 shrink-0", collapsed ? "" : "mr-3")} aria-hidden />
@@ -76,7 +76,7 @@ function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => voi
     <>
       <div
         className={cn(
-          "rounded-sm border border-outline-variant/20 bg-white",
+          "rounded-sm border border-outline-variant/20 bg-card",
           collapsed ? "p-3" : "p-5",
         )}
       >
@@ -84,7 +84,7 @@ function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => voi
           <p className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
             My account
           </p>
-          <p className="mt-2 truncate font-headline text-xl font-semibold text-black">
+          <p className="mt-2 truncate font-headline text-xl font-semibold text-on-surface">
             {collapsed ? SITE_SHORT_NAME.slice(0, 1) : user.name}
           </p>
           {!collapsed ? (
@@ -125,7 +125,7 @@ function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => voi
       <div className={cn("mt-4 space-y-3", collapsed ? "p-1" : "p-1")}>
         <LogoutButton
           onBeforeNavigate={onNav}
-          className="w-full border-black bg-transparent text-black hover:bg-black hover:text-white"
+          className="w-full rounded-sm border border-outline-variant/30 bg-transparent font-label text-xs uppercase tracking-[0.18em] text-on-surface hover:bg-surface-container-high"
         />
         <Link
           href="/"
@@ -157,7 +157,7 @@ export function DashboardSidebar({ user }: Props) {
           <Button
             type="button"
             variant="outline"
-            className="mb-4 inline-flex min-h-11 w-full justify-center border-outline-variant/30 bg-white text-on-surface"
+            className="mb-4 inline-flex min-h-11 w-full justify-center border-outline-variant/30 bg-card text-on-surface"
             onClick={() => setMobileOpen(true)}
             aria-expanded={mobileOpen}
             aria-label="Open account navigation"
@@ -168,7 +168,7 @@ export function DashboardSidebar({ user }: Props) {
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetContent
               side="left"
-              className="flex w-[min(100vw-1.5rem,20rem)] max-w-none flex-col border-outline-variant/20 bg-white p-4"
+              className="flex w-[min(100vw-1.5rem,20rem)] max-w-none flex-col border-outline-variant/20 bg-card p-4"
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>Dashboard navigation</SheetTitle>

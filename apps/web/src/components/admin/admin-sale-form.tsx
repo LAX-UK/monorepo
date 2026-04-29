@@ -1,5 +1,6 @@
 "use client";
 
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import {
@@ -22,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import {
   buildGoogleMapsSearchUrl,
@@ -205,23 +207,19 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
               <FormLabel>
                 <LabelCaps>Auction type</LabelCaps>
               </FormLabel>
-              <FormControl>
-                <select
-                  className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                >
-                  {saleDeliveryModes.map((m) => (
-                    <option key={m} value={m}>
-                      {m === "onsite"
-                        ? "Onsite (read-only marketing)"
-                        : "Online (interactive bidding)"}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
+              <RhfSelect
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                options={saleDeliveryModes.map((m) => ({
+                  value: m,
+                  label:
+                    m === "onsite"
+                      ? "Onsite (read-only marketing)"
+                      : "Online (interactive bidding)",
+                }))}
+                triggerClassName="w-full font-body text-sm"
+              />
               <p className="mt-2 font-body text-xs text-on-surface-variant">
                 Online auctions support live bidding on each lot. Onsite auctions are marketing-only
                 catalogs for in-person events; lots inherit the auction's start/end dates.
@@ -508,9 +506,9 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
                   <LabelCaps>Start (local)</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <input
+                  <Input
                     type="datetime-local"
-                    className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+                    className="min-h-11 py-3 font-body text-sm"
                     {...field}
                   />
                 </FormControl>
@@ -527,9 +525,9 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
                   <LabelCaps>End (local)</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <input
+                  <Input
                     type="datetime-local"
-                    className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+                    className="min-h-11 py-3 font-body text-sm"
                     {...field}
                   />
                 </FormControl>
@@ -554,9 +552,9 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
                 <LabelCaps>Preview start (optional)</LabelCaps>
               </FormLabel>
               <FormControl>
-                <input
+                <Input
                   type="datetime-local"
-                  className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+                  className="min-h-11 py-3 font-body text-sm"
                   {...field}
                 />
               </FormControl>

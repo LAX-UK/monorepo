@@ -4,6 +4,7 @@ import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissio
 import { useTableDensity } from "@/components/layout/dashboard-shell";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DataTable, EntityTableShell } from "@auction/ui";
+import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -83,7 +84,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
       {filtered.map((r) => (
         <li
           key={r.id}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
+          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
         >
           <Link href={`/admin/submissions/${r.id}`} className="block min-h-11">
             <p className="font-headline text-base text-on-surface">{r.title}</p>
@@ -111,12 +112,12 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
           >
             Filter title (client)
           </label>
-          <input
+          <Input
             id="admin-submissions-client-q"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Narrow loaded rows…"
-            className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
+            className="min-h-11 text-base md:text-sm"
           />
         </div>
       }

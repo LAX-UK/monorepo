@@ -34,7 +34,7 @@ export function PortfolioLotGrid({ items }: Props) {
       <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((row) => (
           <li key={row.id}>
-            <Card className="group h-full overflow-hidden p-0 transition-shadow hover:shadow-md">
+            <Card className="group h-full overflow-hidden border border-outline-variant/15 p-0 shadow-none transition-colors hover:border-outline-variant/25 hover:bg-surface-container-low/20">
               <Link href={row.checkoutHref} className="block">
                 <div className="relative aspect-[4/5] bg-surface-container-low">
                   {row.image ? (
@@ -46,7 +46,7 @@ export function PortfolioLotGrid({ items }: Props) {
                       sizes="(max-width: 640px) 100vw, 33vw"
                     />
                   ) : null}
-                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-sm bg-white/90 px-2 py-1 backdrop-blur-sm dark:bg-black/60">
+                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-sm bg-surface-container-lowest/90 px-2 py-1 backdrop-blur-sm">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                     <span className="font-label text-xs font-bold uppercase tracking-wider text-primary">
                       {row.settlementLabel}

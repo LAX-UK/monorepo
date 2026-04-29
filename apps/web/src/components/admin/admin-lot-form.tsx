@@ -1,5 +1,6 @@
 "use client";
 
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminCreateLotResultAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
@@ -19,6 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -140,21 +142,13 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
               <FormLabel>
                 <LabelCaps>Lot type</LabelCaps>
               </FormLabel>
-              <FormControl>
-                <select
-                  className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                >
-                  {lotAuctionTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
+              <RhfSelect
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                options={lotAuctionTypes.map((t) => ({ value: t, label: t }))}
+                triggerClassName="w-full font-body text-sm"
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -269,9 +263,9 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
                   <LabelCaps>Start (local)</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <input
+                  <Input
                     type="datetime-local"
-                    className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+                    className="min-h-11 py-3 font-body text-sm"
                     {...field}
                   />
                 </FormControl>
@@ -288,9 +282,9 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
                   <LabelCaps>End (local)</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <input
+                  <Input
                     type="datetime-local"
-                    className="w-full rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-3 font-body text-sm"
+                    className="min-h-11 py-3 font-body text-sm"
                     {...field}
                   />
                 </FormControl>

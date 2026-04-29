@@ -2,6 +2,7 @@
 
 import { submitContactFormResult } from "@/app/(marketing)/contact/actions";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { contactFormValuesSchema } from "@/lib/contact/contact-input";
 import { useActionForm } from "@/lib/forms/use-action-form";
 import {
@@ -13,6 +14,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { Textarea } from "@auction/ui/components/textarea";
 import { useState } from "react";
 
 const topics = [
@@ -136,19 +138,13 @@ export function ContactForm() {
               >
                 Topic
               </FormLabel>
-              <FormControl>
-                <select
-                  id="contact-topic"
-                  className="w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  {...field}
-                >
-                  {topics.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
+              <RhfSelect
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                options={topics.map((t) => ({ value: t.value, label: t.label }))}
+                triggerClassName="min-h-11 w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm"
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -166,7 +162,7 @@ export function ContactForm() {
                 Message
               </FormLabel>
               <FormControl>
-                <textarea
+                <Textarea
                   id="contact-message"
                   rows={6}
                   className="w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"

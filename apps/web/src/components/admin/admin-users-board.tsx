@@ -16,6 +16,7 @@ import {
   SheetTitle,
   StatStrip,
 } from "@auction/ui";
+import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -162,7 +163,7 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
       {filtered.map((u) => (
         <li
           key={u.id}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
+          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
         >
           <Button
             type="button"
@@ -201,12 +202,12 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
             >
               Filter loaded rows
             </label>
-            <input
+            <Input
               id="admin-users-q"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Name, email, or ID…"
-              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
+              className="min-h-11 text-base md:text-sm"
             />
           </div>
         }

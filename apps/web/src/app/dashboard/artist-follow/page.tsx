@@ -14,8 +14,8 @@ export default async function ArtistFollowPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
-      <header className="space-y-2 border-b border-outline-variant/10 pb-8">
+    <div className="mx-auto w-full max-w-(--container-inner,1376px) space-y-8">
+      <header className="space-y-2 border-b border-outline-variant/15 pb-6">
         <LabelCaps className="text-lot-orange">Discovery</LabelCaps>
         <DisplayHeading as="h1" className="text-3xl md:text-4xl">
           Artists you follow
@@ -40,10 +40,13 @@ export default async function ArtistFollowPage() {
             <li key={row.watchlistId}>
               <Link
                 href={`/artist/${row.artistId}`}
-                className="flex min-h-11 items-center justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low/40 px-4 py-3 font-headline text-sm text-on-surface transition-colors hover:bg-surface-container-high/60"
+                title={row.artistId}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 px-4 py-3 text-on-surface transition-colors hover:bg-surface-container-high/50"
               >
-                <span className="truncate font-mono text-xs">{row.artistId}</span>
-                <span className="font-label text-[10px] uppercase text-primary">Open</span>
+                <span className="min-w-0 flex-1 truncate font-headline text-sm">
+                  Artist profile
+                </span>
+                <span className="shrink-0 font-label text-[10px] uppercase text-primary">Open</span>
               </Link>
             </li>
           ))}

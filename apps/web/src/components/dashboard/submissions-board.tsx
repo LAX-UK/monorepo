@@ -1,5 +1,6 @@
 "use client";
 
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { Button } from "@/components/ui/button";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { TableScroll } from "@/components/ui/table-scroll";
@@ -125,7 +126,7 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
   return (
     <div className="space-y-6">
       <Toolbar
-        className="flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
+        className="flex-col gap-4 rounded-sm border border-outline-variant/20 bg-surface-container-low/25 p-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
         filters={
           <Form {...form}>
             <form
@@ -140,23 +141,18 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
                     <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
                       Status
                     </FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        className="w-full rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface"
-                      >
-                        {(
-                          [
-                            "all",
-                            ...itemSubmissionStatuses,
-                          ] as SubmissionListFilterValues["status"][]
-                        ).map((value) => (
-                          <option key={value} value={value}>
-                            {filterStatusLabel[value]}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
+                    <RhfSelect
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      options={(
+                        ["all", ...itemSubmissionStatuses] as SubmissionListFilterValues["status"][]
+                      ).map((value) => ({
+                        value,
+                        label: filterStatusLabel[value],
+                      }))}
+                      triggerClassName="w-full text-sm"
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

@@ -7,6 +7,13 @@ import {
 } from "@/lib/actions/admin";
 import { userRoles, type UserRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -43,19 +50,25 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
   if (layout === "block") {
     return (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <select
-          className="min-h-11 w-full rounded border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm sm:flex-1"
+        <Select
           value={role}
-          onChange={(e) => setRole(e.target.value as UserRole)}
+          onValueChange={(v) => setRole(v as UserRole)}
           disabled={pending}
-          aria-label="User role"
         >
-          {roleOptions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            className="min-h-11 w-full font-body text-sm sm:flex-1"
+            aria-label="User role"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {roleOptions.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           type="button"
           disabled={pending}
@@ -70,19 +83,21 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        className="min-h-11 rounded border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-xs"
-        value={role}
-        onChange={(e) => setRole(e.target.value as UserRole)}
-        disabled={pending}
-        aria-label="User role"
-      >
-        {roleOptions.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </select>
+      <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={pending}>
+        <SelectTrigger
+          className="h-auto min-h-11 w-[min(100%,11rem)] px-2 py-1 font-body text-xs"
+          aria-label="User role"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {roleOptions.map((r) => (
+            <SelectItem key={r} value={r}>
+              {r}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Button
         type="button"
         variant="link"
