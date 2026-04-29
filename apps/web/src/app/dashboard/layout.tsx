@@ -2,7 +2,12 @@ import { DashboardBottomNav } from "@/components/layout/dashboard-bottom-nav";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { canAccessPlatformAdminRoutes, canAccessStaffAdminShell, type UserRole } from "@auction/types";
+import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
+import {
+  type UserRole,
+  canAccessPlatformAdminRoutes,
+  canAccessStaffAdminShell,
+} from "@auction/types";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -13,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const user = await getServerSessionUser();
+  const [user, nav] = await Promise.all([getServerSessionUser(), loadMegaMenuSections()]);
   if (!user) {
     redirect("/login?next=/dashboard&auth=required");
   }
@@ -26,6 +31,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     <>
       <DashboardShell
         user={user}
+        nav={nav}
         mobileTitle="Dashboard"
         sidebar={<DashboardSidebar user={user} />}
       >

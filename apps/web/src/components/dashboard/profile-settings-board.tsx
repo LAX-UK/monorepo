@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Separator } from "@auction/ui/components/separator";
+import { CreditCard, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 
 export type ProfileAddressRow = {
@@ -46,16 +47,27 @@ function ProfileNameCard({ email, initialName }: { email: string; initialName: s
   const { form, onSubmit, isSubmitting } = useProfileNameController(initialName);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
-          Account
-        </CardTitle>
-        <CardDescription>Signed in as {email}</CardDescription>
+    <Card className="rounded-sm border-outline-variant/20 shadow-none">
+      <CardHeader className="flex-row items-start justify-between space-y-0 pb-3">
+        <div>
+          <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+            Personal details
+          </CardTitle>
+          <CardDescription className="mt-1 text-xs">Signed in as {email}</CardDescription>
+        </div>
+        <Button
+          type="submit"
+          form="profile-name-form"
+          variant="tertiary"
+          className="h-8 px-2 text-on-surface"
+        >
+          <Pencil className="mr-1 size-3.5" aria-hidden />
+          Edit
+        </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <Form {...form}>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form id="profile-name-form" onSubmit={onSubmit} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -67,14 +79,14 @@ function ProfileNameCard({ email, initialName }: { email: string; initialName: s
                   <FormControl>
                     <UnderlineInput
                       {...field}
-                      className="w-full border-b-2 border-outline-variant/40 py-2"
+                      className="w-full border-b border-outline-variant/40 py-2 font-medium"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" variant="primary" disabled={isSubmitting}>
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="min-w-28">
               {isSubmitting ? "Saving…" : "Save name"}
             </Button>
           </form>
@@ -97,7 +109,9 @@ function AddAddressCard() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-label text-xs uppercase tracking-widest text-secondary">Add address</h3>
+      <h3 className="font-label text-xs uppercase tracking-[0.18em] text-on-surface">
+        Add new address
+      </h3>
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
           <FormField
@@ -218,7 +232,7 @@ function AddAddressCard() {
             )}
           />
           <div className="md:col-span-2">
-            <Button type="submit" variant="secondary" disabled={isSubmitting}>
+            <Button type="submit" variant="secondary" disabled={isSubmitting} className="min-w-28">
               {isSubmitting ? "Adding…" : "Add address"}
             </Button>
           </div>
@@ -230,15 +244,21 @@ function AddAddressCard() {
 
 export function ProfileSettingsBoard({ email, initialName, addresses }: Props) {
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <ProfileNameCard email={email} initialName={initialName} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
-            Addresses
-          </CardTitle>
-          <CardDescription>Shipping addresses used for invoices and delivery.</CardDescription>
+      <Card className="rounded-sm border-outline-variant/20 shadow-none">
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+              Address management
+            </CardTitle>
+            <CardDescription>Shipping addresses used for invoices and delivery.</CardDescription>
+          </div>
+          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
+            <Pencil className="mr-1 size-3.5" aria-hidden />
+            Edit
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6">
           {addresses.length === 0 ? (
@@ -246,13 +266,20 @@ export function ProfileSettingsBoard({ email, initialName, addresses }: Props) {
           ) : (
             <ul className="space-y-3">
               {addresses.map((a) => (
-                <li key={a.id} className="rounded-lg bg-surface-container-low/50 px-4 py-3 text-sm">
-                  <span className="font-label text-xs uppercase text-primary">{a.label}</span>
-                  {a.isDefault ? (
-                    <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 font-label text-[10px] uppercase text-primary">
-                      Default
+                <li
+                  key={a.id}
+                  className="rounded-sm border border-outline-variant/20 bg-white px-4 py-3 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-label text-[11px] uppercase tracking-[0.16em] text-on-surface">
+                      {a.label}
                     </span>
-                  ) : null}
+                    {a.isDefault ? (
+                      <span className="rounded bg-emerald-50 px-2 py-0.5 font-label text-[10px] uppercase text-emerald-700">
+                        Default
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-on-surface">
                     {a.line1}
                     {a.line2 ? `, ${a.line2}` : ""}
@@ -267,6 +294,46 @@ export function ProfileSettingsBoard({ email, initialName, addresses }: Props) {
           )}
           <Separator />
           <AddAddressCard />
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-sm border-outline-variant/20 shadow-none">
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+              Phone book
+            </CardTitle>
+            <CardDescription>Phone numbers for bid and delivery updates.</CardDescription>
+          </div>
+          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
+            <Phone className="mr-1 size-3.5" aria-hidden />
+            Add number
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-on-surface-variant">
+            Phone management is not connected yet in this release.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-sm border-outline-variant/20 shadow-none">
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+              Payment method
+            </CardTitle>
+            <CardDescription>Saved payment methods appear here.</CardDescription>
+          </div>
+          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
+            <CreditCard className="mr-1 size-3.5" aria-hidden />
+            Add card
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-on-surface-variant">
+            Payment method management is not connected yet in this release.
+          </p>
         </CardContent>
       </Card>
     </div>

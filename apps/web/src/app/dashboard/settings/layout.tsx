@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 
 export default function DashboardSettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto flex w-full max-w-[var(--container-inner,1376px)] flex-col gap-10 lg:flex-row lg:gap-12">
-      <aside className="shrink-0 lg:w-52">
+    <div className="mx-auto w-full max-w-(--container-inner,1376px) space-y-6">
+      <aside className="shrink-0">
         <SettingsSectionNav />
       </aside>
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

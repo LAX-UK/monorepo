@@ -3,13 +3,14 @@
 import { dashboardNavGroups } from "@/components/layout/dashboard-nav-groups";
 import { useShellContext } from "@/components/layout/dashboard-shell";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useIsLg } from "@/hooks/use-is-lg";
 import { SITE_SHORT_NAME } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import { LabelCaps, cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import { Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,11 +41,11 @@ function NavLink({
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
       className={`flex items-center border-l-4 transition-all ${
-        collapsed ? "justify-center px-2 py-3" : "px-4 py-3"
-      } text-xs font-medium uppercase tracking-widest ${
+        collapsed ? "justify-center px-2 py-3" : "px-3 py-2.5"
+      } text-xs font-medium uppercase tracking-[0.18em] ${
         active
-          ? "border-lot-orange bg-surface-container-low text-on-surface"
-          : "border-transparent text-on-surface hover:bg-surface-container-low/80"
+          ? "border-black bg-black/[0.03] text-black"
+          : "border-transparent text-on-surface/85 hover:bg-black/[0.025] hover:text-black"
       }`}
     >
       <Icon className={cn("size-5 shrink-0", collapsed ? "" : "mr-3")} aria-hidden />
@@ -73,28 +74,28 @@ function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => voi
 
   return (
     <>
-      <div className={collapsed ? "p-4" : "p-8"}>
-        <Link
-          href="/"
-          onClick={onNav}
-          className={`mb-8 block font-headline tracking-tighter text-on-surface ${collapsed ? "text-center text-lg" : "text-xl"}`}
-        >
-          {collapsed ? SITE_SHORT_NAME.slice(0, 1) : SITE_SHORT_NAME}
-        </Link>
-        {!collapsed ? (
-          <>
-            <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-              Signed in
-            </p>
-            <p className="font-body text-sm font-medium text-on-surface">{user.name}</p>
-            <p className="mt-1 truncate font-body text-xs text-on-surface-variant">{user.email}</p>
-          </>
-        ) : null}
-        <nav className={collapsed ? "mt-8 space-y-1" : "mt-12 space-y-6"} aria-label="Dashboard">
+      <div
+        className={cn(
+          "rounded-sm border border-outline-variant/20 bg-white",
+          collapsed ? "p-3" : "p-5",
+        )}
+      >
+        <div className={collapsed ? "text-center" : ""}>
+          <p className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+            My account
+          </p>
+          <p className="mt-2 truncate font-headline text-xl font-semibold text-black">
+            {collapsed ? SITE_SHORT_NAME.slice(0, 1) : user.name}
+          </p>
+          {!collapsed ? (
+            <p className="mt-1 truncate text-xs text-on-surface-variant">{user.email}</p>
+          ) : null}
+        </div>
+        <nav className={collapsed ? "mt-5 space-y-1" : "mt-8 space-y-5"} aria-label="Dashboard">
           {dashboardNavGroups.map((group) => (
             <div key={group.title}>
               {!collapsed ? (
-                <LabelCaps className="mb-2 block text-[0.65rem] text-secondary">
+                <LabelCaps className="mb-2 block text-[0.62rem] text-on-surface-variant">
                   {group.title}
                 </LabelCaps>
               ) : null}
@@ -121,26 +122,17 @@ function DashboardNavBody({ user, onNav }: { user: SessionUser; onNav: () => voi
           ))}
         </nav>
       </div>
-      <div className={`mt-auto space-y-4 ${collapsed ? "p-4" : "p-8"}`}>
-        {!collapsed ? (
-          <div className="flex items-center gap-3">
-            <span className="font-label text-xs uppercase tracking-widest text-secondary">
-              Theme
-            </span>
-            <ThemeToggle />
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <ThemeToggle />
-          </div>
-        )}
-        <LogoutButton onBeforeNavigate={onNav} />
+      <div className={cn("mt-4 space-y-3", collapsed ? "p-1" : "p-1")}>
+        <LogoutButton
+          onBeforeNavigate={onNav}
+          className="w-full border-black bg-transparent text-black hover:bg-black hover:text-white"
+        />
         <Link
           href="/"
           onClick={onNav}
-          className={`block font-label text-xs uppercase tracking-widest text-primary transition-colors hover:underline ${collapsed ? "text-center" : ""}`}
+          className={`block font-label text-xs uppercase tracking-[0.18em] text-on-surface transition-colors hover:underline ${collapsed ? "text-center" : ""}`}
         >
-          {collapsed ? "←" : "Exit to gallery"}
+          {collapsed ? "←" : "Back to gallery"}
         </Link>
       </div>
     </>
@@ -157,21 +149,34 @@ export function DashboardSidebar({ user }: Props) {
   return (
     <>
       {isLg ? (
-        <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-[var(--sidebar-width)] flex-col border-r border-outline-variant/15 bg-surface-container-lowest shadow-[4px_0_24px_rgba(0,0,0,0.06)] transition-[width] duration-200">
+        <aside className="sticky top-[calc(var(--header-height,7rem)+1rem)] flex h-fit w-full flex-col transition-[width] duration-200">
           {body}
         </aside>
       ) : (
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent
-            side="left"
-            className="flex w-[min(100vw-2rem,20rem)] max-w-none flex-col border-outline-variant/15 p-0"
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="mb-4 inline-flex min-h-11 w-full justify-center border-outline-variant/30 bg-white text-on-surface"
+            onClick={() => setMobileOpen(true)}
+            aria-expanded={mobileOpen}
+            aria-label="Open account navigation"
           >
-            <SheetHeader className="sr-only">
-              <SheetTitle>Dashboard navigation</SheetTitle>
-            </SheetHeader>
-            <div className="flex h-full flex-col overflow-y-auto">{body}</div>
-          </SheetContent>
-        </Sheet>
+            <Menu className="mr-2 size-4" aria-hidden />
+            Account menu
+          </Button>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetContent
+              side="left"
+              className="flex w-[min(100vw-1.5rem,20rem)] max-w-none flex-col border-outline-variant/20 bg-white p-4"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Dashboard navigation</SheetTitle>
+              </SheetHeader>
+              <div className="flex h-full flex-col overflow-y-auto">{body}</div>
+            </SheetContent>
+          </Sheet>
+        </>
       )}
     </>
   );

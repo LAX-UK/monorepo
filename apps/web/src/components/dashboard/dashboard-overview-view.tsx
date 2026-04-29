@@ -44,7 +44,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)]">
+    <div className="w-full">
       {hasErrors ? (
         <Alert variant="destructive" className="mb-8 border-error/40">
           <AlertTitle>Some data could not load</AlertTitle>
@@ -216,7 +216,7 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
                 return (
                   <article key={a.id} className="flex flex-col gap-4">
                     <Link href={`/artwork/${a.id}`} className="group block">
-                      <div className="relative aspect-[320/340] w-full overflow-hidden rounded-lg bg-brand-800 dark:bg-surface-container-high">
+                      <div className="relative aspect-320/340 w-full overflow-hidden rounded-lg bg-brand-800 dark:bg-surface-container-high">
                         {img ? (
                           <Image
                             src={img}
