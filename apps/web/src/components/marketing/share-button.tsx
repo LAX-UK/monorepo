@@ -35,12 +35,13 @@ export function ShareButton({ url, title, className, appearance = "default", lab
 
   if (appearance === "text") {
     return (
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => void share()}
         className={
           className ??
-          "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text transition-opacity hover:opacity-80 dark:text-on-surface"
+          "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface"
         }
       >
         {label ?? (
@@ -53,7 +54,7 @@ export function ShareButton({ url, title, className, appearance = "default", lab
             {done ? "Copied" : "Share"}
           </>
         )}
-      </button>
+      </Button>
     );
   }
 

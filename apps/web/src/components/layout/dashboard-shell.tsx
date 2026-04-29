@@ -115,7 +115,10 @@ export function DashboardShell({
           className="flex min-h-screen bg-surface font-body text-on-surface"
           style={{ ["--sidebar-width" as string]: sidebarWidth }}
         >
-          <CommandPaletteLazy variant={accountMenu === "admin" ? "admin" : "dashboard"} />
+          <CommandPaletteLazy
+            variant={accountMenu === "admin" ? "admin" : "dashboard"}
+            sessionUser={user}
+          />
           <a
             href="#main-content"
             className="fixed left-4 top-4 z-[60] -translate-y-[120%] rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary focus:translate-y-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
@@ -136,13 +139,13 @@ export function DashboardShell({
           >
             <div className="min-h-screen flex-1">
               <div className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-[calc(var(--header-height,7rem)+1rem)] md:px-8 md:pb-16 lg:px-10">
-                <header className="mb-8 border-b border-outline-variant/20 pb-5">
+                <header className="mb-6 border-b border-outline-variant/15 pb-4">
                   <p className="font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
                     {mobileTitle}
                   </p>
-                  <h1 className="mt-2 font-headline text-2xl font-semibold tracking-tight text-on-surface md:text-3xl">
-                    {shellTitle}
-                  </h1>
+                  <p className="sr-only">
+                    {shellTitle}. {shellSubtitle}
+                  </p>
                   <p className="mt-1 max-w-2xl text-sm text-on-surface-variant">{shellSubtitle}</p>
                 </header>
 
@@ -150,7 +153,7 @@ export function DashboardShell({
                   <aside className="mb-8 lg:mb-0">{sidebar}</aside>
                   <main
                     id="main-content"
-                    className="min-w-0 rounded-sm border border-outline-variant/20 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] md:p-6 lg:p-8"
+                    className="min-w-0 rounded-sm border border-outline-variant/15 bg-card p-4 text-card-foreground md:p-6 lg:p-8"
                   >
                     {pageActions ? (
                       <div className="mb-4 flex flex-wrap items-center justify-end gap-2 border-b border-outline-variant/15 pb-4">

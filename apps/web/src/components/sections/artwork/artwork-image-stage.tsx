@@ -212,15 +212,16 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
             <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
               {images.map((u, i) => {
                 return (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     // biome-ignore lint/suspicious/noArrayIndexKey: stable index for thumbs; URLs may repeat
                     key={`thumb-${u}__${i}`}
                     onClick={() => setIndex(i)}
                     aria-label={`Show image ${i + 1} of ${images.length}`}
                     aria-current={i === index ? "true" : undefined}
                     className={cn(
-                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-md",
+                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-md p-0 hover:bg-transparent",
                       "ring-2 ring-offset-2 ring-offset-surface-container-lowest transition-shadow",
                       i === index
                         ? "ring-primary"
@@ -236,7 +237,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
                       placeholder="blur"
                       blurDataURL={TINY_IMAGE_BLUR}
                     />
-                  </button>
+                  </Button>
                 );
               })}
             </div>

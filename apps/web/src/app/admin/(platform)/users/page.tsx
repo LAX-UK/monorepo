@@ -3,6 +3,7 @@ import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { userRoles, type UserRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -136,12 +137,12 @@ export default async function AdminUsersPage({
             >
               Server search
             </label>
-            <input
+            <Input
               id="admin-users-server-q"
               name="q"
               defaultValue={q}
               placeholder="Name or email"
-              className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
+              className="min-h-11 text-base md:text-sm"
             />
           </div>
           <Button

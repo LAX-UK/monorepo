@@ -4,6 +4,7 @@ import { useTableDensity } from "@/components/layout/dashboard-shell";
 import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { SaleStatus } from "@auction/types";
 import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
+import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -117,7 +118,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
       {filtered.map((r) => (
         <li
           key={r.saleId}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
+          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -173,12 +174,12 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
           >
             Filter title
           </label>
-          <input
+          <Input
             id="admin-sales-q"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Type to filter loaded rows…"
-            className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-base text-on-surface md:text-sm"
+            className="min-h-11 text-base md:text-sm"
           />
         </div>
       }

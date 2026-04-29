@@ -7,6 +7,7 @@ import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search
 import type { UserNotification } from "@auction/types";
 import { BulkActionBar, DataTable } from "@auction/ui";
 import { Button as ShadButton } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -204,10 +205,9 @@ export function NotificationsInboxBoard() {
         id: "select",
         header: "",
         cell: ({ row }) => (
-          <input
-            type="checkbox"
+          <Checkbox
             checked={selected.has(row.original.id)}
-            onChange={() => toggle(row.original.id)}
+            onCheckedChange={() => toggle(row.original.id)}
             aria-label={`Select ${row.original.title}`}
             className="mt-1"
           />
@@ -423,7 +423,7 @@ export function NotificationsInboxBoard() {
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
                 <nav
                   aria-label="Notification threads"
-                  className="max-h-[70vh] overflow-y-auto rounded-xl border border-outline-variant/15 bg-surface-container-lowest/60 shadow-sm"
+                  className="max-h-[70vh] overflow-y-auto rounded-sm border border-outline-variant/15 bg-surface-container-lowest/60"
                 >
                   {items.map((n) => {
                     const isActive = n.id === focusedId;
@@ -434,10 +434,9 @@ export function NotificationsInboxBoard() {
                           isActive ? "bg-surface-container-high/80" : ""
                         }`}
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selected.has(n.id)}
-                          onChange={() => toggle(n.id)}
+                          onCheckedChange={() => toggle(n.id)}
                           aria-label={`Select ${n.title}`}
                           className="mt-1 shrink-0"
                           onClick={(e) => e.stopPropagation()}
@@ -472,7 +471,7 @@ export function NotificationsInboxBoard() {
                 </nav>
                 <article
                   aria-live="polite"
-                  className="min-h-[280px] rounded-xl border border-outline-variant/15 bg-surface-container-lowest/40 p-6 shadow-sm"
+                  className="min-h-[280px] rounded-sm border border-outline-variant/15 bg-surface-container-lowest/40 p-6"
                 >
                   {focused ? (
                     <div className="space-y-4">

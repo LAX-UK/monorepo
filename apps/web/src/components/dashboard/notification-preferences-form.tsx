@@ -12,6 +12,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 import { Switch } from "@auction/ui/components/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -231,9 +232,9 @@ export function NotificationPreferencesForm({
                 <FormItem>
                   <FormLabel className="font-body text-sm">Start</FormLabel>
                   <FormControl>
-                    <input
+                    <Input
                       type="time"
-                      className="mt-1 block w-full min-w-36 rounded-md border border-outline-variant/30 bg-surface-container-lowest px-2 py-2 font-body text-sm"
+                      className="mt-1 block min-h-11 min-w-36 font-body text-sm"
                       {...field}
                     />
                   </FormControl>
@@ -248,9 +249,9 @@ export function NotificationPreferencesForm({
                 <FormItem>
                   <FormLabel className="font-body text-sm">End</FormLabel>
                   <FormControl>
-                    <input
+                    <Input
                       type="time"
-                      className="mt-1 block w-full min-w-36 rounded-md border border-outline-variant/30 bg-surface-container-lowest px-2 py-2 font-body text-sm"
+                      className="mt-1 block min-h-11 min-w-36 font-body text-sm"
                       {...field}
                     />
                   </FormControl>

@@ -17,10 +17,11 @@ export function SaleroomPrintButton({ appearance = "default" }: Props) {
 
   if (appearance === "text") {
     return (
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={print}
-        className="inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text transition-opacity hover:opacity-80 dark:text-on-surface"
+        className="inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface"
         aria-label="Print catalogue"
       >
         <Printer
@@ -29,7 +30,7 @@ export function SaleroomPrintButton({ appearance = "default" }: Props) {
           aria-hidden
         />
         Print
-      </button>
+      </Button>
     );
   }
 

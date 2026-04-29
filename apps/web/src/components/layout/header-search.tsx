@@ -3,6 +3,7 @@
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -54,12 +55,12 @@ export function HeaderSearchForm({
       <label htmlFor={fieldId} className="sr-only">
         Search
       </label>
-      <input
+      <Input
         id={fieldId}
         name="q"
         type="search"
         placeholder="Search"
-        className="min-w-0 flex-1 bg-transparent font-label text-sm uppercase text-brand-900 placeholder:text-brand-200 focus:outline-none dark:text-on-surface dark:placeholder:text-on-surface-variant"
+        className="min-h-10 min-w-0 flex-1 border-0 bg-transparent px-0 font-label text-sm uppercase text-brand-900 shadow-none placeholder:text-brand-200 focus-visible:ring-0 dark:text-on-surface dark:placeholder:text-on-surface-variant"
         autoComplete="off"
       />
       <Button

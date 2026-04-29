@@ -201,7 +201,7 @@ export function AdminPaymentsBoard({ rows, statusChips }: Props) {
       {filtered.map((p) => (
         <li
           key={p.id}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-4 shadow-sm"
+          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
         >
           <div className="flex items-start justify-between gap-2">
             <Button

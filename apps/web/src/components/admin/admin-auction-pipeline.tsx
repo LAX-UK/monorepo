@@ -23,7 +23,7 @@ export function AdminAuctionPipeline({ auctions }: Props) {
           return (
             <div
               key={status}
-              className="w-56 flex-shrink-0 rounded-xl border border-outline-variant/20 bg-surface-container-low/60 p-3 ring-1 ring-outline-variant/10"
+              className="w-56 flex-shrink-0 rounded-sm border border-outline-variant/20 bg-surface-container-low/60 p-3"
             >
               <h3 className="mb-3 border-b border-outline-variant/15 pb-2 font-label text-xs font-bold uppercase tracking-widest text-secondary">
                 {status}

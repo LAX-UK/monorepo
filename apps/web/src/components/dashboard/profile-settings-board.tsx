@@ -268,7 +268,7 @@ export function ProfileSettingsBoard({ email, initialName, addresses }: Props) {
               {addresses.map((a) => (
                 <li
                   key={a.id}
-                  className="rounded-sm border border-outline-variant/20 bg-white px-4 py-3 text-sm"
+                  className="rounded-sm border border-outline-variant/20 bg-surface-container-low/40 px-4 py-3 text-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-label text-[11px] uppercase tracking-[0.16em] text-on-surface">
