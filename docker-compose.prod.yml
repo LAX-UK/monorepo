@@ -46,6 +46,15 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # Xero (optional — set in root `.env`; see `.env.example` / `.env.production.example`)
+      XERO_CLIENT_ID: ${XERO_CLIENT_ID:-}
+      XERO_CLIENT_SECRET: ${XERO_CLIENT_SECRET:-}
+      XERO_REDIRECT_URI: ${XERO_REDIRECT_URI:-}
+      XERO_WEBHOOK_KEY: ${XERO_WEBHOOK_KEY:-}
+      XERO_DEFAULT_REVENUE_ACCOUNT_CODE: ${XERO_DEFAULT_REVENUE_ACCOUNT_CODE:-200}
+      XERO_DEFAULT_TAX_TYPE: ${XERO_DEFAULT_TAX_TYPE:-NONE}
+      XERO_INVOICE_DUE_DAYS: ${XERO_INVOICE_DUE_DAYS:-14}
+      XERO_POST_CONNECT_WEB_REDIRECT: ${XERO_POST_CONNECT_WEB_REDIRECT:-}
     depends_on:
       postgres:
         condition: service_healthy
