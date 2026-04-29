@@ -3,10 +3,11 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
+import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import {
+  type UserRole,
   canAccessPlatformAdminRoutes,
   canAccessStaffAdminShell,
-  type UserRole,
 } from "@auction/types";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await getServerSessionUser();
+  const [user, nav] = await Promise.all([getServerSessionUser(), loadMegaMenuSections()]);
   if (!user) {
     redirect("/login?next=/admin&auth=required");
   }
@@ -39,6 +40,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <>
       <DashboardShell
         user={user}
+        nav={nav}
         mobileTitle="Admin"
         accountMenu="admin"
         sidebar={<AdminSidebar user={user} pendingSubmissionCount={pendingSubmissionCount} />}

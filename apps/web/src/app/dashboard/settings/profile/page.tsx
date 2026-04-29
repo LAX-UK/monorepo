@@ -30,11 +30,11 @@ export default async function ProfileSettingsPage({
     : [];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <PageHeader
         title="Profile"
-        description="Update your display name and manage shipping addresses."
-        className="border-0 pb-0"
+        description="Manage your personal details, addresses, and account preferences."
+        className="border-b border-outline-variant/20 pb-5"
       />
       {err ? (
         <Alert variant="destructive">

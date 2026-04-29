@@ -46,7 +46,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
         const img = row.original.lot?.images[0];
         const a = row.original.lot;
         return (
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface-container-high">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-surface-container-high">
             {img && a ? (
               <Image
                 src={img}
@@ -70,7 +70,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
         return (
           <Link
             href={`/artwork/${a.id}`}
-            className="font-headline text-sm text-on-surface underline-offset-4 hover:underline"
+            className="font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline"
           >
             {a.title}
           </Link>
@@ -107,7 +107,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
       accessorFn: (r) => r.statusLabel,
       cell: ({ row }) => (
         <span
-          className={`font-label text-[10px] font-bold uppercase tracking-widest ${row.original.statusClassName}`}
+          className={`inline-flex rounded px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-[0.14em] ${row.original.statusClassName}`}
         >
           {row.original.statusLabel}
         </span>
@@ -208,11 +208,11 @@ export function BidsBoard({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)]">
+    <div className="w-full">
       <PageHeader
-        title="Active bids"
-        description="Your latest bid per lot, sorted by closing time. Increase your offer in one click."
-        className="mb-8 border-0 pb-0"
+        title="Bids"
+        description="Track active, won, and lost lots with your latest bid values."
+        className="mb-6 border-b border-outline-variant/20 pb-5"
       />
 
       {fetchError ? (
@@ -223,7 +223,7 @@ export function BidsBoard({
       ) : null}
 
       <Toolbar
-        className="mb-6"
+        className="mb-5 rounded-sm border border-outline-variant/20 bg-white p-4"
         search={
           <Form {...searchForm}>
             <form
@@ -270,7 +270,7 @@ export function BidsBoard({
       />
 
       <Tabs value={tab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="mb-6 grid w-full max-w-md grid-cols-3">
+        <TabsList className="mb-5 grid w-full max-w-xs grid-cols-3 rounded-none border border-outline-variant/25 bg-transparent p-0">
           <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
           <TabsTrigger value="won">Won ({won.length})</TabsTrigger>
           <TabsTrigger value="lost">Lost ({lost.length})</TabsTrigger>
