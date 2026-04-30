@@ -1,0 +1,7 @@
+{
+  "context_file": ".cursor/rules/specify-rules.mdc",
+  "integration": "cursor-agent",
+  "script_type": "sh",
+  "selected_ai": "cursor-agent",
+  "skills": true
+}
