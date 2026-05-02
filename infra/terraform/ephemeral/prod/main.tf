@@ -1,7 +1,8 @@
 locals {
-  environment          = "prod"
-  region               = "lon1"
-  redis_region         = "fra1"
+  environment = "prod"
+  region      = "lon1"
+  # Valkey region list is account-specific; nyc3 matches DO examples when EU slugs 422.
+  redis_region         = "nyc3"
   branch               = "release"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"

@@ -1,8 +1,9 @@
 locals {
   environment = "test"
   region      = "lon1"
-  # Managed Redis region must match API availability (lon1/ams3 returned 422); fra1 is a common EU option.
-  redis_region         = "fra1"
+  # Managed Caching (Valkey): EU slugs often 422 for this account; nyc3 matches DO docs/examples.
+  # Override via fork if doctl databases options regions shows a closer supported region.
+  redis_region         = "nyc3"
   branch               = "main"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://test.lax.bid,https://test-api.lax.bid,https://test-auth.lax.bid,https://test-ws.lax.bid"
