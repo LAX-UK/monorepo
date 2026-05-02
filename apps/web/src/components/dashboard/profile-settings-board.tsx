@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { UploadField } from "@/components/forms/upload-field";
+import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import { updateProfileImageAction } from "@/lib/actions/profile";
