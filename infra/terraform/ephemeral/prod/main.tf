@@ -1,8 +1,7 @@
 locals {
-  environment = "prod"
-  region      = "lon1"
-  # Managed Redis is not available in lon1 via API; ams3 keeps latency reasonable with lon1 Postgres/App.
-  redis_region         = "ams3"
+  environment          = "prod"
+  region               = "lon1"
+  redis_region         = "fra1"
   branch               = "release"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"
