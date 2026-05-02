@@ -42,7 +42,7 @@ The Apple "Hide My Email" relay flow is a deliberate exception — see D11 for d
 
 ## D4. Shopify integration uses the hosted storefront with email-based linking
 
-**Chosen.** Non-Plus Shopify, hosted storefront on `thealx.shop` (no headless rebuild). Identity is stitched via Shopify webhooks: `customers/create` and `orders/*` fire to our `/webhooks/shopify` endpoint, which verifies the HMAC, claims the event into `webhook_event`, and enqueues a worker job. The worker's Shopify processor either creates a new user record (with `external_accounts(provider='shopify', external_id=<shopify_customer_id>)`) or links to an existing user matched by verified email per D3.
+**Chosen.** Non-Plus Shopify, hosted storefront on `lax.shop` (no headless rebuild). Identity is stitched via Shopify webhooks: `customers/create` and `orders/*` fire to our `/webhooks/shopify` endpoint, which verifies the HMAC, claims the event into `webhook_event`, and enqueues a worker job. The worker's Shopify processor either creates a new user record (with `external_accounts(provider='shopify', external_id=<shopify_customer_id>)`) or links to an existing user matched by verified email per D3.
 
 **Alternatives considered.** Shopify Multipass was rejected because it requires Shopify Plus, which costs $2,000+/month — vastly more than the engineering value it adds at our scale. Headless via the Storefront API was rejected because it forces us to rebuild the entire commerce UX, which is months of work for a feature (the storefront) where Shopify's defaults are perfectly adequate. The newer Customer Account API was deferred because it's less documented and the Multipass-replacement story is still maturing.
 
@@ -86,7 +86,7 @@ All sources reject any payload whose timestamp is more than five minutes old, co
 
 **Alternatives considered.** Extracting upfront in Phase 1 was rejected because it costs roughly two days of work that is wasted if the friction never materializes — YAGNI applies. Never extracting was rejected because it forfeits the security boundary the medium-grade tier deliberately wants.
 
-**Why this wins.** YAGNI-disciplined with an empirical gate. The issuer URL `https://auth.thealx.bid` is canonical from day one — Cloudflare CNAMEs the subdomain to whichever component currently serves OIDC. So the eventual cutover is DNS-only, not a client migration. No OIDC consumer (WordPress plugin, Shopify integration, future mobile app) ever sees a URL change. We get the option value of extraction without paying for it upfront.
+**Why this wins.** YAGNI-disciplined with an empirical gate. The issuer URL `https://auth.lax.bid` is canonical from day one — Cloudflare CNAMEs the subdomain to whichever component currently serves OIDC. So the eventual cutover is DNS-only, not a client migration. No OIDC consumer (WordPress plugin, Shopify integration, future mobile app) ever sees a URL change. We get the option value of extraction without paying for it upfront.
 
 **Status.** *Partially implemented.* [apps/auth/](../../apps/auth/) exists with its own Hono server, OIDC discovery, JWKS, `/api/auth/*` proxy, health checks, and metrics. **`apps/api` still serves the same routes in parallel** — see [apps/api/src/app.ts](../../apps/api/src/app.ts) and [apps/api/src/routes/well-known.ts](../../apps/api/src/routes/well-known.ts). The relying-party gate per D7 has not yet been declared cleared, so the Cloudflare flip and removal of duplicate routes from `apps/api` remain **(Phase 2)**.
 
@@ -102,11 +102,11 @@ The worker reads from `domain_events` using `SELECT ... FOR UPDATE SKIP LOCKED` 
 
 **Status.** *Partially implemented.* The polling SQL with `FOR UPDATE SKIP LOCKED` is in [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts) and the `DomainEventPublisher.publish(tx, event)` signature exists in [apps/api/src/services/domain-event.publisher.ts](../../apps/api/src/services/domain-event.publisher.ts). The runner today only advances a single cursor (`zoho`); the `xero` row is created but never updated. No service emits events yet — same gap as D5.
 
-## D9. The OIDC issuer URL is auth.thealx.bid from day one
+## D9. The OIDC issuer URL is auth.lax.bid from day one
 
-**Chosen.** OIDC discovery returns `"issuer": "https://auth.thealx.bid"` even when the routes are physically served by `apps/api` in Phase 1. Cloudflare CNAMEs the `auth` subdomain to whichever app currently runs the OIDC routes. The issuer URL is stable across the eventual extraction (D7).
+**Chosen.** OIDC discovery returns `"issuer": "https://auth.lax.bid"` even when the routes are physically served by `apps/api` in Phase 1. Cloudflare CNAMEs the `auth` subdomain to whichever app currently runs the OIDC routes. The issuer URL is stable across the eventual extraction (D7).
 
-**Alternatives considered.** Issuing from `https://api.thealx.bid` and renaming later was rejected because issuer changes are equivalent to a key rotation event for every consumer — every WordPress plugin, every Shopify integration, every mobile app would need to re-register and re-link. The cost is paid by every consumer, every time we change the URL.
+**Alternatives considered.** Issuing from `https://api.lax.bid` and renaming later was rejected because issuer changes are equivalent to a key rotation event for every consumer — every WordPress plugin, every Shopify integration, every mobile app would need to re-register and re-link. The cost is paid by every consumer, every time we change the URL.
 
 **Why this wins.** Stability from day one is free if planned for. Renaming the issuer is the kind of decision that looks small at the time and becomes the single most regretted choice when you realize it forces every external integration to redo their config.
 

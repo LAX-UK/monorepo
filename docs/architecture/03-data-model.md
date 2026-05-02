@@ -170,7 +170,7 @@ These tables contain everything related to who a user is and how they prove it. 
 
 The `user` table is the canonical identity record. One row per human (modulo the deliberate exceptions documented below). The `email` column is unique, but linking happens by `(email, email_verified=true)` per D3 — an unverified email cannot claim ownership of an existing record.
 
-The `session` table is better-auth's session storage. The `token` column is what the session cookie carries. In production the cookie is scoped to `.thealx.bid` per F7, so both apps/web (thealx.bid) and apps/auth (auth.thealx.bid) can read it. Cross-registrable-suffix domains (thealx.art, thealx.shop) cannot share cookies and use JWTs instead.
+The `session` table is better-auth's session storage. The `token` column is what the session cookie carries. In production the cookie is scoped to `.lax.bid` per F7, so both apps/web (lax.bid) and apps/auth (auth.lax.bid) can read it. Cross-registrable-suffix domains (lax.art, lax.shop) cannot share cookies and use JWTs instead.
 
 The `account` table is better-auth's record of how a user authenticates. One row per (provider, account_id) pair. For email/password users, `provider_id = 'credential'` and the `password` column holds the bcrypt hash. For Google users, `provider_id = 'google'` and `account_id` is the Google `sub`. Note that this is distinct from `external_accounts` — `account` is for OAuth-flow-bearing identities (Google, Apple, future GitHub/Microsoft), while `external_accounts` is for cross-system identity stitching (Shopify customer ID, WordPress user ID).
 

@@ -71,7 +71,7 @@ Apple Sign-In is tested only when the Apple Developer Program is available. If `
 
 Seeded social-provider test rows should use:
 
-- `google-test@thealx.bid`
-- `apple-test@thealx.bid`
+- `google-test@lax.bid`
+- `apple-test@lax.bid`
 
 Those emails are for local QA only. Production identity links are created by real provider `sub` claims and the `UNIQUE (provider, external_id)` constraint on `external_accounts`.

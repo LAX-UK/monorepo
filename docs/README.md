@@ -51,7 +51,7 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 
 How each external system talks to TheAlx and what to configure on the external side.
 
-- [WordPress](./integrations/wordpress.md) — OpenID Connect Generic plugin setup on thealx.art
+- [WordPress](./integrations/wordpress.md) — OpenID Connect Generic plugin setup on lax.art
 - [Shopify](./integrations/shopify.md) — non-Plus webhook subscriptions including mandatory GDPR webhooks
 - [Zoho](./integrations/zoho.md) — api-console.zoho.eu setup, scopes, refresh-token persistence
 - [Cloudflare](./integrations/cloudflare.md) — DNS records, page rules, WAF rules, full-strict TLS

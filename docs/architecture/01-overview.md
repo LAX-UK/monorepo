@@ -1,6 +1,6 @@
 # Architecture overview
 
-TheAlx is a UK-based art auction platform operating at three internet-facing properties: a marketing landing page (thealx.art), the auction itself (thealx.bid), and a Shopify-hosted commerce storefront (thealx.shop). Behind those three domains is a single source of truth for user identity, a single CRM for customer data, and a single accounting system for finances. This document explains how those pieces fit together and why each one exists.
+TheAlx is a UK-based art auction platform operating at three internet-facing properties: a marketing landing page (lax.art), the auction itself (lax.bid), and a Shopify-hosted commerce storefront (lax.shop). Behind those three domains is a single source of truth for user identity, a single CRM for customer data, and a single accounting system for finances. This document explains how those pieces fit together and why each one exists.
 
 > **Implementation status (last reviewed 2026-05-01)**
 >
@@ -13,7 +13,7 @@ The rest of this document describes the target shape. Where a section reads as i
 
 ## What the system does at a high level
 
-A user encounters TheAlx through one of the three domains. They sign in once — via email/password, Google, or Apple — and that authentication is recognized everywhere. They place bids on thealx.bid, browse art on thealx.art, buy products on thealx.shop, and from their perspective it is one experience. Behind the scenes, every meaningful action they take is captured as a domain event, projected into Zoho CRM as a unified customer record, and where money changes hands, into Xero as a financial transaction.
+A user encounters TheAlx through one of the three domains. They sign in once — via email/password, Google, or Apple — and that authentication is recognized everywhere. They place bids on lax.bid, browse art on lax.art, buy products on lax.shop, and from their perspective it is one experience. Behind the scenes, every meaningful action they take is captured as a domain event, projected into Zoho CRM as a unified customer record, and where money changes hands, into Xero as a financial transaction.
 
 The architecture is deliberately simple. We could have built this with a separate identity-as-a-service vendor, an event bus, multiple databases per service, and a service mesh. We chose not to. The medium-grade tier we operate at is sized for our current traffic and the next 50× of growth without architectural changes — the things we'd need to build at hyperscale (KMS, separate databases, real event bus) are operational migrations, not rewrites of the application code.
 
@@ -25,7 +25,7 @@ Three deployable units run on DigitalOcean App Platform. Each owns one concern. 
 
 The OIDC issuer. It owns user identity, sessions, social provider integrations (Google, Apple), and the JWKS signing keys. The intent is that nothing else in the system talks directly to the `user`, `session`, `account`, or `jwks_key` tables — they all go through the auth app's HTTP surface. This separation matters because if `apps/api` is compromised by a SQL injection, the attacker cannot read the JWT signing key — it does not hold a Postgres role with permission to read it.
 
-The directory exists today at [apps/auth/](../../apps/auth/) with its own Dockerfile, env, health checks, Prometheus metrics, and OIDC discovery + JWKS endpoints. **`apps/api` still serves the same OIDC routes in parallel today** — Better-auth is mounted at `/api/auth/*` and `createWellKnownRoutes` mounts the discovery and JWKS endpoints (see [apps/api/src/app.ts](../../apps/api/src/app.ts)). Per D7, this dual-stack is intentional through the WordPress relying-party round-trip test; once that passes, Cloudflare flips `auth.thealx.bid` from `apps/api` to `apps/auth` and the duplicate routes on `apps/api` are removed. The issuer URL `https://auth.thealx.bid` is canonical from day one regardless — Cloudflare CNAMEs the subdomain to whichever component currently serves OIDC, so the eventual cutover is DNS-only and no client (WordPress, Shopify, future mobile) breaks.
+The directory exists today at [apps/auth/](../../apps/auth/) with its own Dockerfile, env, health checks, Prometheus metrics, and OIDC discovery + JWKS endpoints. **`apps/api` still serves the same OIDC routes in parallel today** — Better-auth is mounted at `/api/auth/*` and `createWellKnownRoutes` mounts the discovery and JWKS endpoints (see [apps/api/src/app.ts](../../apps/api/src/app.ts)). Per D7, this dual-stack is intentional through the WordPress relying-party round-trip test; once that passes, Cloudflare flips `auth.lax.bid` from `apps/api` to `apps/auth` and the duplicate routes on `apps/api` are removed. The issuer URL `https://auth.lax.bid` is canonical from day one regardless — Cloudflare CNAMEs the subdomain to whichever component currently serves OIDC, so the eventual cutover is DNS-only and no client (WordPress, Shopify, future mobile) breaks.
 
 ### apps/api
 
@@ -51,23 +51,23 @@ The real-time event gateway. Socket.IO over a Redis-backed pub/sub layer. It rec
 
 ### apps/web
 
-The Next.js frontend served at thealx.bid. It uses better-auth's client library configured to point at `OIDC_ISSUER_URL` (the canonical auth domain), and its session cookie is scoped to `.thealx.bid` so both the web origin and the auth subdomain see it. It has no special privileges — every API call it makes goes through the same authentication path as a third-party client.
+The Next.js frontend served at lax.bid. It uses better-auth's client library configured to point at `OIDC_ISSUER_URL` (the canonical auth domain), and its session cookie is scoped to `.lax.bid` so both the web origin and the auth subdomain see it. It has no special privileges — every API call it makes goes through the same authentication path as a third-party client.
 
 ## The three external domains
 
 Each external domain plays a different role and interacts with our backend differently.
 
-### thealx.art (WordPress on Hostgator)
+### lax.art (WordPress on Hostgator)
 
-Pure marketing landing. WordPress with the OpenID Connect Generic plugin acts as a relying party — when a user clicks "sign in" on this domain, WordPress redirects them to `auth.thealx.bid`, our OIDC server completes the auth flow (using whatever provider the user has linked), and WordPress receives an id_token signed with our key. There is no application data on this domain that the bid backend cares about. WordPress is read-only consumer of identity.
+Pure marketing landing. WordPress with the OpenID Connect Generic plugin acts as a relying party — when a user clicks "sign in" on this domain, WordPress redirects them to `auth.lax.bid`, our OIDC server completes the auth flow (using whatever provider the user has linked), and WordPress receives an id_token signed with our key. There is no application data on this domain that the bid backend cares about. WordPress is read-only consumer of identity.
 
-### thealx.bid (apps/web)
+### lax.bid (apps/web)
 
-The auction itself. This is the domain where most of the user activity happens — bids, payments, account management, art browsing for inventory we own directly. Same-origin with the auth subdomain (both share the `.thealx.bid` parent), which means cookie-based sessions work normally here. JWTs are issued for cross-domain consumption only.
+The auction itself. This is the domain where most of the user activity happens — bids, payments, account management, art browsing for inventory we own directly. Same-origin with the auth subdomain (both share the `.lax.bid` parent), which means cookie-based sessions work normally here. JWTs are issued for cross-domain consumption only.
 
-### thealx.shop (Shopify hosted)
+### lax.shop (Shopify hosted)
 
-E-commerce for products that aren't auction lots — gallery merchandise, prints, books, gift cards. Hosted on Shopify (non-Plus assumption per Q17), so we don't control the storefront UX. Identity is stitched via webhooks: when a Shopify customer signs up on thealx.shop, Shopify fires a `customers/create` webhook, our worker processes it, and we create or link an `external_accounts` row matching by email. Customers may have to sign in twice initially (once on thealx.shop's Shopify-managed login, once on the bid auth flow), but their CRM record is unified.
+E-commerce for products that aren't auction lots — gallery merchandise, prints, books, gift cards. Hosted on Shopify (non-Plus assumption per Q17), so we don't control the storefront UX. Identity is stitched via webhooks: when a Shopify customer signs up on lax.shop, Shopify fires a `customers/create` webhook, our worker processes it, and we create or link an `external_accounts` row matching by email. Customers may have to sign in twice initially (once on lax.shop's Shopify-managed login, once on the bid auth flow), but their CRM record is unified.
 
 ## How data flows: the domain events outbox
 
