@@ -2,7 +2,9 @@ variable "environment" {
   type = string
 }
 variable "alert_email" {
-  type = string
+  type        = string
+  default     = ""
+  description = "DigitalOcean account–verified address for monitor and uptime alerts. Leave empty to skip alert resources (checks are still created)."
 }
 variable "postgres_cluster_id" {
   type = string

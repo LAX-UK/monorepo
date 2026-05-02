@@ -1,6 +1,8 @@
 locals {
-  environment          = "prod"
-  region               = "lon1"
+  environment = "prod"
+  region      = "lon1"
+  # Managed Redis is not available in lon1 via API; ams3 keeps latency reasonable with lon1 Postgres/App.
+  redis_region         = "ams3"
   branch               = "release"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"
@@ -70,7 +72,7 @@ module "redis" {
   source      = "../../modules/redis-cluster"
   name        = "lax-${local.environment}-redis"
   environment = local.environment
-  region      = local.region
+  region      = local.redis_region
   size        = "db-s-1vcpu-2gb"
   node_count  = 1
 }
@@ -83,6 +85,7 @@ provider "postgresql" {
   password        = nonsensitive(regex("doadmin:([^@]+)@", module.postgres.owner_uri)[0])
   sslmode         = "require"
   connect_timeout = 15
+  superuser       = false
 }
 
 module "postgres_rbac" {
@@ -246,7 +249,7 @@ module "app" {
 module "monitoring" {
   source              = "../../modules/monitoring"
   environment         = local.environment
-  alert_email         = "ops@lax.bid"
+  alert_email         = var.ops_alert_email
   postgres_cluster_id = module.postgres.id
   redis_cluster_id    = module.redis.id
   uptime_targets = {
