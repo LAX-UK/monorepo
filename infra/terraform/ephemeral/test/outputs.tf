@@ -4,6 +4,10 @@ output "environment" {
 output "app_id" {
   value = module.app.id
 }
+output "default_ingress" {
+  value       = module.app.default_ingress
+  description = "App Platform default *.ondigitalocean.app hostname; use as the CNAME target in persistent/test."
+}
 output "postgres_owner_uri" {
   value     = module.postgres.owner_uri
   sensitive = true
