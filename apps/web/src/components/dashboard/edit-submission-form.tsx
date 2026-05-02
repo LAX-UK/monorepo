@@ -1,5 +1,6 @@
 "use client";
 
+import { UploadField } from "@/components/forms/upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
@@ -128,14 +129,20 @@ export function EditSubmissionForm({ submissionId, initialValues, categories }: 
         />
         <FormField
           control={form.control}
-          name="imagesText"
+          name="images"
           render={({ field }) => (
             <FormItem>
               <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
-                <LabelCaps>Image URLs (one per line)</LabelCaps>
+                <LabelCaps>Images</LabelCaps>
               </FormLabel>
               <FormControl>
-                <Textarea rows={4} className="font-body text-sm" {...field} />
+                <UploadField
+                  kind="submission_image"
+                  multiple
+                  maxFiles={20}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

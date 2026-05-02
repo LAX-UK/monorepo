@@ -10,7 +10,7 @@ export function itemSubmissionToFormValues(s: ItemSubmission): NewSubmissionForm
     medium: s.medium ?? "",
     dimensions: s.dimensions ?? "",
     categoryId: s.categoryId,
-    imagesText: s.images.join("\n"),
+    images: s.images,
     askingPrice: s.askingPrice ?? "",
     reservePrice: s.reservePrice ?? "",
     submitterNotes: s.submitterNotes ?? "",
