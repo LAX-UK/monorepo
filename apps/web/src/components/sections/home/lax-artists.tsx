@@ -14,7 +14,7 @@ type Props = {
 
 export function LaxArtists({ items }: Props) {
   return (
-    <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-24 pt-20 md:px-8">
+    <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pb-20 pt-20 md:px-10 lg:px-14">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
         <div className="relative min-h-[208px] w-full">
           <div className="flex flex-col gap-3 md:max-w-[50%]">
@@ -66,9 +66,12 @@ export function LaxArtists({ items }: Props) {
                     sizes="(max-width: 640px) 100vw, 25vw"
                   />
                 </RevealInView>
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 dark:from-black/85">
+                <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/80 to-transparent px-4 pb-4 pt-10 dark:from-black/85">
                   <span className="font-label text-sm font-semibold uppercase tracking-wider text-hero-foreground">
                     {a.name}
+                  </span>
+                  <span className="font-body text-xs text-white/60 underline-offset-2 group-hover:underline">
+                    View profile
                   </span>
                 </div>
               </Link>

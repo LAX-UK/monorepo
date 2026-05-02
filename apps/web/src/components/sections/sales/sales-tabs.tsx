@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@auction/ui";
 import Link from "next/link";
 
 const triggerClass = cn(
-  "h-10 rounded-none border-0 bg-transparent p-0 font-headline text-lg font-semibold uppercase leading-[21px] text-brand-900 shadow-none",
+  "h-11 rounded-none border-0 bg-transparent px-0 py-3 font-label text-xs font-semibold uppercase tracking-[0.12em] text-brand-300 shadow-none",
   "data-[state=active]:border-0 data-[state=active]:bg-transparent data-[state=active]:text-brand-900",
   "data-[state=active]:border-b-[1.5px] data-[state=active]:border-brand-800 data-[state=active]:shadow-none",
   "hover:text-brand-800 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -39,7 +39,7 @@ export function SalesTabs({ filter, categoryId }: Props) {
               className={cn(triggerClass, "inline-flex items-center")}
               aria-current={v === "current" ? "page" : undefined}
             >
-              Current
+              Upcoming
             </Link>
           </TabsTrigger>
           <TabsTrigger value="results" asChild>
@@ -48,7 +48,7 @@ export function SalesTabs({ filter, categoryId }: Props) {
               className={cn(triggerClass, "inline-flex items-center")}
               aria-current={v === "results" ? "page" : undefined}
             >
-              Auction results
+              Past Results
             </Link>
           </TabsTrigger>
         </TabsList>

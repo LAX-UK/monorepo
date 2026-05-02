@@ -11,7 +11,7 @@ type Props = {
  */
 export function SaleroomHeroActions({ saleId, isAuthenticated, initialFollowing }: Props) {
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-10 sm:w-auto">
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-3 sm:w-auto">
       <SaleroomFollowToggle
         saleId={saleId}
         initialFollowing={initialFollowing}

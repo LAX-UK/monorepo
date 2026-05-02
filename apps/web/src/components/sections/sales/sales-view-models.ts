@@ -8,6 +8,7 @@ export type SaleCalendarRowVM = {
   coverImageAlt: string;
   dateLabel: string;
   auctionTypeLabel: string;
+  status: Sale["status"];
   itemsLabel: string;
 };
 
@@ -76,6 +77,7 @@ export function mapSaleToCalendarRowVM(
     coverImageAlt: sale.title,
     dateLabel,
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
+    status: sale.status,
     itemsLabel,
   };
 }

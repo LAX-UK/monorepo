@@ -21,20 +21,20 @@ export function LotMarketingAccordion({ blocks, extraItem = null }: Props) {
   if (visible.length === 0 && !extraItem) return null;
 
   return (
-    <div className="w-full max-w-[1376px]">
+    <div className="w-full max-w-[480px] border-t border-outline-variant/40">
       <Accordion type="multiple" className="w-full space-y-0">
         {visible.map((b) => (
-          <AccordionItem key={b.id} value={b.id} className="border-0">
-            <AccordionTrigger className="py-0 text-left font-['DM_Sans',sans-serif] text-lg font-medium uppercase leading-[21px] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+          <AccordionItem key={b.id} value={b.id} className="border-b border-outline-variant/40">
+            <AccordionTrigger className="py-4 text-left font-['DM_Sans',sans-serif] text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {b.title}
             </AccordionTrigger>
             <AccordionContent>
               {b.contentNode != null ? (
-                <div className="pt-4 text-sm leading-[135%] text-on-surface dark:text-brand-500">
+                <div className="pb-4 text-sm leading-7 text-on-surface-variant">
                   {b.contentNode}
                 </div>
               ) : (
-                <BodyText className="pt-4 text-sm leading-[135%] text-on-surface dark:text-brand-500">
+                <BodyText className="pb-4 text-sm leading-7 text-on-surface-variant">
                   {b.content ?? ""}
                 </BodyText>
               )}
@@ -42,8 +42,8 @@ export function LotMarketingAccordion({ blocks, extraItem = null }: Props) {
           </AccordionItem>
         ))}
         {extraItem ? (
-          <AccordionItem value={extraItem.id} className="border-0">
-            <AccordionTrigger className="py-0 text-left text-lg font-medium uppercase text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+          <AccordionItem value={extraItem.id} className="border-b border-outline-variant/40">
+            <AccordionTrigger className="py-4 text-left text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {extraItem.title}
             </AccordionTrigger>
             <AccordionContent>

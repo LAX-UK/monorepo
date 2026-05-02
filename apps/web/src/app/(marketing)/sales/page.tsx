@@ -78,7 +78,7 @@ export default async function SalesListPage({
   return (
     <main
       id="main-content"
-      className="bg-page-bg px-4 pb-24 pt-[var(--section-pt)] sm:px-6 md:px-8 dark:bg-background"
+      className="bg-page-bg px-4 pb-24 pt-[var(--header-height)] sm:px-6 md:px-8 dark:bg-background"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {crumbText}
@@ -108,7 +108,7 @@ export default async function SalesListPage({
 
           {!session ? (
             <SectionCta
-              className="mb-0 border border-outline-variant/20 bg-surface/40 dark:border-outline-variant/30"
+              className="mb-0 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
               title="Ready to bid?"
               description="Create a free account to place bids, track lots, and receive saleroom updates."
               primary={

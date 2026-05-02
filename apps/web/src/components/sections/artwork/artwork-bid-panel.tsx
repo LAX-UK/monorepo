@@ -2,6 +2,7 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
+import { classifyLotTimerState } from "@/components/lot-timer";
 import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
@@ -48,6 +49,7 @@ export function ArtworkBidPanel({
   const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
   const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
+  const startTimeMs = useMemo(() => new Date(auction.startTime).getTime(), [auction.startTime]);
   const [amount, setAmount] = useState("");
   const [maxAuto, setMaxAuto] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
@@ -135,6 +137,31 @@ export function ArtworkBidPanel({
     const d = new Date(endTime);
     return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }, [endTime]);
+
+  const saleStartLocalLabel = useMemo(() => {
+    const d = new Date(startTimeMs);
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }, [startTimeMs]);
+
+  const timerState = useMemo(
+    () =>
+      classifyLotTimerState(
+        {
+          status: lotStatus,
+          startTime: new Date(startTimeMs).toISOString(),
+          endTime: new Date(endTime).toISOString(),
+        },
+        now,
+      ),
+    [lotStatus, startTimeMs, endTime, now],
+  );
+
+  const countdownClock = useMemo(() => {
+    if (timerState.kind === "live" || timerState.kind === "opensSoon") {
+      return formatCountdownForDisplay(timerState.msLeft);
+    }
+    return remainingLabel;
+  }, [timerState, remainingLabel]);
 
   const ownLot = Boolean(sessionUser?.id && sessionUser.id === auction.sellerId);
 
@@ -240,17 +267,19 @@ export function ArtworkBidPanel({
   return (
     <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
       {({ decision }) => (
-        <div className="min-w-0 max-w-[550px]">
-          <div className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 shadow-[0_1px_0_rgba(0,0,0,0.04)] lg:p-7 dark:bg-surface-container-low/40">
+        <div className="min-w-0 max-w-[480px]">
+          <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
             <LotInfoStack
               estimateLine={summarySeed.estimateLine}
               currentPrice={currentPrice}
               bidCount={history.length}
               reservePrice={auction.reservePrice}
-              closingLabel={remainingLabel}
-              msRemaining={endTime - now}
+              timerState={timerState}
+              countdownClock={countdownClock}
               saleEndLocalLabel={saleEndLocalLabel}
+              saleStartLocalLabel={saleStartLocalLabel}
               endAtIso={new Date(endTime).toISOString()}
+              startAtIso={new Date(startTimeMs).toISOString()}
             />
 
             <div className="mt-4">
@@ -353,6 +382,8 @@ export function ArtworkBidPanel({
             onScrollToBid={scrollToBid}
             remainingLabel={remainingLabel}
             msRemaining={endTime - now}
+            timerState={timerState}
+            countdownClock={countdownClock}
           />
         </div>
       )}

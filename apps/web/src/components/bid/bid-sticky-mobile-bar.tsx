@@ -1,5 +1,6 @@
 "use client";
 
+import type { LotTimerState } from "@/components/lot-timer";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { countdownTier } from "@/lib/format-countdown";
 import { cn } from "@auction/ui";
@@ -20,6 +21,10 @@ type Props = {
   remainingLabel: string;
   /** ms until close (for urgency color on the timer line). */
   msRemaining: number;
+  /** Computed timer state — drives the live / opens-in / closed variants. */
+  timerState: LotTimerState;
+  /** Pre-formatted clock for the countdown (HH:MM:SS or `Nd HH:MM:SS`). */
+  countdownClock: string;
 };
 
 export function BidStickyMobileBar({
@@ -32,7 +37,15 @@ export function BidStickyMobileBar({
   onScrollToBid,
   remainingLabel,
   msRemaining,
+  timerState,
+  countdownClock,
 }: Props) {
+  if (timerState.kind === "opensSoon") {
+    return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
+  }
+  if (timerState.kind === "closed" || timerState.kind === "cancelled") {
+    return <ClosedBar terminalLabel={timerState.kind === "closed" ? "Closed" : "Cancelled"} />;
+  }
   if (!live) return null;
 
   const next = encodeURIComponent(loginNextPath);
@@ -45,7 +58,7 @@ export function BidStickyMobileBar({
         right = (
           <Link
             href={`/login?next=${next}`}
-            className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm"
+            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm"
           >
             Sign in
           </Link>
@@ -77,7 +90,7 @@ export function BidStickyMobileBar({
       <Button
         type="button"
         onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-none bg-gradient-to-br from-primary to-primary-container px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-sm hover:from-primary hover:to-primary-container"
+        className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm hover:bg-cta-bg/90"
       >
         Place bid
       </Button>
@@ -116,6 +129,51 @@ export function BidStickyMobileBar({
         </p>
       </div>
       {right}
+    </StickyBidBar>
+  );
+}
+
+/**
+ * Pre-sale variant — invites visitors to register so they can bid the moment
+ * the lot opens. Bidding controls are intentionally absent (no live bid yet).
+ */
+function UpcomingBar({
+  countdownClock,
+  loginNextPath,
+}: { countdownClock: string; loginNextPath: string }) {
+  const next = encodeURIComponent(loginNextPath);
+  return (
+    <StickyBidBar className="lg:hidden">
+      <div className="min-w-0">
+        <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-lot-orange">
+          Opens in
+        </p>
+        <p className="truncate font-headline text-lg tabular-nums text-on-surface">
+          {countdownClock}
+        </p>
+      </div>
+      <Link
+        href={`/register?next=${next}`}
+        className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm"
+      >
+        Register
+      </Link>
+    </StickyBidBar>
+  );
+}
+
+function ClosedBar({ terminalLabel }: { terminalLabel: "Closed" | "Cancelled" }) {
+  return (
+    <StickyBidBar className="lg:hidden">
+      <div className="min-w-0">
+        <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
+          Auction
+        </p>
+        <p className="truncate font-headline text-lg text-on-surface">{terminalLabel}</p>
+      </div>
+      <span className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
+        Bidding ended
+      </span>
     </StickyBidBar>
   );
 }

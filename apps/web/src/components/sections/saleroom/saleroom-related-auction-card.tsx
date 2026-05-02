@@ -1,6 +1,6 @@
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { Button } from "@auction/ui/components/button";
-import { ImageIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { RelatedSaleVM } from "./view-models";
@@ -27,12 +27,7 @@ export function SaleroomRelatedAuctionCard({ sale }: Props) {
             className="object-cover"
           />
         ) : (
-          <div
-            className="absolute inset-0 flex items-center justify-center text-neutral-500 dark:text-on-surface-variant"
-            aria-hidden
-          >
-            <ImageIcon className="size-8" aria-hidden />
-          </div>
+          <ImagePlaceholder label="Auction cover" />
         )}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-10">

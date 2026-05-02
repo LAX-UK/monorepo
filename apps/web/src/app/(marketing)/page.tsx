@@ -1,6 +1,7 @@
 import { getHomeData } from "@/components/sections/home/get-home-data";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import { LaxArtists } from "@/components/sections/home/lax-artists";
+import { LaxEditorialStrip } from "@/components/sections/home/lax-editorial-strip";
 import { LaxHero } from "@/components/sections/home/lax-hero";
 import { LaxUpcomingAuctions } from "@/components/sections/home/lax-upcoming-auctions";
 import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
@@ -49,6 +50,7 @@ async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: st
       <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} currentUserId={currentUserId} />
       {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} currentUserId={currentUserId} /> : null}
       <LaxArtists items={artistCards} />
+      <LaxEditorialStrip />
       <HomeNewsletter />
     </>
   );
