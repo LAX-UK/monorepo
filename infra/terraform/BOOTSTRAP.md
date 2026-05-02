@@ -18,9 +18,9 @@ The token is used by Terraform, `doctl`, and the app deployment workflows.
 ### GitHub access for App Platform (required before `digitalocean_app`)
 
 Terraform declares components that build from  
-`https://github.com/LAX-UK/monorepo.git` (see `repository_clone_url`).  
-Creating the app calls the DigitalOcean API, which checks the **DigitalOcean
-GitHub App**, not your API token. If you see  
+`https://github.com/LAX-UK/monorepo.git` (see `repository_clone_url`; the slug `LAX-UK/monorepo` feeds the **`github`** source in the App spec).  
+**Private repos** must use **`github { repo branch }`** (GitHub App), not **`git { repo_clone_url }`**, which is unauthenticated HTTPS and often surfaces as **Account does not have access to the repo** (DigitalOcean terraform-provider [#547](https://github.com/digitalocean/terraform-provider-digitalocean/issues/547)).  
+Creating the app still requires the **DigitalOcean GitHub App** for that slug. If you see  
 `Account does not have access to the repo`, grant access:
 
 1. Open [GitHub install for App Platform](https://cloud.digitalocean.com/apps/github/install) (while logged into the **same** DigitalOcean team that runs Terraform).

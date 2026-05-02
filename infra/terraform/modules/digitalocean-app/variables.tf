@@ -8,7 +8,13 @@ variable "region" {
   type = string
 }
 variable "repository_clone_url" {
-  type = string
+  type        = string
+  description = "Canonical Git remote (HTTPS or SSH). Used to derive owner/repo slug for the github App source when github_repo is empty."
+}
+variable "github_repo" {
+  type        = string
+  default     = ""
+  description = "GitHub slug owner/repo for App Platform github source. Empty parses repository_clone_url or defaults to LAX-UK/monorepo."
 }
 variable "branch" {
   type = string
