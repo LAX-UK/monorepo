@@ -18,8 +18,20 @@ data "terraform_remote_state" "persistent" {
   }
 }
 
+locals {
+  do_project_id_from_state = try(data.terraform_remote_state.persistent.outputs.digitalocean_project_id, "")
+  do_project_id            = var.digitalocean_project_id != "" ? var.digitalocean_project_id : local.do_project_id_from_state
+}
+
 resource "digitalocean_project_resources" "managed_stack" {
-  project = data.terraform_remote_state.persistent.outputs.digitalocean_project_id
+  lifecycle {
+    precondition {
+      condition     = local.do_project_id != ""
+      error_message = "digitalocean_project_id is missing: apply infra/terraform/persistent/prod once (terraform apply) so remote state exports it, or set TF_VAR_digitalocean_project_id to the project UUID from DigitalOcean."
+    }
+  }
+
+  project = local.do_project_id
   resources = [
     module.postgres.urn,
     module.redis.urn,
