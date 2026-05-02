@@ -1,9 +1,9 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
-import { LotService } from "./lot.service.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
+import { LotService } from "./lot.service.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
 const categoryId = "00000000-0000-4000-8000-0000000000c0";
@@ -41,9 +41,10 @@ const baseLot: Lot = {
 function createSut(overrides: { lot?: Partial<Lot> } = {}) {
   const lot: Lot = { ...baseLot, ...overrides.lot };
   const findById = vi.fn().mockResolvedValue(lot);
-  const updateMarketingDetails = vi
-    .fn()
-    .mockImplementation(async () => ({ ...lot, marketingDetails: { ...lot.marketingDetails, artistNote: "y" } }));
+  const updateMarketingDetails = vi.fn().mockImplementation(async () => ({
+    ...lot,
+    marketingDetails: { ...lot.marketingDetails, artistNote: "y" },
+  }));
   const lotRepo: ILotRepository = {
     findById,
     updateMarketingDetails,

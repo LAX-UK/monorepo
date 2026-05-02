@@ -1,4 +1,4 @@
-import { roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
 import type {
   AdminUserListFilter,

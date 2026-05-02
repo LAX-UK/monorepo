@@ -16,11 +16,7 @@ export function StatTile({ label, value, tone = "dark", className = "", ...rest 
         ? "text-white/80"
         : "text-on-surface-variant";
   const valueClass =
-    tone === "dark"
-      ? "text-hero-foreground"
-      : tone === "white"
-        ? "text-white"
-        : "text-on-surface";
+    tone === "dark" ? "text-hero-foreground" : tone === "white" ? "text-white" : "text-on-surface";
   return (
     <div
       className={cn("flex min-w-0 flex-col gap-2 border-l-2 border-accent-gold pl-4", className)}

@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
 export type SectionCtaProps = {
@@ -23,7 +23,9 @@ export function SectionCta({ title, description, primary, secondary, className }
     >
       <div className="min-w-0 space-y-2">
         <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">{title}</p>
-        {description ? <p className="max-w-prose text-sm text-on-surface-variant">{description}</p> : null}
+        {description ? (
+          <p className="max-w-prose text-sm text-on-surface-variant">{description}</p>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
         {primary}

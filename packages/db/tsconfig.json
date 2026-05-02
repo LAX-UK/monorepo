@@ -1,5 +1,5 @@
 {
-  "extends": "@auction/config-ts/base.json",
+  "extends": "../config-ts/base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

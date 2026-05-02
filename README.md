@@ -13,6 +13,8 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
    **On a server with Docker**, prefer migrations inside the API container so `DATABASE_URL` matches Compose (`postgres:5432`): `docker compose up -d postgres redis api`, then `pnpm db:migrate:docker` (runs `packages/db/dist/migrate.js`). Seed the same way: `docker compose exec -T api node packages/db/dist/seed.js`.
 5. `pnpm turbo run dev --parallel`
 
+See `docs/development.md` for OAuth callback testing with ngrok, least-privilege DB role checks, and social-provider test users.
+
 | Service | URL | Notes |
 |--------|-----|--------|
 | API | http://localhost:3001 | `/health`, `/auctions`, `/bids`, `/users/me`, `/api/auth/*` |
@@ -34,4 +36,4 @@ Turborepo + pnpm. **API** (`apps/api`, Hono), **WebSocket gateway** (`apps/ws`, 
 
 ## Scripts
 
-`pnpm build` · `pnpm typecheck` · `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:migrate:docker` · `pnpm db:seed:docker`
+`pnpm build` · `pnpm typecheck` · `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:migrate:prod` · `pnpm db:migrate:docker` · `pnpm db:seed:docker`

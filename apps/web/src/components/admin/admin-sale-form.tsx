@@ -1,8 +1,9 @@
 "use client";
 
-import { RhfSelect } from "@/components/ui/rhf-select";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
+import { UploadField } from "@/components/forms/upload-field";
 import {
   adminCreateSaleResultAction,
   adminUpdateSaleResultAction,
@@ -167,15 +168,15 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="mb-2 block">
-                <LabelCaps>Cover image URLs (one per line)</LabelCaps>
+                <LabelCaps>Cover images</LabelCaps>
               </FormLabel>
               <FormControl>
-                <Textarea
-                  id="coverImages"
-                  rows={3}
-                  className="font-body text-sm"
-                  placeholder="https://..."
-                  {...field}
+                <UploadField
+                  kind="sale_cover"
+                  multiple
+                  maxFiles={6}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />

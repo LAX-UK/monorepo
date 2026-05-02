@@ -6,7 +6,7 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
   return {
     title: sale.title,
     description: sale.description ?? "",
-    coverImages: sale.coverImages.join("\n"),
+    coverImages: sale.coverImages,
     categoryId: sale.categoryId ?? "",
     deliveryMode: sale.deliveryMode,
     streamUrl: sale.streamUrl ?? "",
@@ -35,7 +35,7 @@ export function emptyAdminSaleFormValues(): AdminSaleFormValues {
   return {
     title: "",
     description: "",
-    coverImages: "",
+    coverImages: [],
     categoryId: "",
     deliveryMode: "onsite",
     streamUrl: "",

@@ -102,7 +102,10 @@ export function MarketingPagination({
             </React.Fragment>
           ))}
           {showEllipsis ? (
-            <span className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant" aria-hidden>
+            <span
+              className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant"
+              aria-hidden
+            >
               …
             </span>
           ) : null}

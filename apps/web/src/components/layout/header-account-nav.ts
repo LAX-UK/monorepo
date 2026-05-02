@@ -1,8 +1,8 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import {
+  type UserRole,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
-  type UserRole,
 } from "@auction/types";
 
 export type AccountNavLink = { href: string; label: string };

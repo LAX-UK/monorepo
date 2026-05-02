@@ -20,7 +20,9 @@ export function PageHeader({ title, description, meta, actions, className }: Pag
     >
       <div className="min-w-0">
         {meta ? <div className="mb-2 text-on-surface-variant">{meta}</div> : null}
-        <h1 className="font-headline text-3xl tracking-tight text-on-surface md:text-4xl">{title}</h1>
+        <h1 className="font-headline text-3xl tracking-tight text-on-surface md:text-4xl">
+          {title}
+        </h1>
         {description ? (
           <p className="mt-2 max-w-2xl text-sm text-on-surface-variant">{description}</p>
         ) : null}

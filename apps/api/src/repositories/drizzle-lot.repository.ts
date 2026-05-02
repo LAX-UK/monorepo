@@ -34,7 +34,10 @@ function listWhere(input: ListWhereInput) {
     conditions.push(lt(lot.endTime, end));
   }
   if (input.search?.trim()) {
-    const safe = input.search.trim().slice(0, 200).replace(/[%_\\]/g, "");
+    const safe = input.search
+      .trim()
+      .slice(0, 200)
+      .replace(/[%_\\]/g, "");
     if (safe.length > 0) {
       conditions.push(ilike(lot.title, `%${safe}%`));
     }

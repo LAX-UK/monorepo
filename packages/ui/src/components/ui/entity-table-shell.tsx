@@ -46,7 +46,10 @@ export function EntityTableShell({
   return (
     <div className={cn("space-y-4", className)}>
       <Toolbar
-        className={cn("flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between", pad)}
+        className={cn(
+          "flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",
+          pad,
+        )}
         search={search}
         filters={
           <div className="flex w-full min-w-0 flex-col gap-3">

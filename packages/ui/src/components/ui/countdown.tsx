@@ -24,7 +24,8 @@ function formatDisplay(secondsRemaining: number): string {
   const h = Math.floor((secondsRemaining % 86400) / 3600);
   const m = Math.floor((secondsRemaining % 3600) / 60);
   const s = secondsRemaining % 60;
-  if (d > 0) return `${d}d ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  if (d > 0)
+    return `${d}d ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
@@ -46,7 +47,7 @@ export function Countdown({ end, className, announce = true }: CountdownProps) {
   React.useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [endMs]);
+  }, []);
 
   const secondsRemaining = clampMs(Math.floor((endMs - now) / 1000));
   const display = formatDisplay(secondsRemaining);
@@ -55,8 +56,7 @@ export function Countdown({ end, className, announce = true }: CountdownProps) {
   const [liveMessage, setLiveMessage] = React.useState("");
   React.useEffect(() => {
     if (!announce) return;
-    const msg =
-      secondsRemaining <= 0 ? "Auction ended" : `Time remaining: ${bucket}`;
+    const msg = secondsRemaining <= 0 ? "Auction ended" : `Time remaining: ${bucket}`;
     setLiveMessage((prev) => {
       if (prev === msg) return prev;
       return msg;

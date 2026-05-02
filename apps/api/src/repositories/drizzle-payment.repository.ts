@@ -127,7 +127,11 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .select({ s: sql<string>`coalesce(sum(${payment.amount}), 0)::text` })
       .from(payment)
       .where(
-        and(eq(payment.status, "captured"), gte(payment.createdAt, start), lte(payment.createdAt, end)),
+        and(
+          eq(payment.status, "captured"),
+          gte(payment.createdAt, start),
+          lte(payment.createdAt, end),
+        ),
       );
     return row?.s ?? "0";
   }

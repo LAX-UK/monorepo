@@ -1,4 +1,4 @@
-import { roleHasCapability, type CreateLotInput, type Lot, type UserRole } from "@auction/types";
+import { type CreateLotInput, type Lot, type UserRole, roleHasCapability } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";

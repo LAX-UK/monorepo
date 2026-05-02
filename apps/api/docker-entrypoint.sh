@@ -6,8 +6,5 @@ if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
 
-echo "[api] Applying database migrations..."
-node packages/db/dist/migrate.js
-
 echo "[api] Starting server..."
 exec node apps/api/dist/index.js

@@ -56,15 +56,21 @@ export class AdminMetricsService {
     };
     const todayStart = startOfUtcDay(now);
 
-    const [liveLots, endingWithinHour, draftLots, pendingSubmissions, stalePendingPayments, revenueToday] =
-      await Promise.all([
-        lot.countMatching({ status: "active" }),
-        lot.findActiveByEndTimeBetween(now, hourEnd).then((r) => r.length),
-        lot.countMatching({ status: "draft" }),
-        this.itemSubmissionService.countPendingForAdmin({ status: "under_review" }),
-        this.paymentService.countPendingOlderThanHours(48),
-        this.paymentService.sumCapturedBetween(todayStart, now),
-      ]);
+    const [
+      liveLots,
+      endingWithinHour,
+      draftLots,
+      pendingSubmissions,
+      stalePendingPayments,
+      revenueToday,
+    ] = await Promise.all([
+      lot.countMatching({ status: "active" }),
+      lot.findActiveByEndTimeBetween(now, hourEnd).then((r) => r.length),
+      lot.countMatching({ status: "draft" }),
+      this.itemSubmissionService.countPendingForAdmin({ status: "under_review" }),
+      this.paymentService.countPendingOlderThanHours(48),
+      this.paymentService.sumCapturedBetween(todayStart, now),
+    ]);
 
     return {
       liveLots,

@@ -1,4 +1,4 @@
-import { roleHasCapability, type RoleCapability, type UserRole } from "@auction/types";
+import { type RoleCapability, type UserRole, roleHasCapability } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import type { RoleSource } from "./role-source.js";
 import { honoContextRoleSource } from "./role-source.js";

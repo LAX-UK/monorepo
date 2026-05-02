@@ -14,7 +14,9 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
     const [visible, setVisible] = React.useState(false);
     const [capsOn, setCapsOn] = React.useState(false);
     const capsId = React.useId();
-    const mergedExtra = [ariaDescribedByExtra, capsOn ? capsId : undefined].filter(Boolean).join(" ");
+    const mergedExtra = [ariaDescribedByExtra, capsOn ? capsId : undefined]
+      .filter(Boolean)
+      .join(" ");
 
     return (
       <div className={cn("w-full", className)}>
@@ -45,13 +47,9 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           {...rest}
         />
         {capsOn ? (
-          <p
-            id={capsId}
-            className="mt-1 font-footer-links text-xs text-on-surface-variant"
-            role="status"
-          >
+          <output id={capsId} className="mt-1 font-footer-links text-xs text-on-surface-variant">
             Caps Lock is on
-          </p>
+          </output>
         ) : null}
       </div>
     );

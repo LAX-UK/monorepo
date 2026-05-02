@@ -39,7 +39,8 @@ export function TimelineStages({ stages, activeIndex, className }: TimelineStage
               done && "border-outline-variant/20 bg-surface-container-low sm:bg-transparent",
               active &&
                 "border-primary/40 bg-primary/5 ring-1 ring-primary/20 sm:border-0 sm:bg-transparent sm:ring-0",
-              pending && "border-outline-variant/10 bg-surface-container-lowest/50 sm:bg-transparent",
+              pending &&
+                "border-outline-variant/10 bg-surface-container-lowest/50 sm:bg-transparent",
             )}
           >
             <span

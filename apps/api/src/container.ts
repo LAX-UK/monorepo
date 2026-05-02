@@ -1,15 +1,19 @@
 import { join } from "node:path";
+import { createJwksAdapter } from "@auction/auth";
 import { createAuth } from "@auction/auth/server";
 import type { Auth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
+import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
+import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
 import { JsonErrorResponseBuilder } from "./infrastructure/json-error-response.builder.js";
+import { JwtAuthenticator } from "./infrastructure/jwt-authenticator.js";
 import { LocalDiskObjectStorage } from "./infrastructure/local-disk-object-storage.js";
 import { NoOpErrorReporter } from "./infrastructure/no-op-error.reporter.js";
 import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
@@ -19,8 +23,8 @@ import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
-import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { createTransactionalMailer } from "./infrastructure/transactional-mailer.js";
+import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
@@ -34,6 +38,7 @@ import {
 } from "./repositories/drizzle-admin-user.reader.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
+import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
@@ -52,10 +57,10 @@ import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
-import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
+import { AccountLinkingService } from "./services/account-linking.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
 import { AddressService } from "./services/address.service.js";
@@ -67,6 +72,7 @@ import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
+import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
@@ -80,6 +86,7 @@ import type { IItemSubmissionRepository } from "./services/interfaces/repositori
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
+import { InvitationService } from "./services/invitation.service.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
@@ -92,7 +99,6 @@ import { PaymentService } from "./services/payment.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
-import { InvitationService } from "./services/invitation.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
@@ -111,6 +117,7 @@ export type Container = {
   /** Exposed for web push subscription (public key only). */
   vapidPublicKey: string | null;
   auth: Auth;
+  getPublicJwks: () => Promise<{ keys: unknown[] }>;
   authenticator: IAuthenticator;
   repoFactory: IRepositoryFactory;
   lotService: LotService;
@@ -143,6 +150,8 @@ export type Container = {
   profileService: ProfileService;
   addressService: AddressService;
   analyticsService: AnalyticsService;
+  accountLinkingService: AccountLinkingService;
+  domainEventPublisher: DomainEventPublisher;
   adminUserService: AdminUserService;
   adminMetricsService: AdminMetricsService;
   httpErrorHandler: ErrorHandlerService;
@@ -150,21 +159,38 @@ export type Container = {
   itemSubmissionService: IItemSubmissionService;
   objectStorage: IObjectStorage;
   uploadService: UploadService;
+  uploadValidationQueue: Queue;
 };
 
 export function createContainer(env: Env): Container {
-  const db = createDb(env.DATABASE_URL);
+  const db = createDb(env.DATABASE_URL_API ?? env.DATABASE_URL);
+  const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const redis = new Redis(env.REDIS_URL);
+  const jwksAdapter = createJwksAdapter(authDb);
 
   const auth = createAuth({
-    db,
+    db: authDb,
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.API_PUBLIC_URL,
+    issuerURL: env.OIDC_ISSUER_URL,
     trustedOrigins: [env.WEB_ORIGIN],
     allowInsecureCookies: env.ALLOW_HTTP_COOKIES,
+    cookieDomain: env.COOKIE_DOMAIN,
+    webOrigin: env.WEB_ORIGIN,
+    googleClientId: env.GOOGLE_CLIENT_ID,
+    googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+    appleClientId: env.APPLE_CLIENT_ID,
+    appleClientSecret: env.APPLE_CLIENT_SECRET,
   });
 
-  const authenticator: IAuthenticator = new BetterAuthAuthenticator(auth);
+  const issuer = env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL;
+  const authenticator: IAuthenticator = new CompositeAuthenticator([
+    new BetterAuthAuthenticator(auth),
+    new JwtAuthenticator({
+      issuer,
+      jwksUrl: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
+    }),
+  ]);
   const repoFactory: IRepositoryFactory = new DrizzleRepositoryFactory(db);
   const lotRepo = repoFactory.root.lot;
   const saleRepo = new DrizzleSaleRepository(db);
@@ -227,7 +253,6 @@ export function createContainer(env: Env): Container {
             env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`,
         })
       : new LocalDiskObjectStorage(join(process.cwd(), env.STORAGE_LOCAL_ROOT), publicUploadBase);
-  const uploadService = new UploadService(objectStorage);
 
   const lotLifecycleService = new LotLifecycleService(
     repoFactory,
@@ -241,6 +266,8 @@ export function createContainer(env: Env): Container {
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
 
   const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
+  const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
+  const uploadService = new UploadService(objectStorage, db, redis, uploadValidationQueue);
   const lotJobScheduler: ILotJobScheduler = new LotJobScheduler(
     bullConnection,
     (lotId) => lotLifecycleService.processActivateJob(lotId),
@@ -372,6 +399,8 @@ export function createContainer(env: Env): Container {
     userMetrics,
     metricsAggregator,
   );
+  const accountLinkingService = new AccountLinkingService(db);
+  const domainEventPublisher = new DomainEventPublisher();
 
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
@@ -397,6 +426,7 @@ export function createContainer(env: Env): Container {
     redis,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
     auth,
+    getPublicJwks: jwksAdapter.getPublicJwks,
     authenticator,
     repoFactory,
     lotService,
@@ -429,6 +459,8 @@ export function createContainer(env: Env): Container {
     profileService,
     addressService,
     analyticsService,
+    accountLinkingService,
+    domainEventPublisher,
     adminUserService,
     adminMetricsService,
     httpErrorHandler,
@@ -436,5 +468,6 @@ export function createContainer(env: Env): Container {
     itemSubmissionService,
     objectStorage,
     uploadService,
+    uploadValidationQueue,
   };
 }

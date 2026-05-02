@@ -1,11 +1,15 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
 import { user, userInvitation } from "@auction/db/schema";
-import { roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type {
+  IUserInvitationRepository,
+  InvitationRow,
+  InvitationSummary,
+} from "./interfaces/invitation.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
-import type { InvitationRow, InvitationSummary, IUserInvitationRepository } from "./interfaces/invitation.js";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 
 export type InvitationError = { message: string; status: number };
@@ -50,7 +54,9 @@ export class InvitationService {
     return `${base}/register?invite=${encodeURIComponent(token)}`;
   }
 
-  async create(input: CreateInvitationInput): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>> {
+  async create(
+    input: CreateInvitationInput,
+  ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>> {
     const actor = await this.users.findById(input.actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
     if (!roleHasCapability(actorRole, "user.invite")) {
@@ -83,7 +89,9 @@ export class InvitationService {
     return ok({ id, expiresAt });
   }
 
-  async preview(token: string): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>> {
+  async preview(
+    token: string,
+  ): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>> {
     const row = await this.invites.findPendingByTokenHash(hashToken(token));
     if (!row) return err({ message: "Invalid invitation", status: 404 });
     if (row.expiresAt.getTime() <= Date.now()) {
@@ -113,7 +121,11 @@ export class InvitationService {
     return ok(row);
   }
 
-  async consumeInviteForNewUser(token: string, newUserId: string, email: string): Promise<Result<UserRole, InvitationError>> {
+  async consumeInviteForNewUser(
+    token: string,
+    newUserId: string,
+    email: string,
+  ): Promise<Result<UserRole, InvitationError>> {
     try {
       const targetRole = await this.db.transaction(async (tx) => {
         const [row] = await tx
@@ -147,7 +159,10 @@ export class InvitationService {
           })
           .where(eq(userInvitation.id, row.id));
 
-        await tx.update(user).set({ role: nextRole, updatedAt: new Date() }).where(eq(user.id, newUserId));
+        await tx
+          .update(user)
+          .set({ role: nextRole, updatedAt: new Date() })
+          .where(eq(user.id, newUserId));
         return nextRole;
       });
       return ok(targetRole);
@@ -163,7 +178,9 @@ export class InvitationService {
     return this.invites.listPendingCreatedBy(actorUserId);
   }
 
-  async revoke(input: { actorUserId: string; invitationId: string }): Promise<Result<void, InvitationError>> {
+  async revoke(input: { actorUserId: string; invitationId: string }): Promise<
+    Result<void, InvitationError>
+  > {
     const actor = await this.users.findById(input.actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
     if (!roleHasCapability(actorRole, "user.invite")) {

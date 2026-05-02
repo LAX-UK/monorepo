@@ -84,10 +84,7 @@ function redirectPathStrippingOverviewTab(
   redirect(q ? `/sales/${id}?${q}` : `/sales/${id}`);
 }
 
-async function loadCatalogLotsPage(
-  id: string,
-  pageRaw: string | undefined,
-): Promise<SaleLotsPage> {
+async function loadCatalogLotsPage(id: string, pageRaw: string | undefined): Promise<SaleLotsPage> {
   const isAll = pageRaw === "all";
   if (isAll) {
     const p = await getServerSaleLotsPage({
@@ -210,10 +207,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
-      <SaleMobileSummaryBar
-        end={bundle.sale.endTime}
-        saleTitle={bundle.sale.title}
-      />
+      <SaleMobileSummaryBar end={bundle.sale.endTime} saleTitle={bundle.sale.title} />
 
       <SaleroomHero
         hero={heroVM}

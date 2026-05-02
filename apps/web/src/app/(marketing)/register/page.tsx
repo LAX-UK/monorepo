@@ -20,8 +20,7 @@ export default async function RegisterPage({
   searchParams: Promise<{ invite?: string }>;
 }) {
   const sp = await searchParams;
-  const inviteToken =
-    typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
+  const inviteToken = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
   return (
     <main id="main-content">
       <AuthLayout title="SIGN UP">

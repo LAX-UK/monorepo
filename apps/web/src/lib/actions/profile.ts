@@ -33,6 +33,23 @@ export async function updateProfileNameFromValuesAction(input: {
   return actionSuccess();
 }
 
+export async function updateProfileImageAction(input: {
+  image: string | null;
+}): Promise<ActionResult<void>> {
+  const parsed = z.object({ image: z.string().url().nullable() }).safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { profile } = getWriteContainer();
+  const r = await profile.updateProfile({ image: parsed.data.image });
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard");
+  return actionSuccess();
+}
+
 export async function createAddressFromValuesAction(
   input: z.infer<typeof createAddressWithDefaultSchema>,
 ): Promise<ActionResult<void>> {

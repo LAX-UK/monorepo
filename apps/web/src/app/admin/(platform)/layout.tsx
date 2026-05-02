@@ -1,7 +1,7 @@
-import { canAccessPlatformAdminRoutes, type UserRole } from "@auction/types";
-import type { ReactNode } from "react";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 /** Full platform administration: sales, lots, users, submissions, analytics, invitations. */
 export default async function AdminPlatformLayout({ children }: { children: ReactNode }) {

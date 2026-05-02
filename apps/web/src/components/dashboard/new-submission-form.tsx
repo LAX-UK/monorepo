@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { UploadField } from "@/components/forms/upload-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
@@ -43,8 +44,7 @@ export function NewSubmissionForm({ categories }: Props) {
       </DisplayHeading>
       <p className="font-body text-sm text-on-surface-variant">
         Provide accurate catalog information. Our team reviews every submission before a draft lot
-        is created. Images: paste one image URL per line (upload API is available for testing at{" "}
-        <code className="rounded bg-surface-container-high px-1">POST /uploads/image</code>).
+        is created. Upload clear photos of the item, including detail shots where useful.
       </p>
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-8">
@@ -141,18 +141,19 @@ export function NewSubmissionForm({ categories }: Props) {
           />
           <FormField
             control={form.control}
-            name="imagesText"
+            name="images"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
-                  <LabelCaps>Image URLs (one per line)</LabelCaps>
+                  <LabelCaps>Images</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <Textarea
-                    rows={4}
-                    placeholder="https://..."
-                    className="font-body text-sm"
-                    {...field}
+                  <UploadField
+                    kind="submission_image"
+                    multiple
+                    maxFiles={20}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
                 <FormMessage />

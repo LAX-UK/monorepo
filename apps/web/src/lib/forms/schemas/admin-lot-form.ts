@@ -20,6 +20,7 @@ export const adminLotFormValuesSchema = zod.object({
   minBidIncrement: optionalStr,
   dutchDecrementAmount: optionalStr,
   dutchDecrementIntervalMs: optionalStr,
+  images: zod.array(zod.string().url()).max(20),
   startTime: zod.string().min(1, "Start time required"),
   endTime: zod.string().min(1, "End time required"),
 });
@@ -45,6 +46,7 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
       v.dutchDecrementIntervalMs && String(v.dutchDecrementIntervalMs).trim()
         ? Number.parseInt(String(v.dutchDecrementIntervalMs).trim(), 10)
         : undefined,
+    images: v.images.length > 0 ? v.images : undefined,
     startTime: new Date(v.startTime),
     endTime: new Date(v.endTime),
   } satisfies z.input<typeof createLotSchema>;

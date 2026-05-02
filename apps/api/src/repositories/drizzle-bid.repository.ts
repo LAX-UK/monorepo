@@ -69,9 +69,10 @@ export class DrizzleBidRepository implements IBidRepository {
     const rows = await this.db
       .select({
         bidderId: bid.bidderId,
-        ceiling: sql<string>`max(greatest(${bid.amount}::numeric, coalesce(${bid.maxAutoBidAmount}::numeric, ${bid.amount}::numeric)))`.as(
-          "ceiling",
-        ),
+        ceiling:
+          sql<string>`max(greatest(${bid.amount}::numeric, coalesce(${bid.maxAutoBidAmount}::numeric, ${bid.amount}::numeric)))`.as(
+            "ceiling",
+          ),
       })
       .from(bid)
       .where(eq(bid.lotId, lotId))

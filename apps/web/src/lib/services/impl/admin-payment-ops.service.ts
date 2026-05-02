@@ -1,6 +1,9 @@
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
-import type { AdminPaymentXeroSyncResult, IAdminPaymentOpsService } from "../interfaces/admin-payment-ops-service";
+import type {
+  AdminPaymentXeroSyncResult,
+  IAdminPaymentOpsService,
+} from "../interfaces/admin-payment-ops-service";
 
 export class AdminPaymentOpsService implements IAdminPaymentOpsService {
   constructor(private readonly api: IAuthedApiClient) {}

@@ -9,11 +9,7 @@ type Props = {
 /**
  * Sale Follow action — the Figma hero does not include a registration CTA.
  */
-export function SaleroomHeroActions({
-  saleId,
-  isAuthenticated,
-  initialFollowing,
-}: Props) {
+export function SaleroomHeroActions({ saleId, isAuthenticated, initialFollowing }: Props) {
   return (
     <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-10 sm:w-auto">
       <SaleroomFollowToggle

@@ -14,6 +14,12 @@ export * from "./sale-follow.js";
 export * from "./item-submissions.js";
 export * from "./user-address.js";
 export * from "./xero-integration.js";
+export * from "./jwks-key.js";
+export * from "./external-accounts.js";
+export * from "./oauth.js";
+export * from "./webhook-events.js";
+export * from "./domain-events.js";
+export * from "./upload-objects.js";
 export {
   bidRelations,
   categoryRelations,

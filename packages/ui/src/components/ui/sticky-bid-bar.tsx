@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
 export type StickyBidBarProps = {
@@ -19,7 +19,11 @@ export function StickyBidBar({ children, className, innerClassName }: StickyBidB
         className,
       )}
     >
-      <div className={cn("mx-auto flex max-w-xl items-center justify-between gap-3", innerClassName)}>{children}</div>
+      <div
+        className={cn("mx-auto flex max-w-xl items-center justify-between gap-3", innerClassName)}
+      >
+        {children}
+      </div>
     </div>
   );
 }

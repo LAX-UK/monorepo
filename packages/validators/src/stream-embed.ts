@@ -76,7 +76,10 @@ function extractVimeoId(pathname: string): string | null {
 
 function extractTwitchChannel(pathname: string): string | null {
   const seg = pathname.split("/").filter(Boolean)[0];
-  if (!seg || ["videos", "clip", "directory", "downloads", "settings"].includes(seg.toLowerCase())) {
+  if (
+    !seg ||
+    ["videos", "clip", "directory", "downloads", "settings"].includes(seg.toLowerCase())
+  ) {
     return null;
   }
   return /^[a-zA-Z0-9_]{2,25}$/.test(seg) ? seg.toLowerCase() : null;
@@ -125,8 +128,7 @@ export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
     if (!id) return null;
     const startSeconds = parseYoutubeStartSeconds(u.search);
     const base = `https://www.youtube.com/embed/${id}?rel=0`;
-    const src =
-      startSeconds !== undefined ? `${base}&start=${startSeconds}` : base;
+    const src = startSeconds !== undefined ? `${base}&start=${startSeconds}` : base;
     return {
       provider: "youtube",
       src,
