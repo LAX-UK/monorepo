@@ -122,7 +122,7 @@ export function UploadField({
       {value.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {value.map((url, index) => (
-            <div key={`${url}-${index}`} className="rounded-md border border-outline-variant/30 p-2">
+            <div key={url} className="rounded-md border border-outline-variant/30 p-2">
               <img src={url} alt="" className="h-28 w-full rounded object-cover" />
               <Button
                 type="button"
