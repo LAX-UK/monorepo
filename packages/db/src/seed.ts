@@ -212,7 +212,7 @@ async function main() {
     {
       id: GOOGLE_TEST_ID,
       name: "Google Test",
-      email: "google-test@thealx.bid",
+      email: "google-test@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
@@ -222,7 +222,7 @@ async function main() {
     {
       id: APPLE_TEST_ID,
       name: "Apple Test",
-      email: "apple-test@thealx.bid",
+      email: "apple-test@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
@@ -248,14 +248,14 @@ async function main() {
       userId: GOOGLE_TEST_ID,
       provider: "google",
       externalId: "google-test-sub",
-      email: "google-test@thealx.bid",
+      email: "google-test@lax.bid",
       metadata: { seeded: true },
     },
     {
       userId: APPLE_TEST_ID,
       provider: "apple",
       externalId: "apple-test-sub",
-      email: "apple-test@thealx.bid",
+      email: "apple-test@lax.bid",
       metadata: { seeded: true },
     },
   ]);

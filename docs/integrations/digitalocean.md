@@ -2,14 +2,14 @@
 
 ## P1.1 deployment prerequisites
 
-### `auth.thealx.bid` certificate
+### `auth.lax.bid` certificate
 
-Register `auth.thealx.bid` as a domain on the API component before shipping OIDC discovery. This lets DigitalOcean provision the Let's Encrypt certificate early, so WordPress OIDC discovery does not fail TLS validation in P2.
+Register `auth.lax.bid` as a domain on the API component before shipping OIDC discovery. This lets DigitalOcean provision the Let's Encrypt certificate early, so WordPress OIDC discovery does not fail TLS validation in P2.
 
 Verification:
 
 ```sh
-curl -sI https://auth.thealx.bid/health/live
+curl -sI https://auth.lax.bid/health/live
 ```
 
 The response must include a valid certificate chain and a 200 status before `/.well-known/openid-configuration` is exposed publicly.
@@ -40,16 +40,16 @@ Create a Space for user-uploaded media and bind it to `apps/api` and `apps/worke
 
 Recommended production shape:
 
-- Space name: `thealx-uploads`
+- Space name: `lax-media`
 - Region: `fra1`
-- Endpoint: `https://fra1.digitaloceanspaces.com`
-- CDN endpoint: `https://thealx-uploads.fra1.cdn.digitaloceanspaces.com`
+- Endpoint: `https://lon1.digitaloceanspaces.com`
+- CDN endpoint: `https://lax-media.lon1.cdn.digitaloceanspaces.com`
 - Runtime env: `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
 
 Configure CORS on the Space:
 
 - Allowed methods: `PUT`, `GET`, `HEAD`
-- Allowed origins: `https://thealx.bid`, `https://test.thealx.bid`, `http://localhost:3000`
+- Allowed origins: `https://lax.bid`, `https://test.lax.bid`, `http://localhost:3000`
 - Allowed headers: `Content-Type`, `x-amz-*`
 - Exposed headers: `ETag`
 

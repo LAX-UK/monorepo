@@ -4,13 +4,13 @@ Recommended plugin: **OpenID Connect Generic**.
 
 Configuration:
 
-- Issuer / discovery URL: `https://auth.thealx.bid/.well-known/openid-configuration`
-- JWKS URL: `https://auth.thealx.bid/.well-known/jwks.json`
+- Issuer / discovery URL: `https://auth.lax.bid/.well-known/openid-configuration`
+- JWKS URL: `https://auth.lax.bid/.well-known/jwks.json`
 - Client type: confidential web client
 - Scopes: `openid profile email`
-- Callback URL: `https://thealx.art/wp-admin/admin-ajax.php?action=openid-connect-authorize`
+- Callback URL: `https://lax.art/wp-admin/admin-ajax.php?action=openid-connect-authorize`
 - User mapping:
-  - `sub` → user meta `thealx_subject`
+  - `sub` → user meta `lax_subject`
   - `email` → WordPress user email
   - `name` → display name
 

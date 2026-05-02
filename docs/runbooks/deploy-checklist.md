@@ -28,7 +28,7 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 ## After test deploy
 
 - [ ] Test deploy completes and `/health/ready` is green on every app component (`apps/api`, `apps/auth`, `apps/ws`, `apps/worker`).
-- [ ] Smoke test the path you changed against `test.thealx.bid`.
+- [ ] Smoke test the path you changed against `test.lax.bid`.
 - [ ] If you touched migrations, confirm the test migration job ran successfully — check its log in the DigitalOcean console.
 - [ ] If you touched OIDC or JWKS, fetch `/.well-known/openid-configuration` and `/.well-known/jwks.json` manually and confirm they still validate.
 - [ ] Soak the change for at least a few hours before promoting to production unless it's an outright bugfix.
@@ -40,7 +40,7 @@ The `main` → test → `release` → prod gated cadence is **(planned)**. Today
 - [ ] In the DigitalOcean App Platform console, trigger a deploy from the same git ref that's running in test.
 - [ ] **Confirm the migration job runs first.** If it doesn't, abort.
 - [ ] Watch `/health/ready` for every component during the rolling restart.
-- [ ] Smoke test the changed path against `thealx.bid`.
+- [ ] Smoke test the changed path against `lax.bid`.
 
 ## After production deploy
 

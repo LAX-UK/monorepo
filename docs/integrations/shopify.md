@@ -16,7 +16,7 @@ Configure a Shopify custom app with webhook subscriptions:
 Webhook URL:
 
 ```text
-https://api.thealx.bid/webhooks/shopify
+https://api.lax.bid/webhooks/shopify
 ```
 
 The API verifies `X-Shopify-Hmac-SHA256` using `SHOPIFY_WEBHOOK_SECRET`, stores the raw event in `webhook_event`, and the worker projects relevant events to `domain_events` / Zoho.
