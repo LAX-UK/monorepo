@@ -38,10 +38,10 @@ terraform {
 }
 
 locals {
-  services = { for c in var.components : c.name => c if c.kind == "service" }
-  workers  = { for c in var.components : c.name => c if c.kind == "worker" }
-  jobs     = { for c in var.components : c.name => c if c.kind == "job" }
-  domains  = { for c in var.components : c.name => c if try(c.domain, null) != null }
+  services = toset([for c in var.components : c if c.kind == "service"])
+  workers  = toset([for c in var.components : c if c.kind == "worker"])
+  jobs     = toset([for c in var.components : c if c.kind == "job"])
+  domains  = toset([for c in var.components : c if try(c.domain, null) != null])
 }
 
 resource "digitalocean_app" "this" {
@@ -66,7 +66,7 @@ resource "digitalocean_app" "this" {
         }
 
         dynamic "env" {
-          for_each = service.value.env
+          for_each = { for env in service.value.env : env.key => env }
 
           content {
             key   = env.value.key
@@ -102,7 +102,7 @@ resource "digitalocean_app" "this" {
         }
 
         dynamic "env" {
-          for_each = worker.value.env
+          for_each = { for env in worker.value.env : env.key => env }
 
           content {
             key   = env.value.key
@@ -132,7 +132,7 @@ resource "digitalocean_app" "this" {
         }
 
         dynamic "env" {
-          for_each = job.value.env
+          for_each = { for env in job.value.env : env.key => env }
 
           content {
             key   = env.value.key
