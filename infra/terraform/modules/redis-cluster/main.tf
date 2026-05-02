@@ -40,8 +40,8 @@ locals { tags = ["environment:${var.environment}", "managed_by:terraform"] }
 
 resource "digitalocean_database_cluster" "this" {
   name       = var.name
-  engine     = "redis"
-  version    = var.redis_version
+  engine     = var.engine
+  version    = var.engine_version
   size       = var.size
   region     = var.region
   node_count = var.node_count
