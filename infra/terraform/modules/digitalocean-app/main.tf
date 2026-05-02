@@ -38,10 +38,11 @@ terraform {
 }
 
 locals {
-  services = toset([for c in var.components : c if c.kind == "service"])
-  workers  = toset([for c in var.components : c if c.kind == "worker"])
-  jobs     = toset([for c in var.components : c if c.kind == "job"])
-  domains  = toset([for c in var.components : c if try(c.domain, null) != null])
+  _components = nonsensitive(var.components)
+  services    = { for c in local._components : c.name => c if c.kind == "service" }
+  workers     = { for c in local._components : c.name => c if c.kind == "worker" }
+  jobs        = { for c in local._components : c.name => c if c.kind == "job" }
+  domains     = { for c in local._components : c.name => c if try(c.domain, null) != null }
 }
 
 resource "digitalocean_app" "this" {
