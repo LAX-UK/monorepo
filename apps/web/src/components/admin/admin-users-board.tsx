@@ -1,6 +1,7 @@
 "use client";
 
 import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
+import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import type { UserRole } from "@auction/types";
 import {
@@ -8,13 +9,11 @@ import {
   DataTable,
   EntityTableShell,
   InlineActionMenu,
-  KpiTile,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  StatStrip,
 } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -158,6 +157,8 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
     );
   }, [rows, q]);
 
+  const clientsOnPage = useMemo(() => rows.filter((r) => r.role === "client").length, [rows]);
+
   const cards = (
     <ul className="space-y-3">
       {filtered.map((u) => (
@@ -184,12 +185,15 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
 
   return (
     <>
-      <StatStrip className="mb-2">
-        <KpiTile label="Total (server)" value={kpis.totalMatches} />
-        <KpiTile label="On this page" value={kpis.pageCount} />
-        <KpiTile label="Administrators (page)" value={kpis.adminsOnPage} />
-        <KpiTile label="Suspended (page)" value={kpis.suspendedOnPage} />
-      </StatStrip>
+      <KpiGrid
+        className="mb-2"
+        tiles={[
+          { label: "Total", value: kpis.totalMatches, delta: `${kpis.pageCount} on page` },
+          { label: "Admins", value: kpis.adminsOnPage, delta: "Current page" },
+          { label: "Clients", value: clientsOnPage, delta: "Current page" },
+          { label: "Suspended", value: kpis.suspendedOnPage, delta: "Current page" },
+        ]}
+      />
 
       <EntityTableShell
         responsiveMode="auto"
@@ -212,7 +216,12 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
           </div>
         }
         table={
-          <DataTable columns={columns} data={filtered} emptyMessage="No users match this filter." />
+          <DataTable
+            columns={columns}
+            data={filtered}
+            emptyMessage="No users match this filter."
+            density="compact"
+          />
         }
         cards={cards}
       />

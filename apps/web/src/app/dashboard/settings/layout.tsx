@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export default function DashboardSettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-(--container-inner,1376px) space-y-6">
+    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-6">
       <aside className="shrink-0">
         <SettingsSectionNav />
       </aside>

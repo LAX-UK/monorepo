@@ -218,12 +218,20 @@ export function NotificationsInboxBoard() {
         accessorKey: "title",
         header: "Title",
         cell: ({ row }) => (
-          <span
-            className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
-              row.original.read ? "opacity-60" : ""
-            }`}
-          >
-            {row.original.title}
+          <span className="flex min-w-[180px] items-center gap-2">
+            <span
+              className={`size-2 rounded-full ${
+                row.original.read ? "bg-outline-variant/60" : "bg-primary"
+              }`}
+              aria-hidden
+            />
+            <span
+              className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
+                row.original.read ? "opacity-60" : ""
+              }`}
+            >
+              {row.original.title}
+            </span>
           </span>
         ),
       },
@@ -430,8 +438,12 @@ export function NotificationsInboxBoard() {
                     return (
                       <div
                         key={n.id}
-                        className={`flex gap-3 border-b border-outline-variant/10 p-3 last:border-b-0 ${
-                          isActive ? "bg-surface-container-high/80" : ""
+                        className={`flex gap-3 border-b border-outline-variant/10 p-3 transition-colors last:border-b-0 ${
+                          isActive
+                            ? "bg-surface-container-high/80"
+                            : n.read
+                              ? "bg-transparent"
+                              : "bg-primary-container/10"
                         }`}
                       >
                         <Checkbox
@@ -447,12 +459,25 @@ export function NotificationsInboxBoard() {
                           onClick={() => setFocusedId(n.id)}
                           className="h-auto min-w-0 flex-1 flex-col items-start justify-start rounded-md px-2 py-2 text-left hover:bg-surface-container-high/40"
                         >
-                          <span
-                            className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
-                              n.read ? "opacity-60" : ""
-                            }`}
-                          >
-                            {n.title}
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={`size-2 rounded-full ${
+                                  n.read ? "bg-outline-variant/60" : "bg-primary"
+                                }`}
+                                aria-hidden
+                              />
+                              <span
+                                className={`truncate font-label text-xs font-bold uppercase tracking-widest text-primary ${
+                                  n.read ? "opacity-60" : ""
+                                }`}
+                              >
+                                {n.title}
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-body text-[11px] text-on-surface-variant/90">
+                              {new Date(n.createdAt).toLocaleString()}
+                            </span>
                           </span>
                           <p
                             className={`mt-1 line-clamp-2 font-body text-sm text-on-surface-variant ${
@@ -462,7 +487,7 @@ export function NotificationsInboxBoard() {
                             {n.message}
                           </p>
                           <p className="mt-2 font-body text-xs text-on-surface-variant/90">
-                            {n.type} · {new Date(n.createdAt).toLocaleString()}
+                            {n.type}
                           </p>
                         </ShadButton>
                       </div>

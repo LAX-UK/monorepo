@@ -141,6 +141,34 @@ create the projects.
 Create GitHub Environments named `test` and `prod`. Required reviewers stay off
 for now; production apply still requires the typed `APPLY-PROD` confirmation.
 
+### App deploy workflows (`doctl apps create-deployment`)
+
+Pushes to `main` / `release` run `.github/workflows/app-deploy-test.yml` and
+`.github/workflows/app-deploy-prod.yml`. Those jobs **skip** DigitalOcean until
+the app id secrets exist (you will only see an echo in the log).
+
+Set these after the matching **ephemeral** stack has created the App Platform app:
+
+| Secret | GitHub environment | Source |
+| --- | --- | --- |
+| `DO_TEST_APP_ID` | `test` | `terraform output -raw app_id` from `infra/terraform/ephemeral/test` |
+| `DO_PROD_APP_ID` | `prod` | `terraform output -raw app_id` from `infra/terraform/ephemeral/prod` |
+
+The repository must also expose **`DIGITALOCEAN_TOKEN`** to those jobs (see
+**§1. DigitalOcean API token** above); the workflows read `secrets.DIGITALOCEAN_TOKEN`.
+
+Example (from a machine with `gh` logged in and Terraform initialized against the right backend):
+
+```sh
+# Test app id → GitHub environment `test`
+gh secret set DO_TEST_APP_ID --env test --body "$(cd infra/terraform/ephemeral/test && terraform output -raw app_id)"
+
+# Prod app id → GitHub environment `prod` (after prod ephemeral exists)
+gh secret set DO_PROD_APP_ID --env prod --body "$(cd infra/terraform/ephemeral/prod && terraform output -raw app_id)"
+```
+
+Or copy the UUID from **DigitalOcean → Apps → your app** (id appears in the app URL) and paste into **GitHub → Settings → Environments → `test` / `prod` → Add secret**.
+
 Per-environment secrets needed before the first app deployment:
 
 - `BETTER_AUTH_SECRET`

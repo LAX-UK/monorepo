@@ -1,6 +1,8 @@
+import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { BodyText, DisplayHeading, LabelCaps } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default async function ArtistFollowPage() {
@@ -14,18 +16,28 @@ export default async function ArtistFollowPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-(--container-inner,1376px) space-y-8">
-      <header className="space-y-2 border-b border-outline-variant/15 pb-6">
-        <LabelCaps className="text-lot-orange">Discovery</LabelCaps>
-        <DisplayHeading as="h1" className="text-3xl md:text-4xl">
-          Artists you follow
-        </DisplayHeading>
-        <BodyText className="max-w-xl text-on-surface-variant">
-          Jump to artist profiles you watch for new catalog drops.
-        </BodyText>
-      </header>
+    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+      <PageHeader
+        title="Watchlist"
+        description="Jump to artist profiles you watch for new catalog drops."
+        className="border-0 pb-0"
+      />
 
-      {err ? <p className="text-live-red">{err}</p> : null}
+      <DashboardSectionTabs
+        ariaLabel="Watchlist sections"
+        className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3"
+        items={[
+          { href: "/dashboard/watchlist", label: "Lots" },
+          { href: "/dashboard/artist-follow", label: "Artists", isActive: true },
+        ]}
+      />
+
+      {err ? (
+        <Alert variant="destructive">
+          <AlertTitle>Could not load followed artists</AlertTitle>
+          <AlertDescription>{err}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {!err && rows.length === 0 ? (
         <EmptyState
