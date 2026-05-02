@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import * as schema from "./schema/index.js";
-import { buildPgSslConfig } from "./ssl.js";
+import { buildPgConnectionConfig } from "./ssl.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,7 +13,7 @@ async function main() {
   if (!url) {
     throw new Error("DATABASE_URL is required");
   }
-  const pool = new pg.Pool({ connectionString: url, ssl: buildPgSslConfig() });
+  const pool = new pg.Pool(buildPgConnectionConfig(url));
   const db = drizzle(pool, { schema });
   const migrationsFolder = path.join(__dirname, "../drizzle");
   await migrate(db, { migrationsFolder });
