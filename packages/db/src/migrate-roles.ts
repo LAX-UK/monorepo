@@ -1,5 +1,5 @@
 import pg from "pg";
-import { buildPgSslConfig } from "./ssl.js";
+import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Client } = pg;
 
@@ -113,7 +113,7 @@ async function grantSequences(client: pg.Client, role: RoleName): Promise<void> 
 }
 
 export async function applyApplicationRoleGrants(connectionString: string): Promise<void> {
-  const client = new Client({ connectionString, ssl: buildPgSslConfig() });
+  const client = new Client(buildPgConnectionConfig(connectionString));
   await client.connect();
   try {
     await client.query("begin");
