@@ -61,7 +61,7 @@ Terraform state keys:
 - `ephemeral-test/terraform.tfstate`
 - `ephemeral-prod/terraform.tfstate`
 
-Ephemeral stacks read **`digitalocean_project_id`** from the matching persistent state and attach Postgres, Managed Caching, and App Platform to **`lax-test-project`** / **`lax-prod-project`**. Apply **`persistent-{test|prod}`** at least once so remote state includes that output, then **`ephemeral-{env}`**. If the pipeline runs before persistent has been re-applied, set **`TF_VAR_digitalocean_project_id`** to the project UUID from the DigitalOcean control panel (or `terraform output -raw digitalocean_project_id` from the persistent directory).
+Ephemeral stacks attach Postgres, Managed Caching, and App Platform to **`lax-test-project`** / **`lax-prod-project`**. The project id is **`TF_VAR_digitalocean_project_id`** (optional override), then the matching persistent remote state **`digitalocean_project_id`** output if present, then a **`digitalocean_projects`** API lookup by that exact project name—so ephemeral apply usually works without re-applying persistent first.
 
 JWKS snapshots live under:
 

@@ -18,16 +18,23 @@ data "terraform_remote_state" "persistent" {
   }
 }
 
+data "digitalocean_projects" "all" {}
+
 locals {
-  do_project_id_from_state = try(data.terraform_remote_state.persistent.outputs.digitalocean_project_id, "")
-  do_project_id            = var.digitalocean_project_id != "" ? var.digitalocean_project_id : local.do_project_id_from_state
+  do_project_expected_name     = "lax-test-project"
+  do_project_id_from_state     = try(data.terraform_remote_state.persistent.outputs.digitalocean_project_id, "")
+  do_project_ids_matching_name = [for p in data.digitalocean_projects.all.projects : p.id if p.name == local.do_project_expected_name]
+  do_project_id_from_api       = length(local.do_project_ids_matching_name) > 0 ? local.do_project_ids_matching_name[0] : ""
+  do_project_id = var.digitalocean_project_id != "" ? var.digitalocean_project_id : (
+    local.do_project_id_from_state != "" ? local.do_project_id_from_state : local.do_project_id_from_api
+  )
 }
 
 resource "digitalocean_project_resources" "managed_stack" {
   lifecycle {
     precondition {
       condition     = local.do_project_id != ""
-      error_message = "digitalocean_project_id is missing: apply infra/terraform/persistent/test once (terraform apply) so remote state exports it, or set TF_VAR_digitalocean_project_id to the project UUID from DigitalOcean."
+      error_message = "Could not resolve the DO project id. Set TF_VAR_digitalocean_project_id, apply infra/terraform/persistent/test so remote state exports digitalocean_project_id, or create a project named \"lax-test-project\" (Terraform persistent stack)."
     }
   }
 
