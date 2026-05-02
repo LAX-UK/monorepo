@@ -1,7 +1,9 @@
 "use client";
 
+import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import { LotCardTimer } from "@/components/lot-timer";
 import { Button } from "@/components/ui/button";
-import { TableScroll } from "@/components/ui/table-scroll";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -17,7 +19,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Toolbar } from "@auction/ui/components/toolbar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -37,49 +39,75 @@ function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
   });
 }
 
+function tabHref(pathname: string, tab: BidTab, q: string) {
+  const params = new URLSearchParams();
+  if (tab !== "active") params.set("tab", tab);
+  if (q) params.set("q", q);
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
+function statusVariant(row: BidBoardRow) {
+  if (row.statusLabel === "Winning" || row.statusLabel === "Won") return "success";
+  if (row.statusLabel === "Outbid") return "danger";
+  if (row.lot?.status === "active") return "live";
+  return "neutral";
+}
+
 function bidColumns(): ColumnDef<BidBoardRow>[] {
   return [
     {
-      id: "thumb",
-      header: "",
+      id: "lot",
+      header: "Lot",
       cell: ({ row }) => {
-        const img = row.original.lot?.images[0];
         const a = row.original.lot;
+        if (!a) return <span className="text-secondary">Removed lot</span>;
+        const img = a.images[0];
         return (
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-surface-container-high">
-            {img && a ? (
-              <Image
-                src={img}
-                alt={`${a.title} — thumbnail`}
-                fill
-                className={`object-cover ${row.original.outbid ? "grayscale" : ""}`}
-                sizes="56px"
-              />
-            ) : null}
-          </div>
+          <Link href={`/artwork/${a.id}`} className="flex min-w-[220px] items-center gap-3">
+            <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
+              {img ? (
+                <Image
+                  src={img}
+                  alt={`${a.title} thumbnail`}
+                  fill
+                  className={`object-cover ${row.original.outbid ? "grayscale" : ""}`}
+                  sizes="56px"
+                />
+              ) : (
+                <ImagePlaceholder label="Lot artwork" hideIcon />
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline">
+                {a.title}
+              </span>
+              {a.medium ? (
+                <span className="block truncate text-xs text-on-surface-variant">{a.medium}</span>
+              ) : null}
+            </span>
+          </Link>
         );
       },
       enableSorting: false,
     },
     {
-      accessorKey: "lot",
-      header: "Lot",
+      id: "artist",
+      header: "Artist",
+      cell: () => <span className="text-on-surface-variant">—</span>,
+      enableSorting: false,
+    },
+    {
+      id: "lotNumber",
+      header: "Lot #",
       cell: ({ row }) => {
-        const a = row.original.lot;
-        if (!a) return <span className="text-secondary">Removed lot</span>;
-        return (
-          <Link
-            href={`/artwork/${a.id}`}
-            className="font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline"
-          >
-            {a.title}
-          </Link>
-        );
+        const lotNumber = row.original.lot?.lotNumber;
+        return lotNumber ? <span className="tabular-nums">{lotNumber}</span> : "—";
       },
     },
     {
       id: "yourBid",
-      header: "Your bid",
+      header: "My bid",
       accessorFn: (r) => r.bid.amount,
       cell: ({ row }) => (
         <span className={row.original.outbid ? "line-through tabular-nums" : "tabular-nums"}>
@@ -88,30 +116,31 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
       ),
     },
     {
-      id: "current",
-      header: "Current",
-      cell: ({ row }) => {
-        const a = row.original.lot;
-        if (!a) return "—";
-        return <span className="tabular-nums">{formatMoney(a.currentPrice)}</span>;
-      },
-    },
-    {
-      id: "time",
-      header: "Time",
-      cell: ({ row }) => row.original.timeLeft,
-    },
-    {
       id: "status",
       header: "Status",
       accessorFn: (r) => r.statusLabel,
       cell: ({ row }) => (
-        <span
-          className={`inline-flex rounded px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-[0.14em] ${row.original.statusClassName}`}
-        >
+        <StatusBadge variant={statusVariant(row.original)} size="sm">
           {row.original.statusLabel}
-        </span>
+        </StatusBadge>
       ),
+    },
+    {
+      id: "timer",
+      header: "Timer",
+      cell: ({ row }) => {
+        const lot = row.original.lot;
+        if (!lot || lot.status !== "active")
+          return <span className="text-on-surface-variant">—</span>;
+        return (
+          <LotCardTimer
+            status={lot.status}
+            startTime={lot.startTime.toISOString()}
+            endTime={lot.endTime.toISOString()}
+          />
+        );
+      },
+      enableSorting: false,
     },
     {
       id: "actions",
@@ -133,11 +162,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
 function BoardTable({ rows }: { rows: BidBoardRow[] }) {
   const columns = useMemo(() => bidColumns(), []);
   if (rows.length === 0) return null;
-  return (
-    <TableScroll>
-      <DataTable columns={columns} data={rows} />
-    </TableScroll>
-  );
+  return <DataTable columns={columns} data={rows} density="compact" />;
 }
 
 export function BidsBoard({
@@ -196,15 +221,23 @@ export function BidsBoard({
     [replaceQuery, tab],
   );
 
-  const onTabChange = useCallback(
-    (v: string) => {
-      const nextTab = parseBidTab(v, "active");
+  const currentRows =
+    tab === "won"
+      ? { all: won, filtered: filteredWon }
+      : tab === "lost"
+        ? { all: lost, filtered: filteredLost }
+        : { all: active, filtered: filteredActive };
+
+  const clearSearch = useCallback(
+    (nextTab: BidTab = tab) => {
+      searchForm.setValue("q", "");
       replaceQuery((p) => {
+        p.delete("q");
         if (nextTab === "active") p.delete("tab");
         else p.set("tab", nextTab);
       });
     },
-    [replaceQuery],
+    [replaceQuery, searchForm, tab],
   );
 
   return (
@@ -222,8 +255,33 @@ export function BidsBoard({
         </Alert>
       ) : null}
 
+      <DashboardSectionTabs
+        ariaLabel="Bid status"
+        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3"
+        items={[
+          {
+            href: tabHref(pathname, "active", appliedQ),
+            label: "Active",
+            badge: active.length,
+            isActive: tab === "active",
+          },
+          {
+            href: tabHref(pathname, "won", appliedQ),
+            label: "Won",
+            badge: won.length,
+            isActive: tab === "won",
+          },
+          {
+            href: tabHref(pathname, "lost", appliedQ),
+            label: "Lost",
+            badge: lost.length,
+            isActive: tab === "lost",
+          },
+        ]}
+      />
+
       <Toolbar
-        className="mb-5 rounded-sm border border-outline-variant/20 bg-white p-4"
+        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4"
         search={
           <Form {...searchForm}>
             <form
@@ -244,12 +302,7 @@ export function BidsBoard({
                       Filter by lot title
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        id="bids-q"
-                        placeholder="e.g. oil on canvas"
-                        className="bg-surface-container-low"
-                        {...field}
-                      />
+                      <Input id="bids-q" placeholder="e.g. oil on canvas" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -269,114 +322,47 @@ export function BidsBoard({
         }
       />
 
-      <Tabs value={tab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="mb-5 grid w-full max-w-xs grid-cols-3 rounded-none border border-outline-variant/25 bg-transparent p-0">
-          <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
-          <TabsTrigger value="won">Won ({won.length})</TabsTrigger>
-          <TabsTrigger value="lost">Lost ({lost.length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active">
-          {active.length === 0 ? (
-            <EmptyState
-              title={fetchError ? "Unable to load" : "No active bids"}
-              description={
-                fetchError
-                  ? "Try again later."
-                  : "Browse live auctions and place your first bid on a lot you love."
-              }
-              action={
-                !fetchError ? (
-                  <Button variant="primary" asChild>
-                    <Link href="/">Browse auctions</Link>
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : filteredActive.length === 0 ? (
-            <EmptyState
-              title="No matches"
-              description="Nothing in this tab matches your search. Clear the filter or try another title."
-              action={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    searchForm.setValue("q", "");
-                    replaceQuery((p) => {
-                      p.delete("q");
-                      if (tab !== "active") p.set("tab", tab);
-                    });
-                  }}
-                >
-                  Clear search
-                </Button>
-              }
-            />
-          ) : (
-            <BoardTable rows={filteredActive} />
-          )}
-        </TabsContent>
-        <TabsContent value="won">
-          {won.length === 0 ? (
-            <EmptyState
-              title="No wins yet"
-              description="When you win a lot, it will appear here."
-            />
-          ) : filteredWon.length === 0 ? (
-            <EmptyState
-              title="No matches"
-              description="Nothing in this tab matches your search."
-              action={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    searchForm.setValue("q", "");
-                    replaceQuery((p) => {
-                      p.delete("q");
-                      p.set("tab", "won");
-                    });
-                  }}
-                >
-                  Clear search
-                </Button>
-              }
-            />
-          ) : (
-            <BoardTable rows={filteredWon} />
-          )}
-        </TabsContent>
-        <TabsContent value="lost">
-          {lost.length === 0 ? (
-            <EmptyState
-              title="No closed losses"
-              description="Lots you did not win will show here."
-            />
-          ) : filteredLost.length === 0 ? (
-            <EmptyState
-              title="No matches"
-              description="Nothing in this tab matches your search."
-              action={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    searchForm.setValue("q", "");
-                    replaceQuery((p) => {
-                      p.delete("q");
-                      p.set("tab", "lost");
-                    });
-                  }}
-                >
-                  Clear search
-                </Button>
-              }
-            />
-          ) : (
-            <BoardTable rows={filteredLost} />
-          )}
-        </TabsContent>
-      </Tabs>
+      {currentRows.all.length === 0 ? (
+        <EmptyState
+          title={
+            tab === "active"
+              ? fetchError
+                ? "Unable to load"
+                : "No active bids"
+              : tab === "won"
+                ? "No wins yet"
+                : "No closed losses"
+          }
+          description={
+            fetchError
+              ? "Try again later."
+              : tab === "active"
+                ? "Browse live auctions and place your first bid on a lot you love."
+                : tab === "won"
+                  ? "When you win a lot, it will appear here."
+                  : "Lots you did not win will show here."
+          }
+          action={
+            tab === "active" && !fetchError ? (
+              <Button variant="primary" asChild>
+                <Link href="/">Browse auctions</Link>
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : currentRows.filtered.length === 0 ? (
+        <EmptyState
+          title="No matches"
+          description="Nothing in this tab matches your search. Clear the filter or try another title."
+          action={
+            <Button type="button" variant="secondary" onClick={() => clearSearch(tab)}>
+              Clear search
+            </Button>
+          }
+        />
+      ) : (
+        <BoardTable rows={currentRows.filtered} />
+      )}
     </div>
   );
 }

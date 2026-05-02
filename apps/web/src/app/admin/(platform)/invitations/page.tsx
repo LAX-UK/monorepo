@@ -1,4 +1,13 @@
 import { AdminInviteForm } from "@/components/admin/admin-invite-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
+import { TableScroll } from "@/components/ui/table-scroll";
 import { adminResendInvitationAction, adminRevokeInvitationAction } from "@/lib/actions/admin";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
 import type { UserRole } from "@auction/types";
@@ -42,55 +51,70 @@ export default async function AdminInvitationsPage({
         </Alert>
       ) : null}
 
-      <section className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest p-6">
-        <h2 className="font-headline text-lg text-on-surface">New invitation</h2>
+      <section className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <h2 className="font-headline text-lg text-on-surface">Send invite</h2>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Email and role are sent through the existing invitation action.
+        </p>
         <AdminInviteForm />
       </section>
 
       <section>
-        <h2 className="font-headline text-lg text-on-surface">Pending</h2>
+        <h2 className="font-headline text-lg text-on-surface">Sent invitations</h2>
         {rows.length === 0 ? (
           <p className="mt-2 font-body text-sm text-on-surface-variant">No pending invitations.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-outline-variant/15 rounded-sm border border-outline-variant/15">
-            {rows.map((inv) => (
-              <li
-                key={inv.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-on-surface">{inv.email}</p>
-                  <p className="font-body text-xs text-on-surface-variant">
-                    {roleLabel(inv.targetRole)} · expires {inv.expiresAt.toLocaleString()}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <form action={adminResendInvitationAction}>
-                    <input type="hidden" name="invitationId" value={inv.id} />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="sm"
-                      className="font-label text-[10px] uppercase"
-                    >
-                      Resend
-                    </Button>
-                  </form>
-                  <form action={adminRevokeInvitationAction}>
-                    <input type="hidden" name="invitationId" value={inv.id} />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="sm"
-                      className="font-label text-[10px] uppercase"
-                    >
-                      Revoke
-                    </Button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <TableScroll className="mt-4">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Email</TableHeaderCell>
+                  <TableHeaderCell>Role</TableHeaderCell>
+                  <TableHeaderCell>Expires</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-medium text-on-surface">{inv.email}</TableCell>
+                    <TableCell className="text-on-surface-variant">
+                      {roleLabel(inv.targetRole)}
+                    </TableCell>
+                    <TableCell className="text-on-surface-variant">
+                      {inv.expiresAt.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <form action={adminResendInvitationAction}>
+                          <input type="hidden" name="invitationId" value={inv.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            className="font-label text-[10px] uppercase"
+                          >
+                            Resend
+                          </Button>
+                        </form>
+                        <form action={adminRevokeInvitationAction}>
+                          <input type="hidden" name="invitationId" value={inv.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            className="font-label text-[10px] uppercase"
+                          >
+                            Revoke
+                          </Button>
+                        </form>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableScroll>
         )}
       </section>
     </div>

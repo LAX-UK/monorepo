@@ -1,9 +1,11 @@
 "use client";
 
 import { AdminLiveBidActivity } from "@/components/admin/admin-live-bid-activity";
+import { AttentionList } from "@/components/dashboard/attention-list";
+import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { Button } from "@/components/ui/button";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
-import { BodyText, LabelCaps } from "@auction/ui";
+import { LabelCaps } from "@auction/ui";
 import {
   Card,
   CardContent,
@@ -12,9 +14,7 @@ import {
   CardTitle,
   CompareDelta,
   EntityTableShell,
-  KpiTile,
   PageHeader,
-  StatStrip,
   Button as UiButton,
 } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
@@ -68,77 +68,58 @@ export function AdminOperationsHomeView({
         }
       />
 
-      <StatStrip className="gap-3">
-        <KpiTile
-          label="Live lots"
-          value={String(metrics.liveLots)}
-          delta={<CompareDelta label="Active now" tone="neutral" />}
-          trendTone="primary"
-          emphasize
-        />
-        <KpiTile
-          label="Ending &lt; 1h"
-          value={String(metrics.endingWithinHour)}
-          delta={<CompareDelta label="Closings" tone="neutral" />}
-          trendTone="lot-orange"
-        />
-        <KpiTile
-          label="Draft lots"
-          value={String(metrics.draftLots)}
-          delta={<CompareDelta label="Catalog" tone="neutral" />}
-          trendTone="secondary"
-        />
-        <KpiTile
-          label="Submissions (review)"
-          value={String(metrics.pendingSubmissions)}
-          delta={<CompareDelta label="Queue" tone="neutral" />}
-          trendTone="primary"
-        />
-        <KpiTile
-          label="Stale payments"
-          value={String(metrics.stalePendingPayments)}
-          delta={<CompareDelta label="&gt; 48h pending" tone="negative" />}
-          trendTone="live-red"
-        />
-        <KpiTile
-          label="Revenue (UTC today)"
-          value={metrics.revenueToday}
-          delta={<CompareDelta label="Captured" tone="positive" />}
-          trendTone="primary"
-        />
-      </StatStrip>
+      <KpiGrid
+        columns={6}
+        className="xl:grid-cols-3"
+        tiles={[
+          {
+            label: "Live lots",
+            value: String(metrics.liveLots),
+            delta: <CompareDelta label="Active now" tone="neutral" />,
+            trendTone: "primary",
+            emphasize: true,
+          },
+          {
+            label: "Draft lots",
+            value: String(metrics.draftLots),
+            delta: <CompareDelta label="Catalog" tone="neutral" />,
+            trendTone: "secondary",
+          },
+          {
+            label: "Revenue today",
+            value: metrics.revenueToday,
+            delta: <CompareDelta label="Captured UTC" tone="positive" />,
+            trendTone: "primary",
+          },
+          {
+            label: "Pending submissions",
+            value: String(metrics.pendingSubmissions),
+            delta: <CompareDelta label="Review queue" tone="neutral" />,
+            trendTone: "lot-orange",
+          },
+          {
+            label: "Stale payments",
+            value: String(metrics.stalePendingPayments),
+            delta: <CompareDelta label="> 48h pending" tone="negative" />,
+            trendTone: "live-red",
+          },
+          {
+            label: "Bids/min",
+            value: String(bidsPerMinute),
+            delta: (
+              <CompareDelta label={`${metrics.endingWithinHour} ending < 1h`} tone="neutral" />
+            ),
+            trendTone: "primary",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <section className="space-y-4 lg:col-span-7">
           <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
             Needs your attention
           </h2>
-          {attention.length === 0 ? (
-            <BodyText className="text-on-surface-variant">Nothing urgent right now.</BodyText>
-          ) : (
-            <ul className="space-y-2">
-              {attention.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/40 px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-headline text-sm text-on-surface">{row.title}</p>
-                    <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                      {row.hint}
-                    </p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    className="shrink-0 text-xs uppercase tracking-widest"
-                    asChild
-                  >
-                    <Link href={row.href}>{row.ctaLabel}</Link>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <AttentionList items={attention} />
         </section>
 
         <aside className="space-y-4 lg:col-span-5">

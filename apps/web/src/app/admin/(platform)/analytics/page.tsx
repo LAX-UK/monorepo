@@ -4,6 +4,7 @@ import {
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
 import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
+import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import {
   Table,
   TableBody,
@@ -24,7 +25,7 @@ import {
   winRatePercent,
 } from "@/lib/data/view-models/admin-analytics.vm";
 import { formatMoney } from "@/lib/format-currency";
-import { CompareDelta, KpiTile, PageHeader, StatStrip } from "@auction/ui";
+import { CompareDelta, PageHeader } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 function toChartsData(
@@ -86,66 +87,65 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         </Alert>
       ) : data ? (
         <>
-          <StatStrip>
-            <KpiTile
-              label={`GMV (${days}d window)`}
-              value={formatMoney(totalRev)}
-              delta={
-                <CompareDelta
-                  label={formatPctChange(revHalf?.pctChange ?? null)}
-                  tone={pctToDeltaTone(revHalf?.pctChange ?? null)}
-                />
-              }
-              deltaTone="neutral"
-              trend={sparklineForMoney(data.sparklines?.revenue, data.revenueSeries)}
-              trendTone="primary"
-            />
-            <KpiTile
-              label="Ended lots (series)"
-              value={String(totalEndedLots)}
-              delta={
-                <CompareDelta
-                  label={formatPctChange(lotHalf?.pctChange ?? null)}
-                  tone={pctToDeltaTone(lotHalf?.pctChange ?? null)}
-                />
-              }
-              deltaTone="neutral"
-              trend={sparklineForCounts(data.sparklines?.lotCompleted, data.lotCompletedSeries)}
-              trendTone="lot-orange"
-            />
-            <KpiTile
-              label="New registrations"
-              value={String(totalRegs)}
-              delta={
-                <CompareDelta
-                  label={formatPctChange(regHalf?.pctChange ?? null)}
-                  tone={pctToDeltaTone(regHalf?.pctChange ?? null)}
-                />
-              }
-              deltaTone="neutral"
-              trend={sparklineForCounts(data.sparklines?.registrations, data.registrationSeries)}
-              trendTone="secondary"
-            />
-            <KpiTile
-              label="Hammer rate"
-              value={winRatePercent(data.conversion.ended, data.conversion.withWinner)}
-              delta={
-                <CompareDelta
-                  label={`${data.conversion.withWinner} / ${data.conversion.ended} ended`}
-                  tone="neutral"
-                />
-              }
-              deltaTone="neutral"
-            />
-            <KpiTile label="Active lots" value={String(data.activeLots)} trendTone="primary" />
-            <KpiTile label="Total users" value={String(data.totalUsers)} trendTone="secondary" />
-            <KpiTile
-              label={`Avg order (${days}d)`}
-              value={data.averageOrderValue ?? "—"}
-              trend={sparklineForMoney(data.sparklines?.revenue, data.revenueSeries)}
-              trendTone="lot-orange"
-            />
-          </StatStrip>
+          <KpiGrid
+            tiles={[
+              {
+                label: `GMV (${days}d)`,
+                value: formatMoney(totalRev),
+                delta: (
+                  <CompareDelta
+                    label={formatPctChange(revHalf?.pctChange ?? null)}
+                    tone={pctToDeltaTone(revHalf?.pctChange ?? null)}
+                  />
+                ),
+                trend: sparklineForMoney(data.sparklines?.revenue, data.revenueSeries),
+                trendTone: "primary",
+              },
+              {
+                label: "Ended lots",
+                value: String(totalEndedLots),
+                delta: (
+                  <CompareDelta
+                    label={formatPctChange(lotHalf?.pctChange ?? null)}
+                    tone={pctToDeltaTone(lotHalf?.pctChange ?? null)}
+                  />
+                ),
+                trend: sparklineForCounts(data.sparklines?.lotCompleted, data.lotCompletedSeries),
+                trendTone: "lot-orange",
+              },
+              {
+                label: "New regs",
+                value: String(totalRegs),
+                delta: (
+                  <CompareDelta
+                    label={formatPctChange(regHalf?.pctChange ?? null)}
+                    tone={pctToDeltaTone(regHalf?.pctChange ?? null)}
+                  />
+                ),
+                trend: sparklineForCounts(data.sparklines?.registrations, data.registrationSeries),
+                trendTone: "secondary",
+              },
+              {
+                label: "Hammer rate",
+                value: winRatePercent(data.conversion.ended, data.conversion.withWinner),
+                delta: (
+                  <CompareDelta
+                    label={`${data.conversion.withWinner} / ${data.conversion.ended} ended`}
+                    tone="neutral"
+                  />
+                ),
+              },
+              { label: "Active lots", value: String(data.activeLots), trendTone: "primary" },
+              { label: "Total users", value: String(data.totalUsers), trendTone: "secondary" },
+              {
+                label: `Avg order (${days}d)`,
+                value: data.averageOrderValue ?? "—",
+                trend: sparklineForMoney(data.sparklines?.revenue, data.revenueSeries),
+                trendTone: "lot-orange",
+              },
+              { label: "Window", value: `${days}d`, delta: "Loaded period" },
+            ]}
+          />
 
           <AdminAnalyticsCharts data={toChartsData(data)} />
 

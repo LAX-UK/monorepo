@@ -1,9 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { TimelineStages } from "@auction/ui";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -31,64 +33,103 @@ export function PortfolioLotGrid({ items }: Props) {
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {items.map((row) => (
           <li key={row.id}>
-            <Card className="group h-full overflow-hidden border border-outline-variant/15 p-0 shadow-none transition-colors hover:border-outline-variant/25 hover:bg-surface-container-low/20">
+            <Card className="group grid h-full overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]">
               <Link href={row.checkoutHref} className="block">
-                <div className="relative aspect-[4/5] bg-surface-container-low">
+                <div className="relative h-full min-h-72 bg-surface-container-low sm:min-h-full">
                   {row.image ? (
                     <Image
                       src={row.image}
                       alt={`${row.title} — won lot artwork`}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, 33vw"
+                      sizes="(max-width: 640px) 100vw, 40vw"
                     />
-                  ) : null}
-                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-sm bg-surface-container-lowest/90 px-2 py-1 backdrop-blur-sm">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                    <span className="font-label text-xs font-bold uppercase tracking-wider text-primary">
-                      {row.settlementLabel}
-                    </span>
-                  </div>
+                  ) : (
+                    <ImagePlaceholder label="Lot artwork" />
+                  )}
                 </div>
-                <CardHeader className="pb-2">
-                  <CardTitle className="font-headline text-xl font-light group-hover:italic">
-                    {row.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <p className="font-label text-xs uppercase tracking-widest text-primary">
-                    Hammer {row.hammerLabel}
-                  </p>
-                </CardContent>
               </Link>
-              <CardFooter className="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/10 pt-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="px-4 py-2 font-label text-xs uppercase tracking-widest"
-                  onClick={() => setOpenId(row.id)}
-                >
-                  Details
-                </Button>
-                <Button
-                  variant="primary"
-                  className="px-4 py-2 font-label text-xs uppercase tracking-widest"
-                  asChild
-                >
-                  <Link href={row.checkoutHref}>
-                    Complete purchase
-                    <span
-                      className="material-symbols-outlined ml-1 text-sm align-middle"
-                      aria-hidden
+              <div className="flex min-w-0 flex-col">
+                <CardHeader className="pb-2">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <StatusBadge
+                      variant={row.paymentStatus === "captured" ? "success" : "warning"}
+                      size="sm"
                     >
-                      arrow_forward
-                    </span>
-                  </Link>
-                </Button>
-              </CardFooter>
+                      {row.settlementLabel}
+                    </StatusBadge>
+                    {row.paymentStatus ? (
+                      <span className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        {row.paymentStatus}
+                      </span>
+                    ) : null}
+                  </div>
+                  <CardTitle className="font-headline text-2xl font-light leading-tight group-hover:italic">
+                    <Link href={row.checkoutHref} className="underline-offset-4 hover:underline">
+                      {row.title}
+                    </Link>
+                  </CardTitle>
+                  {row.medium ? (
+                    <p className="mt-2 line-clamp-2 text-sm text-on-surface-variant">
+                      {row.medium}
+                    </p>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="flex-1 pb-2">
+                  <div className="grid grid-cols-3 gap-2 rounded-xl border border-outline-variant/15 bg-surface-container-low/45 p-3">
+                    <div>
+                      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        Hammer
+                      </p>
+                      <p className="mt-1 font-headline text-base text-on-surface">
+                        {row.hammerLabel}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        Premium
+                      </p>
+                      <p className="mt-1 font-headline text-base text-on-surface">Checkout</p>
+                    </div>
+                    <div>
+                      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        Total
+                      </p>
+                      <p className="mt-1 font-headline text-base text-on-surface">Due</p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/10 pt-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                    onClick={() => setOpenId(row.id)}
+                  >
+                    Details
+                  </Button>
+                  {row.paymentStatus !== "captured" ? (
+                    <Button
+                      variant="primary"
+                      className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                      asChild
+                    >
+                      <Link href={row.checkoutHref}>Complete checkout</Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                      asChild
+                    >
+                      <Link href={row.checkoutHref}>View details</Link>
+                    </Button>
+                  )}
+                </CardFooter>
+              </div>
             </Card>
           </li>
         ))}
