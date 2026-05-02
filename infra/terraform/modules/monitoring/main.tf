@@ -37,6 +37,8 @@ terraform {
   }
 }
 resource "digitalocean_monitor_alert" "postgres_cpu" {
+  count = var.alert_email != "" ? 1 : 0
+
   alerts { email = [var.alert_email] }
   window      = "5m"
   type        = "v1/dbaas/alerts/cpu_alerts"
@@ -48,6 +50,8 @@ resource "digitalocean_monitor_alert" "postgres_cpu" {
 }
 
 resource "digitalocean_monitor_alert" "redis_memory" {
+  count = var.alert_email != "" ? 1 : 0
+
   alerts { email = [var.alert_email] }
   window      = "5m"
   type        = "v1/dbaas/alerts/memory_utilization_alerts"
@@ -68,7 +72,8 @@ resource "digitalocean_uptime_check" "target" {
 }
 
 resource "digitalocean_uptime_alert" "target" {
-  for_each   = digitalocean_uptime_check.target
+  for_each = var.alert_email != "" ? digitalocean_uptime_check.target : {}
+
   name       = "lax-${var.environment}-${each.key}-down"
   check_id   = each.value.id
   type       = "down"
