@@ -167,7 +167,10 @@ resource "digitalocean_app" "this" {
       content {
         name = domain.value.domain
         type = try(domain.value.primary_domain, false) ? "PRIMARY" : "ALIAS"
-        zone = "lax.bid"
+        # `zone` is intentionally omitted: lax.bid lives on Cloudflare, not DO Networking.
+        # Setting `zone` makes DO try DNS-01 against a zone it doesn't control and to verify
+        # ownership by resolving the CNAME target (which is Cloudflare anycast through the
+        # orange-cloud), so the domain stays PENDING and the edge returns 530.
       }
     }
 
