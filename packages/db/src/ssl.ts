@@ -45,14 +45,7 @@ export function buildPgConnectionConfig(connectionString: string): {
   let cleaned = connectionString;
   try {
     const url = new URL(connectionString);
-    for (const key of [
-      "sslmode",
-      "ssl",
-      "sslrootcert",
-      "sslcert",
-      "sslkey",
-      "uselibpqcompat",
-    ]) {
+    for (const key of ["sslmode", "ssl", "sslrootcert", "sslcert", "sslkey", "uselibpqcompat"]) {
       url.searchParams.delete(key);
     }
     cleaned = url.toString();
