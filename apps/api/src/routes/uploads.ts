@@ -57,7 +57,9 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
     if (!userId || !userRole) return c.json({ error: "Unauthorized" }, 401);
     const body = await c.req.json().catch(() => null);
     const uploadId =
-      body && typeof body === "object" && typeof (body as { uploadId?: unknown }).uploadId === "string"
+      body &&
+      typeof body === "object" &&
+      typeof (body as { uploadId?: unknown }).uploadId === "string"
         ? (body as { uploadId: string }).uploadId
         : "";
     if (!uploadId) return c.json({ error: "uploadId is required" }, 400);

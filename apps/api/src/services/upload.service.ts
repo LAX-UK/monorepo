@@ -87,7 +87,11 @@ export class UploadService {
     if (!policy.allowedContentTypes.includes(input.contentType)) {
       return { ok: false, status: 400, error: "unsupported_content_type" };
     }
-    if (!Number.isInteger(input.byteSize) || input.byteSize <= 0 || input.byteSize > policy.maxBytes) {
+    if (
+      !Number.isInteger(input.byteSize) ||
+      input.byteSize <= 0 ||
+      input.byteSize > policy.maxBytes
+    ) {
       return { ok: false, status: 400, error: "invalid_byte_size" };
     }
     if (input.userRole !== "administrator") {
@@ -135,7 +139,9 @@ export class UploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-  }): Promise<{ ok: true; value: { status: "queued" } } | { ok: false; status: number; error: string }> {
+  }): Promise<
+    { ok: true; value: { status: "queued" } } | { ok: false; status: number; error: string }
+  > {
     if (!this.db || !this.validationQueue) {
       return { ok: false, status: 503, error: "upload_validation_not_configured" };
     }
@@ -149,7 +155,11 @@ export class UploadService {
       .update(uploadObject)
       .set({ status: "uploaded", uploadedAt: new Date() })
       .where(eq(uploadObject.id, input.uploadId));
-    await this.validationQueue.add("validate-upload", { uploadId: input.uploadId }, { attempts: 3 });
+    await this.validationQueue.add(
+      "validate-upload",
+      { uploadId: input.uploadId },
+      { attempts: 3 },
+    );
     return { ok: true, value: { status: "queued" } };
   }
 
