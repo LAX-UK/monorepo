@@ -1,7 +1,8 @@
+import { LotCardTimer } from "@/components/lot-timer";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
-import { LotCardTimer } from "@/components/sections/home/lot-card-timer";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { RevealInView } from "@/components/ui/reveal";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
@@ -18,7 +19,7 @@ type Props = {
 
 export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: Props) {
   return (
-    <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-8">
+    <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pb-0 pt-20 md:px-10 lg:px-14">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
         <SectionHeader
           kicker={
@@ -53,12 +54,16 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item, index) => (
-              <article key={item.id} className="flex flex-col">
+              <article
+                key={item.id}
+                className="fade-up flex flex-col"
+                style={{ animationDelay: `${Math.min(index * 80, 320)}ms` }}
+              >
                 <Link
                   href={item.href}
                   className="group flex flex-col gap-4 outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                 >
-                  <div className="relative aspect-[320/340] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
+                  <div className="relative aspect-[320/340] w-full overflow-hidden bg-surface-container-high dark:bg-surface-container-high">
                     {item.imageUrl ? (
                       <RevealInView
                         className="absolute inset-0 overflow-hidden"
@@ -71,14 +76,12 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                           fill
                           placeholder="blur"
                           blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                          className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         />
                       </RevealInView>
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center bg-brand-800/80 font-label text-xs uppercase tracking-widest text-brand-200 dark:bg-surface-container-high dark:text-on-surface-variant">
-                        Image coming soon
-                      </span>
+                      <ImagePlaceholder label="Lot artwork" />
                     )}
                     <LotCardTimer
                       status={item.status}

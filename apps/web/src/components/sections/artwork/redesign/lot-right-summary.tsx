@@ -22,14 +22,14 @@ type Props = {
 export function LotRightSummary({ seed, children }: Props) {
   const av = seed.sellerImageUrl?.trim();
   return (
-    <div className="flex w-full max-w-[550px] flex-col gap-6">
+    <div className="flex w-full max-w-[480px] flex-col gap-7">
       <div className="flex flex-col gap-2.5">
         {seed.kicker ? (
           <p className="text-base leading-4 text-on-surface dark:text-brand-500">{seed.kicker}</p>
         ) : null}
         <h1
           id="lot-heading"
-          className="text-2xl font-semibold leading-6 text-on-surface dark:text-on-surface"
+          className="text-3xl font-semibold leading-tight text-on-surface dark:text-on-surface"
         >
           {seed.title}
         </h1>

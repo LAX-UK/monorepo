@@ -7,13 +7,13 @@ function assertNever(x: never): never {
 }
 
 const PILL_BASE =
-  "pointer-events-none absolute left-3 top-3 z-10 inline-flex max-w-[calc(100%-5rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[11px] uppercase tracking-[0.06em] backdrop-blur-sm";
+  "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-sm border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
 
 const SHELL_LIVE =
-  "border-nav-border/60 bg-surface/85 text-brand-900 dark:border-outline-variant/20 dark:bg-surface-container-high/80 dark:text-on-surface";
+  "border-transparent bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";
 
 const SHELL_MUTED =
-  "border-nav-border/40 bg-surface/70 text-brand-400 dark:border-outline-variant/20 dark:text-on-surface-variant";
+  "border-transparent bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 
 function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   switch (state.kind) {
@@ -41,7 +41,7 @@ export function LotTimerPill({ state, clockText }: { state: LotTimerState; clock
         <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_LIVE)}>
           <LiveDot size="sm" />
           <span className="min-w-0">
-            <span>Ends in </span>
+            <span>Live · </span>
             <span className="tabular-nums" aria-hidden>
               {clockText ?? "—"}
             </span>
@@ -51,7 +51,7 @@ export function LotTimerPill({ state, clockText }: { state: LotTimerState; clock
     case "opensSoon":
       return (
         <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_LIVE)}>
-          <Clock className="size-4 shrink-0 text-accent-gold" aria-hidden />
+          <Clock className="size-3.5 shrink-0 text-accent-gold" aria-hidden />
           <span className="min-w-0">
             <span>Opens in </span>
             <span className="tabular-nums" aria-hidden>

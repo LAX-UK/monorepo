@@ -3,6 +3,7 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
@@ -59,18 +60,18 @@ export function LotMoreFromRail({
           </Button>
         ) : null}
       </div>
-      <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="flex list-none gap-5 overflow-x-auto pb-3">
         {rail.cards.map((c) => {
           const endMs = new Date(c.endTime).getTime() - Date.now();
           const closing = formatCountdownForDisplay(endMs);
           return (
-            <li key={c.id} className="min-w-0 max-w-[320px]">
+            <li key={c.id} className="w-[200px] shrink-0 min-w-0">
               <div className="flex flex-col gap-4">
                 <Link
                   href={c.href}
-                  className="group relative block w-full max-w-[320px] overflow-hidden bg-[#0A0A0A]"
+                  className="group relative block w-full overflow-hidden bg-brand-900"
                 >
-                  <div className="relative aspect-[320/340] w-full max-w-[320px]">
+                  <div className="relative aspect-[200/240] w-full">
                     {c.imageUrl ? (
                       <Image
                         src={c.imageUrl}
@@ -82,7 +83,7 @@ export function LotMoreFromRail({
                         sizes="(max-width: 1023px) 100vw, 42vw"
                       />
                     ) : (
-                      <div className="absolute inset-0 bg-surface-container-low" />
+                      <ImagePlaceholder label="Lot artwork" hideIcon />
                     )}
                     <OwnerBadge
                       owned={Boolean(currentUserId && c.sellerId === currentUserId)}
@@ -90,7 +91,7 @@ export function LotMoreFromRail({
                     />
                   </div>
                 </Link>
-                <div className="flex max-w-[320px] flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   <p
                     className="text-sm font-bold uppercase leading-4 text-[#E17100] dark:text-orange-500"
                     style={{ color: "#E17100" }}
@@ -98,7 +99,7 @@ export function LotMoreFromRail({
                     {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
                   </p>
                   <div>
-                    <p className="text-xl font-semibold leading-6 text-[#050505] dark:text-on-surface">
+                    <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
                       {c.title}
                     </p>
                     <p className="mt-1 text-sm font-light text-[#191919] dark:text-brand-500">

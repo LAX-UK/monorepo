@@ -72,13 +72,12 @@ export function ArtworkSplitView({
           </div>
         ) : null}
 
-        <div className="mt-6 grid w-full grid-cols-1 items-start gap-8 lg:mt-10 lg:grid-cols-[minmax(0,786fr)_minmax(0,550fr)] lg:gap-10">
-          <div className="flex w-full min-w-0 flex-col gap-6 lg:gap-8">
+        <div className="mt-6 grid w-full grid-cols-1 items-start gap-8 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-10">
+          <div className="flex w-full min-w-0 flex-col gap-6 lg:sticky lg:top-[var(--header-height)] lg:h-[calc(100vh_-_var(--header-height))] lg:items-center lg:justify-center lg:overflow-hidden lg:bg-surface-container-low lg:p-8">
             <LotMediaBlock lot={auction} />
-            <LotMarketingAccordion blocks={marketingAccordionBlocks} />
           </div>
 
-          <div className="w-full min-w-0 pb-24">
+          <div className="w-full min-w-0 pb-24 lg:px-2">
             <LotRightSummary seed={summarySeed}>{bidPanel}</LotRightSummary>
             <div className="mt-6">
               <LotActionsRow
@@ -91,6 +90,9 @@ export function ArtworkSplitView({
                   />
                 }
               />
+            </div>
+            <div className="mt-8">
+              <LotMarketingAccordion blocks={marketingAccordionBlocks} />
             </div>
           </div>
         </div>

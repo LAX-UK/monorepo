@@ -13,12 +13,13 @@ type Props = {
 
 export function LaxHeroLot({ lot }: Props) {
   const artworkHref = lot.id === "placeholder" ? "/sales" : `/artwork/${lot.id}`;
+  const lotWatermark = lot.lotLabel.replace(/^lot\s*/i, "").trim() || "—";
 
   return (
-    <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
+    <section className="relative w-full overflow-hidden bg-brand-900">
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
         <RevealOnMount
-          className="absolute inset-0 overflow-hidden"
+          className="zoom-bg absolute inset-0 overflow-hidden"
           innerClassName="absolute inset-0"
         >
           <Image
@@ -35,14 +36,18 @@ export function LaxHeroLot({ lot }: Props) {
           className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-transparent"
           style={{
             backgroundImage:
-              "linear-gradient(to right, var(--color-scrim-hero), var(--color-scrim-hero-mid), transparent)",
+              "linear-gradient(105deg, var(--color-scrim-hero-strong) 0%, var(--color-scrim-hero-soft) 45%, transparent 80%)",
           }}
           aria-hidden
         />
-        <div className="relative flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
-          <div className="flex max-w-[684px] flex-col gap-8 md:gap-14">
+        <div
+          className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-black/50 to-transparent"
+          aria-hidden
+        />
+        <div className="relative flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-16">
+          <div className="flex max-w-[660px] flex-col gap-9">
             <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-6">
+              <div className="fade-up flex flex-col gap-6">
                 <LiveIndicatorRow
                   tone="white"
                   progressLabel="Auction in progress"
@@ -53,7 +58,7 @@ export function LaxHeroLot({ lot }: Props) {
                   {lot.featuredHeading}
                 </LabelCaps>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="wipe-in flex flex-col gap-3">
                 <DisplayHeading
                   as="h1"
                   className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
@@ -64,7 +69,7 @@ export function LaxHeroLot({ lot }: Props) {
                   {lot.artistName}
                 </span>
               </div>
-              <div className="flex flex-row flex-wrap gap-8">
+              <div className="fade-up-d2 flex flex-row flex-wrap gap-8 md:gap-12">
                 <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
                 <StatTile
                   label="Current Highest Bid"
@@ -74,7 +79,7 @@ export function LaxHeroLot({ lot }: Props) {
                 <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
               </div>
             </div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="fade-up-d3 flex flex-col gap-4 sm:flex-row sm:items-start">
               <Button
                 variant="cta"
                 size="xl"
@@ -121,6 +126,17 @@ export function LaxHeroLot({ lot }: Props) {
                 </Button>
               )}
             </div>
+          </div>
+          <div
+            className="pointer-events-none absolute right-6 top-[calc(var(--header-height)+2.5rem)] hidden flex-col items-end gap-1 lg:flex"
+            aria-hidden
+          >
+            <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+              Lot
+            </span>
+            <span className="font-artists-serif text-[72px] font-light leading-none text-white/[0.08]">
+              {lotWatermark}
+            </span>
           </div>
         </div>
       </div>

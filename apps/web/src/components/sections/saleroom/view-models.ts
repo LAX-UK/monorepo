@@ -58,7 +58,11 @@ export type SaleLotCardVM = {
   /** Public lot payloads omit bid count; keep null until the API adds it. */
   bidsCountLabel: string | null;
   closingLabel: string | null;
-  /** Short relative e.g. "2 days" for the Closing row. */
+  /**
+   * Short relative phrase e.g. "2 days" / "Soon".
+   * For scheduled lots this is relative to `startTime` (opens-in);
+   * for active lots it is relative to `endTime` (closes-in).
+   */
   closingShort: string | null;
   isLive: boolean;
   viewerOwnsLot: boolean;
@@ -66,6 +70,12 @@ export type SaleLotCardVM = {
   artistOrMedium: string | null;
   /** Initial watch state for the Follow control. */
   viewerIsWatching: boolean;
+  /** Lot status for the live card timer (drives the live/opens-in/closed pill). */
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
+  /** ISO 8601 start of bidding for opens-in countdowns. */
+  startTime: string;
+  /** ISO 8601 end of bidding for closing countdowns. */
+  endTime: string;
 };
 
 export type RelatedSaleVM = {
