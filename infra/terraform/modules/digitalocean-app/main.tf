@@ -43,6 +43,16 @@ locals {
   workers     = { for c in local._components : c.name => c if c.kind == "worker" }
   jobs        = { for c in local._components : c.name => c if c.kind == "job" }
   domains     = { for c in local._components : c.name => c if try(c.domain, null) != null }
+
+  # Private GitHub repos must use github { ... } (DO GitHub App), not git { repo_clone_url } (unauthenticated HTTPS).
+  _repo_from_https = try(regex("^https://github\\.com/([^/]+/[^/.]+)(?:\\.git)?/?$", trimspace(var.repository_clone_url))[0], null)
+  _repo_from_ssh   = try(regex("^git@github\\.com:([^/]+/[^/.]+)(?:\\.git)?$", trimspace(var.repository_clone_url))[0], null)
+  github_repo = coalesce(
+    trimspace(var.github_repo) != "" ? trimspace(var.github_repo) : null,
+    local._repo_from_https,
+    local._repo_from_ssh,
+    "LAX-UK/monorepo",
+  )
 }
 
 resource "digitalocean_app" "this" {
@@ -61,9 +71,10 @@ resource "digitalocean_app" "this" {
         instance_size_slug = service.value.instance_size
         instance_count     = service.value.instance_count
 
-        git {
-          repo_clone_url = var.repository_clone_url
+        github {
+          repo           = local.github_repo
           branch         = var.branch
+          deploy_on_push = false
         }
 
         dynamic "env" {
@@ -97,9 +108,10 @@ resource "digitalocean_app" "this" {
         instance_size_slug = worker.value.instance_size
         instance_count     = worker.value.instance_count
 
-        git {
-          repo_clone_url = var.repository_clone_url
+        github {
+          repo           = local.github_repo
           branch         = var.branch
+          deploy_on_push = false
         }
 
         dynamic "env" {
@@ -127,9 +139,10 @@ resource "digitalocean_app" "this" {
         kind               = "PRE_DEPLOY"
         run_command        = coalesce(job.value.run_command, "pnpm db:migrate:prod")
 
-        git {
-          repo_clone_url = var.repository_clone_url
+        github {
+          repo           = local.github_repo
           branch         = var.branch
+          deploy_on_push = false
         }
 
         dynamic "env" {
