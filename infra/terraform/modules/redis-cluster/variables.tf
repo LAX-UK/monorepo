@@ -13,9 +13,16 @@ variable "size" {
 variable "node_count" {
   type = number
 }
-variable "redis_version" {
-  type    = string
-  default = "7"
+variable "engine" {
+  type        = string
+  default     = "valkey"
+  description = "DigitalOcean Managed Caching engine (Valkey is the supported Redis-compatible option for new clusters)."
+}
+
+variable "engine_version" {
+  type        = string
+  default     = "8"
+  description = "Major engine version; see DO /v2/databases/options (Valkey is currently v8)."
 }
 variable "allowed_sources" {
   type    = list(string)
