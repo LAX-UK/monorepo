@@ -1,0 +1,25 @@
+name: Terraform setup
+description: Install Terraform tooling and initialize a layer/env directory
+inputs:
+  working-directory:
+    required: true
+  spaces-access-key-id:
+    required: true
+  spaces-secret-access-key:
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.9.8
+    - uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ env.DIGITALOCEAN_TOKEN }}
+    - shell: bash
+      run: |
+        echo "AWS_ACCESS_KEY_ID=${{ inputs.spaces-access-key-id }}" >> "$GITHUB_ENV"
+        echo "AWS_SECRET_ACCESS_KEY=${{ inputs.spaces-secret-access-key }}" >> "$GITHUB_ENV"
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform init -input=false

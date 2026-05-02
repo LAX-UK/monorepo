@@ -1,0 +1,19 @@
+name: App deploy prod
+on:
+  push:
+    branches: [release]
+    paths:
+      - apps/**
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - run: doctl apps create-deployment "${{ secrets.DO_PROD_APP_ID }}"

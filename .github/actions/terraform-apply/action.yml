@@ -1,0 +1,20 @@
+name: Terraform apply
+description: Apply Terraform and back up state
+inputs:
+  working-directory:
+    required: true
+  state-key:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform plan -input=false -out=tfapply.tfplan
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform apply -input=false tfapply.tfplan
+    - shell: bash
+      run: |
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        aws --endpoint-url "https://lon1.digitaloceanspaces.com" s3 cp           "s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/terraform.tfstate"           "s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/backups/${ts}.tfstate"
