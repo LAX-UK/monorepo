@@ -223,7 +223,7 @@ locals {
       kind            = "job"
       source_dir      = "/"
       dockerfile_path = "apps/api/Dockerfile"
-      run_command     = "pnpm db:migrate:prod"
+      run_command     = "node packages/db/dist/migrate-prod.js"
       instance_size   = "basic-xxs"
       instance_count  = 1
       env = [
