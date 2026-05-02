@@ -46,6 +46,5 @@ provider "cloudflare" {
 }
 
 provider "sentry" {
-  token        = var.sentry_auth_token
-  organization = var.sentry_organization_slug
+  token = var.sentry_auth_token
 }

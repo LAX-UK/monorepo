@@ -36,15 +36,19 @@ terraform {
     }
   }
 }
+locals {
+  role_names = toset(keys(nonsensitive(var.roles)))
+}
+
 resource "postgresql_role" "app" {
-  for_each = var.roles
+  for_each = local.role_names
   name     = each.key
   login    = true
-  password = each.value.password
+  password = var.roles[each.key].password
 }
 
 resource "postgresql_grant" "schema_usage" {
-  for_each    = var.roles
+  for_each    = local.role_names
   database    = var.database_name
   role        = postgresql_role.app[each.key].name
   schema      = var.schema_name
@@ -100,7 +104,7 @@ resource "postgresql_grant" "worker_full_tables" {
 }
 
 resource "postgresql_grant" "sequences" {
-  for_each    = var.roles
+  for_each    = local.role_names
   database    = var.database_name
   role        = postgresql_role.app[each.key].name
   schema      = var.schema_name

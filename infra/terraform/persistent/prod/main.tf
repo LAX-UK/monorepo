@@ -25,12 +25,11 @@ module "cloudflare_domain" {
 }
 
 module "media" {
-  source                      = "../../modules/digitalocean-spaces"
-  bucket_name                 = "lax-media"
-  region                      = local.region
-  environment                 = local.environment
-  cors_allowed_origins        = ["https://lax.bid", "https://api.lax.bid", "https://auth.lax.bid", "https://ws.lax.bid", "https://test.lax.bid", "https://test-api.lax.bid", "https://test-auth.lax.bid", "https://test-ws.lax.bid"]
-  test_prefix_expiration_days = 7
+  source               = "../../modules/digitalocean-spaces"
+  bucket_name          = "lax-media"
+  region               = local.region
+  environment          = local.environment
+  cors_allowed_origins = ["https://lax.bid", "https://api.lax.bid", "https://auth.lax.bid", "https://ws.lax.bid", "https://test.lax.bid", "https://test-api.lax.bid", "https://test-auth.lax.bid", "https://test-ws.lax.bid"]
 }
 
 module "project" {

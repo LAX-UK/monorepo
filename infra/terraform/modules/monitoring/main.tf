@@ -39,7 +39,7 @@ terraform {
 resource "digitalocean_monitor_alert" "postgres_cpu" {
   alerts { email = [var.alert_email] }
   window      = "5m"
-  type        = "v1/insights/dbaas/cpu"
+  type        = "v1/dbaas/alerts/cpu_alerts"
   compare     = "GreaterThan"
   value       = 80
   enabled     = true
@@ -50,7 +50,7 @@ resource "digitalocean_monitor_alert" "postgres_cpu" {
 resource "digitalocean_monitor_alert" "redis_memory" {
   alerts { email = [var.alert_email] }
   window      = "5m"
-  type        = "v1/insights/dbaas/memory_utilization_percent"
+  type        = "v1/dbaas/alerts/memory_utilization_alerts"
   compare     = "GreaterThan"
   value       = 80
   enabled     = true
