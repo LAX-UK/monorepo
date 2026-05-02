@@ -38,9 +38,10 @@ terraform {
 }
 
 locals {
-  services = [for c in var.components : c if c.kind == "service"]
-  workers  = [for c in var.components : c if c.kind == "worker"]
-  jobs     = [for c in var.components : c if c.kind == "job"]
+  services = { for c in var.components : c.name => c if c.kind == "service" }
+  workers  = { for c in var.components : c.name => c if c.kind == "worker" }
+  jobs     = { for c in var.components : c.name => c if c.kind == "job" }
+  domains  = { for c in var.components : c.name => c if try(c.domain, null) != null }
 }
 
 resource "digitalocean_app" "this" {
@@ -144,7 +145,7 @@ resource "digitalocean_app" "this" {
     }
 
     dynamic "domain" {
-      for_each = [for c in var.components : c if try(c.domain, null) != null]
+      for_each = local.domains
 
       content {
         name = domain.value.domain
