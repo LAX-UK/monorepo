@@ -1,8 +1,8 @@
 locals {
   environment = "test"
   region      = "lon1"
-  # Managed Redis is not available in lon1 for this account/API; use a nearby EU region (Postgres stays lon1).
-  redis_region         = "ams3"
+  # Managed Redis region must match API availability (lon1/ams3 returned 422); fra1 is a common EU option.
+  redis_region         = "fra1"
   branch               = "main"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://test.lax.bid,https://test-api.lax.bid,https://test-auth.lax.bid,https://test-ws.lax.bid"

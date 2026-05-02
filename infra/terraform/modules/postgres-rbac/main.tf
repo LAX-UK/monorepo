@@ -56,58 +56,31 @@ resource "postgresql_grant" "schema_usage" {
   privileges  = ["USAGE"]
 }
 
+# Table grants cannot run before Drizzle migrations create relations (and revokes fail if tables
+# are missing). Default privileges apply when doadmin runs migrations and creates objects.
 locals {
-  auth_full_tables   = toset(["user", "session", "account", "verification", "jwks_key", "external_accounts", "oauth_application", "oauth_access_token", "oauth_consent"])
-  api_read_tables    = toset(["user"])
-  worker_read_tables = toset(["domain_events", "user"])
-  worker_full_tables = toset(["projector_state", "webhook_event", "upload_object"])
+  table_privileges_full = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
+  sequence_privileges   = ["USAGE", "SELECT"]
 }
 
-resource "postgresql_grant" "auth_tables" {
-  for_each    = local.auth_full_tables
+resource "postgresql_default_privileges" "app_tables" {
+  for_each = local.role_names
+
   database    = var.database_name
-  role        = postgresql_role.app["auth_app"].name
   schema      = var.schema_name
-  object_type = "table"
-  objects     = [each.value]
-  privileges  = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
-}
-
-resource "postgresql_grant" "api_read_tables" {
-  for_each    = local.api_read_tables
-  database    = var.database_name
-  role        = postgresql_role.app["api_app"].name
-  schema      = var.schema_name
-  object_type = "table"
-  objects     = [each.value]
-  privileges  = ["SELECT"]
-}
-
-resource "postgresql_grant" "worker_read_tables" {
-  for_each    = local.worker_read_tables
-  database    = var.database_name
-  role        = postgresql_role.app["worker_app"].name
-  schema      = var.schema_name
-  object_type = "table"
-  objects     = [each.value]
-  privileges  = ["SELECT"]
-}
-
-resource "postgresql_grant" "worker_full_tables" {
-  for_each    = local.worker_full_tables
-  database    = var.database_name
-  role        = postgresql_role.app["worker_app"].name
-  schema      = var.schema_name
-  object_type = "table"
-  objects     = [each.value]
-  privileges  = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
-}
-
-resource "postgresql_grant" "sequences" {
-  for_each    = local.role_names
-  database    = var.database_name
   role        = postgresql_role.app[each.key].name
+  owner       = var.table_owner_role
+  object_type = "table"
+  privileges  = local.table_privileges_full
+}
+
+resource "postgresql_default_privileges" "app_sequences" {
+  for_each = local.role_names
+
+  database    = var.database_name
   schema      = var.schema_name
+  role        = postgresql_role.app[each.key].name
+  owner       = var.table_owner_role
   object_type = "sequence"
-  privileges  = ["USAGE", "SELECT"]
+  privileges  = local.sequence_privileges
 }
