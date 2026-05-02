@@ -11,7 +11,7 @@ type StoredJwk = {
 };
 
 function parseKey(value: unknown): string {
-  return typeof value === "string" ? value : JSON.stringify(value);
+  return JSON.stringify(value);
 }
 
 function toStoredJwk(value: string): StoredJwk | string {
