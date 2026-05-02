@@ -4,7 +4,7 @@ terraform {
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
-      version = "= 2.43.0"
+      version = "= 2.85.0"
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
@@ -152,6 +152,27 @@ resource "digitalocean_app" "this" {
         name = domain.value.domain
         type = try(domain.value.primary_domain, false) ? "PRIMARY" : "ALIAS"
         zone = "lax.bid"
+      }
+    }
+
+    # Without host-scoped rules, every HTTP service defaults to path "/" on shared ingress → 400 duplicate prefix.
+    ingress {
+      dynamic "rule" {
+        for_each = local.domains
+
+        content {
+          component {
+            name = rule.value.name
+          }
+          match {
+            authority {
+              exact = rule.value.domain
+            }
+            path {
+              prefix = "/"
+            }
+          }
+        }
       }
     }
   }
