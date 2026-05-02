@@ -43,7 +43,9 @@ export function canUploadKind(kind: UploadKind, role: UserRole): boolean {
     case "avatar":
       return true;
     case "submission_image":
-      return roleHasCapability(role, "client.submit") || roleHasCapability(role, "platform.admin.full");
+      return (
+        roleHasCapability(role, "client.submit") || roleHasCapability(role, "platform.admin.full")
+      );
     case "lot_image":
     case "sale_cover":
       return roleHasCapability(role, "platform.admin.full");
