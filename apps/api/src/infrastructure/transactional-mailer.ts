@@ -1,5 +1,8 @@
 import type { Env } from "../env.js";
-import type { InviteEmailInput, ITransactionalMailer } from "../services/interfaces/transactional-mail.js";
+import type {
+  ITransactionalMailer,
+  InviteEmailInput,
+} from "../services/interfaces/transactional-mail.js";
 
 class ConsoleTransactionalMailer implements ITransactionalMailer {
   async sendInviteEmail(input: InviteEmailInput): Promise<void> {

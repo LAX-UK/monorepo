@@ -46,7 +46,7 @@ export function Sparkline({
 
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: <explanation>
-<svg
+    <svg
       width={width}
       height={height}
       className={cn("shrink-0 overflow-visible", toneClass[tone], className)}

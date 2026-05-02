@@ -14,7 +14,7 @@ export function splitSubmissionUrlLines(raw: string): string[] {
 }
 
 /**
- * RHF form: text fields + `imagesText` (one URL per line). Validates then maps to `createItemSubmissionSchema` input.
+ * RHF form: text fields + uploaded image URLs. Validates then maps to `createItemSubmissionSchema` input.
  */
 export const itemSubmissionFormSchema = z
   .object({
@@ -23,7 +23,7 @@ export const itemSubmissionFormSchema = z
     medium: z.string().max(500),
     dimensions: z.string().max(200),
     categoryId: z.string().uuid({ message: "Choose a category" }),
-    imagesText: z.string(),
+    images: z.array(z.string().url()).max(20),
     askingPrice: z.string(),
     reservePrice: z.string(),
     submitterNotes: z.string().max(5000),
@@ -44,21 +44,6 @@ export const itemSubmissionFormSchema = z
         message: "Must be a valid decimal (e.g. 1200 or 1200.50)",
         path: ["reservePrice"],
       });
-    }
-    const lines = splitSubmissionUrlLines(data.imagesText);
-    if (lines.length > 20) {
-      ctx.addIssue({ code: "custom", message: "At most 20 images", path: ["imagesText"] });
-      return;
-    }
-    for (const line of lines) {
-      if (!z.string().url().safeParse(line).success) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Each non-empty line must be a valid image URL",
-          path: ["imagesText"],
-        });
-        return;
-      }
     }
   });
 

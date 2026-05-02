@@ -72,7 +72,12 @@ const defaultHeroOpts = { shareUrl: "/s", now, categoryLabel: null as string | n
 
 describe("mapSaleToHeroVM", () => {
   it("emits onsite / online tags and live-stream tag when streamUrl set", () => {
-    const vm = mapSaleToHeroVM(baseSale, { totalLots: 12, shareUrl: "/sales/sale-1", now, categoryLabel: null });
+    const vm = mapSaleToHeroVM(baseSale, {
+      totalLots: 12,
+      shareUrl: "/sales/sale-1",
+      now,
+      categoryLabel: null,
+    });
     expect(vm.tags).toContain("Onsite");
     expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
@@ -102,7 +107,12 @@ describe("mapSaleToHeroVM", () => {
   });
 
   it("scheduled: bidding row without preview", () => {
-    const vm = mapSaleToHeroVM(baseSale, { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null });
+    const vm = mapSaleToHeroVM(baseSale, {
+      totalLots: 1,
+      shareUrl: "/sales/sale-1",
+      now,
+      categoryLabel: null,
+    });
     expect(vm.registrationClosesShort).toBeNull();
     expect(vm.leftColumnLabel).toBeNull();
     expect(vm.biddingStartsShort).toBeTruthy();

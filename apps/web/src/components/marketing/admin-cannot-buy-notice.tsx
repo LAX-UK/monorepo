@@ -1,6 +1,6 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { ADMIN_CANNOT_BUY_DESCRIPTION, ADMIN_CANNOT_BUY_TITLE } from "@/lib/ui/admin-cannot-buy";
-import { roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { ReactNode } from "react";
 

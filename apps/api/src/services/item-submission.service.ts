@@ -5,7 +5,7 @@ import type {
   Lot,
   UpdateItemSubmissionInput,
 } from "@auction/types";
-import { roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";

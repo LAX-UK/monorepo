@@ -51,10 +51,7 @@ export function formatRelativeShort(target: Date, now: Date): string {
 function heroLocationSegment(sale: Sale): string | null {
   if (sale.deliveryMode === "online") return "Online";
   return (
-    sale.locationCity?.trim() ||
-    sale.locationName?.trim() ||
-    sale.locationCounty?.trim() ||
-    null
+    sale.locationCity?.trim() || sale.locationName?.trim() || sale.locationCounty?.trim() || null
   );
 }
 

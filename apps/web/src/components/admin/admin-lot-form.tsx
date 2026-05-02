@@ -1,8 +1,9 @@
 "use client";
 
-import { RhfSelect } from "@/components/ui/rhf-select";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
+import { UploadField } from "@/components/forms/upload-field";
 import { adminCreateLotResultAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
 import {
   type AdminLotFormValues,
@@ -359,6 +360,28 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="images"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="mb-2 block">
+                <LabelCaps>Lot images</LabelCaps>
+              </FormLabel>
+              <FormControl>
+                <UploadField
+                  kind="lot_image"
+                  multiple
+                  maxFiles={20}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {form.formState.errors.root ? (
           <p className="text-sm text-error" role="alert">

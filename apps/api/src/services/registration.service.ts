@@ -6,7 +6,7 @@ import type {
   IWelcomeNotifier,
   RegistrationInput,
 } from "./interfaces/registration.js";
-import { InvitationService } from "./invitation.service.js";
+import type { InvitationService } from "./invitation.service.js";
 
 export class RegistrationService implements IRegistrationService {
   constructor(
@@ -25,7 +25,11 @@ export class RegistrationService implements IRegistrationService {
     if (input.inviteToken) {
       const invite = await this.invitations.validateForRegistration(input.inviteToken, input.email);
       if (invite.isErr()) {
-        return { ok: false as const, message: invite.error.message, status: invite.error.status as 400 };
+        return {
+          ok: false as const,
+          message: invite.error.message,
+          status: invite.error.status as 400,
+        };
       }
     }
     const displayName = `${input.firstName} ${input.lastName}`.trim();
@@ -56,7 +60,11 @@ export class RegistrationService implements IRegistrationService {
         input.email,
       );
       if (consumed.isErr()) {
-        return { ok: false as const, message: consumed.error.message, status: consumed.error.status as 400 };
+        return {
+          ok: false as const,
+          message: consumed.error.message,
+          status: consumed.error.status as 400,
+        };
       }
     }
     await this.welcome.notifyWelcome(signup.userId, input.email);

@@ -3,10 +3,10 @@ import { userInvitation } from "@auction/db/schema";
 import type { UserRole } from "@auction/types";
 import { and, desc, eq } from "drizzle-orm";
 import type {
+  IUserInvitationRepository,
   InvitationInsert,
   InvitationRow,
   InvitationSummary,
-  IUserInvitationRepository,
 } from "../services/interfaces/invitation.js";
 
 function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
@@ -69,7 +69,11 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
   }
 
   async findById(id: string): Promise<InvitationRow | null> {
-    const [row] = await this.db.select().from(userInvitation).where(eq(userInvitation.id, id)).limit(1);
+    const [row] = await this.db
+      .select()
+      .from(userInvitation)
+      .where(eq(userInvitation.id, id))
+      .limit(1);
     return row ? mapRow(row) : null;
   }
 
@@ -104,7 +108,9 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
 
   async updateStatus(
     id: string,
-    patch: Partial<Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">>,
+    patch: Partial<
+      Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">
+    >,
   ): Promise<void> {
     await this.db
       .update(userInvitation)

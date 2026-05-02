@@ -14,7 +14,11 @@ const envSchema = z
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
+    OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
+    DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
+    DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
     VERIFY_ORIGIN: z.preprocess((val) => {
       if (val === undefined || val === "") return false;
       return val === "true" || val === true;
@@ -25,6 +29,16 @@ const envSchema = z
       return val === "true" || val === true;
     }, z.boolean()),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+    SENTRY_DSN_API: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    GOOGLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    APPLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    APPLE_TEAM_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    APPLE_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    APPLE_PRIVATE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    SHOPIFY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    WORDPRESS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Web Push (optional). When all three are set, server push is enabled. */
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
@@ -82,6 +96,23 @@ const envSchema = z
             "XERO_CLIENT_ID, XERO_CLIENT_SECRET, and XERO_REDIRECT_URI must all be set together when enabling Xero OAuth",
         });
       }
+    }
+    const hasGoogleId = Boolean(e.GOOGLE_CLIENT_ID);
+    const hasGoogleSecret = Boolean(e.GOOGLE_CLIENT_SECRET);
+    if (hasGoogleId !== hasGoogleSecret) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together",
+      });
+    }
+    const hasAppleId = Boolean(e.APPLE_CLIENT_ID);
+    const hasAppleSecret = Boolean(e.APPLE_CLIENT_SECRET);
+    if (hasAppleId !== hasAppleSecret) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
+      });
     }
   });
 

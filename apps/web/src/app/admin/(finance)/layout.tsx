@@ -1,7 +1,7 @@
-import { canAccessFinanceAdminRoutes, type UserRole } from "@auction/types";
-import type { ReactNode } from "react";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { type UserRole, canAccessFinanceAdminRoutes } from "@auction/types";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 /** Finance-only admin: payments and accounting integrations. */
 export default async function AdminFinanceLayout({ children }: { children: ReactNode }) {

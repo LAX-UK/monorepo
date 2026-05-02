@@ -30,7 +30,5 @@ export type StatusBadgeProps = React.HTMLAttributes<HTMLSpanElement> &
   VariantProps<typeof statusBadgeVariants>;
 
 export function StatusBadge({ className, variant, size, ...props }: StatusBadgeProps) {
-  return (
-    <span className={cn(statusBadgeVariants({ variant, size }), className)} {...props} />
-  );
+  return <span className={cn(statusBadgeVariants({ variant, size }), className)} {...props} />;
 }

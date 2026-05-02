@@ -1,3 +1,4 @@
+import { type UserRole, roleHasCapability } from "@auction/types";
 import {
   cancelSaleBodySchema,
   createNestedLotForSaleSchema,
@@ -11,7 +12,6 @@ import {
   updateLotStatusBodySchema,
   updateSaleSchema,
 } from "@auction/validators";
-import { roleHasCapability, type UserRole } from "@auction/types";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";

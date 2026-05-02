@@ -22,6 +22,8 @@ const ACCOUNTANT_ID = "accountant-seed-001";
 const ALICE_ID = "user-seed-001";
 const BOB_ID = "user-seed-002";
 const CAROL_ID = "user-seed-003";
+const GOOGLE_TEST_ID = "user-seed-google";
+const APPLE_TEST_ID = "user-seed-apple";
 
 const CAT = {
   paintings: "c1000001-0000-4000-8000-000000000001",
@@ -91,6 +93,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     account,
     verification,
     userInvitation,
+    externalAccount,
     user,
   } = schema;
   await db.delete(payment);
@@ -105,6 +108,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(account);
   await db.delete(verification);
   await db.delete(userInvitation);
+  await db.delete(externalAccount);
   await db.delete(user);
 }
 
@@ -131,6 +135,7 @@ async function main() {
     notification,
     payment,
     itemSubmission,
+    externalAccount,
   } = schema;
 
   await clearAll(db);
@@ -204,6 +209,26 @@ async function main() {
       createdAt: new Date(now - 45 * day),
       updatedAt: stamp,
     },
+    {
+      id: GOOGLE_TEST_ID,
+      name: "Google Test",
+      email: "google-test@thealx.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      createdAt: new Date(now - 30 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: APPLE_TEST_ID,
+      name: "Apple Test",
+      email: "apple-test@thealx.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      createdAt: new Date(now - 30 * day),
+      updatedAt: stamp,
+    },
   ]);
 
   await db
@@ -214,7 +239,26 @@ async function main() {
       credentialAccount(ALICE_ID),
       credentialAccount(BOB_ID),
       credentialAccount(CAROL_ID),
+      credentialAccount(GOOGLE_TEST_ID),
+      credentialAccount(APPLE_TEST_ID),
     ]);
+
+  await db.insert(externalAccount).values([
+    {
+      userId: GOOGLE_TEST_ID,
+      provider: "google",
+      externalId: "google-test-sub",
+      email: "google-test@thealx.bid",
+      metadata: { seeded: true },
+    },
+    {
+      userId: APPLE_TEST_ID,
+      provider: "apple",
+      externalId: "apple-test-sub",
+      email: "apple-test@thealx.bid",
+      metadata: { seeded: true },
+    },
+  ]);
 
   await db.insert(category).values([
     { id: CAT.paintings, name: "Paintings", slug: "paintings", parentId: null },

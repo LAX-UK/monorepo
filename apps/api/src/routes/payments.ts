@@ -22,25 +22,31 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     );
   });
 
-  r.post("/", requireAuth, requireBuyerRole, zValidator("json", createPaymentBodySchema), async (c) => {
-    const userId = c.get("userId") as string;
-    const body = c.req.valid("json");
-    const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
-    return result.match(
-      (data) =>
-        c.json(
-          {
-            data: {
-              paymentId: data.paymentId,
-              clientSecret: data.clientSecret,
-              checkoutUrl: data.checkoutUrl,
+  r.post(
+    "/",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("json", createPaymentBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
+      return result.match(
+        (data) =>
+          c.json(
+            {
+              data: {
+                paymentId: data.paymentId,
+                clientSecret: data.clientSecret,
+                checkoutUrl: data.checkoutUrl,
+              },
             },
-          },
-          201,
-        ),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+            201,
+          ),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
   r.post("/:id/capture", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";

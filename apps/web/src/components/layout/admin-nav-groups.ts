@@ -13,7 +13,10 @@ import {
   Wallet,
 } from "lucide-react";
 
-export function getAdminNavGroups(role: UserRole, pendingSubmissionCount: number): readonly NavGroup[] {
+export function getAdminNavGroups(
+  role: UserRole,
+  pendingSubmissionCount: number,
+): readonly NavGroup[] {
   const financeOnly: readonly NavGroup[] = [
     {
       title: "Finance",

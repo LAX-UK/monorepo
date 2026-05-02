@@ -20,7 +20,9 @@ export type CompareDeltaProps = {
 
 export function CompareDelta({ label, tone = "neutral", className }: CompareDeltaProps) {
   return (
-    <span className={cn("font-label text-xs font-semibold tabular-nums", toneClass[tone], className)}>
+    <span
+      className={cn("font-label text-xs font-semibold tabular-nums", toneClass[tone], className)}
+    >
       {label}
     </span>
   );

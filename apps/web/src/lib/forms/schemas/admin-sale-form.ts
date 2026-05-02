@@ -2,13 +2,6 @@ import { saleDeliveryModes } from "@auction/types";
 import { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import { z } from "zod";
 
-function splitUrlLines(raw: string): string[] {
-  return raw
-    .split(/[\n,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 function parseCategoryId(cat: string): string | undefined {
   const t = cat.trim();
   if (!t || !/^[0-9a-f-]{36}$/i.test(t)) return undefined;
@@ -18,7 +11,7 @@ function parseCategoryId(cat: string): string | undefined {
 export const adminSaleFormValuesSchema = z.object({
   title: z.string().min(1, "Title is required").max(500),
   description: z.string().max(10_000),
-  coverImages: z.string(),
+  coverImages: z.array(z.string().url()).max(6),
   categoryId: z.string(),
   deliveryMode: z.enum(saleDeliveryModes),
   streamUrl: z.string().max(500),
@@ -91,12 +84,11 @@ function pickLocationUpdate(
 }
 
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
-  const coverRaw = values.coverImages.trim();
   const isOnsite = values.deliveryMode === "onsite";
   return createSaleSchema.safeParse({
     title: values.title.trim(),
     description: values.description.trim() || undefined,
-    coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
+    coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? values.streamUrl.trim() || undefined : undefined,
@@ -112,13 +104,12 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
 }
 
 export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
-  const coverRaw = values.coverImages.trim();
   const streamRaw = values.streamUrl.trim();
   const isOnsite = values.deliveryMode === "onsite";
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
-    coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
+    coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,

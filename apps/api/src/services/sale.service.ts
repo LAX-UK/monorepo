@@ -1,4 +1,10 @@
-import { roleHasCapability, type CreateSaleInput, type Lot, type Sale, type UserRole } from "@auction/types";
+import {
+  type CreateSaleInput,
+  type Lot,
+  type Sale,
+  type UserRole,
+  roleHasCapability,
+} from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,

@@ -1,32 +1,31 @@
+import pino from "pino";
 import type { Env } from "../env.js";
+import { getRequestContext } from "./request-context.js";
 
 export type LogFields = Record<string, unknown>;
+export type AppLogger = pino.Logger;
 
-function line(level: string, msg: string, fields?: LogFields) {
-  const payload = { level, msg, ts: new Date().toISOString(), ...fields };
-  console.log(JSON.stringify(payload));
+const loggerByLevel = new Map<string, AppLogger>();
+
+export function createBaseLogger(env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">): AppLogger {
+  const key = `${env.LOG_LEVEL}:${env.NODE_ENV}`;
+  const cached = loggerByLevel.get(key);
+  if (cached) return cached;
+
+  const logger = pino({
+    level: env.LOG_LEVEL,
+    base: {
+      service: "auction-api",
+      env: env.NODE_ENV,
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+  });
+  loggerByLevel.set(key, logger);
+  return logger;
 }
 
-export function createAppLogger(env: Env) {
-  const min = env.LOG_LEVEL;
-  const order = ["fatal", "error", "warn", "info", "debug", "trace"] as const;
-  const idx = order.indexOf(min as (typeof order)[number]);
-
-  function enabled(level: (typeof order)[number]) {
-    return order.indexOf(level) <= idx;
-  }
-
-  return {
-    info(msg: string, fields?: LogFields) {
-      if (enabled("info")) line("info", msg, fields);
-    },
-    warn(msg: string, fields?: LogFields) {
-      if (enabled("warn")) line("warn", msg, fields);
-    },
-    error(msg: string, fields?: LogFields) {
-      if (enabled("error")) line("error", msg, fields);
-    },
-  };
+export function createAppLogger(env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">): AppLogger {
+  const requestId = getRequestContext()?.requestId;
+  const logger = createBaseLogger(env);
+  return requestId ? logger.child({ request_id: requestId }) : logger;
 }
-
-export type AppLogger = ReturnType<typeof createAppLogger>;

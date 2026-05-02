@@ -24,6 +24,7 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     minBidIncrement: auction.minBidIncrement,
     dutchDecrementAmount: auction.dutchDecrementAmount ?? "",
     dutchDecrementIntervalMs: String(auction.dutchDecrementIntervalMs),
+    images: auction.images,
     startTime: toDatetimeLocalValue(auction.startTime),
     endTime: toDatetimeLocalValue(auction.endTime),
   };
@@ -48,6 +49,7 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     minBidIncrement: "",
     dutchDecrementAmount: "",
     dutchDecrementIntervalMs: "60000",
+    images: [],
     startTime: toDatetimeLocalValue(s),
     endTime: toDatetimeLocalValue(e),
   };

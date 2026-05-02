@@ -6,9 +6,11 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
+COPY apps/auth/package.json ./apps/auth/
 COPY apps/api/package.json ./apps/api/
 COPY apps/ws/package.json ./apps/ws/
 COPY apps/web/package.json ./apps/web/
+COPY apps/worker/package.json ./apps/worker/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
@@ -21,10 +23,12 @@ ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/auth/package.json ./apps/auth/package.json
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/ws/package.json ./apps/ws/package.json
 COPY --from=builder /app/apps/ws/node_modules ./apps/ws/node_modules
+COPY --from=builder /app/apps/worker/package.json ./apps/worker/package.json
 COPY --from=builder /app/apps/ws/dist ./apps/ws/dist
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

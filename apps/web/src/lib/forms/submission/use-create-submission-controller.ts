@@ -15,7 +15,7 @@ const defaultValues: NewSubmissionFormValues = {
   medium: "",
   dimensions: "",
   categoryId: "",
-  imagesText: "",
+  images: [],
   askingPrice: "",
   reservePrice: "",
   submitterNotes: "",

@@ -1,4 +1,4 @@
-import { roleHasCapability, type Lot, type UserRole } from "@auction/types";
+import { type Lot, type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";

@@ -51,10 +51,7 @@ describe("RedisNotificationSender", () => {
   it("redacts bid_placed payload for active sealed lots", async () => {
     const publish = vi.fn().mockResolvedValue(1);
     const sender = new RedisNotificationSender({ publish } as never);
-    await sender.notifyBidPlaced(
-      baseLot({ auctionType: "sealed", status: "active" }),
-      bid,
-    );
+    await sender.notifyBidPlaced(baseLot({ auctionType: "sealed", status: "active" }), bid);
     expect(publish).toHaveBeenCalledTimes(1);
     const payload = publish.mock.calls[0]?.[1] as string;
     expect(payload).toContain('"sealed":true');

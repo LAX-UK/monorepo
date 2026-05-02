@@ -2,11 +2,11 @@
 
 import {
   type ColumnDef,
+  type RowSelectionState,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  type RowSelectionState,
-  type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
@@ -97,14 +97,16 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className={cn("w-full overflow-x-auto rounded-md border border-outline-variant/15", className)}>
+    <div
+      className={cn(
+        "w-full overflow-x-auto rounded-md border border-outline-variant/15",
+        className,
+      )}
+    >
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow
-              key={headerGroup.id}
-              className={density === "compact" ? "h-9" : undefined}
-            >
+            <TableRow key={headerGroup.id} className={density === "compact" ? "h-9" : undefined}>
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
