@@ -1,0 +1,19 @@
+name: App deploy test
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/**
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - run: doctl apps create-deployment "${{ secrets.DO_TEST_APP_ID }}"
