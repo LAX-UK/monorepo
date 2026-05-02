@@ -1,8 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { UploadField } from "@/components/forms/upload-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
+import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import {
@@ -24,6 +26,9 @@ import {
 import { Separator } from "@auction/ui/components/separator";
 import { CreditCard, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export type ProfileAddressRow = {
   id: string;
@@ -40,6 +45,7 @@ export type ProfileAddressRow = {
 type Props = {
   email: string;
   initialName: string;
+  initialImage: string | null;
   addresses: ProfileAddressRow[];
 };
 
@@ -99,6 +105,40 @@ function ProfileNameCard({ email, initialName }: { email: string; initialName: s
             Security settings
           </Link>
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileAvatarCard({ initialImage }: { initialImage: string | null }) {
+  const [value, setValue] = useState(initialImage ? [initialImage] : []);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function persist(next: string[]) {
+    setValue(next);
+    startTransition(async () => {
+      const r = await updateProfileImageAction({ image: next[0] ?? null });
+      if (r.ok) {
+        toast.success("Profile image updated");
+        router.refresh();
+        return;
+      }
+      toast.error(r.error);
+    });
+  }
+
+  return (
+    <Card className="rounded-sm border-outline-variant/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+          Profile picture
+        </CardTitle>
+        <CardDescription>Shown on your profile and bidding account.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <UploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
+        {pending ? <p className="font-body text-xs text-on-surface-variant">Saving…</p> : null}
       </CardContent>
     </Card>
   );
@@ -242,9 +282,10 @@ function AddAddressCard() {
   );
 }
 
-export function ProfileSettingsBoard({ email, initialName, addresses }: Props) {
+export function ProfileSettingsBoard({ email, initialName, initialImage, addresses }: Props) {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
+      <ProfileAvatarCard initialImage={initialImage} />
       <ProfileNameCard email={email} initialName={initialName} />
 
       <Card className="rounded-sm border-outline-variant/20 shadow-none">

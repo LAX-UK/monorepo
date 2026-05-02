@@ -15,7 +15,11 @@ export type SectionNavProps = {
   "aria-label"?: string;
 };
 
-export function SectionNav({ items, className, "aria-label": ariaLabel = "Section" }: SectionNavProps) {
+export function SectionNav({
+  items,
+  className,
+  "aria-label": ariaLabel = "Section",
+}: SectionNavProps) {
   return (
     <nav className={cn("space-y-1", className)} aria-label={ariaLabel}>
       {items.map((item) => (

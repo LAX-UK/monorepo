@@ -100,7 +100,13 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(stubDb, submissions, {} as ILotRepository, users, dispatcher);
+    const svc = new ItemSubmissionService(
+      stubDb,
+      submissions,
+      {} as ILotRepository,
+      users,
+      dispatcher,
+    );
     const r = await svc.submitForReview("u1", "sub-1");
     expect(r.isOk()).toBe(true);
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);

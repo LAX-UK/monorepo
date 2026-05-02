@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { isAllowedStreamUrl, parseStreamEmbedUrl } from "@auction/validators";
+import { describe, expect, it } from "vitest";
 
 describe("parseStreamEmbedUrl", () => {
   it("parses youtube watch URL", () => {

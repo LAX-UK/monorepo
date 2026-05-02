@@ -1,5 +1,5 @@
 import type { UpdateItemSubmissionInput } from "@auction/types";
-import { roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import {
   adminSubmissionNotesSchema,
   approveSubmissionBodySchema,
@@ -90,17 +90,32 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     requireBuyerRoleUnlessAdministrator,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-    const { id } = c.req.valid("param");
-    const role = (c.get("userRole") ?? "client") as UserRole;
-    const userId = c.get("userId") as string;
-    let raw: unknown = {};
-    try {
-      raw = await c.req.json();
-    } catch {
-      raw = {};
-    }
-    if (roleHasCapability(role, "platform.admin.full")) {
-      const parsed = adminSubmissionNotesSchema.safeParse(raw);
+      const { id } = c.req.valid("param");
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const userId = c.get("userId") as string;
+      let raw: unknown = {};
+      try {
+        raw = await c.req.json();
+      } catch {
+        raw = {};
+      }
+      if (roleHasCapability(role, "platform.admin.full")) {
+        const parsed = adminSubmissionNotesSchema.safeParse(raw);
+        if (!parsed.success) {
+          return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
+        }
+        const result = await container.itemSubmissionService.updateForActor({
+          actorId: userId,
+          role,
+          submissionId: id,
+          adminNotes: parsed.data,
+        });
+        return result.match(
+          (data) => c.json({ data }),
+          (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
+        );
+      }
+      const parsed = updateItemSubmissionSchema.safeParse(raw);
       if (!parsed.success) {
         return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
       }
@@ -108,27 +123,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         actorId: userId,
         role,
         submissionId: id,
-        adminNotes: parsed.data,
+        sellerPatch: parsed.data as UpdateItemSubmissionInput,
       });
       return result.match(
         (data) => c.json({ data }),
         (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
       );
-    }
-    const parsed = updateItemSubmissionSchema.safeParse(raw);
-    if (!parsed.success) {
-      return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
-    }
-    const result = await container.itemSubmissionService.updateForActor({
-      actorId: userId,
-      role,
-      submissionId: id,
-      sellerPatch: parsed.data as UpdateItemSubmissionInput,
-    });
-    return result.match(
-      (data) => c.json({ data }),
-      (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-    );
     },
   );
 
@@ -138,13 +138,13 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     requireBuyerRole,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-    const userId = c.get("userId") as string;
-    const { id } = c.req.valid("param");
-    const result = await container.itemSubmissionService.submitForReview(userId, id);
-    return result.match(
-      (data) => c.json({ data }),
-      (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-    );
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const result = await container.itemSubmissionService.submitForReview(userId, id);
+      return result.match(
+        (data) => c.json({ data }),
+        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
+      );
     },
   );
 
@@ -154,13 +154,13 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     requireBuyerRole,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-    const userId = c.get("userId") as string;
-    const { id } = c.req.valid("param");
-    const result = await container.itemSubmissionService.withdraw(userId, id);
-    return result.match(
-      (data) => c.json({ data }),
-      (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-    );
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const result = await container.itemSubmissionService.withdraw(userId, id);
+      return result.match(
+        (data) => c.json({ data }),
+        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
+      );
     },
   );
 

@@ -10,11 +10,14 @@ export class ConsoleErrorLogger implements IErrorLogger {
   }
 
   log(classified: ClassifiedError): void {
-    this.appLog.error("http_error", {
-      message: classified.message,
-      status: classified.status,
-      code: classified.code,
-      severity: classified.severity,
-    });
+    this.appLog.error(
+      {
+        message: classified.message,
+        status: classified.status,
+        code: classified.code,
+        severity: classified.severity,
+      },
+      "http_error",
+    );
   }
 }

@@ -19,6 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
+    "db:migrate:prod": "tsx src/migrate-prod.ts",
+    "db:roles": "tsx src/migrate-roles.ts",
     "db:migrate:kit": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
     "db:studio": "drizzle-kit studio"

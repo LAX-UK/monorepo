@@ -1,4 +1,4 @@
-import { roleHasCapability, type CreateLotInput, type UserRole } from "@auction/types";
+import { type CreateLotInput, type UserRole, roleHasCapability } from "@auction/types";
 import {
   archiveCountQuerySchema,
   archiveSummaryQuerySchema,

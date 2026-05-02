@@ -1,10 +1,10 @@
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
-import { userRoles, type UserRole } from "@auction/types";
+import { type UserRole, userRoles } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 

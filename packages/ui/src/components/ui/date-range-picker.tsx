@@ -30,8 +30,7 @@ function applyPreset(preset: DateRangePreset): DateRangeValue {
   if (preset === "today") {
     return { from: toYmd(start), to: toYmd(end) };
   }
-  const days =
-    preset === "7d" ? 7 : preset === "30d" ? 30 : preset === "90d" ? 90 : 30;
+  const days = preset === "7d" ? 7 : preset === "30d" ? 30 : preset === "90d" ? 90 : 30;
   start.setUTCDate(start.getUTCDate() - (days - 1));
   return { from: toYmd(start), to: toYmd(end) };
 }

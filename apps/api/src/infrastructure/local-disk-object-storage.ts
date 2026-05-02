@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 
@@ -13,9 +13,55 @@ export class LocalDiskObjectStorage implements IObjectStorage {
     const fullPath = join(this.rootDir, key);
     await mkdir(dirname(fullPath), { recursive: true });
     await writeFile(fullPath, body);
+    return { url: this.getPublicUrl(key) };
+  }
+
+  getPublicUrl(key: string): string {
     const base = this.publicUrlPrefix.replace(/\/$/, "");
     const path = key.startsWith("/") ? key : `/${key}`;
-    return { url: `${base}${path}` };
+    return `${base}${path}`;
+  }
+
+  async createPresignedPut(args: {
+    key: string;
+    contentType: string;
+    byteSize: number;
+    expiresInSec: number;
+  }): Promise<{ url: string; requiredHeaders: Record<string, string> }> {
+    void args.byteSize;
+    void args.expiresInSec;
+    const apiBase = this.publicUrlPrefix.replace(/\/static\/uploads\/?$/, "");
+    const token = Buffer.from(args.key, "utf8").toString("base64url");
+    return {
+      url: `${apiBase}/uploads/local/${token}`,
+      requiredHeaders: {
+        "content-type": args.contentType,
+      },
+    };
+  }
+
+  async headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+    try {
+      const fullPath = join(this.rootDir, key);
+      const info = await stat(fullPath);
+      return {
+        contentType: "application/octet-stream",
+        byteSize: info.size,
+        etag: `${info.size}-${Math.floor(info.mtimeMs)}`,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null> {
+    try {
+      const fullPath = join(this.rootDir, key);
+      const bytes = await readFile(fullPath);
+      return bytes.subarray(0, maxBytes);
+    } catch {
+      return null;
+    }
   }
 
   async deleteObject(key: string): Promise<void> {

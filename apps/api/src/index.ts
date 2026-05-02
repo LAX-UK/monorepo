@@ -1,10 +1,18 @@
 import { serve } from "@hono/node-server";
+import * as Sentry from "@sentry/node";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 
 const env = loadEnv();
+if (env.SENTRY_DSN_API) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN_API,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.05 : 1,
+  });
+}
 const container = createContainer(env);
 const app = createApp(container, env, container.authenticator);
 
@@ -40,7 +48,7 @@ void container.lotLifecycleService
     console.error("[lot-lifecycle:initial]", err);
   });
 
-serve(
+const server = serve(
   {
     fetch: app.fetch,
     hostname: "0.0.0.0",
@@ -50,3 +58,32 @@ serve(
     console.log(`API listening on http://${info.address}:${info.port}`);
   },
 );
+
+let shuttingDown = false;
+function shutdown(signal: NodeJS.Signals) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[api] ${signal} received; draining HTTP server`);
+  const timeout = setTimeout(() => {
+    console.error("[api] graceful shutdown timed out");
+    process.exit(1);
+  }, 10_000);
+  timeout.unref();
+  server.close((err) => {
+    if (err) {
+      console.error("[api] failed to close server", err);
+      process.exit(1);
+    }
+    void Promise.allSettled([
+      lotWorker.close(),
+      container.uploadValidationQueue.close(),
+      container.redis.quit(),
+    ]).finally(() => {
+      clearTimeout(timeout);
+      process.exit(0);
+    });
+  });
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

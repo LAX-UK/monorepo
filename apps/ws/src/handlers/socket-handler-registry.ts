@@ -1,6 +1,7 @@
-import { normalizeUserRoleOrClient, roleHasCapability, type UserRole } from "@auction/types";
+import { type UserRole, normalizeUserRoleOrClient, roleHasCapability } from "@auction/types";
 import type { Server, Socket } from "socket.io";
 import type { WsEnv } from "../env.js";
+import { verifySocketToken } from "../services/jwt-verifier.js";
 
 export type HandlerContext = {
   io: Server;
@@ -21,6 +22,16 @@ async function resolveSessionUser(
   socket: Socket,
   env: WsEnv,
 ): Promise<{ id: string; role: string } | null> {
+  const token =
+    typeof socket.handshake.auth?.token === "string" ? socket.handshake.auth.token : undefined;
+  const jwtUser = await verifySocketToken({
+    token,
+    issuer: env.OIDC_ISSUER,
+    jwksUrl: env.JWKS_URL,
+  });
+  if (jwtUser) return jwtUser;
+
+  if (!env.LEGACY_WS_COOKIE_RELAY) return null;
   const cookie = socket.handshake.headers.cookie;
   if (!cookie) return null;
   try {

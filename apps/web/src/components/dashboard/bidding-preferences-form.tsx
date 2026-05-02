@@ -2,6 +2,7 @@
 
 import { updateBiddingPreferencesFromValuesAction } from "@/lib/actions/user-bidding-preferences";
 import { Button } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
   FormControl,
@@ -10,7 +11,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
-import { Checkbox } from "@auction/ui/components/checkbox";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { zodResolver } from "@hookform/resolvers/zod";

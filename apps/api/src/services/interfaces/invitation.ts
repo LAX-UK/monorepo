@@ -36,6 +36,8 @@ export interface IUserInvitationRepository {
   listPendingCreatedBy(userId: string): Promise<InvitationSummary[]>;
   updateStatus(
     id: string,
-    patch: Partial<Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">>,
+    patch: Partial<
+      Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">
+    >,
   ): Promise<void>;
 }

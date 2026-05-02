@@ -1,7 +1,10 @@
 import type { Database } from "@auction/db";
 import { artistWatchlist } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
-import type { ArtistWatchlistRow, IArtistWatchlistRepository } from "../services/interfaces/artist-watchlist.js";
+import type {
+  ArtistWatchlistRow,
+  IArtistWatchlistRepository,
+} from "../services/interfaces/artist-watchlist.js";
 
 function mapRow(row: typeof artistWatchlist.$inferSelect): ArtistWatchlistRow {
   return {
@@ -36,7 +39,10 @@ export class DrizzleArtistWatchlistRepository implements IArtistWatchlistReposit
   }
 
   async findByUser(userId: string): Promise<ArtistWatchlistRow[]> {
-    const rows = await this.db.select().from(artistWatchlist).where(eq(artistWatchlist.userId, userId));
+    const rows = await this.db
+      .select()
+      .from(artistWatchlist)
+      .where(eq(artistWatchlist.userId, userId));
     return rows.map(mapRow);
   }
 

@@ -1,4 +1,8 @@
-import type { ArtistWatchlistRow, IArtistExistenceReader, IArtistWatchlistRepository } from "./interfaces/artist-watchlist.js";
+import type {
+  ArtistWatchlistRow,
+  IArtistExistenceReader,
+  IArtistWatchlistRepository,
+} from "./interfaces/artist-watchlist.js";
 
 export class ArtistWatchlistService {
   constructor(

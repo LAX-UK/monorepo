@@ -29,13 +29,19 @@ export function ReviewSplitPane({
     <div className={cn("w-full", className)}>
       <div className="hidden gap-8 lg:grid lg:grid-cols-2">
         <section aria-labelledby="review-record-heading" className="min-w-0 space-y-4">
-          <h2 id="review-record-heading" className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+          <h2
+            id="review-record-heading"
+            className="font-label text-xs font-bold uppercase tracking-widest text-secondary"
+          >
             {recordTitle}
           </h2>
           {record}
         </section>
         <section aria-labelledby="review-decision-heading" className="min-w-0 space-y-4">
-          <h2 id="review-decision-heading" className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+          <h2
+            id="review-decision-heading"
+            className="font-label text-xs font-bold uppercase tracking-widest text-secondary"
+          >
             {decisionTitle}
           </h2>
           {decision}

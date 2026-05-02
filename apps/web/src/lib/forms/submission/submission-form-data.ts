@@ -1,14 +1,12 @@
-import { splitSubmissionUrlLines } from "@auction/validators";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 
 export function formValuesToCreateItemSubmissionInput(values: ItemSubmissionFormValues) {
-  const imagesRaw = splitSubmissionUrlLines(values.imagesText);
   return {
     title: values.title.trim(),
     description: values.description.trim() || undefined,
     medium: values.medium.trim() || undefined,
     dimensions: values.dimensions.trim() || undefined,
-    images: imagesRaw.length > 0 ? imagesRaw : undefined,
+    images: values.images.length > 0 ? values.images : undefined,
     askingPrice: values.askingPrice.trim() || undefined,
     reservePrice: values.reservePrice.trim() || undefined,
     categoryId: values.categoryId,
@@ -38,7 +36,7 @@ export function createSubmissionFormData(values: ItemSubmissionFormValues): Form
   fd.set("medium", values.medium.trim());
   fd.set("dimensions", values.dimensions.trim());
   fd.set("categoryId", values.categoryId);
-  fd.set("images", values.imagesText);
+  fd.set("images", values.images.join("\n"));
   fd.set("askingPrice", values.askingPrice.trim());
   fd.set("reservePrice", values.reservePrice.trim());
   fd.set("submitterNotes", values.submitterNotes.trim());

@@ -2,8 +2,8 @@ import type { Lot } from "@auction/types";
 import { Hono } from "hono";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import { AuthzError } from "../lib/errors.js";
 import type { Container } from "../container.js";
+import { AuthzError } from "../lib/errors.js";
 import { createLotRoutes } from "../routes/lots.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 

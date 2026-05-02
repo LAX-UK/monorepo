@@ -31,25 +31,39 @@ export function attachAdminInvitationRoutes(
     return c.json({ data });
   });
 
-  r.post("/invitations/:invitationId/revoke", zValidator("param", invitationIdUuidParamSchema), async (c) => {
-    const actorId = c.get("userId") as string;
-    const { invitationId } = c.req.valid("param");
-    const result = await container.invitationService.revoke({ actorUserId: actorId, invitationId });
-    return result.match(
-      () => c.json({ ok: true }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+  r.post(
+    "/invitations/:invitationId/revoke",
+    zValidator("param", invitationIdUuidParamSchema),
+    async (c) => {
+      const actorId = c.get("userId") as string;
+      const { invitationId } = c.req.valid("param");
+      const result = await container.invitationService.revoke({
+        actorUserId: actorId,
+        invitationId,
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
-  r.post("/invitations/:invitationId/resend", zValidator("param", invitationIdUuidParamSchema), async (c) => {
-    const actorId = c.get("userId") as string;
-    const { invitationId } = c.req.valid("param");
-    const result = await container.invitationService.resend({ actorUserId: actorId, invitationId });
-    return result.match(
-      (data) => c.json({ data }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+  r.post(
+    "/invitations/:invitationId/resend",
+    zValidator("param", invitationIdUuidParamSchema),
+    async (c) => {
+      const actorId = c.get("userId") as string;
+      const { invitationId } = c.req.valid("param");
+      const result = await container.invitationService.resend({
+        actorUserId: actorId,
+        invitationId,
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 }
 
 export function createPublicInvitationRoutes(container: Container) {

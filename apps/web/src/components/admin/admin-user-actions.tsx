@@ -5,7 +5,7 @@ import {
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
-import { userRoles, type UserRole } from "@auction/types";
+import { type UserRole, userRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Select,
@@ -50,11 +50,7 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
   if (layout === "block") {
     return (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Select
-          value={role}
-          onValueChange={(v) => setRole(v as UserRole)}
-          disabled={pending}
-        >
+        <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={pending}>
           <SelectTrigger
             className="min-h-11 w-full font-body text-sm sm:flex-1"
             aria-label="User role"

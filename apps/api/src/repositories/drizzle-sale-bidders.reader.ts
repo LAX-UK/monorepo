@@ -22,10 +22,7 @@ function maskDisplayName(row: {
 export class DrizzleSaleBiddersReader implements ISaleBiddersReader {
   constructor(private readonly db: Database) {}
 
-  async list(
-    saleId: string,
-    opts: { limit: number; offset: number },
-  ): Promise<SaleBidderRow[]> {
+  async list(saleId: string, opts: { limit: number; offset: number }): Promise<SaleBidderRow[]> {
     const firstBidAt = min(bid.createdAt);
     const rows = await this.db
       .select({

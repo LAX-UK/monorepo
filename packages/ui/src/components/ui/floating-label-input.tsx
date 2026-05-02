@@ -38,10 +38,10 @@ export const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLab
     const errorId = error ? `${inputId}-error` : undefined;
     const extraIds = ariaDescribedByExtra?.trim().split(/\s+/).filter(Boolean) ?? [];
     const describedByIds = [...(errorId ? [errorId] : []), ...extraIds];
-    const merged =
-      [...describedByIds, ...(userDescribedBy ? String(userDescribedBy).split(/\s+/) : [])].filter(
-        Boolean,
-      );
+    const merged = [
+      ...describedByIds,
+      ...(userDescribedBy ? String(userDescribedBy).split(/\s+/) : []),
+    ].filter(Boolean);
     const ariaDescribedByMerged = merged.length > 0 ? merged.join(" ") : undefined;
     const strVal = value === undefined || value === null ? "" : String(value);
     const [focused, setFocused] = React.useState(false);
