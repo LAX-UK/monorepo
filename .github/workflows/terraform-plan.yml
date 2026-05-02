@@ -1,0 +1,52 @@
+name: Terraform plan
+on:
+  pull_request:
+    paths:
+      - infra/terraform/**
+      - .github/workflows/terraform-*.yml
+      - .github/actions/terraform-*/**
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [test, prod]
+        layer: [persistent, ephemeral]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
+      TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+      TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      TF_VAR_spaces_access_key_id: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_access_key: ${{ secrets.MEDIA_SPACES_SECRET_ACCESS_KEY }}
+      TF_VAR_shopify_webhook_secret: ${{ secrets.SHOPIFY_WEBHOOK_SECRET }}
+      TF_VAR_wordpress_webhook_secret: ${{ secrets.WORDPRESS_WEBHOOK_SECRET }}
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - uses: ./.github/actions/terraform-plan
+        with:
+          working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}
+          plan-name: terraform-${{ matrix.layer }}-${{ matrix.env }}
+      - uses: infracost/actions/setup@v3
+        if: env.INFRACOST_API_KEY != ''
+      - name: Post plan summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `Terraform plan generated for ${{ matrix.layer }}/${{ matrix.env }}. Download the artifact to review full diffs.`;
+            await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });

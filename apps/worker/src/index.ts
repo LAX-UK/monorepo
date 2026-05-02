@@ -8,6 +8,7 @@ import { Redis } from "ioredis";
 import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
+import { retireExpiredJwksKeys } from "./jobs/jwks-rotation.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
@@ -93,6 +94,16 @@ const projectorRunner = createProjectorRunner({
 });
 void projectorRunner.start();
 
+const jwksRotationInterval = setInterval(
+  () => {
+    void retireExpiredJwksKeys(db).catch((err) => {
+      log.error({ err }, "JWKS retirement job failed");
+    });
+  },
+  15 * 60 * 1000,
+);
+jwksRotationInterval.unref();
+
 const metrics = new Registry();
 collectDefaultMetrics({ register: metrics, prefix: "auction_worker_" });
 const app = new Hono();
@@ -140,13 +151,14 @@ function shutdown(signal: NodeJS.Signals) {
     gcPendingUploadsWorker.close(),
     gcUploadQueue.close(),
     projectorRunner.stop(),
+    Promise.resolve().then(() => clearInterval(jwksRotationInterval)),
     redis.quit(),
   ]).finally(() => {
-      server.close(() => {
-        clearTimeout(timeout);
-        process.exit(0);
-      });
+    server.close(() => {
+      clearTimeout(timeout);
+      process.exit(0);
     });
+  });
 }
 
 process.on("SIGTERM", shutdown);

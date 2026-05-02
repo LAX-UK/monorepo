@@ -1,0 +1,12 @@
+name: Nightly test teardown
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run terraform-test-down.yml --repo ${{ github.repository }}
