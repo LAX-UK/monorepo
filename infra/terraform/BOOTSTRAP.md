@@ -15,6 +15,21 @@ gh secret set DIGITALOCEAN_TOKEN
 
 The token is used by Terraform, `doctl`, and the app deployment workflows.
 
+### GitHub access for App Platform (required before `digitalocean_app`)
+
+Terraform declares components that build from  
+`https://github.com/LAX-UK/monorepo.git` (see `repository_clone_url`).  
+Creating the app calls the DigitalOcean API, which checks the **DigitalOcean
+GitHub App**, not your API token. If you see  
+`Account does not have access to the repo`, grant access:
+
+1. Open [GitHub install for App Platform](https://cloud.digitalocean.com/apps/github/install) (while logged into the **same** DigitalOcean team that runs Terraform).
+2. Under repository access, include organization **`LAX-UK`** and repository **`monorepo`** (or “All repositories” for that org, if acceptable).
+3. On GitHub: **Organization settings → Third-party access / GitHub Apps → DigitalOcean** and confirm **`monorepo`** is allowed (especially after moving the repo under an org).
+4. Re-run the ephemeral Terraform apply.
+
+You can override the clone URL with `TF_VAR_repository_clone_url` if the canonical remote differs.
+
 ## 2. Spaces state bucket
 
 DigitalOcean Spaces bucket names are globally unique. Try the canonical name
@@ -45,6 +60,8 @@ Terraform state keys:
 - `persistent-prod/terraform.tfstate`
 - `ephemeral-test/terraform.tfstate`
 - `ephemeral-prod/terraform.tfstate`
+
+Ephemeral stacks read **`digitalocean_project_id`** from the matching persistent state and attach Postgres, Managed Caching, and App Platform to **`lax-test-project`** / **`lax-prod-project`**. Apply **`persistent-{test|prod}`** at least once (after this output exists), then **`ephemeral-{env}`**.
 
 JWKS snapshots live under:
 
