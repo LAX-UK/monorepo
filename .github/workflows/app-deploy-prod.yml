@@ -11,9 +11,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      APP_ID: ${{ secrets.DO_PROD_APP_ID }}
     steps:
       - uses: actions/checkout@v4
+      - name: Skip until App Platform app exists
+        if: env.APP_ID == ''
+        run: echo "DO_PROD_APP_ID is not set yet; skipping app deployment until Terraform creates the app."
       - uses: digitalocean/action-doctl@v2
+        if: env.APP_ID != ''
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - run: doctl apps create-deployment "${{ secrets.DO_PROD_APP_ID }}"
+      - if: env.APP_ID != ''
+        run: doctl apps create-deployment "$APP_ID"
