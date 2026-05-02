@@ -137,7 +137,10 @@ resource "digitalocean_app" "this" {
         instance_size_slug = job.value.instance_size
         instance_count     = 1
         kind               = "PRE_DEPLOY"
-        run_command        = coalesce(job.value.run_command, "pnpm db:migrate:prod")
+        # The API runner image is `FROM node:22-alpine` without corepack/pnpm,
+        # so invoke the compiled migrator with node directly. `packages/db/dist`
+        # is produced by turbo `^build` and copied into the runner stage.
+        run_command        = coalesce(job.value.run_command, "node packages/db/dist/migrate-prod.js")
 
         github {
           repo           = local.github_repo
