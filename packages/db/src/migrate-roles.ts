@@ -24,7 +24,12 @@ const API_DENY_TABLES = [
   "oauth_consent",
 ];
 const API_READ_TABLES = ["user"];
-const WORKER_READ_TABLES = ["domain_events", "user"];
+const WORKER_READ_TABLES = ["user"];
+// Postgres requires UPDATE on the target table for `select ... for update` row locks even
+// when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
+// so worker_app needs SELECT + UPDATE on these tables. Keep them out of WORKER_FULL_TABLES
+// to deny INSERT/DELETE/TRUNCATE on the append-only event log.
+const WORKER_LOCK_READ_TABLES = ["domain_events"];
 const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
@@ -86,7 +91,7 @@ async function grantIfExists(
   client: pg.Client,
   role: RoleName,
   tableName: string,
-  privileges: "SELECT" | "ALL PRIVILEGES",
+  privileges: "SELECT" | "SELECT, UPDATE" | "ALL PRIVILEGES",
 ): Promise<void> {
   if (!(await tableExists(client, tableName))) return;
   await client.query(
@@ -144,6 +149,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     for (const tableName of WORKER_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT");
+    }
+    for (const tableName of WORKER_LOCK_READ_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
     }
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
