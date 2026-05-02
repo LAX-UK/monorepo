@@ -67,6 +67,20 @@ app.use(
     maxAge: 60,
   }),
 );
+// Better Auth's `app.all("/api/auth/*", ...)` does not handle CORS preflight, so the browser
+// receives 404 for OPTIONS and blocks the actual login POST. Mount CORS for the auth API
+// surface explicitly using the same shape as apps/api so cross-origin sign-in from
+// WEB_ORIGIN works (cookies + JSON body require credentials + Content-Type allowed).
+app.use(
+  "/api/auth/*",
+  cors({
+    origin: env.WEB_ORIGIN,
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+    credentials: true,
+  }),
+);
 app.get("/.well-known/jwks.json", async (c) => {
   c.header("Cache-Control", "public, max-age=60");
   return c.json(await jwks.getPublicJwks());
