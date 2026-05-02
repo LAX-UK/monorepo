@@ -4,6 +4,12 @@ variable "ops_alert_email" {
   description = "Verified team email in DigitalOcean for DB monitor + uptime alert notifications. Empty skips those alert resources."
 }
 
+variable "digitalocean_project_id" {
+  type        = string
+  default     = ""
+  description = "DO project UUID for lax-prod-project. Empty uses digitalocean_project_id from persistent-prod remote state (run persistent apply once if missing)."
+}
+
 variable "digitalocean_token" {
   type      = string
   sensitive = true
