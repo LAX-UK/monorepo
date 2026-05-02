@@ -31,7 +31,9 @@
     "@auction/db": "workspace:*",
     "@auction/types": "workspace:*",
     "better-auth": "^1.6.9",
-    "jose": "^6.2.3"
+    "drizzle-orm": "^0.41.0",
+    "jose": "^6.2.3",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
