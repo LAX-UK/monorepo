@@ -1,3 +1,9 @@
+variable "ops_alert_email" {
+  type        = string
+  default     = ""
+  description = "Verified team email in DigitalOcean for DB monitor + uptime alert notifications. Empty skips those alert resources."
+}
+
 variable "digitalocean_token" {
   type      = string
   sensitive = true
