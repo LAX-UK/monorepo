@@ -1,38 +1,20 @@
 import type { NavGroup } from "@/lib/navigation/nav-types";
-import {
-  Bell,
-  Gavel,
-  LayoutDashboard,
-  Palette,
-  SlidersHorizontal,
-  Store,
-  User,
-} from "lucide-react";
+import { Bell, Gavel, Heart, LayoutDashboard, Palette, Store, User } from "lucide-react";
 
 export const dashboardNavGroups: readonly NavGroup[] = [
   {
     title: "Bidding",
     items: [
       { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-      { href: "/dashboard/bids", label: "Active Bids", icon: Gavel },
-      { href: "/dashboard/portfolio", label: "Portfolio", icon: Palette },
-      { href: "/dashboard/artist-follow", label: "Artists", icon: User },
+      { href: "/dashboard/bids", label: "Bids", icon: Gavel },
+      { href: "/dashboard/portfolio", label: "Collection", icon: Palette },
+      { href: "/dashboard/submissions", label: "Submissions", icon: Store },
+      { href: "/dashboard/watchlist", label: "Watchlist", icon: Heart },
       { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
     ],
   },
   {
-    title: "Selling",
-    items: [{ href: "/dashboard/submissions", label: "Sell an item", icon: Store }],
-  },
-  {
     title: "Account",
-    items: [
-      { href: "/dashboard/settings/profile", label: "Profile", icon: User },
-      {
-        href: "/dashboard/settings/notifications",
-        label: "Alert settings",
-        icon: SlidersHorizontal,
-      },
-    ],
+    items: [{ href: "/dashboard/settings/profile", label: "Settings", icon: User }],
   },
 ] as const;

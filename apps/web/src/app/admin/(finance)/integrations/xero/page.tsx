@@ -50,36 +50,52 @@ export default async function AdminXeroIntegrationPage({
       ) : null}
 
       {status ? (
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 shadow-sm">
-          <dl className="grid gap-3 text-sm">
-            <div>
+        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 OAuth configured
               </dt>
-              <dd>{status.oauthConfigured ? "Yes" : "No (set XERO_* env on API)"}</dd>
+              <dd className="mt-1 font-headline text-lg text-on-surface">
+                {status.oauthConfigured ? "Yes" : "No"}
+              </dd>
+              {!status.oauthConfigured ? (
+                <p className="mt-1 text-xs text-on-surface-variant">Set XERO_* env on API.</p>
+              ) : null}
             </div>
-            <div>
+            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 Connected
               </dt>
-              <dd>{status.connected ? "Yes" : "No"}</dd>
+              <dd className="mt-1 font-headline text-lg text-on-surface">
+                {status.connected ? "Yes" : "No"}
+              </dd>
             </div>
             {status.tenantName ? (
-              <div>
+              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Organisation
                 </dt>
-                <dd>{status.tenantName}</dd>
+                <dd className="mt-1 text-on-surface">{status.tenantName}</dd>
               </div>
             ) : null}
             {status.expiresAt ? (
-              <div>
+              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Token expiry (UTC)
                 </dt>
-                <dd className="font-mono text-xs">{status.expiresAt}</dd>
+                <dd className="mt-1 font-mono text-xs">{status.expiresAt}</dd>
               </div>
             ) : null}
+            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4 sm:col-span-2">
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Webhook URL
+              </dt>
+              <dd className="mt-1 break-all font-mono text-xs">
+                {process.env.NEXT_PUBLIC_API_URL ?? process.env.INTERNAL_API_URL ?? ""}
+                /webhooks/xero
+              </dd>
+            </div>
           </dl>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -98,13 +114,6 @@ export default async function AdminXeroIntegrationPage({
               </form>
             ) : null}
           </div>
-
-          <p className="mt-6 font-body text-xs text-on-surface-variant">
-            Webhook URL for Xero:{" "}
-            <span className="break-all font-mono">
-              {process.env.NEXT_PUBLIC_API_URL ?? process.env.INTERNAL_API_URL ?? ""}/webhooks/xero
-            </span>
-          </p>
         </div>
       ) : null}
     </div>

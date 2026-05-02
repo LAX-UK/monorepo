@@ -1,15 +1,13 @@
 "use client";
 
+import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { Button } from "@/components/ui/button";
-import { RhfSelect } from "@/components/ui/rhf-select";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { TableScroll } from "@/components/ui/table-scroll";
 import {
   type SubmissionListFilterValues,
   submissionListFilterSchema,
 } from "@/lib/forms/submission/submission-form-schema";
 import type { ItemSubmissionStatus } from "@auction/types";
-import { itemSubmissionStatuses } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import {
@@ -47,6 +45,25 @@ const filterStatusLabel: Record<SubmissionListFilterValues["status"], string> = 
   converted: "Converted",
 };
 
+const statusTabs: readonly SubmissionListFilterValues["status"][] = [
+  "all",
+  "draft",
+  "submitted",
+  "under_review",
+  "approved",
+  "rejected",
+  "withdrawn",
+  "converted",
+];
+
+function statusHref(pathname: string, status: SubmissionListFilterValues["status"], q: string) {
+  const next = new URLSearchParams();
+  if (status !== "all") next.set("status", status);
+  if (q) next.set("q", q);
+  const qs = next.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
 function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
   return [
     {
@@ -75,6 +92,18 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
           {new Date(row.original.updatedAt).toLocaleString()}
         </span>
       ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Button variant="secondary" className="px-4 py-2 text-xs uppercase tracking-widest" asChild>
+          <Link href={`/dashboard/submissions/${row.original.id}`}>
+            {row.original.status === "draft" ? "Edit" : "View"}
+          </Link>
+        </Button>
+      ),
+      enableSorting: false,
     },
   ];
 }
@@ -125,38 +154,24 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
 
   return (
     <div className="space-y-6">
+      <DashboardSectionTabs
+        ariaLabel="Submission status"
+        className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3"
+        items={statusTabs.map((status) => ({
+          href: statusHref(pathname, status, initialQ),
+          label: filterStatusLabel[status].replace(" statuses", ""),
+          isActive: initialStatus === status,
+        }))}
+      />
+
       <Toolbar
-        className="flex-col gap-4 rounded-sm border border-outline-variant/20 bg-surface-container-low/25 p-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
+        className="flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
         filters={
           <Form {...form}>
             <form
               className="flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end"
               onSubmit={form.handleSubmit(onApply)}
             >
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1 space-y-2">
-                    <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
-                      Status
-                    </FormLabel>
-                    <RhfSelect
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                      options={(
-                        ["all", ...itemSubmissionStatuses] as SubmissionListFilterValues["status"][]
-                      ).map((value) => ({
-                        value,
-                        label: filterStatusLabel[value],
-                      }))}
-                      triggerClassName="w-full text-sm"
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="q"
@@ -173,7 +188,6 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
                         {...field}
                         id="submissions-q"
                         placeholder="Filter loaded rows by title…"
-                        className="bg-surface-container-low"
                       />
                     </FormControl>
                     <FormMessage />
@@ -221,13 +235,12 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
           />
         )
       ) : (
-        <TableScroll>
-          <DataTable
-            columns={columns}
-            data={rows}
-            emptyMessage="No submissions match this filter."
-          />
-        </TableScroll>
+        <DataTable
+          columns={columns}
+          data={rows}
+          emptyMessage="No submissions match this filter."
+          density="compact"
+        />
       )}
     </div>
   );

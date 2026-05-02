@@ -40,22 +40,21 @@ export default async function AdminPaymentsPage({
 
   const titleById = new Map(auctions.map((a) => [a.id, a.title]));
 
-  const paymentRows: AdminPaymentTableRow[] = payments
-    .map((p) => ({
-      id: p.id,
-      lotId: p.lotId,
-      lotTitle: titleById.get(p.lotId) ?? p.lotId,
-      buyerId: p.buyerId,
-      sellerId: p.sellerId,
-      amount: p.amount,
-      platformFee: p.platformFee,
-      status: p.status,
-      xeroInvoiceNumber: p.xeroInvoiceNumber,
-      xeroOnlineInvoiceUrl: p.xeroOnlineInvoiceUrl,
-      xeroSyncStatus: p.xeroSyncStatus,
-      xeroLastError: p.xeroLastError,
-    }))
-    .filter((row) => !statusFilter || row.status === statusFilter);
+  const allPaymentRows: AdminPaymentTableRow[] = payments.map((p) => ({
+    id: p.id,
+    lotId: p.lotId,
+    lotTitle: titleById.get(p.lotId) ?? p.lotId,
+    buyerId: p.buyerId,
+    sellerId: p.sellerId,
+    amount: p.amount,
+    platformFee: p.platformFee,
+    status: p.status,
+    xeroInvoiceNumber: p.xeroInvoiceNumber,
+    xeroOnlineInvoiceUrl: p.xeroOnlineInvoiceUrl,
+    xeroSyncStatus: p.xeroSyncStatus,
+    xeroLastError: p.xeroLastError,
+  }));
+  const paymentRows = allPaymentRows.filter((row) => !statusFilter || row.status === statusFilter);
 
   const statusChips = (
     <fieldset className="flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto border-0 p-0 pb-1 sm:flex-wrap sm:overflow-visible">
@@ -99,7 +98,11 @@ export default async function AdminPaymentsPage({
       {payments.length === 0 && !loadError ? (
         <p className="text-on-surface-variant">No payment records yet.</p>
       ) : loadError ? null : (
-        <AdminPaymentsBoard rows={paymentRows} statusChips={statusChips} />
+        <AdminPaymentsBoard
+          rows={paymentRows}
+          summaryRows={allPaymentRows}
+          statusChips={statusChips}
+        />
       )}
     </div>
   );
