@@ -47,7 +47,7 @@ resource "cloudflare_record" "subdomain" {
   zone_id = data.cloudflare_zone.this.id
   name    = each.value.name
   type    = each.value.type
-  value   = each.value.value
+  content = each.value.value
   proxied = each.value.proxied
   ttl     = 1
   comment = each.value.comment
@@ -107,7 +107,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src", "http.host"]
+      characteristics     = ["cf.colo.id", "ip.src", "http.host"]
       period              = 60
       requests_per_period = 100
       mitigation_timeout  = 60
@@ -121,7 +121,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src", "http.host"]
+      characteristics     = ["cf.colo.id", "ip.src", "http.host"]
       period              = 900
       requests_per_period = 5
       mitigation_timeout  = 900
@@ -135,7 +135,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src", "http.host"]
+      characteristics     = ["cf.colo.id", "ip.src", "http.host"]
       period              = 60
       requests_per_period = 100
       mitigation_timeout  = 60
