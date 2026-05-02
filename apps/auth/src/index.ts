@@ -44,6 +44,11 @@ const metrics = new Registry();
 collectDefaultMetrics({ register: metrics, prefix: "auction_auth_" });
 
 const app = new Hono();
+app.onError((err, c) => {
+  log.error({ ...serializeError(err), path: c.req.path }, "auth_http_error");
+  Sentry.captureException(err);
+  return c.json({ error: "Internal server error" }, 500);
+});
 app.get("/health/live", (c) => c.json({ service: "auction-auth", status: "ok" }));
 app.get("/health/ready", async (c) => {
   try {
@@ -133,3 +138,11 @@ function shutdown(signal: NodeJS.Signals) {
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
+
+function serializeError(err: Error) {
+  return {
+    causeName: err.name,
+    causeMessage: err.message,
+    causeStack: err.stack?.slice(0, 3000),
+  };
+}

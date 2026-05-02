@@ -10,14 +10,25 @@ export class ConsoleErrorLogger implements IErrorLogger {
   }
 
   log(classified: ClassifiedError): void {
+    const cause = classified.severity === "error" ? serializeCause(classified.cause) : {};
     this.appLog.error(
       {
         message: classified.message,
         status: classified.status,
         code: classified.code,
         severity: classified.severity,
+        ...cause,
       },
       "http_error",
     );
   }
+}
+
+function serializeCause(cause: unknown) {
+  if (!(cause instanceof Error)) return {};
+  return {
+    causeName: cause.name,
+    causeMessage: cause.message,
+    causeStack: cause.stack?.slice(0, 3000),
+  };
 }
