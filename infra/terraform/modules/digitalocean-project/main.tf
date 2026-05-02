@@ -42,4 +42,8 @@ resource "digitalocean_project" "this" {
   purpose     = "Web Application"
   environment = var.environment == "prod" ? "Production" : "Development"
   resources   = var.resource_urns
+
+  lifecycle {
+    ignore_changes = [resources]
+  }
 }
