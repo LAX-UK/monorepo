@@ -62,7 +62,6 @@ resource "digitalocean_app" "this" {
         git {
           repo_clone_url = var.repository_clone_url
           branch         = var.branch
-          deploy_on_push = false
         }
 
         dynamic "env" {
@@ -99,7 +98,6 @@ resource "digitalocean_app" "this" {
         git {
           repo_clone_url = var.repository_clone_url
           branch         = var.branch
-          deploy_on_push = false
         }
 
         dynamic "env" {
@@ -130,7 +128,6 @@ resource "digitalocean_app" "this" {
         git {
           repo_clone_url = var.repository_clone_url
           branch         = var.branch
-          deploy_on_push = false
         }
 
         dynamic "env" {

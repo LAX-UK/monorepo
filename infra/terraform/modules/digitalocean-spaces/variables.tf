@@ -10,6 +10,3 @@ variable "environment" {
 variable "cors_allowed_origins" {
   type = list(string)
 }
-variable "test_prefix_expiration_days" {
-  type = number
-}

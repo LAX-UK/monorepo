@@ -53,13 +53,3 @@ resource "digitalocean_spaces_bucket_cors_configuration" "this" {
     max_age_seconds = 3000
   }
 }
-resource "digitalocean_spaces_bucket_lifecycle_configuration" "this" {
-  bucket = digitalocean_spaces_bucket.this.name
-  region = digitalocean_spaces_bucket.this.region
-  rule {
-    id     = "expire-test-uploads"
-    status = "Enabled"
-    filter { prefix = "test/" }
-    expiration { days = var.test_prefix_expiration_days }
-  }
-}
