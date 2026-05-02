@@ -7,7 +7,7 @@ variable "ops_alert_email" {
 variable "digitalocean_project_id" {
   type        = string
   default     = ""
-  description = "DO project UUID for lax-prod-project. Empty uses digitalocean_project_id from persistent-prod remote state (run persistent apply once if missing)."
+  description = "Override DO project UUID. If empty: use persistent-prod remote output, else lookup by API name lax-prod-project."
 }
 
 variable "digitalocean_token" {
