@@ -20,9 +20,8 @@ const SEED_PASSWORD = "Password123!";
 
 const ADMIN_ID = "admin-seed-001";
 const ACCOUNTANT_ID = "accountant-seed-001";
-const ALICE_ID = "user-seed-001";
-const BOB_ID = "user-seed-002";
-const CAROL_ID = "user-seed-003";
+const USER1_ID = "user-seed-001";
+const USER2_ID = "user-seed-002";
 const GOOGLE_TEST_ID = "user-seed-google";
 const APPLE_TEST_ID = "user-seed-apple";
 
@@ -67,7 +66,7 @@ const L = {
   marginal: "b1000011-0000-4000-8000-000000000011",
   recursive: "b1000012-0000-4000-8000-000000000012",
   cancelledLot: "b1000013-0000-4000-8000-000000000013",
-  sealedFuture: "b1000014-0000-4000-8000-000000000014",
+  futureStudy: "b1000014-0000-4000-8000-000000000014",
   paperThin: "b1000015-0000-4000-8000-000000000015",
   riverStudy: "b1000016-0000-4000-8000-000000000016",
 } as const;
@@ -163,7 +162,7 @@ async function main() {
     {
       id: ADMIN_ID,
       name: "Eleanor Pereira",
-      email: "eleanor.pereira@curator.test",
+      email: "admin@lax.bid",
       emailVerified: true,
       image: null,
       role: "administrator",
@@ -173,7 +172,7 @@ async function main() {
     {
       id: ACCOUNTANT_ID,
       name: "Erin Ledger",
-      email: "erin.ledger@curator.test",
+      email: "accountant@lax.bid",
       emailVerified: true,
       image: null,
       role: "accountant",
@@ -181,9 +180,9 @@ async function main() {
       updatedAt: stamp,
     },
     {
-      id: ALICE_ID,
-      name: "Alice Volkov",
-      email: "alice.volkov@curator.test",
+      id: USER1_ID,
+      name: "Robert Thorne",
+      email: "user1@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
@@ -191,19 +190,9 @@ async function main() {
       updatedAt: stamp,
     },
     {
-      id: BOB_ID,
-      name: "Robert Thorne",
-      email: "robert.thorne@curator.test",
-      emailVerified: true,
-      image: null,
-      role: "client",
-      createdAt: new Date(now - 90 * day),
-      updatedAt: stamp,
-    },
-    {
-      id: CAROL_ID,
+      id: USER2_ID,
       name: "Carolina Price",
-      email: "carolina.price@curator.test",
+      email: "user2@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
@@ -237,9 +226,8 @@ async function main() {
     .values([
       credentialAccount(ADMIN_ID),
       credentialAccount(ACCOUNTANT_ID),
-      credentialAccount(ALICE_ID),
-      credentialAccount(BOB_ID),
-      credentialAccount(CAROL_ID),
+      credentialAccount(USER1_ID),
+      credentialAccount(USER2_ID),
       credentialAccount(GOOGLE_TEST_ID),
       credentialAccount(APPLE_TEST_ID),
     ]);
@@ -288,17 +276,27 @@ async function main() {
   const draftStart = new Date(now + 1 * day);
   const draftEnd = new Date(now + 30 * day);
   const soonEnd = new Date(now + 2 * day);
+  const lotMarketingDetails = (
+    low: string,
+    high: string,
+    imageAlts: string[],
+    extra: Record<string, unknown> = {},
+  ) => ({
+    estimate: { low, high, currency: "USD" },
+    imageAlts,
+    ...extra,
+  });
 
   await db.insert(sale).values([
     {
       id: S.evening,
       title: "Spring Contemporary Evening Sale",
       description:
-        "Curated evening session anchored in contemporary painting and sculpture — flagship live window.",
+        "A tightly curated evening auction anchored by contemporary painting, sculpture, and collector-grade provenance.",
       coverImages: [IMG.a, IMG.b, IMG.a],
       categoryId: CAT.paintings,
       deliveryMode: "onsite",
-      locationName: "TheLax Mayfair Saleroom",
+      locationName: "LAX Mayfair Saleroom",
       locationAddress: "12 King Street, St James's, London SW1Y 6QU",
       locationMapUrl: "https://maps.google.com/?q=12+King+Street+London",
       streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
@@ -307,7 +305,7 @@ async function main() {
       endTime: new Date(now + 14 * day),
       previewStartTime: new Date(now - 1 * day),
       buyerPremiumRate: "0.25",
-      terms: "Buyer's premium 25%; see conditions of sale.",
+      terms: "LAX London Auction House buyer's premium is 25%; full conditions of sale apply.",
       createdBy: ADMIN_ID,
       createdAt: stamp,
       updatedAt: stamp,
@@ -315,7 +313,8 @@ async function main() {
     {
       id: S.online,
       title: "Modern Masters Online Sale",
-      description: "Online-only session with intentionally mixed media — browse across categories.",
+      description:
+        "Online-only sale of modern editions, works on paper, and digital practice from private collections.",
       coverImages: [IMG.c, IMG.d],
       categoryId: null,
       deliveryMode: "online",
@@ -325,7 +324,7 @@ async function main() {
       endTime: scheduledEnd,
       previewStartTime: new Date(now + 1 * day),
       buyerPremiumRate: "0.25",
-      terms: null,
+      terms: "Online bidding closes lot-by-lot; LAX London Auction House buyer's premium is 25%.",
       createdBy: ADMIN_ID,
       createdAt: stamp,
       updatedAt: stamp,
@@ -337,7 +336,7 @@ async function main() {
       id: L.ethereal,
       saleId: S.evening,
       lotNumber: 1,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "Ethereal Form & Found Light",
       description:
         "A large-scale abstract composition exploring luminosity and negative space. Oil and gold leaf on linen.",
@@ -369,7 +368,7 @@ async function main() {
           { period: "2022", note: "Acquired from the artist's studio by the consignor." },
           { note: "Private collection, London." },
         ],
-        sellerArtistId: ALICE_ID,
+        sellerArtistId: USER2_ID,
         imageAlts: [
           "Ethereal Form & Found Light — installation view",
           "Ethereal Form & Found Light — detail of gold leaf",
@@ -380,9 +379,10 @@ async function main() {
       id: L.winter,
       saleId: S.evening,
       lotNumber: 2,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "The Winter Study",
-      description: "Muted palette interior with solitary figure. Contemporary masters series.",
+      description:
+        "Atmospheric interior study with a restrained winter palette and finely worked surface.",
       medium: "Oil on canvas",
       dimensions: "40 × 30 in (101.6 × 76.2 cm)",
       images: [IMG.c],
@@ -401,14 +401,17 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("70000.00", "95000.00", [
+        "The Winter Study — framed canvas view",
+      ]),
     },
     {
       id: L.anatomy,
       saleId: S.evening,
       lotNumber: 3,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Anatomy of Light",
-      description: "Minimalist sculpture series — bronze and plaster.",
+      description: "Minimalist bronze and plaster sculpture with precise architectural balance.",
       medium: "Bronze, plaster",
       dimensions: "24 × 18 × 14 in",
       images: [IMG.d],
@@ -427,14 +430,18 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("45000.00", "65000.00", [
+        "Anatomy of Light — three-quarter sculpture view",
+      ]),
     },
     {
       id: L.chromatic,
       saleId: S.evening,
       lotNumber: 4,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "Chromatic Resonance",
-      description: "Geometric color-field work with archival pigments on panel.",
+      description:
+        "Large geometric color-field panel with archival pigments and a high-saturation finish.",
       medium: "Pigment on panel",
       dimensions: "60 × 60 in",
       images: [IMG.b, IMG.a],
@@ -453,14 +460,19 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("190000.00", "240000.00", [
+        "Chromatic Resonance — full panel view",
+        "Chromatic Resonance — pigment surface detail",
+      ]),
     },
     {
       id: L.suspended,
       saleId: S.evening,
       lotNumber: 5,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "Suspended Memory",
-      description: "Mixed media assemblage with found objects and encaustic.",
+      description:
+        "Mixed-media assemblage combining encaustic, paper fragments, and found studio objects.",
       medium: "Encaustic, found objects",
       dimensions: "36 × 48 in",
       images: [IMG.c],
@@ -479,19 +491,23 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("28000.00", "38000.00", [
+        "Suspended Memory — assemblage front view",
+      ]),
     },
     {
       id: L.void,
       saleId: S.online,
       lotNumber: 1,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "Void and Presence",
-      description: "Dutch auction lot — price decreases until first bidder accepts.",
+      description:
+        "Editioned digital print offered in an online English auction, with crisp tonal contrast and certificate.",
       medium: "Digital print, edition 1/8",
       dimensions: "32 × 32 in",
       images: [IMG.d],
       categoryId: CAT.digital,
-      auctionType: "dutch",
+      auctionType: "english",
       startingPrice: "120000.00",
       reservePrice: null,
       buyNowPrice: null,
@@ -502,22 +518,26 @@ async function main() {
       endTime: new Date(now + 6 * day),
       status: "active",
       winnerId: null,
-      dutchDecrementAmount: "2500.00",
-      dutchDecrementIntervalMs: 120_000,
-      dutchLastDecrementAt: new Date(now - 120_000),
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("90000.00", "120000.00", [
+        "Void and Presence — editioned print view",
+      ]),
     },
     {
       id: L.nocturnal,
       saleId: S.online,
       lotNumber: 2,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Nocturnal Atlas",
-      description: "Large format photograph, edition 2 of 5.",
+      description:
+        "Large-format nocturne from a small edition, printed with deep blacks and luminous highlights.",
       medium: "Archival pigment print",
       dimensions: "48 × 72 in",
       images: [IMG.a],
       categoryId: CAT.photography,
-      auctionType: "dutch",
+      auctionType: "english",
       startingPrice: "130000.00",
       reservePrice: null,
       buyNowPrice: null,
@@ -528,22 +548,26 @@ async function main() {
       endTime: scheduledEnd,
       status: "scheduled",
       winnerId: null,
-      dutchDecrementAmount: "3000.00",
+      dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("110000.00", "145000.00", [
+        "Nocturnal Atlas — large-format photograph",
+      ]),
     },
     {
       id: L.silent,
       saleId: S.online,
       lotNumber: 3,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Silent Architecture",
-      description: "Sealed bid lot — highest undisclosed offer wins after close.",
+      description:
+        "Precise ink architectural composition offered in a timed English auction for private collectors.",
       medium: "Ink on paper",
       dimensions: "22 × 30 in",
       images: [IMG.b],
       categoryId: CAT.sculpture,
-      auctionType: "sealed",
+      auctionType: "english",
       startingPrice: "50000.00",
       reservePrice: "60000.00",
       buyNowPrice: null,
@@ -557,19 +581,23 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("60000.00", "80000.00", [
+        "Silent Architecture — ink drawing",
+      ]),
     },
     {
       id: L.golden,
       saleId: null,
       lotNumber: null,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Golden Meridian",
-      description: "Buy-it-now contemporary edition with certificate. Sold via instant purchase.",
+      description:
+        "Certified contemporary edition sold after competitive English bidding, with warm metallic tonality.",
       medium: "Giclée on cotton rag",
       dimensions: "18 × 24 in",
       images: [IMG.c],
       categoryId: CAT.digital,
-      auctionType: "buy_it_now",
+      auctionType: "english",
       startingPrice: "28000.00",
       reservePrice: null,
       buyNowPrice: "28000.00",
@@ -579,18 +607,22 @@ async function main() {
       startTime: new Date(now - 20 * day),
       endTime: new Date(now - 14 * day),
       status: "ended",
-      winnerId: CAROL_ID,
+      winnerId: USER2_ID,
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("25000.00", "32000.00", [
+        "Golden Meridian — edition print",
+      ]),
     },
     {
       id: L.amber,
       saleId: S.online,
       lotNumber: 4,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "The Amber Hours",
-      description: "Sold — private collection. Oil on canvas, provenance documented.",
+      description:
+        "Museum-scale oil on canvas from a private collection, sold with documented provenance.",
       medium: "Oil on canvas",
       dimensions: "55 × 70 in",
       images: [IMG.a, IMG.d],
@@ -605,18 +637,23 @@ async function main() {
       startTime: endedStart,
       endTime: endedEnd,
       status: "ended",
-      winnerId: BOB_ID,
+      winnerId: USER1_ID,
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("350000.00", "450000.00", [
+        "The Amber Hours — full canvas view",
+        "The Amber Hours — surface detail",
+      ]),
     },
     {
       id: L.marginal,
       saleId: S.online,
       lotNumber: 5,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "Marginal Figures",
-      description: "Ended auction — figurative study in charcoal and ink.",
+      description:
+        "Expressive figurative study in charcoal and ink, sold from a private works-on-paper group.",
       medium: "Charcoal, ink",
       dimensions: "30 × 40 in",
       images: [IMG.b],
@@ -631,18 +668,22 @@ async function main() {
       startTime: endedStart,
       endTime: endedEnd,
       status: "ended",
-      winnerId: BOB_ID,
+      winnerId: USER1_ID,
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("90000.00", "125000.00", [
+        "Marginal Figures — charcoal and ink study",
+      ]),
     },
     {
       id: L.recursive,
       saleId: null,
       lotNumber: null,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Recursive Dreams",
-      description: "Draft lot — not yet published to the live saleroom.",
+      description:
+        "Acrylic composition approved for cataloguing and awaiting assignment to a future sale.",
       medium: "Acrylic on board",
       dimensions: "24 × 24 in",
       images: [IMG.d],
@@ -661,14 +702,17 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("15000.00", "22000.00", [
+        "Recursive Dreams — acrylic on board",
+      ]),
     },
     {
       id: L.cancelledLot,
       saleId: null,
       lotNumber: null,
-      sellerId: BOB_ID,
+      sellerId: USER1_ID,
       title: "River Light (withdrawn)",
-      description: "Lot withdrawn by the house before opening.",
+      description: "Withdrawn watercolor study retained for admin workflow testing.",
       medium: "Watercolor",
       dimensions: "12 × 16 in",
       images: [IMG.e],
@@ -687,19 +731,23 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("5000.00", "7000.00", [
+        "River Light withdrawn watercolor study",
+      ]),
     },
     {
-      id: L.sealedFuture,
+      id: L.futureStudy,
       saleId: null,
       lotNumber: null,
-      sellerId: ALICE_ID,
-      title: "Sealed Study — November",
-      description: "Future sealed sale; reserve applies.",
+      sellerId: USER2_ID,
+      title: "November Graphite Study",
+      description:
+        "Graphite study prepared for a future English auction with a documented reserve.",
       medium: "Graphite",
       dimensions: "11 × 14 in",
       images: [IMG.c],
       categoryId: CAT.drawings,
-      auctionType: "sealed",
+      auctionType: "english",
       startingPrice: "12000.00",
       reservePrice: "15000.00",
       buyNowPrice: null,
@@ -713,14 +761,18 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("12000.00", "18000.00", [
+        "November Graphite Study — graphite drawing",
+      ]),
     },
     {
       id: L.paperThin,
       saleId: null,
       lotNumber: null,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Paper Thin Horizon",
-      description: "Graphite and silverpoint on toned paper.",
+      description:
+        "Delicate graphite and silverpoint horizon study on toned paper, framed under UV glass.",
       medium: "Silverpoint",
       dimensions: "9 × 12 in",
       images: [IMG.e],
@@ -730,7 +782,7 @@ async function main() {
       reservePrice: null,
       buyNowPrice: null,
       currentPrice: "3200.00",
-      buyerPremiumRate: "0.20",
+      buyerPremiumRate: "0.25",
       minBidIncrement: "50.00",
       startTime: activeStart,
       endTime: new Date(now + 3 * day),
@@ -739,14 +791,18 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("3000.00", "5000.00", [
+        "Paper Thin Horizon — silverpoint drawing",
+      ]),
     },
     {
       id: L.riverStudy,
       saleId: null,
       lotNumber: null,
-      sellerId: ALICE_ID,
+      sellerId: USER2_ID,
       title: "River Study — Blue Hour",
-      description: "Plein air panel from the winter residency program.",
+      description:
+        "Small plein-air oil panel from a winter residency, notable for its blue-hour palette.",
       medium: "Oil on panel",
       dimensions: "10 × 12 in",
       images: [IMG.a],
@@ -765,23 +821,27 @@ async function main() {
       dutchDecrementAmount: null,
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("4500.00", "6500.00", [
+        "River Study Blue Hour — oil panel",
+      ]),
     },
   ]);
 
   await db.insert(itemSubmission).values([
     {
       id: SUB.draft,
-      sellerId: CAROL_ID,
+      sellerId: USER2_ID,
       title: "Study in Ultramarine",
       description:
-        "Small oil sketch from my private collection — exploring the boundary between figurative and gestural brushwork.",
+        "A compact oil study with strong ultramarine passages, prepared for a future works-on-paper sale.",
       medium: "Oil on paper",
       dimensions: "11 × 14 in",
       images: [IMG.a],
       askingPrice: "2500.00",
       reservePrice: null,
       categoryId: CAT.paintings,
-      submitterNotes: "Still gathering the original gallery invoice before submitting.",
+      submitterNotes:
+        "Consignor is gathering the original gallery invoice before formal submission.",
       status: "draft",
       reviewedBy: null,
       reviewedAt: null,
@@ -793,17 +853,18 @@ async function main() {
     },
     {
       id: SUB.submitted,
-      sellerId: BOB_ID,
+      sellerId: USER1_ID,
       title: "Bronze Maquette — field cast, 2024",
       description:
-        "Small cast acquired directly from the artist's 2024 residency. Numbered 3/8 with original patina.",
+        "Small bronze maquette acquired directly from a 2024 artist residency, numbered 3/8.",
       medium: "Bronze, cast",
       dimensions: "8 × 6 × 5 in",
       images: [IMG.b],
       askingPrice: "12000.00",
       reservePrice: "9000.00",
       categoryId: CAT.bronze,
-      submitterNotes: "Certificate of authenticity and studio invoice attached.",
+      submitterNotes:
+        "Certificate of authenticity and studio invoice are ready for specialist review.",
       status: "submitted",
       reviewedBy: null,
       reviewedAt: null,
@@ -815,16 +876,17 @@ async function main() {
     },
     {
       id: SUB.rejected,
-      sellerId: CAROL_ID,
-      title: "Untitled digital collage, 2023",
-      description: "Digital print, artist-signed. Acquired second-hand at a student show.",
+      sellerId: USER2_ID,
+      title: "Untitled Digital Collage, 2023",
+      description: "Artist-signed digital print submitted with incomplete edition documentation.",
       medium: "Archival inkjet print",
       dimensions: "24 × 24 in",
       images: [IMG.d],
       askingPrice: "800.00",
       reservePrice: null,
       categoryId: CAT.digital,
-      submitterNotes: "Edition size unclear — artist contacted but no response.",
+      submitterNotes:
+        "Edition size remains unclear; consignor has contacted the artist for records.",
       status: "rejected",
       reviewedBy: ADMIN_ID,
       reviewedAt: new Date(now - 3 * day),
@@ -837,17 +899,17 @@ async function main() {
     },
     {
       id: SUB.converted,
-      sellerId: ALICE_ID,
+      sellerId: USER1_ID,
       title: "Recursive Dreams",
       description:
-        "Intake record for the catalogued lot Recursive Dreams — approved for an upcoming sale.",
+        "Approved intake record for Recursive Dreams, now converted into a catalogued draft lot.",
       medium: "Acrylic on board",
       dimensions: "24 × 24 in",
       images: [IMG.d],
       askingPrice: "15000.00",
       reservePrice: "18000.00",
       categoryId: CAT.mixed,
-      submitterNotes: "Approved and catalogued; waiting on sale assignment.",
+      submitterNotes: "Approved and catalogued; awaiting final sale assignment.",
       status: "converted",
       reviewedBy: ADMIN_ID,
       reviewedAt: new Date(now - 5 * day),
@@ -877,71 +939,72 @@ async function main() {
   });
 
   const bidRows: (typeof bid.$inferInsert)[] = [
-    mkBid(L.ethereal, CAROL_ID, "115000.00", false, 3 * day),
-    mkBid(L.ethereal, BOB_ID, "130000.00", false, 2 * day),
-    mkBid(L.ethereal, CAROL_ID, "140000.00", false, 1 * day),
-    mkBid(L.ethereal, BOB_ID, "155000.00", true, 2 * hour),
+    mkBid(L.ethereal, USER1_ID, "115000.00", false, 3 * day),
+    mkBid(L.ethereal, GOOGLE_TEST_ID, "130000.00", false, 2 * day),
+    mkBid(L.ethereal, APPLE_TEST_ID, "140000.00", false, 1 * day),
+    mkBid(L.ethereal, USER1_ID, "155000.00", true, 2 * hour),
 
-    mkBid(L.winter, BOB_ID, "75000.00", false, 2 * day),
-    mkBid(L.winter, CAROL_ID, "82000.00", false, 1 * day),
-    mkBid(L.winter, BOB_ID, "88000.00", true, 6 * hour),
+    mkBid(L.winter, USER1_ID, "75000.00", false, 2 * day),
+    mkBid(L.winter, GOOGLE_TEST_ID, "82000.00", false, 1 * day),
+    mkBid(L.winter, USER1_ID, "88000.00", true, 6 * hour),
 
-    mkBid(L.anatomy, CAROL_ID, "50000.00", false, 3 * day),
-    mkBid(L.anatomy, BOB_ID, "55000.00", true, 1 * day),
+    mkBid(L.anatomy, USER2_ID, "50000.00", false, 3 * day),
+    mkBid(L.anatomy, APPLE_TEST_ID, "52500.00", false, 2 * day),
+    mkBid(L.anatomy, USER2_ID, "55000.00", true, 1 * day),
 
-    mkBid(L.chromatic, CAROL_ID, "195000.00", false, 4 * day),
-    mkBid(L.chromatic, BOB_ID, "210000.00", true, 6 * hour),
+    mkBid(L.chromatic, GOOGLE_TEST_ID, "195000.00", false, 4 * day),
+    mkBid(L.chromatic, USER1_ID, "210000.00", true, 6 * hour),
 
-    mkBid(L.suspended, BOB_ID, "34000.00", true, 1 * day),
+    mkBid(L.suspended, USER1_ID, "34000.00", true, 1 * day),
 
-    mkBid(L.void, BOB_ID, "95000.00", true, 1 * hour),
+    mkBid(L.void, USER1_ID, "95000.00", true, 1 * hour),
 
-    mkBid(L.silent, BOB_ID, "62000.00", false, 2 * day),
-    mkBid(L.silent, CAROL_ID, "67000.00", true, 1 * day),
+    mkBid(L.silent, GOOGLE_TEST_ID, "62000.00", false, 2 * day),
+    mkBid(L.silent, USER2_ID, "67000.00", true, 1 * day),
 
-    mkBid(L.golden, CAROL_ID, "28000.00", true, 14 * day),
+    mkBid(L.golden, USER2_ID, "28000.00", true, 14 * day),
 
-    mkBid(L.amber, CAROL_ID, "360000.00", false, 45 * day),
-    mkBid(L.amber, BOB_ID, "380000.00", false, 40 * day),
-    mkBid(L.amber, CAROL_ID, "400000.00", false, 35 * day),
-    mkBid(L.amber, BOB_ID, "420000.00", true, 31 * day),
+    mkBid(L.amber, USER1_ID, "360000.00", false, 45 * day),
+    mkBid(L.amber, GOOGLE_TEST_ID, "380000.00", false, 40 * day),
+    mkBid(L.amber, APPLE_TEST_ID, "400000.00", false, 35 * day),
+    mkBid(L.amber, USER1_ID, "420000.00", true, 31 * day),
 
-    mkBid(L.marginal, CAROL_ID, "95000.00", false, 40 * day),
-    mkBid(L.marginal, BOB_ID, "115000.00", true, 32 * day),
+    mkBid(L.marginal, APPLE_TEST_ID, "95000.00", false, 40 * day),
+    mkBid(L.marginal, USER1_ID, "115000.00", true, 32 * day),
 
-    mkBid(L.paperThin, CAROL_ID, "3200.00", true, 1 * day),
+    mkBid(L.paperThin, USER2_ID, "3200.00", true, 1 * day),
 
-    mkBid(L.riverStudy, CAROL_ID, "4500.00", false, 3 * day),
-    mkBid(L.riverStudy, BOB_ID, "5200.00", true, 1 * day),
+    mkBid(L.riverStudy, GOOGLE_TEST_ID, "4500.00", false, 3 * day),
+    mkBid(L.riverStudy, USER1_ID, "5200.00", true, 1 * day),
   ];
   await db.insert(bid).values(bidRows);
 
   await db.insert(watchlist).values([
-    { userId: BOB_ID, lotId: L.ethereal },
-    { userId: BOB_ID, lotId: L.winter },
-    { userId: BOB_ID, lotId: L.chromatic },
-    { userId: BOB_ID, lotId: L.sealedFuture },
-    { userId: CAROL_ID, lotId: L.chromatic },
-    { userId: CAROL_ID, lotId: L.silent },
-    { userId: CAROL_ID, lotId: L.riverStudy },
-    { userId: CAROL_ID, lotId: L.nocturnal },
+    { userId: USER1_ID, lotId: L.ethereal },
+    { userId: USER1_ID, lotId: L.winter },
+    { userId: USER1_ID, lotId: L.chromatic },
+    { userId: USER1_ID, lotId: L.futureStudy },
+    { userId: USER2_ID, lotId: L.anatomy },
+    { userId: USER2_ID, lotId: L.silent },
+    { userId: USER2_ID, lotId: L.nocturnal },
+    { userId: USER2_ID, lotId: L.paperThin },
   ]);
 
   const notifId = () => randomUUID();
   await db.insert(notification).values([
     {
       id: notifId(),
-      userId: CAROL_ID,
+      userId: GOOGLE_TEST_ID,
       type: "outbid",
       title: "You were outbid",
-      message: "Robert placed a higher bid on Chromatic Resonance.",
-      lotId: L.chromatic,
+      message: "Robert Thorne placed a higher bid on The Winter Study.",
+      lotId: L.winter,
       read: false,
       createdAt: new Date(now - 6 * 3600_000),
     },
     {
       id: notifId(),
-      userId: CAROL_ID,
+      userId: USER2_ID,
       type: "ending_soon",
       title: "Auction ending soon",
       message: "Paper Thin Horizon closes in under 72 hours.",
@@ -951,17 +1014,17 @@ async function main() {
     },
     {
       id: notifId(),
-      userId: ALICE_ID,
+      userId: USER2_ID,
       type: "sale",
       title: "Lot sold",
-      message: "The Amber Hours has settled — payment captured.",
+      message: "The Amber Hours has settled and payment has been captured.",
       lotId: L.amber,
       read: true,
       createdAt: new Date(now - 29 * day),
     },
     {
       id: notifId(),
-      userId: BOB_ID,
+      userId: USER1_ID,
       type: "won",
       title: "You won an auction",
       message: "Congratulations — you won The Amber Hours for $420,000.",
@@ -971,10 +1034,10 @@ async function main() {
     },
     {
       id: notifId(),
-      userId: CAROL_ID,
+      userId: USER2_ID,
       type: "watchlist",
       title: "Lot update",
-      message: "Silent Architecture has new sealed bids.",
+      message: "Silent Architecture has new bidding activity.",
       lotId: L.silent,
       read: false,
       createdAt: new Date(now - 1800_000),
@@ -984,10 +1047,30 @@ async function main() {
       userId: ADMIN_ID,
       type: "submission_received_for_review",
       title: "New submission awaiting review",
-      message: "Robert Thorne submitted 'Bronze Maquette — field cast, 2024' for review.",
+      message: "Robert Thorne submitted Bronze Maquette — field cast, 2024 for review.",
       lotId: null,
       read: false,
       createdAt: new Date(now - 1 * day),
+    },
+    {
+      id: notifId(),
+      userId: ADMIN_ID,
+      type: "payment_received",
+      title: "Payment captured",
+      message: "Stripe payment pi_seed_amber_captured was captured for The Amber Hours.",
+      lotId: L.amber,
+      read: false,
+      createdAt: new Date(now - 29 * day + hour),
+    },
+    {
+      id: notifId(),
+      userId: USER1_ID,
+      type: "submission_approved",
+      title: "Submission approved",
+      message: "Recursive Dreams has been approved and converted into a catalogued draft lot.",
+      lotId: L.recursive,
+      read: true,
+      createdAt: new Date(now - 5 * day + hour),
     },
     {
       id: notifId(),
@@ -1006,52 +1089,54 @@ async function main() {
     {
       id: payId(),
       lotId: L.amber,
-      buyerId: BOB_ID,
-      sellerId: ALICE_ID,
+      buyerId: USER1_ID,
+      sellerId: USER2_ID,
       amount: "525000.00",
       platformFee: "26250.00",
-      stripePaymentIntentId: "pi_seed_demo_captured",
+      stripePaymentIntentId: "pi_seed_amber_captured",
       status: "captured",
       createdAt: new Date(now - 29 * day),
     },
     {
       id: payId(),
       lotId: L.marginal,
-      buyerId: BOB_ID,
-      sellerId: ALICE_ID,
+      buyerId: USER1_ID,
+      sellerId: USER2_ID,
       amount: "143750.00",
       platformFee: "7187.50",
-      stripePaymentIntentId: null,
+      stripePaymentIntentId: "pi_seed_marginal_pending",
       status: "pending",
       createdAt: new Date(now - 28 * day),
     },
     {
       id: payId(),
       lotId: L.golden,
-      buyerId: CAROL_ID,
-      sellerId: ALICE_ID,
+      buyerId: USER2_ID,
+      sellerId: USER1_ID,
       amount: "35000.00",
       platformFee: "1750.00",
-      stripePaymentIntentId: "pi_seed_demo_refunded",
+      stripePaymentIntentId: "pi_seed_golden_refunded",
       status: "refunded",
       createdAt: new Date(now - 14 * day),
     },
   ]);
 
   console.log("");
-  console.log("Seed complete — full demo dataset (all tables touched).");
+  console.log("Seed complete — polished LAX demo dataset loaded.");
   console.log("");
-  console.log("  Login (email / password):");
-  console.log(`    eleanor.pereira@curator.test  / ${SEED_PASSWORD}   (admin)`);
-  console.log(`    alice.volkov@curator.test     / ${SEED_PASSWORD}   (user)`);
-  console.log(`    robert.thorne@curator.test    / ${SEED_PASSWORD}   (user)`);
-  console.log(`    carolina.price@curator.test   / ${SEED_PASSWORD}   (user)`);
+  console.log(`  Password for every seeded login: ${SEED_PASSWORD}`);
   console.log("");
-  console.log("  Includes: 2 sales + 16 lots (10 in sales, 6 standalone), nested categories,");
-  console.log(
-    "  all lot auction types & statuses (incl. cancelled), bids, watchlists, notifications, payments,",
-  );
-  console.log("  item submissions (draft, submitted, rejected, converted).");
+  console.log("  Login accounts:");
+  console.log("    admin@lax.bid       Eleanor Pereira   administrator");
+  console.log("    accountant@lax.bid  Erin Ledger       accountant");
+  console.log("    user1@lax.bid       Robert Thorne     client");
+  console.log("    user2@lax.bid       Carolina Price    client");
+  console.log("    google-test@lax.bid Google Test       client / google fixture");
+  console.log("    apple-test@lax.bid  Apple Test        client / apple fixture");
+  console.log("");
+  console.log("  Includes: 2 sales, 16 lots, nested categories, 26 bids, 8 watchlist rows,");
+  console.log("  notifications, payments (captured/pending/refunded), and item submissions");
+  console.log("  across draft, submitted, rejected, and converted states.");
   console.log("");
 
   await pool.end();
