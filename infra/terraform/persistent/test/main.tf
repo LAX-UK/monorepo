@@ -3,7 +3,7 @@ locals {
   region       = "lon1"
   zone_name    = "lax.bid"
   media_cdn    = "lax-media.lon1.cdn.digitaloceanspaces.com"
-  app_hostname = "replace-after-app-platform-create.ondigitalocean.app"
+  app_hostname = "lax-test-app-s3u4b.ondigitalocean.app"
   subdomains = {
     web   = { name = "test", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test web App Platform hostname" }
     api   = { name = "test-api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test api App Platform hostname" }
