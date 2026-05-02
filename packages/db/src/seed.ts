@@ -11,7 +11,7 @@ import { hashPassword } from "@better-auth/utils/password";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema/index.js";
-import { buildPgSslConfig } from "./ssl.js";
+import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Pool } = pg;
 
@@ -119,7 +119,7 @@ async function main() {
     throw new Error("DATABASE_URL is required");
   }
 
-  const pool = new Pool({ connectionString: url, ssl: buildPgSslConfig() });
+  const pool = new Pool(buildPgConnectionConfig(url));
   const db = drizzle(pool, { schema });
   const now = Date.now();
   const day = 86_400_000;
