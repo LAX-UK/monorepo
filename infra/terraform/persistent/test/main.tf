@@ -73,6 +73,8 @@ module "project" {
 }
 
 module "sentry_projects" {
+  count = var.sentry_auth_token != "" ? 1 : 0
+
   source            = "../../modules/sentry-projects"
   organization_slug = var.sentry_organization_slug
   team_slug         = var.sentry_team_slug
