@@ -8,7 +8,7 @@ The list below is the curated set of things that have actually surprised people.
 
 **`pnpm dev` starts but `apps/api` immediately exits.** Check that Postgres and Redis are up (`docker compose ps`). The API fails fast on missing connections.
 
-**OIDC discovery returns `localhost:4000` even when I want `auth.thealx.bid`.** The `OIDC_ISSUER_URL` env var defaults to localhost — set it explicitly in `.env` if you're testing cross-domain flows via `cloudflared tunnel`.
+**OIDC discovery returns `localhost:4000` even when I want `auth.lax.bid`.** The `OIDC_ISSUER_URL` env var defaults to localhost — set it explicitly in `.env` if you're testing cross-domain flows via `cloudflared tunnel`.
 
 **Login works in `apps/web` but `apps/api` says I'm unauthenticated.** Cookie scope mismatch. In dev, the cookie is host-only on `localhost`. If you tunnel `apps/web` to a public URL but leave `apps/api` on `localhost:4000`, the cookie won't reach the API. Tunnel both, or run both behind a single reverse proxy.
 
@@ -36,6 +36,6 @@ The list below is the curated set of things that have actually surprised people.
 
 ## Auth
 
-**Why is `apps/web` checking the cookie, not the JWT?** `apps/web` is same-origin with `apps/api` and `apps/auth` (all `.thealx.bid`), so the cookie is the cheaper credential. JWT verification is for cross-domain consumers (WordPress, future mobile apps, `apps/ws`). See [docs/architecture/05-identity-flow.md](../architecture/05-identity-flow.md) flow 2 for the cross-domain handshake.
+**Why is `apps/web` checking the cookie, not the JWT?** `apps/web` is same-origin with `apps/api` and `apps/auth` (all `.lax.bid`), so the cookie is the cheaper credential. JWT verification is for cross-domain consumers (WordPress, future mobile apps, `apps/ws`). See [docs/architecture/05-identity-flow.md](../architecture/05-identity-flow.md) flow 2 for the cross-domain handshake.
 
 **`apps/ws` sometimes accepts a cookie I expected it to reject.** `LEGACY_WS_COOKIE_RELAY` is enabled. That's intentional during the migration to JWT-only handshake (D10). Disable it in your env to test the JWT path in isolation.

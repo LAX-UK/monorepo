@@ -6,7 +6,7 @@ The first-day checklist. The goal is that by the end of day one you have the cod
 
 Ask the founders to grant the following before you sit down:
 
-- GitHub access to the `thealx/auction` repo with `write` permission.
+- GitHub access to the `LAX-UK/monorepo` repo with `write` permission.
 - DigitalOcean team access — read-only is sufficient for day one; you do not need App Platform admin.
 - 1Password (or whatever the team currently uses) for shared secrets.
 - Sentry team access.

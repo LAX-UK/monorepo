@@ -11,11 +11,11 @@ export function createWordPressWebhookRoutes(container: Container) {
     const secret = container.env.WORDPRESS_WEBHOOK_SECRET;
     if (!secret) return c.json({ error: "WordPress webhooks not configured" }, 503);
     const raw = await c.req.text();
-    if (!verifyWordPressSignature(raw, c.req.header("x-thealx-signature"), secret)) {
+    if (!verifyWordPressSignature(raw, c.req.header("x-lax-signature"), secret)) {
       return c.body(null, 401);
     }
     const eventKey = createHash("sha256")
-      .update(["wordpress", c.req.header("x-thealx-event") ?? "", raw].join("|"))
+      .update(["wordpress", c.req.header("x-lax-event") ?? "", raw].join("|"))
       .digest("hex");
     const payload = JSON.parse(raw) as Record<string, unknown>;
     await container.db

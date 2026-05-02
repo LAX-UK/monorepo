@@ -19,7 +19,7 @@ export type AuthEnv = {
   secret: string;
   /** e.g. http://localhost:3001 */
   baseURL: string;
-  /** Stable external OIDC issuer, e.g. https://auth.thealx.bid */
+  /** Stable external OIDC issuer, e.g. https://auth.lax.bid */
   issuerURL?: string | undefined;
   trustedOrigins?: string[] | undefined;
   /** Set to true to allow cookies over HTTP (non-HTTPS). Only for testing! */

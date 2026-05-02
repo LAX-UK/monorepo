@@ -21,10 +21,10 @@ flowchart TB
 
   subgraph DO[DigitalOcean App Platform · London region]
     direction TB
-    Web[apps/web<br/>Next.js<br/>thealx.bid]
-    Auth[apps/auth<br/>Hono OIDC issuer<br/>auth.thealx.bid]
-    Api[apps/api<br/>Hono HTTP<br/>thealx.bid/api]
-    WS[apps/ws<br/>Socket.IO<br/>thealx.bid/ws]
+    Web[apps/web<br/>Next.js<br/>lax.bid]
+    Auth[apps/auth<br/>Hono OIDC issuer<br/>auth.lax.bid]
+    Api[apps/api<br/>Hono HTTP<br/>lax.bid/api]
+    WS[apps/ws<br/>Socket.IO<br/>lax.bid/ws]
     Worker[apps/worker<br/>BullMQ consumer]
     Migrate[migrate Job<br/>pre-deploy]
   end
@@ -33,8 +33,8 @@ flowchart TB
   Redis[(Redis<br/>BullMQ + pub/sub)]
   Spaces[(DigitalOcean Spaces<br/>uploads + CDN)]
 
-  WP[thealx.art<br/>WordPress · Hostgator]
-  Shop[thealx.shop<br/>Shopify · hosted]
+  WP[lax.art<br/>WordPress · Hostgator]
+  Shop[lax.shop<br/>Shopify · hosted]
 
   External[Zoho EU · Xero · Sentry · Google · Apple]
 
@@ -69,7 +69,7 @@ Each component is a separate process with its own resources, scaling, and deploy
 
 ### apps/web
 
-The Next.js frontend served at thealx.bid. It's a TypeScript Next.js application using Tailwind for styling and the better-auth client for authentication. It talks to apps/api over HTTP and apps/auth over OIDC discovery. Static assets are served via Next.js's standalone output mode and cached at Cloudflare's edge.
+The Next.js frontend served at lax.bid. It's a TypeScript Next.js application using Tailwind for styling and the better-auth client for authentication. It talks to apps/api over HTTP and apps/auth over OIDC discovery. Static assets are served via Next.js's standalone output mode and cached at Cloudflare's edge.
 
 Container starts with `node apps/web/.next/standalone/server.js`. Build command runs the standard Next.js production build inside Turborepo's workspace context. The Next.js app **does not currently expose `/health/live`** — the App Platform health check today is the default TCP probe on the listening port. Adding a dedicated health route is **(planned)**.
 
@@ -81,7 +81,7 @@ The auth server is the only component with direct read access to the JWKS privat
 
 Health checks: `GET /health/live` returns 200 unconditionally; `GET /health/ready` validates DB connectivity and the ability to load JWKS keys ([apps/auth/src/index.ts](../../apps/auth/src/index.ts)).
 
-`apps/auth` is a deployable today, but `apps/api` still serves the same OIDC routes in parallel (D7). The Cloudflare CNAME for `auth.thealx.bid` may point to either component without consumers seeing a difference. Removing the duplicate routes from `apps/api` is **(Phase 2)**, gated on the WordPress relying-party round-trip test.
+`apps/auth` is a deployable today, but `apps/api` still serves the same OIDC routes in parallel (D7). The Cloudflare CNAME for `auth.lax.bid` may point to either component without consumers seeing a difference. Removing the duplicate routes from `apps/api` is **(Phase 2)**, gated on the WordPress relying-party round-trip test.
 
 ### apps/api
 
@@ -146,8 +146,8 @@ The table below is the **target sizing** (recommended, not committed to repo). T
 | App instance size | basic-xxs | professional-xs |
 | HTTP service instance count | 1 | 2 (HA) |
 | Worker instance count | 1 | 1 (scale by apply during incidents) |
-| Domain | test.thealx.bid + test.auth.thealx.bid | thealx.bid + auth.thealx.bid |
-| Cookie domain | .test.thealx.bid | .thealx.bid |
+| Domain | test.lax.bid + test.auth.lax.bid | lax.bid + auth.lax.bid |
+| Cookie domain | .test.lax.bid | .lax.bid |
 | Backup retention | 7 days | 30 days |
 | Cloudflare WAF strict rules | enabled | enabled |
 | Log level | debug | info |

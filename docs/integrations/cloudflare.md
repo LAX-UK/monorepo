@@ -2,12 +2,12 @@
 
 ## DNS
 
-- `thealx.bid` → Next.js web component
-- `api.thealx.bid` → Hono API component
-- `auth.thealx.bid` → auth component (or API component before P2.5 split)
-- `ws.thealx.bid` → Socket.IO gateway
-- `thealx.art` → Hostgator WordPress
-- `thealx.shop` → Shopify
+- `lax.bid` → Next.js web component
+- `api.lax.bid` → Hono API component
+- `auth.lax.bid` → auth component (or API component before P2.5 split)
+- `ws.lax.bid` → Socket.IO gateway
+- `lax.art` → Hostgator WordPress
+- `lax.shop` → Shopify
 
 ## TLS
 

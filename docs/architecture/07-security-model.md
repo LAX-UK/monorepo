@@ -70,7 +70,7 @@ The threat catalog below is roughly ordered by likelihood-times-impact. Each thr
 
 **Impact:** Full impersonation of the victim user for the lifetime of the access token.
 
-**Mitigations.** Short access token lifetime — 15 minutes per Q2. Refresh tokens are server-side and rotation-detecting per Q3, so a stolen refresh token is single-use and triggers token-family invalidation if reused. JWTs include a per-domain audience claim (Q5) so a token issued for thealx.bid does not validate on thealx.shop. TLS everywhere prevents passive interception.
+**Mitigations.** Short access token lifetime — 15 minutes per Q2. Refresh tokens are server-side and rotation-detecting per Q3, so a stolen refresh token is single-use and triggers token-family invalidation if reused. JWTs include a per-domain audience claim (Q5) so a token issued for lax.bid does not validate on lax.shop. TLS everywhere prevents passive interception.
 
 **Acceptance.** A determined attacker with active access to a user's device can extract tokens. We mitigate the replay window (15 min) but cannot prevent the initial theft. The user's recovery path is to sign out from all devices, which invalidates all refresh tokens.
 
