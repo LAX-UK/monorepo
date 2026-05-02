@@ -8,8 +8,6 @@ import {
 import { SaleroomCatalogHeading } from "@/components/sections/saleroom/saleroom-catalog-heading";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
-import { SaleroomHeroHeadline } from "@/components/sections/saleroom/saleroom-hero-headline";
-import { SaleroomHeroOverview } from "@/components/sections/saleroom/saleroom-hero-meta";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
@@ -207,12 +205,15 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
-      <SaleMobileSummaryBar end={bundle.sale.endTime} saleTitle={bundle.sale.title} />
+      <SaleMobileSummaryBar
+        start={bundle.sale.startTime}
+        end={bundle.sale.endTime}
+        status={bundle.sale.status}
+        saleTitle={bundle.sale.title}
+      />
 
       <SaleroomHero
         hero={heroVM}
-        headline={<SaleroomHeroHeadline hero={heroVM} />}
-        overview={<SaleroomHeroOverview hero={heroVM} />}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
@@ -223,7 +224,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-20 sm:px-6 md:px-8">
+      <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-14 sm:px-6 md:px-8">
         <SaleroomCatalogHeading totalLots={lotsPage.total} />
         <SaleroomLotsGrid
           lots={lotVMs}
@@ -248,10 +249,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       </section>
 
       <section
-        className="mx-auto max-w-[1440px] px-4 pb-0 pt-20 sm:px-6 md:px-8"
+        className="mx-auto max-w-[1440px] px-4 pb-0 pt-16 sm:px-6 md:px-8"
         aria-label="Additional sale information"
       >
-        <SaleroomOverviewPanel overview={overviewVM} hideDescription />
+        <SaleroomOverviewPanel overview={overviewVM} />
       </section>
 
       {relatedVMs.length > 0 ? (

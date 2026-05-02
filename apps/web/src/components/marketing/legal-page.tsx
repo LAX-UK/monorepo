@@ -10,15 +10,20 @@ type Props = {
   toc?: readonly TocNavItem[];
   /** ISO date string or display text */
   lastUpdated?: string;
+  embedded?: boolean;
   children: ReactNode;
 };
 
-export function LegalPage({ title, kicker = SITE_NAME, toc, lastUpdated, children }: Props) {
-  return (
-    <main
-      id="main-content"
-      className="legal-print mx-auto max-w-3xl px-6 pb-24 pt-[var(--section-pt)] md:px-10 lg:pt-32"
-    >
+export function LegalPage({
+  title,
+  kicker = SITE_NAME,
+  toc,
+  lastUpdated,
+  embedded,
+  children,
+}: Props) {
+  const content = (
+    <>
       <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
         {kicker}
       </p>
@@ -38,6 +43,19 @@ export function LegalPage({ title, kicker = SITE_NAME, toc, lastUpdated, childre
       <div className="clear-both space-y-6 font-body text-sm leading-relaxed text-on-surface-variant md:text-base">
         {children}
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <section className="legal-print max-w-3xl px-6 py-12 md:px-16">{content}</section>;
+  }
+
+  return (
+    <main
+      id="main-content"
+      className="legal-print mx-auto max-w-3xl px-6 pb-24 pt-[var(--section-pt)] md:px-10 lg:pt-32"
+    >
+      {content}
     </main>
   );
 }

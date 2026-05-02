@@ -161,10 +161,14 @@ export function mapLotToCardVM(
   opts: { viewerUserId: string | null; now: Date; initialWatching?: boolean },
 ): SaleLotCardVM {
   const estimate = lotEstimateLine(lot);
+  // Server-rendered relative phrase used as a non-ticking secondary line.
+  // Important: scheduled lots count down to start (opens-in), active lots to end (closes-in).
   const closingShort =
-    lot.status === "active" || lot.status === "scheduled"
+    lot.status === "active"
       ? formatRelativeShort(lot.endTime, opts.now)
-      : null;
+      : lot.status === "scheduled"
+        ? formatRelativeShort(lot.startTime, opts.now)
+        : null;
   return {
     id: lot.id,
     href: `/artwork/${lot.id}`,
@@ -182,6 +186,9 @@ export function mapLotToCardVM(
     viewerOwnsLot: opts.viewerUserId ? lot.sellerId === opts.viewerUserId : false,
     artistOrMedium: lotSubtitle(lot),
     viewerIsWatching: Boolean(opts.initialWatching),
+    status: lot.status,
+    startTime: lot.startTime.toISOString(),
+    endTime: lot.endTime.toISOString(),
   };
 }
 

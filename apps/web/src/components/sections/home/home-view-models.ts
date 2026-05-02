@@ -29,6 +29,7 @@ export type HeroLotVM = {
   /** Second segment after live dot, e.g. sale title */
   saleMetaLine: string;
   featuredHeading: string;
+  lotLabel: string;
   /** True when lot status is active (for live region announcements). */
   isAuctionLive: boolean;
 };
@@ -59,6 +60,7 @@ export type HeroStateVM =
       posterImageUrl?: string | null | undefined;
     }
   | { kind: "rotator"; slides: HeroSaleSlideVM[] }
+  | { kind: "editorial"; sale: HeroSaleSlideVM; isLive?: boolean }
   | { kind: "fallbackLot"; lot: HeroLotVM };
 
 export type LotCardVM = {
@@ -145,6 +147,7 @@ export function createHeroFallbackVm(): HeroLotVM {
     auctionDateLabel: HERO_PLACEHOLDER_SALE_LINE,
     saleMetaLine: HERO_PLACEHOLDER_SALE_LINE,
     featuredHeading: HERO_PLACEHOLDER_FEATURED_HEADING,
+    lotLabel: "Lot",
     isAuctionLive: false,
   };
 }
@@ -166,6 +169,7 @@ export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
     auctionDateLabel: formatLotAuctionLine(lot),
     saleMetaLine,
     featuredHeading: featuredLotHeading(lot),
+    lotLabel: lotLabelFromLot(lot),
     isAuctionLive: lot.status === "active",
   };
 }

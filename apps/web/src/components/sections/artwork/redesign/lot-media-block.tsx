@@ -30,7 +30,7 @@ export function LotMediaBlock({ lot }: Props) {
 
   return (
     <div
-      className="relative w-full max-w-[786px] overflow-hidden bg-surface-container-lowest"
+      className="relative w-full max-w-[786px] overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full"
       style={aspectStyle}
     >
       <div className="absolute inset-0 min-h-0">

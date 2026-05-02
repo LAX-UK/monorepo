@@ -2,6 +2,7 @@ import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistBioReadMore } from "@/components/sections/artists/artist-bio-read-more";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
@@ -54,16 +55,19 @@ async function loadSellerLots(sellerId: string): Promise<Lot[]> {
 function LotCatalogCard({ lot, currentUserId }: { lot: Lot; currentUserId: string | null }) {
   const img = lot.images[0];
   const est = lotEstimateLine(lot);
+  const statusTone =
+    lot.status === "active"
+      ? "text-live-red"
+      : lot.status === "scheduled"
+        ? "text-lot-orange"
+        : "text-brand-300";
   return (
-    <li
-      key={lot.id}
-      className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-low/50 ring-1 ring-outline-variant/10"
-    >
+    <li key={lot.id} className="group min-w-0">
       <Link
         href={`/artwork/${lot.id}`}
-        className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <div className="relative aspect-[4/5] bg-surface-container-low">
+        <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
           {img ? (
             <Image
               src={img}
@@ -73,27 +77,25 @@ function LotCatalogCard({ lot, currentUserId }: { lot: Lot; currentUserId: strin
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-surface-container-high text-xs text-on-surface-variant">
-              No image
-            </div>
+            <ImagePlaceholder label="Lot artwork" />
           )}
           <OwnerBadge
             owned={Boolean(currentUserId && lot.sellerId === currentUserId)}
             className="absolute right-3 top-3"
           />
         </div>
-        <div className="p-4">
-          <h3 className="font-headline text-lg text-on-surface group-hover:text-primary">
+        <div className="pt-3">
+          <p
+            className={`font-label text-[10px] font-bold uppercase tracking-[0.1em] ${statusTone}`}
+          >
+            {lot.status === "active" ? "Live" : lot.status === "ended" ? "Past" : "Upcoming"}
+          </p>
+          <h3 className="mt-1 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
             {lot.title}
           </h3>
           {est ? (
-            <p className="mt-1 font-label text-[0.65rem] uppercase tracking-wider text-primary">
-              Est. {est}
-            </p>
+            <p className="mt-1 font-body text-xs text-on-surface-variant">Est. {est}</p>
           ) : null}
-          <p className="mt-2 font-label text-xs uppercase tracking-widest text-secondary">
-            {lot.status}
-          </p>
         </div>
       </Link>
     </li>
@@ -252,9 +254,9 @@ export default async function ArtistPage({ params }: PageProps) {
           </li>
         </ol>
       </nav>
-      <section className="mb-32 grid grid-cols-1 items-end gap-16 md:grid-cols-12">
-        <div className="relative md:col-span-5">
-          <div className="aspect-4/5 overflow-hidden bg-surface-container-low">
+      <section className="mb-20 grid min-h-[calc(100vh_-_var(--header-height))] grid-cols-1 items-end gap-0 lg:grid-cols-[5fr_7fr]">
+        <div className="relative lg:sticky lg:top-[var(--header-height)] lg:h-[calc(100vh_-_var(--header-height))]">
+          <div className="aspect-[4/5] h-full overflow-hidden bg-surface-container-low">
             {artist.portraitUrl ? (
               <Image
                 src={artist.portraitUrl}
@@ -273,21 +275,13 @@ export default async function ArtistPage({ params }: PageProps) {
             )}
           </div>
         </div>
-        <div className="flex flex-col items-start md:col-span-7">
-          <div className="mb-6 flex flex-wrap items-center gap-4">
-            <ArtistWatchToggle
-              artistId={id}
-              initialWatching={watching}
-              isAuthenticated={isAuthed}
-            />
-            <ShareButton url={profileUrl} title={artist.name} />
-          </div>
+        <div className="flex flex-col items-start px-0 py-10 lg:px-14 lg:py-20">
           {isFeatured ? (
             <span className="mb-4 font-label text-xs uppercase tracking-[0.3em] text-primary">
               Featured artist
             </span>
           ) : null}
-          <h1 className="mb-8 font-headline text-6xl leading-tight tracking-tighter text-on-surface md:text-8xl lg:text-9xl">
+          <h1 className="mb-8 font-headline text-6xl font-semibold leading-[0.95] tracking-tighter text-on-surface md:text-8xl lg:text-9xl">
             {artist.name.split(" ").map((w, i) => (
               <span key={`${i}-${w}`} className="block">
                 {w}
@@ -300,12 +294,23 @@ export default async function ArtistPage({ params }: PageProps) {
             </p>
           ) : null}
           {artist.bio ? <ArtistBioReadMore bio={artist.bio} className="mb-4" /> : null}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <ArtistWatchToggle
+              artistId={id}
+              initialWatching={watching}
+              isAuthenticated={isAuthed}
+            />
+            <ShareButton url={profileUrl} title={artist.name} />
+          </div>
         </div>
       </section>
       {artist.stats.length > 0 ? (
-        <section className="mb-32 grid grid-cols-2 gap-8 rounded-xl py-16 ring-1 ring-outline-variant/10 md:grid-cols-4">
+        <section className="mb-20 grid grid-cols-2 border-y border-outline-variant/40 py-8 md:grid-cols-4">
           {artist.stats.map((s) => (
-            <div key={s.label} className="flex flex-col">
+            <div
+              key={s.label}
+              className="flex flex-col gap-2 border-outline-variant/40 px-5 first:pl-0 md:border-r md:last:border-r-0"
+            >
               <span className="mb-2 font-label text-[0.65rem] uppercase tracking-widest text-secondary">
                 {s.label}
               </span>
@@ -314,8 +319,18 @@ export default async function ArtistPage({ params }: PageProps) {
           ))}
         </section>
       ) : null}
-      <div className="mb-12 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h2 className="font-headline text-3xl tracking-tight">Curated Works</h2>
+        <div className="flex gap-2" aria-label="Work filters">
+          {["All", "Live", "Past"].map((label) => (
+            <span
+              key={label}
+              className="rounded-full border border-outline-variant/40 px-3 py-1 font-label text-[10px] font-semibold uppercase tracking-[0.1em] text-on-surface-variant"
+            >
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
       {sellerLots.length === 0 ? (
         <p className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">

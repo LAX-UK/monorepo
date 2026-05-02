@@ -1,3 +1,5 @@
+import { LotCardTimer } from "@/components/lot-timer";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -33,26 +35,16 @@ function MetaStack({
   );
 }
 
-function MetaInline({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="text-xs leading-4 text-brand-400 dark:text-on-surface-variant">
-      <span>{label} </span>
-      <span className="text-sm font-semibold leading-6 text-brand-900 dark:text-on-surface">
-        {value}
-      </span>
-    </p>
-  );
-}
-
 /**
- * Figma saleroom lot tile — no Card chrome; fixed aspect image block.
+ * Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
+ * countdown pill (live / opens-in / closed) overlaid on the artwork.
  */
 export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) {
   return (
-    <article className="group flex h-full w-full min-w-0 max-w-[320px] flex-col gap-4">
+    <article className="group flex h-full w-full min-w-0 flex-col gap-4">
       <Link
         href={lot.href}
-        className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-[#E5E5E5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
+        className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
         aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
       >
         {lot.imageUrl ? (
@@ -61,16 +53,12 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
             alt={lot.imageAlt}
             fill
             sizes={sizes}
-            className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+            className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
           />
         ) : (
-          <div
-            className="absolute inset-0 flex items-center justify-center text-xs text-neutral-500 dark:text-on-surface-variant"
-            aria-hidden
-          >
-            No image
-          </div>
+          <ImagePlaceholder label="Lot artwork" />
         )}
+        <LotCardTimer status={lot.status} startTime={lot.startTime} endTime={lot.endTime} />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -80,7 +68,7 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
         <div>
           <Link
             href={lot.href}
-            className="line-clamp-2 block text-xl font-semibold leading-6 text-brand-900 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
+            className="line-clamp-2 block text-lg font-semibold leading-6 text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
           >
             {lot.title}
           </Link>
@@ -106,7 +94,6 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
             value={lot.currentBidValue}
             strongValue
           />
-          {lot.closingShort ? <MetaInline label="Closing:" value={lot.closingShort} /> : null}
         </div>
       </div>
 

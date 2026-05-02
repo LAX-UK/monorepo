@@ -1,5 +1,6 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { UpcomingAuctionVM } from "@/components/sections/home/home-view-models";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { RevealInView } from "@/components/ui/reveal";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
@@ -15,7 +16,7 @@ type Props = {
 
 export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
   return (
-    <section className="w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-20 md:px-8">
+    <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pb-0 pt-20 md:px-10 lg:px-14">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
         <SectionHeader
           heading={
@@ -36,8 +37,8 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
             </Button>
           }
         />
-        <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-stretch lg:gap-8">
-          <div className="group flex min-w-0 flex-[853] flex-col gap-6">
+        <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+          <div className="group flex min-w-0 flex-[853] flex-col gap-5">
             <Link href={auction.href} className="block">
               <div className="relative aspect-[853/500] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
                 {auction.coverImageUrl ? (
@@ -51,13 +52,15 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                       fill
                       placeholder="blur"
                       blurDataURL={TINY_IMAGE_BLUR}
-                      className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+                      className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
                       sizes="(max-width: 1024px) 100vw, 853px"
                     />
                   </RevealInView>
-                ) : null}
+                ) : (
+                  <ImagePlaceholder label="Auction cover" tone="dark" />
+                )}
               </div>
-              <div className="mt-6 flex flex-col gap-3">
+              <div className="mt-5 flex flex-col gap-2">
                 <BodyText className="text-base font-normal uppercase leading-4 text-brand-500 dark:text-on-surface-variant">
                   {auction.dateLabel}
                 </BodyText>
@@ -77,12 +80,12 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
             >
               Featured Lots
             </DisplayHeading>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-8">
               {auction.featuredLots.map((lot) => (
-                <div key={lot.id} className="flex flex-row gap-4">
+                <div key={lot.id} className="group flex flex-row items-start gap-4">
                   <Link
                     href={lot.href}
-                    className="relative block h-[210px] w-[min(45%,181.5px)] shrink-0 overflow-hidden bg-brand-800 dark:bg-surface-container-high"
+                    className="relative block h-[148px] w-[120px] shrink-0 overflow-hidden bg-surface-container-high dark:bg-surface-container-high"
                   >
                     {lot.imageUrl ? (
                       <RevealInView
@@ -95,18 +98,23 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                           fill
                           placeholder="blur"
                           blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover"
+                          className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105"
                           sizes="182px"
                         />
                       </RevealInView>
-                    ) : null}
+                    ) : (
+                      <ImagePlaceholder hideIcon />
+                    )}
                   </Link>
-                  <div className="flex min-w-0 flex-1 flex-col justify-start gap-3 py-1">
+                  <div className="flex min-w-0 flex-1 flex-col justify-start gap-2 py-1">
+                    <span className="font-label text-[10px] font-bold uppercase tracking-[0.1em] text-lot-orange">
+                      Lot
+                    </span>
                     <div className="flex flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={lot.href}
-                          className="font-headline text-xl font-semibold leading-6 text-brand-900 hover:underline dark:text-on-surface"
+                          className="font-headline text-base font-semibold leading-5 text-brand-900 underline-offset-4 group-hover:underline dark:text-on-surface"
                         >
                           {lot.title}
                         </Link>

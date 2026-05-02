@@ -12,7 +12,7 @@ type Props = {
 };
 
 const linkClass =
-  "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text dark:text-on-surface";
+  "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-white/80 transition-colors hover:text-white";
 
 /**
  * Upcoming (→ sales list) lives on its own row; Share / Print are grouped below.
@@ -21,7 +21,7 @@ export function SaleroomHeroToolbar({ shareUrl, shareTitle }: Props) {
   return (
     <div className="flex flex-col items-start gap-2 lg:items-end">
       <Link href="/sales" className={linkClass}>
-        <Calendar className="size-5 shrink-0 text-black dark:text-on-surface" aria-hidden />
+        <Calendar className="size-5 shrink-0 text-white/80" aria-hidden />
         Upcoming Auctions
       </Link>
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">

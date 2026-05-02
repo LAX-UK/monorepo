@@ -54,7 +54,7 @@ export function ContactForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6" noValidate>
+      <form onSubmit={onSubmit} className="mt-6 max-w-[520px] space-y-5" noValidate>
         {rootError ? (
           <p
             className="rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 text-sm text-error"
@@ -83,7 +83,7 @@ export function ContactForm() {
             <FormItem>
               <FormLabel
                 htmlFor="contact-name"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
               >
                 Name
               </FormLabel>
@@ -91,7 +91,7 @@ export function ContactForm() {
                 <Input
                   id="contact-name"
                   maxLength={120}
-                  className="w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   autoComplete="name"
                   {...field}
                 />
@@ -108,7 +108,7 @@ export function ContactForm() {
             <FormItem>
               <FormLabel
                 htmlFor="contact-email"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
               >
                 Email
               </FormLabel>
@@ -117,7 +117,7 @@ export function ContactForm() {
                   id="contact-email"
                   type="email"
                   inputMode="email"
-                  className="w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   autoComplete="email"
                   {...field}
                 />
@@ -134,7 +134,7 @@ export function ContactForm() {
             <FormItem>
               <FormLabel
                 htmlFor="contact-topic"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
               >
                 Topic
               </FormLabel>
@@ -143,7 +143,7 @@ export function ContactForm() {
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
                 options={topics.map((t) => ({ value: t.value, label: t.label }))}
-                triggerClassName="min-h-11 w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm"
+                triggerClassName="min-h-11 w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm"
               />
               <FormMessage />
             </FormItem>
@@ -157,7 +157,7 @@ export function ContactForm() {
             <FormItem>
               <FormLabel
                 htmlFor="contact-message"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
               >
                 Message
               </FormLabel>
@@ -165,7 +165,7 @@ export function ContactForm() {
                 <Textarea
                   id="contact-message"
                   rows={6}
-                  className="w-full rounded-md border border-outline-variant/40 bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   {...field}
                 />
               </FormControl>
