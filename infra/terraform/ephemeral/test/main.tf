@@ -56,12 +56,25 @@ locals {
     ws    = "test-ws.lax.bid"
     media = "test-media.lax.bid"
   }
+}
+
+resource "random_password" "better_auth_secret" {
+  length  = 48
+  special = false
+}
+
+locals {
+  effective_better_auth_secret     = var.better_auth_secret != "" ? var.better_auth_secret : random_password.better_auth_secret.result
+  effective_spaces_access_key_id   = var.spaces_access_key_id != "" ? var.spaces_access_key_id : "pending-media-spaces-access-key"
+  effective_spaces_secret_key      = var.spaces_secret_access_key != "" ? var.spaces_secret_access_key : "pending-media-spaces-secret-key"
+  effective_shopify_webhook_secret = var.shopify_webhook_secret != "" ? var.shopify_webhook_secret : "pending-shopify-webhook-secret"
+  effective_wordpress_secret       = var.wordpress_webhook_secret != "" ? var.wordpress_webhook_secret : "pending-wordpress-webhook-secret"
 
   common_secret_env = [
     { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
     { key = "LOG_LEVEL", value = "debug", type = "GENERAL", scope = "RUN_TIME" },
     { key = "COOKIE_DOMAIN", value = local.cookie_domain, type = "GENERAL", scope = "RUN_TIME" },
-    { key = "BETTER_AUTH_SECRET", value = var.better_auth_secret, type = "SECRET", scope = "RUN_TIME" },
+    { key = "BETTER_AUTH_SECRET", value = local.effective_better_auth_secret, type = "SECRET", scope = "RUN_TIME" },
     { key = "GOOGLE_CLIENT_ID", value = var.google_client_id, type = "SECRET", scope = "RUN_TIME" },
     { key = "GOOGLE_CLIENT_SECRET", value = var.google_client_secret, type = "SECRET", scope = "RUN_TIME" }
   ]
@@ -171,10 +184,10 @@ locals {
         { key = "S3_REGION", value = local.region, type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_ENDPOINT", value = "https://${local.region}.digitaloceanspaces.com", type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_PUBLIC_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "S3_ACCESS_KEY_ID", value = var.spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
-        { key = "S3_SECRET_ACCESS_KEY", value = var.spaces_secret_access_key, type = "SECRET", scope = "RUN_TIME" },
-        { key = "SHOPIFY_WEBHOOK_SECRET", value = var.shopify_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
-        { key = "WORDPRESS_WEBHOOK_SECRET", value = var.wordpress_webhook_secret, type = "SECRET", scope = "RUN_TIME" }
+        { key = "S3_ACCESS_KEY_ID", value = local.effective_spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
+        { key = "S3_SECRET_ACCESS_KEY", value = local.effective_spaces_secret_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "SHOPIFY_WEBHOOK_SECRET", value = local.effective_shopify_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "WORDPRESS_WEBHOOK_SECRET", value = local.effective_wordpress_secret, type = "SECRET", scope = "RUN_TIME" }
       ])
     },
     {
@@ -236,8 +249,8 @@ locals {
         { key = "S3_REGION", value = local.region, type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_ENDPOINT", value = "https://${local.region}.digitaloceanspaces.com", type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_PUBLIC_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "S3_ACCESS_KEY_ID", value = var.spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
-        { key = "S3_SECRET_ACCESS_KEY", value = var.spaces_secret_access_key, type = "SECRET", scope = "RUN_TIME" }
+        { key = "S3_ACCESS_KEY_ID", value = local.effective_spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
+        { key = "S3_SECRET_ACCESS_KEY", value = local.effective_spaces_secret_key, type = "SECRET", scope = "RUN_TIME" }
       ]
     },
     {
