@@ -73,7 +73,9 @@ export class S3ObjectStorage implements IObjectStorage {
     };
   }
 
-  async headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+  async headObject(
+    key: string,
+  ): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
     try {
       const result = await this.client.send(
         new HeadObjectCommand({

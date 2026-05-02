@@ -40,7 +40,9 @@ export class LocalDiskObjectStorage implements IObjectStorage {
     };
   }
 
-  async headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+  async headObject(
+    key: string,
+  ): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
     try {
       const fullPath = join(this.rootDir, key);
       const info = await stat(fullPath);
