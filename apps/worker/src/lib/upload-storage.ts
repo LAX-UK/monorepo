@@ -40,7 +40,9 @@ class WorkerS3UploadStorage implements UploadStorage {
     });
   }
 
-  async headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+  async headObject(
+    key: string,
+  ): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
     try {
       const result = await this.client.send(
         new HeadObjectCommand({
@@ -85,7 +87,9 @@ class WorkerS3UploadStorage implements UploadStorage {
 class WorkerLocalUploadStorage implements UploadStorage {
   constructor(private readonly rootDir: string) {}
 
-  async headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+  async headObject(
+    key: string,
+  ): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
     try {
       const fullPath = join(this.rootDir, key);
       const info = await stat(fullPath);
