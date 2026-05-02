@@ -114,14 +114,33 @@ Then add:
 gh secret set SENTRY_AUTH_TOKEN
 ```
 
+Sentry is optional for the first infrastructure bring-up. If
+`SENTRY_AUTH_TOKEN` is absent or empty, Terraform skips Sentry project creation;
+add the secret later and re-apply `persistent/test` and `persistent/prod` to
+create the projects.
+
 ## 7. GitHub environments and secrets
 
 Create GitHub Environments named `test` and `prod`. Required reviewers stay off
 for now; production apply still requires the typed `APPLY-PROD` confirmation.
 
-Per-environment secrets:
+Per-environment secrets needed before the first app deployment:
 
 - `BETTER_AUTH_SECRET`
+- `MEDIA_SPACES_ACCESS_KEY_ID`
+- `MEDIA_SPACES_SECRET_ACCESS_KEY`
+
+`BETTER_AUTH_SECRET` can be omitted for the first Terraform apply; Terraform
+generates a stable placeholder in state so App Platform can boot. Replace it
+with a GitHub environment secret before real users sign in.
+
+The media Spaces keys can also be omitted for the first apply; Terraform uses
+placeholder values so health checks can pass, but uploads will not work until
+the real `MEDIA_SPACES_ACCESS_KEY_ID` and `MEDIA_SPACES_SECRET_ACCESS_KEY` are
+added and `ephemeral/<env>` is re-applied.
+
+Per-environment secrets that can be added after base infra is running:
+
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `SHOPIFY_WEBHOOK_SECRET`

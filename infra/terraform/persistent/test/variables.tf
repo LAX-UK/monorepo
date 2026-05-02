@@ -26,6 +26,7 @@ variable "cloudflare_account_id" {
 }
 variable "sentry_auth_token" {
   type      = string
+  default   = ""
   sensitive = true
 }
 variable "sentry_organization_slug" {
