@@ -140,7 +140,7 @@ resource "digitalocean_app" "this" {
         # The API runner image is `FROM node:22-alpine` without corepack/pnpm,
         # so invoke the compiled migrator with node directly. `packages/db/dist`
         # is produced by turbo `^build` and copied into the runner stage.
-        run_command        = coalesce(job.value.run_command, "node packages/db/dist/migrate-prod.js")
+        run_command = coalesce(job.value.run_command, "node packages/db/dist/migrate-prod.js")
 
         github {
           repo           = local.github_repo

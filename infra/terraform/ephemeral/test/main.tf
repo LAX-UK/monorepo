@@ -139,6 +139,7 @@ locals {
         { key = "DATABASE_URL", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
@@ -169,6 +170,7 @@ locals {
       env = concat(local.common_secret_env, [
         { key = "DATABASE_URL", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
         { key = "OIDC_ISSUER_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
@@ -207,6 +209,7 @@ locals {
         { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "DATABASE_URL", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_WORKER", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "LOG_LEVEL", value = "debug", type = "GENERAL", scope = "RUN_TIME" },
         { key = "STORAGE_DRIVER", value = "s3", type = "GENERAL", scope = "RUN_TIME" },
@@ -228,6 +231,7 @@ locals {
       instance_count  = 1
       env = [
         { key = "DATABASE_URL_OWNER", value = module.postgres.owner_uri, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
         { key = "AUTH_APP_DB_PASSWORD", value = random_password.auth_app.result, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_APP_DB_PASSWORD", value = random_password.api_app.result, type = "SECRET", scope = "RUN_TIME" },
         { key = "WORKER_APP_DB_PASSWORD", value = random_password.worker_app.result, type = "SECRET", scope = "RUN_TIME" }
