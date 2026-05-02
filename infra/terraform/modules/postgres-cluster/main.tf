@@ -64,3 +64,9 @@ resource "digitalocean_database_firewall" "this" {
     }
   }
 }
+
+# DO Managed Postgres terminates TLS with a private CA. Newer pg/pg-connection-string
+# treat sslmode=require as verify-full, so apps must trust this CA explicitly.
+data "digitalocean_database_ca" "this" {
+  cluster_id = digitalocean_database_cluster.this.id
+}
