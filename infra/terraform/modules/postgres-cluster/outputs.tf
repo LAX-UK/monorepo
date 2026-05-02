@@ -7,3 +7,7 @@ output "owner_uri" {
   value     = digitalocean_database_cluster.this.uri
   sensitive = true
 }
+output "ca_certificate" {
+  value     = data.digitalocean_database_ca.this.certificate
+  sensitive = true
+}
