@@ -14,6 +14,12 @@ type Props = {
   actions?: ReactNode;
   /** Image sizes hint — defaults to 4-col grid; override for different grids. */
   sizes?: string;
+  /**
+   * Visual emphasis hint for the price block. Defaults preserve the historical
+   * rendering (estimate calm, current-bid bold) so callers that don't pass a
+   * variant render unchanged.
+   */
+  priceEmphasis?: "estimate" | "currentBid" | "both";
 };
 
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw";
@@ -39,7 +45,15 @@ function MetaStack({
  * Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
  * countdown pill (live / opens-in / closed) overlaid on the artwork.
  */
-export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) {
+export function SaleroomLotCard({
+  lot,
+  actions,
+  sizes = DEFAULT_SIZES,
+  priceEmphasis,
+}: Props) {
+  const emphasis = priceEmphasis ?? (lot.isLive ? "currentBid" : "estimate");
+  const estimateStrong = emphasis === "estimate" || emphasis === "both";
+  const currentStrong = emphasis === "currentBid" || emphasis === "both";
   return (
     <article className="group flex h-full w-full min-w-0 flex-col gap-4">
       <Link
@@ -80,11 +94,11 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
         </div>
 
         <div className="flex flex-col gap-2 text-xs text-brand-400 dark:text-on-surface-variant">
-          {lot.estimateValue ? (
-            <MetaStack label="Estimate" value={lot.estimateValue} />
-          ) : (
-            <MetaStack label="Estimate" value="—" />
-          )}
+          <MetaStack
+            label="Estimate"
+            value={lot.estimateValue ?? "—"}
+            strongValue={estimateStrong}
+          />
           <MetaStack
             label={
               lot.bidsCountLabel
@@ -92,7 +106,7 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES }: Props) 
                 : lot.currentBidLabel
             }
             value={lot.currentBidValue}
-            strongValue
+            strongValue={currentStrong}
           />
         </div>
       </div>

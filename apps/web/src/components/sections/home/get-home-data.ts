@@ -67,7 +67,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       : (firstSale?.sale.title ?? null);
 
   const heroVm: HeroLotVM = featuredLot
-    ? toHeroLotVM(featuredLot, saleTitleForHero)
+    ? toHeroLotVM(featuredLot, saleTitleForHero, { saleId: featuredLot.saleId ?? null })
     : createHeroFallbackVm();
   const lotCards = toLotCardVMs(upcoming.slice(1, 5));
   const auctionVm = firstSale ? toUpcomingAuctionVM(firstSale) : null;

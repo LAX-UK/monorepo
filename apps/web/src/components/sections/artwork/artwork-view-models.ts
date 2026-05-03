@@ -20,6 +20,12 @@ export type LotHeroVM = {
   nextHref: string | null;
   /** e.g. "1 / 8" when navigating within a sale; null if unknown */
   positionLabel: string | null;
+  /**
+   * Optional Home segment prepended to the breadcrumb so the trail reads
+   * Home › Sale › Lot N (mockup parity). When omitted the breadcrumb keeps
+   * the historical "Auctions" first crumb behaviour.
+   */
+  homeSegment?: { label: string; href: string };
 };
 
 export type LotRailCardVM = {
@@ -76,6 +82,8 @@ export function mapLotToHeroVM(
   const firstSegmentHref = "/sales";
   const firstSegmentLabel = "Auctions";
 
+  const homeSegment = { label: "Home", href: "/" } as const;
+
   if (!parentSale || !lot.saleId) {
     return {
       firstSegmentHref,
@@ -86,6 +94,7 @@ export function mapLotToHeroVM(
       prevHref: null,
       nextHref: null,
       positionLabel: null,
+      homeSegment,
     };
   }
 
@@ -107,6 +116,7 @@ export function mapLotToHeroVM(
     prevHref: prev ? `/artwork/${prev.id}` : null,
     nextHref: next ? `/artwork/${next.id}` : null,
     positionLabel,
+    homeSegment,
   };
 }
 

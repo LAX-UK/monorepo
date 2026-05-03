@@ -18,27 +18,77 @@ import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { NotificationBell } from "./notification-bell";
 import { ThemeToggle } from "./theme-toggle";
 
+type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
+
 type SiteHeaderProps = {
   user: SessionUser | null;
   nav?: MegaMenuSection[];
+  /**
+   * Routes whose hero is meant to read directly into the header (the header
+   * fades from transparent to solid as the user scrolls).
+   * Anything not in this list keeps the existing solid chrome.
+   */
+  transparentPaths?: string[];
+  /**
+   * Optional explicit override; if provided this wins regardless of route.
+   * Defaults to "solid" so every existing call site renders unchanged.
+   */
+  chromeVariant?: SiteHeaderChromeVariant;
 };
 
-export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
+const SCROLL_FADE_THRESHOLD_PX = 12;
+
+export function SiteHeader({
+  user,
+  nav: navProp,
+  transparentPaths,
+  chromeVariant,
+}: SiteHeaderProps) {
   const nav = navProp ?? emptyMegaMenuSections();
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
+  const [atTop, setAtTop] = useState(true);
   const pathname = usePathname();
+
+  const resolvedVariant: SiteHeaderChromeVariant =
+    chromeVariant ??
+    (transparentPaths && pathname && transparentPaths.includes(pathname)
+      ? "transparentUntilScroll"
+      : "solid");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (resolvedVariant !== "transparentUntilScroll") {
+      setAtTop(true);
+      return;
+    }
+    const onScroll = () => {
+      setAtTop(window.scrollY <= SCROLL_FADE_THRESHOLD_PX);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [resolvedVariant]);
+
+  const isTransparent =
+    resolvedVariant === "transparentUntilScroll" && atTop && !megaOpen && !menuOpen;
+
   return (
     <header
+      data-chrome-variant={resolvedVariant}
+      data-at-top={atTop ? "true" : "false"}
       className={cn(
-        "fixed top-0 z-50 w-full bg-surface transition-colors",
-        megaOpen ? "border-b border-transparent" : "border-b border-nav-border",
+        "fixed top-0 z-50 w-full transition-colors",
+        isTransparent
+          ? "border-b border-transparent bg-transparent"
+          : cn(
+              "bg-surface",
+              megaOpen ? "border-b border-transparent" : "border-b border-nav-border",
+            ),
       )}
     >
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">

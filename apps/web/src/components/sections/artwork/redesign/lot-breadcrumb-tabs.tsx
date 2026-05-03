@@ -15,10 +15,24 @@ export function LotBreadcrumbTabs({ vm }: Props) {
       aria-label="Breadcrumb"
       className="flex min-h-10 flex-wrap items-center gap-2 text-sm font-medium leading-5 uppercase text-on-surface"
     >
-      <Link href={vm.firstSegmentHref} className="shrink-0 transition-opacity hover:opacity-80">
-        {vm.firstSegmentLabel}
-      </Link>
-      <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />
+      {vm.homeSegment ? (
+        <>
+          <Link
+            href={vm.homeSegment.href}
+            className="shrink-0 transition-opacity hover:opacity-80"
+          >
+            {vm.homeSegment.label}
+          </Link>
+          <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />
+        </>
+      ) : (
+        <>
+          <Link href={vm.firstSegmentHref} className="shrink-0 transition-opacity hover:opacity-80">
+            {vm.firstSegmentLabel}
+          </Link>
+          <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />
+        </>
+      )}
       {vm.saleHref && vm.saleTitle ? (
         <>
           <Link

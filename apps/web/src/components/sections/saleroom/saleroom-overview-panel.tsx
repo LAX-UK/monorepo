@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import type { SaleOverviewVM } from "./view-models";
 
 type Props = {
@@ -55,6 +56,20 @@ export function SaleroomOverviewPanel({ overview, hideDescription = false }: Pro
             <Fact label="Lots" value={overview.lotsLabel} />
           </div>
         </dl>
+        <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+          <Link
+            href="/faq"
+            className="text-brand-900 underline-offset-4 hover:underline dark:text-on-surface"
+          >
+            How to bid
+          </Link>
+          <Link
+            href="/shipping"
+            className="text-brand-900 underline-offset-4 hover:underline dark:text-on-surface"
+          >
+            Shipping
+          </Link>
+        </p>
       </div>
 
       <div className="rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40">

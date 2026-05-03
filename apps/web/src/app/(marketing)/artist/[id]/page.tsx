@@ -1,6 +1,6 @@
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { ShareButton } from "@/components/marketing/share-button";
-import { ArtistBioReadMore } from "@/components/sections/artists/artist-bio-read-more";
+import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
@@ -12,11 +12,11 @@ import {
   itemListJsonLd,
   jsonLdScript,
   personJsonLd,
+  visualArtistJsonLd,
 } from "@/lib/seo/structured-data";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtistWorksGrid } from "../../../../components/sections/artists/artist-works-grid";
@@ -133,16 +133,27 @@ export default async function ArtistPage({ params }: PageProps) {
             </li>
           </ol>
         </nav>
-        <div className="mb-8 flex flex-wrap items-center gap-4">
-          <ArtistWatchToggle artistId={id} initialWatching={watching} isAuthenticated={isAuthed} />
-          <ShareButton url={profileUrl} title={user.name} />
-        </div>
-        <h1 className="mb-4 font-headline text-5xl tracking-tight text-on-surface md:text-7xl">
-          {user.name}
-        </h1>
-        <p className="mb-12 max-w-2xl font-body text-sm text-on-surface-variant">
-          Seller on LAX London Auction House Ltd — lots listed below are attributed to this account.
-        </p>
+        <ArtistHero
+          vm={{
+            id,
+            name: user.name,
+            tagline:
+              "Seller on LAX London Auction House Ltd \u2014 lots listed below are attributed to this account.",
+            bio: null,
+            portraitUrl: null,
+            featured: false,
+          }}
+          actions={
+            <>
+              <ArtistWatchToggle
+                artistId={id}
+                initialWatching={watching}
+                isAuthenticated={isAuthed}
+              />
+              <ShareButton url={profileUrl} title={user.name} />
+            </>
+          }
+        />
         {sellerLots.length === 0 ? (
           <p className="font-body text-on-surface-variant">No public lots for this seller yet.</p>
         ) : (
@@ -157,7 +168,7 @@ export default async function ArtistPage({ params }: PageProps) {
     { name: "Artists", path: "/artist/featured" },
     { name: artist.name, path: `/artist/${id}` },
   ]);
-  const personLd = personJsonLd({
+  const personLd = visualArtistJsonLd({
     name: artist.name,
     url: profileUrl,
     ...(artist.portraitUrl ? { image: artist.portraitUrl } : {}),
@@ -205,56 +216,26 @@ export default async function ArtistPage({ params }: PageProps) {
           </li>
         </ol>
       </nav>
-      <section className="mb-16 grid grid-cols-1 items-end gap-0 md:mb-20 md:min-h-[calc(100vh_-_var(--header-height))] md:grid-cols-[5fr_7fr]">
-        <div className="relative md:sticky md:top-[var(--header-height)] md:h-[calc(100vh_-_var(--header-height))]">
-          <div className="h-[65vw] min-h-[220px] max-h-[480px] w-full overflow-hidden bg-surface-container-low md:h-full md:max-h-none">
-            {artist.portraitUrl ? (
-              <Image
-                src={artist.portraitUrl}
-                alt={artist.name}
-                width={560}
-                height={700}
-                className="h-full w-full object-cover transition-transform duration-700 motion-safe:hover:scale-105 motion-reduce:hover:scale-100"
-              />
-            ) : (
-              <div
-                className="flex h-full w-full items-center justify-center bg-surface-container-high font-headline text-4xl text-on-surface-variant"
-                aria-hidden
-              >
-                {artist.name.slice(0, 1).toUpperCase()}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col items-start gap-8 px-0 py-8 md:px-10 md:py-16 lg:px-14 lg:py-20">
-          {isFeatured ? (
-            <span className="font-label text-xs uppercase tracking-[0.3em] text-primary">
-              Featured artist
-            </span>
-          ) : null}
-          <h1 className="font-headline text-[clamp(3rem,6vw,6rem)] font-semibold leading-[0.95] tracking-tighter text-on-surface">
-            {artist.name.split(" ").map((w, i) => (
-              <span key={`${i}-${w}`} className="block">
-                {w}
-              </span>
-            ))}
-          </h1>
-          {artist.tagline ? (
-            <p className="max-w-[420px] font-headline text-lg font-light italic leading-relaxed text-secondary">
-              &ldquo;{artist.tagline}&rdquo;
-            </p>
-          ) : null}
-          {artist.bio ? <ArtistBioReadMore bio={artist.bio} /> : null}
-          <div className="flex flex-wrap items-center gap-3">
+      <ArtistHero
+        vm={{
+          id,
+          name: artist.name,
+          tagline: artist.tagline ?? null,
+          bio: artist.bio ?? null,
+          portraitUrl: artist.portraitUrl ?? null,
+          featured: isFeatured,
+        }}
+        actions={
+          <>
             <ArtistWatchToggle
               artistId={id}
               initialWatching={watching}
               isAuthenticated={isAuthed}
             />
             <ShareButton url={profileUrl} title={artist.name} />
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
       {artist.stats.length > 0 ? (
         <section className="mb-20 grid grid-cols-2 gap-y-5 border-y border-outline-variant/40 py-8 md:grid-cols-4 md:gap-0">
           {artist.stats.map((s) => (

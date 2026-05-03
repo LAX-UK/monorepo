@@ -15,6 +15,7 @@ import {
   CompareDelta,
   EntityTableShell,
   PageHeader,
+  StatusBadge,
   Button as UiButton,
 } from "@auction/ui";
 import { ChevronRight, Plus } from "lucide-react";
@@ -33,6 +34,13 @@ export type AdminActivityRow = {
   title: string;
   meta: string;
   href: string;
+  /** Mockup-aligned status chip; renders with `StatusBadge` when present. */
+  statusLabel?: string;
+  statusTone?: "live" | "neutral" | "warning" | "success";
+  /** Mockup-aligned price column; renders next to the status when present. */
+  priceLabel?: string;
+  /** Mockup-aligned ends column; renders right-aligned next to the action. */
+  endsLabel?: string;
 };
 
 type Props = {
@@ -113,14 +121,22 @@ export function AdminOperationsHomeView({
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <section className="space-y-4 lg:col-span-7">
+        <section
+          className={
+            activeLotIds.length === 0 ? "space-y-4 lg:col-span-8" : "space-y-4 lg:col-span-7"
+          }
+        >
           <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
             Needs your attention
           </h2>
           <AttentionList items={attention} />
         </section>
 
-        <aside className="space-y-4 lg:col-span-5">
+        <aside
+          className={
+            activeLotIds.length === 0 ? "space-y-4 lg:col-span-4" : "space-y-4 lg:col-span-5"
+          }
+        >
           <Card className="border-outline-variant/15">
             <CardHeader>
               <CardTitle className="font-headline text-lg">Live saleroom</CardTitle>
@@ -155,8 +171,10 @@ export function AdminOperationsHomeView({
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-outline-variant/15 bg-surface-container-low/50 font-label text-xs uppercase tracking-wider text-on-surface-variant">
                   <tr>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Meta</th>
+                    <th className="px-4 py-3">Title</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Price</th>
+                    <th className="px-4 py-3">Ends</th>
                     <th className="px-4 py-3 text-right">Open</th>
                   </tr>
                 </thead>
@@ -164,7 +182,19 @@ export function AdminOperationsHomeView({
                   {activity.map((r) => (
                     <tr key={r.id} className="border-b border-outline-variant/10">
                       <td className="px-4 py-3 font-medium text-on-surface">{r.title}</td>
-                      <td className="px-4 py-3 text-on-surface-variant">{r.meta}</td>
+                      <td className="px-4 py-3 text-on-surface-variant">
+                        {r.statusLabel ? (
+                          <StatusBadge variant={r.statusTone ?? "neutral"} size="sm">
+                            {r.statusLabel}
+                          </StatusBadge>
+                        ) : (
+                          <span>{r.meta}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-on-surface">{r.priceLabel ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-on-surface-variant">
+                        {r.endsLabel ?? (r.statusLabel ? "\u2014" : "")}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <UiButton variant="chevron" size="sm" asChild>
                           <Link href={r.href} className="inline-flex items-center gap-1">
@@ -188,7 +218,19 @@ export function AdminOperationsHomeView({
                     className="flex min-h-11 flex-col gap-1 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
                   >
                     <span className="font-headline text-sm text-on-surface">{r.title}</span>
-                    <span className="text-xs text-on-surface-variant">{r.meta}</span>
+                    {r.statusLabel || r.priceLabel || r.endsLabel ? (
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
+                        {r.statusLabel ? (
+                          <StatusBadge variant={r.statusTone ?? "neutral"} size="sm">
+                            {r.statusLabel}
+                          </StatusBadge>
+                        ) : null}
+                        {r.priceLabel ? <span>{r.priceLabel}</span> : null}
+                        {r.endsLabel ? <span>{r.endsLabel}</span> : null}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-on-surface-variant">{r.meta}</span>
+                    )}
                   </Link>
                 </li>
               ))}

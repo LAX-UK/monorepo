@@ -1,4 +1,4 @@
-import { LegalPage } from "@/components/marketing/legal-page";
+import { LegalH2, LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -15,33 +15,58 @@ const toc = [
   { id: "collection", label: "What we collect" },
   { id: "use", label: "How we use data" },
   { id: "rights", label: "Your rights" },
+  { id: "cookies", label: "Cookies" },
 ] as const;
 
 export default function PrivacyPage() {
   return (
     <PolicyHubLayout>
-      <LegalPage title="Privacy notice" toc={[...toc]} lastUpdated="21 April 2026" embedded>
-        <h2 id="collection" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+      <LegalPage
+        title="Privacy notice"
+        toc={[...toc]}
+        lastUpdated="21 April 2026"
+        kicker={null}
+        dividerUnderDate
+        embedded
+      >
+        <LegalH2 id="collection" className="scroll-mt-28">
           What we collect
-        </h2>
+        </LegalH2>
         <p>
-          We collect account and session data necessary to operate auctions, process settlements,
-          and comply with legal obligations. Payment details are handled by our payment partners; we
-          do not store full card numbers on our servers.
+          We collect the account and session data we need to operate auctions, process settlements,
+          and meet our legal obligations. This includes your name, email, billing address, and your
+          bidding history.
         </p>
-        <h2 id="use" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+        <p>
+          Payment details are handled by our payment partners (Stripe and our settlement bank). Full
+          card numbers and bank credentials are never stored on our servers.
+        </p>
+
+        <LegalH2 id="use" className="scroll-mt-28">
           How we use data
-        </h2>
-        <p>
-          Data is used to authenticate you, fulfil orders, prevent fraud, and improve the platform.
-          Analytics are aggregated where possible.
-        </p>
-        <h2 id="rights" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+        </LegalH2>
+        <p>Data is used to:</p>
+        <LegalUL>
+          <li>Authenticate you and keep your account secure.</li>
+          <li>Fulfil purchases, payments, shipping, and settlement.</li>
+          <li>Detect and prevent fraud or unauthorised bidding.</li>
+          <li>Improve the platform via aggregated, anonymised analytics.</li>
+          <li>Send you transactional notifications and (opt-in) catalogue alerts.</li>
+        </LegalUL>
+
+        <LegalH2 id="rights" className="scroll-mt-28">
           Your rights
-        </h2>
+        </LegalH2>
         <p>
-          You may request access or deletion of personal data where applicable law allows. Marketing
-          communications are opt-in and can be withdrawn at any time. DPA contact:{" "}
+          You may request access, correction, or deletion of your personal data where applicable law
+          allows. Marketing communications are opt-in and can be withdrawn from your{" "}
+          <Link href="/dashboard/settings" className="text-primary underline-offset-4 hover:underline">
+            dashboard
+          </Link>{" "}
+          at any time.
+        </p>
+        <p>
+          For data protection enquiries, our DPA contact is{" "}
           <a
             href="mailto:concierge@laxauction.house"
             className="text-primary underline-offset-4 hover:underline"
@@ -53,6 +78,15 @@ export default function PrivacyPage() {
             Terms of sale
           </Link>
           .
+        </p>
+
+        <LegalH2 id="cookies" className="scroll-mt-28">
+          Cookies
+        </LegalH2>
+        <p>
+          We use a small number of essential cookies to keep you signed in, remember display
+          preferences, and protect against fraud. Optional analytics cookies are set only with your
+          consent and can be revoked at any time from your dashboard preferences.
         </p>
       </LegalPage>
     </PolicyHubLayout>

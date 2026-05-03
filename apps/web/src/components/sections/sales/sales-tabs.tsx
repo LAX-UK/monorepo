@@ -18,8 +18,12 @@ type Props = {
   categoryId: string | undefined;
 };
 
-function tabValue(filter: SaleFilter): "current" | "results" {
-  return filter === "ended" ? "results" : "current";
+type TabValue = "live" | "current" | "results";
+
+function tabValue(filter: SaleFilter): TabValue {
+  if (filter === "ended") return "results";
+  if (filter === "live" || filter === "active") return "live";
+  return "current";
 }
 
 export function SalesTabs({ filter, categoryId }: Props) {
@@ -33,6 +37,15 @@ export function SalesTabs({ filter, categoryId }: Props) {
             "h-auto w-full min-w-0 flex-wrap justify-start gap-12 rounded-none border-0 border-b border-brand-100 bg-transparent p-0 dark:border-outline-variant/40",
           )}
         >
+          <TabsTrigger value="live" asChild>
+            <Link
+              href={salesHref("live", categoryId)}
+              className={cn(triggerClass, "inline-flex items-center")}
+              aria-current={v === "live" ? "page" : undefined}
+            >
+              Live now
+            </Link>
+          </TabsTrigger>
           <TabsTrigger value="current" asChild>
             <Link
               href={salesHref("current", categoryId)}

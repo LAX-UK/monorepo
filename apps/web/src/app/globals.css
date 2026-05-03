@@ -70,6 +70,7 @@
   --color-on-tertiary: #ffffff;
   --color-inverse-on-surface: #f1f1f1;
   --color-outline-variant: #d1c5b4;
+  --color-divider-soft: var(--color-outline-variant);
   --color-surface-container-lowest: #ffffff;
   --color-tertiary-container: #a5a5a5;
   --color-secondary-fixed: #e5e2e1;
@@ -145,7 +146,9 @@
   --section-pt-tight: calc(var(--header-height) + 1.5rem);
   --text-display-lg: clamp(2.25rem, 4vw + 1rem, 3.75rem);
   --text-display-md: clamp(1.75rem, 2vw + 1rem, 2.5rem);
+  --text-display-sm: clamp(1.5rem, 1.4vw + 0.9rem, 1.875rem);
   --text-title-section: 2.5rem;
+  --text-legal-h2: 1.125rem;
   --text-label-caps-tracking: 0.3em;
 }
 
@@ -330,6 +333,7 @@ html.dark {
   --color-on-tertiary: #ffffff;
   --color-inverse-on-surface: #1a1c1c;
   --color-outline-variant: #5c5a54;
+  --color-divider-soft: var(--color-outline-variant);
   --color-surface-container-lowest: #0f1111;
   --color-tertiary-container: #5e6363;
   --color-secondary-fixed: #8e8d8d;

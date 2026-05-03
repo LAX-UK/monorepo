@@ -101,12 +101,26 @@ export default async function ArtworkPage({ params }: PageProps) {
   );
   const userMaxMeta = findUserLatestBidMeta(session?.id, initialBids);
 
-  const crumbs = breadcrumbJsonLd([
-    { name: "Home", path: "/" },
-    { name: "Search", path: "/search" },
-    { name: auction.title, path: `/artwork/${auction.id}` },
-  ]);
-  const jsonLdText = jsonLdScript(lotProductJsonLd(auction), crumbs);
+  const crumbs = breadcrumbJsonLd(
+    parentSale
+      ? [
+          { name: "Home", path: "/" },
+          { name: parentSale.title, path: `/sales/${parentSale.id}` },
+          { name: auction.title, path: `/artwork/${auction.id}` },
+        ]
+      : [
+          { name: "Home", path: "/" },
+          { name: "Search", path: "/search" },
+          { name: auction.title, path: `/artwork/${auction.id}` },
+        ],
+  );
+  const jsonLdText = jsonLdScript(
+    lotProductJsonLd(auction, {
+      ...(artistForAccordion?.name ? { artistName: artistForAccordion.name } : {}),
+      ...(sellerName ? { sellerName } : {}),
+    }),
+    crumbs,
+  );
 
   const saleContext = saleBundle
     ? {

@@ -1,7 +1,6 @@
 import { ContactForm } from "@/components/marketing/contact-form";
-import { LegalPage } from "@/components/marketing/legal-page";
+import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
-import { SITE_NAME } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, localBusinessJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
@@ -24,7 +23,7 @@ export default function ContactPage() {
 
   return (
     <PolicyHubLayout>
-      <LegalPage title="Contact" lastUpdated="21 April 2026" embedded>
+      <LegalPage title="Contact" lastUpdated="21 April 2026" kicker={null} dividerUnderDate embedded>
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>
@@ -47,27 +46,31 @@ export default function ContactPage() {
         <p className="text-on-surface-variant">
           Registered office: 1 Curator Mews, London W1K 1AA, United Kingdom.
         </p>
+
+        <LegalH2 id="message" className="scroll-mt-28">
+          Send a message
+        </LegalH2>
         <p className="text-on-surface-variant">
-          For bidding support during live phases, signed-in collectors can reach us through their
-          dashboard notifications channel. See also{" "}
+          Use the form below for buying, selling, shipping, or press enquiries. Our specialists
+          route each enquiry to the right desk.
+        </p>
+        <ContactForm />
+
+        <aside className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
+          For bidding support during live phases, signed-in collectors can reach us through their{" "}
+          <Link href="/dashboard" className="text-primary underline-offset-4 hover:underline">
+            dashboard
+          </Link>{" "}
+          notifications channel. See also{" "}
           <Link href="/shipping" className="text-primary underline-offset-4 hover:underline">
-            Shipping & logistics
+            Shipping &amp; logistics
           </Link>{" "}
           and{" "}
           <Link href="/faq" className="text-primary underline-offset-4 hover:underline">
             FAQs
           </Link>
           .
-        </p>
-
-        <h2 id="message" className="!mt-12 scroll-mt-28 font-headline text-2xl text-on-surface">
-          Send a message
-        </h2>
-        <p className="text-on-surface-variant">
-          Use the form for buying, selling, shipping, or press — {SITE_NAME} specialists route each
-          inquiry to the right desk.
-        </p>
-        <ContactForm />
+        </aside>
       </LegalPage>
     </PolicyHubLayout>
   );

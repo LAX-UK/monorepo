@@ -44,7 +44,7 @@ export function LaxArtists({ items }: Props) {
             No artists to display.
           </BodyText>
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((a, index) => (
               <Link
                 key={a.id}
@@ -70,6 +70,11 @@ export function LaxArtists({ items }: Props) {
                   <span className="font-label text-sm font-semibold uppercase tracking-wider text-hero-foreground">
                     {a.name}
                   </span>
+                  {a.specialty ? (
+                    <span className="font-body text-[11px] uppercase tracking-[0.18em] text-white/70">
+                      {a.specialty}
+                    </span>
+                  ) : null}
                   <span className="font-body text-xs text-white/60 underline-offset-2 group-hover:underline">
                     View profile
                   </span>

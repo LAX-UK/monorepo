@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/format-currency";
 import type { Lot, Sale } from "@auction/types";
 
 export type SaleCalendarRowVM = {
@@ -10,6 +11,17 @@ export type SaleCalendarRowVM = {
   auctionTypeLabel: string;
   status: Sale["status"];
   itemsLabel: string;
+  /**
+   * Optional category label (e.g. "Modern & Contemporary"). When present
+   * appended to the meta line; absent leaves current rendering unchanged.
+   */
+  categoryLabel?: string;
+  /**
+   * Optional results summary for past sales. When present, the row appends a
+   * "{hammer} hammer · {total} total" suffix. Both halves are individually
+   * optional so partial data (only `hammer` or only `total`) renders cleanly.
+   */
+  resultsSummary?: { hammer?: string; total?: string };
 };
 
 function formatTimeLine(start: Date, locale = "en-GB"): string {
@@ -55,6 +67,22 @@ function mapDeliveryToAuctionTypeLabel(mode: Sale["deliveryMode"]): string {
  * Build the calendar row label line, e.g. "9–16 April 2026 | 11 AM GMT | London".
  * Location is optional (no field on Sale yet per plan).
  */
+function endedHammerTotal(lots: Lot[]): string | undefined {
+  if (lots.length === 0) return undefined;
+  const total = lots.reduce((acc, l) => {
+    if (l.status !== "ended" || !l.winnerId) return acc;
+    const n = Number.parseFloat(l.currentPrice);
+    return acc + (Number.isNaN(n) ? 0 : n);
+  }, 0);
+  if (total <= 0) return undefined;
+  return formatMoney(String(total));
+}
+
+function deriveCategoryLabel(sale: Sale): string | undefined {
+  const candidate = (sale as unknown as { categoryLabel?: string }).categoryLabel;
+  return candidate?.trim() || undefined;
+}
+
 export function mapSaleToCalendarRowVM(
   sale: Sale,
   lots: Lot[],
@@ -69,6 +97,10 @@ export function mapSaleToCalendarRowVM(
   const n = lots.length;
   const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
 
+  const categoryLabel = deriveCategoryLabel(sale);
+  const hammer = sale.status === "ended" ? endedHammerTotal(lots) : undefined;
+  const resultsSummary = hammer ? { hammer, total: hammer } : undefined;
+
   return {
     id: sale.id,
     href: `/sales/${sale.id}`,
@@ -79,5 +111,7 @@ export function mapSaleToCalendarRowVM(
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     status: sale.status,
     itemsLabel,
+    ...(categoryLabel ? { categoryLabel } : {}),
+    ...(resultsSummary ? { resultsSummary } : {}),
   };
 }

@@ -40,6 +40,29 @@ function mapPublicUserToArtist(row: {
  * Composition root for artist reads (DIP).
  * Uses `/users/public/artists` when `NEXT_PUBLIC_ENABLE_ARTISTS` is not `"false"`.
  */
+/**
+ * Sitemap-only helper: list public artist ids for the discovery sitemap.
+ *
+ * Returns an empty array when artists are disabled or when the upstream
+ * endpoint fails — sitemaps must still be generated even on partial outages.
+ */
+export async function fetchArtistIdsForSitemap(limit = 1000): Promise<string[]> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
+  try {
+    const client = await getServerHc();
+    const res = await client.users.public.artists.$get({
+      query: { limit: String(limit), offset: "0" },
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as {
+      data: { id: string }[];
+    };
+    return body.data.map((row) => row.id).filter((id): id is string => Boolean(id));
+  } catch {
+    return [];
+  }
+}
+
 export async function getServerArtistReader(): Promise<ArtistReader> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
     return {

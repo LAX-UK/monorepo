@@ -18,7 +18,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
   return (
     <>
       <CommandPaletteLazy variant="marketing" />
-      <SiteHeader user={user} nav={nav} />
+      <SiteHeader user={user} nav={nav} transparentPaths={["/"]} />
       <LiveSaleAnnouncement reader={data.liveSale} />
       {children}
       <SiteFooter />

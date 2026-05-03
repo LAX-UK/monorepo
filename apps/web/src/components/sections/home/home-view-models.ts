@@ -32,6 +32,11 @@ export type HeroLotVM = {
   lotLabel: string;
   /** True when lot status is active (for live region announcements). */
   isAuctionLive: boolean;
+  /**
+   * When present and the lot is live, the secondary hero CTA links to the
+   * saleroom. Falls back to the lot artwork URL otherwise.
+   */
+  saleroomHref?: string;
 };
 
 export type HeroSaleSlideVM = {
@@ -63,6 +68,8 @@ export type HeroStateVM =
   | { kind: "editorial"; sale: HeroSaleSlideVM; isLive?: boolean }
   | { kind: "fallbackLot"; lot: HeroLotVM };
 
+export type LotPriceEmphasis = "estimate" | "currentBid" | "both";
+
 export type LotCardVM = {
   id: string;
   href: string;
@@ -80,6 +87,12 @@ export type LotCardVM = {
   startTime: string;
   /** ISO 8601 — used by client lot timer */
   endTime: string;
+  /**
+   * Visual emphasis hint for marketing cards. The card always renders
+   * `priceLabel` + `priceFormatted`; emphasis tells it which line to make
+   * dominant. Defaults to `estimate` when omitted (current behaviour).
+   */
+  priceEmphasis?: LotPriceEmphasis;
 };
 
 export type AuctionFeaturedLotVM = {
@@ -109,6 +122,8 @@ export type ArtistCardVM = {
   name: string;
   portraitUrl: string;
   href: string;
+  /** Short specialty/discipline label rendered above the View profile link. */
+  specialty?: string;
 };
 
 function artistLineFromLot(lot: Lot): string {
@@ -152,10 +167,15 @@ export function createHeroFallbackVm(): HeroLotVM {
   };
 }
 
-export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
+export function toHeroLotVM(
+  lot: Lot,
+  saleTitle: string | null,
+  options?: { saleId?: string | null },
+): HeroLotVM {
   const saleMetaLine = saleTitle?.trim() || formatLotAuctionLine(lot);
   const artistName = artistLineFromLot(lot);
   const primary = lotPriceDisplay(lot);
+  const saleId = options?.saleId?.trim();
   return {
     id: lot.id,
     title: lot.title,
@@ -171,7 +191,14 @@ export function toHeroLotVM(lot: Lot, saleTitle: string | null): HeroLotVM {
     featuredHeading: featuredLotHeading(lot),
     lotLabel: lotLabelFromLot(lot),
     isAuctionLive: lot.status === "active",
+    ...(saleId ? { saleroomHref: `/sales/${saleId}` } : {}),
   };
+}
+
+function priceEmphasisFromStatus(lot: Lot): LotPriceEmphasis {
+  if (lot.status === "active") return "currentBid";
+  if (lot.status === "ended") return "both";
+  return "estimate";
 }
 
 export function toLotCardVM(lot: Lot): LotCardVM {
@@ -194,6 +221,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     status: lot.status,
     startTime,
     endTime,
+    priceEmphasis: priceEmphasisFromStatus(lot),
   };
 }
 
@@ -230,11 +258,21 @@ export function toUpcomingAuctionVM(row: SaleListRow): UpcomingAuctionVM {
   };
 }
 
+function specialtyFromArtist(p: ArtistProfile): string | undefined {
+  if (p.discipline?.trim()) return p.discipline.trim();
+  const mediumStat = p.stats.find((s) => /medium/i.test(s.label));
+  return mediumStat?.value?.trim() || undefined;
+}
+
 export function toArtistCardVMs(profiles: ArtistProfile[]): ArtistCardVM[] {
-  return profiles.map((p) => ({
-    id: p.id,
-    name: p.name,
-    portraitUrl: p.portraitUrl,
-    href: `/artist/${p.id}`,
-  }));
+  return profiles.map((p) => {
+    const specialty = specialtyFromArtist(p);
+    return {
+      id: p.id,
+      name: p.name,
+      portraitUrl: p.portraitUrl,
+      href: `/artist/${p.id}`,
+      ...(specialty ? { specialty } : {}),
+    };
+  });
 }

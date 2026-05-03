@@ -191,7 +191,7 @@ function ClosingBanner({
       )}
     >
       <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-error">
-        Closing
+        Closing in
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-2">
         <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-error" aria-hidden />

@@ -13,6 +13,7 @@ type Props = {
 
 export function LaxHeroLot({ lot }: Props) {
   const artworkHref = lot.id === "placeholder" ? "/sales" : `/artwork/${lot.id}`;
+  const liveCtaHref = lot.isAuctionLive && lot.saleroomHref ? lot.saleroomHref : artworkHref;
   const lotWatermark = lot.lotLabel.replace(/^lot\s*/i, "").trim() || "—";
 
   return (
@@ -71,11 +72,7 @@ export function LaxHeroLot({ lot }: Props) {
               </div>
               <div className="fade-up-d2 flex flex-row flex-wrap gap-8 md:gap-12">
                 <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
-                <StatTile
-                  label="Current Highest Bid"
-                  value={lot.currentBidFormatted}
-                  tone="white"
-                />
+                <StatTile label="Current bid" value={lot.currentBidFormatted} tone="white" />
                 <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
               </div>
             </div>
@@ -102,7 +99,7 @@ export function LaxHeroLot({ lot }: Props) {
                   asChild
                 >
                   <Link
-                    href={artworkHref}
+                    href={liveCtaHref}
                     className="inline-flex items-center justify-center gap-[11px]"
                   >
                     <LiveDot className="h-5 w-5" />

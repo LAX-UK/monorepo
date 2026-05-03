@@ -18,18 +18,29 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-export const metadata: Metadata = metadataForStatic({
-  title: "Search lots",
-  description:
-    "Search curated fine art lots by title — browse live inventory from LAX London Auction House Ltd.",
-  path: "/search",
-});
-
 const PAGE_SIZE = 24;
 
 type PageProps = {
   searchParams: Promise<{ q?: string; offset?: string; sort?: string; categoryId?: string }>;
 };
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const sp = await searchParams;
+  const hasQuery = typeof sp.q === "string" && sp.q.trim().length > 0;
+  const base = metadataForStatic({
+    title: "Search lots",
+    description:
+      "Search curated fine art lots by title \u2014 browse live inventory from LAX London Auction House Ltd.",
+    path: "/search",
+  });
+  if (hasQuery) {
+    return {
+      ...base,
+      robots: { index: false, follow: true },
+    };
+  }
+  return base;
+}
 
 function firstString(v: string | string[] | undefined): string | undefined {
   if (v === undefined) return undefined;

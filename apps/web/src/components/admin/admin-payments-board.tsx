@@ -5,7 +5,7 @@ import {
   AdminPaymentActions,
   type AdminPaymentTableRow,
 } from "@/components/admin/admin-payments-data-table";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
+import { PaymentsKpiStrip } from "@/components/admin/payments-kpi-strip";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { adminPaymentLocalSearchSchema } from "@/lib/forms/schemas/url-search";
@@ -177,19 +177,6 @@ type Props = {
   statusChips: ReactNode;
 };
 
-function numericAmount(row: AdminPaymentTableRow) {
-  const value = Number.parseFloat(row.amount);
-  return Number.isFinite(value) ? value : 0;
-}
-
-function formatCompactAmount(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminPaymentTableRow | null>(null);
@@ -214,25 +201,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
     );
   }, [rows, q]);
 
-  const paymentKpis = useMemo(() => {
-    const totalVolume = summaryRows.reduce((sum, row) => sum + numericAmount(row), 0);
-    const captured = summaryRows
-      .filter((row) => row.status === "captured")
-      .reduce((sum, row) => sum + numericAmount(row), 0);
-    const pending = summaryRows
-      .filter((row) => row.status === "pending" || row.status === "authorized")
-      .reduce((sum, row) => sum + numericAmount(row), 0);
-    const refunded = summaryRows
-      .filter((row) => row.status === "refunded")
-      .reduce((sum, row) => sum + numericAmount(row), 0);
-
-    return [
-      { label: "Total volume", value: formatCompactAmount(totalVolume), delta: "Loaded rows" },
-      { label: "Captured", value: formatCompactAmount(captured), delta: "Captured payments" },
-      { label: "Pending", value: formatCompactAmount(pending), delta: "Pending + authorized" },
-      { label: "Refunded", value: formatCompactAmount(refunded), delta: "Refunded payments" },
-    ];
-  }, [summaryRows]);
+  // Aggregations live in PaymentsKpiStrip / buildPaymentsSummary view-model.
 
   const cards = (
     <ul className="space-y-3">
@@ -269,7 +238,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
 
   return (
     <>
-      <KpiGrid className="mb-6" tiles={paymentKpis} />
+      <PaymentsKpiStrip rows={summaryRows} />
 
       <EntityTableShell
         responsiveMode="auto"

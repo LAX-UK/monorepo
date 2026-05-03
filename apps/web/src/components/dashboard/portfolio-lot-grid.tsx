@@ -28,20 +28,39 @@ export type PortfolioLotCardVm = {
 
 type Props = {
   items: PortfolioLotCardVm[];
+  /**
+   * `split` (default) keeps the historical image-left / detail-right card.
+   * `stacked` (mockup parity) renders image on top + 3-col hammer/premium/total
+   * + a single primary "Complete checkout" CTA. Drawer detail is unchanged.
+   */
+  variant?: "split" | "stacked";
 };
 
-export function PortfolioLotGrid({ items }: Props) {
+export function PortfolioLotGrid({ items, variant = "split" }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const active = useMemo(() => items.find((i) => i.id === openId) ?? null, [items, openId]);
+  const isStacked = variant === "stacked";
 
   return (
     <>
       <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {items.map((row) => (
           <li key={row.id}>
-            <Card className="group grid h-full overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]">
+            <Card
+              className={
+                isStacked
+                  ? "group flex h-full flex-col overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20"
+                  : "group grid h-full overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]"
+              }
+            >
               <Link href={row.checkoutHref} className="block">
-                <div className="relative h-full min-h-72 bg-surface-container-low sm:min-h-full">
+                <div
+                  className={
+                    isStacked
+                      ? "relative aspect-[16/9] w-full bg-surface-container-low"
+                      : "relative h-full min-h-72 bg-surface-container-low sm:min-h-full"
+                  }
+                >
                   {row.image ? (
                     <Image
                       src={row.image}
