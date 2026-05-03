@@ -8,6 +8,8 @@ export const SITE_LEGAL_NAME = SITE_NAME;
 
 /** Static mark in `apps/web/public/` */
 export const SITE_LOGO_PATH = "/logo.svg";
+/** Compact mark for narrow chrome (e.g. collapsed dashboard sidebar). */
+export const SITE_LOGO_SHORT_PATH = "/logo-short.svg";
 
 export function siteCopyrightYear(): number {
   return new Date().getFullYear();

@@ -6,6 +6,7 @@ import {
   getAppShellNavItems,
 } from "@/components/layout/app-shell-nav";
 import { LaxLogo } from "@/components/layout/lax-logo";
+import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
 import { useLogout } from "@/lib/auth/use-logout";
@@ -86,9 +87,10 @@ export function AppShellSidebar({
         >
           <LaxLogo
             variant="header"
-            imageWidth={labelsHidden ? 44 : 128}
-            imageHeight={labelsHidden ? 22 : 28}
-            className={cn(labelsHidden ? "max-w-9 overflow-hidden" : "max-w-[128px]")}
+            imageSrc={labelsHidden ? SITE_LOGO_SHORT_PATH : SITE_LOGO_PATH}
+            imageWidth={labelsHidden ? 172 : 128}
+            imageHeight={labelsHidden ? 201 : 28}
+            className={cn(labelsHidden ? "max-h-9 w-auto max-w-none" : "max-w-[128px]")}
           />
           <span className="size-1.5 rounded-full bg-accent-gold" aria-hidden />
         </Link>
