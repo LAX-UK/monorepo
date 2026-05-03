@@ -12,7 +12,7 @@ export const metadata: Metadata = metadataForStatic({
 export default function ForgotPasswordPage() {
   return (
     <main id="main-content">
-      <AuthLayout title="FORGOT PASSWORD">
+      <AuthLayout>
         <ForgotPasswordForm />
       </AuthLayout>
     </main>
