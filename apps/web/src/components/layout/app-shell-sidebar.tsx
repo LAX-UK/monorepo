@@ -88,8 +88,8 @@ export function AppShellSidebar({
           <LaxLogo
             variant="header"
             imageSrc={labelsHidden ? SITE_LOGO_SHORT_PATH : SITE_LOGO_PATH}
-            imageWidth={labelsHidden ? 172 : 128}
-            imageHeight={labelsHidden ? 201 : 28}
+            imageWidth={labelsHidden ? 172 : 430}
+            imageHeight={labelsHidden ? 201 : 202}
             className={cn(labelsHidden ? "max-h-9 w-auto max-w-none" : "max-w-[128px]")}
           />
           <span className="size-1.5 rounded-full bg-accent-gold" aria-hidden />
