@@ -2,13 +2,12 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
-  title: string;
   children: ReactNode;
   /** Optional full-bleed background image (blurred). */
   backgroundSrc?: string;
 };
 
-export function AuthLayout({ title, children, backgroundSrc }: AuthLayoutProps) {
+export function AuthLayout({ children, backgroundSrc }: AuthLayoutProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-page-bg pt-[var(--header-height)] pb-16 dark:bg-background">
       {backgroundSrc ? (
@@ -25,12 +24,7 @@ export function AuthLayout({ title, children, backgroundSrc }: AuthLayoutProps) 
       )}
       <div className="relative mx-auto flex w-full max-w-[var(--auth-column,528px)] flex-col items-center gap-12 px-6 pb-20 pt-16 md:pt-20">
         <LaxLogo variant="auth" className="shrink-0" />
-        <div className="flex w-full flex-col gap-10">
-          <h1 className="w-full text-center font-artists-serif text-3xl font-semibold uppercase leading-none tracking-[0.5px] text-brand-900 dark:text-on-surface md:text-[40px]">
-            {title}
-          </h1>
-          {children}
-        </div>
+        <div className="w-full">{children}</div>
       </div>
     </div>
   );

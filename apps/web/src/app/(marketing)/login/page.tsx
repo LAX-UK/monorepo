@@ -17,7 +17,7 @@ function SignInFormFallback() {
 export default function LoginPage() {
   return (
     <main id="main-content">
-      <AuthLayout title="SIGN IN">
+      <AuthLayout>
         <Suspense fallback={<SignInFormFallback />}>
           <SignInForm />
         </Suspense>

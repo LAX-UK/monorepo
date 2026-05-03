@@ -10,7 +10,9 @@ const STORAGE_KEY = "lax_sidebar_collapsed";
 const SidebarStateContext = createContext<{
   state: SidebarState;
   collapsed: boolean;
+  peeking: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  setPeeking: (peeking: boolean) => void;
   toggleCollapsed: () => void;
 } | null>(null);
 
@@ -34,6 +36,7 @@ function writeStoredState(collapsed: boolean) {
 
 export function SidebarStateProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SidebarState>("expanded");
+  const [peeking, setPeeking] = useState(false);
 
   useEffect(() => {
     setState(readStoredState());
@@ -41,6 +44,7 @@ export function SidebarStateProvider({ children }: { children: ReactNode }) {
 
   const setCollapsed = useCallback((collapsed: boolean) => {
     setState(collapsed ? "collapsed" : "expanded");
+    if (!collapsed) setPeeking(false);
     writeStoredState(collapsed);
   }, []);
 
@@ -52,10 +56,12 @@ export function SidebarStateProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       collapsed: state === "collapsed",
+      peeking,
       setCollapsed,
+      setPeeking,
       toggleCollapsed,
     }),
-    [setCollapsed, state, toggleCollapsed],
+    [peeking, setCollapsed, state, toggleCollapsed],
   );
 
   return <SidebarStateContext.Provider value={value}>{children}</SidebarStateContext.Provider>;
@@ -67,7 +73,9 @@ export function useSidebarState() {
     return {
       state: "expanded" as SidebarState,
       collapsed: false,
+      peeking: false,
       setCollapsed: () => {},
+      setPeeking: () => {},
       toggleCollapsed: () => {},
     };
   }
