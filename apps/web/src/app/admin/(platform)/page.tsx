@@ -4,12 +4,11 @@ import {
   AdminOperationsHomeView,
 } from "@/components/admin/admin-operations-home-view";
 import {
+  getAdminAttentionFeed,
   getAdminLotList,
   getAdminMetricsLive,
   getAdminMetricsToday,
-  getAdminPaymentList,
 } from "@/lib/data/http/admin.server";
-import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 
 export default async function AdminHomePage() {
   let metrics = {
@@ -22,65 +21,30 @@ export default async function AdminHomePage() {
   };
   let bidsPerMinute = 0;
   let activeLotIds: string[] = [];
-  let payments: Awaited<ReturnType<typeof getAdminPaymentList>> = [];
-  let subs: Awaited<ReturnType<typeof getAdminSubmissions>> = [];
-  let drafts: Awaited<ReturnType<typeof getAdminLotList>> = [];
+  let attention: AdminAttentionRow[] = [];
   let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
 
   try {
-    const [m, live, active, pay, underReview, draftRows, recent] = await Promise.all([
+    const [m, live, active, feed, recent] = await Promise.all([
       getAdminMetricsToday(),
       getAdminMetricsLive(),
       getAdminLotList({ status: "active", limit: 20, sort: "endingAsc" }),
-      getAdminPaymentList(),
-      getAdminSubmissions({ status: "under_review", limit: 8 }),
-      getAdminLotList({ status: "draft", limit: 30 }),
+      getAdminAttentionFeed(),
       getAdminLotList({ limit: 12, sort: "endingAsc" }),
     ]);
     metrics = m;
     bidsPerMinute = live.bidsPerMinute;
     activeLotIds = active.map((a) => a.id);
-    payments = pay;
-    subs = underReview;
-    drafts = draftRows;
+    attention = feed.map((item) => ({
+      id: item.id,
+      title: item.title,
+      hint: item.hint,
+      href: item.href,
+      ctaLabel: item.ctaLabel ?? "Open",
+    }));
     recentLots = recent;
   } catch {
     /* overview still renders */
-  }
-
-  const now = Date.now();
-  const hourMs = 60 * 60_000;
-  const stalePay = payments.filter(
-    (p) => p.status === "pending" && now - p.createdAt.getTime() > 48 * hourMs,
-  );
-
-  const attention: AdminAttentionRow[] = [];
-  for (const s of subs.slice(0, 4)) {
-    attention.push({
-      id: `sub-${s.id}`,
-      title: s.title ?? "Submission",
-      hint: "Under review",
-      href: `/admin/submissions/${s.id}`,
-      ctaLabel: "Review",
-    });
-  }
-  for (const p of stalePay.slice(0, 3)) {
-    attention.push({
-      id: `pay-${p.id}`,
-      title: `Payment ${p.id.slice(0, 8)}…`,
-      hint: "Pending > 48h",
-      href: "/admin/payments",
-      ctaLabel: "Open",
-    });
-  }
-  for (const d of drafts.filter((l) => l.startTime.getTime() < now).slice(0, 3)) {
-    attention.push({
-      id: `draft-${d.id}`,
-      title: d.title,
-      hint: "Draft · start in the past",
-      href: `/admin/lots/${d.id}`,
-      ctaLabel: "Publish",
-    });
   }
 
   const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({

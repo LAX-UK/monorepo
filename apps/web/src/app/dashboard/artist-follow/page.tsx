@@ -16,7 +16,7 @@ export default async function ArtistFollowPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Watchlist"
         description="Jump to artist profiles you watch for new catalog drops."

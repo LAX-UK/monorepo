@@ -126,7 +126,7 @@ export default async function AdminSubmissionsPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Submissions"
         description="Review seller intake. Start review on submitted items, then approve (creates a draft lot) or reject with a clear reason."

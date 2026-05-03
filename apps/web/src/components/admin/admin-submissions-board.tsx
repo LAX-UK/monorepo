@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
-import { useTableDensity } from "@/components/layout/dashboard-shell";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DataTable, EntityTableShell } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";

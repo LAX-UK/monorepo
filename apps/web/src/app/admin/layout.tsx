@@ -1,9 +1,6 @@
-import { AdminBottomNav } from "@/components/layout/admin-bottom-nav";
-import { AdminSidebar } from "@/components/layout/admin-sidebar";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
-import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import {
   type UserRole,
   canAccessPlatformAdminRoutes,
@@ -19,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const [user, nav] = await Promise.all([getServerSessionUser(), loadMegaMenuSections()]);
+  const user = await getServerSessionUser();
   if (!user) {
     redirect("/login?next=/admin&auth=required");
   }
@@ -36,18 +33,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
+  const role = canAccessPlatformAdminRoutes(user.role as UserRole) ? "admin" : "accountant";
+
   return (
-    <>
-      <DashboardShell
-        user={user}
-        nav={nav}
-        mobileTitle="Admin"
-        accountMenu="admin"
-        sidebar={<AdminSidebar user={user} pendingSubmissionCount={pendingSubmissionCount} />}
-      >
-        <div className="pb-20 lg:pb-0">{children}</div>
-      </DashboardShell>
-      <AdminBottomNav user={user} />
-    </>
+    <AppShell user={user} shellRole={role} pendingSubmissionCount={pendingSubmissionCount}>
+      {children}
+    </AppShell>
   );
 }

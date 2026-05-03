@@ -6,7 +6,7 @@ import {
   type AdminPaymentTableRow,
 } from "@/components/admin/admin-payments-data-table";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
-import { useTableDensity } from "@/components/layout/dashboard-shell";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { adminPaymentLocalSearchSchema } from "@/lib/forms/schemas/url-search";
 import {

@@ -170,6 +170,23 @@ export async function getAdminMetricsLive(): Promise<{ bidsPerMinute: number }> 
   return body.data;
 }
 
+export type AdminAttentionFeedItem = {
+  id: string;
+  kind: "submission_under_review" | "payment_stale" | "lot_draft_past_start";
+  title: string;
+  hint: string;
+  href: string;
+  ctaLabel?: string;
+  createdAt: string;
+};
+
+export async function getAdminAttentionFeed(): Promise<AdminAttentionFeedItem[]> {
+  const res = await authedServerFetch("/admin/attention");
+  if (!res.ok) throw new Error(`Failed to load attention feed: ${res.status}`);
+  const body = (await res.json()) as { data: AdminAttentionFeedItem[] };
+  return body.data;
+}
+
 export async function getAdminAnalytics(days = 30): Promise<AdminAnalyticsPayload> {
   const res = await authedServerFetch(`/admin/analytics?days=${encodeURIComponent(String(days))}`);
   if (!res.ok) {

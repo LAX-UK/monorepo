@@ -65,6 +65,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ data: { bidsPerMinute } });
   });
 
+  platform.get("/attention", async (c) => {
+    const data = await container.attentionFeedReader.list();
+    return c.json({ data });
+  });
+
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.adminUserService.list({

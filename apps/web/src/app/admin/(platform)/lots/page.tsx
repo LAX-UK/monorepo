@@ -4,7 +4,9 @@ import { getAdminLotList } from "@/lib/data/http/admin.server";
 import type { LotStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 const statuses: (LotStatus | "all")[] = [
   "all",
@@ -107,7 +109,7 @@ export default async function AdminAuctionsPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Auctions"
         description="Publish, schedule, and triage catalog lots. Use bulk actions after selecting rows (desktop and mobile)."
@@ -131,15 +133,17 @@ export default async function AdminAuctionsPage({
       {!listError && !viewPipeline && rows.length === 0 ? (
         <p className="text-on-surface-variant">No auctions match this filter.</p>
       ) : (
-        <AdminLotsBoard
-          rows={lotTableRows}
-          fullLots={rows}
-          viewPipeline={viewPipeline}
-          listError={listError}
-          urlError={error}
-          statusChips={statusChips}
-          layoutToggle={layoutToggle}
-        />
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <AdminLotsBoard
+            rows={lotTableRows}
+            fullLots={rows}
+            viewPipeline={viewPipeline}
+            listError={listError}
+            urlError={error}
+            statusChips={statusChips}
+            layoutToggle={layoutToggle}
+          />
+        </Suspense>
       )}
     </div>
   );

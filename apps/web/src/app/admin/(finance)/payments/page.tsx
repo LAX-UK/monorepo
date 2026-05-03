@@ -4,7 +4,9 @@ import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.serv
 import type { PaymentStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 const statusFilters = ["all", "pending", "authorized", "captured", "refunded"] as const;
 
@@ -82,7 +84,7 @@ export default async function AdminPaymentsPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Payments"
         description="Filter by status, search loaded rows, and use the drawer for capture/refund on touch devices."
@@ -98,11 +100,13 @@ export default async function AdminPaymentsPage({
       {payments.length === 0 && !loadError ? (
         <p className="text-on-surface-variant">No payment records yet.</p>
       ) : loadError ? null : (
-        <AdminPaymentsBoard
-          rows={paymentRows}
-          summaryRows={allPaymentRows}
-          statusChips={statusChips}
-        />
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <AdminPaymentsBoard
+            rows={paymentRows}
+            summaryRows={allPaymentRows}
+            statusChips={statusChips}
+          />
+        </Suspense>
       )}
     </div>
   );
