@@ -72,7 +72,7 @@ export default async function AdminSubmissionDetailPage({
   const decision = <AdminSubmissionDecisionPanel submissionId={s.id} status={s.status} />;
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-6">
+    <div className="screen w-full space-y-6">
       <Link
         href="/admin/submissions"
         className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"

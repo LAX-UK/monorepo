@@ -38,7 +38,7 @@ export default async function AdminInvitationsPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full max-w-[640px] space-y-6">
       <PageHeader
         title="Invitations"
         description="Invite staff or clients by email. They complete signup with the link we send (or log in the server console in development)."

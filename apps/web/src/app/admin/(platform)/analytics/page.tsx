@@ -73,7 +73,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const totalRegs = data ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-10">
+    <div className="screen w-full space-y-7">
       <PageHeader
         title="Analytics"
         description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."

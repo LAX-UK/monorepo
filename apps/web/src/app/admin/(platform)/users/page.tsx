@@ -110,7 +110,7 @@ export default async function AdminUsersPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Users"
         description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."

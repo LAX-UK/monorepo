@@ -9,7 +9,9 @@ import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
   return rows.flatMap((row) => {
@@ -50,7 +52,7 @@ export default async function DashboardWatchlistPage() {
   const tableRows = toWatchlistRows(rows);
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Watchlist"
         description="Track lots and artists you are following from the saleroom."
@@ -88,7 +90,11 @@ export default async function DashboardWatchlistPage() {
         />
       ) : null}
 
-      {!err && tableRows.length > 0 ? <WatchlistBoard rows={tableRows} /> : null}
+      {!err && tableRows.length > 0 ? (
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <WatchlistBoard rows={tableRows} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

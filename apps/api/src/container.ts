@@ -68,12 +68,14 @@ import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
+import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
+import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
@@ -154,6 +156,7 @@ export type Container = {
   domainEventPublisher: DomainEventPublisher;
   adminUserService: AdminUserService;
   adminMetricsService: AdminMetricsService;
+  attentionFeedReader: IAttentionFeedReader;
   httpErrorHandler: ErrorHandlerService;
   itemSubmissionRepository: IItemSubmissionRepository;
   itemSubmissionService: IItemSubmissionService;
@@ -412,6 +415,7 @@ export function createContainer(env: Env): Container {
     adminSuspender,
     adminActivityReader,
   );
+  const attentionFeedReader = new DrizzleAttentionFeedReader(db);
 
   const httpErrorHandler = new ErrorHandlerService(
     new DefaultErrorClassifier(),
@@ -463,6 +467,7 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     adminUserService,
     adminMetricsService,
+    attentionFeedReader,
     httpErrorHandler,
     itemSubmissionRepository,
     itemSubmissionService,

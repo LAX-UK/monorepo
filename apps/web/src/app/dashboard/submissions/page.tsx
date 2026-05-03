@@ -51,7 +51,7 @@ export default async function DashboardSubmissionsPage({
     initialQ.length === 0 ? mapped : mapped.filter((r) => r.title.toLowerCase().includes(qLower));
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Your submissions"
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
