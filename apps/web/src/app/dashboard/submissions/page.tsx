@@ -6,6 +6,7 @@ import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -58,7 +59,10 @@ export default async function DashboardSubmissionsPage({
         className="border-0 pb-0"
         actions={
           <Button variant="primary" asChild>
-            <Link href="/dashboard/submissions/new">New submission</Link>
+            <Link href="/dashboard/submissions/new">
+              <Plus className="size-4" aria-hidden />
+              New submission
+            </Link>
           </Button>
         }
       />

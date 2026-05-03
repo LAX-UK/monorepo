@@ -150,8 +150,8 @@ export function UserSuspendAction({
   return (
     <Button
       type="button"
-      variant="secondary"
-      className={fullWidthButton ? "min-h-11 w-full text-error" : "min-h-11 text-error"}
+      variant="destructive"
+      className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
       disabled={pending}
       onClick={() => {
         startTransition(() => {

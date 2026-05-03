@@ -12,6 +12,12 @@ const variants = {
     "rounded-md border border-outline-variant/20 bg-transparent px-10 py-4 text-xs uppercase tracking-[0.3em] text-on-surface hover:bg-surface-container-low",
   tertiary:
     "border-b border-primary/0 bg-transparent px-0 py-2 text-label text-xs uppercase tracking-[0.25em] text-primary hover:border-primary",
+  destructive:
+    "rounded-md bg-error px-6 py-3 text-xs uppercase tracking-[0.18em] text-on-error shadow-sm hover:opacity-95",
+  success:
+    "rounded-md bg-success px-6 py-3 text-xs uppercase tracking-[0.18em] text-on-success shadow-sm hover:opacity-95",
+  ctaLink:
+    "border-b border-primary/0 bg-transparent px-0 py-0 text-xs uppercase tracking-[0.18em] text-primary hover:border-primary",
 } as const;
 
 export type ButtonVariant = keyof typeof variants;

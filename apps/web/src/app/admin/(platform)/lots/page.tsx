@@ -1,10 +1,12 @@
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
+import { Button } from "@/components/ui/button";
 import { getAdminLotList } from "@/lib/data/http/admin.server";
 import type { LotStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -111,15 +113,15 @@ export default async function AdminAuctionsPage({
   return (
     <div className="screen w-full space-y-6">
       <PageHeader
-        title="Auctions"
+        title="Lots"
         description="Publish, schedule, and triage catalog lots. Use bulk actions after selecting rows (desktop and mobile)."
         actions={
-          <Link
-            href="/admin/lots/new"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95"
-          >
-            New lot
-          </Link>
+          <Button variant="primary" asChild>
+            <Link href="/admin/lots/new">
+              <Plus className="size-4" aria-hidden />
+              New lot
+            </Link>
+          </Button>
         }
       />
 

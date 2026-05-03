@@ -1,7 +1,6 @@
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { Button } from "@auction/ui/components/button";
 import {
   Card,
@@ -12,7 +11,6 @@ import {
 } from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 export function WatchlistPreviewCard({ vm }: { vm: DashboardOverviewVm }) {
@@ -38,48 +36,38 @@ export function WatchlistPreviewCard({ vm }: { vm: DashboardOverviewVm }) {
             Save lots from artwork pages to build a personal watchlist.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-2">
+          <ul className="divide-y divide-outline-variant/10">
             {items.map((row) => {
               const lot = row.lot;
               if (!lot) return null;
               return (
-                <Link
-                  key={row.watchlistId}
-                  href={`/artwork/${lot.id}`}
-                  className="group overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest transition-colors hover:border-primary/25 hover:bg-surface-container-low"
-                >
-                  <div className="relative aspect-4/3 overflow-hidden bg-surface-container-high">
-                    {lot.images[0] ? (
-                      <Image
-                        src={lot.images[0]}
-                        alt={`${lot.title} thumbnail`}
-                        fill
-                        placeholder="blur"
-                        blurDataURL={TINY_IMAGE_BLUR}
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, 240px"
-                      />
-                    ) : (
-                      <ImagePlaceholder label="Lot artwork" />
-                    )}
-                  </div>
-                  <div className="space-y-2 p-3">
-                    <p className="line-clamp-2 font-headline text-sm font-semibold text-on-surface">
-                      {lot.title}
-                    </p>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-label text-xs uppercase tracking-wider text-secondary">
+                <li key={row.watchlistId}>
+                  <Link
+                    href={`/artwork/${lot.id}`}
+                    className="flex min-h-16 items-center gap-3 py-3 transition-colors hover:bg-surface-container-low/45 sm:px-2"
+                  >
+                    <LotThumbnail
+                      src={lot.images[0]}
+                      alt={`${lot.title} thumbnail`}
+                      className="size-12 rounded-lg"
+                      sizes="48px"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-headline text-sm font-semibold text-on-surface">
+                        {lot.title}
+                      </span>
+                      <span className="mt-1 block font-label text-xs uppercase tracking-wider text-secondary">
                         Est. {formatMoney(lot.currentPrice)}
                       </span>
-                      <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                        {lot.status}
-                      </StatusBadge>
-                    </div>
-                  </div>
-                </Link>
+                    </span>
+                    <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
+                      {lot.status}
+                    </StatusBadge>
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </CardContent>
     </Card>

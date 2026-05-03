@@ -12,11 +12,14 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-on-primary shadow hover:opacity-95",
         destructive: "bg-error text-on-error shadow-sm hover:opacity-95",
+        success: "bg-success text-on-success shadow-sm hover:opacity-95",
         outline:
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
         secondary: "bg-secondary-container text-on-secondary-container shadow-sm hover:opacity-95",
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
+        ctaLink:
+          "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-gold",
         /** Primary marketing CTA (solid) */
         cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-gold",
         /** “Join live” style — border + label caps */

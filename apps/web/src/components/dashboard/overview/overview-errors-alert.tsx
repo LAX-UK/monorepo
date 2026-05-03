@@ -7,7 +7,12 @@ type OverviewErrorsAlertProps = {
 
 export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
   const hasErrors = Boolean(
-    errors.active || errors.portfolio || errors.watchlist || errors.artistFollow || errors.bids,
+    errors.active ||
+      errors.portfolio ||
+      errors.watchlist ||
+      errors.artistFollow ||
+      errors.bids ||
+      errors.submissions,
   );
 
   if (!hasErrors) return null;
@@ -22,6 +27,7 @@ export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
           {errors.watchlist ? <li>Watchlist: {errors.watchlist}</li> : null}
           {errors.artistFollow ? <li>Followed artists: {errors.artistFollow}</li> : null}
           {errors.bids ? <li>Bids: {errors.bids}</li> : null}
+          {errors.submissions ? <li>Submissions: {errors.submissions}</li> : null}
         </ul>
       </AlertDescription>
     </Alert>

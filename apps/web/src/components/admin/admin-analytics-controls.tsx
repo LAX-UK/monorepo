@@ -1,9 +1,7 @@
 "use client";
 
-import { cn } from "@auction/ui";
+import { SegmentToggle } from "@auction/ui";
 import { DateRangePicker, type DateRangeValue } from "@auction/ui/components/date-range-picker";
-import { Toolbar } from "@auction/ui/components/toolbar";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 
@@ -49,36 +47,24 @@ export function AdminAnalyticsControls({ days }: Props) {
   const value = useMemo(() => rangeForLastDays(safeDays), [safeDays]);
 
   return (
-    <Toolbar
-      className="mb-8"
-      filters={
-        <div className="flex w-full min-w-0 flex-col gap-4">
-          <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
-            <legend className="sr-only">Quick range</legend>
-            {[7, 30, 90].map((d) => (
-              <Link
-                key={d}
-                href={href(d)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 font-label text-xs uppercase tracking-widest transition-colors",
-                  safeDays === d
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-outline-variant/30 text-on-surface-variant hover:border-primary/40",
-                )}
-              >
-                Last {d} days
-              </Link>
-            ))}
-          </fieldset>
-          <DateRangePicker
-            key={safeDays}
-            value={value}
-            onChange={(next) => {
-              navigateToDays(daysInclusive(next));
-            }}
-          />
-        </div>
-      }
-    />
+    <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+      <SegmentToggle
+        aria-label="Quick analytics range"
+        value={String(safeDays)}
+        options={[
+          { value: "7", label: "7d" },
+          { value: "30", label: "30d" },
+          { value: "90", label: "90d" },
+        ]}
+        onValueChange={(next: string) => navigateToDays(Number(next))}
+      />
+      <DateRangePicker
+        key={safeDays}
+        value={value}
+        onChange={(next) => {
+          navigateToDays(daysInclusive(next));
+        }}
+      />
+    </div>
   );
 }

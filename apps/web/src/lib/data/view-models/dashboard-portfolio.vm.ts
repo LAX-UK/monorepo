@@ -12,6 +12,11 @@ export function toPortfolioLotCards(rows: PortfolioRow[]): PortfolioLotCardVm[] 
   return rows.map((row) => {
     const a = row.lot;
     const img = a.images[0];
+    const hammer = Number.parseFloat(a.currentPrice);
+    const premiumRate = Number.parseFloat(a.buyerPremiumRate);
+    const premium =
+      Number.isFinite(hammer) && Number.isFinite(premiumRate) ? hammer * premiumRate : 0;
+    const total = Number.isFinite(hammer) ? hammer + premium : premium;
     const settlementLabel = portfolioSettlementLabel(row);
     const settlementStageIndex =
       settlementLabel === "Paid" || settlementLabel === "Payment authorized"
@@ -24,6 +29,9 @@ export function toPortfolioLotCards(rows: PortfolioRow[]): PortfolioLotCardVm[] 
       title: a.title,
       image: img ?? null,
       hammerLabel: formatMoney(a.currentPrice),
+      premiumLabel: formatMoney(premium.toFixed(2)),
+      totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2)) : "—",
+      dueLabel: row.payment?.status === "captured" ? "Paid" : "Due now",
       settlementLabel,
       settlementStageIndex,
       medium: a.medium,

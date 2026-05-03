@@ -316,7 +316,7 @@ export function ProfileSettingsBoard({ email, initialName, initialImage, address
                       {a.label}
                     </span>
                     {a.isDefault ? (
-                      <span className="rounded bg-emerald-50 px-2 py-0.5 font-label text-[10px] uppercase text-emerald-700">
+                      <span className="rounded bg-success/10 px-2 py-0.5 font-label text-[10px] uppercase text-success">
                         Default
                       </span>
                     ) : null}

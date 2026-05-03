@@ -9,7 +9,6 @@ import {
 import { SecondaryActionStack } from "@/components/dashboard/overview/secondary-action-stack";
 import { WatchlistPreviewCard } from "@/components/dashboard/overview/watchlist-preview-card";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -29,23 +28,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
         className="mb-0"
         title={`Welcome back, ${vm.firstName}`}
         description={buildOverviewDescription(vm)}
-        meta={
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-widest text-lot-orange">
-            <LiveDot size="sm" />
-            Signed in · Collector
-          </span>
-        }
         actions={
-          <>
-            {vm.primaryCta ? (
-              <Button asChild>
-                <Link href={vm.primaryCta.href}>{vm.primaryCta.label}</Link>
-              </Button>
-            ) : null}
-            <Button variant="secondary" asChild>
-              <Link href="/dashboard/submissions/new">New submission</Link>
-            </Button>
-          </>
+          <Button asChild>
+            <Link href={vm.primaryCta?.href ?? "/search"}>
+              {vm.primaryCta?.label ?? "Browse auctions"}
+            </Link>
+          </Button>
         }
       />
 

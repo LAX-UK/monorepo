@@ -13,6 +13,7 @@ export type DashboardOverviewErrors = {
   watchlist: string | null;
   artistFollow: string | null;
   bids: string | null;
+  submissions: string | null;
 };
 
 export type DashboardOverviewVm = {
@@ -35,6 +36,7 @@ export type DashboardOverviewVm = {
   watchPreview: WatchlistWithLotRow[];
   artistFollowPreview: ArtistFollowRow[];
   settlementsDue: PortfolioRow[];
+  submissionsCount: number;
   liveCount: number;
   acquiredCount: number;
   /** Smart primary action for hero CTA */
@@ -55,12 +57,22 @@ export function buildDashboardOverviewVm(input: {
   portfolio: PortfolioRow[];
   watchlist: WatchlistWithLotRow[];
   artistFollow: ArtistFollowRow[];
+  submissionsCount?: number;
   bidRows: BidWithLot[];
   errors: DashboardOverviewErrors;
   formatMoney: (amount: string) => string;
 }): DashboardOverviewVm {
-  const { user, activeLots, portfolio, watchlist, artistFollow, bidRows, errors, formatMoney } =
-    input;
+  const {
+    user,
+    activeLots,
+    portfolio,
+    watchlist,
+    artistFollow,
+    submissionsCount = 0,
+    bidRows,
+    errors,
+    formatMoney,
+  } = input;
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
   const totalSpent = portfolio.reduce(
     (sum, row) => sum + Number.parseFloat(row.lot.currentPrice),
@@ -170,6 +182,7 @@ export function buildDashboardOverviewVm(input: {
     watchPreview,
     artistFollowPreview,
     settlementsDue,
+    submissionsCount,
     liveCount: activeLots.length,
     acquiredCount: portfolio.length,
     primaryCta,

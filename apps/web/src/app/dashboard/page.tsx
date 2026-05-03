@@ -1,6 +1,7 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getMySubmissions } from "@/lib/data/http/submissions.server";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { isDashboardV2Enabled } from "@/lib/feature-flags/dashboard-v2";
 import { formatMoney } from "@/lib/format-currency";
@@ -16,6 +17,7 @@ async function DashboardHomeContent() {
   let watchlist: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
   let artistFollow: Awaited<ReturnType<typeof c.artistFollow.listMine>> = [];
   let bidRows: Awaited<ReturnType<typeof c.bids.listMine>> = [];
+  let submissions: Awaited<ReturnType<typeof getMySubmissions>> = [];
 
   const errors = {
     active: null as string | null,
@@ -23,6 +25,7 @@ async function DashboardHomeContent() {
     watchlist: null as string | null,
     artistFollow: null as string | null,
     bids: null as string | null,
+    submissions: null as string | null,
   };
 
   try {
@@ -60,12 +63,20 @@ async function DashboardHomeContent() {
     errors.bids = e instanceof Error ? e.message : "Could not load bids.";
   }
 
+  try {
+    submissions = await getMySubmissions({ limit: 100 });
+  } catch (e) {
+    submissions = [];
+    errors.submissions = e instanceof Error ? e.message : "Could not load submissions.";
+  }
+
   const vm = buildDashboardOverviewVm({
     user,
     activeLots: active,
     portfolio,
     watchlist,
     artistFollow,
+    submissionsCount: submissions.length,
     bidRows,
     errors,
     formatMoney,

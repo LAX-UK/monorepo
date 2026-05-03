@@ -5,6 +5,14 @@ import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
+function artistDisplayName(artistId: string): string {
+  return artistId
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 export default async function ArtistFollowPage() {
   const c = await getServerDataContainer();
   let rows: Awaited<ReturnType<typeof c.artistFollow.listMine>> = [];
@@ -18,7 +26,7 @@ export default async function ArtistFollowPage() {
   return (
     <div className="screen w-full space-y-6">
       <PageHeader
-        title="Watchlist"
+        title="Followed artists"
         description="Jump to artist profiles you watch for new catalog drops."
         className="border-0 pb-0"
       />
@@ -52,11 +60,11 @@ export default async function ArtistFollowPage() {
             <li key={row.watchlistId}>
               <Link
                 href={`/artist/${row.artistId}`}
-                title={row.artistId}
+                title={artistDisplayName(row.artistId)}
                 className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 px-4 py-3 text-on-surface transition-colors hover:bg-surface-container-high/50"
               >
                 <span className="min-w-0 flex-1 truncate font-headline text-sm">
-                  Artist profile
+                  {artistDisplayName(row.artistId)}
                 </span>
                 <span className="shrink-0 font-label text-[10px] uppercase text-primary">Open</span>
               </Link>

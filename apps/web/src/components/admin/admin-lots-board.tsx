@@ -175,11 +175,6 @@ export function AdminLotsBoard({
             {layoutToggle}
           </>
         }
-        toolbarEnd={
-          <Button variant="primary" asChild>
-            <Link href="/admin/lots/new">New lot</Link>
-          </Button>
-        }
         responsiveMode="auto"
         table={
           <TableScroll>
@@ -245,7 +240,7 @@ export function AdminLotsBoard({
       <BulkActionBar count={selectedIds.length}>
         <Button
           type="button"
-          variant="secondary"
+          variant="primary"
           disabled={selectedIds.length === 0 || pending}
           onClick={() => runBulk("publish")}
         >
