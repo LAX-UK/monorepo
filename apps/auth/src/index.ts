@@ -1,4 +1,4 @@
-import { createAuth, createJwksAdapter } from "@auction/auth";
+import { createAuth, createJwksAdapter, startJwksRetirementSchedule } from "@auction/auth";
 import { createDb } from "@auction/db";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
@@ -40,6 +40,7 @@ const auth = createAuth({
   appleClientSecret: env.APPLE_CLIENT_SECRET,
 });
 const jwks = createJwksAdapter(db);
+const retirementSchedule = startJwksRetirementSchedule({ db, log });
 const metrics = new Registry();
 collectDefaultMetrics({ register: metrics, prefix: "auction_auth_" });
 
@@ -133,6 +134,7 @@ const server = serve(
 
 function shutdown(signal: NodeJS.Signals) {
   log.info({ signal }, "draining auth service");
+  retirementSchedule.stop();
   const timeout = setTimeout(() => process.exit(1), 10_000);
   timeout.unref();
   server.close((err) => {
