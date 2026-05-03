@@ -238,6 +238,51 @@ describe("BidService.placeBid", () => {
     expect(notifyLotEnded).not.toHaveBeenCalled();
   });
 
+  it("inserts contested bids as non-winning before atomically promoting the new winner", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const previousWinner = createBid({
+      id: "bid-prev",
+      bidderId: "bidder-prev",
+      amount: "125.00",
+    });
+    const created = createBid({ id: "bid-new", bidderId: "bidder-new", amount: "150.00" });
+
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      findWinningBid: vi.fn().mockResolvedValue(previousWinner),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifications = new NotificationService(
+      { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
+      { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
+    );
+    const service = new BidService(
+      createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      null,
+    );
+
+    const result = await service.placeBid("bidder-new", "auc-1", 150);
+
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bidderId: "bidder-new",
+        isWinning: false,
+        lotId: "auc-1",
+      }),
+    );
+    expect(bidRepo.markWinningBid).toHaveBeenCalledOnce();
+    expect(bidRepo.markWinningBid).toHaveBeenCalledWith("auc-1", "bid-new");
+  });
+
   it("ends Dutch lot on first acceptance and cancels lifecycle jobs", async () => {
     const now = new Date();
     const active = lot({
