@@ -3,6 +3,7 @@
 import { LotCardTimer } from "@/components/lot-timer";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { lotPath } from "@/lib/seo/url";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -20,7 +21,7 @@ function watchlistColumns(): ColumnDef<WatchlistBoardRow>[] {
       header: "Lot",
       cell: ({ row }) => (
         <Link
-          href={`/artwork/${row.original.lotId}`}
+          href={lotPath({ id: row.original.lotId, title: row.original.title })}
           className="flex min-w-[240px] items-center gap-3"
         >
           <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">

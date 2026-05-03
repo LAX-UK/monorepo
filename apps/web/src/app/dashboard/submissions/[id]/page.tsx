@@ -5,6 +5,7 @@ import { DisplayHeading } from "@/components/ui/typography";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getSubmissionForUser } from "@/lib/data/http/submissions.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
+import { lotPath } from "@/lib/seo/url";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -56,7 +57,10 @@ export default async function SubmissionDetailPage({
           {s.convertedLotId ? (
             <p>
               View listing:{" "}
-              <Link href={`/artwork/${s.convertedLotId}`} className="text-primary underline">
+              <Link
+                href={lotPath({ id: s.convertedLotId, title: s.title })}
+                className="text-primary underline"
+              >
                 Open artwork page
               </Link>
             </p>

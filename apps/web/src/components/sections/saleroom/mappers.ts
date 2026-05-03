@@ -1,5 +1,6 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import {
   formatPostalAddressLines,
@@ -182,7 +183,7 @@ export function mapLotToCardVM(
         : null;
   return {
     id: lot.id,
-    href: `/artwork/${lot.id}`,
+    href: lotPath(lot),
     lotLabel: lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null,
     title: lot.title,
     imageUrl: lot.images[0] ?? null,
@@ -207,7 +208,7 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number): RelatedSaleVM 
   const dateLabel = formatSaleDateLabel(sale.startTime, sale.endTime);
   return {
     id: sale.id,
-    href: `/sales/${sale.id}`,
+    href: salePath(sale),
     title: sale.title,
     kindLabel: sale.deliveryMode === "online" ? "Online auction" : "Live auction",
     dateLabel,

@@ -4,6 +4,7 @@ import { ArtistSubmitPortfolio } from "@/components/sections/artists/artist-subm
 import { getServerArtistReader } from "@/lib/data/http/artist.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -62,7 +63,7 @@ export default async function FeaturedArtistsPage() {
   const rosterLd = itemListJsonLd(
     artists.map((a) => ({
       name: a.name,
-      url: `${base}/artist/${a.id}`,
+      url: `${base}${artistPath(a)}`,
     })),
   );
   const jsonLdText = jsonLdScript(crumbs, rosterLd);

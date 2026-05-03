@@ -13,6 +13,7 @@ type Props = {
   size?: "sm" | "lg";
   /** Optional label override (e.g. for a hero CTA). */
   label?: string;
+  loginNextPath?: string;
   /**
    * `outlined-block` — Figma saleroom hero: 40px height, square corners, #0A0A0A border.
    * `rounded` (default) — pill / existing marketing style.
@@ -33,6 +34,7 @@ export function SaleroomFollowToggle({
   isAuthenticated,
   size = "lg",
   label,
+  loginNextPath = `/sales/${saleId}`,
   appearance = "rounded",
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
@@ -60,7 +62,7 @@ export function SaleroomFollowToggle({
     if (appearance === "outlined-block") {
       return (
         <Link
-          href={`/login?next=/sales/${encodeURIComponent(saleId)}`}
+          href={`/login?next=${encodeURIComponent(loginNextPath)}`}
           className={`${outlinedClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
           <BellRing className="size-4 shrink-0" aria-hidden />
@@ -70,7 +72,7 @@ export function SaleroomFollowToggle({
     }
     return (
       <Link
-        href={`/login?next=/sales/${encodeURIComponent(saleId)}`}
+        href={`/login?next=${encodeURIComponent(loginNextPath)}`}
         className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold uppercase tracking-widest text-on-surface transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${sizeClasses}`}
       >
         <BellRing className="size-4" aria-hidden />

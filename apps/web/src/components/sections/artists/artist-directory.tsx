@@ -3,6 +3,7 @@
 import { artistEyebrowText } from "@/lib/artists/display";
 import { ALPHABET_LETTERS, filterArtistsDirectory, lettersPresent } from "@/lib/artists/filter";
 import type { ArtistProfile } from "@/lib/data/contracts";
+import { artistPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { ChevronDown, Search } from "lucide-react";
@@ -128,7 +129,7 @@ export function ArtistDirectory({ artists }: Props) {
             return (
               <Link
                 key={a.id}
-                href={`/artist/${a.id}`}
+                href={artistPath(a)}
                 className={`group block ${staggerClass(index)}`}
               >
                 <div className="relative mb-6 aspect-4/5 overflow-hidden bg-surface-container">

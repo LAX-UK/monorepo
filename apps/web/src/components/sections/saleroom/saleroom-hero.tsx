@@ -62,7 +62,7 @@ export function SaleroomHero({ hero, toolbar, actions }: Props) {
             <span>{statusLabel}</span>
             <span className="text-white/35">{liveTrailing}</span>
           </div>
-          <h1 className="wipe-in mb-4 font-headline text-4xl font-semibold leading-tight text-white md:text-5xl">
+          <h1 className="mb-4 font-headline text-4xl font-semibold leading-tight text-white md:text-5xl">
             {hero.title}
           </h1>
           <p className="fade-up-d2 mb-7 flex flex-wrap gap-x-5 gap-y-2 font-body text-sm text-white/60">

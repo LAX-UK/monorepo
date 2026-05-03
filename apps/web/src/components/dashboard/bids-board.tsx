@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
+import { lotPath } from "@/lib/seo/url";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -68,7 +69,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
         if (!a) return <span className="text-secondary">Removed lot</span>;
         const img = a.images[0];
         return (
-          <Link href={`/artwork/${a.id}`} className="flex min-w-[220px] items-center gap-3">
+          <Link href={lotPath(a)} className="flex min-w-[220px] items-center gap-3">
             <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
               {img ? (
                 <Image
@@ -156,7 +157,7 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
         if (a?.status !== "active") return null;
         return (
           <Button variant="primary" asChild>
-            <Link href={`/artwork/${a.id}`}>Re-bid</Link>
+            <Link href={lotPath(a)}>Re-bid</Link>
           </Button>
         );
       },

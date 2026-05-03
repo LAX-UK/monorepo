@@ -1,5 +1,6 @@
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { artistPath } from "@/lib/seo/url";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -59,7 +60,7 @@ export default async function ArtistFollowPage() {
           {rows.map((row) => (
             <li key={row.watchlistId}>
               <Link
-                href={`/artist/${row.artistId}`}
+                href={artistPath({ id: row.artistId, name: artistDisplayName(row.artistId) })}
                 title={artistDisplayName(row.artistId)}
                 className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 px-4 py-3 text-on-surface transition-colors hover:bg-surface-container-high/50"
               >

@@ -1,4 +1,5 @@
 import type { ArtistProfile } from "@/lib/data/contracts";
+import { artistPath } from "@/lib/seo/url";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -16,7 +17,7 @@ function splitDisplayName(fullName: string): { first: string; rest: string | nul
 
 export function ArtistSpotlightHero({ artist }: Props) {
   const { first, rest } = splitDisplayName(artist.name);
-  const href = `/artist/${artist.id}`;
+  const href = artistPath(artist);
 
   return (
     <section className="relative flex min-h-[min(870px,92vh)] w-full items-center overflow-hidden bg-surface">

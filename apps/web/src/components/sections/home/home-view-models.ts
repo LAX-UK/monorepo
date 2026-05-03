@@ -4,6 +4,7 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotStatus, Sale } from "@auction/types";
 import type { StreamEmbedProvider } from "@auction/validators";
 import {
@@ -16,6 +17,7 @@ import {
 
 export type HeroLotVM = {
   id: string;
+  href?: string;
   title: string;
   artistName: string;
   priceLabel: string;
@@ -139,7 +141,7 @@ export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
     sale.deliveryMode === "online" ? "Online" : "Onsite";
   return {
     id: sale.id,
-    href: `/sales/${sale.id}`,
+    href: salePath(sale),
     title: sale.title,
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
@@ -178,6 +180,7 @@ export function toHeroLotVM(
   const saleId = options?.saleId?.trim();
   return {
     id: lot.id,
+    href: lotPath(lot),
     title: lot.title,
     artistName,
     priceLabel: primary.label,
@@ -191,7 +194,7 @@ export function toHeroLotVM(
     featuredHeading: featuredLotHeading(lot),
     lotLabel: lotLabelFromLot(lot),
     isAuctionLive: lot.status === "active",
-    ...(saleId ? { saleroomHref: `/sales/${saleId}` } : {}),
+    ...(saleId ? { saleroomHref: salePath({ id: saleId, title: saleTitle ?? "sale" }) } : {}),
   };
 }
 
@@ -209,7 +212,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
   const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
   return {
     id: lot.id,
-    href: `/artwork/${lot.id}`,
+    href: lotPath(lot),
     lotLabel: lotLabelFromLot(lot),
     title: lot.title,
     artistName,
@@ -234,7 +237,7 @@ function toAuctionFeaturedLotVM(lot: Lot): AuctionFeaturedLotVM {
   const { label, value } = lotPriceDisplay(lot);
   return {
     id: lot.id,
-    href: `/artwork/${lot.id}`,
+    href: lotPath(lot),
     title: lot.title,
     artistName,
     priceLabel: label,
@@ -249,7 +252,7 @@ export function toUpcomingAuctionVM(row: SaleListRow): UpcomingAuctionVM {
   const { sale, lots } = row;
   return {
     id: sale.id,
-    href: `/sales/${sale.id}`,
+    href: salePath(sale),
     title: sale.title,
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
@@ -271,7 +274,7 @@ export function toArtistCardVMs(profiles: ArtistProfile[]): ArtistCardVM[] {
       id: p.id,
       name: p.name,
       portraitUrl: p.portraitUrl,
-      href: `/artist/${p.id}`,
+      href: artistPath(p),
       ...(specialty ? { specialty } : {}),
     };
   });

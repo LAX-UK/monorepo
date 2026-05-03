@@ -2,6 +2,7 @@
 
 import { useTableDensity } from "@/components/layout/density-provider";
 import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
 import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
@@ -77,7 +78,10 @@ function saleColumns(): ColumnDef<AdminSaleBoardRow>[] {
               type: "item",
               label: "View on site",
               onSelect: () => {
-                window.location.href = `/sales/${row.original.saleId}`;
+                window.location.href = salePath({
+                  id: row.original.saleId,
+                  title: row.original.title,
+                });
               },
             },
             {
@@ -150,7 +154,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
                   type: "item",
                   label: "View on site",
                   onSelect: () => {
-                    window.location.href = `/sales/${r.saleId}`;
+                    window.location.href = salePath({ id: r.saleId, title: r.title });
                   },
                 },
               ]}

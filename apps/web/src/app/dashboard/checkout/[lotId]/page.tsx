@@ -4,6 +4,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
@@ -116,7 +117,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
             <p className="mt-10 font-body text-xs text-on-surface-variant">
               <Link
-                href={`/artwork/${auction.id}`}
+                href={lotPath(auction)}
                 className="border-b border-outline-variant/40 hover:border-primary"
               >
                 View full lot details

@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
+import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 
 export type SaleCalendarRowVM = {
@@ -103,7 +104,7 @@ export function mapSaleToCalendarRowVM(
 
   return {
     id: sale.id,
-    href: `/sales/${sale.id}`,
+    href: salePath(sale),
     title: sale.title,
     coverImageUrl: sale.coverImages[0] ?? null,
     coverImageAlt: sale.title,

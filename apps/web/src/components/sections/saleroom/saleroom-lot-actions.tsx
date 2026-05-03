@@ -5,6 +5,7 @@ import Link from "next/link";
 
 type Props = {
   lotId: string;
+  lotHref: string;
   isAuthenticated: boolean;
   initialWatching: boolean;
   /** Compact variant kept for API compatibility; both use equal flex buttons in Figma. */
@@ -19,6 +20,7 @@ const bidClass =
  */
 export function SaleroomLotActions({
   lotId,
+  lotHref,
   isAuthenticated,
   initialWatching,
   compact: _c,
@@ -30,7 +32,7 @@ export function SaleroomLotActions({
         variant="ghost"
         className={`min-w-0 flex-1 ${bidClass} px-6 shadow-none hover:opacity-90`}
       >
-        <Link className="w-full justify-center" href={`/artwork/${lotId}`}>
+        <Link className="w-full justify-center" href={lotHref}>
           <Gavel className="mr-2.5 size-4 shrink-0" aria-hidden />
           Bid
         </Link>
@@ -38,6 +40,7 @@ export function SaleroomLotActions({
       <div className="min-w-0 flex-1 [&>a]:flex [&>button]:flex [&>a]:w-full [&>button]:w-full">
         <ArtworkWatchToggle
           lotId={lotId}
+          loginNextPath={lotHref}
           isAuthenticated={isAuthenticated}
           initialWatching={initialWatching}
           appearance="outlined-block"

@@ -6,12 +6,10 @@ import { LaxHero } from "@/components/sections/home/lax-hero";
 import { LaxUpcomingAuctions } from "@/components/sections/home/lax-upcoming-auctions";
 import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
 import { SITE_TAGLINE } from "@/lib/brand";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForStatic({
@@ -20,14 +18,10 @@ export const metadata: Metadata = metadataForStatic({
   path: "/",
 });
 
-type PageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
+export const revalidate = 60;
 
-async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: string }) {
-  const [{ heroState, lotCards, auctionVm, artistCards, saleMetaLine }, session] =
-    await Promise.all([getHomeData(), getServerSessionUser()]);
-  const currentUserId = session?.id ?? null;
+async function MarketingHomeContent() {
+  const { heroState, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
   const base = getSiteUrl();
   const upcomingLotsJsonLd =
     lotCards.length > 0
@@ -46,9 +40,9 @@ async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: st
           {jsonLdScript(upcomingLotsJsonLd)}
         </script>
       ) : null}
-      <LaxHero state={heroState} twitchParentHost={twitchParentHost} />
-      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} currentUserId={currentUserId} />
-      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} currentUserId={currentUserId} /> : null}
+      <LaxHero state={heroState} />
+      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
+      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
       <LaxArtists items={artistCards} />
       <LaxEditorialStrip />
       <HomeNewsletter />
@@ -56,12 +50,7 @@ async function MarketingHomeContent({ twitchParentHost }: { twitchParentHost: st
   );
 }
 
-export default async function HomePage({ searchParams }: PageProps) {
-  await searchParams;
-
-  const hdrs = await headers();
-  const twitchParentHost = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost";
-
+export default function HomePage() {
   return (
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
       <Suspense
@@ -72,7 +61,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           />
         }
       >
-        <MarketingHomeContent twitchParentHost={twitchParentHost} />
+        <MarketingHomeContent />
       </Suspense>
     </main>
   );

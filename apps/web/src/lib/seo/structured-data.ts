@@ -1,4 +1,11 @@
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
+import {
+  SITE_BUSINESS_ADDRESS,
+  SITE_CONTACT_EMAIL,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_TELEPHONE_SCHEMA,
+} from "@/lib/brand";
+import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, Sale } from "@auction/types";
 
@@ -13,7 +20,7 @@ export function lotProductJsonLd(
   opts: { artistName?: string; sellerName?: string } = {},
 ): Record<string, unknown> {
   const base = getSiteUrl();
-  const url = `${base}/artwork/${auction.id}`;
+  const url = `${base}${lotPath(auction)}`;
   const availability =
     auction.status === "ended"
       ? "https://schema.org/SoldOut"
@@ -45,7 +52,7 @@ export function lotProductJsonLd(
  */
 export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
   const base = getSiteUrl();
-  const url = `${base}/sales/${sale.id}`;
+  const url = `${base}${salePath(sale)}`;
   const status =
     sale.status === "active"
       ? "https://schema.org/EventScheduled"
@@ -116,22 +123,18 @@ export function organizationJsonLd(): Record<string, unknown> {
     logo: `${base}/logo.svg`,
     address: {
       "@type": "PostalAddress",
-      streetAddress: "1 Curator Mews",
-      addressLocality: "London",
-      postalCode: "W1K 1AA",
-      addressCountry: "GB",
+      ...SITE_BUSINESS_ADDRESS,
     },
     contactPoint: [
       {
         "@type": "ContactPoint",
         contactType: "customer support",
-        email: "concierge@laxauction.house",
-        telephone: "+44-20-7946-0958",
+        email: SITE_CONTACT_EMAIL,
+        telephone: SITE_TELEPHONE_SCHEMA,
         areaServed: "GB",
         availableLanguage: ["English"],
       },
     ],
-    sameAs: [`${base}/contact`, `${base}/about`],
   };
 }
 
@@ -161,13 +164,10 @@ export function localBusinessJsonLd(): Record<string, unknown> {
     description: SITE_TAGLINE,
     address: {
       "@type": "PostalAddress",
-      streetAddress: "1 Curator Mews",
-      addressLocality: "London",
-      postalCode: "W1K 1AA",
-      addressCountry: "GB",
+      ...SITE_BUSINESS_ADDRESS,
     },
-    telephone: "+44-20-7946-0958",
-    email: "concierge@laxauction.house",
+    telephone: SITE_TELEPHONE_SCHEMA,
+    email: SITE_CONTACT_EMAIL,
     openingHoursSpecification: {
       "@type": "OpeningHoursSpecification",
       dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],

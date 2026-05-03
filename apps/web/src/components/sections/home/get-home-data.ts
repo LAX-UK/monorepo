@@ -14,13 +14,26 @@ import {
   toLotCardVMs,
   toUpcomingAuctionVM,
 } from "@/components/sections/home/home-view-models";
-import type { ListLotsParams } from "@/lib/data/contracts";
-import { getServerArtistReader } from "@/lib/data/http/artist.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerSalesList } from "@/lib/data/http/sales.server";
-import type { Lot } from "@auction/types";
+import type { ArtistProfile, ListLotsParams } from "@/lib/data/contracts";
+import { mapPublicUserToArtist } from "@/lib/data/http/artist.server";
+import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { buildLotListQuery } from "@/lib/data/http/lots.server";
+import { parseLot, parseSale } from "@/lib/data/http/parse";
+import { salePath } from "@/lib/seo/url";
+import type { Lot, Sale } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
 import { cache } from "react";
+
+type HomeSaleListQuery = {
+  status?: Sale["status"];
+  statuses?: Sale["status"][];
+  categoryId?: string;
+  limit?: number;
+  offset?: number;
+  sort?: "createdDesc" | "startAsc";
+};
+
+type HomeSaleListRow = { sale: Sale; lots: Lot[] };
 
 export type HomePageData = {
   heroState: HeroStateVM;
@@ -30,28 +43,71 @@ export type HomePageData = {
   saleMetaLine: string;
 };
 
+function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {
+  const q: Record<string, string> = {
+    limit: String(params.limit ?? 24),
+    offset: String(params.offset ?? 0),
+  };
+  if (params.statuses?.length) q.statuses = params.statuses.join(",");
+  else if (params.status) q.status = params.status;
+  if (params.categoryId) q.categoryId = params.categoryId;
+  if (params.sort) q.sort = params.sort;
+  return q;
+}
+
+async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
+  const qs = new URLSearchParams(buildLotListQuery(params));
+  const res = await fetch(`${getServerApiBase()}/lots?${qs.toString()}`, {
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`Failed to list home lots: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseLot);
+}
+
+async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<HomeSaleListRow[]> {
+  const qs = new URLSearchParams(buildHomeSalesQuery(params));
+  const res = await fetch(`${getServerApiBase()}/sales?${qs.toString()}`, {
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`Failed to list home sales: ${res.status}`);
+  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
+  return body.data.map((row) => ({
+    sale: parseSale(row.sale),
+    lots: row.lots.map(parseLot),
+  }));
+}
+
+async function fetchHomeFeaturedArtists(): Promise<ArtistProfile[]> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
+  const res = await fetch(`${getServerApiBase()}/users/public/artists?limit=24&offset=0`, {
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as {
+    data: { id: string; name: string; image?: string | null }[];
+  };
+  return body.data.map(mapPublicUserToArtist);
+}
+
 export const getHomeData = cache(async (): Promise<HomePageData> => {
   let upcoming: Lot[] = [];
-  let salesRows: Awaited<ReturnType<typeof getServerSalesList>> = [];
-  let artists: Awaited<
-    ReturnType<Awaited<ReturnType<typeof getServerArtistReader>>["listFeatured"]>
-  > = [];
+  let salesRows: HomeSaleListRow[] = [];
+  let artists: ArtistProfile[] = [];
 
   try {
-    const reader = await getServerLotReader();
-    const artistReader = await getServerArtistReader();
     const filtered: ListLotsParams = {
       limit: 5,
       status: "active",
       sort: "endingAsc",
     };
-    upcoming = await reader.list(filtered);
+    upcoming = await fetchHomeLots(filtered);
     if (upcoming.length === 0) {
-      upcoming = await reader.list({ limit: 5, sort: "endingAsc" });
+      upcoming = await fetchHomeLots({ limit: 5, sort: "endingAsc" });
     }
     const [salesResult, artistsResult] = await Promise.all([
-      getServerSalesList({ status: "active", limit: 1 }),
-      artistReader.listFeatured(),
+      fetchHomeSales({ status: "active", limit: 1 }),
+      fetchHomeFeaturedArtists(),
     ]);
     salesRows = salesResult;
     artists = artistsResult;
@@ -77,7 +133,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const base = { lotCards, auctionVm, artistCards, saleMetaLine };
 
   try {
-    const activeRows = await getServerSalesList({ status: "active", limit: 10 });
+    const activeRows = await fetchHomeSales({ status: "active", limit: 10 });
     for (const row of activeRows) {
       const { sale } = row;
       if (sale.deliveryMode !== "onsite") continue;
@@ -94,7 +150,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
           embedSrc: embed.src,
           provider: embed.provider,
           modeLabel,
-          saleroomHref: `/sales/${sale.id}`,
+          saleroomHref: salePath(sale),
           ...(embed.provider === "youtube" && embed.videoId
             ? {
                 videoId: embed.videoId,
@@ -106,7 +162,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       };
     }
 
-    const rotatorRows = await getServerSalesList({
+    const rotatorRows = await fetchHomeSales({
       statuses: ["scheduled", "active"],
       sort: "startAsc",
       limit: 5,

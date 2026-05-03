@@ -5,6 +5,7 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseUserNotification } from "@/lib/data/http/parse";
+import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Bell } from "lucide-react";
@@ -164,7 +165,7 @@ export function NotificationBell() {
                   <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
                   {n.lotId ? (
                     <Link
-                      href={`/artwork/${n.lotId}`}
+                      href={lotPath({ id: n.lotId, title: n.title })}
                       className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
                       onClick={() => void markRead(n.id)}
                     >
