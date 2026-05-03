@@ -133,6 +133,10 @@
       "types": "./dist/components/ui/date-range-picker.d.ts",
       "default": "./dist/components/ui/date-range-picker.js"
     },
+    "./components/segment-toggle": {
+      "types": "./dist/components/ui/segment-toggle.d.ts",
+      "default": "./dist/components/ui/segment-toggle.js"
+    },
     "./components/sonner": {
       "types": "./dist/components/ui/sonner.d.ts",
       "default": "./dist/components/ui/sonner.js"

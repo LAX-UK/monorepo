@@ -140,6 +140,8 @@ export { Toaster } from "./components/ui/sonner.js";
 export { SidebarInset, SidebarTrigger } from "./components/ui/sidebar.js";
 export { FilterChip } from "./components/ui/filter-chip.js";
 export type { FilterChipProps } from "./components/ui/filter-chip.js";
+export { SegmentToggle } from "./components/ui/segment-toggle.js";
+export type { SegmentToggleOption, SegmentToggleProps } from "./components/ui/segment-toggle.js";
 export { MarketingPagination } from "./components/ui/marketing-pagination.js";
 export type {
   MarketingPaginationPage,

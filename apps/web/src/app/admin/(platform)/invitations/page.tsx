@@ -101,7 +101,7 @@ export default async function AdminInvitationsPage({
                           <input type="hidden" name="invitationId" value={inv.id} />
                           <Button
                             type="submit"
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             className="font-label text-[10px] uppercase"
                           >

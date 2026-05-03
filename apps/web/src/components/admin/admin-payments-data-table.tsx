@@ -70,13 +70,13 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
       <div className="flex flex-col gap-3 border-t border-outline-variant/15 pt-4">
         {(status === "pending" || status === "authorized") && (
           <Button type="button" className="min-h-11 w-full" disabled={pending} onClick={runCapture}>
-            Mark captured
+            Capture
           </Button>
         )}
         <Button
           type="button"
-          variant="secondary"
-          className="min-h-11 w-full text-error"
+          variant="destructive"
+          className="min-h-11 w-full"
           disabled={pending}
           onClick={runRefund}
         >
@@ -91,19 +91,20 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
       {(status === "pending" || status === "authorized") && (
         <Button
           type="button"
-          variant="link"
+          size="sm"
           disabled={pending}
-          className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          className="font-label text-xs uppercase tracking-widest disabled:opacity-50"
           onClick={runCapture}
         >
-          Mark captured
+          Capture
         </Button>
       )}
       <Button
         type="button"
-        variant="link"
+        variant="destructive"
+        size="sm"
         disabled={pending}
-        className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-error underline-offset-2 hover:underline disabled:opacity-50"
+        className="font-label text-xs uppercase tracking-widest disabled:opacity-50"
         onClick={runRefund}
       >
         Refund

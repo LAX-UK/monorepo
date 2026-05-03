@@ -3,7 +3,7 @@
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { DataTable, EntityTableShell } from "@auction/ui";
+import { Button, DataTable, EntityTableShell } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -51,12 +51,21 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
       id: "open",
       header: "",
       cell: ({ row }) => (
-        <Link
-          href={`/admin/submissions/${row.original.id}`}
-          className="font-label text-xs font-bold uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-        >
-          Open
-        </Link>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/admin/submissions/${row.original.id}`}>View</Link>
+          </Button>
+          {row.original.status === "submitted" ? (
+            <>
+              <Button size="sm" asChild>
+                <Link href={`/admin/submissions/${row.original.id}`}>Approve</Link>
+              </Button>
+              <Button variant="destructive" size="sm" asChild>
+                <Link href={`/admin/submissions/${row.original.id}`}>Reject</Link>
+              </Button>
+            </>
+          ) : null}
+        </div>
       ),
       enableSorting: false,
     },
@@ -94,6 +103,21 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
               <span className="text-[10px] text-on-surface-variant">{r.createdAtLabel}</span>
             </div>
           </Link>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/admin/submissions/${r.id}`}>View</Link>
+            </Button>
+            {r.status === "submitted" ? (
+              <>
+                <Button size="sm" asChild>
+                  <Link href={`/admin/submissions/${r.id}`}>Approve</Link>
+                </Button>
+                <Button variant="destructive" size="sm" asChild>
+                  <Link href={`/admin/submissions/${r.id}`}>Reject</Link>
+                </Button>
+              </>
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>

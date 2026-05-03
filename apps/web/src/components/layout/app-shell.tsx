@@ -5,23 +5,15 @@ import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { AppShellSidebar } from "@/components/layout/app-shell-sidebar";
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
-import {
-  DensityProvider,
-  useDashboardDensity,
-  useDensityToggle,
-} from "@/components/layout/density-provider";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
+import { SidebarStateProvider, useSidebarState } from "@/components/layout/sidebar-state";
+import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@auction/ui/components/tooltip";
-import { Columns3, Menu, Rows3, Search } from "lucide-react";
+import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { Menu, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -32,63 +24,26 @@ type Props = {
   children: ReactNode;
 };
 
-function useCoarsePointer() {
-  const [coarse, setCoarse] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(pointer: coarse)");
-    const sync = () => setCoarse(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-
-  return coarse;
-}
-
-function DensityToggleButton() {
-  const { density, toggleDensity } = useDensityToggle();
-  const isCompact = density === "compact";
-  const coarsePointer = useCoarsePointer();
-  const button = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      onClick={toggleDensity}
-      aria-label={isCompact ? "Use normal dashboard density" : "Use compact dashboard density"}
-      aria-pressed={isCompact}
-      data-state={isCompact ? "active" : "inactive"}
-      className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary data-[state=active]:bg-surface-container-high data-[state=active]:text-primary"
-    >
-      {isCompact ? (
-        <Rows3 className="size-4" aria-hidden />
-      ) : (
-        <Columns3 className="size-4" aria-hidden />
-      )}
-    </Button>
-  );
-
-  if (coarsePointer) return button;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent>{isCompact ? "Normal density" : "Compact density"}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { density } = useDashboardDensity();
+  const { collapsed } = useSidebarState();
 
   useEffect(() => {
     if (pathname.length > 0 && mobileOpen) setMobileOpen(false);
   }, [mobileOpen, pathname]);
 
-  const sidebar = (
+  const desktopSidebar = (
+    <AppShellSidebar
+      user={user}
+      role={shellRole}
+      pendingSubmissionCount={pendingSubmissionCount}
+      onNavigate={() => setMobileOpen(false)}
+      collapsible
+    />
+  );
+  const mobileSidebar = (
     <AppShellSidebar
       user={user}
       role={shellRole}
@@ -100,7 +55,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
   return (
     <div
       className="flex min-h-[100dvh] bg-page-bg font-body text-on-surface"
-      style={{ ["--sidebar-width" as string]: "4.5rem" }}
+      style={{ ["--sidebar-width" as string]: collapsed ? "4.5rem" : "14rem" }}
     >
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
@@ -113,19 +68,19 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
         Skip to content
       </a>
 
-      <aside className="hidden h-[100dvh] w-[var(--sidebar-width)] shrink-0 border-r border-outline-variant bg-surface-container-lowest xl:w-56 lg:block">
-        {sidebar}
+      <aside className="hidden h-[100dvh] w-[var(--sidebar-width)] shrink-0 border-r border-outline-variant bg-surface-container-lowest transition-[width] duration-200 lg:block">
+        {desktopSidebar}
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
-          className="w-[min(100vw-1.5rem,var(--sidebar-width))] max-w-none border-outline-variant bg-surface-container-lowest p-0"
+          className="w-[min(100vw-1.5rem,14rem)] max-w-none border-outline-variant bg-surface-container-lowest p-0"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Dashboard navigation</SheetTitle>
           </SheetHeader>
-          {sidebar}
+          {mobileSidebar}
         </SheetContent>
       </Sheet>
 
@@ -155,8 +110,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
             >
               <Search className="size-4" aria-hidden />
             </Button>
-            <DensityToggleButton />
-            <ThemeToggle />
+            <TweaksPopover />
           </div>
         </header>
 
@@ -180,7 +134,9 @@ export function AppShell(props: Props) {
   return (
     <TooltipProvider delayDuration={200}>
       <DensityProvider>
-        <AppShellFrame {...props} />
+        <SidebarStateProvider>
+          <AppShellFrame {...props} />
+        </SidebarStateProvider>
       </DensityProvider>
     </TooltipProvider>
   );

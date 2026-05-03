@@ -23,6 +23,7 @@ function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
         watchlistId: row.watchlistId,
         lotId: lot.id,
         title: lot.title,
+        artistLabel: lot.marketingDetails.sellerArtistId ?? lot.sellerId,
         image: lot.images[0] ?? null,
         medium: lot.medium,
         lotNumber: lot.lotNumber,
