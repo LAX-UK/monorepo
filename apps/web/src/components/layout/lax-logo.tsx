@@ -22,8 +22,8 @@ export function LaxLogo({
   className = "",
   imageSrc,
   imageAlt = `${SITE_SHORT_NAME} London Auction House`,
-  imageWidth = 201,
-  imageHeight = 44,
+  imageWidth = 660,
+  imageHeight = 200,
   children,
 }: LaxLogoProps) {
   const titleSize =
