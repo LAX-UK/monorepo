@@ -13,10 +13,11 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
 
   const signInWithGoogle = async () => {
     setPending(true);
+    const webOrigin = window.location.origin;
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: next,
-      errorCallbackURL: "/login?social_error=1",
+      callbackURL: `${webOrigin}${next}`,
+      errorCallbackURL: `${webOrigin}/login?social_error=1`,
     });
 
     if (error) {
