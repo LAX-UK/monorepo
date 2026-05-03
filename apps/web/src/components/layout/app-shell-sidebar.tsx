@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from "@auction/ui/components/avatar";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -70,8 +70,8 @@ export function AppShellSidebar({
   const pathname = usePathname();
   const meta = appShellRoleMeta[role];
   const items = getAppShellNavItems(role, pendingSubmissionCount);
-  const { collapsed, toggleCollapsed } = useSidebarState();
-  const labelsHidden = collapsible && collapsed;
+  const { collapsed, peeking } = useSidebarState();
+  const labelsHidden = collapsible && collapsed && !peeking;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-container-lowest">
@@ -102,9 +102,10 @@ export function AppShellSidebar({
           <span className={cn("size-1.5 rounded-full", meta.dotClassName)} aria-hidden />
           <span
             className={cn(
-              "font-label text-[10px] font-bold uppercase tracking-[0.12em]",
-              labelsHidden && "hidden",
+              "overflow-hidden whitespace-nowrap font-label text-[10px] font-bold uppercase tracking-[0.12em] transition-[max-width,opacity] duration-150",
+              labelsHidden ? "max-w-0 opacity-0" : "max-w-32 opacity-100",
             )}
+            aria-hidden={labelsHidden}
           >
             {meta.label}
           </span>
@@ -137,7 +138,13 @@ export function AppShellSidebar({
                     )}
                   >
                     <Icon className="size-4 shrink-0" aria-hidden />
-                    <span className={cn("min-w-0 flex-1 truncate", labelsHidden && "hidden")}>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate whitespace-nowrap transition-[max-width,opacity] duration-150",
+                        labelsHidden ? "max-w-0 opacity-0" : "max-w-[10rem] opacity-100",
+                      )}
+                      aria-hidden={labelsHidden}
+                    >
                       {item.label}
                     </span>
                     {item.badge ? (
@@ -173,30 +180,19 @@ export function AppShellSidebar({
               {initials(user.name)}
             </AvatarFallback>
           </Avatar>
-          <div className={cn("min-w-0", labelsHidden && "hidden")}>
+          <div
+            className={cn(
+              "min-w-0 overflow-hidden transition-[max-width,opacity] duration-150",
+              labelsHidden ? "max-w-0 opacity-0" : "max-w-[10rem] opacity-100",
+            )}
+            aria-hidden={labelsHidden}
+          >
             <p className="truncate text-xs font-semibold text-on-surface">{user.name}</p>
             <p className="truncate text-[10px] text-on-surface-variant">{user.email}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center", labelsHidden ? "justify-center" : "hidden")}>
           <CompactLogoutButton {...(onNavigate ? { onNavigate } : {})} collapsed={labelsHidden} />
-          {collapsible ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={toggleCollapsed}
-              className="min-h-10 min-w-10 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-              aria-label={labelsHidden ? "Expand dashboard sidebar" : "Collapse dashboard sidebar"}
-              aria-pressed={labelsHidden}
-            >
-              {labelsHidden ? (
-                <ChevronRight className="size-4" aria-hidden />
-              ) : (
-                <ChevronLeft className="size-4" aria-hidden />
-              )}
-            </Button>
-          ) : null}
         </div>
         <LogoutButton
           {...(onNavigate ? { onBeforeNavigate: onNavigate } : {})}

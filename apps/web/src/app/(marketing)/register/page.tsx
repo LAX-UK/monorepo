@@ -23,7 +23,7 @@ export default async function RegisterPage({
   const inviteToken = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
   return (
     <main id="main-content">
-      <AuthLayout title="SIGN UP">
+      <AuthLayout>
         <Suspense fallback={<SignUpFormFallback />}>
           <SignUpForm {...(inviteToken != null ? { inviteToken } : {})} />
         </Suspense>

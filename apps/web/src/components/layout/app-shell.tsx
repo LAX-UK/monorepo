@@ -13,10 +13,15 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
-import { Menu, Search } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@auction/ui/components/tooltip";
+import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type Props = {
   user: SessionUser;
@@ -29,11 +34,53 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { density } = useDashboardDensity();
-  const { collapsed } = useSidebarState();
+  const { collapsed, peeking, setPeeking, toggleCollapsed } = useSidebarState();
+  const sidebarShellRef = useRef<HTMLDivElement | null>(null);
+  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPeekOpen = collapsed && peeking;
 
   useEffect(() => {
     if (pathname.length > 0 && mobileOpen) setMobileOpen(false);
   }, [mobileOpen, pathname]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "b" || (!event.metaKey && !event.ctrlKey)) return;
+      if (!window.matchMedia("(min-width: 1024px)").matches) return;
+      event.preventDefault();
+      toggleCollapsed();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleCollapsed]);
+
+  useEffect(() => {
+    return () => {
+      if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (collapsed) return;
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    setPeeking(false);
+  }, [collapsed, setPeeking]);
+
+  const schedulePeek = (nextPeeking: boolean, delayMs: number) => {
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    peekTimerRef.current = setTimeout(() => {
+      setPeeking(collapsed && nextPeeking);
+    }, delayMs);
+  };
+
+  const openPeek = () => {
+    if (collapsed) schedulePeek(true, 120);
+  };
+
+  const closePeek = () => {
+    schedulePeek(false, 200);
+  };
 
   const desktopSidebar = (
     <AppShellSidebar
@@ -62,16 +109,31 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
       />
-      <a
-        href="#main-content"
-        className="fixed left-4 top-4 z-[60] -translate-y-[120%] rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary focus:translate-y-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
-      >
-        Skip to content
-      </a>
 
-      <aside className="hidden h-[100dvh] w-[var(--sidebar-width)] shrink-0 border-r border-outline-variant bg-surface-container-lowest transition-[width] duration-200 lg:block">
-        {desktopSidebar}
-      </aside>
+      <div
+        ref={sidebarShellRef}
+        className="relative hidden h-[100dvh] w-[var(--sidebar-width)] shrink-0 overflow-visible transition-[width] duration-200 ease-out lg:block"
+        onMouseEnter={openPeek}
+        onMouseLeave={closePeek}
+        onFocusCapture={openPeek}
+        onBlurCapture={(event) => {
+          const nextTarget = event.relatedTarget;
+          if (nextTarget instanceof Node && sidebarShellRef.current?.contains(nextTarget)) return;
+          closePeek();
+        }}
+      >
+        <aside
+          className={cn(
+            "h-full border-r border-outline-variant bg-surface-container-lowest transition-[width,box-shadow] duration-200 ease-out",
+            isPeekOpen
+              ? "absolute inset-y-0 left-0 z-40 w-56 shadow-2xl"
+              : "relative w-[var(--sidebar-width)] shadow-none",
+          )}
+        >
+          {desktopSidebar}
+          <SidebarEdgeHandle collapsed={collapsed} onToggle={toggleCollapsed} />
+        </aside>
+      </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
@@ -141,6 +203,38 @@ export function AppShell(props: Props) {
         </SidebarStateProvider>
       </DensityProvider>
     </TooltipProvider>
+  );
+}
+
+function SidebarEdgeHandle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const Icon = collapsed ? ChevronRight : ChevronLeft;
+
+  return (
+    <Tooltip delayDuration={250}>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className="absolute right-0 top-1/2 z-50 size-7 min-h-7 min-w-7 translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant opacity-80 shadow-sm transition-[background-color,color,opacity,transform] duration-150 hover:scale-105 hover:bg-surface-container-high hover:text-on-surface hover:opacity-100 focus-visible:opacity-100"
+          aria-label={label}
+          aria-pressed={collapsed}
+        >
+          <Icon className="size-3.5" aria-hidden />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {label} <span className="text-on-surface-variant">(⌘B)</span>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
