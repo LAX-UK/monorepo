@@ -103,7 +103,7 @@ Health checks at `GET /health/live` and `GET /health/ready` ([apps/ws/src/index.
 
 ### apps/worker
 
-BullMQ consumer for asynchronous work. Today it runs the `webhook-events` queue consumer and a `domain_events` polling runner that updates the `zoho` cursor ([apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts)). The intended scope also includes `lot-lifecycle` (currently still in `apps/api`), the Zoho/Xero projector outbound calls (currently no-op stubs), scheduled JWKS rotation (helper exists at [apps/worker/src/jobs/jwks-rotation.ts](../../apps/worker/src/jobs/jwks-rotation.ts) but is not scheduled), email sending, and image processing — all **(Phase 2)**.
+BullMQ consumer for asynchronous work. Today it runs the `webhook-events` queue consumer and a `domain_events` polling runner that updates the `zoho` cursor ([apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts)). The intended scope also includes `lot-lifecycle` (currently still in `apps/api`), the Zoho/Xero projector outbound calls (currently no-op stubs), email sending, and image processing — all **(Phase 2)**. JWKS retirement intentionally runs in `apps/auth`, not the worker, so `worker_app` remains denied on signing keys.
 
 It uses the `worker_app` Postgres role, which has SELECT on `domain_events` and `user`, full access to `projector_state` and `webhook_event`, and no access to identity tables or signing keys. Outbound calls to Zoho, Xero, and Sentry are intended to be made from this component only — `apps/api` never calls these directly.
 

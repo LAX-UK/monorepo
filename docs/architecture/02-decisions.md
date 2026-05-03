@@ -26,7 +26,7 @@ A retired key remains in the published JWKS for thirty minutes before deletion. 
 
 **Why this wins.** The role split is a security boundary that matters. If `apps/api` is compromised by a SQL injection or a leaked credential, the attacker cannot read the signing key — the database role they hold does not permit it. This is the cheapest, most reliable way to bound the blast radius of a single-app compromise. The pattern matches how we already store Xero OAuth refresh tokens, so it adds zero cognitive load. Rotation is zero-downtime because new and retired keys coexist in JWKS during the transition window.
 
-**Status.** *Implemented.* Schema in [packages/db/src/schema/jwks-key.ts](../../packages/db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper exists at [apps/worker/src/jobs/jwks-rotation.ts](../../apps/worker/src/jobs/jwks-rotation.ts) but is not yet scheduled — see D-status line on quarterly rotation in P6.
+**Status.** *Implemented.* Schema in [packages/db/src/schema/jwks-key.ts](../../packages/db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper and schedule live in [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts), run inside `apps/auth` under `auth_app`, and use a Postgres advisory lock so only one auth replica performs each retirement tick while preserving the `worker_app` deny boundary.
 
 ## D3. Account linking happens at sign-in, gated on email verification
 
