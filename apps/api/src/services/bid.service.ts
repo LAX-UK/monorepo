@@ -90,7 +90,7 @@ export class BidService {
             lotId,
             bidderId,
             amount: amountStr,
-            isWinning: true,
+            isWinning: false,
             isAutoBid: hasMax,
             maxAutoBidAmount: maxStr,
           });
@@ -231,7 +231,7 @@ export class BidService {
         lotId,
         bidderId: challenger.bidderId,
         amount: nextStr,
-        isWinning: true,
+        isWinning: false,
         isAutoBid: true,
         maxAutoBidAmount: challenger.ceiling.toFixed(2),
       });
