@@ -6,10 +6,10 @@ import {
   getAppShellNavItems,
 } from "@/components/layout/app-shell-nav";
 import { LaxLogo } from "@/components/layout/lax-logo";
-import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
 import { useLogout } from "@/lib/auth/use-logout";
+import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Avatar, AvatarFallback } from "@auction/ui/components/avatar";
