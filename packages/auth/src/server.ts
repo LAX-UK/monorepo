@@ -45,10 +45,13 @@ export type Auth = {
   };
 } & Record<string, unknown>;
 
-export function createAuth(env: AuthEnv): Auth {
-  const issuer = env.issuerURL ?? env.baseURL;
-  const jwksAdapter = createJwksAdapter(env.db);
-  const socialProviders = {
+export function createSocialProviders(
+  env: Pick<
+    AuthEnv,
+    "googleClientId" | "googleClientSecret" | "appleClientId" | "appleClientSecret"
+  >,
+) {
+  return {
     ...(env.googleClientId && env.googleClientSecret
       ? {
           google: {
@@ -66,6 +69,12 @@ export function createAuth(env: AuthEnv): Auth {
         }
       : {}),
   };
+}
+
+export function createAuth(env: AuthEnv): Auth {
+  const issuer = env.issuerURL ?? env.baseURL;
+  const jwksAdapter = createJwksAdapter(env.db);
+  const socialProviders = createSocialProviders(env);
 
   return betterAuth({
     secret: env.secret,
@@ -138,7 +147,7 @@ export function createAuth(env: AuthEnv): Auth {
         __skipDeprecationWarning: true,
         accessTokenExpiresIn: 60 * 15,
         refreshTokenExpiresIn: 60 * 60 * 24 * 30,
-        loginPage: `${env.webOrigin ?? issuer}/auth/sign-in`,
+        loginPage: `${env.webOrigin ?? issuer}/login`,
         useJWTPlugin: true,
         requirePKCE: true,
         scopes: ["openid", "profile", "email", "offline_access"],

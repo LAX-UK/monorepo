@@ -22,7 +22,8 @@ The shape of every secret in this list:
 | `BETTER_AUTH_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; 1Password | `apps/api`, `apps/auth`; founders | Quarterly |
 | `JWKS` private keys | Postgres `jwks_key.private_jwk`, readable only by `auth_app` role | The role; nobody on the team has direct DB access at app-runtime time | Quarterly via [../runbooks/jwks-rotation.md](../runbooks/jwks-rotation.md) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; Google Cloud console | `apps/api`, `apps/auth`; ops team | On suspected leak |
-| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; Apple Developer Program | `apps/api`, `apps/auth`; ops team | Annually (Apple cert expires) |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; Apple Developer Program | `apps/api`, `apps/auth`; ops team | Every 180 days or on suspected leak |
+| `APPLE_DOMAIN_ASSOCIATION` | DO App Platform env on `apps/auth`; Apple Developer Program | `apps/auth`; ops team | When Apple domain verification content changes |
 | `SHOPIFY_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; Shopify admin; 1Password | `apps/api`; ops team | Annual |
 | `WORDPRESS_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; WordPress admin; 1Password | `apps/api`; ops team | Annual |
 | `XERO_*` (client id/secret/refresh token) | DO App Platform env on `apps/worker`; Xero developer console; 1Password | `apps/worker`; ops team | Refresh token rotates on use; client secret annually |

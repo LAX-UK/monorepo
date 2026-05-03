@@ -5,6 +5,7 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -13,6 +14,8 @@ export function SignInForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
   const { form, onSubmit, loading, bannerError } = useSignInController(next);
+  const socialError =
+    searchParams.get("social_error") === "1" ? "Could not sign in with that provider." : null;
 
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
@@ -30,7 +33,15 @@ export function SignInForm() {
           Please sign in to continue.
         </p>
       ) : null}
-      <FormBanner message={bannerError} />
+      <FormBanner message={bannerError ?? socialError} />
+      <div className="flex flex-col gap-6">
+        <SocialSignInButtons next={next} />
+        <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
+          <span className="h-px flex-1 bg-outline-variant/40" />
+          <span className="font-footer-links text-xs uppercase tracking-[0.25em]">or</span>
+          <span className="h-px flex-1 bg-outline-variant/40" />
+        </div>
+      </div>
       <div className="flex flex-col gap-10">
         <RHFInput
           control={form.control}

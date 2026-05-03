@@ -90,6 +90,15 @@ app.get("/.well-known/jwks.json", async (c) => {
   c.header("Cache-Control", "public, max-age=60");
   return c.json(await jwks.getPublicJwks());
 });
+app.get("/.well-known/apple-developer-domain-association.txt", (c) => {
+  if (!env.APPLE_DOMAIN_ASSOCIATION) {
+    return c.text("Apple domain association file is not configured.", 404);
+  }
+  c.header("Cache-Control", "public, max-age=3600");
+  return c.text(env.APPLE_DOMAIN_ASSOCIATION, 200, {
+    "Content-Type": "text/plain; charset=utf-8",
+  });
+});
 app.get("/.well-known/openid-configuration", (c) => {
   const issuer = env.OIDC_ISSUER_URL.replace(/\/$/, "");
   const authBase = `${issuer}/api/auth`;

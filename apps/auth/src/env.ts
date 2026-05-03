@@ -23,6 +23,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
   APPLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
   APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+  APPLE_DOMAIN_ASSOCIATION: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type AuthAppEnv = z.infer<typeof envSchema>;
