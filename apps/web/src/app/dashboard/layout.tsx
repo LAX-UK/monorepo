@@ -1,8 +1,5 @@
-import { DashboardBottomNav } from "@/components/layout/dashboard-bottom-nav";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import {
   type UserRole,
   canAccessPlatformAdminRoutes,
@@ -18,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const [user, nav] = await Promise.all([getServerSessionUser(), loadMegaMenuSections()]);
+  const user = await getServerSessionUser();
   if (!user) {
     redirect("/login?next=/dashboard&auth=required");
   }
@@ -28,16 +25,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <>
-      <DashboardShell
-        user={user}
-        nav={nav}
-        mobileTitle="Dashboard"
-        sidebar={<DashboardSidebar user={user} />}
-      >
-        <div className="pb-20 lg:pb-0">{children}</div>
-      </DashboardShell>
-      <DashboardBottomNav />
-    </>
+    <AppShell user={user} shellRole="client">
+      {children}
+    </AppShell>
   );
 }

@@ -34,7 +34,7 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const portfolioCards = toPortfolioLotCards(filtered);
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)]">
+    <div className="screen w-full">
       <PageHeader
         title="Private collection"
         description="Lots where you are the winning bidder after the hammer fell."

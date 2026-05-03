@@ -1,6 +1,6 @@
 "use client";
 
-import { useTableDensity } from "@/components/layout/dashboard-shell";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { SaleStatus } from "@auction/types";
 import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";

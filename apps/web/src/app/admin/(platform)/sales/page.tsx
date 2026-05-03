@@ -5,7 +5,9 @@ import type { SaleStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
+import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 const statuses: (SaleStatus | "all")[] = [
   "all",
@@ -64,7 +66,7 @@ export default async function AdminSalesPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full space-y-6">
       <PageHeader
         title="Sales"
         description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
@@ -101,18 +103,20 @@ export default async function AdminSalesPage({
       ) : null}
 
       {!err && boardRows.length > 0 ? (
-        <AdminSalesBoard
-          rows={boardRows}
-          statusChips={statusChips}
-          toolbarEnd={
-            <Link
-              href="/sales"
-              className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
-            >
-              Public sales
-            </Link>
-          }
-        />
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <AdminSalesBoard
+            rows={boardRows}
+            statusChips={statusChips}
+            toolbarEnd={
+              <Link
+                href="/sales"
+                className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
+              >
+                Public sales
+              </Link>
+            }
+          />
+        </Suspense>
       ) : null}
     </div>
   );

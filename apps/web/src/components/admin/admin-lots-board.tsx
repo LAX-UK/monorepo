@@ -2,7 +2,7 @@
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
-import { useTableDensity } from "@/components/layout/dashboard-shell";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
 import { adminBulkLotsResultAction } from "@/lib/actions/admin";

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 export default async function AdminFinanceLayout({ children }: { children: ReactNode }) {
   const user = await getServerSessionUser();
   if (!user) {
-    redirect("/login?next=/admin&auth=required");
+    redirect("/login?next=/admin/payments&auth=required");
   }
   if (!canAccessFinanceAdminRoutes(user.role as UserRole)) {
     redirect("/dashboard");

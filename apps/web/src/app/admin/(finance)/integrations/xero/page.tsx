@@ -22,7 +22,7 @@ export default async function AdminXeroIntegrationPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-8">
+    <div className="screen w-full max-w-[560px] space-y-6">
       <PageHeader
         title="Xero"
         description="Connect one Xero organisation for hosted invoices and payment collection. Redirect URI must match your Xero app and environment variables."
