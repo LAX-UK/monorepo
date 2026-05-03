@@ -116,7 +116,7 @@ locals {
       http_port         = 3000
       instance_size     = "basic-xxs"
       instance_count    = 1
-      health_check_path = "/"
+      health_check_path = "/api/health"
       domain            = local.domain.web
       primary_domain    = true
       env = concat(local.common_secret_env, [
