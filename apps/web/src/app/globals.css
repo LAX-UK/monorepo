@@ -17,6 +17,8 @@
   --color-accent-gold: #d4af37;
   --color-lot-orange: #e17100;
   --color-live-red: #e83030;
+  --color-success: #2ea043;
+  --color-on-success: #ffffff;
   --color-outline-soft: #d1c5b4;
   --color-footer-soft: #ededef;
   --color-page-bg: #f1f1f3;
@@ -117,6 +119,7 @@
   --radius-DEFAULT: 0.125rem;
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
   --radius-full: 0.75rem;
 
   --font-headline: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
@@ -282,6 +285,8 @@ html.dark {
   --color-input-border: #948f87;
   --color-input-border-focus: #e8c77c;
   --color-hero-foreground: #fafafa;
+  --color-success: #56d364;
+  --color-on-success: #0d1117;
 
   --color-on-surface: #e3e2e0;
   --color-surface-container-high: #383a39;

@@ -54,6 +54,10 @@ function statusVariant(row: BidBoardRow) {
   return "neutral";
 }
 
+function lotArtistLabel(row: BidBoardRow): string {
+  return row.lot?.marketingDetails.sellerArtistId ?? row.lot?.sellerId ?? "—";
+}
+
 function bidColumns(): ColumnDef<BidBoardRow>[] {
   return [
     {
@@ -94,7 +98,9 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
     {
       id: "artist",
       header: "Artist",
-      cell: () => <span className="text-on-surface-variant">—</span>,
+      cell: ({ row }) => (
+        <span className="text-on-surface-variant">{lotArtistLabel(row.original)}</span>
+      ),
       enableSorting: false,
     },
     {
@@ -243,7 +249,7 @@ export function BidsBoard({
   return (
     <div className="w-full">
       <PageHeader
-        title="Bids"
+        title="My Bids"
         description="Track active, won, and lost lots with your latest bid values."
         className="mb-6 border-b border-outline-variant/20 pb-5"
       />

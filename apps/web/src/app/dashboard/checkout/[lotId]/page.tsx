@@ -4,6 +4,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -134,12 +135,13 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             {formatMoney(total.toFixed(2))}
           </p>
         </div>
-        <a
-          href="#checkout-complete-purchase"
-          className="inline-flex min-h-11 min-w-[10rem] items-center justify-center rounded-md bg-primary px-5 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm"
+        <Button
+          variant="cta"
+          asChild
+          className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest"
         >
-          Pay
-        </a>
+          <Link href="#checkout-complete-purchase">Pay</Link>
+        </Button>
       </div>
     </div>
   );

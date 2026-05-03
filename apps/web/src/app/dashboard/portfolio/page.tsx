@@ -36,7 +36,7 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   return (
     <div className="screen w-full">
       <PageHeader
-        title="Private collection"
+        title="Private Collection"
         description="Lots where you are the winning bidder after the hammer fell."
         className="mb-6 border-0 pb-0"
       />

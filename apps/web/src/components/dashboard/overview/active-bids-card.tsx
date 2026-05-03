@@ -60,12 +60,16 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                         sizes="56px"
                       />
                       <span className="min-w-0">
+                        <span className="block truncate font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+                          {lot.lotNumber ? `Lot ${lot.lotNumber}` : "Lot"}{" "}
+                          {lot.medium ? `· ${lot.medium}` : ""}
+                        </span>
                         <span className="block truncate font-headline text-sm font-semibold text-on-surface">
                           {lot.title}
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="font-label text-xs uppercase tracking-wider text-primary">
-                            Current {formatMoney(lot.currentPrice)}
+                            {hint === "high" ? "My bid" : "Current"} {formatMoney(lot.currentPrice)}
                           </span>
                           {bidHintBadge(hint)}
                         </span>

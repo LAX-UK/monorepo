@@ -59,8 +59,8 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
     },
     {
       label: "Submissions",
-      value: vm.primaryCta?.href.includes("/submissions") ? "Start" : "Open",
-      delta: "Specialist review",
+      value: vm.submissionsCount > 0 ? String(vm.submissionsCount) : "—",
+      delta: vm.submissionsCount > 0 ? "Specialist review" : "Submit an item",
       trend: vm.kpi.trend,
       trendTone: "primary",
     },

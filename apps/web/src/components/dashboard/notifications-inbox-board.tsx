@@ -55,6 +55,7 @@ export function NotificationsInboxBoard() {
   const [hasMore, setHasMore] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [compactView, setCompactView] = useState(false);
 
   const fetchNotifications = useCallback(
     async (offset: number, append: boolean) => {
@@ -329,6 +330,15 @@ export function NotificationsInboxBoard() {
         title="Notifications"
         description="Manage alerts for bids, wins, and saved lots. Updates in real time when you are online."
         className="border-0 pb-0"
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setCompactView((value) => !value)}
+          >
+            {compactView ? "Rich view" : "Compact list"}
+          </Button>
+        }
       />
 
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -427,126 +437,164 @@ export function NotificationsInboxBoard() {
           />
         ) : (
           <>
-            <div className="hidden lg:block">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
-                <nav
-                  aria-label="Notification threads"
-                  className="max-h-[70vh] overflow-y-auto rounded-sm border border-outline-variant/15 bg-surface-container-lowest/60"
-                >
-                  {items.map((n) => {
-                    const isActive = n.id === focusedId;
-                    return (
-                      <div
-                        key={n.id}
-                        className={`flex gap-3 border-b border-outline-variant/10 p-3 transition-colors last:border-b-0 ${
-                          isActive
-                            ? "bg-surface-container-high/80"
-                            : n.read
-                              ? "bg-transparent"
-                              : "bg-primary-container/10"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={selected.has(n.id)}
-                          onCheckedChange={() => toggle(n.id)}
-                          aria-label={`Select ${n.title}`}
-                          className="mt-1 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <ShadButton
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setFocusedId(n.id)}
-                          className="h-auto min-w-0 flex-1 flex-col items-start justify-start rounded-md px-2 py-2 text-left hover:bg-surface-container-high/40"
-                        >
-                          <span className="flex w-full items-center justify-between gap-3">
-                            <span className="flex min-w-0 items-center gap-2">
-                              <span
-                                className={`size-2 rounded-full ${
-                                  n.read ? "bg-outline-variant/60" : "bg-primary"
-                                }`}
-                                aria-hidden
-                              />
-                              <span
-                                className={`truncate font-label text-xs font-bold uppercase tracking-widest text-primary ${
-                                  n.read ? "opacity-60" : ""
-                                }`}
-                              >
-                                {n.title}
-                              </span>
-                            </span>
-                            <span className="shrink-0 font-body text-[11px] text-on-surface-variant/90">
-                              {new Date(n.createdAt).toLocaleString()}
-                            </span>
-                          </span>
-                          <p
-                            className={`mt-1 line-clamp-2 font-body text-sm text-on-surface-variant ${
-                              n.read ? "opacity-70" : ""
+            {compactView ? (
+              <ul className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest">
+                {items.map((n) => (
+                  <li
+                    key={n.id}
+                    className={`flex items-start gap-3 border-b border-outline-variant/10 px-4 py-3 last:border-b-0 ${
+                      n.read ? "" : "bg-primary-container/10"
+                    }`}
+                  >
+                    <span
+                      className={`mt-2 size-2 rounded-full ${n.read ? "bg-outline-variant/60" : "bg-primary"}`}
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-label text-xs font-bold uppercase tracking-widest text-primary">
+                        {n.title}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
+                        {n.message}
+                      </p>
+                      <p className="mt-2 text-xs text-on-surface-variant/80">
+                        {n.type} · {new Date(n.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    {n.lotId ? (
+                      <Button variant="ctaLink" asChild>
+                        <Link href={`/artwork/${n.lotId}`}>View</Link>
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <>
+                <div className="hidden lg:block">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
+                    <nav
+                      aria-label="Notification threads"
+                      className="max-h-[70vh] overflow-y-auto rounded-sm border border-outline-variant/15 bg-surface-container-lowest/60"
+                    >
+                      {items.map((n) => {
+                        const isActive = n.id === focusedId;
+                        return (
+                          <div
+                            key={n.id}
+                            className={`flex gap-3 border-b border-outline-variant/10 p-3 transition-colors last:border-b-0 ${
+                              isActive
+                                ? "bg-surface-container-high/80"
+                                : n.read
+                                  ? "bg-transparent"
+                                  : "bg-primary-container/10"
                             }`}
                           >
-                            {n.message}
-                          </p>
-                          <p className="mt-2 font-body text-xs text-on-surface-variant/90">
-                            {n.type}
-                          </p>
-                        </ShadButton>
-                      </div>
-                    );
-                  })}
-                </nav>
-                <article
-                  aria-live="polite"
-                  className="min-h-[280px] rounded-sm border border-outline-variant/15 bg-surface-container-lowest/40 p-6"
-                >
-                  {focused ? (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
-                          {focused.title}
+                            <Checkbox
+                              checked={selected.has(n.id)}
+                              onCheckedChange={() => toggle(n.id)}
+                              aria-label={`Select ${n.title}`}
+                              className="mt-1 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <ShadButton
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setFocusedId(n.id)}
+                              className="h-auto min-w-0 flex-1 flex-col items-start justify-start rounded-md px-2 py-2 text-left hover:bg-surface-container-high/40"
+                            >
+                              <span className="flex w-full items-center justify-between gap-3">
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <span
+                                    className={`size-2 rounded-full ${
+                                      n.read ? "bg-outline-variant/60" : "bg-primary"
+                                    }`}
+                                    aria-hidden
+                                  />
+                                  <span
+                                    className={`truncate font-label text-xs font-bold uppercase tracking-widest text-primary ${
+                                      n.read ? "opacity-60" : ""
+                                    }`}
+                                  >
+                                    {n.title}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 font-body text-[11px] text-on-surface-variant/90">
+                                  {new Date(n.createdAt).toLocaleString()}
+                                </span>
+                              </span>
+                              <p
+                                className={`mt-1 line-clamp-2 font-body text-sm text-on-surface-variant ${
+                                  n.read ? "opacity-70" : ""
+                                }`}
+                              >
+                                {n.message}
+                              </p>
+                              <p className="mt-2 font-body text-xs text-on-surface-variant/90">
+                                {n.type}
+                              </p>
+                            </ShadButton>
+                          </div>
+                        );
+                      })}
+                    </nav>
+                    <article
+                      aria-live="polite"
+                      className="min-h-[280px] rounded-sm border border-outline-variant/15 bg-surface-container-lowest/40 p-6"
+                    >
+                      {focused ? (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+                              {focused.title}
+                            </p>
+                            <p className="mt-2 font-body text-sm text-on-surface">
+                              {focused.message}
+                            </p>
+                            <p className="mt-3 font-body text-xs text-on-surface-variant">
+                              {focused.type} · {new Date(focused.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="primary"
+                              disabled={focused.read}
+                              onClick={() => void markReadOne(focused.id)}
+                            >
+                              Mark as read
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => void archiveOne(focused.id)}
+                            >
+                              Archive
+                            </Button>
+                            {focused.lotId ? (
+                              <Button type="button" variant="secondary" asChild>
+                                <Link href={`/artwork/${focused.lotId}`}>View lot</Link>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="font-body text-sm text-on-surface-variant">
+                          Select a notification.
                         </p>
-                        <p className="mt-2 font-body text-sm text-on-surface">{focused.message}</p>
-                        <p className="mt-3 font-body text-xs text-on-surface-variant">
-                          {focused.type} · {new Date(focused.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="primary"
-                          disabled={focused.read}
-                          onClick={() => void markReadOne(focused.id)}
-                        >
-                          Mark as read
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => void archiveOne(focused.id)}
-                        >
-                          Archive
-                        </Button>
-                        {focused.lotId ? (
-                          <Button type="button" variant="secondary" asChild>
-                            <Link href={`/artwork/${focused.lotId}`}>View lot</Link>
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="font-body text-sm text-on-surface-variant">
-                      Select a notification.
-                    </p>
-                  )}
-                </article>
-              </div>
-            </div>
-            <div className="lg:hidden">
-              <DataTable
-                columns={columns}
-                data={items}
-                emptyMessage="No notifications in this view."
-              />
-            </div>
+                      )}
+                    </article>
+                  </div>
+                </div>
+                <div className="lg:hidden">
+                  <DataTable
+                    columns={columns}
+                    data={items}
+                    emptyMessage="No notifications in this view."
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

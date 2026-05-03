@@ -1,4 +1,5 @@
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
+import { Button } from "@/components/ui/button";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import type { SaleStatus } from "@auction/types";
@@ -6,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/aler
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -71,12 +73,12 @@ export default async function AdminSalesPage({
         title="Sales"
         description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
         actions={
-          <Link
-            href="/admin/sales/new"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95"
-          >
-            New sale
-          </Link>
+          <Button variant="primary" asChild>
+            <Link href="/admin/sales/new">
+              <Plus className="size-4" aria-hidden />
+              New sale
+            </Link>
+          </Button>
         }
       />
 
@@ -92,12 +94,12 @@ export default async function AdminSalesPage({
           title="No sales yet"
           description="Create a sale to group lots for a session or season."
           action={
-            <Link
-              href="/admin/sales/new"
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-8 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95"
-            >
-              New sale
-            </Link>
+            <Button variant="primary" asChild>
+              <Link href="/admin/sales/new">
+                <Plus className="size-4" aria-hidden />
+                New sale
+              </Link>
+            </Button>
           }
         />
       ) : null}

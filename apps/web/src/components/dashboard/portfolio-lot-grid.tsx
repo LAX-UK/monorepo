@@ -15,6 +15,9 @@ export type PortfolioLotCardVm = {
   title: string;
   image: string | null;
   hammerLabel: string;
+  premiumLabel: string;
+  totalLabel: string;
+  dueLabel: string;
   settlementLabel: string;
   settlementStageIndex: number;
   medium: string | null;
@@ -92,13 +95,17 @@ export function PortfolioLotGrid({ items }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Premium
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">Checkout</p>
+                      <p className="mt-1 font-headline text-base text-on-surface">
+                        {row.premiumLabel}
+                      </p>
                     </div>
                     <div>
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Total
+                        {row.dueLabel}
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">Due</p>
+                      <p className="mt-1 font-headline text-base text-on-surface">
+                        {row.totalLabel}
+                      </p>
                     </div>
                   </div>
                 </CardContent>

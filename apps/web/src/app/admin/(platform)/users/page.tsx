@@ -1,8 +1,8 @@
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
+import { Button } from "@/components/ui/button";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { type UserRole, userRoles } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -145,10 +145,7 @@ export default async function AdminUsersPage({
               className="min-h-11 text-base md:text-sm"
             />
           </div>
-          <Button
-            type="submit"
-            className="min-h-11 rounded-md bg-primary px-6 font-label text-xs font-semibold uppercase tracking-widest text-on-primary"
-          >
+          <Button type="submit" className="min-h-11 px-6 py-3">
             Search
           </Button>
         </form>

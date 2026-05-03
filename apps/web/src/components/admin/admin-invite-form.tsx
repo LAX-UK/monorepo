@@ -101,7 +101,7 @@ export function AdminInviteForm() {
             className="min-h-11 font-label text-xs uppercase tracking-widest"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Sending…" : "Send invite"}
+            {isSubmitting ? "Sending…" : "Send"}
           </Button>
         </form>
       </Form>

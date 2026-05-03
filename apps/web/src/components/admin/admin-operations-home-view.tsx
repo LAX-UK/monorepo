@@ -17,7 +17,7 @@ import {
   PageHeader,
   Button as UiButton,
 } from "@auction/ui";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 
 export type AdminAttentionRow = {
@@ -57,14 +57,12 @@ export function AdminOperationsHomeView({
         meta={<LabelCaps className="text-lot-orange">Admin · Cockpit</LabelCaps>}
         description="Live saleroom health, intake queue, settlements, and recent catalog movement."
         actions={
-          <>
-            <Button variant="primary" asChild>
-              <Link href="/admin/lots/new">New lot</Link>
-            </Button>
-            <Button variant="secondary" asChild>
-              <Link href="/admin/lots">All lots</Link>
-            </Button>
-          </>
+          <Button variant="primary" asChild>
+            <Link href="/admin/lots/new">
+              <Plus className="size-4" aria-hidden />
+              New lot
+            </Link>
+          </Button>
         }
       />
 
@@ -139,9 +137,17 @@ export function AdminOperationsHomeView({
       </div>
 
       <section>
-        <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-widest text-secondary">
-          Recent activity
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+            Recent activity
+          </h2>
+          <Button variant="ctaLink" asChild>
+            <Link href="/admin/lots" className="inline-flex items-center gap-1">
+              View all
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
         <EntityTableShell
           responsiveMode="auto"
           table={

@@ -193,7 +193,7 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
               />
               <Button
                 type="submit"
-                variant="secondary"
+                variant="destructive"
                 className="min-h-11 w-full sm:w-auto"
                 disabled={pending}
               >

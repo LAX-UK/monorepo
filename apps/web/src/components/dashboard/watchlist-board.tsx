@@ -16,6 +16,7 @@ export type WatchlistBoardRow = {
   watchlistId: string;
   lotId: string;
   title: string;
+  artistLabel: string;
   image: string | null;
   medium: string | null;
   lotNumber: number | null;
@@ -65,7 +66,9 @@ function watchlistColumns(): ColumnDef<WatchlistBoardRow>[] {
     {
       id: "artist",
       header: "Artist",
-      cell: () => <span className="text-on-surface-variant">—</span>,
+      cell: ({ row }) => (
+        <span className="text-on-surface-variant">{row.original.artistLabel}</span>
+      ),
       enableSorting: false,
     },
     {

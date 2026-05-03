@@ -77,8 +77,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Analytics"
         description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
+        actions={<AdminAnalyticsControls days={days} />}
       />
-      <AdminAnalyticsControls days={days} />
       {data ? <AdminAnalyticsExport data={toChartsData(data)} days={days} /> : null}
       {loadError ? (
         <Alert variant="destructive">

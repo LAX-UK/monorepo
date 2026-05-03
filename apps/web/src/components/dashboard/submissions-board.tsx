@@ -68,7 +68,7 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
   return [
     {
       accessorKey: "title",
-      header: "Title",
+      header: "Item",
       cell: ({ row }) => (
         <Link
           href={`/dashboard/submissions/${row.original.id}`}
@@ -97,11 +97,24 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <Button variant="secondary" className="px-4 py-2 text-xs uppercase tracking-widest" asChild>
-          <Link href={`/dashboard/submissions/${row.original.id}`}>
-            {row.original.status === "draft" ? "Edit" : "View"}
-          </Link>
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            className="px-4 py-2 text-xs uppercase tracking-widest"
+            asChild
+          >
+            <Link href={`/dashboard/submissions/${row.original.id}`}>View</Link>
+          </Button>
+          {row.original.status === "draft" ? (
+            <Button
+              variant="primary"
+              className="px-4 py-2 text-xs uppercase tracking-widest"
+              asChild
+            >
+              <Link href={`/dashboard/submissions/${row.original.id}`}>Edit</Link>
+            </Button>
+          ) : null}
+        </div>
       ),
       enableSorting: false,
     },
