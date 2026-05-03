@@ -3,28 +3,15 @@
 import { LotCardTimer } from "@/components/lot-timer";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import { formatMoney } from "@/lib/format-currency";
-import type { LotStatus } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
+import type { WatchlistBoardRow } from "./watchlist-board-rows";
 
-export type WatchlistBoardRow = {
-  watchlistId: string;
-  lotId: string;
-  title: string;
-  artistLabel: string;
-  image: string | null;
-  medium: string | null;
-  lotNumber: number | null;
-  estimateLabel: string;
-  status: LotStatus;
-  startTime: string;
-  endTime: string;
-};
+export type { WatchlistBoardRow } from "./watchlist-board-rows";
 
 function watchlistColumns(): ColumnDef<WatchlistBoardRow>[] {
   return [
@@ -126,10 +113,3 @@ export function WatchlistBoard({ rows }: { rows: WatchlistBoardRow[] }) {
   );
 }
 
-export function estimateLabel(row: {
-  estimate: { low: string; high: string; currency: string } | undefined;
-  fallback: string;
-}) {
-  if (!row.estimate) return formatMoney(row.fallback);
-  return `${row.estimate.currency} ${row.estimate.low} – ${row.estimate.high}`;
-}
