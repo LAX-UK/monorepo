@@ -9,6 +9,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { HeaderAuthLinks } from "./header-auth-links";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
@@ -41,7 +42,9 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
       )}
     >
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">
-        <HeaderUtilityBar user={user} />
+        <div className="hidden lg:block">
+          <HeaderUtilityBar user={user} />
+        </div>
 
         <HeaderMegaNav
           sections={nav}
@@ -60,6 +63,9 @@ export function SiteHeader({ user, nav: navProp }: SiteHeaderProps) {
               <HeaderSearchTrigger />
               <ThemeToggle />
               {user ? <NotificationBell /> : null}
+              <div className="lg:hidden">
+                <HeaderAuthLinks user={user} />
+              </div>
               <Button
                 type="button"
                 variant="ghost"

@@ -7,6 +7,7 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
 import { SidebarStateProvider, useSidebarState } from "@/components/layout/sidebar-state";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
@@ -110,6 +111,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
             >
               <Search className="size-4" aria-hidden />
             </Button>
+            <ThemeToggle />
             <TweaksPopover />
           </div>
         </header>

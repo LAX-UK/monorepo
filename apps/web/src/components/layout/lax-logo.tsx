@@ -44,7 +44,7 @@ export function LaxLogo({
       ? "max-h-[60px] max-w-[min(100%,320px)]"
       : variant === "auth"
         ? "max-h-[98px] max-w-[min(100%,512px)]"
-        : "max-h-11 max-w-[201px]";
+        : "max-h-9 max-w-[140px] sm:max-h-11 sm:max-w-[201px]";
 
   if (src) {
     return (

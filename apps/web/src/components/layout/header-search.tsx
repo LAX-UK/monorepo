@@ -20,7 +20,7 @@ export function HeaderSearchTrigger({ className = "" }: { className?: string }) 
       variant="ghost"
       onClick={openCommandPalette}
       className={cn(
-        "hidden min-h-10 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b border-brand-200 px-0 py-0 text-left hover:bg-transparent md:flex lg:w-[231px] lg:flex-none",
+        "hidden min-h-10 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b border-brand-200 px-0 py-0 text-left hover:bg-transparent lg:flex lg:w-[231px] lg:flex-none",
         className,
       )}
       aria-haspopup="dialog"
