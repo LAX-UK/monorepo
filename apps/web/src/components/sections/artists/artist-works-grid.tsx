@@ -4,6 +4,7 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { lotPath } from "@/lib/seo/url";
 import type { Lot, LotStatus } from "@auction/types";
 import { cn } from "@auction/ui";
 import Image from "next/image";
@@ -116,7 +117,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   return (
     <li key={lot.id} className="group min-w-0">
       <Link
-        href={`/artwork/${lot.id}`}
+        href={lotPath(lot)}
         className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">

@@ -37,6 +37,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
 
       <AdminSaleDetailActions
         saleId={id}
+        saleTitle={sale.title}
         saleStatus={sale.status}
         deliveryMode={sale.deliveryMode}
         canEdit={canEdit}

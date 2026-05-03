@@ -1,29 +1,37 @@
 import { SITE_NAME } from "@/lib/brand";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { getServerArtistById } from "@/lib/data/http/artist.server";
+import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Lot detail";
+export const alt = "Artist profile";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string; id: string }>;
 };
 
 export default async function Image({ params }: Props) {
   const { id } = await params;
-  const reader = await getServerLotReader();
-  let title = "Lot detail";
-  let estimate = "";
-  let imageUrl: string | null = null;
+  let name = "Artist";
+  let tagline = "";
+  let portrait: string | null = null;
   try {
-    const lot = await reader.getById(id);
-    if (lot) {
-      title = lot.title;
-      estimate = lotEstimateLine(lot) ?? "";
-      imageUrl = lot.images[0] ?? null;
+    const artist = await getServerArtistById(id);
+    if (artist) {
+      name = artist.name;
+      tagline = artist.tagline ?? "";
+      portrait = artist.portraitUrl ?? null;
+    } else {
+      const user = await getServerPublicUserReader()
+        .then((reader) => reader.getById(id))
+        .catch(() => null);
+      if (user) {
+        name = user.name;
+        tagline = "Seller on LAX London Auction House Ltd.";
+        portrait = user.image ?? null;
+      }
     }
   } catch {
     /* fall through */
@@ -41,7 +49,7 @@ export default async function Image({ params }: Props) {
     >
       <div
         style={{
-          width: "55%",
+          width: "45%",
           height: "100%",
           display: "flex",
           alignItems: "center",
@@ -49,20 +57,22 @@ export default async function Image({ params }: Props) {
           backgroundColor: "#1a1a1c",
         }}
       >
-        {imageUrl ? (
+        {portrait ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={portrait}
             alt=""
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
-          <div style={{ display: "flex", fontSize: 56, color: "#3b3b3f" }}>{SITE_NAME}</div>
+          <div style={{ display: "flex", fontSize: 96, color: "#3b3b3f" }}>
+            {name.slice(0, 1).toUpperCase()}
+          </div>
         )}
       </div>
       <div
         style={{
-          width: "45%",
+          width: "55%",
           height: "100%",
           display: "flex",
           flexDirection: "column",
@@ -76,9 +86,19 @@ export default async function Image({ params }: Props) {
           {SITE_NAME}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ fontSize: 56, lineHeight: 1.05, fontWeight: 600 }}>{title}</div>
-          {estimate ? (
-            <div style={{ display: "flex", fontSize: 26, color: "#c9c0ad" }}>Est. {estimate}</div>
+          <div style={{ fontSize: 64, lineHeight: 1.05, fontWeight: 600 }}>{name}</div>
+          {tagline ? (
+            <div
+              style={{
+                display: "flex",
+                fontSize: 26,
+                color: "#c9c0ad",
+                fontStyle: "italic",
+                maxWidth: 540,
+              }}
+            >
+              {tagline}
+            </div>
           ) : null}
         </div>
       </div>

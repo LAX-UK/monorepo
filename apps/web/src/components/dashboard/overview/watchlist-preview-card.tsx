@@ -1,6 +1,7 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
+import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import {
   Card,
@@ -52,7 +53,7 @@ export function WatchlistPreviewCard({
               return (
                 <li key={row.watchlistId}>
                   <Link
-                    href={`/artwork/${lot.id}`}
+                    href={lotPath(lot)}
                     className="flex min-h-16 items-center gap-3 rounded-md border border-outline-variant/15 bg-surface-container-lowest p-2 transition-colors hover:bg-surface-container-low/60"
                   >
                     <LotThumbnail
@@ -85,7 +86,7 @@ export function WatchlistPreviewCard({
               return (
                 <li key={row.watchlistId}>
                   <Link
-                    href={`/artwork/${lot.id}`}
+                    href={lotPath(lot)}
                     className="flex min-h-16 items-center gap-3 py-3 transition-colors hover:bg-surface-container-low/45 sm:px-2"
                   >
                     <LotThumbnail

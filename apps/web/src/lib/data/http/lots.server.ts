@@ -8,6 +8,7 @@ import type {
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
 import type { Bid, Lot } from "@auction/types";
+import { cache } from "react";
 
 export function buildLotListQuery(params: ListLotsParams): Record<string, string> {
   const q: Record<string, string> = {
@@ -96,3 +97,10 @@ export async function getServerLotReader(): Promise<LotReader> {
     },
   };
 }
+
+export const getServerLotById = cache(async function getServerLotById(
+  id: string,
+): Promise<Lot | null> {
+  const reader = await getServerLotReader();
+  return reader.getById(id);
+});

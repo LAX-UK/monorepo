@@ -4,6 +4,7 @@ import type {
   WatchlistWithLotRow,
 } from "@/lib/data/http/dashboard.server";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
+import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
 
@@ -151,12 +152,12 @@ export function buildDashboardOverviewVm(input: {
     if (outbidLot) {
       primaryCta = {
         label: `Re-bid on “${outbidLot.title}”`,
-        href: `/artwork/${outbidLot.id}`,
+        href: lotPath(outbidLot),
       };
     } else {
       const w = watchlist.find((x) => x.lot && x.lot.status === "active")?.lot;
       if (w) {
-        primaryCta = { label: `Lot ending: “${w.title}”`, href: `/artwork/${w.id}` };
+        primaryCta = { label: `Lot ending: “${w.title}”`, href: lotPath(w) };
       } else {
         primaryCta = { label: "Start a submission", href: "/dashboard/submissions/new" };
       }

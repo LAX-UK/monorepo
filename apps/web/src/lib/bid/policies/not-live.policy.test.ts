@@ -34,7 +34,7 @@ const base = (): BidPolicyContext => ({
     marketingDetails: {},
   },
   lotStatus: "ended",
-  loginNextPath: "/artwork/l1",
+  loginNextPath: "/artwork/test-lot/l1",
 });
 
 describe("notLivePolicy", () => {

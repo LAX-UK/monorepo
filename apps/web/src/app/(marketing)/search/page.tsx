@@ -8,6 +8,7 @@ import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
 import { SectionCta } from "@auction/ui";
@@ -27,13 +28,18 @@ type PageProps = {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const sp = await searchParams;
   const hasQuery = typeof sp.q === "string" && sp.q.trim().length > 0;
+  const hasFilteredState =
+    hasQuery ||
+    (typeof sp.categoryId === "string" && sp.categoryId.trim().length > 0) ||
+    (typeof sp.sort === "string" && sp.sort.trim().length > 0) ||
+    (typeof sp.offset === "string" && sp.offset !== "0");
   const base = metadataForStatic({
     title: "Search lots",
     description:
       "Search curated fine art lots by title \u2014 browse live inventory from LAX London Auction House Ltd.",
     path: "/search",
   });
-  if (hasQuery) {
+  if (hasFilteredState) {
     return {
       ...base,
       robots: { index: false, follow: true },
@@ -97,7 +103,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       ? itemListJsonLd(
           filtered.map((a) => ({
             name: a.title,
-            url: `${base}/artwork/${a.id}`,
+            url: `${base}${lotPath(a)}`,
           })),
         )
       : null;
@@ -258,7 +264,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               return (
                 <li key={a.id}>
                   <Link
-                    href={`/artwork/${a.id}`}
+                    href={lotPath(a)}
                     className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     <div className="relative aspect-[4/5] bg-surface-container-low">

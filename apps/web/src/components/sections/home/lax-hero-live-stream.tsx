@@ -11,15 +11,7 @@ type LiveVm = Extract<HeroStateVM, { kind: "live" }>;
 
 type Props = {
   vm: LiveVm;
-  twitchParentHost: string;
 };
-
-function iframeSrcFor(vm: LiveVm, twitchParentHost: string): string {
-  if (vm.provider !== "twitch") return vm.embedSrc;
-  const u = new URL(vm.embedSrc);
-  u.searchParams.set("parent", twitchParentHost);
-  return u.toString();
-}
 
 /** Background-style YouTube embed: autoplay muted, minimal chrome, optional start offset. */
 function youtubeHeroBackgroundSrc(videoId: string, startSeconds: number | undefined): string {
@@ -98,8 +90,7 @@ function LiveHeroContent({
 }
 
 /** Twitch / Vimeo / Cloudflare: stacked embed + panel (legacy layout). */
-function LaxHeroLiveSplitEmbed({ vm, twitchParentHost }: Props) {
-  const iframeSrc = iframeSrcFor(vm, twitchParentHost);
+function LaxHeroLiveSplitEmbed({ vm }: Props) {
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto flex min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] flex-col md:min-h-[min(100svh,760px)]">
@@ -110,9 +101,10 @@ function LaxHeroLiveSplitEmbed({ vm, twitchParentHost }: Props) {
           >
             <DeferredLiveIframe
               title={`Live auction: ${vm.saleTitle}`}
-              src={iframeSrc}
+              src={vm.embedSrc}
               posterUrl={vm.posterImageUrl ?? null}
               posterAlt={`${vm.saleTitle} — live saleroom`}
+              withTwitchParent={vm.provider === "twitch"}
               className="absolute inset-0 h-full w-full"
             />
           </RevealOnMount>
@@ -154,11 +146,11 @@ function LaxHeroLiveSplitEmbed({ vm, twitchParentHost }: Props) {
   );
 }
 
-export function LaxHeroLiveStream({ vm, twitchParentHost }: Props) {
+export function LaxHeroLiveStream({ vm }: Props) {
   const useYoutubeBackground = vm.provider === "youtube" && Boolean(vm.videoId);
 
   if (!useYoutubeBackground) {
-    return <LaxHeroLiveSplitEmbed vm={vm} twitchParentHost={twitchParentHost} />;
+    return <LaxHeroLiveSplitEmbed vm={vm} />;
   }
 
   const videoId = vm.videoId as string;

@@ -1,5 +1,6 @@
 import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
+import { lotPath, salePath } from "@/lib/seo/url";
 import type { Bid, Lot, LotMarketingDetails } from "@auction/types";
 import type { ReactNode } from "react";
 import { lotMarketingSection } from "./lot-marketing-sections";
@@ -107,14 +108,14 @@ export function mapLotToHeroVM(
   return {
     firstSegmentHref,
     firstSegmentLabel,
-    saleHref: `/sales/${parentSale.id}`,
+    saleHref: salePath(parentSale),
     saleTitle: parentSale.title,
     lotNumberLabel:
       lot.lotNumber != null
         ? `LOT ${lot.lotNumber}`
         : `LOT ${lot.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
-    prevHref: prev ? `/artwork/${prev.id}` : null,
-    nextHref: next ? `/artwork/${next.id}` : null,
+    prevHref: prev ? lotPath(prev) : null,
+    nextHref: next ? lotPath(next) : null,
     positionLabel,
     homeSegment,
   };
@@ -227,7 +228,7 @@ function lotToRailCard(lot: Lot, artistName: string): LotRailCardVM {
   const est = lot.marketingDetails.estimate;
   return {
     id: lot.id,
-    href: `/artwork/${lot.id}`,
+    href: lotPath(lot),
     imageUrl: lot.images[0] ?? null,
     lotNumber: lot.lotNumber,
     title: lot.title,
@@ -268,7 +269,7 @@ export function mapSiblingsToRailVM(
   return {
     mode: useSale ? "sale" : "seller",
     heading: useSale && parentSale ? `More from ${parentSale.title}` : "More from this seller",
-    viewAuctionHref: useSale && parentSale ? `/sales/${parentSale.id}` : null,
+    viewAuctionHref: useSale && parentSale ? salePath(parentSale) : null,
     cards: source.map((l) => lotToRailCard(l, resolveSellerName(l))),
   };
 }

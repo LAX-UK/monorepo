@@ -2,7 +2,7 @@
 
 import { Button } from "@auction/ui/components/button";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
   title: string;
@@ -10,20 +10,39 @@ type Props = {
   posterUrl?: string | null;
   /** Alt for poster image */
   posterAlt: string;
+  withTwitchParent?: boolean;
   className?: string;
 };
 
 /**
  * Defers heavy embed until the user opts in — improves LCP vs eager iframe.
  */
-export function DeferredLiveIframe({ title, src, posterUrl, posterAlt, className }: Props) {
+function srcWithCurrentHost(src: string): string {
+  if (typeof window === "undefined") return src;
+  const u = new URL(src, window.location.origin);
+  u.searchParams.set("parent", window.location.hostname);
+  return u.toString();
+}
+
+export function DeferredLiveIframe({
+  title,
+  src,
+  posterUrl,
+  posterAlt,
+  withTwitchParent = false,
+  className,
+}: Props) {
   const [play, setPlay] = useState(false);
+  const iframeSrc = useMemo(
+    () => (withTwitchParent ? srcWithCurrentHost(src) : src),
+    [src, withTwitchParent],
+  );
 
   if (play) {
     return (
       <iframe
         title={title}
-        src={src}
+        src={iframeSrc}
         className={className}
         loading="eager"
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"

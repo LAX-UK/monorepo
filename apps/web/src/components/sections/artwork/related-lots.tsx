@@ -1,6 +1,7 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,7 +34,7 @@ export function RelatedLots({
           return (
             <li key={a.id}>
               <Link
-                href={`/artwork/${a.id}`}
+                href={lotPath(a)}
                 className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-[4/3] bg-surface-container-low">

@@ -31,6 +31,7 @@ type Props = {
   sessionUser: SessionUser | null;
   summarySeed: LotSummarySeedVM;
   initialUserMaxAuto: string | null;
+  loginNextPath?: string;
 };
 
 const HISTORY_CAP = 20;
@@ -45,6 +46,7 @@ export function ArtworkBidPanel({
   sessionUser,
   summarySeed,
   initialUserMaxAuto,
+  loginNextPath,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -252,7 +254,7 @@ export function ArtworkBidPanel({
     setError(null);
   }, [minNumeric]);
 
-  const loginNext = `/artwork/${auction.id}`;
+  const loginNext = loginNextPath ?? `/artwork/${auction.id}`;
 
   const scrollToBid = useCallback(() => {
     document.getElementById("bid-interactive-anchor")?.scrollIntoView({

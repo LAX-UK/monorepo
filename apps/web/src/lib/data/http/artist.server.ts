@@ -3,6 +3,7 @@ import "server-only";
 import type { ArtistProfile, ArtistReader } from "@/lib/data/contracts";
 import { getServerHc } from "@/lib/data/http/hc-server";
 import { createMockArtistReader } from "@/lib/data/mock/artist";
+import { cache } from "react";
 
 /** Allowed in next.config `images.remotePatterns` — used when `user.image` is null */
 const PORTRAIT_FALLBACKS = [
@@ -12,7 +13,7 @@ const PORTRAIT_FALLBACKS = [
   "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=640&q=80",
 ] as const;
 
-function portraitForPublicArtist(id: string, image: string | null | undefined): string {
+export function portraitForPublicArtist(id: string, image: string | null | undefined): string {
   const trimmed = image?.trim();
   if (trimmed) return trimmed;
   let h = 0;
@@ -21,7 +22,7 @@ function portraitForPublicArtist(id: string, image: string | null | undefined): 
   return PORTRAIT_FALLBACKS[idx] ?? PORTRAIT_FALLBACKS[0];
 }
 
-function mapPublicUserToArtist(row: {
+export function mapPublicUserToArtist(row: {
   id: string;
   name: string;
   image?: string | null;
@@ -41,12 +42,14 @@ function mapPublicUserToArtist(row: {
  * Uses `/users/public/artists` when `NEXT_PUBLIC_ENABLE_ARTISTS` is not `"false"`.
  */
 /**
- * Sitemap-only helper: list public artist ids for the discovery sitemap.
+ * Sitemap-only helper: list public artists for the discovery sitemap.
  *
  * Returns an empty array when artists are disabled or when the upstream
  * endpoint fails — sitemaps must still be generated even on partial outages.
  */
-export async function fetchArtistIdsForSitemap(limit = 1000): Promise<string[]> {
+export type SitemapArtist = { id: string; name: string };
+
+export async function fetchArtistsForSitemap(limit = 1000): Promise<SitemapArtist[]> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
   try {
     const client = await getServerHc();
@@ -55,9 +58,11 @@ export async function fetchArtistIdsForSitemap(limit = 1000): Promise<string[]> 
     });
     if (!res.ok) return [];
     const body = (await res.json()) as {
-      data: { id: string }[];
+      data: { id: string; name: string }[];
     };
-    return body.data.map((row) => row.id).filter((id): id is string => Boolean(id));
+    return body.data
+      .map((row) => ({ id: row.id, name: row.name }))
+      .filter((artist) => Boolean(artist.id && artist.name));
   } catch {
     return [];
   }
@@ -100,3 +105,10 @@ export async function getServerArtistReader(): Promise<ArtistReader> {
     },
   };
 }
+
+export const getServerArtistById = cache(async function getServerArtistById(
+  id: string,
+): Promise<ArtistProfile | null> {
+  const reader = await getServerArtistReader();
+  return reader.getById(id);
+});

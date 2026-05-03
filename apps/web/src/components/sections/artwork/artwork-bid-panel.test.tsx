@@ -63,7 +63,7 @@ describe("ArtworkBidPanel", () => {
           kicker: null,
           estimateLine: null,
           sellerName: "Seller",
-          sellerHref: "/artist/other",
+          sellerHref: "/artist/other-artist/other",
           sellerImageUrl: null,
         }}
         initialUserMaxAuto={null}
@@ -89,7 +89,7 @@ describe("ArtworkBidPanel", () => {
           kicker: null,
           estimateLine: null,
           sellerName: "Seller",
-          sellerHref: "/artist/other",
+          sellerHref: "/artist/other-artist/other",
           sellerImageUrl: null,
         }}
         initialUserMaxAuto={null}

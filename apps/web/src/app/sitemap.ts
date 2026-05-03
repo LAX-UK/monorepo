@@ -1,6 +1,7 @@
-import { fetchArtistIdsForSitemap } from "@/lib/data/http/artist.server";
+import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { fetchSalesIdsForSitemap } from "@/lib/data/http/sales.server";
+import { fetchSalesForSitemap } from "@/lib/data/http/sales.server";
+import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 
@@ -8,9 +9,6 @@ const STATIC_PATHS = [
   "",
   "/search",
   "/archive",
-  "/login",
-  "/register",
-  "/forgot-password",
   "/about",
   "/contact",
   "/legal",
@@ -45,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     seen.add(a.id);
     const images = a.images?.filter(Boolean).slice(0, 3);
     lots.push({
-      url: `${base}/artwork/${a.id}`,
+      url: `${base}${lotPath(a)}`,
       lastModified: a.endTime,
       changeFrequency: a.status === "active" ? "hourly" : "monthly",
       priority: a.status === "active" ? 0.9 : 0.5,
@@ -53,18 +51,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  const [saleIds, artistIds] = await Promise.all([
-    fetchSalesIdsForSitemap(),
-    fetchArtistIdsForSitemap(),
+  const [saleRows, artistRows] = await Promise.all([
+    fetchSalesForSitemap(),
+    fetchArtistsForSitemap(),
   ]);
-  const sales: MetadataRoute.Sitemap = saleIds.map((id) => ({
-    url: `${base}/sales/${id}`,
+  const sales: MetadataRoute.Sitemap = saleRows.map((sale) => ({
+    url: `${base}${salePath(sale)}`,
     lastModified: now,
     changeFrequency: "daily" as const,
     priority: 0.65,
   }));
-  const artists: MetadataRoute.Sitemap = artistIds.map((id) => ({
-    url: `${base}/artist/${id}`,
+  const artists: MetadataRoute.Sitemap = artistRows.map((artist) => ({
+    url: `${base}${artistPath(artist)}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.6,
