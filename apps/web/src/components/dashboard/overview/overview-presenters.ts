@@ -68,7 +68,10 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
 }
 
 export function buildOverviewDescription(vm: DashboardOverviewVm): string {
+  if (vm.liveCount === 0 && vm.acquiredCount === 0 && vm.kpi.activeBidsCount === 0) {
+    return "Here is your auction activity at a glance.";
+  }
   const acquiredSuffix = vm.acquiredCount === 1 ? "" : "s";
   const bidSuffix = vm.kpi.activeBidsCount === 1 ? "" : "s";
-  return `${vm.liveCount} live lots · ${vm.acquiredCount} acquired work${acquiredSuffix} · ${vm.kpi.activeBidsCount} active bid${bidSuffix}.`;
+  return `${vm.liveCount} live lots \u00B7 ${vm.acquiredCount} acquired work${acquiredSuffix} \u00B7 ${vm.kpi.activeBidsCount} active bid${bidSuffix}.`;
 }

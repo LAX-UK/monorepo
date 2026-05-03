@@ -1,10 +1,11 @@
 "use client";
 
 import { submitContactFormResult } from "@/app/(marketing)/contact/actions";
-import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { contactFormValuesSchema } from "@/lib/contact/contact-input";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -15,6 +16,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
 
 const topics = [
@@ -25,12 +27,22 @@ const topics = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function ContactForm() {
+type ContactFormProps = {
+  /**
+   * Render the historical single `Name` field instead of the mockup's
+   * split first/last fields. Both submit through the same wire schema.
+   */
+  nameMode?: "split" | "single";
+};
+
+export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
     schema: contactFormValuesSchema,
     defaultValues: {
       name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       topic: "buying",
       message: "",
@@ -43,7 +55,7 @@ export function ContactForm() {
   if (done) {
     return (
       <output
-        className="block rounded-lg border border-primary/30 bg-primary-container/10 px-6 py-8 font-body text-sm text-on-surface"
+        className="mt-6 block rounded-sm border border-divider-soft bg-surface px-6 py-8 text-center font-body text-sm text-on-surface"
         aria-live="polite"
       >
         Thank you — we&apos;ve received your message and will respond within two business days
@@ -51,6 +63,11 @@ export function ContactForm() {
       </output>
     );
   }
+
+  const fieldClass =
+    "w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const labelClass =
+    "mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300";
 
   return (
     <Form {...form}>
@@ -76,40 +93,81 @@ export function ContactForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel
-                htmlFor="contact-name"
-                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
-              >
-                Name
-              </FormLabel>
-              <FormControl>
-                <Input
-                  id="contact-name"
-                  maxLength={120}
-                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  autoComplete="name"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {nameMode === "split" ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor="contact-first-name" className={labelClass}>
+                    First name
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      id="contact-first-name"
+                      maxLength={120}
+                      className={fieldClass}
+                      autoComplete="given-name"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor="contact-last-name" className={labelClass}>
+                    Last name
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      id="contact-last-name"
+                      maxLength={120}
+                      className={fieldClass}
+                      autoComplete="family-name"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        ) : (
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="contact-name" className={labelClass}>
+                  Name
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    id="contact-name"
+                    maxLength={120}
+                    className={fieldClass}
+                    autoComplete="name"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel
-                htmlFor="contact-email"
-                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
-              >
+              <FormLabel htmlFor="contact-email" className={labelClass}>
                 Email
               </FormLabel>
               <FormControl>
@@ -117,7 +175,7 @@ export function ContactForm() {
                   id="contact-email"
                   type="email"
                   inputMode="email"
-                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className={fieldClass}
                   autoComplete="email"
                   {...field}
                 />
@@ -132,10 +190,7 @@ export function ContactForm() {
           name="topic"
           render={({ field }) => (
             <FormItem>
-              <FormLabel
-                htmlFor="contact-topic"
-                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
-              >
+              <FormLabel htmlFor="contact-topic" className={labelClass}>
                 Topic
               </FormLabel>
               <RhfSelect
@@ -155,17 +210,14 @@ export function ContactForm() {
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel
-                htmlFor="contact-message"
-                className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300"
-              >
+              <FormLabel htmlFor="contact-message" className={labelClass}>
                 Message
               </FormLabel>
               <FormControl>
                 <Textarea
                   id="contact-message"
-                  rows={6}
-                  className="w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  rows={5}
+                  className={fieldClass}
                   {...field}
                 />
               </FormControl>
@@ -174,14 +226,32 @@ export function ContactForm() {
           )}
         />
 
-        <AuthSubmitButton
-          loading={isSubmitting}
-          loadingLabel="Sending…"
-          className="w-full sm:w-auto"
-        >
-          Send message
-        </AuthSubmitButton>
+        <ContactSubmitButton loading={isSubmitting}>Send message</ContactSubmitButton>
       </form>
     </Form>
+  );
+}
+
+function ContactSubmitButton({
+  loading,
+  children,
+  className,
+  ...rest
+}: { loading?: boolean; children: ReactNode } & Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "type"
+>) {
+  return (
+    <Button
+      type="submit"
+      disabled={loading || rest.disabled}
+      className={cn(
+        "rounded-sm bg-cta-bg px-7 py-3.5 font-label text-xs font-semibold uppercase tracking-[0.04em] text-cta-on shadow-none hover:bg-cta-bg/90",
+        className,
+      )}
+      {...rest}
+    >
+      {loading ? "Sending\u2026" : children}
+    </Button>
   );
 }

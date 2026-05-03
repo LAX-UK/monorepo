@@ -5,7 +5,7 @@ import { RevealInView } from "@/components/ui/reveal";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -72,6 +72,17 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                 </DisplayHeading>
               </div>
             </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="mt-2 w-fit rounded-sm border-brand-900/40 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[0.08em] text-brand-900 hover:bg-brand-900/5 dark:border-on-surface/40 dark:text-on-surface"
+            >
+              <Link href={auction.href} className="inline-flex items-center gap-2">
+                View catalogue
+                <ArrowRight className="size-4 shrink-0" aria-hidden />
+              </Link>
+            </Button>
           </div>
           <div className="flex w-full min-w-0 flex-[507] flex-col gap-8">
             <DisplayHeading

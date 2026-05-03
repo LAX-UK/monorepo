@@ -21,7 +21,7 @@ export function SaleroomLotsGrid({
     return <p className="py-12 text-center text-on-surface-variant">{emptyMessage}</p>;
   }
   return (
-    <ul className="grid list-none grid-cols-1 justify-items-stretch gap-x-8 gap-y-12 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <ul className="grid list-none grid-cols-1 justify-items-stretch gap-x-7 gap-y-10 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {lots.map((lot) => (
         <li key={lot.id} className="flex min-w-0 justify-center sm:justify-start">
           <SaleroomLotCard lot={lot} actions={renderActions?.(lot)} />

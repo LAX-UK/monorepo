@@ -121,6 +121,10 @@ export type AdminXeroIntegrationStatus = {
   tenantName: string | null;
   expiresAt: string | null;
   oauthConfigured: boolean;
+  /** Optional explicit token expiry (mockup label "Token expiry"); falls back to `expiresAt`. */
+  tokenExpiresAt?: string;
+  /** Optional fully-qualified webhook URL; the page falls back to env composition when absent. */
+  webhookUrl?: string;
 };
 
 export async function getAdminXeroIntegrationStatus(): Promise<AdminXeroIntegrationStatus> {

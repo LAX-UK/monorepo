@@ -1,23 +1,107 @@
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 
-export function lotProductJsonLd(auction: Lot): Record<string, unknown> {
+function lotCurrency(auction: Lot): string {
+  const explicit = auction.marketingDetails?.estimate?.currency;
+  if (explicit && /^[A-Z]{3}$/.test(explicit)) return explicit;
+  return "GBP";
+}
+
+export function lotProductJsonLd(
+  auction: Lot,
+  opts: { artistName?: string; sellerName?: string } = {},
+): Record<string, unknown> {
   const base = getSiteUrl();
   const url = `${base}/artwork/${auction.id}`;
+  const availability =
+    auction.status === "ended"
+      ? "https://schema.org/SoldOut"
+      : auction.status === "active"
+        ? "https://schema.org/InStock"
+        : "https://schema.org/PreOrder";
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: auction.title,
     description: auction.description ?? undefined,
     image: auction.images.length ? auction.images : undefined,
+    ...(opts.artistName ? { brand: { "@type": "Brand", name: opts.artistName } } : {}),
     offers: {
       "@type": "Offer",
       url,
-      priceCurrency: "USD",
+      priceCurrency: lotCurrency(auction),
       price: auction.currentPrice,
-      availability: "https://schema.org/InStock",
+      availability,
+      priceValidUntil: auction.endTime.toISOString(),
+      ...(opts.sellerName
+        ? { seller: { "@type": "Organization", name: opts.sellerName } }
+        : {}),
     },
+  };
+}
+
+/**
+ * Sale events render as virtual auction-style events. `eventStatus` mirrors the
+ * sale's lifecycle so Google's rich result understands current state.
+ */
+export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
+  const base = getSiteUrl();
+  const url = `${base}/sales/${sale.id}`;
+  const status =
+    sale.status === "active"
+      ? "https://schema.org/EventScheduled"
+      : sale.status === "ended"
+        ? "https://schema.org/EventCompleted"
+        : "https://schema.org/EventScheduled";
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: sale.title,
+    description: sale.description ?? undefined,
+    startDate: sale.startTime.toISOString(),
+    endDate: sale.endTime.toISOString(),
+    eventStatus: status,
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    organizer: { "@type": "Organization", name: SITE_NAME, url: base },
+    location: {
+      "@type": "VirtualLocation",
+      url,
+    },
+    url,
+  };
+}
+
+export function faqPageJsonLd(items: { question: string; answer: string }[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+}
+
+export function visualArtistJsonLd(opts: {
+  name: string;
+  url: string;
+  image?: string;
+  description?: string;
+  sameAs?: string[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": ["Person", "VisualArtist"],
+    name: opts.name,
+    url: opts.url,
+    ...(opts.image ? { image: opts.image } : {}),
+    ...(opts.description ? { description: opts.description } : {}),
+    ...(opts.sameAs && opts.sameAs.length > 0 ? { sameAs: opts.sameAs } : {}),
   };
 }
 

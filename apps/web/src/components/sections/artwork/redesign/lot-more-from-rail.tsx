@@ -16,8 +16,14 @@ type Props = {
   rail: LotRelatedRailVM;
   currentUserId?: string | null;
   isAuthenticated: boolean;
-  /** Lot ids in the user’s watchlist (for `initialWatching`). */
+  /** Lot ids in the user's watchlist (for `initialWatching`). */
   watchedLotIds: readonly string[];
+  /**
+   * `rich` (default) keeps the historical card with estimate / current bid /
+   * Bid + Watch CTAs. `compact` renders a slimmed mockup tile (image + title,
+   * artist · price). Both layouts are LSP-substitutable.
+   */
+  density?: "rich" | "compact";
 };
 
 /**
@@ -28,10 +34,12 @@ export function LotMoreFromRail({
   currentUserId = null,
   isAuthenticated,
   watchedLotIds,
+  density = "rich",
 }: Props) {
   if (rail.cards.length === 0 || !rail.heading) {
     return null;
   }
+  const isCompact = density === "compact";
 
   return (
     <section className="mt-20 w-full border-t border-outline-variant/10 pt-16">
@@ -91,59 +99,74 @@ export function LotMoreFromRail({
                     />
                   </div>
                 </Link>
-                <div className="flex flex-col gap-2">
-                  <p
-                    className="text-sm font-bold uppercase leading-4 text-[#E17100] dark:text-orange-500"
-                    style={{ color: "#E17100" }}
-                  >
-                    {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
-                  </p>
-                  <div>
-                    <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
+                {isCompact ? (
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      href={c.href}
+                      className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 hover:underline"
+                    >
                       {c.title}
-                    </p>
-                    <p className="mt-1 text-sm font-light text-[#191919] dark:text-brand-500">
-                      {c.artistOrSellerName}
+                    </Link>
+                    <p className="text-xs text-on-surface-variant">
+                      {c.artistOrSellerName} {"\u00B7"}{" "}
+                      <span className="text-on-surface">{formatMoney(c.currentPrice)}</span>
                     </p>
                   </div>
-                  {c.estimateLine ? (
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p
+                      className="text-sm font-bold uppercase leading-4 text-[#E17100] dark:text-orange-500"
+                      style={{ color: "#E17100" }}
+                    >
+                      {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
+                    </p>
                     <div>
-                      <p className="text-xs text-[#474747] dark:text-brand-400">Estimate</p>
-                      <p className="text-sm font-medium text-[#474747] dark:text-brand-400">
-                        {c.estimateLine}
+                      <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
+                        {c.title}
+                      </p>
+                      <p className="mt-1 text-sm font-light text-[#191919] dark:text-brand-500">
+                        {c.artistOrSellerName}
                       </p>
                     </div>
-                  ) : null}
-                  <div>
-                    <p className="text-xs text-[#474747] dark:text-brand-400">Current bid</p>
-                    <p className="text-sm font-semibold text-[#050505] dark:text-on-surface">
-                      {formatMoney(c.currentPrice)}
+                    {c.estimateLine ? (
+                      <div>
+                        <p className="text-xs text-[#474747] dark:text-brand-400">Estimate</p>
+                        <p className="text-sm font-medium text-[#474747] dark:text-brand-400">
+                          {c.estimateLine}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="text-xs text-[#474747] dark:text-brand-400">Current bid</p>
+                      <p className="text-sm font-semibold text-[#050505] dark:text-on-surface">
+                        {formatMoney(c.currentPrice)}
+                      </p>
+                    </div>
+                    <p className="text-sm text-[#474747] dark:text-on-surface">
+                      <span className="text-xs">Closing: </span>
+                      <span className="font-semibold text-[#050505] dark:text-on-surface">
+                        {closing}
+                      </span>
                     </p>
-                  </div>
-                  <p className="text-sm text-[#474747] dark:text-on-surface">
-                    <span className="text-xs">Closing: </span>
-                    <span className="font-semibold text-[#050505] dark:text-on-surface">
-                      {closing}
-                    </span>
-                  </p>
-                  <div className="flex flex-row gap-4 pt-1">
-                    <Button
-                      variant="outline"
-                      asChild
-                      className="h-10 min-h-10 flex-1 rounded border-[#A3A3A3] text-base font-semibold text-[#0A0A0A] dark:text-on-surface"
-                    >
-                      <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
-                    </Button>
-                    <div className="min-w-0 flex-1">
-                      <ArtworkWatchToggle
-                        lotId={c.id}
-                        initialWatching={watchedLotIds.includes(c.id)}
-                        isAuthenticated={isAuthenticated}
-                        appearance="outlined-block"
-                      />
+                    <div className="flex flex-row gap-4 pt-1">
+                      <Button
+                        variant="outline"
+                        asChild
+                        className="h-10 min-h-10 flex-1 rounded border-[#A3A3A3] text-base font-semibold text-[#0A0A0A] dark:text-on-surface"
+                      >
+                        <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
+                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <ArtworkWatchToggle
+                          lotId={c.id}
+                          initialWatching={watchedLotIds.includes(c.id)}
+                          isAuthenticated={isAuthenticated}
+                          appearance="outlined-block"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </li>
           );

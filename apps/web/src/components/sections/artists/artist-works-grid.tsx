@@ -97,11 +97,21 @@ function WorksEmptyState() {
   );
 }
 
+function lotYearMedium(lot: Lot): string | null {
+  const year = lot.createdAt instanceof Date ? lot.createdAt.getUTCFullYear() : null;
+  const medium = lot.medium?.trim() || null;
+  if (year && medium) return `${year} \u00B7 ${medium}`;
+  if (year) return String(year);
+  if (medium) return medium;
+  return null;
+}
+
 function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   const img = lot.images[0];
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
   const status = STATUS_DISPLAY[lot.status];
+  const yearMedium = lotYearMedium(lot);
 
   return (
     <li key={lot.id} className="group min-w-0">
@@ -138,6 +148,11 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
           <h3 className="mt-1 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
             {lot.title}
           </h3>
+          {yearMedium ? (
+            <p className="mt-0.5 font-body text-xs italic text-on-surface-variant">
+              {yearMedium}
+            </p>
+          ) : null}
           {est ? (
             <p className="mt-1 font-body text-xs text-on-surface-variant">Est. {est}</p>
           ) : null}
@@ -156,9 +171,12 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
 
   return (
     <section aria-labelledby="artist-works-heading">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h2 id="artist-works-heading" className="font-headline text-3xl tracking-tight">
-          Curated Works
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-divider-soft pb-4">
+        <h2
+          id="artist-works-heading"
+          className="font-headline text-2xl font-semibold tracking-tight text-on-surface"
+        >
+          Selected works
         </h2>
         <WorkFilterControls value={filter} onChange={setFilter} />
       </div>

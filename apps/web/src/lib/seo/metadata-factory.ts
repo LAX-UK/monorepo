@@ -119,6 +119,19 @@ export function metadataForLot(auction: Lot): Metadata {
   };
 }
 
+/**
+ * Defense-in-depth metadata for private (dashboard / admin / accountant)
+ * routes. Robots.txt already disallows these paths but accidental link sharing
+ * could still index them; this metadata provides an HTML-level signal.
+ */
+export function metadataForPrivate(title: string, description?: string): Metadata {
+  return {
+    title,
+    description: description ?? `${title} \u00B7 ${SITE_NAME}`,
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+  };
+}
+
 export function metadataForSeller(name: string, sellerId: string): Metadata {
   const base = getSiteUrl();
   const url = `${base}/artist/${sellerId}`;

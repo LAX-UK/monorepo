@@ -6,6 +6,7 @@ import {
   contactSchema,
   isContactHoneypotFilled,
   parseContactFormData,
+  resolveContactName,
 } from "@/lib/contact/contact-input";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
@@ -56,11 +57,15 @@ export async function submitContactFormResult(
   if (!pre.success) {
     return actionFailure("Please check the form and try again.");
   }
-  const { website, ...rest } = pre.data;
+  const { website, firstName, lastName, ...rest } = pre.data;
   if (String(website ?? "").trim()) {
     return actionSuccess();
   }
-  const parsed = contactSchema.safeParse(rest);
+  const merged = {
+    ...rest,
+    name: resolveContactName({ name: rest.name, firstName, lastName }),
+  };
+  const parsed = contactSchema.safeParse(merged);
   if (!parsed.success) {
     return actionFailure("Please check the form and try again.");
   }

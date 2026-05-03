@@ -79,7 +79,7 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
           }
         />
       ) : (
-        <PortfolioLotGrid items={portfolioCards} />
+        <PortfolioLotGrid items={portfolioCards} variant="stacked" />
       )}
     </div>
   );

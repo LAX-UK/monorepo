@@ -39,7 +39,7 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
           }
           action={
             <Button variant="chevron" asChild>
-              <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
+              <Link href="/search" className="inline-flex items-center gap-2 py-[18px]">
                 View all
                 <span className="sr-only"> upcoming lots and sales</span>
                 <ChevronRight className="size-5 shrink-0" aria-hidden />
@@ -105,14 +105,21 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                         {item.artistName}
                       </BodyText>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
-                        {item.priceLabel}
-                      </span>
-                      <span className="font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant">
-                        {item.priceFormatted}
-                      </span>
-                    </div>
+                    {(() => {
+                      const emphasis = item.priceEmphasis ?? "estimate";
+                      const valueClass =
+                        emphasis === "currentBid" || emphasis === "both"
+                          ? "font-headline text-base font-semibold leading-5 text-brand-900 dark:text-on-surface"
+                          : "font-body text-sm font-medium leading-6 text-brand-400 dark:text-on-surface-variant";
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-body text-xs font-normal leading-4 text-brand-400 dark:text-on-surface-variant">
+                            {item.priceLabel}
+                          </span>
+                          <span className={valueClass}>{item.priceFormatted}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </Link>
               </article>

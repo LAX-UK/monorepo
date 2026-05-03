@@ -9,7 +9,7 @@ export function SalesHeader() {
       <div className="mx-auto flex max-w-[1440px] flex-col gap-4">
         <DisplayHeading
           as="h1"
-          className="text-5xl font-medium uppercase tracking-tight text-white md:text-6xl"
+          className="text-[length:var(--text-display-lg)] font-medium uppercase leading-[1.05] tracking-tight text-white"
         >
           Auction Calendar
         </DisplayHeading>

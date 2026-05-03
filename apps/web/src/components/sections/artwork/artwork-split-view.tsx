@@ -13,6 +13,7 @@ import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more
 import { LotNavArrows } from "@/components/sections/artwork/redesign/lot-nav-arrows";
 import { LotRightSummary } from "@/components/sections/artwork/redesign/lot-right-summary";
 import { LotSaleContext } from "@/components/sections/artwork/redesign/lot-sale-context";
+import { LotStatusRow } from "@/components/sections/artwork/redesign/lot-status-row";
 import type { Lot } from "@auction/types";
 import type { ReactNode } from "react";
 
@@ -61,6 +62,15 @@ export function ArtworkSplitView({
           <LotNavArrows vm={heroVM} />
         </div>
 
+        <div className="mt-3">
+          <LotStatusRow
+            isLive={auction.status === "active"}
+            bidCount={0}
+            saleHref={heroVM.saleHref}
+            saleTitle={heroVM.saleTitle}
+          />
+        </div>
+
         {saleContext ? (
           <div className="mt-4">
             <LotSaleContext
@@ -102,6 +112,7 @@ export function ArtworkSplitView({
           currentUserId={currentUserId}
           isAuthenticated={isAuthenticated}
           watchedLotIds={watchedLotIds}
+          density="compact"
         />
       </div>
     </section>
