@@ -112,4 +112,3 @@ export function WatchlistBoard({ rows }: { rows: WatchlistBoardRow[] }) {
     />
   );
 }
-
