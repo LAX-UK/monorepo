@@ -1,7 +1,6 @@
 "use client";
 
 import { useDensityToggle } from "@/components/layout/density-provider";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@auction/ui/components/button";
 import {
   Popover,
@@ -24,7 +23,7 @@ export function TweaksPopover() {
           variant="ghost"
           size="icon"
           className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
-          aria-label="Open display settings"
+          aria-label="Open density settings"
         >
           <SlidersHorizontal className="size-4" aria-hidden />
         </Button>
@@ -63,15 +62,6 @@ export function TweaksPopover() {
                 <Columns3 className="size-4" aria-hidden />
               )}
             </Button>
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-outline-variant/30 pt-4">
-            <div>
-              <p className="font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface">
-                Theme
-              </p>
-              <p className="mt-1 text-xs text-on-surface-variant">Switch light or dark mode.</p>
-            </div>
-            <ThemeToggle />
           </div>
         </div>
       </PopoverContent>
