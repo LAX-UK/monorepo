@@ -1,9 +1,9 @@
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import {
-  WatchlistBoard,
   type WatchlistBoardRow,
   estimateLabel,
-} from "@/components/dashboard/watchlist-board";
+} from "@/components/dashboard/watchlist-board-rows";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
