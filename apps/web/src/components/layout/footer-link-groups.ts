@@ -38,7 +38,8 @@ export const auctionsLinks: FooterLink[] = [
 export const companyLinks: FooterLink[] = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
-  { href: "/dashboard/submissions/new", label: "Sell with LAX" },
+  { href: "/buy", label: "Buy" },
+  { href: "/sell", label: "Sell" },
   { href: "/faq", label: "FAQ" },
 ];
 

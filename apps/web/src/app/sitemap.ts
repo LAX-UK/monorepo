@@ -10,6 +10,8 @@ const STATIC_PATHS = [
   "/search",
   "/archive",
   "/about",
+  "/buy",
+  "/sell",
   "/contact",
   "/legal",
   "/privacy",
