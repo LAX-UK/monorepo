@@ -1,6 +1,6 @@
 import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
-import { SITE_NAME } from "@/lib/brand";
+import { SITE_BUSINESS_ADDRESS_INLINE, SITE_BUSINESS_HOURS_LABEL, SITE_NAME } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -56,9 +56,9 @@ export default function AboutPage() {
         </p>
         <LegalH2>Location</LegalH2>
         <p>
-          12 Cork Street, Mayfair, London W1S 3LR
+          {SITE_BUSINESS_ADDRESS_INLINE}
           <br />
-          Tuesday – Saturday, 10:00 – 18:00 (viewings by appointment).
+          {SITE_BUSINESS_HOURS_LABEL}
         </p>
       </LegalPage>
     </PolicyHubLayout>

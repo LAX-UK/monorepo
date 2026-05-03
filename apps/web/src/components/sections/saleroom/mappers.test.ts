@@ -74,7 +74,7 @@ describe("mapSaleToHeroVM", () => {
   it("emits onsite / online tags and live-stream tag when streamUrl set", () => {
     const vm = mapSaleToHeroVM(baseSale, {
       totalLots: 12,
-      shareUrl: "/sales/sale-1",
+      shareUrl: "/sales/evening-sale/sale-1",
       now,
       categoryLabel: null,
     });
@@ -87,7 +87,7 @@ describe("mapSaleToHeroVM", () => {
   it("marks active sales as live and shows a live bidding short label", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
-      { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null },
+      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now, categoryLabel: null },
     );
     expect(vm.isLive).toBe(true);
     expect(vm.biddingStartsLabel).toBeNull();
@@ -100,7 +100,7 @@ describe("mapSaleToHeroVM", () => {
   it("uses previewStartTime for the left preview cell when set", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, previewStartTime: new Date("2026-05-20T12:00:00Z") },
-      { totalLots: 1, shareUrl: "/sales/sale-1", now, categoryLabel: null },
+      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now, categoryLabel: null },
     );
     expect(vm.leftColumnLabel).toBe("Preview opens");
     expect(vm.registrationClosesShort).toBeTruthy();
@@ -109,7 +109,7 @@ describe("mapSaleToHeroVM", () => {
   it("scheduled: bidding row without preview", () => {
     const vm = mapSaleToHeroVM(baseSale, {
       totalLots: 1,
-      shareUrl: "/sales/sale-1",
+      shareUrl: "/sales/evening-sale/sale-1",
       now,
       categoryLabel: null,
     });

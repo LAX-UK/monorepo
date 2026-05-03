@@ -2,6 +2,7 @@ import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { LotCardTimer } from "@/components/lot-timer";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
+import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import {
   Card,
@@ -49,7 +50,7 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
               return (
                 <li key={lot.id}>
                   <Link
-                    href={`/artwork/${lot.id}`}
+                    href={lotPath(lot)}
                     className="grid gap-3 py-4 transition-colors hover:bg-surface-container-low/45 sm:grid-cols-[1fr_auto] sm:items-center sm:px-2"
                   >
                     <span className="flex min-w-0 items-center gap-3">

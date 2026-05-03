@@ -1,5 +1,6 @@
 "use client";
 
+import { salePath } from "@/lib/seo/url";
 import { DataTable } from "@auction/ui/components/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -45,7 +46,7 @@ function saleColumns(): ColumnDef<AdminSaleTableRow>[] {
             Manage
           </Link>
           <Link
-            href={`/sales/${row.original.saleId}`}
+            href={salePath({ id: row.original.saleId, title: row.original.title })}
             className="font-label text-xs font-bold uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
           >
             View on site

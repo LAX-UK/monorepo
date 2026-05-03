@@ -1,6 +1,7 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { formatMoney } from "@/lib/format-currency";
 import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,7 +30,7 @@ export function PastAuctionCard({
   const img = auction.images[0];
   return (
     <div className={`group ${gridOffsetClass}`}>
-      <Link href={`/artwork/${auction.id}`} className="block">
+      <Link href={lotPath(auction)} className="block">
         <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 motion-safe:group-hover:scale-[0.98] motion-reduce:group-hover:scale-100">
           {img ? (
             <Image

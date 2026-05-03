@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
 import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search";
+import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 import { BulkActionBar, DataTable } from "@auction/ui";
 import { Button as ShadButton } from "@auction/ui/components/button";
@@ -265,7 +266,7 @@ export function NotificationsInboxBoard() {
         cell: ({ row }) =>
           row.original.lotId ? (
             <Link
-              href={`/artwork/${row.original.lotId}`}
+              href={lotPath({ id: row.original.lotId, title: row.original.title })}
               className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
             >
               View
@@ -463,7 +464,7 @@ export function NotificationsInboxBoard() {
                     </div>
                     {n.lotId ? (
                       <Button variant="ctaLink" asChild>
-                        <Link href={`/artwork/${n.lotId}`}>View</Link>
+                        <Link href={lotPath({ id: n.lotId, title: n.title })}>View</Link>
                       </Button>
                     ) : null}
                   </li>
@@ -573,7 +574,9 @@ export function NotificationsInboxBoard() {
                             </Button>
                             {focused.lotId ? (
                               <Button type="button" variant="secondary" asChild>
-                                <Link href={`/artwork/${focused.lotId}`}>View lot</Link>
+                                <Link href={lotPath({ id: focused.lotId, title: focused.title })}>
+                                  View lot
+                                </Link>
                               </Button>
                             ) : null}
                           </div>

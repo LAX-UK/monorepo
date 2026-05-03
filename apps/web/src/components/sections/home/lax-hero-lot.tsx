@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function LaxHeroLot({ lot }: Props) {
-  const artworkHref = lot.id === "placeholder" ? "/sales" : `/artwork/${lot.id}`;
+  const artworkHref = lot.href ?? "/sales";
   const liveCtaHref = lot.isAuctionLive && lot.saleroomHref ? lot.saleroomHref : artworkHref;
   const lotWatermark = lot.lotLabel.replace(/^lot\s*/i, "").trim() || "—";
 
@@ -59,7 +59,7 @@ export function LaxHeroLot({ lot }: Props) {
                   {lot.featuredHeading}
                 </LabelCaps>
               </div>
-              <div className="wipe-in flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 <DisplayHeading
                   as="h1"
                   className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"

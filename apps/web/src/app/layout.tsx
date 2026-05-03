@@ -1,7 +1,7 @@
 import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { Toaster } from "@/components/ui/toaster";
-import { SITE_SHORT_NAME } from "@/lib/brand";
+import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata, Viewport } from "next";
@@ -48,8 +48,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f1f1f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#121414" },
+    { media: "(prefers-color-scheme: light)", color: SITE_THEME_COLOR_LIGHT },
+    { media: "(prefers-color-scheme: dark)", color: SITE_THEME_COLOR_DARK },
   ],
 };
 

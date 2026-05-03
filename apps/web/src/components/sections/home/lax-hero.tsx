@@ -6,13 +6,12 @@ import { LaxHeroSaleroomRotator } from "@/components/sections/home/lax-hero-rota
 
 type Props = {
   state: HeroStateVM;
-  twitchParentHost: string;
 };
 
-export function LaxHero({ state, twitchParentHost }: Props) {
+export function LaxHero({ state }: Props) {
   switch (state.kind) {
     case "live":
-      return <LaxHeroLiveStream vm={state} twitchParentHost={twitchParentHost} />;
+      return <LaxHeroLiveStream vm={state} />;
     case "rotator":
       return <LaxHeroSaleroomRotator slides={state.slides} />;
     case "editorial":

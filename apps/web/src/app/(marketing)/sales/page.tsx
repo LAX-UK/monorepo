@@ -11,6 +11,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { parseSaleFilter, parseSalesCategoryId } from "@/lib/marketing/sales-filters";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { Button, EmptyState, SectionCta } from "@auction/ui";
 import type { Metadata } from "next";
@@ -69,7 +70,7 @@ export default async function SalesListPage({
       ? itemListJsonLd(
           rows.map((r) => ({
             name: r.sale.title,
-            url: `${base}/sales/${r.sale.id}`,
+            url: `${base}${salePath(r.sale)}`,
           })),
         )
       : null;

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
+import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -131,7 +132,7 @@ export function NotificationsFeedView() {
                   <p className="font-headline text-sm font-semibold text-on-surface">
                     {n.lotId ? (
                       <Link
-                        href={`/artwork/${n.lotId}`}
+                        href={lotPath({ id: n.lotId, title: n.title })}
                         className="underline-offset-4 hover:underline"
                       >
                         {n.title}

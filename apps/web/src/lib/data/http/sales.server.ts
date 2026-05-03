@@ -3,6 +3,7 @@ import "server-only";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import type { Lot, Sale } from "@auction/types";
+import { cache } from "react";
 
 export type ListSalesQuery = {
   status?: Sale["status"];
@@ -44,7 +45,9 @@ export type SaleViewerState = {
 
 export type SaleWithLots = { sale: Sale; lots: Lot[]; viewer?: SaleViewerState };
 
-export async function getServerSaleWithLots(id: string): Promise<SaleWithLots | null> {
+export const getServerSaleWithLots = cache(async function getServerSaleWithLots(
+  id: string,
+): Promise<SaleWithLots | null> {
   const client = await getServerHc();
   const res = await client.sales[":id"].$get({ param: { id } });
   if (res.status === 404) return null;
@@ -59,7 +62,7 @@ export async function getServerSaleWithLots(id: string): Promise<SaleWithLots | 
   return body.data.viewer
     ? { ...base, viewer: { isFollowing: Boolean(body.data.viewer.isFollowing) } }
     : base;
-}
+});
 
 export type SaleLotsPage = {
   items: Lot[];
@@ -112,11 +115,15 @@ export async function getServerSaleLotsPage(
   };
 }
 
+export type SitemapSale = { id: string; title: string };
+
 /** For sitemap / ISR without full Hono client shape. */
-export async function fetchSalesIdsForSitemap(): Promise<string[]> {
+export async function fetchSalesForSitemap(): Promise<SitemapSale[]> {
   const base = getServerApiBase();
   const res = await fetch(`${base}/sales?limit=200&offset=0`, { next: { revalidate: 300 } });
   if (!res.ok) return [];
-  const body = (await res.json()) as { data: { sale: { id: string } }[] };
-  return body.data.map((row) => row.sale.id);
+  const body = (await res.json()) as { data: { sale: { id: string; title: string } }[] };
+  return body.data
+    .map((row) => ({ id: row.sale.id, title: row.sale.title }))
+    .filter((sale) => Boolean(sale.id && sale.title));
 }

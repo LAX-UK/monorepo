@@ -12,6 +12,7 @@ import {
   adminSetLotStatusResultAction,
 } from "@/lib/actions/admin-sales";
 import type { ActionResult } from "@/lib/forms/form-result";
+import { salePath } from "@/lib/seo/url";
 import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ type LotRow = { id: string; title: string; lotNumber: number | null; status: Lot
 
 type Props = {
   saleId: string;
+  saleTitle: string;
   saleStatus: SaleStatus;
   deliveryMode: SaleDeliveryMode;
   canEdit: boolean;
@@ -42,6 +44,7 @@ const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
 
 export function AdminSaleDetailActions({
   saleId,
+  saleTitle,
   saleStatus,
   deliveryMode,
   canEdit,
@@ -117,7 +120,7 @@ export function AdminSaleDetailActions({
           </Button>
         ) : null}
         <Link
-          href={`/sales/${saleId}`}
+          href={salePath({ id: saleId, title: saleTitle })}
           className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
         >
           View on site

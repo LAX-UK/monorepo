@@ -9,7 +9,7 @@
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#f1f1f3",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#121414",
   "categories": ["shopping", "lifestyle"],
   "icons": [
     {

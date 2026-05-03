@@ -1,6 +1,12 @@
 import { ContactForm } from "@/components/marketing/contact-form";
 import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
+import {
+  SITE_BUSINESS_ADDRESS_INLINE,
+  SITE_CONTACT_EMAIL,
+  SITE_TELEPHONE_DISPLAY,
+  SITE_TELEPHONE_HREF,
+} from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, localBusinessJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
@@ -36,22 +42,23 @@ export default function ContactPage() {
         <p>
           Concierge:{" "}
           <a
-            href="mailto:concierge@laxauction.house"
+            href={`mailto:${SITE_CONTACT_EMAIL}`}
             className="text-primary underline-offset-4 hover:underline"
           >
-            concierge@laxauction.house
+            {SITE_CONTACT_EMAIL}
           </a>
         </p>
         <p>
           Telephone:{" "}
-          <a href="tel:+442079460958" className="text-primary underline-offset-4 hover:underline">
-            +44 20 7946 0958
+          <a
+            href={`tel:${SITE_TELEPHONE_HREF}`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {SITE_TELEPHONE_DISPLAY}
           </a>{" "}
           (weekdays 09:00–18:00 GMT)
         </p>
-        <p className="text-on-surface-variant">
-          Registered office: 1 Curator Mews, London W1K 1AA, United Kingdom.
-        </p>
+        <p className="text-on-surface-variant">Registered office: {SITE_BUSINESS_ADDRESS_INLINE}</p>
 
         <LegalH2 id="message" className="scroll-mt-28">
           Send a message

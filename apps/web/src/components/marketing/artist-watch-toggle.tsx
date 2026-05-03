@@ -13,6 +13,7 @@ type Props = {
   artistId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
+  loginNextPath?: string;
   /** Injectable API transport (defaults to cookie-authenticated browser fetch). */
   client?: ArtistWatchlistClient;
 };
@@ -21,6 +22,7 @@ export function ArtistWatchToggle({
   artistId,
   initialWatching,
   isAuthenticated,
+  loginNextPath = `/artist/${artistId}`,
   client = defaultArtistWatchlistClient,
 }: Props) {
   const [watching, setWatching] = useState(initialWatching);
@@ -45,7 +47,7 @@ export function ArtistWatchToggle({
   if (!isAuthenticated) {
     return (
       <Link
-        href={`/login?next=/artist/${encodeURIComponent(artistId)}`}
+        href={`/login?next=${encodeURIComponent(loginNextPath)}`}
         className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
       >
         <Eye className="size-4" aria-hidden />

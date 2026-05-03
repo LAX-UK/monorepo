@@ -34,7 +34,7 @@ const ctx = (over: Partial<BidPolicyContext> = {}): BidPolicyContext => ({
     marketingDetails: {},
   },
   lotStatus: "active",
-  loginNextPath: "/artwork/lot1",
+  loginNextPath: "/artwork/test-lot/lot1",
   ...over,
 });
 

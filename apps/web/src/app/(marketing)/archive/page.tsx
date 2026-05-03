@@ -13,6 +13,7 @@ import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import type { Metadata } from "next";
@@ -102,7 +103,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     ]);
     const itemsLd =
       auctions.length > 0
-        ? itemListJsonLd(auctions.map((a) => ({ name: a.title, url: `${base}/artwork/${a.id}` })))
+        ? itemListJsonLd(auctions.map((a) => ({ name: a.title, url: `${base}${lotPath(a)}` })))
         : null;
     const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, itemsLd] : [crumbs]));
 

@@ -1,6 +1,7 @@
 import { SITE_LOGO_PATH, SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
+import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import type { Metadata } from "next";
 
 function defaultOgImage(base: string) {
@@ -62,19 +63,15 @@ export function metadataForStatic(opts: {
 }
 
 /** Sale catalog page */
-export function metadataForSale(opts: {
-  title: string;
-  description?: string | null;
-  id: string;
-}): Metadata {
+export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">): Metadata {
   const base = getSiteUrl();
-  const url = `${base}/sales/${opts.id}`;
+  const url = `${base}${salePath(sale)}`;
   const desc =
-    opts.description?.trim().slice(0, 160) ??
-    `Browse lots and bidding in ${opts.title} — ${SITE_NAME}.`;
-  const fullTitle = `${opts.title} · ${SITE_NAME}`;
+    sale.description?.trim().slice(0, 160) ??
+    `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
+  const fullTitle = `${sale.title} · ${SITE_NAME}`;
   return {
-    title: opts.title,
+    title: sale.title,
     description: desc,
     alternates: { canonical: url },
     openGraph: {
@@ -95,7 +92,7 @@ export function metadataForSale(opts: {
 
 export function metadataForLot(auction: Lot): Metadata {
   const base = getSiteUrl();
-  const url = `${base}/artwork/${auction.id}`;
+  const url = `${base}${lotPath(auction)}`;
   const title = `${auction.title}`;
   const description =
     auction.description?.slice(0, 160) ?? `Bid on ${auction.title} — curated fine art auction.`;
@@ -119,6 +116,14 @@ export function metadataForLot(auction: Lot): Metadata {
   };
 }
 
+export function metadataForNotFound(title: string, description?: string): Metadata {
+  return {
+    title,
+    description: description ?? `${title} \u00B7 ${SITE_NAME}`,
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+  };
+}
+
 /**
  * Defense-in-depth metadata for private (dashboard / admin / accountant)
  * routes. Robots.txt already disallows these paths but accidental link sharing
@@ -132,24 +137,24 @@ export function metadataForPrivate(title: string, description?: string): Metadat
   };
 }
 
-export function metadataForSeller(name: string, sellerId: string): Metadata {
+export function metadataForSeller(seller: { id: string; name: string }): Metadata {
   const base = getSiteUrl();
-  const url = `${base}/artist/${sellerId}`;
+  const url = `${base}${artistPath(seller)}`;
   return {
-    title: `${name} · Seller`,
-    description: `Lots and auctions from ${name}.`,
+    title: `${seller.name} · Seller`,
+    description: `Lots and auctions from ${seller.name}.`,
     alternates: { canonical: url },
     openGraph: {
       type: "profile",
       url,
-      title: `${name} · ${SITE_NAME}`,
-      description: `Seller profile — ${name}`,
+      title: `${seller.name} · ${SITE_NAME}`,
+      description: `Seller profile — ${seller.name}`,
       images: defaultOgImage(base),
     },
     twitter: {
       card: "summary",
-      title: `${name} · ${SITE_NAME}`,
-      description: `Seller profile — ${name}`,
+      title: `${seller.name} · ${SITE_NAME}`,
+      description: `Seller profile — ${seller.name}`,
       images: defaultOgImage(base),
     },
   };

@@ -15,6 +15,7 @@ type Props = {
    * `default` — existing card / detail rail (unchanged for LSP).
    */
   appearance?: "default" | "outlined-block";
+  loginNextPath?: string;
 };
 
 function apiBase(): string {
@@ -29,6 +30,7 @@ export function ArtworkWatchToggle({
   initialWatching,
   isAuthenticated,
   appearance = "default",
+  loginNextPath = `/artwork/${lotId}`,
 }: Props) {
   const [watching, setWatching] = useState(initialWatching);
   const [busy, setBusy] = useState(false);
@@ -59,7 +61,7 @@ export function ArtworkWatchToggle({
     if (appearance === "outlined-block") {
       return (
         <Link
-          href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
+          href={`/login?next=${encodeURIComponent(loginNextPath)}`}
           className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
           Follow
@@ -68,7 +70,7 @@ export function ArtworkWatchToggle({
     }
     return (
       <Link
-        href={`/login?next=/artwork/${encodeURIComponent(lotId)}`}
+        href={`/login?next=${encodeURIComponent(loginNextPath)}`}
         className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
       >
         <Eye className="size-4" aria-hidden />
