@@ -15,10 +15,17 @@ type Props = {
 
 export function SaleroomHero({ hero, toolbar, actions }: Props) {
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
+  const liveTrailing =
+    hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0
+      ? `· ${hero.liveLotsCount} lots live`
+      : `· ${hero.itemsLabel}`;
+  const thirdStat: readonly [string, string] = hero.estimatedTotalLabel
+    ? (["Est. Total", hero.estimatedTotalLabel] as const)
+    : (["Format", hero.overviewMetaLine ?? hero.dateLine] as const);
   const stats = [
     ["Total Lots", hero.itemsLabel],
     ["Live Now", hero.isLive ? "Live now" : (hero.biddingStartsShort ?? "Upcoming")],
-    ["Format", hero.overviewMetaLine ?? hero.dateLine],
+    thirdStat,
   ] as const;
 
   return (
@@ -53,7 +60,7 @@ export function SaleroomHero({ hero, toolbar, actions }: Props) {
           <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">
             {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
             <span>{statusLabel}</span>
-            <span className="text-white/35">· {hero.itemsLabel}</span>
+            <span className="text-white/35">{liveTrailing}</span>
           </div>
           <h1 className="wipe-in mb-4 font-headline text-4xl font-semibold leading-tight text-white md:text-5xl">
             {hero.title}

@@ -1,11 +1,16 @@
 {
+  "id": "/",
   "name": "LAX London Auction House Ltd",
   "short_name": "LAX",
   "description": "Fine art auctions in London — curated lots and live bidding.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
   "background_color": "#f1f1f3",
   "theme_color": "#0a0a0a",
+  "categories": ["shopping", "lifestyle"],
   "icons": [
     {
       "src": "/favicons/android-chrome-192x192.png",
@@ -18,6 +23,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/favicons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

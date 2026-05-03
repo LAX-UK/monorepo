@@ -42,6 +42,19 @@ export type SaleHeroVM = {
   liveLabel: string;
   /** Hero headline pill: live / upcoming / ended (Figma), or null for draft/cancelled. */
   statusBadge: SaleHeroStatusBadge;
+  /**
+   * Optional precomputed count of lots that are currently live within this
+   * sale. When present and the sale is live, the hero kicker reads
+   * "· {liveLotsCount} lots live"; when omitted, the existing
+   * "· {itemsLabel}" copy is preserved.
+   */
+  liveLotsCount?: number;
+  /**
+   * Optional aggregated estimate total for the sale (e.g. "£8.4M"). When
+   * present the third hero stat becomes "Est. Total"; absent leaves the
+   * existing "Format" stat in place.
+   */
+  estimatedTotalLabel?: string;
 };
 
 export type SaleLotCardVM = {

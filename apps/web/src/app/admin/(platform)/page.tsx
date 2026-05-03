@@ -9,6 +9,7 @@ import {
   getAdminMetricsLive,
   getAdminMetricsToday,
 } from "@/lib/data/http/admin.server";
+import { formatMoney } from "@/lib/format-currency";
 
 export default async function AdminHomePage() {
   let metrics = {
@@ -47,12 +48,31 @@ export default async function AdminHomePage() {
     /* overview still renders */
   }
 
-  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({
-    id: l.id,
-    title: l.title,
-    meta: `${l.status} · ends ${l.endTime.toISOString().slice(0, 16)}`,
-    href: `/admin/lots/${l.id}`,
-  }));
+  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => {
+    const statusTone =
+      l.status === "active"
+        ? "live"
+        : l.status === "ended"
+          ? "neutral"
+          : l.status === "scheduled"
+            ? "warning"
+            : "neutral";
+    return {
+      id: l.id,
+      title: l.title,
+      meta: `${l.status} \u00B7 ends ${l.endTime.toISOString().slice(0, 16)}`,
+      href: `/admin/lots/${l.id}`,
+      statusLabel: l.status,
+      statusTone,
+      priceLabel: formatMoney(l.currentPrice),
+      endsLabel: l.endTime.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  });
 
   return (
     <AdminOperationsHomeView

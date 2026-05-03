@@ -1,7 +1,8 @@
-import { LegalPage } from "@/components/marketing/legal-page";
+import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Shipping & logistics",
@@ -13,25 +14,33 @@ export const metadata: Metadata = metadataForStatic({
 export default function ShippingPage() {
   return (
     <PolicyHubLayout>
-      <LegalPage title="Shipping & logistics" lastUpdated="21 April 2026" embedded>
+      <LegalPage
+        title="Shipping & logistics"
+        lastUpdated="21 April 2026"
+        kicker={null}
+        dividerUnderDate
+        embedded
+      >
         <p>
           Domestic and international shipments are quoted after the hammer falls. Fine art lots are
           packed by specialist handlers with condition reporting and insured transit where
           available.
         </p>
-        <h2 id="zones" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+        <LegalH2 id="zones" className="scroll-mt-28">
           Zones &amp; typical lead times
-        </h2>
-        <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+        </LegalH2>
+        <div className="overflow-x-auto rounded-sm border border-divider-soft">
           <table className="w-full min-w-[480px] text-left text-sm">
             <thead className="bg-surface-container-low font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant">
               <tr>
                 <th className="px-4 py-3">Region</th>
                 <th className="px-4 py-3">Standard</th>
-                <th className="px-4 py-3">Museum / white-glove</th>
+                <th className="px-4 py-3">
+                  <span className="text-on-surface-variant">Museum &middot; </span>White-glove
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/20">
+            <tbody className="divide-y divide-divider-soft">
               <tr>
                 <td className="px-4 py-3">UK domestic</td>
                 <td className="px-4 py-3">5–10 business days</td>
@@ -47,6 +56,11 @@ export default function ShippingPage() {
                 <td className="px-4 py-3">12–18 business days</td>
                 <td className="px-4 py-3">18–30 business days</td>
               </tr>
+              <tr>
+                <td className="px-4 py-3">Asia Pacific</td>
+                <td className="px-4 py-3">14–21 business days</td>
+                <td className="px-4 py-3">21–35 business days</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -54,21 +68,33 @@ export default function ShippingPage() {
           Timelines exclude customs holds. Final quotes include packing tier, insured value, and
           carrier surcharges.
         </p>
-        <h2 id="export" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+        <LegalH2 id="export" className="scroll-mt-28">
           Export &amp; customs
-        </h2>
+        </LegalH2>
         <p>
           Import duties, taxes, and customs delays are the responsibility of the buyer unless a lot
           is explicitly offered as duty-paid. We provide commercial invoices and provenance packs
           where available to support clearance.
         </p>
-        <h2 id="insurance" className="scroll-mt-28 font-headline text-2xl text-on-surface">
+        <LegalH2 id="insurance" className="scroll-mt-28">
           Insurance
-        </h2>
+        </LegalH2>
         <p>
           Shipments are insured door-to-door at hammer + buyer&apos;s premium unless you opt out in
           writing (not recommended for fine art). Claims must be reported within 48 hours of
           receipt.
+        </p>
+        <LegalH2 id="collection" className="scroll-mt-28">
+          Collection in person
+        </LegalH2>
+        <p>
+          Buyers may collect from our Mayfair viewing room by appointment, Tuesday through Saturday
+          between 10:00 and 18:00 GMT. Bring photo ID matching the bidder account; arrange the slot
+          via the{" "}
+          <Link href="/contact" className="text-primary underline-offset-4 hover:underline">
+            Contact desk
+          </Link>{" "}
+          at least 24 hours in advance.
         </p>
       </LegalPage>
     </PolicyHubLayout>

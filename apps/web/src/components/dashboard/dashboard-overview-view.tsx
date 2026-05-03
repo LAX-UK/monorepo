@@ -1,6 +1,7 @@
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { ActionRequiredBanner } from "@/components/dashboard/overview/action-required-banner";
 import { ActiveBidsCard } from "@/components/dashboard/overview/active-bids-card";
+import { DashboardOverviewLayout } from "@/components/dashboard/overview/dashboard-overview-layout";
 import { OverviewErrorsAlert } from "@/components/dashboard/overview/overview-errors-alert";
 import {
   buildOverviewDescription,
@@ -21,32 +22,32 @@ type Props = {
 
 export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
   return (
-    <div className="screen flex w-full flex-col gap-7">
+    <>
       <OverviewErrorsAlert errors={vm.errors} />
-
-      <PageHeader
-        className="mb-0"
-        title={`Welcome back, ${vm.firstName}`}
-        description={buildOverviewDescription(vm)}
-        actions={
-          <Button asChild>
-            <Link href={vm.primaryCta?.href ?? "/search"}>
-              {vm.primaryCta?.label ?? "Browse auctions"}
-            </Link>
-          </Button>
-        }
+      <DashboardOverviewLayout
+        layout="stack"
+        slots={{
+          header: (
+            <PageHeader
+              className="mb-0"
+              title={`Welcome back, ${vm.firstName}`}
+              description={buildOverviewDescription(vm)}
+              actions={
+                <Button variant="outline" asChild>
+                  <Link href={vm.primaryCta?.href ?? "/search"}>
+                    {vm.primaryCta?.label ?? "Browse auctions"}
+                  </Link>
+                </Button>
+              }
+            />
+          ),
+          kpis: <KpiGrid tiles={buildOverviewKpiTiles(vm)} />,
+          activity: <ActiveBidsCard vm={vm} />,
+          banner: <ActionRequiredBanner row={vm.settlementsDue[0]} />,
+          watchlist: <WatchlistPreviewCard vm={vm} variant="tile-grid" />,
+          secondary: <SecondaryActionStack vm={vm} featureV2={featureV2} />,
+        }}
       />
-
-      <KpiGrid tiles={buildOverviewKpiTiles(vm)} />
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <ActiveBidsCard vm={vm} />
-        <WatchlistPreviewCard vm={vm} />
-      </div>
-
-      <ActionRequiredBanner row={vm.settlementsDue[0]} />
-
-      <SecondaryActionStack vm={vm} featureV2={featureV2} />
-    </div>
+    </>
   );
 }

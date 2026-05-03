@@ -95,7 +95,16 @@ function buildHeroOverviewMetaLine(sale: Sale, categoryLabel: string | null): st
 
 export function mapSaleToHeroVM(
   sale: Sale,
-  opts: { totalLots: number; shareUrl: string; now: Date; categoryLabel: string | null },
+  opts: {
+    totalLots: number;
+    shareUrl: string;
+    now: Date;
+    categoryLabel: string | null;
+    /** Optional precomputed live lot count (used by the hero kicker). */
+    liveLotsCount?: number;
+    /** Optional formatted estimated total for the third hero stat. */
+    estimatedTotalLabel?: string;
+  },
 ): SaleHeroVM {
   const tags = saleTags(sale);
   const isLive = sale.status === "active";
@@ -148,6 +157,8 @@ export function mapSaleToHeroVM(
     overviewMetaLine,
     liveLabel: "Live Auction",
     statusBadge,
+    ...(typeof opts.liveLotsCount === "number" ? { liveLotsCount: opts.liveLotsCount } : {}),
+    ...(opts.estimatedTotalLabel ? { estimatedTotalLabel: opts.estimatedTotalLabel } : {}),
   };
 }
 

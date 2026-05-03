@@ -41,7 +41,7 @@ export default async function SalesListPage({
     const cat = categoryId ? { categoryId } : {};
     if (filter === "ended") {
       rows = await getServerSalesList({ status: "ended", limit: 48, ...cat });
-    } else if (filter === "active") {
+    } else if (filter === "live" || filter === "active") {
       rows = await getServerSalesList({ status: "active", limit: 48, sort: "startAsc", ...cat });
     } else if (filter === "scheduled") {
       rows = await getServerSalesList({ status: "scheduled", limit: 48, sort: "startAsc", ...cat });

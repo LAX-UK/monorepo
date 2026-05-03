@@ -9,6 +9,26 @@ type Props = {
   vm: SaleCalendarRowVM;
 };
 
+function statusLabel(status: Props["vm"]["status"]): string {
+  if (status === "active") return "Live";
+  if (status === "scheduled") return "Scheduled";
+  return "Ended";
+}
+
+function metaLine(vm: Props["vm"]): string {
+  const summary = vm.resultsSummary
+    ? [
+        vm.resultsSummary.hammer ? `${vm.resultsSummary.hammer} hammer` : null,
+        vm.resultsSummary.total ? `${vm.resultsSummary.total} total` : null,
+      ]
+        .filter(Boolean)
+        .join(" \u00B7 ")
+    : "";
+  return [vm.itemsLabel, vm.categoryLabel, vm.auctionTypeLabel, summary]
+    .filter((part) => Boolean(part && part.length > 0))
+    .join(" \u00B7 ");
+}
+
 export function SaleCalendarRow({ vm }: Props) {
   const statusTone =
     vm.status === "active"
@@ -49,7 +69,7 @@ export function SaleCalendarRow({ vm }: Props) {
             <span
               className={`rounded-full px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] ${statusTone}`}
             >
-              {vm.status}
+              {statusLabel(vm.status)}
             </span>
           </div>
           <DisplayHeading
@@ -58,9 +78,7 @@ export function SaleCalendarRow({ vm }: Props) {
           >
             {vm.title}
           </DisplayHeading>
-          <p className="font-body text-sm text-brand-300">
-            {vm.itemsLabel} · {vm.auctionTypeLabel}
-          </p>
+          <p className="font-body text-sm text-brand-300">{metaLine(vm)}</p>
         </div>
 
         <div className="pt-1 md:text-right">

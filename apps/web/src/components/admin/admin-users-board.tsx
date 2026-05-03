@@ -27,6 +27,19 @@ export type AdminUsersKpiStrip = {
   pageCount: number;
 };
 
+/**
+ * Mockup-aligned global aggregates. When provided, the KPI strip switches its
+ * labels to "Total users / Admins / Clients / Suspended" with the matching
+ * tile values; when absent the existing per-page labelling is preserved so
+ * legacy callers don't change behavior.
+ */
+export type AdminUsersGlobalTotals = {
+  total: number;
+  admins: number;
+  clients: number;
+  suspended: number;
+};
+
 function userColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow>[] {
   return [
     {
@@ -138,9 +151,10 @@ type Props = {
   rows: AdminUserRow[];
   kpis: AdminUsersKpiStrip;
   roleChips: React.ReactNode;
+  globalUserTotals?: AdminUsersGlobalTotals;
 };
 
-export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
+export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Props) {
   const [selected, setSelected] = useState<AdminUserRow | null>(null);
   const [q, setQ] = useState("");
   const onOpen = useCallback((u: AdminUserRow) => setSelected(u), []);
@@ -187,12 +201,25 @@ export function AdminUsersBoard({ rows, kpis, roleChips }: Props) {
     <>
       <KpiGrid
         className="mb-2"
-        tiles={[
-          { label: "Total", value: kpis.totalMatches, delta: `${kpis.pageCount} on page` },
-          { label: "Admins", value: kpis.adminsOnPage, delta: "Current page" },
-          { label: "Clients", value: clientsOnPage, delta: "Current page" },
-          { label: "Suspended", value: kpis.suspendedOnPage, delta: "Current page" },
-        ]}
+        tiles={
+          globalUserTotals
+            ? [
+                {
+                  label: "Total users",
+                  value: globalUserTotals.total,
+                  delta: `${kpis.pageCount} on page`,
+                },
+                { label: "Admins", value: globalUserTotals.admins, delta: "All users" },
+                { label: "Clients", value: globalUserTotals.clients, delta: "All users" },
+                { label: "Suspended", value: globalUserTotals.suspended, delta: "All users" },
+              ]
+            : [
+                { label: "Total", value: kpis.totalMatches, delta: `${kpis.pageCount} on page` },
+                { label: "Admins", value: kpis.adminsOnPage, delta: "Current page" },
+                { label: "Clients", value: clientsOnPage, delta: "Current page" },
+                { label: "Suspended", value: kpis.suspendedOnPage, delta: "Current page" },
+              ]
+        }
       />
 
       <EntityTableShell

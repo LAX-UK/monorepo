@@ -79,12 +79,14 @@ export default async function AdminXeroIntegrationPage({
                 <dd className="mt-1 text-on-surface">{status.tenantName}</dd>
               </div>
             ) : null}
-            {status.expiresAt ? (
+            {status.tokenExpiresAt || status.expiresAt ? (
               <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Token expiry (UTC)
                 </dt>
-                <dd className="mt-1 font-mono text-xs">{status.expiresAt}</dd>
+                <dd className="mt-1 font-mono text-xs">
+                  {status.tokenExpiresAt ?? status.expiresAt}
+                </dd>
               </div>
             ) : null}
             <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4 sm:col-span-2">
@@ -92,8 +94,8 @@ export default async function AdminXeroIntegrationPage({
                 Webhook URL
               </dt>
               <dd className="mt-1 break-all font-mono text-xs">
-                {process.env.NEXT_PUBLIC_API_URL ?? process.env.INTERNAL_API_URL ?? ""}
-                /webhooks/xero
+                {status.webhookUrl ??
+                  `${process.env.NEXT_PUBLIC_API_URL ?? process.env.INTERNAL_API_URL ?? ""}/webhooks/xero`}
               </dd>
             </div>
           </dl>

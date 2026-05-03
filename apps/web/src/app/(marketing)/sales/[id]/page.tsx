@@ -6,6 +6,7 @@ import {
   mapSaleToRelatedVM,
 } from "@/components/sections/saleroom/mappers";
 import { SaleroomCatalogHeading } from "@/components/sections/saleroom/saleroom-catalog-heading";
+import { SaleroomCatalogToolbar } from "@/components/sections/saleroom/saleroom-catalog-toolbar";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
@@ -24,7 +25,12 @@ import {
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForSale, metadataForStatic } from "@/lib/seo/metadata-factory";
-import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import {
+  breadcrumbJsonLd,
+  itemListJsonLd,
+  jsonLdScript,
+  saleEventJsonLd,
+} from "@/lib/seo/structured-data";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category } from "@auction/types";
 import type { Metadata } from "next";
@@ -152,11 +158,13 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const basePath = `/sales/${bundle.sale.id}`;
 
   const now = new Date();
+  const liveLotsCount = lotsPage.items.filter((l) => l.status === "active").length;
   const heroVM = mapSaleToHeroVM(bundle.sale, {
     totalLots: lotsPage.total,
     shareUrl,
     now,
     categoryLabel,
+    ...(liveLotsCount > 0 ? { liveLotsCount } : {}),
   });
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
     lotsTotal: lotsPage.total,
@@ -167,11 +175,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     ? Math.min(lotsPage.items.length, lotsPage.total)
     : Math.min(pageNum * CATALOG_PAGE_SIZE, lotsPage.total);
 
+  const statusFilterRaw = firstString(sp.status);
+  const statusFilter: "live" | "upcoming" | "ended" | null =
+    statusFilterRaw === "live" || statusFilterRaw === "upcoming" || statusFilterRaw === "ended"
+      ? statusFilterRaw
+      : null;
+
   const accumulatedLotIds = new Set<string>();
   const lotVMs = lotsPage.items
     .filter((lot) => {
       if (accumulatedLotIds.has(lot.id)) return false;
       accumulatedLotIds.add(lot.id);
+      if (statusFilter === "live" && lot.status !== "active") return false;
+      if (statusFilter === "upcoming" && lot.status !== "scheduled") return false;
+      if (statusFilter === "ended" && lot.status !== "ended") return false;
       return true;
     })
     .map((lot) => mapLotToCardVM(lot, { viewerUserId, now, initialWatching: false }));
@@ -193,7 +210,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           })),
         )
       : null;
-  const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, itemsLd] : [crumbs]));
+  const eventLd = saleEventJsonLd(bundle.sale);
+  const jsonLdText = jsonLdScript(
+    ...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]),
+  );
 
   const isAuthenticated = Boolean(session);
 
@@ -210,6 +230,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         end={bundle.sale.endTime}
         status={bundle.sale.status}
         saleTitle={bundle.sale.title}
+        {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
       />
 
       <SaleroomHero
@@ -226,6 +247,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
       <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-14 sm:px-6 md:px-8">
         <SaleroomCatalogHeading totalLots={lotsPage.total} />
+        <SaleroomCatalogToolbar basePath={basePath} />
         <SaleroomLotsGrid
           lots={lotVMs}
           renderActions={(lot) => (

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
   type UserRole,
   canAccessPlatformAdminRoutes,
@@ -11,8 +12,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s · Admin · LAX" },
-  robots: { index: false, follow: false },
+  ...metadataForPrivate("Admin"),
+  title: { default: "Admin", template: "%s \u00B7 Admin \u00B7 LAX" },
 };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

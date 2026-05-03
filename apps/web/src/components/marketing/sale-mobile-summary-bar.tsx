@@ -11,9 +11,11 @@ type Props = {
   /** Sale lifecycle — drives the label/CTA switch. */
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
   saleTitle: string;
+  /** Optional live lots count — when present and live, surfaces a "{n} lots active" caption. */
+  liveLotsCount?: number;
 };
 
-export function SaleMobileSummaryBar({ start, end, status, saleTitle }: Props) {
+export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCount }: Props) {
   if (status === "ended" || status === "cancelled") {
     return (
       <StickyBidBar className="lg:hidden" innerClassName="max-w-screen-2xl">
@@ -51,6 +53,11 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle }: Props) {
           announce
           className="font-headline text-sm text-on-surface tabular-nums md:text-base"
         />
+        {!isUpcoming && typeof liveLotsCount === "number" && liveLotsCount > 0 ? (
+          <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
+            {liveLotsCount} lots active
+          </p>
+        ) : null}
       </div>
       <Link
         href={ctaHref}

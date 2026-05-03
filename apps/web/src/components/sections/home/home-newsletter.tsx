@@ -38,7 +38,7 @@ export function HomeNewsletter() {
           <p className="mb-3 font-artists-serif text-xs font-light uppercase tracking-[0.18em] text-primary">
             LAX Private List
           </p>
-          <h2 className="font-headline text-4xl font-semibold leading-tight text-on-surface">
+          <h2 className="font-headline text-[34px] font-semibold leading-tight text-on-surface">
             Stay in the room.
           </h2>
           <p className="mt-3 font-body text-sm leading-7 text-on-surface-variant">
