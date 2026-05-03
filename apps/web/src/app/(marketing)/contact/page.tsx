@@ -23,7 +23,13 @@ export default function ContactPage() {
 
   return (
     <PolicyHubLayout>
-      <LegalPage title="Contact" lastUpdated="21 April 2026" kicker={null} dividerUnderDate embedded>
+      <LegalPage
+        title="Contact"
+        lastUpdated="21 April 2026"
+        kicker={null}
+        dividerUnderDate
+        embedded
+      >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>

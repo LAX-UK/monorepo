@@ -70,7 +70,9 @@ export default async function Image({ params }: Props) {
           padding: "60px 56px",
         }}
       >
-        <div style={{ display: "flex", fontSize: 22, letterSpacing: 6, textTransform: "uppercase" }}>
+        <div
+          style={{ display: "flex", fontSize: 22, letterSpacing: 6, textTransform: "uppercase" }}
+        >
           {SITE_NAME}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>

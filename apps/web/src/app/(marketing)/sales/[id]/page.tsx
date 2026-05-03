@@ -211,9 +211,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         )
       : null;
   const eventLd = saleEventJsonLd(bundle.sale);
-  const jsonLdText = jsonLdScript(
-    ...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]),
-  );
+  const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]));
 
   const isAuthenticated = Boolean(session);
 

@@ -95,12 +95,7 @@ export function LegalPage({
  * Mockup-aligned heading for legal/marketing copy. Smaller than the historical
  * `font-headline text-2xl` h2 so dense legal pages match the LAX HTML mocks.
  */
-export function LegalH2({
-  className,
-  children,
-  id,
-  ...rest
-}: HTMLAttributes<HTMLHeadingElement>) {
+export function LegalH2({ className, children, id, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
       id={id}
@@ -116,11 +111,7 @@ export function LegalH2({
 }
 
 /** Mockup-aligned unordered list for legal/marketing copy. */
-export function LegalUL({
-  className,
-  children,
-  ...rest
-}: HTMLAttributes<HTMLUListElement>) {
+export function LegalUL({ className, children, ...rest }: HTMLAttributes<HTMLUListElement>) {
   return (
     <ul
       className={cn(

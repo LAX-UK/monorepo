@@ -60,7 +60,10 @@ export default function PrivacyPage() {
         <p>
           You may request access, correction, or deletion of your personal data where applicable law
           allows. Marketing communications are opt-in and can be withdrawn from your{" "}
-          <Link href="/dashboard/settings" className="text-primary underline-offset-4 hover:underline">
+          <Link
+            href="/dashboard/settings"
+            className="text-primary underline-offset-4 hover:underline"
+          >
             dashboard
           </Link>{" "}
           at any time.

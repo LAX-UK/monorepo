@@ -34,9 +34,7 @@ export function lotProductJsonLd(
       price: auction.currentPrice,
       availability,
       priceValidUntil: auction.endTime.toISOString(),
-      ...(opts.sellerName
-        ? { seller: { "@type": "Organization", name: opts.sellerName } }
-        : {}),
+      ...(opts.sellerName ? { seller: { "@type": "Organization", name: opts.sellerName } } : {}),
     },
   };
 }
@@ -72,7 +70,9 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
   };
 }
 
-export function faqPageJsonLd(items: { question: string; answer: string }[]): Record<string, unknown> {
+export function faqPageJsonLd(
+  items: { question: string; answer: string }[],
+): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",

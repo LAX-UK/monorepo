@@ -1,11 +1,4 @@
-export const SALE_FILTERS = [
-  "all",
-  "current",
-  "live",
-  "active",
-  "scheduled",
-  "ended",
-] as const;
+export const SALE_FILTERS = ["all", "current", "live", "active", "scheduled", "ended"] as const;
 export type SaleFilter = (typeof SALE_FILTERS)[number];
 
 export function parseSaleFilter(v: string | string[] | undefined): SaleFilter {

@@ -149,9 +149,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
             {lot.title}
           </h3>
           {yearMedium ? (
-            <p className="mt-0.5 font-body text-xs italic text-on-surface-variant">
-              {yearMedium}
-            </p>
+            <p className="mt-0.5 font-body text-xs italic text-on-surface-variant">{yearMedium}</p>
           ) : null}
           {est ? (
             <p className="mt-1 font-body text-xs text-on-surface-variant">Est. {est}</p>
