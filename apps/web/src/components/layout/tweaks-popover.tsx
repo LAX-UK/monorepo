@@ -23,11 +23,10 @@ type TweaksPopoverProps = {
 };
 
 export function TweaksPopover({ sections }: TweaksPopoverProps = {}) {
-  const resolved =
-    sections ?? [
-      <DensityTweakSection key="density" />,
-      <ThemeTweakSection key="theme" />,
-    ];
+  const resolved = sections ?? [
+    <DensityTweakSection key="density" />,
+    <ThemeTweakSection key="theme" />,
+  ];
 
   return (
     <Popover>
@@ -125,20 +124,23 @@ function DensityRadio({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      onClick={onSelect}
+    <label
       className={[
-        "min-h-10 rounded-sm border px-3 py-2 font-label text-xs font-semibold uppercase tracking-[0.08em] transition-colors",
+        "flex min-h-10 cursor-pointer items-center justify-center rounded-sm border px-3 py-2 font-label text-xs font-semibold uppercase tracking-[0.08em] transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
         checked
           ? "border-on-surface bg-surface-container text-on-surface"
           : "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/60 hover:text-on-surface",
       ].join(" ")}
     >
+      <input
+        type="radio"
+        name="dashboard-density"
+        checked={checked}
+        onChange={() => onSelect()}
+        className="sr-only"
+      />
       {label}
-    </button>
+    </label>
   );
 }
 

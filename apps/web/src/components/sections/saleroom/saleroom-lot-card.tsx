@@ -45,12 +45,7 @@ function MetaStack({
  * Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
  * countdown pill (live / opens-in / closed) overlaid on the artwork.
  */
-export function SaleroomLotCard({
-  lot,
-  actions,
-  sizes = DEFAULT_SIZES,
-  priceEmphasis,
-}: Props) {
+export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES, priceEmphasis }: Props) {
   const emphasis = priceEmphasis ?? (lot.isLive ? "currentBid" : "estimate");
   const estimateStrong = emphasis === "estimate" || emphasis === "both";
   const currentStrong = emphasis === "currentBid" || emphasis === "both";

@@ -47,7 +47,9 @@ export default async function Image({ params }: Props) {
         {SITE_NAME}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <div style={{ fontSize: 28, color: "#c9c0ad", textTransform: "uppercase", letterSpacing: 4 }}>
+        <div
+          style={{ fontSize: 28, color: "#c9c0ad", textTransform: "uppercase", letterSpacing: 4 }}
+        >
           Sale catalogue
         </div>
         <div style={{ fontSize: 76, lineHeight: 1.05, fontWeight: 600 }}>{title}</div>

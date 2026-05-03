@@ -17,10 +17,7 @@ export function LotBreadcrumbTabs({ vm }: Props) {
     >
       {vm.homeSegment ? (
         <>
-          <Link
-            href={vm.homeSegment.href}
-            className="shrink-0 transition-opacity hover:opacity-80"
-          >
+          <Link href={vm.homeSegment.href} className="shrink-0 transition-opacity hover:opacity-80">
             {vm.homeSegment.label}
           </Link>
           <ChevronRight className="size-5 shrink-0 text-on-surface" aria-hidden />

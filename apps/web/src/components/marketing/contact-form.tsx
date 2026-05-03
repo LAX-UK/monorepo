@@ -214,12 +214,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                 Message
               </FormLabel>
               <FormControl>
-                <Textarea
-                  id="contact-message"
-                  rows={5}
-                  className={fieldClass}
-                  {...field}
-                />
+                <Textarea id="contact-message" rows={5} className={fieldClass} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

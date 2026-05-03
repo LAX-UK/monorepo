@@ -49,7 +49,9 @@ export default function TermsPage() {
         <LegalUL>
           <li>Buyer&apos;s premium: 25% up to £500,000 hammer; 20% on the balance.</li>
           <li>UK VAT is charged on the premium at the prevailing rate (currently 20%).</li>
-          <li>Import duties and clearance fees are payable by the buyer except for duty-paid lots.</li>
+          <li>
+            Import duties and clearance fees are payable by the buyer except for duty-paid lots.
+          </li>
         </LegalUL>
 
         <LegalH2 id="condition" className="scroll-mt-28">

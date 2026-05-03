@@ -35,8 +35,16 @@ export function SaleroomCatalogToolbar({ basePath }: Props) {
   const params = useSearchParams();
   const active = activeChip(new URLSearchParams(params?.toString() ?? ""));
   const chips: ChipDef[] = [
-    { label: "All", value: "all", href: buildHref(basePath, "all", new URLSearchParams(params?.toString() ?? "")) },
-    { label: "Live", value: "live", href: buildHref(basePath, "live", new URLSearchParams(params?.toString() ?? "")) },
+    {
+      label: "All",
+      value: "all",
+      href: buildHref(basePath, "all", new URLSearchParams(params?.toString() ?? "")),
+    },
+    {
+      label: "Live",
+      value: "live",
+      href: buildHref(basePath, "live", new URLSearchParams(params?.toString() ?? "")),
+    },
     {
       label: "Upcoming",
       value: "upcoming",
@@ -45,10 +53,7 @@ export function SaleroomCatalogToolbar({ basePath }: Props) {
   ];
 
   return (
-    <nav
-      aria-label="Catalog filters"
-      className="mb-6 flex flex-wrap items-center gap-2"
-    >
+    <nav aria-label="Catalog filters" className="mb-6 flex flex-wrap items-center gap-2">
       {chips.map((c) => {
         const isActive = active === c.value;
         return (
