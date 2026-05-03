@@ -54,6 +54,24 @@ variable "google_client_secret" {
   default   = ""
   sensitive = true
 }
+variable "apple_client_id" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Apple Services ID used for Sign in with Apple."
+}
+variable "apple_client_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Generated Apple client-secret JWT. Rotate at least every 180 days."
+}
+variable "apple_domain_association" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Apple domain association file content served by apps/auth for Sign in with Apple verification."
+}
 variable "spaces_access_key_id" {
   type      = string
   default   = ""
