@@ -1,11 +1,10 @@
 import { ARTIST_SECTION_BLURB } from "@/components/sections/home/home-copy";
 import type { ArtistCardVM } from "@/components/sections/home/home-view-models";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -56,13 +55,11 @@ export function LaxArtists({ items }: Props) {
                   innerClassName="absolute inset-0"
                   delayMs={Math.min(index * 70, 280)}
                 >
-                  <Image
+                  <MediaImage
                     src={a.portraitUrl}
                     alt={a.name}
-                    fill
-                    placeholder="blur"
-                    blurDataURL={TINY_IMAGE_BLUR}
-                    className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                    label={a.name.slice(0, 1).toUpperCase()}
+                    imgClassName="transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
                     sizes="(max-width: 640px) 100vw, 25vw"
                   />
                 </RevealInView>

@@ -1,10 +1,10 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { MediaImage } from "@/components/ui/media-image";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -16,7 +16,6 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 const PAGE_SIZE = 24;
@@ -268,21 +267,13 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     <div className="relative aspect-[4/5] bg-surface-container-low">
-                      {img ? (
-                        <Image
-                          src={img}
-                          alt={a.title}
-                          fill
-                          placeholder="blur"
-                          blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-                          sizes="(max-width: 640px) 100vw, 33vw"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-surface-container-high text-xs text-on-surface-variant">
-                          No image
-                        </div>
-                      )}
+                      <MediaImage
+                        src={img}
+                        alt={a.title}
+                        label="Lot artwork"
+                        imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                        sizes="(max-width: 640px) 100vw, 33vw"
+                      />
                       <OwnerBadge
                         owned={Boolean(currentUserId && a.sellerId === currentUserId)}
                         className="absolute right-3 top-3"

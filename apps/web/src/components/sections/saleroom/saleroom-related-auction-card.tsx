@@ -1,7 +1,5 @@
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { MediaImage } from "@/components/ui/media-image";
 import { Button } from "@auction/ui/components/button";
-import Image from "next/image";
 import Link from "next/link";
 import type { RelatedSaleVM } from "./view-models";
 
@@ -16,19 +14,12 @@ export function SaleroomRelatedAuctionCard({ sale }: Props) {
   return (
     <li className="flex flex-col gap-6 border-b border-brand-100 py-8 dark:border-outline-variant/30 lg:flex-row lg:items-stretch lg:gap-6">
       <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-neutral-200 dark:bg-surface-container-high sm:h-[240px] lg:h-[300px] lg:w-[435px] lg:max-w-[435px]">
-        {sale.imageUrl ? (
-          <Image
-            src={sale.imageUrl}
-            alt={sale.title}
-            fill
-            sizes="(max-width: 1024px) 100vw, 435px"
-            placeholder="blur"
-            blurDataURL={TINY_IMAGE_BLUR}
-            className="object-cover"
-          />
-        ) : (
-          <ImagePlaceholder label="Auction cover" />
-        )}
+        <MediaImage
+          src={sale.imageUrl}
+          alt={sale.title}
+          label="Auction cover"
+          sizes="(max-width: 1024px) 100vw, 435px"
+        />
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-10">
         <div className="mx-auto flex w-full max-w-[460px] flex-col items-start gap-10 self-stretch">

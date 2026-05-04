@@ -1,4 +1,5 @@
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
+import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
@@ -36,22 +37,27 @@ export default async function AdminSubmissionDetailPage({
           Asking: {s.askingPrice ?? "—"} · Reserve: {s.reservePrice ?? "—"}
         </p>
         <div>
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
-            Image URLs
-          </p>
-          {s.images.length === 0 ? (
-            <p className="text-on-surface-variant">None</p>
-          ) : (
-            <ul className="list-inside list-disc space-y-1 text-primary">
-              {s.images.map((u) => (
-                <li key={u}>
-                  <a href={u} target="_blank" rel="noreferrer" className="break-all underline">
-                    {u}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Images</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {(s.images.length ? s.images : [null]).map((src, index) => (
+              <a
+                key={`${src ?? "empty"}-${index}`}
+                href={src ?? undefined}
+                target={src ? "_blank" : undefined}
+                rel={src ? "noreferrer" : undefined}
+                aria-disabled={!src}
+                className={!src ? "pointer-events-none" : undefined}
+              >
+                <MediaImage
+                  src={src}
+                  alt={src ? `${s.title} submission image ${index + 1}` : ""}
+                  label="Submission image"
+                  aspect={[1, 1]}
+                  sizes="(max-width: 640px) 50vw, 180px"
+                />
+              </a>
+            ))}
+          </div>
         </div>
         {s.submitterNotes ? (
           <p>

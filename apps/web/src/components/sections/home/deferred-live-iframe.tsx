@@ -1,7 +1,7 @@
 "use client";
 
+import { MediaImage } from "@/components/ui/media-image";
 import { Button } from "@auction/ui/components/button";
-import Image from "next/image";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -54,18 +54,15 @@ export function DeferredLiveIframe({
 
   return (
     <div className="absolute inset-0">
-      {posterUrl ? (
-        <Image
-          src={posterUrl}
-          alt={posterAlt}
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-          priority
-        />
-      ) : (
-        <div className="absolute inset-0 bg-black" aria-hidden />
-      )}
+      <MediaImage
+        src={posterUrl}
+        alt={posterAlt}
+        label="Live stream"
+        tone="dark"
+        priority
+        imgClassName="object-center"
+        sizes="100vw"
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" aria-hidden />
       <div className="absolute inset-0 flex items-center justify-center p-6">
         <Button

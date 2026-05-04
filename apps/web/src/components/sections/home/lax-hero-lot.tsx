@@ -1,10 +1,10 @@
 import type { HeroLotVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, LiveDot, StatTile } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -23,13 +23,13 @@ export function LaxHeroLot({ lot }: Props) {
           className="zoom-bg absolute inset-0 overflow-hidden"
           innerClassName="absolute inset-0"
         >
-          <Image
+          <MediaImage
             src={lot.heroImageUrl}
             alt={lot.imageAlt}
-            fill
+            label="Hero artwork"
+            tone="dark"
             priority
-            fetchPriority="high"
-            className="object-cover object-center"
+            imgClassName="object-center"
             sizes="100vw"
           />
         </RevealOnMount>
