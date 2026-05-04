@@ -13,7 +13,7 @@ type Props = {
   artistId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
-  loginNextPath?: string;
+  loginNextPath: string;
   /** Injectable API transport (defaults to cookie-authenticated browser fetch). */
   client?: ArtistWatchlistClient;
 };
@@ -22,7 +22,7 @@ export function ArtistWatchToggle({
   artistId,
   initialWatching,
   isAuthenticated,
-  loginNextPath = `/artist/${artistId}`,
+  loginNextPath,
   client = defaultArtistWatchlistClient,
 }: Props) {
   const [watching, setWatching] = useState(initialWatching);
