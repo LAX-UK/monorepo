@@ -33,9 +33,11 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
   }
 
   async updateProfile(userId: string, input: ProfileUpdateInput): Promise<void> {
-    const patch: Partial<typeof user.$inferInsert> = { updatedAt: new Date() };
-    if (input.name !== undefined) patch.name = input.name;
-    if (input.image !== undefined) patch.image = input.image;
-    await this.db.update(user).set(patch).where(eq(user.id, userId));
+    const set: { name?: string; image?: string | null; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+    if (input.name !== undefined) set.name = input.name;
+    if (input.image !== undefined) set.image = input.image;
+    await this.db.update(user).set(set).where(eq(user.id, userId));
   }
 }

@@ -95,7 +95,6 @@ describe("ItemSubmissionService", () => {
     } as unknown as IItemSubmissionRepository;
     const users: IUserRepository = {
       listIdsByRole: vi.fn().mockResolvedValue(["admin-a", "admin-b"]),
-      updateRoleById: vi.fn().mockResolvedValue(undefined),
     } as unknown as IUserRepository;
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),

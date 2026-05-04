@@ -13,6 +13,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { presentSubmissionImages, presentSubmissionsImages } from "../lib/media-presenters.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireBuyerRole,
@@ -32,9 +33,11 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.itemSubmissionService.createDraft(userId, body);
-    return result.match(
-      (data) => c.json({ data }, 201),
-      (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
+    if (result.isErr())
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    return c.json(
+      { data: await presentSubmissionImages(container.mediaUrlResolver, result.value) },
+      201,
     );
   });
 
@@ -46,7 +49,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       limit: q.limit,
       offset: q.offset,
     });
-    return c.json({ data: rows });
+    return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
   });
 
   r.get(
@@ -62,7 +65,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         limit: q.limit,
         offset: q.offset,
       });
-      return c.json({ data: rows });
+      return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
     },
   );
 
@@ -72,16 +75,19 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     const userId = c.get("userId") as string;
     if (roleHasCapability(role, "platform.admin.full")) {
       const result = await container.itemSubmissionService.getForAdmin(id);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     }
     const result = await container.itemSubmissionService.getForSeller(userId, id);
-    return result.match(
-      (data) => c.json({ data }),
-      (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-    );
+    if (result.isErr())
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    return c.json({
+      data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+    });
   });
 
   r.patch(
@@ -110,10 +116,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
           submissionId: id,
           adminNotes: parsed.data,
         });
-        return result.match(
-          (data) => c.json({ data }),
-          (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-        );
+        if (result.isErr()) {
+          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        }
+        return c.json({
+          data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+        });
       }
       const parsed = updateItemSubmissionSchema.safeParse(raw);
       if (!parsed.success) {
@@ -125,10 +133,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         submissionId: id,
         sellerPatch: parsed.data as UpdateItemSubmissionInput,
       });
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     },
   );
 
@@ -141,10 +151,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const result = await container.itemSubmissionService.submitForReview(userId, id);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     },
   );
 
@@ -157,10 +169,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const result = await container.itemSubmissionService.withdraw(userId, id);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     },
   );
 
@@ -173,10 +187,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const result = await container.itemSubmissionService.startReview(adminId, id);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     },
   );
 
@@ -191,10 +207,18 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const { id } = c.req.valid("param");
       const { reviewNotes } = c.req.valid("json");
       const result = await container.itemSubmissionService.approve(adminId, id, reviewNotes);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: {
+          submission: await presentSubmissionImages(
+            container.mediaUrlResolver,
+            result.value.submission,
+          ),
+          lot: result.value.lot,
+        },
+      });
     },
   );
 
@@ -214,10 +238,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         rejectionReason,
         reviewNotes,
       );
-      return result.match(
-        (data) => c.json({ data }),
-        (e) => c.json({ error: e.message }, asHttpStatus(e.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({
+        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      });
     },
   );
 

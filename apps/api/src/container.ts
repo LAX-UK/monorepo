@@ -75,6 +75,7 @@ import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
+import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
@@ -93,6 +94,7 @@ import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
+import { MediaUrlResolver } from "./services/media-url-resolver.js";
 import { NotificationQueryService } from "./services/notification-query.service.js";
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
@@ -161,8 +163,10 @@ export type Container = {
   itemSubmissionRepository: IItemSubmissionRepository;
   itemSubmissionService: IItemSubmissionService;
   objectStorage: IObjectStorage;
+  mediaUrlResolver: MediaUrlResolver;
   uploadService: UploadService;
   uploadValidationQueue: Queue;
+  imageCleanupQueue: Queue;
 };
 
 export function createContainer(env: Env): Container {
@@ -235,14 +239,6 @@ export function createContainer(env: Env): Container {
     quietHoursChecker,
   );
 
-  const itemSubmissionService = new ItemSubmissionService(
-    db,
-    itemSubmissionRepository,
-    lotRepo,
-    userRepo,
-    notificationDispatcher,
-  );
-
   const publicUploadBase = `${env.API_PUBLIC_URL.replace(/\/$/, "")}/static/uploads`;
   const objectStorage: IObjectStorage =
     env.STORAGE_DRIVER === "s3"
@@ -270,7 +266,20 @@ export function createContainer(env: Env): Container {
 
   const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
   const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
-  const uploadService = new UploadService(objectStorage, db, redis, uploadValidationQueue);
+  const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
+  const mediaUrlResolver = new MediaUrlResolver(
+    objectStorage,
+    env.STORAGE_READ_MODE,
+    env.SIGNED_GET_TTL_SEC,
+  );
+  const imageCleanupService = new ImageCleanupService(objectStorage, imageCleanupQueue);
+  const uploadService = new UploadService(
+    objectStorage,
+    db,
+    redis,
+    uploadValidationQueue,
+    mediaUrlResolver,
+  );
   const lotJobScheduler: ILotJobScheduler = new LotJobScheduler(
     bullConnection,
     (lotId) => lotLifecycleService.processActivateJob(lotId),
@@ -288,9 +297,10 @@ export function createContainer(env: Env): Container {
     watchlistRepo,
     lotJobScheduler,
     lotNotificationCoordinator,
+    imageCleanupService,
   );
 
-  const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler);
+  const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
@@ -301,6 +311,14 @@ export function createContainer(env: Env): Container {
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
   const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
+  const itemSubmissionService = new ItemSubmissionService(
+    db,
+    itemSubmissionRepository,
+    lotRepo,
+    userRepo,
+    notificationDispatcher,
+    imageCleanupService,
+  );
 
   const categoryService = new CategoryService(categoryRepo);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
@@ -371,7 +389,7 @@ export function createContainer(env: Env): Container {
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
   const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, userRepo);
-  const profileService = new ProfileService(profileRepo, profileRepo);
+  const profileService = new ProfileService(profileRepo, profileRepo, imageCleanupService);
   const addressService = new AddressService(addressRepo);
 
   const transactionalMailer = createTransactionalMailer(env);
@@ -472,7 +490,9 @@ export function createContainer(env: Env): Container {
     itemSubmissionRepository,
     itemSubmissionService,
     objectStorage,
+    mediaUrlResolver,
     uploadService,
     uploadValidationQueue,
+    imageCleanupQueue,
   };
 }

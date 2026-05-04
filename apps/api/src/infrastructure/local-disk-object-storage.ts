@@ -22,6 +22,18 @@ export class LocalDiskObjectStorage implements IObjectStorage {
     return `${base}${path}`;
   }
 
+  extractKey(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!hasUrlScheme(trimmed)) return trimmed.replace(/^\/+/, "");
+    const base = this.publicUrlPrefix.replace(/\/$/, "");
+    const prefix = `${base}/`;
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+    return null;
+  }
+
   async createPresignedPut(args: {
     key: string;
     contentType: string;
@@ -38,6 +50,11 @@ export class LocalDiskObjectStorage implements IObjectStorage {
         "content-type": args.contentType,
       },
     };
+  }
+
+  async createPresignedGet(args: { key: string; expiresInSec: number }): Promise<{ url: string }> {
+    void args.expiresInSec;
+    return { url: this.getPublicUrl(args.key) };
   }
 
   async headObject(
@@ -71,4 +88,8 @@ export class LocalDiskObjectStorage implements IObjectStorage {
     const fullPath = join(this.rootDir, key);
     await unlink(fullPath).catch(() => undefined);
   }
+}
+
+function hasUrlScheme(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
 }

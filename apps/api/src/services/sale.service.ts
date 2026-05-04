@@ -14,6 +14,7 @@ import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 
@@ -26,6 +27,7 @@ export class SaleService {
     private readonly saleRepo: ISaleRepository,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
+    private readonly imageCleanup?: ImageCleanupService,
   ) {}
 
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
@@ -310,6 +312,9 @@ export class SaleService {
       }
     }
     const updated = await this.saleRepo.update(saleId, normalized);
+    if (patch.coverImages !== undefined) {
+      await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+    }
     return ok(updated);
   }
 }
