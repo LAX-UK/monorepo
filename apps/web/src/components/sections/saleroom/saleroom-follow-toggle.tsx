@@ -13,7 +13,7 @@ type Props = {
   size?: "sm" | "lg";
   /** Optional label override (e.g. for a hero CTA). */
   label?: string;
-  loginNextPath?: string;
+  loginNextPath: string;
   /**
    * `outlined-block` — Figma saleroom hero: 40px height, square corners, #0A0A0A border.
    * `rounded` (default) — pill / existing marketing style.
@@ -34,7 +34,7 @@ export function SaleroomFollowToggle({
   isAuthenticated,
   size = "lg",
   label,
-  loginNextPath = `/sales/${saleId}`,
+  loginNextPath,
   appearance = "rounded",
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);

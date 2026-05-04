@@ -18,6 +18,7 @@ import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import type { Lot } from "@auction/types";
 import { ChevronDown } from "lucide-react";
@@ -254,7 +255,7 @@ export function ArtworkBidPanel({
     setError(null);
   }, [minNumeric]);
 
-  const loginNext = loginNextPath ?? `/artwork/${auction.id}`;
+  const loginNext = loginNextPath ?? lotPath(auction);
 
   const scrollToBid = useCallback(() => {
     document.getElementById("bid-interactive-anchor")?.scrollIntoView({
