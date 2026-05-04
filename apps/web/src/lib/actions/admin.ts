@@ -254,7 +254,6 @@ export async function adminUpdateLotMarketingDetailsResultAction(
   }
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);
-  revalidatePath(`/artwork/${id}`);
   revalidatePath("/", "layout");
   return actionSuccess();
 }
