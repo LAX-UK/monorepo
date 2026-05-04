@@ -3,7 +3,7 @@
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { LotCardTimer } from "@/components/lot-timer";
 import { Button } from "@/components/ui/button";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
@@ -24,7 +24,6 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Toolbar } from "@auction/ui/components/toolbar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
@@ -71,17 +70,13 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
         return (
           <Link href={lotPath(a)} className="flex min-w-[220px] items-center gap-3">
             <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
-              {img ? (
-                <Image
-                  src={img}
-                  alt={`${a.title} thumbnail`}
-                  fill
-                  className={`object-cover ${row.original.outbid ? "grayscale" : ""}`}
-                  sizes="56px"
-                />
-              ) : (
-                <ImagePlaceholder label="Lot artwork" hideIcon />
-              )}
+              <MediaImage
+                src={img}
+                alt={`${a.title} thumbnail`}
+                label="Lot artwork"
+                imgClassName={row.original.outbid ? "grayscale" : undefined}
+                sizes="56px"
+              />
             </span>
             <span className="min-w-0">
               <span className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline">

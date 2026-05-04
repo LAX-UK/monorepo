@@ -2,12 +2,11 @@
 
 import { LotCardTimer } from "@/components/lot-timer";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { lotPath } from "@/lib/seo/url";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 import type { WatchlistBoardRow } from "./watchlist-board-rows";
@@ -25,17 +24,12 @@ function watchlistColumns(): ColumnDef<WatchlistBoardRow>[] {
           className="flex min-w-[240px] items-center gap-3"
         >
           <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
-            {row.original.image ? (
-              <Image
-                src={row.original.image}
-                alt={`${row.original.title} thumbnail`}
-                fill
-                className="object-cover"
-                sizes="56px"
-              />
-            ) : (
-              <ImagePlaceholder label="Lot artwork" hideIcon />
-            )}
+            <MediaImage
+              src={row.original.image}
+              alt={`${row.original.title} thumbnail`}
+              label="Lot artwork"
+              sizes="56px"
+            />
           </span>
           <span className="min-w-0">
             <span className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline">

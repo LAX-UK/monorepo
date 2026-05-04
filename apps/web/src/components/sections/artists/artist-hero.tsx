@@ -1,5 +1,5 @@
 import { ArtistBioReadMore } from "@/components/sections/artists/artist-bio-read-more";
-import Image from "next/image";
+import { MediaImage } from "@/components/ui/media-image";
 import type { ReactNode } from "react";
 
 export type ArtistHeroVM = {
@@ -28,23 +28,14 @@ export function ArtistHero({ vm, actions }: Props) {
     <section className="mb-16 grid grid-cols-1 items-end gap-0 md:mb-20 md:min-h-[calc(100vh_-_var(--header-height))] md:grid-cols-[5fr_7fr]">
       <div className="relative md:sticky md:top-[var(--header-height)] md:h-[calc(100vh_-_var(--header-height))]">
         <div className="h-[65vw] min-h-[220px] max-h-[480px] w-full overflow-hidden bg-surface-container-low md:h-full md:max-h-none">
-          {vm.portraitUrl ? (
-            <Image
-              src={vm.portraitUrl}
-              alt={vm.name}
-              width={560}
-              height={700}
-              className="h-full w-full object-cover transition-transform duration-700 motion-safe:hover:scale-105 motion-reduce:hover:scale-100"
-              priority
-            />
-          ) : (
-            <div
-              className="flex h-full w-full items-center justify-center bg-surface-container-high font-headline text-4xl text-on-surface-variant"
-              aria-hidden
-            >
-              {vm.name.slice(0, 1).toUpperCase()}
-            </div>
-          )}
+          <MediaImage
+            src={vm.portraitUrl}
+            alt={vm.name}
+            label={vm.name.slice(0, 1).toUpperCase()}
+            sizes="(max-width: 768px) 100vw, 42vw"
+            priority
+            imgClassName="transition-transform duration-700 motion-safe:hover:scale-105 motion-reduce:hover:scale-100"
+          />
         </div>
       </div>
       <div className="flex flex-col items-start gap-8 px-0 py-8 md:px-10 md:py-16 lg:px-14 lg:py-20">

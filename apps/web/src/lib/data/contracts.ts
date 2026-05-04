@@ -52,6 +52,8 @@ export type SessionUser = {
   email: string;
   name: string;
   role: UserRole;
+  /** Profile / OAuth avatar when present. */
+  image?: string | null;
   /** When true (if API exposes it), bidding UI is blocked client-side. */
   suspended?: boolean;
 };
@@ -66,7 +68,7 @@ export type ArtistProfile = {
   name: string;
   tagline: string;
   bio: string;
-  portraitUrl: string;
+  portraitUrl: string | null;
   /** Display line above the name (e.g. medium category). Falls back to Medium stat when omitted. */
   discipline?: string;
   stats: { label: string; value: string }[];

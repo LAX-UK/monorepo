@@ -1,6 +1,6 @@
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
+import { MediaImage } from "@/components/ui/media-image";
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -34,22 +34,14 @@ export function LotRightSummary({ seed, children }: Props) {
           {seed.title}
         </h1>
         <div className="flex min-w-0 items-center gap-2">
-          {av ? (
-            <Image
-              src={av}
-              width={20}
-              height={20}
-              alt=""
-              className="size-5 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span
-              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-[9px] font-bold leading-none text-on-surface"
-              aria-hidden
-            >
-              {sellerInitials(seed.sellerName)}
-            </span>
-          )}
+          <MediaImage
+            src={av}
+            alt=""
+            label={sellerInitials(seed.sellerName)}
+            shape="circle"
+            sizes="20px"
+            className="size-5 shrink-0"
+          />
           <div className="min-w-0 flex flex-1 items-center gap-2">
             <Link
               href={seed.sellerHref}

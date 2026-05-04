@@ -8,7 +8,6 @@ import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotStatus, Sale } from "@auction/types";
 import type { StreamEmbedProvider } from "@auction/validators";
 import {
-  HERO_FALLBACK_IMG,
   HERO_PLACEHOLDER_ARTIST,
   HERO_PLACEHOLDER_FEATURED_HEADING,
   HERO_PLACEHOLDER_SALE_LINE,
@@ -24,7 +23,7 @@ export type HeroLotVM = {
   priceFormatted: string;
   currentBidFormatted: string;
   bidCountDisplay: string;
-  heroImageUrl: string;
+  heroImageUrl: string | null;
   /** Descriptive alt for the hero artwork image */
   imageAlt: string;
   auctionDateLabel: string;
@@ -122,7 +121,7 @@ export type UpcomingAuctionVM = {
 export type ArtistCardVM = {
   id: string;
   name: string;
-  portraitUrl: string;
+  portraitUrl: string | null;
   href: string;
   /** Short specialty/discipline label rendered above the View profile link. */
   specialty?: string;
@@ -159,8 +158,8 @@ export function createHeroFallbackVm(): HeroLotVM {
     priceFormatted: "—",
     currentBidFormatted: "—",
     bidCountDisplay: "—",
-    heroImageUrl: HERO_FALLBACK_IMG,
-    imageAlt: "Abstract gallery artwork — decorative hero background",
+    heroImageUrl: null,
+    imageAlt: "Hero artwork",
     auctionDateLabel: HERO_PLACEHOLDER_SALE_LINE,
     saleMetaLine: HERO_PLACEHOLDER_SALE_LINE,
     featuredHeading: HERO_PLACEHOLDER_FEATURED_HEADING,
@@ -187,7 +186,7 @@ export function toHeroLotVM(
     priceFormatted: primary.value,
     currentBidFormatted: formatMoney(lot.currentPrice),
     bidCountDisplay: "—",
-    heroImageUrl: lot.images[0] ?? HERO_FALLBACK_IMG,
+    heroImageUrl: lot.images[0] ?? null,
     imageAlt: heroImageAlt(lot.title, artistName),
     auctionDateLabel: formatLotAuctionLine(lot),
     saleMetaLine,

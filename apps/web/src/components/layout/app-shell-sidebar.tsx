@@ -8,11 +8,11 @@ import {
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
+import { MediaImage } from "@/components/ui/media-image";
 import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
-import { Avatar, AvatarFallback } from "@auction/ui/components/avatar";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
@@ -177,11 +177,14 @@ export function AppShellSidebar({
             !labelsHidden && "justify-start",
           )}
         >
-          <Avatar className="size-8 bg-primary text-on-primary">
-            <AvatarFallback className="bg-primary font-label text-xs font-bold text-on-primary">
-              {initials(user.name)}
-            </AvatarFallback>
-          </Avatar>
+          <MediaImage
+            src={user.image ?? null}
+            alt={user.name}
+            label={initials(user.name)}
+            shape="circle"
+            sizes="32px"
+            className="size-8 shrink-0"
+          />
           <div
             className={cn(
               "min-w-0 overflow-hidden transition-[max-width,opacity] duration-150",

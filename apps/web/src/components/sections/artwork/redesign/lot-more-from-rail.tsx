@@ -3,13 +3,11 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -80,19 +78,13 @@ export function LotMoreFromRail({
                   className="group relative block w-full overflow-hidden bg-brand-900"
                 >
                   <div className="relative aspect-[200/240] w-full">
-                    {c.imageUrl ? (
-                      <Image
-                        src={c.imageUrl}
-                        alt=""
-                        fill
-                        placeholder="blur"
-                        blurDataURL={TINY_IMAGE_BLUR}
-                        className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-                        sizes="(max-width: 1023px) 100vw, 42vw"
-                      />
-                    ) : (
-                      <ImagePlaceholder label="Lot artwork" hideIcon />
-                    )}
+                    <MediaImage
+                      src={c.imageUrl}
+                      alt=""
+                      label="Lot artwork"
+                      imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105"
+                      sizes="(max-width: 1023px) 100vw, 42vw"
+                    />
                     <OwnerBadge
                       owned={Boolean(currentUserId && c.sellerId === currentUserId)}
                       className="absolute right-2 top-2"

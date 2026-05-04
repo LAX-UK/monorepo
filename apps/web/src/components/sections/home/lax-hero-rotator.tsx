@@ -1,11 +1,11 @@
 "use client";
 
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 
@@ -74,29 +74,21 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       onKeyDown={onKeyDown}
     >
       <div className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
-        {current.coverImageUrl ? (
-          <RevealOnMount
-            key={current.id}
-            className="absolute inset-0 overflow-hidden"
-            innerClassName="absolute inset-0"
-          >
-            <Image
-              src={current.coverImageUrl}
-              alt={current.coverImageAlt}
-              fill
-              priority={index === 0}
-              fetchPriority={index === 0 ? "high" : "auto"}
-              className="object-cover object-center"
-              sizes="100vw"
-            />
-          </RevealOnMount>
-        ) : (
-          <div
-            key={`empty-${current.id}`}
-            className="absolute inset-0 bg-brand-900/20 dark:bg-surface-container-high"
-            aria-hidden
+        <RevealOnMount
+          key={current.id}
+          className="absolute inset-0 overflow-hidden"
+          innerClassName="absolute inset-0"
+        >
+          <MediaImage
+            src={current.coverImageUrl}
+            alt={current.coverImageAlt}
+            label="Auction cover"
+            tone="dark"
+            priority={index === 0}
+            imgClassName="object-center"
+            sizes="100vw"
           />
-        )}
+        </RevealOnMount>
         <div
           className="absolute inset-0"
           style={{

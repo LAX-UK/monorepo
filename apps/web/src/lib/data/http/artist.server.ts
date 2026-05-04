@@ -5,21 +5,9 @@ import { getServerHc } from "@/lib/data/http/hc-server";
 import { createMockArtistReader } from "@/lib/data/mock/artist";
 import { cache } from "react";
 
-/** Allowed in next.config `images.remotePatterns` — used when `user.image` is null */
-const PORTRAIT_FALLBACKS = [
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&q=80",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=640&q=80",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=640&q=80",
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=640&q=80",
-] as const;
-
-export function portraitForPublicArtist(id: string, image: string | null | undefined): string {
+export function portraitForPublicArtist(image: string | null | undefined): string | null {
   const trimmed = image?.trim();
-  if (trimmed) return trimmed;
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  const idx = Math.abs(h) % PORTRAIT_FALLBACKS.length;
-  return PORTRAIT_FALLBACKS[idx] ?? PORTRAIT_FALLBACKS[0];
+  return trimmed || null;
 }
 
 export function mapPublicUserToArtist(row: {
@@ -32,7 +20,7 @@ export function mapPublicUserToArtist(row: {
     name: row.name,
     tagline: "Consignor",
     bio: "",
-    portraitUrl: portraitForPublicArtist(row.id, row.image),
+    portraitUrl: portraitForPublicArtist(row.image),
     stats: [],
   };
 }

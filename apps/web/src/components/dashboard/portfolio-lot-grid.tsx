@@ -1,12 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { TimelineStages } from "@auction/ui";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -61,17 +60,13 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       : "relative h-full min-h-72 bg-surface-container-low sm:min-h-full"
                   }
                 >
-                  {row.image ? (
-                    <Image
-                      src={row.image}
-                      alt={`${row.title} — won lot artwork`}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, 40vw"
-                    />
-                  ) : (
-                    <ImagePlaceholder label="Lot artwork" />
-                  )}
+                  <MediaImage
+                    src={row.image}
+                    alt={`${row.title} — won lot artwork`}
+                    label="Lot artwork"
+                    imgClassName="transition-transform duration-700 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, 40vw"
+                  />
                 </div>
               </Link>
               <div className="flex min-w-0 flex-col">

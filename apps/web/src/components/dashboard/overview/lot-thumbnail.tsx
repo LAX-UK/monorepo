@@ -1,5 +1,4 @@
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import Image from "next/image";
+import { MediaImage } from "@/components/ui/media-image";
 
 type LotThumbnailProps = {
   src: string | null | undefined;
@@ -10,12 +9,12 @@ type LotThumbnailProps = {
 
 export function LotThumbnail({ src, alt, className, sizes }: LotThumbnailProps) {
   return (
-    <div className={`relative shrink-0 overflow-hidden bg-surface-container-high ${className}`}>
-      {src ? (
-        <Image src={src} alt={alt} fill className="object-cover" sizes={sizes} />
-      ) : (
-        <ImagePlaceholder label="Lot artwork" hideIcon />
-      )}
-    </div>
+    <MediaImage
+      src={src}
+      alt={alt}
+      label="Lot artwork"
+      sizes={sizes}
+      className={`shrink-0 bg-surface-container-high ${className}`}
+    />
   );
 }

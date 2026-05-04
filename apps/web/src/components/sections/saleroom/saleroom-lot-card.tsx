@@ -1,6 +1,5 @@
 import { LotCardTimer } from "@/components/lot-timer";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import Image from "next/image";
+import { MediaImage } from "@/components/ui/media-image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleLotCardVM } from "./view-models";
@@ -56,17 +55,13 @@ export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES, priceEmph
         className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
         aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
       >
-        {lot.imageUrl ? (
-          <Image
-            src={lot.imageUrl}
-            alt={lot.imageAlt}
-            fill
-            sizes={sizes}
-            className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <ImagePlaceholder label="Lot artwork" />
-        )}
+        <MediaImage
+          src={lot.imageUrl}
+          alt={lot.imageAlt}
+          label="Lot artwork"
+          sizes={sizes}
+          imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+        />
         <LotCardTimer status={lot.status} startTime={lot.startTime} endTime={lot.endTime} />
       </Link>
 

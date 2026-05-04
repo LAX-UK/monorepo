@@ -1,5 +1,7 @@
 "use client";
 
+import { MediaImage } from "@/components/ui/media-image";
+import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Button } from "@auction/ui/components/button";
 import { useRef, useState } from "react";
@@ -43,6 +45,19 @@ type UploadedImage = {
   previewUrl: string;
 };
 
+function placeholderLabel(kind: UploadKind): string {
+  switch (kind) {
+    case "avatar":
+      return "Profile";
+    case "sale_cover":
+      return "Auction cover";
+    case "submission_image":
+      return "Submission image";
+    case "lot_image":
+      return "Lot artwork";
+  }
+}
+
 export function UploadField({
   kind,
   multiple = false,
@@ -54,6 +69,8 @@ export function UploadField({
   const [items, setItems] = useState<UploadItem[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
+  const label = placeholderLabel(kind);
+  const isAvatar = kind === "avatar";
 
   async function uploadFiles(files: FileList | File[]) {
     const fileArray = Array.from(files).slice(0, Math.max(0, maxFiles - value.length));
@@ -128,13 +145,16 @@ export function UploadField({
         }}
       />
       {value.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={isAvatar ? "max-w-40" : "grid gap-3 sm:grid-cols-2"}>
           {value.map((urlOrKey, index) => (
             <div key={urlOrKey} className="rounded-md border border-outline-variant/30 p-2">
-              <img
+              <MediaImage
                 src={previewUrls[urlOrKey] ?? urlOrKey}
-                alt=""
-                className="h-28 w-full rounded object-cover"
+                alt={label}
+                label={label}
+                shape={isAvatar ? "circle" : "rect"}
+                aspect={[1, 1]}
+                sizes={isAvatar ? "160px" : "(max-width: 640px) 100vw, 320px"}
               />
               <Button
                 type="button"
@@ -147,7 +167,14 @@ export function UploadField({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <MediaPlaceholder
+          label={label}
+          shape={isAvatar ? "circle" : "rect"}
+          aspect={[1, 1]}
+          className={isAvatar ? "max-w-40" : undefined}
+        />
+      )}
       {items.length > 0 ? (
         <ul className="space-y-1 font-body text-xs text-on-surface-variant">
           {items.map((item, index) => (

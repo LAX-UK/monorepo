@@ -2,13 +2,11 @@ import { LotCardTimer } from "@/components/lot-timer";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -64,25 +62,19 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
                   className="group flex flex-col gap-4 outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                 >
                   <div className="relative aspect-[320/340] w-full overflow-hidden bg-surface-container-high dark:bg-surface-container-high">
-                    {item.imageUrl ? (
-                      <RevealInView
-                        className="absolute inset-0 overflow-hidden"
-                        innerClassName="absolute inset-0"
-                        delayMs={Math.min(index * 70, 280)}
-                      >
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.imageAlt}
-                          fill
-                          placeholder="blur"
-                          blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        />
-                      </RevealInView>
-                    ) : (
-                      <ImagePlaceholder label="Lot artwork" />
-                    )}
+                    <RevealInView
+                      className="absolute inset-0 overflow-hidden"
+                      innerClassName="absolute inset-0"
+                      delayMs={Math.min(index * 70, 280)}
+                    >
+                      <MediaImage
+                        src={item.imageUrl}
+                        alt={item.imageAlt}
+                        label="Lot artwork"
+                        imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      />
+                    </RevealInView>
                     <LotCardTimer
                       status={item.status}
                       startTime={item.startTime}

@@ -1,6 +1,6 @@
 "use client";
 
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { MediaImage } from "@/components/ui/media-image";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -10,7 +10,6 @@ import {
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 type Props = {
@@ -126,7 +125,15 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
   }, [go, hasMany, lightboxOpen]);
 
   if (!img) {
-    return <div className="flex h-full items-center justify-center text-secondary">No image</div>;
+    return (
+      <MediaImage
+        src={null}
+        alt=""
+        label="Lot image"
+        tone="auto"
+        className="h-full min-h-[240px] w-full"
+      />
+    );
   }
 
   return (
@@ -148,14 +155,12 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
             else if (dx < -SWIPE_PX) go(1);
           }}
         >
-          <Image
+          <MediaImage
             src={img}
             alt={altAt(index, "hero")}
-            fill
+            label="Lot image"
             priority
-            placeholder="blur"
-            blurDataURL={TINY_IMAGE_BLUR}
-            className="cursor-zoom-in bg-surface-container-low object-cover transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
+            imgClassName="cursor-zoom-in bg-surface-container-low transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
             sizes="(min-width: 1024px) 58vw, 100vw"
             onClick={openLightbox}
           />
@@ -228,15 +233,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
                         : "ring-transparent hover:ring-outline-variant/40",
                     )}
                   >
-                    <Image
-                      src={u}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                      placeholder="blur"
-                      blurDataURL={TINY_IMAGE_BLUR}
-                    />
+                    <MediaImage src={u} alt="" label="Lot image" sizes="56px" />
                   </Button>
                 );
               })}
@@ -286,14 +283,12 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
             <TooltipContent>Close (Esc)</TooltipContent>
           </Tooltip>
           <div className="relative h-[min(85dvh,900px)] min-h-[200px] w-full max-w-6xl shrink-0">
-            <Image
+            <MediaImage
               src={img}
               alt={lightboxAlt}
-              fill
-              className="object-contain motion-reduce:transition-none"
+              label="Lot image"
+              imgClassName="object-contain motion-reduce:transition-none"
               sizes="100vw"
-              placeholder="blur"
-              blurDataURL={TINY_IMAGE_BLUR}
             />
           </div>
           {hasMany ? (
