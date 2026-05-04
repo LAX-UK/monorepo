@@ -9,19 +9,18 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HeaderAuthLinks } from "./header-auth-links";
+import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
-import { NotificationBell } from "./notification-bell";
 import { ThemeToggle } from "./theme-toggle";
 
 type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 
 type SiteHeaderProps = {
-  user: SessionUser | null;
+  user?: SessionUser | null;
   nav?: MegaMenuSection[];
   /**
    * Routes whose hero is meant to read directly into the header (the header
@@ -93,7 +92,7 @@ export function SiteHeader({
     >
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">
         <div className="hidden lg:block">
-          <HeaderUtilityBar user={user} />
+          <HeaderUtilityBar />
         </div>
 
         <HeaderMegaNav
@@ -112,9 +111,9 @@ export function SiteHeader({
             <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
               <HeaderSearchTrigger />
               <ThemeToggle />
-              {user ? <NotificationBell /> : null}
+              <HeaderAuthChip variant="notifications" />
               <div className="lg:hidden">
-                <HeaderAuthLinks user={user} />
+                <HeaderAuthChip variant="account" />
               </div>
               <Button
                 type="button"
@@ -136,7 +135,6 @@ export function SiteHeader({
       <MobileNavDrawer
         open={menuOpen}
         onOpenChange={setMenuOpen}
-        user={user}
         pathname={pathname}
         sections={nav}
       />

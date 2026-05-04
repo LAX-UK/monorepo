@@ -19,7 +19,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
-import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Menu, Search } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -161,6 +162,17 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
               <Menu className="size-5" aria-hidden />
             </Button>
             <AppShellBreadcrumbs role={shellRole} />
+            {shellRole === "client" ? (
+              <Link
+                href="/"
+                prefetch
+                aria-label="View public LAX site"
+                className="hidden min-h-11 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:inline-flex"
+              >
+                <ExternalLink className="size-3.5" aria-hidden />
+                <span>View site</span>
+              </Link>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <Button
