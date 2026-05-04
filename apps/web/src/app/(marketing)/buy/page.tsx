@@ -6,9 +6,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
-  title: "Buying at LAX",
+  title: "Buying at LAX.BID",
   description:
-    "How to buy at LAX: browse auctions, register, verify your identity, bid, settle payment, and arrange shipping or collection.",
+    "How to buy at LAX.BID by London Art Exchange: browse auctions, register, verify your identity, bid, settle payment, and arrange shipping or collection.",
   path: "/buy",
 });
 
@@ -16,7 +16,7 @@ export default function BuyPage() {
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Buying at LAX", path: "/buy" },
+      { name: "Buying at LAX.BID", path: "/buy" },
     ]),
   );
 
@@ -26,17 +26,17 @@ export default function BuyPage() {
         {jsonLdText}
       </script>
       <LegalPage
-        title="Buying at LAX"
+        title="Buying at LAX.BID"
         lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate
         embedded
       >
         <p>
-          Before you bid, make sure your account is ready: register with LAX, verify your identity,
-          and accept our{" "}
+          Before you bid, make sure your account is ready: register with LAX.BID, verify your
+          identity, and accept our{" "}
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
-            Terms of sale
+            Conditions of Business
           </Link>
           . Bids are only enabled once those checks are complete.
         </p>
@@ -68,7 +68,7 @@ export default function BuyPage() {
           Create an account before bidding. You must be 18 or over, provide accurate contact
           details, and agree to our{" "}
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
-            Terms of sale
+            Conditions of Business
           </Link>
           . Registration lets our client services team support bidding, invoices, shipping, and
           after-sale queries in one place.
@@ -102,7 +102,7 @@ export default function BuyPage() {
           Winning bidders pay the hammer price plus buyer&apos;s premium and any applicable taxes,
           shipping, insurance, or handling costs. The authoritative fee terms are published in our{" "}
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
-            Terms of sale
+            Conditions of Business
           </Link>
           .
         </p>

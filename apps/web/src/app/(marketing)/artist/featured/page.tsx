@@ -13,7 +13,7 @@ import Link from "next/link";
 export const metadata: Metadata = metadataForStatic({
   title: "Artists",
   description:
-    "Discover featured artists and makers behind the lots on LAX London Auction House Ltd — profiles, mediums, and portfolio context.",
+    "Discover featured artists and makers behind the lots on LAX.BID by London Art Exchange — profiles, mediums, and portfolio context.",
   path: "/artist/featured",
 });
 

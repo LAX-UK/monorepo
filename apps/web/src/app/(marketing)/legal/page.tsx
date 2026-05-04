@@ -7,7 +7,7 @@ import Link from "next/link";
 export const metadata: Metadata = metadataForStatic({
   title: "Legal",
   description:
-    "Terms of sale, privacy, shipping, and key policies for LAX London Auction House Ltd.",
+    "Conditions of Business, Privacy Notice, Shipping & Logistics, and key policies for LAX.BID by London Art Exchange.",
   path: "/legal",
 });
 
@@ -22,21 +22,21 @@ export default function LegalHubPage() {
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdScript(crumbs)}
       </script>
-      <p>Key policies for collectors using LAX London Auction House Ltd.</p>
+      <p>Key policies for collectors using LAX.BID by London Art Exchange.</p>
       <ul className="list-inside list-disc space-y-3 text-on-surface">
         <li>
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
-            Terms of sale
+            Conditions of Business
           </Link>
         </li>
         <li>
           <Link href="/privacy" className="text-primary underline-offset-4 hover:underline">
-            Privacy
+            Privacy Notice
           </Link>
         </li>
         <li>
           <Link href="/shipping" className="text-primary underline-offset-4 hover:underline">
-            Shipping
+            Shipping &amp; Logistics
           </Link>
         </li>
       </ul>

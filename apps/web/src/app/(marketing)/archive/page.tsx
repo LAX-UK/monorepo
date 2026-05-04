@@ -22,7 +22,7 @@ import { Suspense } from "react";
 export const metadata: Metadata = metadataForStatic({
   title: "Past auctions",
   description:
-    "Browse past auctions, realized prices, and archived lots from LAX London Auction House Ltd.",
+    "Browse past auctions, realized prices, and archived lots from LAX.BID by London Art Exchange.",
   path: "/archive",
 });
 

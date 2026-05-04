@@ -77,19 +77,19 @@ export function LotDetailsInline({
           href="/terms"
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
         >
-          Condition of sale
+          Conditions of Business
         </Link>
         <Link
           href="/faq"
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
         >
-          FAQs
+          FAQ
         </Link>
         <Link
           href="/shipping"
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
         >
-          Shipping
+          Shipping &amp; Logistics
         </Link>
       </div>
     </section>

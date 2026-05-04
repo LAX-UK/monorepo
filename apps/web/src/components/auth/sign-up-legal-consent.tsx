@@ -14,7 +14,7 @@ export function SignUpLegalConsent({ control }: { control: Control<SignUpFormVal
         href="/terms"
         className="font-medium text-brand-900 underline underline-offset-2 dark:text-primary"
       >
-        Terms of sale
+        Conditions of Business
       </Link>
       . I confirm that I have read and understood the{" "}
       <Link

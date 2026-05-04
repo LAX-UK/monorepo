@@ -7,7 +7,7 @@ import type { FooterLink } from "@/components/layout/footer-column";
 export const aboutLinks: FooterLink[] = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
-  { href: "/terms", label: "Terms of sale" },
+  { href: "/terms", label: "Conditions of Business" },
   { href: "/sitemap.xml", label: "Sitemap" },
 ];
 
@@ -18,10 +18,10 @@ export const serviceLinks: FooterLink[] = [
 ];
 
 export const policyLinks: FooterLink[] = [
-  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/privacy", label: "Privacy Notice" },
   { href: "/legal", label: "Legal" },
-  { href: "/terms", label: "Terms of sale" },
-  { href: "/shipping", label: "Shipping" },
+  { href: "/terms", label: "Conditions of Business" },
+  { href: "/shipping", label: "Shipping & Logistics" },
 ];
 
 /**
@@ -44,9 +44,9 @@ export const companyLinks: FooterLink[] = [
 ];
 
 export const legalLinks: FooterLink[] = [
-  { href: "/terms", label: "Terms of sale" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/shipping", label: "Shipping" },
+  { href: "/terms", label: "Conditions of Business" },
+  { href: "/privacy", label: "Privacy Notice" },
+  { href: "/shipping", label: "Shipping & Logistics" },
   { href: "/legal", label: "Legal" },
 ];
 

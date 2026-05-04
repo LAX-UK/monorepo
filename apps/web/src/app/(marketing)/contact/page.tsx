@@ -3,7 +3,10 @@ import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import {
   SITE_BUSINESS_ADDRESS_INLINE,
+  SITE_BUSINESS_ADDRESS_LINES,
   SITE_CONTACT_EMAIL,
+  SITE_PRESS_EMAIL,
+  SITE_SUPPORT_EMAIL,
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
 } from "@/lib/brand";
@@ -15,7 +18,7 @@ import Link from "next/link";
 export const metadata: Metadata = metadataForStatic({
   title: "Contact",
   description:
-    "Contact LAX London Auction House Ltd — concierge, specialist inquiries, and support.",
+    "Contact LAX.BID by London Art Exchange for bidding, consignments, platform support, press, and media.",
   path: "/contact",
 });
 
@@ -40,7 +43,13 @@ export default function ContactPage() {
           {jsonLdText}
         </script>
         <p>
-          Concierge:{" "}
+          For all enquiries relating to bidding, consignments, or general platform support, please
+          contact our team directly.
+        </p>
+
+        <LegalH2>Client Services</LegalH2>
+        <p>
+          General enquiries:{" "}
           <a
             href={`mailto:${SITE_CONTACT_EMAIL}`}
             className="text-primary underline-offset-4 hover:underline"
@@ -56,16 +65,55 @@ export default function ContactPage() {
           >
             {SITE_TELEPHONE_DISPLAY}
           </a>{" "}
-          (weekdays 09:00–18:00 GMT)
+          (Weekdays, 09:00 - 18:00 GMT)
         </p>
-        <p className="text-on-surface-variant">Registered office: {SITE_BUSINESS_ADDRESS_INLINE}</p>
+
+        <LegalH2>Support</LegalH2>
+        <p>
+          For platform-related assistance, account queries, or technical support, our team is
+          available on a continuous basis.
+        </p>
+        <p>
+          Email:{" "}
+          <a
+            href={`mailto:${SITE_SUPPORT_EMAIL}`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {SITE_SUPPORT_EMAIL}
+          </a>
+        </p>
+
+        <LegalH2>Press &amp; Media</LegalH2>
+        <p>For press enquiries, editorial features, or partnership discussions, please contact:</p>
+        <p>
+          Email:{" "}
+          <a
+            href={`mailto:${SITE_PRESS_EMAIL}`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {SITE_PRESS_EMAIL}
+          </a>
+        </p>
+
+        <LegalH2>Registered Office</LegalH2>
+        <address className="not-italic">
+          {SITE_BUSINESS_ADDRESS_LINES.map((line) => (
+            <span key={line}>
+              {line}
+              <br />
+            </span>
+          ))}
+        </address>
 
         <LegalH2 id="message" className="scroll-mt-28">
-          Send a message
+          Enquiries
         </LegalH2>
         <p className="text-on-surface-variant">
-          Use the form below for buying, selling, shipping, or press enquiries. Our specialists
-          route each enquiry to the right desk.
+          For buying, selling, shipping, or press-related enquiries, please use the contact form
+          below. All submissions are reviewed and directed to the appropriate department.
+        </p>
+        <p className="text-on-surface-variant">
+          Our team will respond in due course with the relevant information or next steps.
         </p>
         <ContactForm />
 
@@ -76,13 +124,15 @@ export default function ContactPage() {
           </Link>{" "}
           notifications channel. See also{" "}
           <Link href="/shipping" className="text-primary underline-offset-4 hover:underline">
-            Shipping &amp; logistics
+            Shipping &amp; Logistics
           </Link>{" "}
           and{" "}
           <Link href="/faq" className="text-primary underline-offset-4 hover:underline">
-            FAQs
+            FAQ
           </Link>
           .
+          <br />
+          Registered office: {SITE_BUSINESS_ADDRESS_INLINE}
         </aside>
       </LegalPage>
     </PolicyHubLayout>
