@@ -1,9 +1,9 @@
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -46,18 +46,14 @@ export function LaxHeroEditorial({ sale, isLive = false }: Props) {
         </div>
       </div>
       <RevealOnMount className="zoom-bg relative min-h-[480px] flex-1 overflow-hidden">
-        {sale.coverImageUrl ? (
-          <Image
-            src={sale.coverImageUrl}
-            alt={sale.coverImageAlt}
-            fill
-            priority
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, calc(100vw - 480px)"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-surface-container-high" aria-hidden />
-        )}
+        <MediaImage
+          src={sale.coverImageUrl}
+          alt={sale.coverImageAlt}
+          label="Auction cover"
+          tone="dark"
+          priority
+          sizes="(max-width: 1024px) 100vw, calc(100vw - 480px)"
+        />
       </RevealOnMount>
     </section>
   );

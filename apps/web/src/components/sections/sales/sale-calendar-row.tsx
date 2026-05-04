@@ -1,8 +1,6 @@
 import type { SaleCalendarRowVM } from "@/components/sections/sales/sales-view-models";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { MediaImage } from "@/components/ui/media-image";
 import { AspectRatio, DisplayHeading, Separator } from "@auction/ui";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -45,19 +43,13 @@ export function SaleCalendarRow({ vm }: Props) {
       >
         <div className="relative h-[220px] overflow-hidden rounded bg-surface-container-low md:h-[130px]">
           <AspectRatio ratio={200 / 130} className="relative size-full overflow-hidden">
-            {vm.coverImageUrl ? (
-              <Image
-                src={vm.coverImageUrl}
-                alt={vm.coverImageAlt}
-                fill
-                placeholder="blur"
-                blurDataURL={TINY_IMAGE_BLUR}
-                className="object-cover transition-transform duration-700 motion-safe:hover:scale-105"
-                sizes="(max-width: 768px) 100vw, 200px"
-              />
-            ) : (
-              <ImagePlaceholder label="Auction cover" />
-            )}
+            <MediaImage
+              src={vm.coverImageUrl}
+              alt={vm.coverImageAlt}
+              label="Auction cover"
+              imgClassName="transition-transform duration-700 motion-safe:hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 200px"
+            />
           </AspectRatio>
         </div>
 

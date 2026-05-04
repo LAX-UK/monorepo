@@ -1,9 +1,8 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -38,17 +37,13 @@ export function RelatedLots({
                 className="group block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-[4/3] bg-surface-container-low">
-                  {img ? (
-                    <Image
-                      src={img}
-                      alt={`${a.title} — related lot`}
-                      fill
-                      placeholder="blur"
-                      blurDataURL={TINY_IMAGE_BLUR}
-                      className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                  ) : null}
+                  <MediaImage
+                    src={img}
+                    alt={`${a.title} — related lot`}
+                    label="Lot artwork"
+                    imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
                   <OwnerBadge
                     owned={Boolean(currentUserId && a.sellerId === currentUserId)}
                     className="absolute right-2 top-2"

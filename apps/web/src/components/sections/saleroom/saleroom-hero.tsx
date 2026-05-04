@@ -1,8 +1,6 @@
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
+import { MediaImage } from "@/components/ui/media-image";
 import { LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleHeroVM } from "./view-models";
@@ -31,20 +29,15 @@ export function SaleroomHero({ hero, toolbar, actions }: Props) {
   return (
     <section className="relative min-h-[min(60vh,520px)] w-full overflow-hidden bg-brand-900">
       <div className="absolute inset-0 bg-brand-900" aria-hidden>
-        {hero.coverImage ? (
-          <Image
-            src={hero.coverImage}
-            alt=""
-            fill
-            priority
-            placeholder="blur"
-            blurDataURL={TINY_IMAGE_BLUR}
-            className="object-cover opacity-80"
-            sizes="100vw"
-          />
-        ) : (
-          <ImagePlaceholder tone="dark" label="Auction cover" hideIcon />
-        )}
+        <MediaImage
+          src={hero.coverImage}
+          alt=""
+          label="Auction cover"
+          tone="dark"
+          priority
+          imgClassName="opacity-80"
+          sizes="100vw"
+        />
         <div className="absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(30deg,transparent_0,transparent_23px,rgba(255,255,255,0.35)_24px)]" />
       </div>
       <div

@@ -1,9 +1,8 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import Image from "next/image";
 import Link from "next/link";
 
 function lotNo(id: string): string {
@@ -32,21 +31,13 @@ export function PastAuctionCard({
     <div className={`group ${gridOffsetClass}`}>
       <Link href={lotPath(auction)} className="block">
         <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-surface-container-low transition-all duration-500 motion-safe:group-hover:scale-[0.98] motion-reduce:group-hover:scale-100">
-          {img ? (
-            <Image
-              src={img}
-              alt={`${auction.title} — past auction lot`}
-              fill
-              placeholder="blur"
-              blurDataURL={TINY_IMAGE_BLUR}
-              className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-on-surface-variant">
-              No image
-            </div>
-          )}
+          <MediaImage
+            src={img}
+            alt={`${auction.title} — past auction lot`}
+            label="Lot artwork"
+            imgClassName="transition-transform duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
         </div>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">

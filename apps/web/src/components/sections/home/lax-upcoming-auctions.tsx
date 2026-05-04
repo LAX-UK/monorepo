@@ -1,12 +1,10 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { UpcomingAuctionVM } from "@/components/sections/home/home-view-models";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight, ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -41,24 +39,19 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
           <div className="group flex min-w-0 flex-[853] flex-col gap-5">
             <Link href={auction.href} className="block">
               <div className="relative aspect-[853/500] w-full overflow-hidden bg-brand-800 dark:bg-surface-container-high">
-                {auction.coverImageUrl ? (
-                  <RevealInView
-                    className="absolute inset-0 overflow-hidden"
-                    innerClassName="absolute inset-0"
-                  >
-                    <Image
-                      src={auction.coverImageUrl}
-                      alt={auction.coverImageAlt}
-                      fill
-                      placeholder="blur"
-                      blurDataURL={TINY_IMAGE_BLUR}
-                      className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
-                      sizes="(max-width: 1024px) 100vw, 853px"
-                    />
-                  </RevealInView>
-                ) : (
-                  <ImagePlaceholder label="Auction cover" tone="dark" />
-                )}
+                <RevealInView
+                  className="absolute inset-0 overflow-hidden"
+                  innerClassName="absolute inset-0"
+                >
+                  <MediaImage
+                    src={auction.coverImageUrl}
+                    alt={auction.coverImageAlt}
+                    label="Auction cover"
+                    tone="dark"
+                    imgClassName="transition-transform duration-700 motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                    sizes="(max-width: 1024px) 100vw, 853px"
+                  />
+                </RevealInView>
               </div>
               <div className="mt-5 flex flex-col gap-2">
                 <BodyText className="text-base font-normal uppercase leading-4 text-brand-500 dark:text-on-surface-variant">
@@ -98,24 +91,18 @@ export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
                     href={lot.href}
                     className="relative block h-[148px] w-[120px] shrink-0 overflow-hidden bg-surface-container-high dark:bg-surface-container-high"
                   >
-                    {lot.imageUrl ? (
-                      <RevealInView
-                        className="absolute inset-0 overflow-hidden"
-                        innerClassName="absolute inset-0"
-                      >
-                        <Image
-                          src={lot.imageUrl}
-                          alt={lot.imageAlt}
-                          fill
-                          placeholder="blur"
-                          blurDataURL={TINY_IMAGE_BLUR}
-                          className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-105"
-                          sizes="182px"
-                        />
-                      </RevealInView>
-                    ) : (
-                      <ImagePlaceholder hideIcon />
-                    )}
+                    <RevealInView
+                      className="absolute inset-0 overflow-hidden"
+                      innerClassName="absolute inset-0"
+                    >
+                      <MediaImage
+                        src={lot.imageUrl}
+                        alt={lot.imageAlt}
+                        label="Lot artwork"
+                        imgClassName="transition-transform duration-700 motion-safe:group-hover:scale-105"
+                        sizes="182px"
+                      />
+                    </RevealInView>
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col justify-start gap-2 py-1">
                     <span className="font-label text-[10px] font-bold uppercase tracking-[0.1em] text-lot-orange">

@@ -1,5 +1,6 @@
 import { EditSubmissionForm } from "@/components/dashboard/edit-submission-form";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
+import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
@@ -65,9 +66,21 @@ export default async function SubmissionDetailPage({
               </Link>
             </p>
           ) : null}
-          <p className="text-xs">
-            Image URLs: {s.images.length ? s.images.join(", ") : "None listed."}
-          </p>
+          <div>
+            <p className="mb-2 font-label text-xs uppercase tracking-widest">Images</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {(s.images.length ? s.images : [null]).map((src, index) => (
+                <MediaImage
+                  key={`${src ?? "empty"}-${index}`}
+                  src={src}
+                  alt={src ? `${s.title} submission image ${index + 1}` : ""}
+                  label="Submission image"
+                  aspect={[1, 1]}
+                  sizes="(max-width: 640px) 50vw, 180px"
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <EditSubmissionForm

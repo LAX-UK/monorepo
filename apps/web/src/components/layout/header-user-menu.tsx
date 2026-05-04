@@ -1,5 +1,6 @@
 "use client";
 
+import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -109,12 +110,14 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKeyDown}
       >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-900 font-label text-xs font-semibold text-surface dark:bg-on-surface dark:text-brand-900"
-          aria-hidden
-        >
-          {initials(user.name, user.email)}
-        </span>
+        <MediaImage
+          src={user.image ?? null}
+          alt={displayName}
+          label={initials(user.name, user.email)}
+          shape="circle"
+          sizes="36px"
+          className="h-9 w-9 shrink-0"
+        />
         <span className="hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight text-brand-900 sm:inline dark:text-on-surface">
           {displayName}
         </span>

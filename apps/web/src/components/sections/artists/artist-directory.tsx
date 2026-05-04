@@ -1,5 +1,6 @@
 "use client";
 
+import { MediaImage } from "@/components/ui/media-image";
 import { artistEyebrowText } from "@/lib/artists/display";
 import { ALPHABET_LETTERS, filterArtistsDirectory, lettersPresent } from "@/lib/artists/filter";
 import type { ArtistProfile } from "@/lib/data/contracts";
@@ -7,7 +8,6 @@ import { artistPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { ChevronDown, Search } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -132,15 +132,15 @@ export function ArtistDirectory({ artists }: Props) {
                 href={artistPath(a)}
                 className={`group block ${staggerClass(index)}`}
               >
-                <div className="relative mb-6 aspect-4/5 overflow-hidden bg-surface-container">
-                  <Image
-                    src={a.portraitUrl}
-                    alt={`${a.name} — artist portrait`}
-                    fill
-                    className="object-cover grayscale transition-all duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100 group-hover:grayscale-0"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                </div>
+                <MediaImage
+                  src={a.portraitUrl}
+                  alt={`${a.name} — artist portrait`}
+                  label={a.name.slice(0, 1).toUpperCase()}
+                  aspect={[4, 5]}
+                  className="mb-6 bg-surface-container"
+                  imgClassName="grayscale transition-all duration-700 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100 group-hover:grayscale-0"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
                 <div className="flex flex-col">
                   {eyebrow ? (
                     <span className="mb-2 font-label text-xs uppercase tracking-[0.3em] text-primary">

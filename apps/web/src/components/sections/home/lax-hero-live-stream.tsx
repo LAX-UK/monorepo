@@ -1,10 +1,10 @@
 import { DeferredLiveIframe } from "@/components/sections/home/deferred-live-iframe";
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
+import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import Image from "next/image";
 import Link from "next/link";
 
 type LiveVm = Extract<HeroStateVM, { kind: "live" }>;
@@ -162,27 +162,20 @@ export function LaxHeroLiveStream({ vm }: Props) {
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
         <div className="absolute inset-0 overflow-hidden bg-black">
-          {poster ? (
-            <RevealOnMount
-              className="absolute inset-0 z-0 hidden overflow-hidden motion-reduce:block"
-              innerClassName="absolute inset-0"
-            >
-              <Image
-                src={poster}
-                alt={`${vm.saleTitle} — saleroom cover`}
-                fill
-                priority
-                fetchPriority="high"
-                className="object-cover object-center"
-                sizes="100vw"
-              />
-            </RevealOnMount>
-          ) : (
-            <div
-              className="absolute inset-0 z-0 hidden bg-brand-900/40 motion-reduce:block dark:bg-surface-container-high"
-              aria-hidden
+          <RevealOnMount
+            className="absolute inset-0 z-0 hidden overflow-hidden motion-reduce:block"
+            innerClassName="absolute inset-0"
+          >
+            <MediaImage
+              src={poster}
+              alt={`${vm.saleTitle} — saleroom cover`}
+              label="Auction cover"
+              tone="dark"
+              priority
+              imgClassName="object-center"
+              sizes="100vw"
             />
-          )}
+          </RevealOnMount>
           <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
             <RevealOnMount
               className="absolute inset-0 overflow-hidden"

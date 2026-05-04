@@ -1,6 +1,6 @@
+import { MediaImage } from "@/components/ui/media-image";
 import type { ArtistProfile } from "@/lib/data/contracts";
 import { artistPath } from "@/lib/seo/url";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -22,11 +22,11 @@ export function ArtistSpotlightHero({ artist }: Props) {
   return (
     <section className="relative flex min-h-[min(870px,92vh)] w-full items-center overflow-hidden bg-surface">
       <div className="absolute inset-0 left-auto h-full w-full md:right-0 md:w-3/5">
-        <Image
+        <MediaImage
           src={artist.portraitUrl}
           alt={`Portrait of ${artist.name}`}
-          fill
-          className="object-cover grayscale transition-all duration-1000 hover:grayscale-0"
+          label={artist.name.slice(0, 1).toUpperCase()}
+          imgClassName="grayscale transition-all duration-1000 hover:grayscale-0"
           sizes="(max-width: 768px) 100vw, 60vw"
           priority
         />

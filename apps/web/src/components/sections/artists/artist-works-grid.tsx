@@ -1,13 +1,12 @@
 "use client";
 
 import { OwnerBadge } from "@/components/marketing/owner-badge";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot, LotStatus } from "@auction/types";
 import { cn } from "@auction/ui";
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -121,17 +120,13 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
         className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
-          {img ? (
-            <Image
-              src={img}
-              alt={lot.title}
-              fill
-              className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            />
-          ) : (
-            <ImagePlaceholder label="Lot artwork" />
-          )}
+          <MediaImage
+            src={img}
+            alt={lot.title}
+            label="Lot artwork"
+            imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
           <OwnerBadge
             owned={Boolean(currentUserId && lot.sellerId === currentUserId)}
             className="absolute right-3 top-3"

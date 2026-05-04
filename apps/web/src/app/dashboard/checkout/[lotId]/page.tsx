@@ -1,12 +1,11 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
+import { MediaImage } from "@/components/ui/media-image";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
-import { TINY_IMAGE_BLUR } from "@/lib/image-blur";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -50,22 +49,14 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
       <div className="flex min-h-[calc(100vh-8rem)] flex-col lg:flex-row">
         <div className="relative h-[50vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-0 lg:h-screen lg:w-1/2 lg:max-w-none">
-          {img ? (
-            <Image
-              src={img}
-              alt={`${auction.title} — artwork for checkout`}
-              fill
-              placeholder="blur"
-              blurDataURL={TINY_IMAGE_BLUR}
-              className="object-cover lg:object-contain"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center font-headline text-4xl text-outline-variant">
-              ◆
-            </div>
-          )}
+          <MediaImage
+            src={img}
+            alt={`${auction.title} — artwork for checkout`}
+            label="Lot artwork"
+            priority
+            imgClassName="lg:object-contain"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
         </div>
 
         <div className="w-full flex-1 px-0 pb-28 pt-10 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
