@@ -29,7 +29,7 @@ export default async function Image({ params }: Props) {
         .catch(() => null);
       if (user) {
         name = user.name;
-        tagline = "Seller on LAX London Auction House Ltd.";
+        tagline = "Seller on LAX.BID by London Art Exchange.";
         portrait = user.image ?? null;
       }
     }

@@ -1,4 +1,5 @@
 import {
+  SITE_ALTERNATE_NAMES,
   SITE_BUSINESS_ADDRESS,
   SITE_CONTACT_EMAIL,
   SITE_NAME,
@@ -118,6 +119,7 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
+    alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
     logo: `${base}/logo.svg`,
@@ -160,6 +162,7 @@ export function localBusinessJsonLd(): Record<string, unknown> {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: SITE_NAME,
+    alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
     address: {
@@ -183,6 +186,7 @@ export function websiteJsonLd(): Record<string, unknown> {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
     publisher: { "@type": "Organization", name: SITE_NAME, url: base },

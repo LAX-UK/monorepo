@@ -6,9 +6,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
-  title: "Selling with LAX",
+  title: "Selling with LAX.BID",
   description:
-    "How to sell with LAX: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.",
+    "How to sell with LAX.BID by London Art Exchange: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.",
   path: "/sell",
 });
 
@@ -16,7 +16,7 @@ export default function SellPage() {
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Selling with LAX", path: "/sell" },
+      { name: "Selling with LAX.BID", path: "/sell" },
     ]),
   );
 
@@ -26,16 +26,16 @@ export default function SellPage() {
         {jsonLdText}
       </script>
       <LegalPage
-        title="Selling with LAX"
+        title="Selling with LAX.BID"
         lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate
         embedded
       >
         <p>
-          LAX works with consignors to place fine art and exceptional objects into carefully edited
-          live and timed auctions. Our specialists guide each consignment from first review through
-          catalogue, sale, payment, and settlement.
+          LAX.BID works with consignors to place fine art and exceptional objects into carefully
+          edited live and timed auctions. Our specialists guide each consignment from first review
+          through catalogue, sale, payment, and settlement.
         </p>
 
         <LegalH2>What we accept</LegalH2>
@@ -66,7 +66,7 @@ export default function SellPage() {
           Fees, reserves, photography, storage, shipping, and settlement timing are agreed before a
           lot is entered into sale. The governing sale terms are available in our{" "}
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
-            Terms of sale
+            Conditions of Business
           </Link>
           .
         </p>

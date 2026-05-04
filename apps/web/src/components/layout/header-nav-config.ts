@@ -28,7 +28,7 @@ export function emptyMegaMenuSections(): MegaMenuSection[] {
 export const utilityNav = [
   { href: "/buy", label: "Buy" },
   { href: "/sell", label: "Sell" },
-  { href: "/faq", label: "FAQs" },
+  { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact us" },
   { href: "/about", label: "About us" },
 ] as const;

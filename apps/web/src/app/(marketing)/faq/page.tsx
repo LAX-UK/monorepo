@@ -1,4 +1,4 @@
-import { faqItems } from "@/components/marketing/faq/faq-data";
+import { faqGroups, faqItems } from "@/components/marketing/faq/faq-data";
 import { FaqFlatList } from "@/components/marketing/faq/faq-flat-list";
 import { LegalPage } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
@@ -7,8 +7,9 @@ import { breadcrumbJsonLd, faqPageJsonLd, jsonLdScript } from "@/lib/seo/structu
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForStatic({
-  title: "FAQs",
-  description: "Frequently asked questions about bidding, shipping, and accounts at LAX.",
+  title: "Frequently Asked Questions",
+  description:
+    "Frequently asked questions about buying, selling, accounts, and support on LAX.BID by London Art Exchange.",
   path: "/faq",
 });
 
@@ -16,7 +17,7 @@ export default function FaqPage() {
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "FAQs", path: "/faq" },
+      { name: "FAQ", path: "/faq" },
     ]),
     faqPageJsonLd(faqItems.map((item) => ({ question: item.title, answer: item.body }))),
   );
@@ -32,7 +33,7 @@ export default function FaqPage() {
         dividerUnderDate
         embedded
       >
-        <FaqFlatList items={faqItems} />
+        <FaqFlatList groups={faqGroups} />
       </LegalPage>
     </PolicyHubLayout>
   );

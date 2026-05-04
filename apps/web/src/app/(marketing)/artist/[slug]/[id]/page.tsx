@@ -107,7 +107,7 @@ export default async function ArtistPage({ params }: PageProps) {
     const personLd = personJsonLd({
       name: user.name,
       url: profileUrl,
-      description: "Seller on LAX London Auction House Ltd.",
+      description: "Seller on LAX.BID by London Art Exchange.",
     });
     const itemsLd =
       sellerLots.length > 0
@@ -148,7 +148,7 @@ export default async function ArtistPage({ params }: PageProps) {
             id,
             name: user.name,
             tagline:
-              "Seller on LAX London Auction House Ltd \u2014 lots listed below are attributed to this account.",
+              "Seller on LAX.BID by London Art Exchange \u2014 lots listed below are attributed to this account.",
             bio: null,
             portraitUrl: null,
             featured: false,
