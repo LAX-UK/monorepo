@@ -2,6 +2,7 @@ import { saleDeliveryModes, saleStatuses } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { z } from "zod";
 import { createNestedLotForSaleSchema } from "./lot.js";
+import { mediaReferenceSchema } from "./media.js";
 import { isUkPostcode, normalizeUkPostcode } from "./onsite-location.js";
 import { getSaleModeCapabilities } from "./sale-mode-policy.js";
 import { isAllowedStreamUrl } from "./stream-embed.js";
@@ -56,7 +57,7 @@ const locationPostcodeField = z
 const saleCreateBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
-  coverImages: z.array(z.string().url()).max(20).optional(),
+  coverImages: z.array(mediaReferenceSchema).max(20).optional(),
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),
   streamUrl: streamUrlField,

@@ -8,6 +8,7 @@ import { Redis } from "ioredis";
 import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
+import { cleanupImageJob } from "./jobs/image-cleanup.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
@@ -29,12 +30,17 @@ const log = pino({
 const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const uploadStorage = createUploadStorage(env);
+const publicUploadBase =
+  env.STORAGE_DRIVER === "s3" && env.S3_BUCKET && env.S3_REGION
+    ? (env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`)
+    : undefined;
 const bootedAt = Date.now();
 
 const heartbeatKeys = [
   "worker:heartbeat:webhook-events",
   "worker:heartbeat:domain-events",
   "worker:heartbeat:validate-upload",
+  "worker:heartbeat:image-cleanup",
   "worker:heartbeat:gc-pending-uploads",
 ];
 async function heartbeat(queue: string) {
@@ -65,6 +71,26 @@ const validateUploadWorker = new Worker(
 );
 validateUploadWorker.on("completed", () => void heartbeat("validate-upload"));
 
+const imageCleanupWorker = new Worker(
+  "image-cleanup",
+  async (job) => {
+    const key = String((job.data as { key?: unknown }).key ?? "");
+    if (!key) {
+      throw new Error("image-cleanup job is missing key");
+    }
+    await cleanupImageJob({
+      db,
+      storage: uploadStorage,
+      key,
+      publicBaseUrl: publicUploadBase,
+      log,
+    });
+    await heartbeat("image-cleanup");
+  },
+  { connection: redis },
+);
+imageCleanupWorker.on("completed", () => void heartbeat("image-cleanup"));
+
 const gcUploadQueue = new Queue("gc-pending-uploads", { connection: redis });
 const gcPendingUploadsWorker = new Worker(
   "gc-pending-uploads",
@@ -83,6 +109,7 @@ void gcUploadQueue.add(
 void Promise.all([
   heartbeat("webhook-events"),
   heartbeat("validate-upload"),
+  heartbeat("image-cleanup"),
   heartbeat("gc-pending-uploads"),
 ]);
 
@@ -137,6 +164,7 @@ function shutdown(signal: NodeJS.Signals) {
   void Promise.allSettled([
     webhookWorker.close(),
     validateUploadWorker.close(),
+    imageCleanupWorker.close(),
     gcPendingUploadsWorker.close(),
     gcUploadQueue.close(),
     projectorRunner.stop(),

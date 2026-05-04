@@ -8,7 +8,11 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
-import { createAddressBodySchema, updateProfileNameFormSchema } from "@auction/validators";
+import {
+  createAddressBodySchema,
+  updateProfileNameFormSchema,
+  updateProfileSchema,
+} from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -36,7 +40,7 @@ export async function updateProfileNameFromValuesAction(input: {
 export async function updateProfileImageAction(input: {
   image: string | null;
 }): Promise<ActionResult<void>> {
-  const parsed = z.object({ image: z.string().url().nullable() }).safeParse(input);
+  const parsed = updateProfileSchema.pick({ image: true }).required().safeParse(input);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
   }

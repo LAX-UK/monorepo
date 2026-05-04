@@ -17,6 +17,12 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import {
+  presentLotImages,
+  presentLotsImages,
+  presentSaleImages,
+  presentSalesWithLotsImages,
+} from "../lib/media-presenters.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -38,7 +44,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       offset: query.offset,
       sort: query.sort,
     });
-    return c.json({ data });
+    return c.json({ data: await presentSalesWithLotsImages(container.mediaUrlResolver, data) });
   });
 
   r.get("/:id", optionalAuth, zValidator("param", saleIdParamSchema), async (c) => {
@@ -49,7 +55,11 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const viewer = userId
       ? { isFollowing: await container.saleFollowService.isFollowing(userId, id) }
       : { isFollowing: false };
-    return c.json({ data: { ...bundle, viewer } });
+    const [sale, lots] = await Promise.all([
+      presentSaleImages(container.mediaUrlResolver, bundle.sale),
+      presentLotsImages(container.mediaUrlResolver, bundle.lots),
+    ]);
+    return c.json({ data: { sale, lots, viewer } });
   });
 
   r.get(
@@ -67,7 +77,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (!page) return c.json({ error: "Not found" }, 404);
       return c.json({
         data: {
-          items: page.items,
+          items: await presentLotsImages(container.mediaUrlResolver, page.items),
           total: page.total,
           limit: q.limit,
           offset: q.offset,
@@ -134,7 +144,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const body = c.req.valid("json");
     try {
       const sale = await container.saleService.create(userId, body);
-      return c.json({ data: sale }, 201);
+      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, sale) }, 201);
     } catch (e) {
       if (e instanceof LotError) {
         return c.json({ error: e.message }, asHttpStatus(e.status));
@@ -153,10 +163,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const result = await container.saleService.updateDraft(role, id, patch);
-      return result.match(
-        (sale) => c.json({ data: sale }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -165,10 +175,11 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const role = (c.get("userRole") ?? "client") as UserRole;
     const { id } = c.req.valid("param");
     const result = await container.saleService.publish(userId, role, id);
-    return result.match(
-      (data) => c.json({ data }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    }
+    const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
+    return c.json({ data: data[0] });
   });
 
   r.post(
@@ -181,10 +192,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const result = await container.saleService.cancel(userId, role, id);
-      return result.match(
-        (sale) => c.json({ data: sale }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -198,9 +209,12 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const result = await container.saleService.addLot(role, id, body);
-      return result.match(
-        (lot) => c.json({ data: lot }, 201),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json(
+        { data: await presentLotImages(container.mediaUrlResolver, result.value) },
+        201,
       );
     },
   );
@@ -213,10 +227,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id, lotId } = c.req.valid("param");
       const result = await container.saleService.attachExistingLot(role, id, lotId);
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -249,10 +263,11 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         id,
         reason,
       );
-      return result.match(
-        (data) => c.json({ data }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
+      return c.json({ data: data[0] });
     },
   );
 
@@ -266,10 +281,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const { id, lotId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const result = await container.saleStatusTransitionService.cancelLot(role, id, lotId, reason);
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -289,10 +304,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         status,
         reason,
       );
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 

@@ -10,6 +10,7 @@ import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
+import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
   IItemSubmissionService,
   UpdateSubmissionActorInput,
@@ -31,6 +32,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     private readonly lots: ILotRepository,
     private readonly users: IUserRepository,
     private readonly dispatcher: NotificationDispatcher,
+    private readonly imageCleanup?: ImageCleanupService,
   ) {}
 
   async createDraft(
@@ -74,6 +76,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
     }
     const patch = sellerPatchToRepoPatch(sellerPatch);
     const updated = await this.submissions.update(submissionId, patch);
+    if (patch.images !== undefined) {
+      await this.imageCleanup?.enqueueRemovedMany(s.images, patch.images);
+    }
     return ok(updated);
   }
 

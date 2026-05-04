@@ -24,10 +24,6 @@ export class DrizzleUserRepository implements IUserRepository {
     return rows.map((r) => r.id);
   }
 
-  async updateRoleById(userId: string, role: string): Promise<void> {
-    await this.db.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, userId));
-  }
-
   async listPublicProfiles(params: { limit: number; offset: number }) {
     const rows = await this.db
       .select({ id: user.id, name: user.name, image: user.image })
