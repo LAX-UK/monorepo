@@ -185,7 +185,7 @@ export function CheckoutPurchasePanel({
                         href="/terms"
                         className="border-b border-primary/40 text-on-surface hover:border-primary"
                       >
-                        Terms of Sale
+                        Conditions of Business
                       </Link>
                       , including buyer&apos;s premium and payment deadlines.
                     </FormLabel>

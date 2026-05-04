@@ -1,4 +1,4 @@
-import { SITE_LOGO_PATH, SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_NAME, SITE_SEO_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, Sale } from "@auction/types";
@@ -12,19 +12,19 @@ export function rootMetadataBase(): Metadata {
   const base = getSiteUrl();
   return {
     metadataBase: new URL(base),
-    title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+    title: { default: SITE_SEO_NAME, template: `%s · ${SITE_NAME}` },
     description: SITE_TAGLINE,
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
       url: base,
-      title: SITE_NAME,
+      title: SITE_SEO_NAME,
       description: SITE_TAGLINE,
       images: defaultOgImage(base),
     },
     twitter: {
       card: "summary_large_image",
-      title: SITE_NAME,
+      title: SITE_SEO_NAME,
       description: SITE_TAGLINE,
       images: defaultOgImage(base),
     },

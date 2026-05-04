@@ -36,7 +36,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const base = metadataForStatic({
     title: "Search lots",
     description:
-      "Search curated fine art lots by title \u2014 browse live inventory from LAX London Auction House Ltd.",
+      "Search curated fine art lots by title \u2014 browse live inventory from LAX.BID by London Art Exchange.",
     path: "/search",
   });
   if (hasFilteredState) {
