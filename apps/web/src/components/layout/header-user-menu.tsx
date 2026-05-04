@@ -9,6 +9,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type AppShellRole, appShellRoleMeta } from "./app-shell-nav";
 import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
 
@@ -95,6 +96,8 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
 
   const links = accountNavLinks(user);
   const displayName = user.name.trim() || user.email;
+  const shellRole: AppShellRole = user.role === "administrator" ? "admin" : user.role;
+  const roleMeta = appShellRoleMeta[shellRole];
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -143,6 +146,14 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
             <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
               {user.email}
             </p>
+            <div
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${roleMeta.pillClassName}`}
+            >
+              <span className={`size-1.5 rounded-full ${roleMeta.dotClassName}`} aria-hidden />
+              <span className="font-label text-[10px] font-bold uppercase tracking-[0.12em]">
+                {roleMeta.label}
+              </span>
+            </div>
           </div>
           <div className="py-1">
             {links.map((item) => (

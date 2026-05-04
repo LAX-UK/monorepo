@@ -16,7 +16,7 @@ import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
-import { LogOut } from "lucide-react";
+import { Globe2, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -196,9 +196,37 @@ export function AppShellSidebar({
             <p className="truncate text-[10px] text-on-surface-variant">{user.email}</p>
           </div>
         </div>
-        <div className={cn("flex items-center", labelsHidden ? "justify-center" : "hidden")}>
+        <div className={cn("items-center gap-1", labelsHidden ? "flex justify-center" : "hidden")}>
+          {role === "client" ? (
+            <Tooltip delayDuration={250}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/"
+                  {...(onNavigate ? { onClick: onNavigate } : {})}
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  aria-label="Browse LAX.bid"
+                >
+                  <Globe2 className="size-4" aria-hidden />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="hidden lg:block">
+                Browse LAX.bid
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           <CompactLogoutButton {...(onNavigate ? { onNavigate } : {})} collapsed={labelsHidden} />
         </div>
+        {role === "client" && !labelsHidden ? (
+          <Link
+            href="/"
+            {...(onNavigate ? { onClick: onNavigate } : {})}
+            className="mb-2 flex min-h-10 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            aria-label="Browse LAX.bid"
+          >
+            <Globe2 className="size-4 shrink-0" aria-hidden />
+            <span>Browse LAX.bid</span>
+          </Link>
+        ) : null}
         <LogoutButton
           {...(onNavigate ? { onBeforeNavigate: onNavigate } : {})}
           className={cn(
