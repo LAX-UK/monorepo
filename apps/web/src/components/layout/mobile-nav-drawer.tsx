@@ -1,7 +1,6 @@
 "use client";
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
-import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -13,17 +12,15 @@ import {
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { accountNavLinks } from "./header-account-nav";
+import { MobileAuthSection } from "./header-auth-chip";
 import { navItemActive, utilityNav } from "./header-nav-config";
 import { HeaderSearchForm } from "./header-search";
 import { LaxLogo } from "./lax-logo";
-import { LogoutButton } from "./logout-button";
 import { ThemeToggle } from "./theme-toggle";
 
 type MobileNavDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: SessionUser | null;
   pathname: string;
   sections: MegaMenuSection[];
 };
@@ -31,13 +28,7 @@ type MobileNavDrawerProps = {
 const drawerContentClass =
   "fixed inset-y-0 top-0 right-0 left-auto z-50 !flex h-full max-h-[100dvh] w-full max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-surface p-0 shadow-xl sm:max-w-sm sm:rounded-none";
 
-export function MobileNavDrawer({
-  open,
-  onOpenChange,
-  user,
-  pathname,
-  sections,
-}: MobileNavDrawerProps) {
+export function MobileNavDrawer({ open, onOpenChange, pathname, sections }: MobileNavDrawerProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const close = () => {
@@ -157,48 +148,7 @@ export function MobileNavDrawer({
             ))}
           </ul>
 
-          <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
-            {user ? (
-              <>
-                <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400">
-                  Account
-                </p>
-                <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-outline-variant/15 dark:bg-surface-container-low">
-                  <p className="font-body text-sm font-medium text-brand-900 dark:text-on-surface">
-                    {user.name.trim() || "Signed in"}
-                  </p>
-                  <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
-                    {user.email}
-                  </p>
-                </div>
-                <ul className="flex flex-col gap-0.5">
-                  {accountNavLinks(user).map((item) => (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="block py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface"
-                        onClick={close}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                <LogoutButton
-                  onBeforeNavigate={close}
-                  className="block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-outline-variant/15 dark:text-on-surface dark:hover:bg-surface-container-low"
-                />
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="block w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
-                onClick={close}
-              >
-                Log in
-              </Link>
-            )}
-          </div>
+          <MobileAuthSection onNavigate={close} />
 
           <div className="flex items-center gap-3 border-t border-nav-border pt-4">
             <span className="font-label text-xs font-semibold uppercase text-brand-400">Theme</span>

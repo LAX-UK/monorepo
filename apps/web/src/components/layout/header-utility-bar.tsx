@@ -1,18 +1,13 @@
 "use client";
 
-import type { SessionUser } from "@/lib/data/contracts";
 import { linkIsCurrent } from "@/lib/nav/is-current";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HeaderAuthLinks } from "./header-auth-links";
+import { HeaderAuthChip } from "./header-auth-chip";
 import { linkTop, utilityNav } from "./header-nav-config";
 
-type HeaderUtilityBarProps = {
-  user: SessionUser | null;
-};
-
-export function HeaderUtilityBar({ user }: HeaderUtilityBarProps) {
+export function HeaderUtilityBar() {
   const pathname = usePathname();
 
   return (
@@ -30,7 +25,7 @@ export function HeaderUtilityBar({ user }: HeaderUtilityBarProps) {
           </Link>
         );
       })}
-      <HeaderAuthLinks user={user} />
+      <HeaderAuthChip variant="account" />
     </nav>
   );
 }

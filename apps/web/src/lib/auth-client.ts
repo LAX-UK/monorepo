@@ -1,4 +1,4 @@
-import { createAuthClient } from "better-auth/client";
+import { createAuthClient } from "better-auth/react";
 
 const baseURL =
   process.env.NEXT_PUBLIC_AUTH_URL?.replace(/\/$/, "") ??
