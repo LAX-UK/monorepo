@@ -31,10 +31,16 @@ type PresignResponse = {
 
 type UploadStatusResponse = {
   data: {
+    key: string;
     status: string;
     publicUrl: string | null;
     rejectionReason: string | null;
   };
+};
+
+type UploadedImage = {
+  value: string;
+  previewUrl: string;
 };
 
 export function UploadField({
@@ -46,6 +52,7 @@ export function UploadField({
 }: UploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
 
   async function uploadFiles(files: FileList | File[]) {
@@ -56,8 +63,9 @@ export function UploadField({
     for (const file of fileArray) {
       setItems((prev) => [...prev, { fileName: file.name, status: "uploading" }]);
       try {
-        const activeUrl = await uploadOne(file, kind);
-        nextValue = multiple ? [...nextValue, activeUrl] : [activeUrl];
+        const uploaded = await uploadOne(file, kind);
+        setPreviewUrls((prev) => ({ ...prev, [uploaded.value]: uploaded.previewUrl }));
+        nextValue = multiple ? [...nextValue, uploaded.value] : [uploaded.value];
         onChange(nextValue);
         setItems((prev) =>
           prev.map((item) =>
@@ -121,9 +129,13 @@ export function UploadField({
       />
       {value.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          {value.map((url, index) => (
-            <div key={url} className="rounded-md border border-outline-variant/30 p-2">
-              <img src={url} alt="" className="h-28 w-full rounded object-cover" />
+          {value.map((urlOrKey, index) => (
+            <div key={urlOrKey} className="rounded-md border border-outline-variant/30 p-2">
+              <img
+                src={previewUrls[urlOrKey] ?? urlOrKey}
+                alt=""
+                className="h-28 w-full rounded object-cover"
+              />
               <Button
                 type="button"
                 variant="ghost"
@@ -149,7 +161,7 @@ export function UploadField({
   );
 }
 
-async function uploadOne(file: File, kind: UploadKind): Promise<string> {
+async function uploadOne(file: File, kind: UploadKind): Promise<UploadedImage> {
   const base = apiBaseUrl();
   const presign = await fetch(`${base}/uploads/presign`, {
     method: "POST",
@@ -177,7 +189,7 @@ async function uploadOne(file: File, kind: UploadKind): Promise<string> {
   return waitForActiveUpload(base, presignBody.data.uploadId);
 }
 
-async function waitForActiveUpload(base: string, uploadId: string): Promise<string> {
+async function waitForActiveUpload(base: string, uploadId: string): Promise<UploadedImage> {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     const res = await fetch(`${base}/uploads/${encodeURIComponent(uploadId)}`, {
@@ -185,7 +197,9 @@ async function waitForActiveUpload(base: string, uploadId: string): Promise<stri
     });
     if (!res.ok) throw new Error(await errorFromResponse(res, "Could not read upload status"));
     const body = (await res.json()) as UploadStatusResponse;
-    if (body.data.status === "active" && body.data.publicUrl) return body.data.publicUrl;
+    if (body.data.status === "active" && body.data.publicUrl) {
+      return { value: body.data.key, previewUrl: body.data.publicUrl };
+    }
     if (body.data.status === "rejected") {
       throw new Error(body.data.rejectionReason ?? "Upload rejected");
     }

@@ -53,6 +53,9 @@ const envSchema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     /** Public URL prefix for objects (e.g. https://cdn.example.com or R2 public bucket URL). */
     S3_PUBLIC_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** public keeps CDN/object URLs; signed returns short-lived presigned GET URLs for owned keys. */
+    STORAGE_READ_MODE: z.enum(["public", "signed"]).default("public"),
+    SIGNED_GET_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(900),
     /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
     XERO_CLIENT_ID: z.string().optional(),
     XERO_CLIENT_SECRET: z.string().optional(),

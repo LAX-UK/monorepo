@@ -19,6 +19,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -53,7 +54,13 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       Math.max(1, Number.parseInt(c.req.query("limit") ?? "24", 10) || 24),
     );
     const offset = Math.max(0, Number.parseInt(c.req.query("offset") ?? "0", 10) || 0);
-    const data = await container.userService.listPublicArtists({ limit, offset });
+    const rows = await container.userService.listPublicArtists({ limit, offset });
+    const data = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        image: await container.mediaUrlResolver.resolve(row.image),
+      })),
+    );
     return c.json({ data });
   });
 
@@ -63,14 +70,21 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     if (!row) {
       return c.json({ error: "Not found" }, 404);
     }
+    const image = await container.mediaUrlResolver.resolve(row.image);
     return c.json({
-      data: { id: row.id, name: row.name, image: row.image ?? null },
+      data: { id: row.id, name: row.name, image },
     });
   });
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.dashboardQueryService.listBidsWithLotsForBidder(userId);
+    const rows = await container.dashboardQueryService.listBidsWithLotsForBidder(userId);
+    const data = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
+      })),
+    );
     return c.json({ data });
   });
 
@@ -86,7 +100,8 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     for (const p of payments) {
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
     }
-    const data = lots.map((lotRow) => {
+    const presentedLots = await presentLotsImages(container.mediaUrlResolver, lots);
+    const data = presentedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
       return {
         lot: lotRow,
@@ -98,7 +113,13 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/watchlist", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.watchlistService.listWithLots(userId);
+    const rows = await container.watchlistService.listWithLots(userId);
+    const data = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
+      })),
+    );
     return c.json({ data });
   });
 
@@ -371,13 +392,14 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     if (!row) {
       return c.json({ error: "User not found" }, 404);
     }
+    const image = await container.mediaUrlResolver.resolve(row.image);
     return c.json({
       data: {
         id: row.id,
         email: row.email,
         name: row.name,
         role: row.role,
-        image: row.image,
+        image,
       },
     });
   });

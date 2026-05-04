@@ -25,6 +25,11 @@ const API_DENY_TABLES = [
 ];
 const API_READ_TABLES = ["user"];
 const WORKER_READ_TABLES = ["user"];
+// API profile endpoints may update only these Better Auth user columns. Keep this
+// narrower than table-level UPDATE so api_app cannot mutate auth/security fields.
+const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
+  user: ["name", "image", "updated_at"],
+};
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
 // so worker_app needs SELECT + UPDATE on these tables. Keep them out of WORKER_FULL_TABLES
@@ -99,6 +104,19 @@ async function grantIfExists(
   );
 }
 
+async function grantColumnUpdateIfExists(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  columns: readonly string[],
+): Promise<void> {
+  if (!(await tableExists(client, tableName)) || columns.length === 0) return;
+  const columnList = columns.map(quoteIdent).join(", ");
+  await client.query(
+    `grant update (${columnList}) on table public.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+  );
+}
+
 async function revokeIfExists(
   client: pg.Client,
   role: RoleName,
@@ -143,6 +161,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       }
       if (API_READ_TABLES.includes(tableName)) {
         await grantIfExists(client, "api_app", tableName, "SELECT");
+        await grantColumnUpdateIfExists(
+          client,
+          "api_app",
+          tableName,
+          API_COLUMN_UPDATE_GRANTS[tableName] ?? [],
+        );
         continue;
       }
       await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");

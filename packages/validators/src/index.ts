@@ -1,5 +1,6 @@
 export * from "./address.js";
 export * from "./lot.js";
+export * from "./media.js";
 export * from "./onsite-location.js";
 export * from "./sale.js";
 export * from "./sale-mode-policy.js";

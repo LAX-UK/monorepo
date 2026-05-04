@@ -15,6 +15,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
+import { presentLotImages, presentLotsImages } from "../lib/media-presenters.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -41,7 +42,8 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       limit: query.limit,
       offset: query.offset,
     });
-    return c.json({ data: data.map((lotRow) => maskLotForPublicView(lotRow, role)) });
+    const presented = await presentLotsImages(container.mediaUrlResolver, data);
+    return c.json({ data: presented.map((lotRow) => maskLotForPublicView(lotRow, role)) });
   });
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
@@ -91,10 +93,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const role = (c.get("userRole") ?? "client") as UserRole;
     const { id } = c.req.valid("param");
     const result = await container.lotService.publish(userId, role, id);
-    return result.match(
-      (lot) => c.json({ data: lot }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    }
+    return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
   });
 
   r.post(
@@ -107,10 +109,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const result = await container.lotService.cancel(userId, role, id);
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -124,10 +126,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const { id } = c.req.valid("param");
       const body = c.req.valid("json") as Partial<CreateLotInput>;
       const result = await container.lotService.update(role, id, body);
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -141,10 +143,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const result = await container.lotService.updateMarketingDetails(role, id, body);
-      return result.match(
-        (lot) => c.json({ data: lot }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
   );
 
@@ -176,7 +178,8 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     if (!lot) {
       return c.json({ error: "Not found" }, 404);
     }
-    return c.json({ data: maskLotForPublicView(lot, role) });
+    const presented = await presentLotImages(container.mediaUrlResolver, lot);
+    return c.json({ data: maskLotForPublicView(presented, role) });
   });
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {
@@ -187,10 +190,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.lotService.create(userId, body);
-    return result.match(
-      (lot) => c.json({ data: lot }, 201),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    }
+    return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) }, 201);
   });
 
   return r;

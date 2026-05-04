@@ -1,5 +1,6 @@
 import { itemSubmissionStatuses } from "@auction/types";
 import { z } from "zod";
+import { mediaReferenceSchema } from "./media.js";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
 
@@ -23,7 +24,7 @@ export const itemSubmissionFormSchema = z
     medium: z.string().max(500),
     dimensions: z.string().max(200),
     categoryId: z.string().uuid({ message: "Choose a category" }),
-    images: z.array(z.string().url()).max(20),
+    images: z.array(mediaReferenceSchema).max(20),
     askingPrice: z.string(),
     reservePrice: z.string(),
     submitterNotes: z.string().max(5000),
@@ -62,7 +63,7 @@ export const createItemSubmissionSchema = z.object({
   description: z.string().max(10000).optional(),
   medium: z.string().max(500).optional(),
   dimensions: z.string().max(200).optional(),
-  images: z.array(z.string().url()).max(20).optional(),
+  images: z.array(mediaReferenceSchema).max(20).optional(),
   askingPrice: decimalString.optional(),
   reservePrice: decimalString.optional(),
   categoryId: z.string().uuid(),

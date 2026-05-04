@@ -52,6 +52,17 @@ export class S3ObjectStorage implements IObjectStorage {
     return `${this.publicBaseUrl}/${key}`;
   }
 
+  extractKey(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!hasUrlScheme(trimmed)) return trimmed.replace(/^\/+/, "");
+    const prefix = `${this.publicBaseUrl}/`;
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+    return null;
+  }
+
   async createPresignedPut(args: {
     key: string;
     contentType: string;
@@ -70,6 +81,16 @@ export class S3ObjectStorage implements IObjectStorage {
       requiredHeaders: {
         "content-type": args.contentType,
       },
+    };
+  }
+
+  async createPresignedGet(args: { key: string; expiresInSec: number }): Promise<{ url: string }> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: args.key,
+    });
+    return {
+      url: await getSignedUrl(this.client, command, { expiresIn: args.expiresInSec }),
     };
   }
 
@@ -125,4 +146,8 @@ function isNotFoundError(err: unknown): boolean {
     ((err as { name?: string }).name === "NotFound" ||
       (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404)
   );
+}
+
+function hasUrlScheme(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
 }

@@ -2,6 +2,7 @@ import { type CreateLotInput, type Lot, type UserRole, roleHasCapability } from 
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type {
@@ -21,6 +22,7 @@ export class LotService {
     private readonly watchlist: IWatchlistRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
     private readonly lotNotifications: ILotNotificationCoordinator | null,
+    private readonly imageCleanup?: ImageCleanupService,
   ) {}
 
   async create(sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
@@ -105,6 +107,9 @@ export class LotService {
       return err(new LotError("endTime must be after startTime"));
     }
     const updated = await this.lotRepo.update(lotId, input);
+    if (input.images !== undefined) {
+      await this.imageCleanup?.enqueueRemovedMany(a.images, input.images);
+    }
     return ok(updated);
   }
 

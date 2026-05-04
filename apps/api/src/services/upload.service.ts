@@ -6,6 +6,7 @@ import type { Queue } from "bullmq";
 import { and, eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
 import {
   type UploadKind,
   canUploadKind,
@@ -42,6 +43,7 @@ export class UploadService {
     private readonly db?: Database,
     private readonly redis?: Redis,
     private readonly validationQueue?: Queue,
+    private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {}
 
   async uploadImage(body: Buffer, contentType: string): Promise<{ url: string }> {
@@ -140,7 +142,8 @@ export class UploadService {
     userId: string;
     userRole: UserRole;
   }): Promise<
-    { ok: true; value: { status: "queued" } } | { ok: false; status: number; error: string }
+    | { ok: true; value: { status: "queued"; key: string; publicUrl: string } }
+    | { ok: false; status: number; error: string }
   > {
     if (!this.db || !this.validationQueue) {
       return { ok: false, status: 503, error: "upload_validation_not_configured" };
@@ -160,7 +163,10 @@ export class UploadService {
       { uploadId: input.uploadId },
       { attempts: 3 },
     );
-    return { ok: true, value: { status: "queued" } };
+    return {
+      ok: true,
+      value: { status: "queued", key: row.key, publicUrl: this.storage.getPublicUrl(row.key) },
+    };
   }
 
   async getUploadStatus(input: {
@@ -173,6 +179,7 @@ export class UploadService {
         value: {
           id: string;
           kind: string;
+          key: string;
           status: string;
           publicUrl: string | null;
           rejectionReason: string | null;
@@ -183,13 +190,19 @@ export class UploadService {
     if (!this.db) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
     const row = await this.findUploadForAccess(input.uploadId, input.userId, input.userRole);
     if (!row) return { ok: false, status: 404, error: "upload_not_found" };
+    const publicUrl =
+      row.status === "active"
+        ? await (this.mediaUrlResolver?.resolve(row.key) ??
+            Promise.resolve(this.storage.getPublicUrl(row.key)))
+        : null;
     return {
       ok: true,
       value: {
         id: row.id,
         kind: row.kind,
+        key: row.key,
         status: row.status,
-        publicUrl: row.status === "active" ? this.storage.getPublicUrl(row.key) : null,
+        publicUrl,
         rejectionReason: row.rejectionReason ?? null,
       },
     };
