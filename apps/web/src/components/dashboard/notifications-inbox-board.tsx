@@ -5,6 +5,7 @@ import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
 import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
+import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { BulkActionBar, DataTable } from "@auction/ui";
 import { Button as ShadButton } from "@auction/ui/components/button";
@@ -33,7 +34,6 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
@@ -119,7 +119,7 @@ export function NotificationsInboxBoard() {
         }
         return [n, ...prev];
       });
-      toast.info(n.title, { description: n.message, id: `inbox-${n.id}` });
+      notify.info(n.title, { description: n.message, id: `inbox-${n.id}` });
     }, []),
   });
 
@@ -153,7 +153,7 @@ export function NotificationsInboxBoard() {
     if (res.ok) {
       setItems((prev) => prev.map((n) => (selected.has(n.id) ? { ...n, read: true } : n)));
       setSelected(new Set());
-      toast.success("Marked as read");
+      notify.success("Marked as read");
     }
   };
 
@@ -167,7 +167,7 @@ export function NotificationsInboxBoard() {
     }
     setItems((prev) => prev.filter((n) => !selected.has(n.id)));
     setSelected(new Set());
-    toast.success("Archived selected");
+    notify.success("Archived selected");
   };
 
   const markReadOne = useCallback(async (id: string) => {
@@ -177,9 +177,9 @@ export function NotificationsInboxBoard() {
     });
     if (res.ok) {
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      toast.success("Marked as read");
+      notify.success("Marked as read");
     } else {
-      toast.error("Could not mark as read");
+      notify.error("Could not mark as read");
     }
   }, []);
 
@@ -195,9 +195,9 @@ export function NotificationsInboxBoard() {
         n.delete(id);
         return n;
       });
-      toast.success("Archived");
+      notify.success("Archived");
     } else {
-      toast.error("Could not archive");
+      notify.error("Could not archive");
     }
   }, []);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { updateBiddingPreferencesFromValuesAction } from "@/lib/actions/user-bidding-preferences";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -17,7 +18,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 const biddingFormSchema = z.object({
@@ -66,7 +66,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
               defaultMaxBidAmount: defaultMaxBidAmount ?? undefined,
             });
             if (r.ok) {
-              toast.success("Preferences saved");
+              notify.success("Preferences saved");
               router.replace("/dashboard/settings/bidding?saved=1");
               router.refresh();
               return;
@@ -78,7 +78,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
                 }
               }
             } else {
-              toast.error(r.error);
+              notify.error(r.error);
             }
           });
         })}

@@ -1,10 +1,10 @@
 "use client";
 
 import { removeEmailSuppressionAction } from "@/lib/actions/admin-email";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 export function EmailSuppressionRemoveButton({ emailHash }: { emailHash: string }) {
   const router = useRouter();
@@ -22,11 +22,11 @@ export function EmailSuppressionRemoveButton({ emailHash }: { emailHash: string 
           void (async () => {
             const result = await removeEmailSuppressionAction(emailHash);
             if (result.ok) {
-              toast.success("Suppression removed");
+              notify.success("Suppression removed");
               router.refresh();
               return;
             }
-            toast.error(result.error);
+            notify.error(result.error);
           })();
         });
       }}

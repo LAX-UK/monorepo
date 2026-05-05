@@ -13,11 +13,11 @@ import {
 } from "@/lib/actions/admin-sales";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { salePath } from "@/lib/seo/url";
+import { notify } from "@/lib/ui/notify";
 import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 type LotRow = { id: string; title: string; lotNumber: number | null; status: LotStatus };
 
@@ -62,11 +62,11 @@ export function AdminSaleDetailActions({
       void (async () => {
         const r = await fn();
         if (r.ok) {
-          toast.success("Done");
+          notify.success("Done");
           router.refresh();
           return;
         }
-        toast.error(r.error);
+        notify.error(r.error);
       })();
     });
   };

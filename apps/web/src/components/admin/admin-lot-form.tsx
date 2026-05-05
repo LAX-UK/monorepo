@@ -19,6 +19,7 @@ import {
   safeParseCreateLotFromForm,
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
+import { notify } from "@/lib/ui/notify";
 import { type CategoryNode, lotAuctionTypes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -35,7 +36,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 type Props = {
   mode: "create" | "edit";
@@ -79,7 +79,7 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
                 for (const iss of api.error.issues) {
                   applyZodErrorsToForm(form, iss.path, iss.message);
                 }
-                toast.error("Check the form for errors");
+                notify.error("Check the form for errors");
                 return;
               }
               const r = await adminCreateLotResultAction(api.data);
@@ -90,20 +90,20 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
                     formValuesToImageAltsPatch(values),
                   );
                   if (!alts.ok) {
-                    toast.error("Draft created, but image alt text could not be saved", {
+                    notify.error("Draft created, but image alt text could not be saved", {
                       description: alts.error,
                     });
                   }
                 }
-                toast.success("Draft created");
+                notify.success("Draft created");
                 router.push(`/admin/lots/${r.data?.id}`);
                 return;
               }
-              toast.error(r.error);
+              notify.error(r.error);
               return;
             }
             if (!lotId) {
-              toast.error("Missing lot");
+              notify.error("Missing lot");
               return;
             }
             const api = safeParseUpdateLotFromForm(values);
@@ -111,7 +111,7 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
               for (const iss of api.error.issues) {
                 applyZodErrorsToForm(form, iss.path, iss.message);
               }
-              toast.error("Check the form for errors");
+              notify.error("Check the form for errors");
               return;
             }
             const r = await adminUpdateLotResultAction(lotId, api.data);
@@ -121,16 +121,16 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
                 formValuesToImageAltsPatch(values),
               );
               if (!alts.ok) {
-                toast.error("Lot saved, but image alt text could not be saved", {
+                notify.error("Lot saved, but image alt text could not be saved", {
                   description: alts.error,
                 });
                 return;
               }
-              toast.success("Saved");
+              notify.success("Saved");
               router.push(`/admin/lots/${lotId}`);
               return;
             }
-            toast.error(r.error);
+            notify.error(r.error);
           });
         })}
       >

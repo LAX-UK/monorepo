@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { notify } from "@/lib/ui/notify";
 
 export const ADMIN_CANNOT_BUY_TITLE = "Staff account";
 
@@ -13,7 +13,7 @@ export function isAdminCannotBuyApiError(error: string | undefined, status: numb
 }
 
 export function toastAdminCannotBuy(): void {
-  toast.error(ADMIN_CANNOT_BUY_TITLE, {
+  notify.error(ADMIN_CANNOT_BUY_TITLE, {
     description: ADMIN_CANNOT_BUY_DESCRIPTION,
     id: "admin-cannot-buy",
     duration: 8000,

@@ -7,6 +7,7 @@ import { LabelCaps } from "@/components/ui/typography";
 import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
+import { notify } from "@/lib/ui/notify";
 import {
   Card,
   CardContent,
@@ -28,7 +29,6 @@ import { CreditCard, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 
 export type ProfileAddressRow = {
   id: string;
@@ -129,11 +129,11 @@ function ProfileAvatarCard({ initialImage }: { initialImage: string | null }) {
     startTransition(async () => {
       const r = await updateProfileImageAction({ image: next[0] ?? null });
       if (r.ok) {
-        toast.success("Profile image updated");
+        notify.success("Profile image updated");
         router.refresh();
         return;
       }
-      toast.error(r.error);
+      notify.error(r.error);
     });
   }
 

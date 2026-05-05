@@ -2,10 +2,10 @@
 
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { registerPushSubscription } from "@/lib/push/subscribe";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
@@ -22,22 +22,22 @@ export function NotificationPushEnableButton({ saveDisabled = false }: { saveDis
       const body = (await res.json()) as { data?: { publicKey?: string | null } };
       const key = body.data?.publicKey;
       if (!key) {
-        toast.error("Push is not configured on the server (missing VAPID keys).");
+        notify.error("Push is not configured on the server (missing VAPID keys).");
         return;
       }
       await registerPushSubscription(key);
-      toast.success("Browser notifications enabled");
+      notify.success("Browser notifications enabled");
       const r = await updateNotificationPreferencesFromValuesAction({
         outbidPush: true,
         wonPush: true,
       });
       if (!r.ok) {
-        toast.error(r.error);
+        notify.error(r.error);
         return;
       }
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not enable push");
+      notify.error(e instanceof Error ? e.message : "Could not enable push");
     } finally {
       setPushBusy(false);
     }

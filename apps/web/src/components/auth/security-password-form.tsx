@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { changePasswordAction } from "@/lib/actions/change-password";
+import { notify } from "@/lib/ui/notify";
 import {
   Form,
   FormControl,
@@ -14,7 +15,6 @@ import {
 import { type PasswordChangeFormValues, passwordChangeFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 const defaultValues: PasswordChangeFormValues = {
   currentPassword: "",
@@ -37,7 +37,7 @@ export function SecurityPasswordForm() {
           const r = await changePasswordAction(values);
           if (r.ok) {
             form.reset();
-            toast.success("Password updated", {
+            notify.success("Password updated", {
               description: "You can use your new password next time you sign in.",
             });
             return;
@@ -50,7 +50,7 @@ export function SecurityPasswordForm() {
             }
           } else {
             form.setError("root", { message: r.error });
-            toast.error(r.error);
+            notify.error(r.error);
           }
         })}
       >

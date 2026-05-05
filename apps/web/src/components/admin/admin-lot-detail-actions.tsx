@@ -1,11 +1,11 @@
 "use client";
 
 import { adminCancelLotResultAction, adminPublishLotResultAction } from "@/lib/actions/admin";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 type Props = {
   lotId: string;
@@ -59,11 +59,11 @@ export function AdminLotDetailActions({
               void (async () => {
                 const r = await adminPublishLotResultAction(lotId);
                 if (r.ok) {
-                  toast.success("Published");
+                  notify.success("Published");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           }}
@@ -82,11 +82,11 @@ export function AdminLotDetailActions({
               void (async () => {
                 const r = await adminCancelLotResultAction(lotId, {});
                 if (r.ok) {
-                  toast.success("Auction cancelled");
+                  notify.success("Auction cancelled");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           }}

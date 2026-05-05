@@ -5,6 +5,7 @@ import {
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
+import { notify } from "@/lib/ui/notify";
 import { type UserRole, userRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -16,7 +17,6 @@ import {
 } from "@auction/ui/components/select";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 
 const roleOptions: UserRole[] = [...userRoles];
 
@@ -38,11 +38,11 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
       void (async () => {
         const r = await adminSetUserRoleResultAction(userId, { role });
         if (r.ok) {
-          toast.success("Role updated");
+          notify.success("Role updated");
           router.refresh();
           return;
         }
-        toast.error(r.error);
+        notify.error(r.error);
       })();
     });
   };
@@ -133,11 +133,11 @@ export function UserSuspendAction({
             void (async () => {
               const r = await adminUnsuspendUserResultAction(userId);
               if (r.ok) {
-                toast.success("Unsuspended");
+                notify.success("Unsuspended");
                 router.refresh();
                 return;
               }
-              toast.error(r.error);
+              notify.error(r.error);
             })();
           });
         }}
@@ -158,11 +158,11 @@ export function UserSuspendAction({
           void (async () => {
             const r = await adminSuspendUserResultAction(userId, { reason: "Admin action" });
             if (r.ok) {
-              toast.success("Suspended");
+              notify.success("Suspended");
               router.refresh();
               return;
             }
-            toast.error(r.error);
+            notify.error(r.error);
           })();
         });
       }}

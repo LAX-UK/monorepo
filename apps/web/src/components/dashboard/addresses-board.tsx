@@ -9,6 +9,7 @@ import {
   setDefaultAddressAction,
   updateAddressFromValuesAction,
 } from "@/lib/actions/profile";
+import { notify } from "@/lib/ui/notify";
 import {
   Card,
   CardContent,
@@ -23,7 +24,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import type { z } from "zod";
 
 type AddressFormValues = z.infer<typeof createAddressBodySchema>;
@@ -247,11 +247,11 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
     startTransition(async () => {
       const result = await work();
       if (result.ok) {
-        toast.success(success);
+        notify.success(success);
         router.refresh();
         return;
       }
-      toast.error(result.error ?? "Could not update address");
+      notify.error(result.error ?? "Could not update address");
     });
   };
 
