@@ -4,7 +4,7 @@ The domain events outbox is the single most important pattern in this architectu
 
 This single pattern gives us four properties that would otherwise require significant additional infrastructure: a complete audit log, replayability per integration, zero coupling between business logic and external services, and a foundation for any future event consumer without changes to application code.
 
-> **Implementation status (last reviewed 2026-05-01).** The contract described in this document is **only partially implemented**.
+> **Implementation status (last reviewed 2026-05-05).** The contract described in this document is **only partially implemented**.
 >
 > - **Implemented:** `domain_events` and `projector_state` tables with all the columns referenced below ([packages/db/src/schema/domain-events.ts](../../packages/db/src/schema/domain-events.ts)). `DomainEventPublisher.publish(tx, event)` ([apps/api/src/services/domain-event.publisher.ts](../../apps/api/src/services/domain-event.publisher.ts)). The `FOR UPDATE SKIP LOCKED` polling runner ([apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts)).
 > - **Scaffolded but not wired:** the Zoho and Xero projectors exist as pure mapping helpers ([apps/worker/src/projectors/zoho.ts](../../apps/worker/src/projectors/zoho.ts), [apps/worker/src/projectors/xero.ts](../../apps/worker/src/projectors/xero.ts)) but the runner does not import them; the `ZohoClient` is a no-op stub. The runner advances only the `zoho` cursor — the `xero` row in `projector_state` is created at startup but never updated.
@@ -80,6 +80,22 @@ This catalog is the contract between event producers and projectors. When you ad
 | `payment.refunded` | apps/api | xero, zoho | Refund processed | `{paymentId, lotId, userId, amountCents, refundedAt, reason}` |
 | `lot.activated` | apps/worker (lot lifecycle) | none yet | Lot start time reached | `{lotId, auctionId, activatedAt}` |
 | `lot.ended` | apps/worker (lot lifecycle) | zoho (for unsold flag) | Lot end time reached | `{lotId, auctionId, endedAt, hadWinner}` |
+
+Admin bulk operations added in the dashboard UX pass are synchronous admin APIs,
+not domain-event producers today:
+
+- `POST /admin/users/bulk` (`suspend`, `unsuspend`) loops through the existing
+  suspension service path and returns the first service error.
+- `POST /admin/invitations/bulk` (`revoke`, `resend`) loops through existing
+  invitation service methods so invitation email behaviour stays unchanged.
+- `POST /admin/email/suppressions/bulk` (`delete`) removes suppression rows by
+  email hash through the observability repository.
+- `POST /submissions/bulk` (`approve`, `reject`) loops through the existing
+  submission review service methods; approval still creates draft lots through
+  the normal conversion path.
+
+If these operations later need audit replay or outbound integrations, add
+explicit `admin.bulk_*` event types here before wiring projector consumers.
 
 Bid emissions are deliberately limited to milestones per Q14 to keep Zoho rate-limit headroom. Every individual bid is a row in the `bid` table; only first-bid-for-this-user-on-this-lot, outbid, and won-the-lot are domain events. Hot lots can take 100+ bids per minute and we never want that volume hitting Zoho.
 
@@ -238,3 +254,130 @@ Throwing on unknown schema versions is correct — it means a deploy went out wi
 Events are kept forever per Q50. The audit-log property is one of the main reasons we use this pattern; truncating the table defeats it. When the table size becomes operationally problematic (estimated at 100GB+), archive cold rows to DigitalOcean Spaces in monthly partitions and drop them from the live table — the projector cursors will continue to work because they only ever query for `id > $cursor`.
 
 Archive format: gzipped NDJSON, one row per line, organized by year-month. A simple cron job in `apps/worker` does this monthly. Restoration (rare) is a manual SQL `COPY FROM` after pulling the archive back from Spaces.
+
+## Email pipeline
+
+The email pipeline is a **second outbox** that lives alongside the domain-events outbox but is structurally separate. Domain events project business state into Zoho/Xero; the email outbox sends physical mail. They share the same architectural pattern (durable handoff in Postgres + worker drain) but they have different tables, different idempotency models, and different consumers. Reusing the domain-events outbox for email would couple "we sent the user a receipt" to "we told the CRM about a payment", and that coupling is exactly what we wanted to avoid.
+
+Schema-level details for the four tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) and the user/notification-preference extensions are in [03-data-model.md → "Email-pipeline tables"](./03-data-model.md#email-pipeline-tables--email_outbox-email_event-email_suppression-newsletter_signup_log). Operational and provider-onboarding details are in [../integrations/email.md](../integrations/email.md). Incident response is in [../runbooks/email-provider-incident.md](../runbooks/email-provider-incident.md).
+
+> **Implementation status (last reviewed 2026-05-05).** The full transactional/notification path described below is **implemented**: `IEmailService` in `@auction/email`, the BullMQ `email` queue with `outbox-drain` repeatable job, the Postmark sender with List-Unsubscribe headers, the `/webhooks/postmark` ingest, and the HMAC-signed unsubscribe route. The marketing path (newsletter → Zoho Campaigns) is implemented as a one-way push via the `marketing-sync` queue. WhatsApp channel is a stub that throws `NotImplementedError`. The known runtime gap is the role grants for `auth_app` and `worker_app` — see the data-model status block.
+
+### Why a second outbox
+
+The domain-events outbox is "what business state changed". The email outbox is "what message did we promise to send". They have different lifecycles:
+
+- A domain event row is **append-only and never updated** — projectors track their position via `projector_state.last_processed_event_id`. An email outbox row goes through a full state machine (`pending` → `sending` → `sent`/`failed`/`suppressed`) so the worker can express "I tried, here's the Postmark `MessageID` so you can correlate the bounce three hours from now".
+- A domain event has **N consumers** (Zoho, Xero, MailChimp later). An email outbox row has **exactly one consumer** — the BullMQ `send-email` job for that specific row, identified by `jobId = outboxId`.
+- A domain event's idempotency key is its DB-assigned `id`. An email outbox row is deduplicated on a content-derived `idempotency_key` so the same logical send (same template, same user, same vars) collapses to a single row even when callers retry.
+
+If you find yourself wanting to reuse `domain_events` for an outbound mail, stop and write to `email_outbox` instead. If you want to add a second mail provider, add a second `IEmailSender` implementation in `apps/worker`; do not add an `email_projector_state` row to the domain-events runner.
+
+### Transactional/notification flow
+
+```mermaid
+flowchart LR
+  Caller["apps/auth or apps/api<br/>e.g. NotificationDispatcher,<br/>Better Auth send-verify hook"]
+  Outbox[("email_outbox")]
+  Suppression[("email_suppression")]
+  Q[["BullMQ 'email' queue"]]
+  Worker["apps/worker<br/>send-email job"]
+  Postmark["Postmark<br/>(transactional + broadcast streams)"]
+  User(((User mailbox)))
+  Webhook["apps/api<br/>POST /webhooks/postmark"]
+  Event[("email_event")]
+  UserTbl[("user.email_status")]
+
+  Caller -->|enqueue| Outbox
+  Outbox -.->|lookup hash| Suppression
+  Outbox -->|jobId=outboxId| Q
+  Q --> Worker
+  Worker --> Postmark
+  Postmark --> User
+  Postmark -.->|delivery, bounce,<br/>complaint, open, click| Webhook
+  Webhook --> Event
+  Webhook -->|hard_bounce or<br/>complaint| Suppression
+  Webhook -->|hard_bounce -> bounced<br/>complaint -> complained| UserTbl
+
+  style Outbox fill:#FAEEDA,stroke:#854F0B,color:#633806
+  style Event fill:#FAEEDA,stroke:#854F0B,color:#633806
+  style Suppression fill:#FAEEDA,stroke:#854F0B,color:#633806
+  style UserTbl fill:#FAEEDA,stroke:#854F0B,color:#633806
+  style Q fill:#E1F5EE,stroke:#0F6E56,color:#085041
+  style Worker fill:#E1F5EE,stroke:#0F6E56,color:#085041
+  style Postmark fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+  style Webhook fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+  style Caller fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+```
+
+The flow:
+
+1. A caller (the Better Auth `sendVerificationEmail` hook in `apps/auth`, the `NotificationDispatcher`'s email channel in `apps/api`, the invite service, etc.) calls `IEmailService.enqueue({ template, to, vars, category, userId? })`. The service hashes the address, looks it up in `email_suppression`, and inserts an `email_outbox` row. Auth-category sends bypass suppression but record `flagged_address=true`.
+2. The same call enqueues a BullMQ job on the `email` queue with `jobId = outboxId`. BullMQ's per-jobId dedupe means a second enqueue for the same outbox row is a no-op.
+3. The `send-email` worker job claims the row (`status pending → sending`), renders the React Email template via `@auction/email`'s `render`, calls Postmark with the right stream and List-Unsubscribe headers (omitted for the `auth` and payment categories), then writes back `status sent`, `message_id`, `sent_at`. Failures trigger the BullMQ retry policy (5 attempts, exponential backoff base 30s) and after exhaustion land the row in `failed`.
+4. A repeatable `outbox-drain` job runs every 60s and re-enqueues any `pending` rows that BullMQ never claimed (defensive against process crash between insert and `queue.add`).
+5. Postmark posts delivery callbacks to `POST /webhooks/postmark` (Basic Auth). The handler inserts an `email_event` row and, on hard bounces or complaints, upserts `email_suppression` and flips `user.email_status`.
+
+### Caller-side vs worker-side seams
+
+There are two interfaces, on purpose:
+
+- `IEmailService` in `@auction/email` exposes only `enqueue()`. Every caller in `apps/api` and `apps/auth` depends on this. It does not know about Postmark.
+- `IEmailSender` in `@auction/email` exposes only `send(outboxRow, renderedEmail)`. Only the `send-email` worker job depends on this. Today there is one implementation, `PostmarkEmailSender` in `apps/worker/src/infrastructure/postmark-email.sender.ts`.
+
+If a caller is tempted to import `postmark` directly, that's the bug — it bypasses the outbox, the suppression check, the retry policy, and the `email_event` correlation. Code review rejects any import of a provider SDK from a caller-side path.
+
+### Marketing flow (Zoho Campaigns one-way push)
+
+```mermaid
+flowchart LR
+  Form["Web newsletter form"]
+  ApiNl["apps/api<br/>POST /api/newsletter/subscribe"]
+  Log[("newsletter_signup_log")]
+  Q2[["BullMQ 'marketing-sync' queue"]]
+  Worker2["apps/worker<br/>zoho-campaigns-sync job"]
+  Zoho["Zoho Campaigns API<br/>(EU region)"]
+
+  Form --> ApiNl
+  ApiNl -->|insert status=queued| Log
+  ApiNl --> Q2
+  Q2 --> Worker2
+  Worker2 --> Zoho
+  Worker2 -->|update status,<br/>zoho_response_code| Log
+
+  style Log fill:#FAEEDA,stroke:#854F0B,color:#633806
+  style Q2 fill:#E1F5EE,stroke:#0F6E56,color:#085041
+  style Worker2 fill:#E1F5EE,stroke:#0F6E56,color:#085041
+  style Zoho fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+  style ApiNl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+  style Form fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+```
+
+The newsletter signup is **fire-and-forget into Zoho**. Subscriber state, double-opt-in confirmation mail, and unsubscribe links for marketing campaigns all live in Zoho — we deliberately do not maintain a parallel subscriber table. The `newsletter_signup_log` table only proves what we tried to push and what Zoho said back; it is read for GDPR access/erasure requests, not for sending.
+
+There is no "Brevo" or other secondary marketing provider in this design. If Zoho Campaigns ever becomes unworkable, swapping it is a `IMarketingSender` change in `apps/worker` plus updating the runbook — but until then there is one provider for marketing and one provider for transactional, and they do not share infrastructure.
+
+### Unsubscribe and preference center
+
+There are two flavours of opt-out:
+
+- **Per-notification opt-out.** Used by the `outbid`, `lot_won`, and `lot_ended_seller` templates. The List-Unsubscribe URL embeds an HMAC-signed token scoped to `(userId, notificationType)` (created in `apps/api/src/lib/email-unsubscribe-token.ts`). Hitting the URL flips the matching `notification_preference.*_email` column to `false`. `email_suppression` is **not** written, so other notification types and `auth`/payment mail continue to flow.
+- **Global opt-out.** Used when the user clicks the "stop sending me anything" link in the preference center, or when Postmark posts a `SubscriptionChange` for the broadcast stream. Writes a row to `email_suppression(reason='unsubscribe')`. From that point all `transactional`-category sends short-circuit to `status='suppressed'`; `auth`-category sends still go through but the row is flagged.
+
+`auth` and `payment` templates intentionally do not include List-Unsubscribe headers — they are operational mail under the Gmail/Yahoo bulk-sender rules and exempt from the one-click requirement. Suppression also does not block them; the user must close their account to stop those.
+
+### Idempotency, PII, and retention
+
+- **Idempotency.** `email_outbox.idempotency_key` defaults to `template:userId-or-emailHash:sha256(canonical(vars))`. Callers can override when there's a more meaningful key (e.g. `bid.outbid:lotId:userId`). The unique index makes duplicate enqueues collapse to the first row.
+- **PII.** Recipient addresses live as `to_email_hash` (SHA-256, kept forever) and optionally `to_snapshot` (plaintext, purged at `to_snapshot_purge_at`, default 30 days). Templates that resolve at enqueue (`invite`) snapshot; templates that resolve at send-time from `user.id` do not. The hash-only retention means a GDPR Article 17 deletion request on the user wipes `to_snapshot` immediately and leaves only the hashed audit trail.
+- **Retention.** `email_outbox` and `email_event` are kept for 12 months for delivery analytics. `email_suppression` is kept until the user explicitly resubscribes (Gmail/Yahoo expect long memory here). `newsletter_signup_log` is kept 24 months for GDPR audit. None of these have an automatic purge job today; cleanup is **(planned)**.
+
+### Adding a new email template
+
+1. Add the React Email TSX template to `packages/email/src/templates/` and export it from `packages/email/src/index.ts`.
+2. Add the template name to `TemplateName` and the variables to `TemplateVarsByName` in `packages/email/src/types.ts`.
+3. Add the template to `RECIPIENT_RESOLUTION` (`'snapshot'` if the recipient is not a registered user yet, `'user'` if it resolves from `user.id` at send time).
+4. Pick a category (`auth` for verification/reset/invite/password-changed/change-email; `transactional` for everything else) and decide whether the template needs a List-Unsubscribe URL — if yes, the corresponding `notification_preference.*_email` toggle needs to exist.
+5. Call `emailService.enqueue({ template: '<name>', to, vars, category, userId? })` from the relevant service.
+
+No worker change is needed; the `send-email` job is template-agnostic and renders via the registry. Postmaster onboarding (warming a new `From`, adding a new sender domain, etc.) is in `docs/integrations/email.md`.

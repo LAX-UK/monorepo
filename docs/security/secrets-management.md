@@ -31,7 +31,13 @@ The shape of every secret in this list:
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | DO App Platform env on `apps/api` and `apps/worker`; DigitalOcean Spaces keys; 1Password | `apps/api`, `apps/worker`; ops team | Annual or on suspected leak |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; Stripe dashboard; 1Password | `apps/api`; ops team | Quarterly for live keys, on suspected leak |
 | `SENTRY_DSN_API` / `SENTRY_DSN_AUTH` / `SENTRY_DSN_WS` / `SENTRY_DSN_WORKER` / `SENTRY_DSN_WEB` | DO App Platform env per app; Sentry; 1Password | The respective app; ops team | On suspected leak |
-| `REDIS_URL` | DO App Platform env on `apps/api`, `apps/ws`, `apps/worker`; 1Password | The respective apps; ops team | On Redis cluster rotation |
+| `REDIS_URL` | DO App Platform env on `apps/api`, `apps/auth`, `apps/ws`, `apps/worker`; 1Password | The respective apps; ops team | On Redis cluster rotation |
+| `POSTMARK_SERVER_TOKEN` | DO App Platform env on `apps/worker`; Postmark server settings; 1Password | `apps/worker`; ops team | Annual or on suspected leak |
+| `POSTMARK_TRANSACTIONAL_STREAM` / `POSTMARK_BROADCAST_STREAM` | DO App Platform env on `apps/worker` | `apps/worker`; ops team | Not a secret, listed for completeness — change only when Postmark stream ids change |
+| `POSTMARK_WEBHOOK_BASIC_AUTH` | DO App Platform env on `apps/api`; Postmark webhook config; 1Password | `apps/api`; ops team | Annual; rotate Postmark side and `apps/api` env together |
+| `EMAIL_UNSUBSCRIBE_SECRET` | DO App Platform env on `apps/api`; 1Password | `apps/api`; ops team | Only on suspected leak — rotation invalidates List-Unsubscribe links in already-delivered mail |
+| `EMAIL_FROM` / `EMAIL_REPLY_TO` | DO App Platform env on `apps/auth`, `apps/api`, `apps/worker` | All three apps; ops team | Not a secret; change with Postmark sender domain updates |
+| `ZOHO_CAMPAIGNS_API_KEY` / `ZOHO_CAMPAIGNS_LIST_KEY` | DO App Platform env on `apps/worker`; Zoho Campaigns; 1Password | `apps/worker`; ops team | Annual; rotate the API key only — list key changes with the marketing list |
 
 When you add a secret to the codebase, add a row to this table in the same PR. When you rotate a secret, update the rotation date in 1Password (this file does not track exact dates — that's the 1Password entry's job).
 

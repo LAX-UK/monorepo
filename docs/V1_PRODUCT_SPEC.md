@@ -1,14 +1,16 @@
 # V1 Product Specification
 
-Updated: 2026-04-28
+Updated: 2026-05-05
 
 ## Purpose
 
 This document defines the V1 target product rules and scope.
 It is normative for V1 planning and implementation.
 
-`docs/SYSTEM_ANALYSIS.md` describes current implementation behavior.
-If there is a mismatch, V1 implementation work should be planned to close the gap.
+`docs/SYSTEM_ANALYSIS.md` describes the current auction-domain runtime.
+`docs/architecture/01-overview.md` describes the platform architecture.
+If there is a mismatch with this spec, V1 implementation work should be planned
+to close the gap.
 
 ## V1 Role Model
 
@@ -97,7 +99,15 @@ V1 has three user role types:
 
 ## Known Gaps To Close (Current vs Target)
 
-- Current implementation role model may not yet include accountant as a first-class role.
-- Invitation product workflows may not yet be fully implemented.
-- Multiple auction strategies exist in current code/schema and must be constrained for V1 product behavior.
-- Onsite non-bid engagement behavior must be confirmed as consistent in API + UI.
+- The role model has `administrator`, `accountant`, and `client` as first-class
+  roles in `packages/types/src/role-policy.ts`; verify V1 admin and accountant
+  UI surfaces match the role matrix.
+- Invitation workflows exist (`apps/api/src/routes/admin-invitations.ts`,
+  `apps/web/src/app/admin/(platform)/invitations/`); verify each role is
+  reachable from the admin invitation flow.
+- Multiple auction strategies (`english`, `dutch`, `sealed`, `buy_it_now`)
+  exist in code/schema. V1 product flows must hide non-English strategies.
+- Onsite non-bid engagement (follow/watch) behavior must be confirmed as
+  consistent in API + UI.
+- See `docs/design/dashboard-ux-roadmap.md` for the prioritised V1 dashboard
+  delivery plan.

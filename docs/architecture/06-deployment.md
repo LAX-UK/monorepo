@@ -4,13 +4,14 @@ This document describes how the system is deployed and operated in production. I
 
 If you're trying to deploy a change, the [deploy checklist runbook](../runbooks/deploy-checklist.md) is the procedure. If you're trying to understand why the deployment is shaped the way it is, this document is the rationale.
 
-> **Implementation status (last reviewed 2026-05-01)**
+> **Implementation status (last reviewed 2026-05-05)**
 >
-> - **Implemented in code:** five Dockerized apps with their own entrypoints — [apps/web/Dockerfile](../../apps/web/Dockerfile), [apps/api/Dockerfile](../../apps/api/Dockerfile), [apps/auth/Dockerfile](../../apps/auth/Dockerfile), [apps/ws/Dockerfile](../../apps/ws/Dockerfile), [apps/worker/Dockerfile](../../apps/worker/Dockerfile). Production migration runner at [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) (`pnpm db:migrate:prod`). Cloudflare configuration documented in [../integrations/cloudflare.md](../integrations/cloudflare.md). DigitalOcean managed Postgres + Redis configuration documented in [../integrations/digitalocean.md](../integrations/digitalocean.md).
-> - **Operational, not codified in the repo:** the App Platform component definitions, instance sizing, HA counts, `pre-deploy` Job binding, Cloudflare rate-limit/WAF rules, and DNS records all live in the DigitalOcean and Cloudflare consoles, not in IaC. There is no `infra/terraform/` and no `.do/app.yaml` in this repo today. The numbers in the *Target instance sizing* table below are recommendations, not declarative state.
-> - **Planned:** Terraform/IaC capture of the full topology, branch-based gated production deploys (the `main` → test → `release` → prod cadence), pre-deploy Job binding declared in repo, and a CI-driven smoke test loop.
+> - **Implemented in code:** five Dockerized apps with their own entrypoints — [apps/web/Dockerfile](../../apps/web/Dockerfile), [apps/api/Dockerfile](../../apps/api/Dockerfile), [apps/auth/Dockerfile](../../apps/auth/Dockerfile), [apps/ws/Dockerfile](../../apps/ws/Dockerfile), [apps/worker/Dockerfile](../../apps/worker/Dockerfile). Production migration runner at [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) (`pnpm db:migrate:prod`). Email pipeline (Postmark transactional + Zoho Campaigns one-way newsletter push) wired through `apps/auth`, `apps/api`, and `apps/worker` with the `email` and `marketing-sync` BullMQ queues — see [../integrations/email.md](../integrations/email.md).
+> - **Implemented in IaC:** the full topology now lives in [infra/terraform/](../../infra/terraform/), split into `bootstrap/` (manual one-time, see [BOOTSTRAP.md](../../infra/terraform/BOOTSTRAP.md)), `persistent/<env>/` (DNS, Cloudflare zone settings, projects, Spaces media bucket, Sentry projects), and `ephemeral/<env>/` (Postgres cluster + RBAC, Redis cluster, App Platform components and pre-deploy Job, monitoring, Sentry alerts, Cloudflare rate limits and WAF rules — including `/webhooks/postmark`, `/api/auth/sign-up`, `/api/auth/send-verification-email`). Applies run through GitHub Actions (state in DigitalOcean Spaces; production apply requires the typed `APPLY-PROD` confirmation).
+> - **Operational, not in repo:** the GitHub-side environment secrets (`DIGITALOCEAN_TOKEN`, `BETTER_AUTH_SECRET`, `MEDIA_SPACES_*`, OAuth/webhook secrets, Sentry tokens, JWKS snapshot keys), Apple/Google OAuth client registrations, `mail.lax.bid` SPF/DKIM/DMARC DNS verification on the Postmark side, Postmark sender domain warmup, and the manual deploy promotion gate. The numbers in the *Target instance sizing* table below are recommendations.
+> - **Planned:** branch-based gated production deploys (the `main` → test → `release` → prod cadence), pre-deploy smoke tests in CI, automated drift remediation beyond the weekly drift workflow.
 >
-> Anywhere this document describes "instance counts", "$ costs", or "Terraform plan/apply" as if they were committed to the repo, treat that as the *target state*. Today, the only authoritative deployment artifacts in-repo are the Dockerfiles, the migrate script, and the env files.
+> Anywhere this document describes "instance counts" or "$ costs" as if they were declarative state, the canonical numbers live in `infra/terraform/ephemeral/<env>/main.tf`. Treat the prose below as the architectural rationale; treat Terraform as the source of truth for what's actually deployed.
 
 ## The deployed system at a glance
 
@@ -37,6 +38,8 @@ flowchart TB
   Shop[lax.shop<br/>Shopify · hosted]
 
   External[Zoho EU · Xero · Sentry · Google · Apple]
+  Postmark[Postmark<br/>transactional + broadcast streams]
+  ZohoCamp[Zoho Campaigns<br/>EU region, one-way push]
 
   Users -->|HTTPS| CF
   CF --> Web
@@ -46,6 +49,7 @@ flowchart TB
 
   Web --> Api
   Auth --> PG
+  Auth --> Redis
   Api --> PG
   Api --> Redis
   Api --> Spaces
@@ -54,14 +58,17 @@ flowchart TB
   Worker --> Redis
   Worker --> Spaces
   Worker --> External
+  Worker --> Postmark
+  Worker --> ZohoCamp
   Migrate --> PG
 
   WP -.->|OIDC| Auth
   Shop -.->|webhooks| Api
   External -.->|webhooks| Api
+  Postmark -.->|delivery webhooks<br/>Basic Auth| Api
 ```
 
-The system has five long-running components plus one pre-deploy job, all inside one App Platform app. They share a single Postgres cluster (with role separation as the security boundary), a single Redis cluster, and a DigitalOcean Space for browser-direct uploads. External integrations connect via Cloudflare in both directions: outbound calls from the worker, inbound webhooks to the API.
+The system has five long-running components plus one pre-deploy job, all inside one App Platform app. They share a single Postgres cluster (with role separation as the security boundary), a single Redis cluster, and a DigitalOcean Space for browser-direct uploads. External integrations connect via Cloudflare in both directions: outbound calls from the worker, inbound webhooks to the API. The two email-side externals — Postmark (transactional/notification mail) and Zoho Campaigns (newsletter, one-way push) — also live behind this perimeter; Postmark posts delivery callbacks back to `apps/api` at `/webhooks/postmark` (Basic Auth), and `apps/worker` makes outbound calls to both. See [04-domain-events.md → "Email pipeline"](./04-domain-events.md#email-pipeline).
 
 ## DigitalOcean App Platform components
 
@@ -75,9 +82,11 @@ Container starts with `node apps/web/.next/standalone/server.js`. Build command 
 
 ### apps/auth
 
-The OIDC issuer per D9. It runs better-auth with the OIDC Provider plugin, the Google and Apple social provider plugins, and a custom JWKS endpoint backed by the `jwks_key` table. It exposes `/.well-known/openid-configuration`, `/.well-known/jwks.json`, and `/api/auth/*` for sign-in flows and token issuance.
+The OIDC issuer per D9. It runs better-auth with the OIDC Provider plugin, the Google and Apple social provider plugins, and a custom JWKS endpoint backed by the `jwks_key` table. It exposes `/.well-known/openid-configuration`, `/.well-known/jwks.json`, `/.well-known/apple-developer-domain-association.txt`, and `/api/auth/*` for sign-in flows and token issuance.
 
-The auth server is the only component with direct read access to the JWKS private keys via the `auth_app` Postgres role. No other component can read those keys — that's the security boundary that the role split enforces (D2).
+The auth server is the only component with direct read access to the JWKS private keys via the `auth_app` Postgres role. No other component can read those keys — that's the security boundary that the role split enforces (D2). `apps/auth` also runs the JWKS retirement scheduler ([packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts)) under a Postgres advisory lock so only one auth replica retires expired keys per tick.
+
+`apps/auth` also holds a Redis connection so the Better Auth `sendVerificationEmail`, `sendResetPassword`, and `databaseHooks.user.create.after` hooks can call `IEmailService.enqueue()`, which inserts an `email_outbox` row and pushes a job onto the `email` BullMQ queue for `apps/worker` to drain. The role grants required for that path (`auth_app` `INSERT, SELECT` on `email_outbox`, `SELECT` on `email_suppression`) are wired in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts).
 
 Health checks: `GET /health/live` returns 200 unconditionally; `GET /health/ready` validates DB connectivity and the ability to load JWKS keys ([apps/auth/src/index.ts](../../apps/auth/src/index.ts)).
 
@@ -103,19 +112,28 @@ Health checks at `GET /health/live` and `GET /health/ready` ([apps/ws/src/index.
 
 ### apps/worker
 
-BullMQ consumer for asynchronous work. Today it runs the `webhook-events` queue consumer and a `domain_events` polling runner that updates the `zoho` cursor ([apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts)). The intended scope also includes `lot-lifecycle` (currently still in `apps/api`), the Zoho/Xero projector outbound calls (currently no-op stubs), email sending, and image processing — all **(Phase 2)**. JWKS retirement intentionally runs in `apps/auth`, not the worker, so `worker_app` remains denied on signing keys.
+BullMQ consumer for asynchronous work. Today it runs six queues plus the `domain_events` polling runner ([apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts)):
 
-It uses the `worker_app` Postgres role, which has SELECT on `domain_events` and `user`, full access to `projector_state` and `webhook_event`, and no access to identity tables or signing keys. Outbound calls to Zoho, Xero, and Sentry are intended to be made from this component only — `apps/api` never calls these directly.
+- **`webhook-events`** — consumer wired but the `apps/api` producer is **(Phase 2)**, so the queue is idle today.
+- **`validate-upload`** ([apps/worker/src/jobs/validate-upload.ts](../../apps/worker/src/jobs/validate-upload.ts)) — HEADs and sniffs Spaces objects before users can attach them.
+- **`image-cleanup`** ([apps/worker/src/jobs/image-cleanup.ts](../../apps/worker/src/jobs/image-cleanup.ts)) — deletes orphaned objects when their `upload_object` row is removed.
+- **`gc-pending-uploads`** — hourly repeatable job that deletes stale pending rows/objects.
+- **`email`** ([apps/worker/src/jobs/send-email.ts](../../apps/worker/src/jobs/send-email.ts)) — claims `email_outbox` rows and dispatches via the configured `IEmailSender` (`PostmarkEmailSender` in production, `ConsoleEmailSender` in dev), plus the `outbox-drain` repeatable job that re-enqueues stale `pending` rows every 60s.
+- **`marketing-sync`** ([apps/worker/src/jobs/zoho-campaigns-sync.ts](../../apps/worker/src/jobs/zoho-campaigns-sync.ts)) — pushes one row at a time to Zoho Campaigns.
 
-Health checks: `GET /health/live` and `GET /health/ready`. Readiness checks Redis ping plus heartbeat keys per queue (each BullMQ worker writes a heartbeat on job completion, and the `domain_events` runner heartbeats every poll). The worker currently consumes `webhook-events`, `validate-upload`, and `gc-pending-uploads`; `validate-upload` HEADs and sniffs Spaces objects before users can attach them, and `gc-pending-uploads` deletes stale pending rows/objects hourly. The check has a 60-second grace period after startup; a long-idle queue can briefly look unready until the first heartbeat lands.
+The `domain_events` runner only advances the `zoho` cursor today; the Zoho/Xero projectors are pure mapping helpers without outbound HTTP — turning them into real CRM/accounting calls is **(Phase 2)**. Migrating `lot-lifecycle` from `apps/api` is also **(Phase 2)**. JWKS retirement intentionally runs in `apps/auth`, not the worker, so `worker_app` remains denied on signing keys.
+
+It uses the `worker_app` Postgres role, which has `SELECT` on `user` and `domain_events`, `SELECT, UPDATE` on `email_outbox` and `newsletter_signup_log` (so it can drain the outbox without polluting the audit trail with new inserts), and full access to `projector_state`, `webhook_event`, and `upload_object`. Identity tables and signing keys are denied. Outbound calls to Zoho, Xero, Postmark, Zoho Campaigns, and Sentry are made from this component only — `apps/api` never calls these directly.
+
+Health checks: `GET /health/live` and `GET /health/ready`. Readiness checks Redis ping plus heartbeat keys per queue (each BullMQ worker writes a heartbeat on job completion, and the `domain_events` runner heartbeats every poll). The check has a 60-second grace period after startup; a long-idle queue can briefly look unready until the first heartbeat lands.
 
 ### migrate (pre-deploy Job)
 
 A one-shot DigitalOcean Job that runs before each production deploy. It executes `pnpm db:migrate:prod` using the privileged owner connection URI held in `DATABASE_URL_OWNER` (the `auction_owner` Postgres user), which is never available to any long-running process. This is the only place that DDL grants are exercised per F2. The runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) and applies migrations followed by [migrate-roles.ts](../../packages/db/src/migrate-roles.ts) so the `auth_app`/`api_app`/`worker_app` grants stay current.
 
-`apps/api`'s container entrypoint at [apps/api/docker-entrypoint.sh](../../apps/api/docker-entrypoint.sh) **does not run migrations** — only the dedicated job does. If migrations fail, the deploy aborts before any new container starts. App Platform's pre-deploy Job semantics handle this — the live deployment continues serving traffic while we figure out why the migration failed.
+`apps/api`'s container entrypoint **does not run migrations** — only the dedicated job does. If migrations fail, the deploy aborts before any new container starts. App Platform's pre-deploy Job semantics handle this — the live deployment continues serving traffic while we figure out why the migration failed.
 
-The job binding itself (the App Platform spec that says "run this job before each release") is **(operational, not in repo)** — see [../integrations/digitalocean.md](../integrations/digitalocean.md) for the configuration.
+The job binding (App Platform's `pre_deploy` configuration, the `DATABASE_URL_OWNER` env binding, etc.) is declared in the `digitalocean-app` module under [infra/terraform/modules/digitalocean-app/](../../infra/terraform/modules/digitalocean-app/).
 
 ## The Cloudflare layer
 
@@ -129,7 +147,9 @@ Specific Cloudflare configurations that matter architecturally:
 
 **Rate limit on `/api/auth/sign-in/*` is 5 attempts per 15 minutes per IP** per Q37. Bounds password-spray attempts. Legitimate users rarely retry sign-in more than two or three times.
 
-**Rate limit on `/webhooks/*` is 100 req/min/IP per source** per Q37. Shopify, WordPress, and Xero each fire from their own IP ranges, so this is a per-source limit in practice. Anyone outside those ranges hitting our webhook endpoints at high volume is by definition an attack.
+**Rate limit on `/webhooks/*` is 100 req/min/IP per source** per Q37. Shopify, WordPress, Xero, and Postmark each fire from their own IP ranges, so this is a per-source limit in practice. The Postmark webhook (`/webhooks/postmark`) has its own dedicated rule sized for Postmark's burst cadence — see [../integrations/cloudflare.md](../integrations/cloudflare.md). Anyone outside those ranges hitting our webhook endpoints at high volume is by definition an attack.
+
+**Rate limit on `/api/auth/sign-up` and `/api/auth/send-verification-email` is sized for human use** (configured per [../integrations/cloudflare.md](../integrations/cloudflare.md)). Both endpoints can be abused to enumerate addresses or burn our Postmark sending reputation, so they sit behind their own edge rules independent of the generic `/api/auth/sign-in` limit.
 
 **WAF challenges non-browser User-Agent strings on `/api/auth/authorize`** per Q37. Legitimate OIDC clients sending users through this endpoint always have browsers; bots scraping authorize endpoints don't. Server-to-server endpoints like `/api/auth/token` and `/.well-known/*` skip this check because they're explicitly machine-to-machine.
 
@@ -137,7 +157,7 @@ Specific Cloudflare configurations that matter architecturally:
 
 The medium-grade tier deliberately runs the same security configuration in test as in production. The differences are about size and HA, not posture.
 
-The table below is the **target sizing** (recommended, not committed to repo). The actual instance sizes and counts live in the DigitalOcean App Platform console; treat this table as the spec the next IaC commit should encode.
+The table below summarises the **target sizing**. The authoritative numbers live in `infra/terraform/ephemeral/<env>/main.tf` — when there's a disagreement, Terraform wins.
 
 | Component | Test (target) | Production (target) |
 |---|---|---|
@@ -176,21 +196,21 @@ The architectural decisions in this system are sized for the medium-grade tier w
 
 The "what we do" column is deliberately specific. Each trigger has a known response, and the response is documented elsewhere — typically in a runbook. Crossing a trigger is not a five-week architecture project; it's a planned operational migration with a documented procedure.
 
-## Deployment cadence (target)
+## Deployment cadence
 
-Both this section and the cost section below describe the target deployment cadence and pricing model. Concrete CI workflows, branch protections, and the `terraform plan`/`apply` automation referenced here are **(planned)** — they are not committed to this repo today.
+Terraform applies and App Platform deploys both run through GitHub Actions. State lives in the versioned `lax-tf-state` DigitalOcean Space (no native locking, so applies are serialised by the workflow). Production Terraform applies require the typed `APPLY-PROD` confirmation; production app deploys use `doctl apps create-deployment` against the `DO_PROD_APP_ID` secret.
 
-The intended shape: production deploys happen on demand via merge to the `release` branch. CI runs the full test suite, then `terraform plan` against the prod environment, then waits for human approval before `terraform apply` plus the App Platform deploy. Test deploys happen automatically on merge to `main` with an analogous `terraform plan`/`apply` against the test environment.
+The migration Job runs as part of every deploy. If migrations fail, the deploy aborts and the previous version stays live.
 
-The migration Job runs as part of every deploy. If migrations fail, the deploy aborts and the previous version stays live. This part is real today (the job binding lives in the DO console) — the rest of the cadence is the target.
+The branch-based gated cadence (`main` → test, `release` → prod with human approval between) is **(planned)** — see the deploy checklist for the manual gate today.
 
-The deploy procedure end-to-end is in [deploy-checklist.md](../runbooks/deploy-checklist.md). Read it before doing your first production deploy.
+The end-to-end deploy procedure is in [deploy-checklist.md](../runbooks/deploy-checklist.md). Read it before doing your first production deploy.
 
-## Cost shape (target)
+## Cost shape
 
-Order-of-magnitude cost estimates for steady-state operation, treated as expectations rather than optimization targets — the architecture is sized to be operable by a small team. **These are projections; the actual line items will reflect whatever instance sizes/counts get committed to IaC when that work lands.**
+Order-of-magnitude cost estimates for steady-state operation, treated as expectations rather than optimization targets — the architecture is sized to be operable by a small team. The line items below are reconstructable from `infra/terraform/ephemeral/<env>/main.tf` (Postgres + Redis cluster sizes, App Platform `instance_size_slug` and `instance_count`).
 
-Production runs roughly $220/month at zero traffic: $60 for Postgres HA, $20 for Redis, $5 per running app component ($50 for the five components × two instances each), plus Cloudflare ($20 for the Pro plan with WAF), Sentry ($26 team plan), and DigitalOcean Spaces for state and archives ($5).
+Production runs roughly $220/month at zero traffic: $60 for Postgres HA, $20 for Redis, $5 per running app component (~$50 for the five components × two instances each), plus Cloudflare ($20 for the Pro plan with WAF), Sentry ($26 team plan), and DigitalOcean Spaces for state and archives ($5).
 
 Test runs roughly $60/month: $15 single-node Postgres, $15 Redis, $25 for App Platform basic-xxs instances (5 × $5), plus a slice of the shared Cloudflare and Sentry plans.
 
@@ -214,4 +234,4 @@ Health check endpoints are mounted in each app's main entrypoint: [apps/api/src/
 
 Env-var inventory: [.env.example](../../.env.example) lists the development variables, [.env.production.example](../../.env.production.example) lists the production-shaped variables (with `DATABASE_URL_OWNER`, the per-role URLs, social provider creds, webhook secrets, Sentry DSNs, and Cloudflare/Cookie domain config).
 
-**Deployment configuration (App Platform spec, Cloudflare DNS/WAF, IaC):** *not yet committed to repo* — see the configuration in the DigitalOcean and Cloudflare consoles. Capturing it as Terraform is **(planned)**.
+**Deployment configuration:** [infra/terraform/](../../infra/terraform/) is the source of truth — `bootstrap/` for one-time manual prep ([BOOTSTRAP.md](../../infra/terraform/BOOTSTRAP.md)), `persistent/<env>/` for resources that survive teardown, `ephemeral/<env>/` for the rebuildable application surface, and `modules/` for the reusable components (`cloudflare-domain`, `digitalocean-app`, `digitalocean-project`, `digitalocean-spaces`, `monitoring`, `postgres-cluster`, `postgres-rbac`, `redis-cluster`, `sentry-alerts`, `sentry-projects`).
