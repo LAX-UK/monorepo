@@ -9,6 +9,12 @@ export type WatchlistWithLot = {
   lot: Lot | null;
 };
 
+export type WatchlistListOptions = {
+  sort?: "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
+  status?: "active" | "scheduled" | "ended";
+  categoryIds?: string[];
+};
+
 export class WatchlistService {
   constructor(
     private readonly watchlist: IWatchlistRepository,
@@ -33,7 +39,10 @@ export class WatchlistService {
     return this.watchlist.exists(userId, lotId);
   }
 
-  async listWithLots(userId: string): Promise<WatchlistWithLot[]> {
+  async listWithLots(
+    userId: string,
+    options: WatchlistListOptions = {},
+  ): Promise<WatchlistWithLot[]> {
     const rows = await this.watchlist.findByUser(userId);
     const out: WatchlistWithLot[] = [];
     for (const r of rows) {
@@ -45,6 +54,30 @@ export class WatchlistService {
         lot,
       });
     }
-    return out;
+    const filtered = out.filter((row) => {
+      const lot = row.lot;
+      if (!lot) return false;
+      if (options.status && lot.status !== options.status) return false;
+      if (options.categoryIds?.length) {
+        const lotCategoryIds = lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []);
+        if (!lotCategoryIds.some((categoryId) => options.categoryIds?.includes(categoryId))) {
+          return false;
+        }
+      }
+      return true;
+    });
+    const parsePrice = (value: string) => Number.parseFloat(value) || 0;
+    return filtered.sort((a, b) => {
+      switch (options.sort ?? "addedDesc") {
+        case "endingSoon":
+          return (a.lot?.endTime.getTime() ?? 0) - (b.lot?.endTime.getTime() ?? 0);
+        case "priceAsc":
+          return parsePrice(a.lot?.currentPrice ?? "0") - parsePrice(b.lot?.currentPrice ?? "0");
+        case "priceDesc":
+          return parsePrice(b.lot?.currentPrice ?? "0") - parsePrice(a.lot?.currentPrice ?? "0");
+        default:
+          return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+    });
   }
 }

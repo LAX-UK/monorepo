@@ -33,6 +33,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const data = await container.lotService.list({
       status: query.status,
       categoryId: query.categoryId,
+      categoryIds: query.categoryIds,
       sellerId: query.sellerId,
       winnerId: query.winnerId,
       saleId: query.saleId,
@@ -83,6 +84,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const count = await container.lotService.countMatching({
       status: "ended",
       categoryId: q.categoryId,
+      categoryIds: q.categoryIds,
       endYear: q.endYear,
     });
     return c.json({ count });

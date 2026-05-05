@@ -191,7 +191,7 @@ describe("ItemSubmissionService", () => {
       "alice",
       expect.objectContaining({
         title: "Blue Study",
-        categoryId: catId,
+        categoryIds: [catId],
         auctionType: "english",
       }),
     );

@@ -23,6 +23,7 @@ export type ListLotsSort =
 export type ListLotsFilter = {
   status?: LotStatus | undefined;
   categoryId?: string | undefined;
+  categoryIds?: string[] | undefined;
   sellerId?: string | undefined;
   winnerId?: string | undefined;
   saleId?: string | undefined;
@@ -41,6 +42,7 @@ export type ListSalesFilter = {
   status?: SaleStatus | undefined;
   statuses?: SaleStatus[] | undefined;
   categoryId?: string | undefined;
+  categoryIds?: string[] | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;
@@ -159,9 +161,17 @@ export type ItemSubmissionUpdatePatch = {
   medium?: string | null;
   dimensions?: string | null;
   images?: string[];
+  yearOfWork?: string | null;
+  isSigned?: boolean;
+  signatureNote?: string | null;
+  edition?: string | null;
+  conditionSelfReport?: string | null;
+  provenance?: { period?: string | undefined; note: string }[];
+  exhibitions?: { year?: string | undefined; venue: string; note?: string | undefined }[];
   askingPrice?: string | null;
   reservePrice?: string | null;
   categoryId?: string;
+  categoryIds?: string[];
   submitterNotes?: string | null;
   status?: ItemSubmissionStatus;
   reviewedBy?: string | null;

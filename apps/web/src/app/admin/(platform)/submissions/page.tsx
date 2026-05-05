@@ -1,11 +1,11 @@
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
+import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submissions-title-filter-form";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
@@ -98,30 +98,7 @@ export default async function AdminSubmissionsPage({
           );
         })}
       </div>
-      <form
-        method="get"
-        className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
-      >
-        {status ? <input type="hidden" name="status" value={status} /> : null}
-        <div className="grid min-w-0 flex-1 gap-1 sm:max-w-md">
-          <label
-            htmlFor="admin-submissions-q"
-            className="font-label text-xs uppercase tracking-widest text-secondary"
-          >
-            Title contains (server)
-          </label>
-          <Input
-            id="admin-submissions-q"
-            name="q"
-            defaultValue={initialQ}
-            placeholder="Apply to narrow API result…"
-            className="min-h-11 bg-surface-container-low text-base md:text-sm"
-          />
-        </div>
-        <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
-          Apply title filter
-        </Button>
-      </form>
+      <AdminSubmissionsTitleFilterForm initialQ={initialQ} status={status} />
     </div>
   );
 

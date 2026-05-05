@@ -5,6 +5,31 @@ import { mediaReferenceSchema } from "./media.js";
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
 
 const decimalRegex = /^\d+(\.\d{1,2})?$/;
+const categoryIdsSchema = z
+  .array(z.string().uuid())
+  .min(1, "Choose at least one category")
+  .max(8, "Choose no more than 8 categories");
+
+function normalizeCategoryIdsInput(raw: unknown): unknown {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  if (Array.isArray(record.categoryIds)) return raw;
+  if (typeof record.categoryId === "string" && record.categoryId.length > 0) {
+    return { ...record, categoryIds: [record.categoryId] };
+  }
+  return raw;
+}
+
+const provenanceEntrySchema = z.object({
+  period: z.string().max(120).optional(),
+  note: z.string().min(1).max(500),
+});
+
+const exhibitionEntrySchema = z.object({
+  year: z.string().max(20).optional(),
+  venue: z.string().min(1).max(200),
+  note: z.string().max(500).optional(),
+});
 
 /** Split pasted image URL lines (newlines or commas). */
 export function splitSubmissionUrlLines(raw: string): string[] {
@@ -23,8 +48,15 @@ export const itemSubmissionFormSchema = z
     description: z.string().max(10_000),
     medium: z.string().max(500),
     dimensions: z.string().max(200),
-    categoryId: z.string().uuid({ message: "Choose a category" }),
+    categoryIds: categoryIdsSchema,
     images: z.array(mediaReferenceSchema).max(20),
+    yearOfWork: z.string().max(60),
+    isSigned: z.boolean(),
+    signatureNote: z.string().max(500),
+    edition: z.string().max(60),
+    conditionSelfReport: z.string().max(5000),
+    provenance: z.array(provenanceEntrySchema).max(20),
+    exhibitions: z.array(exhibitionEntrySchema).max(20),
     askingPrice: z.string(),
     reservePrice: z.string(),
     submitterNotes: z.string().max(5000),
@@ -58,19 +90,35 @@ export const submissionListFilterSchema = z.object({
 
 export type SubmissionListFilterValues = z.infer<typeof submissionListFilterSchema>;
 
-export const createItemSubmissionSchema = z.object({
+const createItemSubmissionBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
   medium: z.string().max(500).optional(),
   dimensions: z.string().max(200).optional(),
   images: z.array(mediaReferenceSchema).max(20).optional(),
+  yearOfWork: z.string().max(60).optional(),
+  isSigned: z.boolean().optional(),
+  signatureNote: z.string().max(500).optional(),
+  edition: z.string().max(60).optional(),
+  conditionSelfReport: z.string().max(5000).optional(),
+  provenance: z.array(provenanceEntrySchema).max(20).optional(),
+  exhibitions: z.array(exhibitionEntrySchema).max(20).optional(),
   askingPrice: decimalString.optional(),
   reservePrice: decimalString.optional(),
-  categoryId: z.string().uuid(),
+  categoryIds: categoryIdsSchema,
+  categoryId: z.string().uuid().optional(),
   submitterNotes: z.string().max(5000).optional(),
 });
 
-export const updateItemSubmissionSchema = createItemSubmissionSchema.partial();
+export const createItemSubmissionSchema = z.preprocess(
+  normalizeCategoryIdsInput,
+  createItemSubmissionBodySchema,
+);
+
+export const updateItemSubmissionSchema = z.preprocess(
+  normalizeCategoryIdsInput,
+  createItemSubmissionBodySchema.partial(),
+);
 
 export const approveSubmissionBodySchema = z.object({
   reviewNotes: z.string().max(5000).optional(),

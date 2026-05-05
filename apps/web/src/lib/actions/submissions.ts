@@ -23,6 +23,16 @@ import { revalidatePath } from "next/cache";
 
 function parseFormDataToCreateInput(formData: FormData) {
   const imagesRaw = String(formData.get("images") ?? "");
+  const categoryIdsRaw = String(formData.get("categoryIds") ?? formData.get("categoryId") ?? "");
+  const parseJsonArray = (name: string) => {
+    try {
+      const raw = String(formData.get(name) ?? "[]");
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
   return {
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || undefined,
@@ -34,9 +44,19 @@ function parseFormDataToCreateInput(formData: FormData) {
           .map((s) => s.trim())
           .filter(Boolean)
       : undefined,
+    yearOfWork: String(formData.get("yearOfWork") ?? "").trim() || undefined,
+    isSigned: String(formData.get("isSigned") ?? "") === "true",
+    signatureNote: String(formData.get("signatureNote") ?? "").trim() || undefined,
+    edition: String(formData.get("edition") ?? "").trim() || undefined,
+    conditionSelfReport: String(formData.get("conditionSelfReport") ?? "").trim() || undefined,
+    provenance: parseJsonArray("provenance"),
+    exhibitions: parseJsonArray("exhibitions"),
     askingPrice: String(formData.get("askingPrice") ?? "").trim() || undefined,
     reservePrice: String(formData.get("reservePrice") ?? "").trim() || undefined,
-    categoryId: String(formData.get("categoryId") ?? "").trim(),
+    categoryIds: categoryIdsRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
     submitterNotes: String(formData.get("submitterNotes") ?? "").trim() || undefined,
   };
 }
@@ -49,9 +69,16 @@ function parseFormDataToUpdateInput(formData: FormData) {
     medium: full.medium,
     dimensions: full.dimensions,
     images: full.images,
+    yearOfWork: full.yearOfWork,
+    isSigned: full.isSigned,
+    signatureNote: full.signatureNote,
+    edition: full.edition,
+    conditionSelfReport: full.conditionSelfReport,
+    provenance: full.provenance,
+    exhibitions: full.exhibitions,
     askingPrice: full.askingPrice,
     reservePrice: full.reservePrice,
-    categoryId: full.categoryId,
+    categoryIds: full.categoryIds,
     submitterNotes: full.submitterNotes,
   };
 }

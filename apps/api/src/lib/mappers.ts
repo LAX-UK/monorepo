@@ -23,7 +23,8 @@ function parseMarketingDetails(raw: unknown): LotMarketingDetails {
   return raw as LotMarketingDetails;
 }
 
-export function mapLotRow(row: LotRow): Lot {
+export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
+  const primaryCategoryId = categoryIds[0] ?? "";
   return {
     id: row.id,
     saleId: row.saleId ?? null,
@@ -34,7 +35,8 @@ export function mapLotRow(row: LotRow): Lot {
     medium: row.medium ?? null,
     dimensions: row.dimensions ?? null,
     images: row.images ?? [],
-    categoryId: row.categoryId,
+    categoryIds,
+    categoryId: primaryCategoryId,
     auctionType: row.auctionType as LotAuctionType,
     startingPrice: String(row.startingPrice),
     reservePrice: row.reservePrice !== null ? String(row.reservePrice) : null,
@@ -69,7 +71,11 @@ export function mapBidRow(row: BidRow): Bid {
   };
 }
 
-export function mapItemSubmissionRow(row: ItemSubmissionRow): ItemSubmission {
+export function mapItemSubmissionRow(
+  row: ItemSubmissionRow,
+  categoryIds: string[] = [],
+): ItemSubmission {
+  const primaryCategoryId = categoryIds[0] ?? "";
   return {
     id: row.id,
     sellerId: row.sellerId,
@@ -78,9 +84,17 @@ export function mapItemSubmissionRow(row: ItemSubmissionRow): ItemSubmission {
     medium: row.medium,
     dimensions: row.dimensions,
     images: row.images ?? [],
+    yearOfWork: row.yearOfWork,
+    isSigned: row.isSigned,
+    signatureNote: row.signatureNote,
+    edition: row.edition,
+    conditionSelfReport: row.conditionSelfReport,
+    provenance: row.provenance ?? [],
+    exhibitions: row.exhibitions ?? [],
     askingPrice: row.askingPrice !== null ? String(row.askingPrice) : null,
     reservePrice: row.reservePrice !== null ? String(row.reservePrice) : null,
-    categoryId: row.categoryId,
+    categoryIds,
+    categoryId: primaryCategoryId,
     submitterNotes: row.submitterNotes,
     status: row.status as ItemSubmissionStatus,
     reviewedBy: row.reviewedBy,
@@ -93,13 +107,14 @@ export function mapItemSubmissionRow(row: ItemSubmissionRow): ItemSubmission {
   };
 }
 
-export function mapSaleRow(row: SaleRow): Sale {
+export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
   return {
     id: row.id,
     title: row.title,
     description: row.description,
     coverImages: row.coverImages ?? [],
-    categoryId: row.categoryId ?? null,
+    categoryIds,
+    categoryId: categoryIds[0] ?? null,
     deliveryMode: (row.deliveryMode ?? "onsite") as SaleDeliveryMode,
     streamUrl: row.streamUrl ?? null,
     locationName: row.locationName ?? null,

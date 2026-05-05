@@ -14,7 +14,7 @@ export function submissionToCreateLotInput(submission: ItemSubmission): CreateLo
     medium: submission.medium ?? undefined,
     dimensions: submission.dimensions ?? undefined,
     images: submission.images.length ? submission.images : undefined,
-    categoryId: submission.categoryId,
+    categoryIds: submission.categoryIds ?? [submission.categoryId],
     auctionType: "english",
     startingPrice,
     reservePrice: submission.reservePrice?.trim() ? submission.reservePrice : undefined,

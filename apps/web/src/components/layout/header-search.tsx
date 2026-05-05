@@ -3,9 +3,19 @@
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { Form, FormControl, FormField, FormItem } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+const headerSearchSchema = z.object({
+  q: z.string().trim().max(200),
+});
+type HeaderSearchValues = z.infer<typeof headerSearchSchema>;
 
 export function HeaderSearchTrigger({ className = "" }: { className?: string }) {
   const [isMac, setIsMac] = useState(true);
@@ -45,32 +55,52 @@ export function HeaderSearchForm({
   inputId?: string;
 }) {
   const fieldId = `${inputId}-field`;
+  const router = useRouter();
+  const form = useForm<HeaderSearchValues>({
+    resolver: zodResolver(headerSearchSchema),
+    defaultValues: { q: "" },
+  });
 
   return (
-    <form
-      action="/search"
-      method="get"
-      className={cn("flex gap-2 border-b border-brand-200 pb-3", className)}
-    >
-      <label htmlFor={fieldId} className="sr-only">
-        Search
-      </label>
-      <Input
-        id={fieldId}
-        name="q"
-        type="search"
-        placeholder="Search"
-        className="min-h-10 min-w-0 flex-1 border-0 bg-transparent px-0 font-label text-sm uppercase text-brand-900 shadow-none placeholder:text-brand-200 focus-visible:ring-0 dark:text-on-surface dark:placeholder:text-on-surface-variant"
-        autoComplete="off"
-      />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="sm"
-        className="h-auto px-0 py-0 font-label text-xs font-semibold uppercase text-brand-900 hover:bg-transparent dark:text-on-surface"
+    <Form {...form}>
+      <form
+        className={cn("flex gap-2 border-b border-brand-200 pb-3", className)}
+        onSubmit={form.handleSubmit((values) => {
+          const q = values.q.trim();
+          router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+        })}
+        noValidate
       >
-        Go
-      </Button>
-    </form>
+        <label htmlFor={fieldId} className="sr-only">
+          Search
+        </label>
+        <FormField
+          control={form.control}
+          name="q"
+          render={({ field }) => (
+            <FormItem className="min-w-0 flex-1">
+              <FormControl>
+                <Input
+                  id={fieldId}
+                  type="search"
+                  placeholder="Search"
+                  className="min-h-10 border-0 bg-transparent px-0 font-label text-sm uppercase text-brand-900 shadow-none placeholder:text-brand-200 focus-visible:ring-0 dark:text-on-surface dark:placeholder:text-on-surface-variant"
+                  autoComplete="off"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          className="h-auto px-0 py-0 font-label text-xs font-semibold uppercase text-brand-900 hover:bg-transparent dark:text-on-surface"
+        >
+          Go
+        </Button>
+      </form>
+    </Form>
   );
 }

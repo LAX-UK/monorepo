@@ -1,4 +1,5 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { SearchFilterForm } from "@/components/marketing/search-filter-form";
 import { MediaImage } from "@/components/ui/media-image";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
@@ -14,7 +15,6 @@ import type { Lot } from "@auction/types";
 import { SectionCta } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -131,33 +131,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         Search runs on the server across lot titles. Use filters to narrow by category or sort
         order.
       </p>
-      <form
-        action="/search"
-        method="get"
-        className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end"
-      >
-        <input type="hidden" name="offset" value="0" />
-        {sort !== "endingAsc" ? <input type="hidden" name="sort" value={sort} /> : null}
-        {categoryId ? <input type="hidden" name="categoryId" value={categoryId} /> : null}
-        <div className="min-w-0 flex-1">
-          <label
-            htmlFor="search-q"
-            className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
-          >
-            Keywords
-          </label>
-          <Input
-            id="search-q"
-            name="q"
-            defaultValue={q}
-            placeholder="Search by lot title…"
-            className="rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus"
-          />
-        </div>
-        <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
-          Search
-        </Button>
-      </form>
+      <SearchFilterForm initialQ={String(q)} sort={sort} categoryId={categoryId} />
 
       {categories.length > 0 ? (
         <div className="mb-8">

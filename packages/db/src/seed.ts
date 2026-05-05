@@ -85,8 +85,11 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     notification,
     watchlist,
     bid,
+    submissionCategories,
     itemSubmission,
+    lotCategories,
     lot,
+    saleCategories,
     sale,
     category,
     session,
@@ -100,8 +103,11 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(notification);
   await db.delete(watchlist);
   await db.delete(bid);
+  await db.delete(submissionCategories);
   await db.delete(itemSubmission);
+  await db.delete(lotCategories);
   await db.delete(lot);
+  await db.delete(saleCategories);
   await db.delete(sale);
   await db.delete(category);
   await db.delete(session);
@@ -129,12 +135,15 @@ async function main() {
     account,
     category,
     sale,
+    saleCategories,
     lot,
+    lotCategories,
     bid,
     watchlist,
     notification,
     payment,
     itemSubmission,
+    submissionCategories,
     externalAccount,
   } = schema;
 
@@ -287,7 +296,7 @@ async function main() {
     ...extra,
   });
 
-  await db.insert(sale).values([
+  const saleRows: (typeof sale.$inferInsert & { categoryId: string | null })[] = [
     {
       id: S.evening,
       title: "Spring Contemporary Evening Sale",
@@ -329,9 +338,19 @@ async function main() {
       createdAt: stamp,
       updatedAt: stamp,
     },
-  ]);
+  ];
+  await db.insert(sale).values(saleRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(saleCategories).values(
+    saleRows
+      .filter((row) => row.categoryId != null)
+      .map((row) => ({
+        saleId: row.id as string,
+        categoryId: row.categoryId as string,
+        sortOrder: 0,
+      })),
+  );
 
-  await db.insert(lot).values([
+  const lotRows: (typeof lot.$inferInsert & { categoryId: string })[] = [
     {
       id: L.ethereal,
       saleId: S.evening,
@@ -825,9 +844,17 @@ async function main() {
         "River Study Blue Hour — oil panel",
       ]),
     },
-  ]);
+  ];
+  await db.insert(lot).values(lotRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(lotCategories).values(
+    lotRows.map((row) => ({
+      lotId: row.id as string,
+      categoryId: row.categoryId,
+      sortOrder: 0,
+    })),
+  );
 
-  await db.insert(itemSubmission).values([
+  const submissionRows: (typeof itemSubmission.$inferInsert & { categoryId: string })[] = [
     {
       id: SUB.draft,
       sellerId: USER2_ID,
@@ -919,7 +946,17 @@ async function main() {
       createdAt: new Date(now - 6 * day),
       updatedAt: new Date(now - 5 * day),
     },
-  ]);
+  ];
+  await db
+    .insert(itemSubmission)
+    .values(submissionRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(submissionCategories).values(
+    submissionRows.map((row) => ({
+      submissionId: row.id as string,
+      categoryId: row.categoryId,
+      sortOrder: 0,
+    })),
+  );
 
   const hour = 3_600_000;
   const mkBid = (
