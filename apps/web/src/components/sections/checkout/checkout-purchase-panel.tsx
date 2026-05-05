@@ -5,6 +5,7 @@ import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
 import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -26,7 +27,6 @@ import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 type Props = {
   sessionUser: SessionUser;
@@ -191,7 +191,7 @@ export function CheckoutPurchasePanel({
                 return;
               }
               setSubmitted(true);
-              toast.success("Payment record created", {
+              notify.success("Payment record created", {
                 description: "Our settlements team will follow up with next steps.",
               });
             })}

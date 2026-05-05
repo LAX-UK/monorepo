@@ -3,9 +3,9 @@
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseUserNotification } from "@/lib/data/http/parse";
+import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 
 export function useUnreadNotifications() {
   const [items, setItems] = useState<UserNotification[]>([]);
@@ -43,7 +43,7 @@ export function useUnreadNotifications() {
       }
       return [n, ...prev].slice(0, 50);
     });
-    toast.info(n.title, {
+    notify.info(n.title, {
       id: `inbox-${n.id}`,
       description: n.message,
       duration: 6000,

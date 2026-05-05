@@ -7,6 +7,7 @@ import {
   adminRejectSubmissionResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
+import { notify } from "@/lib/ui/notify";
 import type { ItemSubmissionStatus } from "@auction/types";
 import {
   Form,
@@ -22,7 +23,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 const approveFormSchema = z.object({
@@ -64,11 +64,11 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
               void (async () => {
                 const r = await adminStartSubmissionReviewResultAction(submissionId);
                 if (r.ok) {
-                  toast.success("Review started");
+                  notify.success("Review started");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           }}
@@ -89,12 +89,12 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
                       reviewNotes: values.reviewNotes.trim() || undefined,
                     });
                     if (!body.success) {
-                      toast.error("Check review notes");
+                      notify.error("Check review notes");
                       return;
                     }
                     const r = await adminApproveSubmissionResultAction(submissionId, body.data);
                     if (r.ok) {
-                      toast.success("Approved — draft lot created");
+                      notify.success("Approved — draft lot created");
                       if (r.data?.lotId) {
                         router.push(`/admin/lots/${r.data.lotId}`);
                         return;
@@ -102,7 +102,7 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
                       router.refresh();
                       return;
                     }
-                    toast.error(r.error);
+                    notify.error(r.error);
                   })();
                 });
               })}
@@ -141,11 +141,11 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
                   void (async () => {
                     const r = await adminRejectSubmissionResultAction(submissionId, values);
                     if (r.ok) {
-                      toast.success("Submission rejected");
+                      notify.success("Submission rejected");
                       router.refresh();
                       return;
                     }
-                    toast.error(r.error);
+                    notify.error(r.error);
                   })();
                 });
               })}

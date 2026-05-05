@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -9,14 +10,8 @@ import {
   CLIENT_WORKSPACE_COOKIE,
   parseClientWorkspaceMode,
 } from "@/lib/workspace/client-workspace-mode";
-import {
-  type UserRole,
-  canAccessPlatformAdminRoutes,
-  canAccessStaffAdminShell,
-} from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
@@ -25,14 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const user = await getServerSessionUser();
-  if (!user) {
-    redirect("/login?next=/dashboard&auth=required");
-  }
-  const role = user.role as UserRole;
-  if (canAccessStaffAdminShell(role)) {
-    redirect(canAccessPlatformAdminRoutes(role) ? "/admin" : "/admin/payments");
-  }
+  const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
   const jar = await cookies();
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
@@ -45,6 +33,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       clientWorkspaceMode={clientWorkspaceMode}
       cookieDensity={cookieDensity}
     >
+      <WelcomeBackToast />
       {children}
     </AppShell>
   );

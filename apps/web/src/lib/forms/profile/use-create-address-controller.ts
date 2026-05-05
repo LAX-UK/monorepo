@@ -2,11 +2,11 @@
 
 import { createAddressFromValuesAction } from "@/lib/actions/profile";
 import type { FormController } from "@/lib/forms/shared/form-controller";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { type NewAddressFormValues, newAddressFormSchema } from "./profile-settings-schema";
 
 const defaultValues: NewAddressFormValues = {
@@ -44,7 +44,7 @@ export function useCreateAddressController(): FormController<NewAddressFormValue
         isDefault: values.isDefault,
       });
       if (r.ok) {
-        toast.success("Address added");
+        notify.success("Address added");
         form.reset(defaultValues);
         router.refresh();
         return;
@@ -56,7 +56,7 @@ export function useCreateAddressController(): FormController<NewAddressFormValue
           }
         }
       } else {
-        toast.error(r.error);
+        notify.error(r.error);
       }
     });
   });

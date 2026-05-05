@@ -4,6 +4,7 @@ import {
   adminArchiveCategoryResultAction,
   adminDeleteCategoryResultAction,
 } from "@/lib/actions/admin";
+import { notify } from "@/lib/ui/notify";
 import type { AdminCategory } from "@auction/types";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
@@ -13,7 +14,6 @@ import { Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 type Props = {
   categories: AdminCategory[];
@@ -67,11 +67,11 @@ export function AdminCategoriesBoard({ categories }: Props) {
           : await adminDeleteCategoryResultAction(category.id);
       setPendingId(null);
       if (result.ok) {
-        toast.success(action === "archive" ? "Category archived" : "Category deleted");
+        notify.success(action === "archive" ? "Category archived" : "Category deleted");
         router.refresh();
         return;
       }
-      toast.error(result.error);
+      notify.error(result.error);
     });
   };
 

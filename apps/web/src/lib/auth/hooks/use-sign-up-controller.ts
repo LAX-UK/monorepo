@@ -1,5 +1,6 @@
 "use client";
 
+/** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
 import { signUpService } from "@/lib/auth/services/sign-up.service";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";

@@ -1,8 +1,8 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { MediaImage } from "@/components/ui/media-image";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -16,10 +16,7 @@ type PageProps = {
 
 export default async function DashboardCheckoutPage({ params }: PageProps) {
   const { lotId } = await params;
-  const user = await getServerSessionUser();
-  if (!user) {
-    redirect("/login?next=/dashboard&auth=required");
-  }
+  const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
   const reader = await getServerLotReader();
   const auction = await reader.getById(lotId);

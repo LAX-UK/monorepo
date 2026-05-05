@@ -5,9 +5,9 @@ import {
   submitForReviewFromValuesAction,
   withdrawSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
+import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 type Props = {
   submissionId: string;
@@ -30,11 +30,11 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
               void (async () => {
                 const r = await submitForReviewFromValuesAction(submissionId);
                 if (r.ok) {
-                  toast.success("Submitted for review");
+                  notify.success("Submitted for review");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           }}
@@ -52,11 +52,11 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
               void (async () => {
                 const r = await withdrawSubmissionFromValuesAction(submissionId);
                 if (r.ok) {
-                  toast.success("Withdrawn");
+                  notify.success("Withdrawn");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           }}

@@ -1,11 +1,11 @@
 "use client";
 
 import type { ActionResult, FieldErrorMap } from "@/lib/forms/form-result";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState, useTransition } from "react";
 import type { DefaultValues, FieldPath, FieldValues, UseFormProps } from "react-hook-form";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import type { ZodType } from "zod";
 
 type ActionFormOptions<TFieldValues extends FieldValues, TData> = {
@@ -45,7 +45,11 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
           const r = await action(values);
           if (r.ok) {
             if (successToast) {
-              toast.success(successToast.title, { description: successToast.description });
+              notify.success(successToast.title, {
+                ...(successToast.description !== undefined
+                  ? { description: successToast.description }
+                  : {}),
+              });
             }
             onSuccess?.(r.data);
             return;
@@ -54,7 +58,7 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
             applyFieldErrorsToForm(form, r.fieldErrors);
           }
           setRootError(r.error);
-          toast.error(r.error);
+          notify.error(r.error);
         })();
       });
     },

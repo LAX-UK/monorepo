@@ -2,11 +2,11 @@
 
 import { createSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import type { FormController } from "@/lib/forms/shared/form-controller";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { type NewSubmissionFormValues, newSubmissionFormSchema } from "./submission-form-schema";
 
 const defaultValues: NewSubmissionFormValues = {
@@ -41,7 +41,7 @@ export function useCreateSubmissionController(): FormController<NewSubmissionFor
     startTransition(async () => {
       const r = await createSubmissionFromValuesAction(values);
       if (r.ok) {
-        toast.success("Submission created");
+        notify.success("Submission created");
         router.push(r.data?.redirectTo ?? "/dashboard/submissions");
         return;
       }
@@ -52,7 +52,7 @@ export function useCreateSubmissionController(): FormController<NewSubmissionFor
           }
         }
       } else {
-        toast.error(r.error);
+        notify.error(r.error);
       }
     });
   });

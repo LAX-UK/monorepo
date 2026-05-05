@@ -20,10 +20,10 @@ import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
+import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 
 type Props = {
   auction: Lot;
@@ -102,9 +102,9 @@ export function ArtworkBidPanel({
         setEndTime(new Date(e.endTime).getTime());
       }
       if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
-        toast.error("You've been outbid on this lot.", {
+        notify.warning("You've been outbid", {
           id: `outbid-${auction.id}`,
-          description: "Place a higher bid to stay in the running.",
+          description: "Place a higher bid to retake the lead.",
           duration: 6500,
         });
       }

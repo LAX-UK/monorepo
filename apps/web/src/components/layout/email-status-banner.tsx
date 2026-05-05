@@ -2,12 +2,12 @@
 
 import { authClient } from "@/lib/auth-client";
 import type { SessionUser } from "@/lib/data/contracts";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 
 export function EmailStatusBanner({ user }: { user: SessionUser }) {
   const [dismissed, setDismissed] = useState(false);
@@ -61,10 +61,10 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
                 })
                 .then(({ error }) => {
                   if (error) {
-                    toast.error("Could not send verification email");
+                    notify.error("Could not send verification email");
                     return;
                   }
-                  toast.success("Verification email sent");
+                  notify.success("Verification email sent");
                 });
             }}
           >
