@@ -1,6 +1,15 @@
-import { index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
-import { category } from "./categories.js";
 import { lot } from "./lots.js";
 
 export const itemSubmissionStatusEnum = pgEnum("item_submission_status", [
@@ -25,11 +34,21 @@ export const itemSubmission = pgTable(
     medium: text("medium"),
     dimensions: text("dimensions"),
     images: text("images").array().notNull().default([]),
+    yearOfWork: text("year_of_work"),
+    isSigned: boolean("is_signed").notNull().default(false),
+    signatureNote: text("signature_note"),
+    edition: text("edition"),
+    conditionSelfReport: text("condition_self_report"),
+    provenance: jsonb("provenance")
+      .$type<{ period?: string | undefined; note: string }[]>()
+      .notNull()
+      .default([]),
+    exhibitions: jsonb("exhibitions")
+      .$type<{ year?: string | undefined; venue: string; note?: string | undefined }[]>()
+      .notNull()
+      .default([]),
     askingPrice: numeric("asking_price", { precision: 18, scale: 2 }),
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
-    categoryId: uuid("category_id")
-      .notNull()
-      .references(() => category.id, { onDelete: "restrict" }),
     submitterNotes: text("submitter_notes"),
     status: itemSubmissionStatusEnum("status").notNull().default("draft"),
     reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),

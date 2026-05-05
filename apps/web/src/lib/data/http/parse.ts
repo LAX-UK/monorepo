@@ -182,8 +182,24 @@ export function parseItemSubmission(raw: unknown): ItemSubmission {
     medium: o.medium == null || o.medium === "" ? null : String(o.medium),
     dimensions: o.dimensions == null || o.dimensions === "" ? null : String(o.dimensions),
     images: Array.isArray(o.images) ? (o.images as unknown[]).map(String) : [],
+    yearOfWork: o.yearOfWork == null || o.yearOfWork === "" ? null : String(o.yearOfWork),
+    isSigned: Boolean(o.isSigned),
+    signatureNote:
+      o.signatureNote == null || o.signatureNote === "" ? null : String(o.signatureNote),
+    edition: o.edition == null || o.edition === "" ? null : String(o.edition),
+    conditionSelfReport:
+      o.conditionSelfReport == null || o.conditionSelfReport === ""
+        ? null
+        : String(o.conditionSelfReport),
+    provenance: Array.isArray(o.provenance)
+      ? (o.provenance as { period?: string; note: string }[])
+      : [],
+    exhibitions: Array.isArray(o.exhibitions)
+      ? (o.exhibitions as { year?: string; venue: string; note?: string }[])
+      : [],
     askingPrice: o.askingPrice == null || o.askingPrice === "" ? null : String(o.askingPrice),
     reservePrice: o.reservePrice == null || o.reservePrice === "" ? null : String(o.reservePrice),
+    categoryIds: Array.isArray(o.categoryIds) ? (o.categoryIds as unknown[]).map(String) : [],
     categoryId: String(o.categoryId ?? ""),
     submitterNotes:
       o.submitterNotes == null || o.submitterNotes === "" ? null : String(o.submitterNotes),

@@ -304,9 +304,11 @@ export function ProfileSettingsBoard({ initialName, initialImage, addresses }: P
             </CardTitle>
             <CardDescription>Shipping addresses used for invoices and delivery.</CardDescription>
           </div>
-          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
-            <Pencil className="mr-1 size-3.5" aria-hidden />
-            Edit
+          <Button asChild type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
+            <Link href="/dashboard/settings/addresses">
+              <Pencil className="mr-1 size-3.5" aria-hidden />
+              Manage all addresses
+            </Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">

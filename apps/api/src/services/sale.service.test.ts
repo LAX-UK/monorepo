@@ -97,6 +97,7 @@ describe("SaleService.create", () => {
           sellerId: "seller-1",
           title: "Work",
           categoryId: "c1000001-0000-4000-8000-000000000001",
+          categoryIds: ["c1000001-0000-4000-8000-000000000001"],
           auctionType: "english",
           startingPrice: "100",
           startTime: start,

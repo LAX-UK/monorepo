@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import { sale } from "@auction/db/schema";
+import { sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
 
@@ -9,52 +9,101 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [];
   if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
   else if (input.status) conditions.push(eq(sale.status, input.status));
-  if (input.categoryId) conditions.push(eq(sale.categoryId, input.categoryId));
+  const categoryIds = input.categoryIds?.length
+    ? input.categoryIds
+    : input.categoryId
+      ? [input.categoryId]
+      : [];
+  if (categoryIds.length > 0) {
+    conditions.push(sql`exists (
+      select 1 from ${saleCategories}
+      where ${saleCategories.saleId} = ${sale.id}
+        and ${saleCategories.categoryId} in (${sql.join(
+          categoryIds.map((categoryId) => sql`${categoryId}`),
+          sql`, `,
+        )})
+    )`);
+  }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export class DrizzleSaleRepository implements ISaleRepository {
   constructor(private readonly db: Database) {}
 
+  private async categoryIdsBySaleIds(ids: string[]): Promise<Map<string, string[]>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ saleId: saleCategories.saleId, categoryId: saleCategories.categoryId })
+      .from(saleCategories)
+      .where(inArray(saleCategories.saleId, ids))
+      .orderBy(asc(saleCategories.sortOrder));
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+      const arr = map.get(row.saleId) ?? [];
+      arr.push(row.categoryId);
+      map.set(row.saleId, arr);
+    }
+    return map;
+  }
+
+  private async withCategoryIds(rows: (typeof sale.$inferSelect)[]): Promise<Sale[]> {
+    const categoriesBySale = await this.categoryIdsBySaleIds(rows.map((row) => row.id));
+    return rows.map((row) => mapSaleRow(row, categoriesBySale.get(row.id) ?? []));
+  }
+
   async findById(id: string): Promise<Sale | null> {
     const rows = await this.db.select().from(sale).where(eq(sale.id, id)).limit(1);
     const row = rows[0];
-    return row ? mapSaleRow(row) : null;
+    if (!row) return null;
+    const categories = await this.categoryIdsBySaleIds([row.id]);
+    return mapSaleRow(row, categories.get(row.id) ?? []);
   }
 
   async create(input: CreateSaleInput): Promise<Sale> {
     const coverImages = input.coverImages ?? [];
-    const [row] = await this.db
-      .insert(sale)
-      .values({
-        title: input.title,
-        description: input.description ?? null,
-        coverImages,
-        categoryId: input.categoryId ?? null,
-        deliveryMode: input.deliveryMode ?? "onsite",
-        streamUrl: input.streamUrl ?? null,
-        locationName: input.locationName ?? null,
-        locationAddress: input.locationAddress ?? null,
-        locationMapUrl: input.locationMapUrl ?? null,
-        locationAddressLine1: input.locationAddressLine1 ?? null,
-        locationAddressLine2: input.locationAddressLine2 ?? null,
-        locationCity: input.locationCity ?? null,
-        locationCounty: input.locationCounty ?? null,
-        locationPostcode: input.locationPostcode ?? null,
-        locationCountry: input.locationCountry ?? null,
-        startTime: input.startTime,
-        endTime: input.endTime,
-        previewStartTime: input.previewStartTime ?? null,
-        ...(input.buyerPremiumRate !== undefined
-          ? { buyerPremiumRate: input.buyerPremiumRate }
-          : {}),
-        terms: input.terms ?? null,
-        createdBy: input.createdBy,
-        status: "draft",
-      })
-      .returning();
-    if (!row) throw new Error("Failed to create sale");
-    return mapSaleRow(row);
+    const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
+    const row = await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(sale)
+        .values({
+          title: input.title,
+          description: input.description ?? null,
+          coverImages,
+          deliveryMode: input.deliveryMode ?? "onsite",
+          streamUrl: input.streamUrl ?? null,
+          locationName: input.locationName ?? null,
+          locationAddress: input.locationAddress ?? null,
+          locationMapUrl: input.locationMapUrl ?? null,
+          locationAddressLine1: input.locationAddressLine1 ?? null,
+          locationAddressLine2: input.locationAddressLine2 ?? null,
+          locationCity: input.locationCity ?? null,
+          locationCounty: input.locationCounty ?? null,
+          locationPostcode: input.locationPostcode ?? null,
+          locationCountry: input.locationCountry ?? null,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          previewStartTime: input.previewStartTime ?? null,
+          ...(input.buyerPremiumRate !== undefined
+            ? { buyerPremiumRate: input.buyerPremiumRate }
+            : {}),
+          terms: input.terms ?? null,
+          createdBy: input.createdBy,
+          status: "draft",
+        })
+        .returning();
+      if (!created) throw new Error("Failed to create sale");
+      if (categoryIds.length > 0) {
+        await tx.insert(saleCategories).values(
+          categoryIds.map((categoryId, index) => ({
+            saleId: created.id,
+            categoryId,
+            sortOrder: index,
+          })),
+        );
+      }
+      return created;
+    });
+    return mapSaleRow(row, categoryIds);
   }
 
   async list(filter: ListSalesFilter): Promise<Sale[]> {
@@ -67,13 +116,13 @@ export class DrizzleSaleRepository implements ISaleRepository {
       .orderBy(order)
       .limit(filter.limit)
       .offset(filter.offset);
-    return rows.map(mapSaleRow);
+    return this.withCategoryIds(rows);
   }
 
   async findWithStatuses(statuses: SaleStatus[]): Promise<Sale[]> {
     if (statuses.length === 0) return [];
     const rows = await this.db.select().from(sale).where(inArray(sale.status, statuses));
-    return rows.map(mapSaleRow);
+    return this.withCategoryIds(rows);
   }
 
   async update(id: string, patch: Partial<CreateSaleInput>): Promise<Sale> {
@@ -81,7 +130,12 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.title !== undefined) rowPatch.title = patch.title;
     if (patch.description !== undefined) rowPatch.description = patch.description ?? null;
     if (patch.coverImages !== undefined) rowPatch.coverImages = patch.coverImages;
-    if (patch.categoryId !== undefined) rowPatch.categoryId = patch.categoryId ?? null;
+    const categoryIds =
+      patch.categoryIds !== undefined
+        ? patch.categoryIds
+        : patch.categoryId
+          ? [patch.categoryId]
+          : undefined;
     if (patch.startTime !== undefined) rowPatch.startTime = patch.startTime;
     if (patch.endTime !== undefined) rowPatch.endTime = patch.endTime;
     if (patch.previewStartTime !== undefined)
@@ -105,9 +159,25 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.locationCountry !== undefined)
       rowPatch.locationCountry = patch.locationCountry ?? null;
 
-    const [row] = await this.db.update(sale).set(rowPatch).where(eq(sale.id, id)).returning();
-    if (!row) throw new Error("Sale update failed");
-    return mapSaleRow(row);
+    const row = await this.db.transaction(async (tx) => {
+      const [updated] = await tx.update(sale).set(rowPatch).where(eq(sale.id, id)).returning();
+      if (!updated) throw new Error("Sale update failed");
+      if (categoryIds !== undefined) {
+        await tx.delete(saleCategories).where(eq(saleCategories.saleId, id));
+        if (categoryIds.length > 0) {
+          await tx.insert(saleCategories).values(
+            categoryIds.map((categoryId, index) => ({
+              saleId: id,
+              categoryId,
+              sortOrder: index,
+            })),
+          );
+        }
+      }
+      return updated;
+    });
+    const categories = await this.categoryIdsBySaleIds([row.id]);
+    return mapSaleRow(row, categories.get(row.id) ?? []);
   }
 
   async updateStatus(id: string, status: Sale["status"]): Promise<void> {

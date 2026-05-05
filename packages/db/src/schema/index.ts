@@ -1,7 +1,9 @@
 export * from "./auth.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";
+export * from "./lot-categories.js";
 export * from "./sales.js";
+export * from "./sale-categories.js";
 export * from "./bids.js";
 export * from "./categories.js";
 export * from "./notifications.js";
@@ -12,6 +14,7 @@ export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
 export * from "./sale-follow.js";
 export * from "./item-submissions.js";
+export * from "./submission-categories.js";
 export * from "./user-address.js";
 export * from "./xero-integration.js";
 export * from "./jwks-key.js";
@@ -25,6 +28,9 @@ export {
   bidRelations,
   categoryRelations,
   itemSubmissionRelations,
+  lotCategoryRelations,
   lotRelations,
+  saleCategoryRelations,
   saleRelations,
+  submissionCategoryRelations,
 } from "../relations.js";

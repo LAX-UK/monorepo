@@ -230,9 +230,18 @@ function sellerPatchToRepoPatch(patch: UpdateItemSubmissionInput): ItemSubmissio
   if (patch.medium !== undefined) out.medium = patch.medium ?? null;
   if (patch.dimensions !== undefined) out.dimensions = patch.dimensions ?? null;
   if (patch.images !== undefined) out.images = patch.images;
+  if (patch.yearOfWork !== undefined) out.yearOfWork = patch.yearOfWork ?? null;
+  if (patch.isSigned !== undefined) out.isSigned = patch.isSigned;
+  if (patch.signatureNote !== undefined) out.signatureNote = patch.signatureNote ?? null;
+  if (patch.edition !== undefined) out.edition = patch.edition ?? null;
+  if (patch.conditionSelfReport !== undefined)
+    out.conditionSelfReport = patch.conditionSelfReport ?? null;
+  if (patch.provenance !== undefined) out.provenance = patch.provenance;
+  if (patch.exhibitions !== undefined) out.exhibitions = patch.exhibitions;
   if (patch.askingPrice !== undefined) out.askingPrice = patch.askingPrice ?? null;
   if (patch.reservePrice !== undefined) out.reservePrice = patch.reservePrice ?? null;
-  if (patch.categoryId !== undefined) out.categoryId = patch.categoryId;
+  if (patch.categoryIds !== undefined) out.categoryIds = patch.categoryIds;
+  else if (patch.categoryId !== undefined) out.categoryId = patch.categoryId;
   if (patch.submitterNotes !== undefined) out.submitterNotes = patch.submitterNotes ?? null;
   return out;
 }

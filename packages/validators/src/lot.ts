@@ -12,13 +12,29 @@ const buyerPremiumRateString = z
     return n >= 0 && n <= 1;
   }, "Buyer premium rate must be between 0 and 1");
 
-export const createLotSchema = z.object({
+const categoryIdsSchema = z
+  .array(z.string().uuid())
+  .min(1, "Choose at least one category")
+  .max(8, "Choose no more than 8 categories");
+
+function normalizeCategoryIdsInput(raw: unknown): unknown {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  if (Array.isArray(record.categoryIds)) return raw;
+  if (typeof record.categoryId === "string" && record.categoryId.length > 0) {
+    return { ...record, categoryIds: [record.categoryId] };
+  }
+  return raw;
+}
+
+const createLotBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
   medium: z.string().max(500).optional(),
   dimensions: z.string().max(200).optional(),
   images: z.array(mediaReferenceSchema).max(20).optional(),
-  categoryId: z.string().uuid(),
+  categoryIds: categoryIdsSchema,
+  categoryId: z.string().uuid().optional(),
   auctionType: z.enum(lotAuctionTypes),
   startingPrice: decimalString,
   reservePrice: decimalString.optional(),
@@ -33,6 +49,8 @@ export const createLotSchema = z.object({
   lotNumber: z.coerce.number().int().positive().nullable().optional(),
 });
 
+export const createLotSchema = z.preprocess(normalizeCategoryIdsInput, createLotBodySchema);
+
 const listSort = z
   .enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc", "sellerAsc"])
   .optional();
@@ -40,6 +58,19 @@ const listSort = z
 export const listLotsQuerySchema = z.object({
   status: z.enum(lotStatuses).optional(),
   categoryId: z.string().uuid().optional(),
+  categoryIds: z
+    .string()
+    .optional()
+    .transform((s) => {
+      if (!s?.trim()) return undefined;
+      return s
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    })
+    .refine((arr) => arr == null || arr.every((x) => z.string().uuid().safeParse(x).success), {
+      message: "Invalid category ID in categoryIds",
+    }),
   sellerId: z.string().optional(),
   winnerId: z.string().optional(),
   saleId: z.string().uuid().optional(),
@@ -58,13 +89,29 @@ export const archiveSummaryQuerySchema = z.object({
 /** Same filters as archive grid; status is always `ended` on the server. */
 export const archiveCountQuerySchema = z.object({
   categoryId: z.string().uuid().optional(),
+  categoryIds: z
+    .string()
+    .optional()
+    .transform((s) => {
+      if (!s?.trim()) return undefined;
+      return s
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    })
+    .refine((arr) => arr == null || arr.every((x) => z.string().uuid().safeParse(x).success), {
+      message: "Invalid category ID in categoryIds",
+    }),
   endYear: z.coerce.number().int().min(1970).max(2100).optional(),
 });
 
 export type CreateLotInput = z.infer<typeof createLotSchema>;
 
 /** Partial update for draft lots (admin). */
-export const updateLotSchema = createLotSchema.partial();
+export const updateLotSchema = z.preprocess(
+  normalizeCategoryIdsInput,
+  createLotBodySchema.partial(),
+);
 
 export const lotIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -81,9 +128,10 @@ export const bulkLotsBodySchema = z.object({
 });
 
 /** Lot rows nested under `POST /sales` (no `saleId`; set server-side). */
-export const createNestedLotForSaleSchema = createLotSchema
-  .omit({ saleId: true })
-  .extend({ sellerId: z.string().min(1).max(191) });
+export const createNestedLotForSaleSchema = z.preprocess(
+  normalizeCategoryIdsInput,
+  createLotBodySchema.omit({ saleId: true }).extend({ sellerId: z.string().min(1).max(191) }),
+);
 
 export type CreateNestedLotForSaleInput = z.infer<typeof createNestedLotForSaleSchema>;
 

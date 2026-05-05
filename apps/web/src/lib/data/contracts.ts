@@ -1,4 +1,4 @@
-import type { Bid, Category, Lot, LotStatus, UserRole } from "@auction/types";
+import type { Bid, Category, CategoryNode, Lot, LotStatus, UserRole } from "@auction/types";
 
 export type ListLotsParams = {
   status?: LotStatus;
@@ -99,4 +99,5 @@ export interface PublicUserReader {
 
 export interface CategoryReader {
   list(): Promise<Category[]>;
+  tree(): Promise<CategoryNode[]>;
 }

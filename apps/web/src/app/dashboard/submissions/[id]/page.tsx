@@ -18,8 +18,7 @@ export default async function SubmissionDetailPage({
   if (!s) notFound();
 
   const catReader = await getServerCategoryReader();
-  const allCats = await catReader.list();
-  const categories = allCats.filter((c) => c.parentId == null);
+  const categories = await catReader.tree();
   const editable = s.status === "draft";
   const canSubmit = s.status === "draft";
   const canWithdraw = s.status === "draft" || s.status === "submitted";
@@ -86,7 +85,7 @@ export default async function SubmissionDetailPage({
         <EditSubmissionForm
           submissionId={s.id}
           initialValues={itemSubmissionToFormValues(s)}
-          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+          categories={categories}
         />
       )}
 
