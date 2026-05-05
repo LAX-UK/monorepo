@@ -98,7 +98,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src"]
+      characteristics     = ["ip.src", "cf.colo.id"]
       period              = 60
       requests_per_period = var.postmark_webhook_rpm
       mitigation_timeout  = 60
@@ -112,7 +112,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src"]
+      characteristics     = ["ip.src", "cf.colo.id"]
       period              = 60
       requests_per_period = var.signup_rpm
       mitigation_timeout  = 60
@@ -126,7 +126,7 @@ resource "cloudflare_ruleset" "rate_limits" {
     enabled     = true
 
     ratelimit {
-      characteristics     = ["ip.src"]
+      characteristics     = ["ip.src", "cf.colo.id"]
       period              = 60
       requests_per_period = var.send_verification_email_rpm
       mitigation_timeout  = 60
