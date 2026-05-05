@@ -22,6 +22,22 @@ The vocabulary that appears in this codebase. If a term shows up frequently, it'
 
 **Drizzle.** The TypeScript ORM we use ([packages/db/](../../packages/db/)). Schema-first; migrations are generated from `src/schema/` into `drizzle/`.
 
+**Email outbox.** A row in `email_outbox`. Structurally similar to a domain event but **separate** — it tracks a single transactional/notification email through `pending → sending → sent | failed | suppressed`. Written by `IEmailService.enqueue()`, drained by the `email` BullMQ worker. See [docs/architecture/04-domain-events.md → "Email pipeline"](../architecture/04-domain-events.md#email-pipeline).
+
+**Email category.** Either `auth` (verification, reset, password changed, change email, invite) or `transactional` (everything else). `auth` sends bypass `email_suppression`; `transactional` sends respect it. Carried on the `email_outbox.category` column.
+
+**Email stream.** Postmark concept, surfaced as `email_outbox.stream`. Either `transactional` (per-user mail) or `broadcast` (bulk, e.g. announcements). The Postmark sender picks the right server stream based on this column.
+
+**IEmailService / IEmailSender.** Two seams in `@auction/email`. `IEmailService.enqueue()` is the only entry point callers in `apps/auth` and `apps/api` are allowed to use; it writes the outbox row. `IEmailSender.send()` is what the `send-email` worker job calls; only the worker may import a Postmark SDK.
+
+**Suppression list.** The `email_suppression` table (PK = SHA-256 of the address). Hard bounces, complaints, and global unsubscribes write rows here. Looked up at enqueue time to short-circuit transactional sends.
+
+**List-Unsubscribe (one-click).** RFC 8058 header that Postmark adds when we set the corresponding outbox flag. Carries an HMAC-signed token (`EMAIL_UNSUBSCRIBE_SECRET`); hitting the URL flips the matching `notification_preference.*_email` column or — for global unsubscribe — writes `email_suppression(reason='unsubscribe')`. `auth` and payment templates intentionally omit this header.
+
+**Preference center.** The web page at `/email/unsubscribe` that renders when a user clicks an unsubscribe link, showing per-notification toggles plus a global unsubscribe option. Implemented in `apps/api/src/routes/email.ts`.
+
+**Newsletter signup log.** The `newsletter_signup_log` table — an audit row per `POST /api/newsletter/subscribe` and the result of pushing it to Zoho Campaigns. Subscriber state itself lives in Zoho; we keep this table only for GDPR access/erasure proof.
+
 **External account.** A row in the `external_accounts` table, linking our canonical `user` to an identity in another system (Shopify customer, WordPress user, Apple `sub`, Google `sub`). See D3 and D11.
 
 **F1, F2, …, F10.** Implementation revisions made during the planning phase. Referenced in some doc paragraphs. The numbers are stable; if you don't recognize one, check the planning conversation transcript.

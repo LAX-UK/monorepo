@@ -10,7 +10,7 @@ Documentation lives alongside code on purpose. Every change to the system that h
 
 Reference material — the system as it is, not as it was planned. Read these top to bottom on your first week.
 
-- [Overview](./architecture/01-overview.md) — what the system does, what the three apps own, what's deliberately not in scope
+- [Overview](./architecture/01-overview.md) — what the system does, what each of the five apps owns, what's deliberately not in scope
 - [Decisions](./architecture/02-decisions.md) — the eleven architectural decisions (D1–D11) with alternatives considered and rationale
 - [Data model](./architecture/03-data-model.md) — every table, every relationship, every constraint that matters
 - [Domain events](./architecture/04-domain-events.md) — how the outbox pattern works and why we have it
@@ -27,9 +27,15 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [JWKS rotation](./runbooks/jwks-rotation.md) — quarterly key rotation and emergency rotation on suspected leak
 - [JWT key leak](./runbooks/jwt-key-leak.md) — incident response when the signing key is compromised
 - [Zoho outage](./runbooks/incident-zoho-outage.md) — what to do when the Zoho EU API is down or rate-limiting us
+- [Email provider incident](./runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident, including the `REQUIRE_EMAIL_VERIFICATION` kill-switch
 - [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17 manual procedure
 - [Deploy checklist](./runbooks/deploy-checklist.md) — what to verify before, during, and after every production deploy
+- [Production rollback](./runbooks/prod-rollback.md) — Terraform-driven rollback for infrastructure regressions
+- [Cost overrun](./runbooks/cost-overrun.md) — what to check when the monthly cost alert fires
+- [Drift remediation](./runbooks/drift-remediation.md) — handling Terraform drift surfaced by the weekly workflow
+- [State recovery](./runbooks/state-recovery.md) — restoring a previous Terraform state version from Spaces
 - [On-call](./runbooks/on-call.md) — alert routing, escalation, and when to wake someone up
+- [Bootstrap](./runbooks/bootstrap.md) — one-line pointer to the authoritative `infra/terraform/BOOTSTRAP.md`
 
 ## Onboarding
 
@@ -43,9 +49,22 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 
 ## Security
 
-- [Threat model](./security/threat-model.md) — STRIDE analysis per component, what we defend against and what we accept
+- [Threat model](./security/threat-model.md) — pointer to the canonical security model in `architecture/07-security-model.md` plus a place for component-specific STRIDE walkthroughs
 - [Secrets management](./security/secrets-management.md) — every secret in the system, where it lives, who can read it
-- [Data Processing Agreements](./security/dpas.md) — tracking sheet for processor agreements (Zoho, Shopify, Xero, DigitalOcean, Cloudflare)
+- [Key rotation](./security/key-rotation.md) — JWKS rotation math (30-minute retirement window) referenced from D2 and the rotation runbook
+- [Data deletion](./security/data-deletion.md) — GDPR Article 17 procedure referenced from the deletion-request runbook
+- [Social login setup](./security/social-login-setup.md) — Google + Apple Sign-In configuration including Apple client-secret JWT generation
+- [Data Processing Agreements](./security/dpas.md) — tracking sheet for processor agreements (Zoho, Shopify, Xero, DigitalOcean, Cloudflare, Postmark)
+
+## Design
+
+- [Design system](./DESIGN_SYSTEM.md) — tokens, primitives, layout recipes, accessibility/SEO checklists
+- [Forms conventions](./FORMS.md) — RHF + Zod + server-actions + `ActionResult` pattern for `apps/web`
+- [Dashboard UX audit](./design/dashboard-ux-audit.md) — gap analysis vs current dashboard implementation
+- [Dashboard UX roadmap](./design/dashboard-ux-roadmap.md) — phased delivery plan derived from the audit
+- [Mockup parity](./design/mockup-parity.md) — deliberate supersets where the live UI ships richer behaviour than the static mockups
+- [SEO structured data](./seo/structured-data.md) — JSON-LD payload catalogue per route
+- [Saleroom data sources](./SALEROOM_DATA_SOURCES.md) — where the saleroom marketing UI text comes from
 
 ## Integrations
 
@@ -54,8 +73,18 @@ How each external system talks to TheAlx and what to configure on the external s
 - [WordPress](./integrations/wordpress.md) — OpenID Connect Generic plugin setup on lax.art
 - [Shopify](./integrations/shopify.md) — non-Plus webhook subscriptions including mandatory GDPR webhooks
 - [Zoho](./integrations/zoho.md) — api-console.zoho.eu setup, scopes, refresh-token persistence
+- [Email](./integrations/email.md) — Postmark transactional/notification + Zoho Campaigns one-way newsletter push, sender domain setup, suppression and unsubscribe semantics
 - [Cloudflare](./integrations/cloudflare.md) — DNS records, page rules, WAF rules, full-strict TLS
 - [DigitalOcean](./integrations/digitalocean.md) — App Platform components, managed Postgres, migration job
+
+## Auction-domain reference
+
+- [System analysis](./SYSTEM_ANALYSIS.md) — current auction-domain runtime (sales, lots, bids, payments, Xero)
+- [V1 product spec](./V1_PRODUCT_SPEC.md) — the V1 role model, auction strategy scope, and acceptance criteria
+- [Diagrams](./DIAGRAMS.md) — system, ERD, lifecycle, bid-placement, realtime, payment, public API
+- [OpenAPI](./openapi.yaml) — REST surface for `apps/api`
+- [Load testing outline](./LOAD_TESTING.md) — k6/Artillery scenarios for bidding, anti-sniping, Dutch acceptance, payments
+- [Spec Kit workflow](./SPEC_KIT_WORKFLOW.md) — how to use `/speckit-*` skills in this repo
 
 ## Conventions
 
@@ -74,9 +103,12 @@ Code paths in docs use the form `apps/api/src/services/bid.service.ts` — alway
 | Change | Update |
 |---|---|
 | New external integration | Add `integrations/<name>.md`, link from this README |
-| New database table | Update `architecture/03-data-model.md` and the ERD diagram |
+| New database table | Update `architecture/03-data-model.md` and the ERD diagram, plus the role-grant lists in `packages/db/src/migrate-roles.ts` |
 | New domain event type | Update `architecture/04-domain-events.md` event catalog |
+| New email template | Add to `packages/email/src/templates/`, register in `types.ts` (`TemplateName`, `TemplateVarsByName`, `RECIPIENT_RESOLUTION`); see `architecture/04-domain-events.md → "Adding a new email template"` |
+| New BullMQ queue | Update `architecture/06-deployment.md` (worker section), wire health-check heartbeats |
 | New runbook needed | Add to `runbooks/`, link from this README |
+| New trust boundary or threat | Update `architecture/07-security-model.md` (boundary diagram + threat catalog) |
 | Decision change or new decision | Add new D-number to `architecture/02-decisions.md`, never edit existing |
 | Secret added | Update `security/secrets-management.md` |
 | New onboarding gotcha | Add to `onboarding/04-debugging.md` |

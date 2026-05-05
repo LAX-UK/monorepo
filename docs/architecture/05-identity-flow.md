@@ -4,7 +4,7 @@ This document walks through what happens when a user authenticates across the th
 
 If you understand these three flows, you understand the identity layer.
 
-> **Implementation status (last reviewed 2026-05-01)**
+> **Implementation status (last reviewed 2026-05-05)**
 >
 > - **Implemented:** better-auth issuing both session cookies and OIDC + JWT tokens with the canonical issuer URL `https://auth.lax.bid` ([packages/auth/src/server.ts](../../packages/auth/src/server.ts)). Google and Apple social providers, conditional on env vars. Cookie scoped to `.lax.bid` when `COOKIE_DOMAIN` is set ([apps/api/src/container.ts](../../apps/api/src/container.ts), [apps/auth/src/index.ts](../../apps/auth/src/index.ts), `.env.production.example`). Apple privacy-relay branch in [apps/api/src/services/account-linking.service.ts](../../apps/api/src/services/account-linking.service.ts). JWT verification on the `apps/ws` Socket.IO handshake ([apps/ws/src/services/jwt-verifier.ts](../../apps/ws/src/services/jwt-verifier.ts)).
 > - **Dual-stack today:** `apps/auth` and `apps/api` both serve OIDC discovery, JWKS, and `/api/auth/*` (D7); WordPress can target either. Issuer claim is identical (`OIDC_ISSUER_URL`) so consumers do not see the topology.

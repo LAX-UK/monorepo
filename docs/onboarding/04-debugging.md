@@ -8,9 +8,9 @@ The list below is the curated set of things that have actually surprised people.
 
 **`pnpm dev` starts but `apps/api` immediately exits.** Check that Postgres and Redis are up (`docker compose ps`). The API fails fast on missing connections.
 
-**OIDC discovery returns `localhost:4000` even when I want `auth.lax.bid`.** The `OIDC_ISSUER_URL` env var defaults to localhost — set it explicitly in `.env` if you're testing cross-domain flows via `cloudflared tunnel`.
+**OIDC discovery returns `localhost:3001` (or `:3003`) even when I want `auth.lax.bid`.** The `OIDC_ISSUER_URL` env var defaults to localhost — set it explicitly in `.env` if you're testing cross-domain flows via `cloudflared tunnel` or `ngrok`.
 
-**Login works in `apps/web` but `apps/api` says I'm unauthenticated.** Cookie scope mismatch. In dev, the cookie is host-only on `localhost`. If you tunnel `apps/web` to a public URL but leave `apps/api` on `localhost:4000`, the cookie won't reach the API. Tunnel both, or run both behind a single reverse proxy.
+**Login works in `apps/web` but `apps/api` says I'm unauthenticated.** Cookie scope mismatch. In dev, the cookie is host-only on `localhost`. If you tunnel `apps/web` to a public URL but leave `apps/api` on `localhost:3001`, the cookie won't reach the API. Tunnel both, or run both behind a single reverse proxy.
 
 **Apple Sign-In errors at startup.** If `APPLE_CLIENT_ID` is set but `APPLE_CLIENT_SECRET` is empty (or vice versa), better-auth still tries to register the provider. Either set both or unset both — see [packages/auth/src/server.ts](../../packages/auth/src/server.ts) for the conditional registration.
 

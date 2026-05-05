@@ -4,9 +4,11 @@ info:
   version: 1.0.0
   description: |
     Hono REST API for sales, lots, bids, payments, submissions, users, and admin operations.
-    Authentication is handled by Better Auth at `/api/auth/*`.
+    Authentication is handled by Better Auth at `/api/auth/*` (also served by `apps/auth` per D7 dual-stack).
 servers:
-  - url: http://localhost:8787
+  - url: http://localhost:3001
+  - url: https://api.lax.bid
+  - url: https://test-api.lax.bid
 paths:
   /health/live:
     get:

@@ -22,19 +22,19 @@ pnpm dev
 | App | URL | Notes |
 |---|---|---|
 | `apps/web` | http://localhost:3000 | Next.js |
-| `apps/api` | http://localhost:4000 | Hono; serves OIDC, JWKS, webhooks today (D7 dual-stack) |
-| `apps/auth` | http://localhost:4001 | Hono OIDC issuer (the future single source) |
-| `apps/ws` | http://localhost:4002 | Socket.IO |
-| `apps/worker` | (no HTTP except `/health`+`/metrics`) | BullMQ consumer |
+| `apps/api` | http://localhost:3001 | Hono; serves OIDC, JWKS, webhooks today (D7 dual-stack) |
+| `apps/ws` | http://localhost:3002 | Socket.IO |
+| `apps/auth` | http://localhost:3003 | Hono OIDC issuer (the future single source) |
+| `apps/worker` | http://localhost:3004 (`/health/live`, `/health/ready`, `/metrics` only) | BullMQ consumer + projector runner |
 
-Each app's port comes from its env file; the defaults above are what's wired in `.env.example`.
+Each app's port comes from its env file; the defaults above are what's wired in `.env.example` (`PORT`, `WS_PORT`, `WORKER_PORT`; `apps/auth` uses its own `PORT` default of 3003).
 
 ## Testing OAuth callbacks locally
 
 Google and Apple require HTTPS callback URLs. The simplest way to test these flows is `cloudflared tunnel` against your local `apps/auth`:
 
 ```bash
-cloudflared tunnel --url http://localhost:4001
+cloudflared tunnel --url http://localhost:3003
 ```
 
 Use the resulting `*.trycloudflare.com` URL as the callback URL in the Google/Apple developer consoles for a temporary test client. Don't reuse production client credentials — use the dev clients documented in 1Password.
