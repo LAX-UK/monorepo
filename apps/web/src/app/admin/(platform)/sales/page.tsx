@@ -1,4 +1,7 @@
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
+import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
+import { ShareFiltersButton } from "@/components/admin/share-filters-button";
 import { Button } from "@/components/ui/button";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
@@ -43,28 +46,20 @@ export default async function AdminSalesPage({
   const boardRows = rows.map(toAdminSaleBoardRow);
 
   const statusChips = (
-    <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
-      <legend className="sr-only">Filter by status</legend>
-      {statuses.map((s) => {
+    <FilterChipRow
+      label="Filter by status"
+      chips={statuses.map((s) => {
         const qs = new URLSearchParams();
         if (s !== "all") qs.set("status", s);
         const href = qs.toString() ? `/admin/sales?${qs.toString()}` : "/admin/sales";
-        const active = (s === "all" && !sp.status) || sp.status === s;
-        return (
-          <Link
-            key={s}
-            href={href}
-            className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-              active
-                ? "bg-primary text-on-primary ring-primary"
-                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-            }`}
-          >
-            {s}
-          </Link>
-        );
+        return {
+          id: s,
+          label: s,
+          href,
+          active: (s === "all" && !sp.status) || sp.status === s,
+        };
       })}
-    </fieldset>
+    />
   );
 
   return (
@@ -73,12 +68,16 @@ export default async function AdminSalesPage({
         title="Sales"
         description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
         actions={
-          <Button variant="primary" asChild>
-            <Link href="/admin/sales/new">
-              <Plus className="size-4" aria-hidden />
-              New sale
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <ShareFiltersButton />
+            <ResetFiltersLink active={Boolean(statusFilter)} href="/admin/sales" />
+            <Button variant="primary" asChild>
+              <Link href="/admin/sales/new">
+                <Plus className="size-4" aria-hidden />
+                New sale
+              </Link>
+            </Button>
+          </div>
         }
       />
 

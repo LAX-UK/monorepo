@@ -17,6 +17,7 @@ const defaultValues: NewAddressFormValues = {
   state: "",
   postalCode: "",
   country: "",
+  addressType: "both",
   isDefault: false,
 };
 
@@ -39,6 +40,7 @@ export function useCreateAddressController(): FormController<NewAddressFormValue
         state: (values.state ?? "").trim() || undefined,
         postalCode: values.postalCode.trim(),
         country: values.country.trim(),
+        addressType: values.addressType,
         isDefault: values.isDefault,
       });
       if (r.ok) {

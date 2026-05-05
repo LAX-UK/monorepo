@@ -2,6 +2,7 @@
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -33,7 +34,7 @@ const marketingSections: PaletteSection[] = [
   },
 ];
 
-const dashboardSections: PaletteSection[] = [
+const dashboardBuyingSections: PaletteSection[] = [
   {
     id: "pages",
     heading: "Pages",
@@ -41,8 +42,25 @@ const dashboardSections: PaletteSection[] = [
       { id: "d-home", href: "/dashboard", label: "Dashboard home" },
       { id: "d-portfolio", href: "/dashboard/portfolio", label: "My collection" },
       { id: "d-bids", href: "/dashboard/bids", label: "My bids" },
+      { id: "d-watchlist", href: "/dashboard/watchlist", label: "Watchlist" },
       { id: "d-gallery", href: "/", label: "Browse gallery", hint: "Marketing site" },
       { id: "d-search", href: "/search", label: "Search lots" },
+      { id: "d-live", href: "/dashboard/live/upcoming", label: "Live bidding", hint: "Saleroom" },
+    ],
+  },
+];
+
+const dashboardSellingSections: PaletteSection[] = [
+  {
+    id: "seller",
+    heading: "Selling workspace",
+    items: [
+      { id: "s-overview", href: "/dashboard/seller", label: "Seller overview" },
+      { id: "s-submissions", href: "/dashboard/submissions", label: "My submissions" },
+      { id: "s-in-sale", href: "/dashboard/seller/in-sale", label: "Items in sale" },
+      { id: "s-payouts", href: "/dashboard/seller/payouts", label: "Sold & payouts" },
+      { id: "s-artist", href: "/dashboard/seller/artist", label: "Artist profile" },
+      { id: "s-search", href: "/search", label: "Search lots" },
     ],
   },
 ];
@@ -60,6 +78,12 @@ const adminPlatformSections: PaletteSection[] = [
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
       { id: "a-users", href: "/admin/users", label: "Users" },
       { id: "a-analytics", href: "/admin/analytics", label: "Analytics" },
+      { id: "a-invitations", href: "/admin/invitations", label: "Invitations" },
+      { id: "a-email-templates", href: "/admin/email/templates", label: "Email templates" },
+      { id: "a-audit", href: "/admin/audit/events", label: "Audit log" },
+      { id: "a-settings", href: "/admin/settings/platform", label: "System settings" },
+      { id: "a-cms", href: "/admin/cms", label: "CMS & pages" },
+      { id: "a-saleroom", href: "/admin/saleroom", label: "Saleroom console" },
       { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
     ],
   },
@@ -96,10 +120,13 @@ function buildVisibleSections(
   variant: "marketing" | "dashboard" | "admin",
   query: string,
   sessionUser?: SessionUser | null,
+  clientWorkspaceMode: ClientWorkspaceMode = "buying",
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
-      ? dashboardSections
+      ? clientWorkspaceMode === "selling"
+        ? dashboardSellingSections
+        : dashboardBuyingSections
       : variant === "admin"
         ? isAdminFinanceOnly(sessionUser)
           ? adminFinanceSections
@@ -150,6 +177,18 @@ function buildVisibleSections(
             href: `/admin/lots/${id}#publish`,
             label: `Lot detail (publish) · ${id.slice(0, 8)}…`,
           },
+          {
+            id: "action-open-submission",
+            href: `/admin/submissions/${id}`,
+            label: `Open submission ${id.slice(0, 8)}…`,
+            hint: "UUID",
+          },
+          {
+            id: "action-open-user",
+            href: `/admin/users/${id}`,
+            label: `Open user ${id.slice(0, 8)}…`,
+            hint: "UUID",
+          },
         );
       }
     }
@@ -170,9 +209,14 @@ type Props = {
   variant: "marketing" | "dashboard" | "admin";
   /** When variant is admin, used to hide platform-only shortcuts for finance-only roles. */
   sessionUser?: SessionUser | null;
+  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
-export function CommandPalette({ variant, sessionUser = null }: Props) {
+export function CommandPalette({
+  variant,
+  sessionUser = null,
+  clientWorkspaceMode = "buying",
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -183,8 +227,8 @@ export function CommandPalette({ variant, sessionUser = null }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const visibleSections = useMemo(
-    () => buildVisibleSections(variant, query, sessionUser),
-    [variant, query, sessionUser],
+    () => buildVisibleSections(variant, query, sessionUser, clientWorkspaceMode),
+    [variant, query, sessionUser, clientWorkspaceMode],
   );
   const flatItems = useMemo(() => flattenItems(visibleSections), [visibleSections]);
 

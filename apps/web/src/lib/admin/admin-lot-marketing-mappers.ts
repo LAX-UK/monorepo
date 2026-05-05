@@ -4,6 +4,7 @@ import { z } from "zod";
 
 /** Wider than API schema: allows empty strings in the form before normalization. */
 export const adminLotMarketingFormValuesSchema = z.object({
+  sellerArtistId: z.string(),
   conditionReport: z.object({
     summary: z.string().max(5000),
     details: z.string().max(10_000),
@@ -23,6 +24,7 @@ export type AdminLotMarketingFormValues = z.infer<typeof adminLotMarketingFormVa
 
 export function marketingDetailsToFormValues(md: LotMarketingDetails): AdminLotMarketingFormValues {
   return {
+    sellerArtistId: md.sellerArtistId ?? "",
     conditionReport: {
       summary: md.conditionReport?.summary ?? "",
       details: md.conditionReport?.details ?? "",
@@ -62,6 +64,7 @@ export function formValuesToApiPatch(
     }))
     .filter((e) => e.venue.length > 0);
   return {
+    sellerArtistId: values.sellerArtistId.trim() ? values.sellerArtistId.trim() : null,
     conditionReport: condHas
       ? {
           summary: c.summary.trim() || undefined,

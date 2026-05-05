@@ -3,6 +3,7 @@
 import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { AppShellSidebar } from "@/components/layout/app-shell-sidebar";
+import { ClientBottomNav } from "@/components/layout/client-bottom-nav";
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
@@ -11,6 +12,8 @@ import { SidebarStateProvider, useSidebarState } from "@/components/layout/sideb
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { DashboardDensity } from "@/lib/preferences/density";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
@@ -30,9 +33,17 @@ type Props = {
   shellRole: AppShellRole;
   pendingSubmissionCount?: number;
   children: ReactNode;
+  clientWorkspaceMode?: ClientWorkspaceMode;
+  cookieDensity?: DashboardDensity | null;
 };
 
-function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }: Props) {
+function AppShellFrame({
+  user,
+  shellRole,
+  pendingSubmissionCount = 0,
+  clientWorkspaceMode = "buying",
+  children,
+}: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { density } = useDashboardDensity();
@@ -91,6 +102,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
       pendingSubmissionCount={pendingSubmissionCount}
       onNavigate={() => setMobileOpen(false)}
       collapsible
+      {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
     />
   );
   const mobileSidebar = (
@@ -99,6 +111,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
       role={shellRole}
       pendingSubmissionCount={pendingSubmissionCount}
       onNavigate={() => setMobileOpen(false)}
+      {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
     />
   );
 
@@ -110,6 +123,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
+        {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
       />
 
       <div
@@ -162,7 +176,10 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
             >
               <Menu className="size-5" aria-hidden />
             </Button>
-            <AppShellBreadcrumbs role={shellRole} />
+            <AppShellBreadcrumbs
+              role={shellRole}
+              {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
+            />
             {shellRole === "client" ? (
               <Link
                 href="/"
@@ -191,7 +208,13 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
           </div>
         </header>
 
-        <main id="main-content" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <main
+          id="main-content"
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
+            shellRole === "client" && "pb-20 lg:pb-0",
+          )}
+        >
           <div
             className={cn(
               "mx-auto w-full max-w-[1200px] px-4 py-6 md:px-8 md:py-8",
@@ -204,6 +227,9 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
           </div>
         </main>
       </div>
+      {shellRole === "client" ? (
+        <ClientBottomNav clientWorkspaceMode={clientWorkspaceMode} />
+      ) : null}
     </div>
   );
 }
@@ -211,7 +237,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
 export function AppShell(props: Props) {
   return (
     <TooltipProvider delayDuration={200}>
-      <DensityProvider>
+      <DensityProvider cookieDensity={props.cookieDensity ?? null}>
         <SidebarStateProvider>
           <AppShellFrame {...props} />
         </SidebarStateProvider>

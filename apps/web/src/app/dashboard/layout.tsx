@@ -1,12 +1,21 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import {
+  DASHBOARD_DENSITY_COOKIE,
+  parseDashboardDensityCookie,
+} from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import {
+  CLIENT_WORKSPACE_COOKIE,
+  parseClientWorkspaceMode,
+} from "@/lib/workspace/client-workspace-mode";
 import {
   type UserRole,
   canAccessPlatformAdminRoutes,
   canAccessStaffAdminShell,
 } from "@auction/types";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -25,8 +34,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect(canAccessPlatformAdminRoutes(role) ? "/admin" : "/admin/payments");
   }
 
+  const jar = await cookies();
+  const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
+  const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
+
   return (
-    <AppShell user={user} shellRole="client">
+    <AppShell
+      user={user}
+      shellRole="client"
+      clientWorkspaceMode={clientWorkspaceMode}
+      cookieDensity={cookieDensity}
+    >
       {children}
     </AppShell>
   );

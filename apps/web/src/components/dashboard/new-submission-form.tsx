@@ -360,6 +360,20 @@ export function NewSubmissionForm({ categories }: Props) {
               </FormItem>
             )}
           />
+          <aside className="rounded-lg border border-outline-variant/20 bg-surface-container-low/30 p-4 font-body text-xs text-on-surface-variant">
+            <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+              Draft checklist
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              <li>Sharp, colour-accurate photos including signature or markings</li>
+              <li>Dimensions and medium confirmed</li>
+              <li>Provenance summary where available</li>
+            </ul>
+            <p className="mt-3">
+              Copy details from an earlier submission manually for now—automated “copy previous” is
+              on the backlog.
+            </p>
+          </aside>
           <Button type="submit" variant="primary" className="w-full py-4" disabled={isSubmitting}>
             {isSubmitting ? "Saving…" : "Save draft"}
           </Button>

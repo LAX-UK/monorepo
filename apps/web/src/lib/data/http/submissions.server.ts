@@ -33,6 +33,7 @@ export async function getAdminSubmissions(
   params: {
     status?: ItemSubmissionStatus;
     sellerId?: string;
+    q?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -42,6 +43,7 @@ export async function getAdminSubmissions(
   qs.set("offset", String(params.offset ?? 0));
   if (params.status) qs.set("status", params.status);
   if (params.sellerId) qs.set("sellerId", params.sellerId);
+  if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/submissions?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load admin submissions: ${res.status}`);
   const body = (await res.json()) as { data: unknown[] };

@@ -72,6 +72,7 @@ export async function createAddressFromValuesAction(
     state: d.state,
     postalCode: d.postalCode,
     country: d.country,
+    addressType: d.addressType ?? "both",
     isDefault: d.isDefault ?? false,
   });
   if (!r.ok) {
@@ -152,6 +153,7 @@ export async function createAddressAction(formData: FormData): Promise<void> {
     state: String(formData.get("state") ?? "").trim() || undefined,
     postalCode: String(formData.get("postalCode") ?? "").trim(),
     country: String(formData.get("country") ?? "").trim(),
+    addressType: String(formData.get("addressType") ?? "both"),
     isDefault: formData.get("isDefault") === "on",
   };
   const parsed = createAddressWithDefaultSchema.safeParse(raw);
@@ -170,6 +172,7 @@ export async function createAddressAction(formData: FormData): Promise<void> {
     state: d.state,
     postalCode: d.postalCode,
     country: d.country,
+    addressType: d.addressType ?? "both",
     isDefault: d.isDefault ?? false,
   });
   if (!r.ok) {

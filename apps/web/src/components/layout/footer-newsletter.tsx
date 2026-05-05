@@ -34,18 +34,18 @@ export function FooterNewsletter() {
   return (
     <Form {...form}>
       <form
-        className="rounded-sm border border-outline-variant/20 bg-surface/60 p-4 shadow-sm"
+        className="w-full rounded-xl border border-outline-variant/20 bg-surface/70 p-5 shadow-sm sm:p-6"
         onSubmit={onSubmit}
         noValidate
       >
-        <div className="space-y-1.5">
+        <div className="max-w-md space-y-2">
           <label
             htmlFor="footer-newsletter-email"
-            className="font-label text-xs font-bold uppercase tracking-widest text-on-surface"
+            className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface"
           >
             LAX Private List
           </label>
-          <p className="font-footer-links text-xs leading-relaxed text-on-surface-variant">
+          <p className="font-footer-links text-sm leading-6 text-on-surface-variant">
             Auction previews, artist features and early access before the room opens.
           </p>
         </div>
@@ -69,7 +69,7 @@ export function FooterNewsletter() {
           </p>
         ) : null}
 
-        <div className="mt-4 flex flex-col sm:flex-row">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start">
           <FormField
             control={form.control}
             name="email"
@@ -83,7 +83,7 @@ export function FooterNewsletter() {
                     disabled={loading}
                     {...field}
                     placeholder="your@email.com"
-                    className="min-h-11 rounded-b-none rounded-t-sm border-outline-variant bg-surface font-body text-sm text-on-surface sm:rounded-l-sm sm:rounded-r-none sm:border-r-0"
+                    className="min-h-12 rounded-md border-outline-variant bg-surface font-body text-base text-on-surface placeholder:text-on-surface-variant/60 md:text-sm"
                   />
                 </FormControl>
                 <FormMessage className="mt-2 text-xs text-error" />
@@ -93,14 +93,14 @@ export function FooterNewsletter() {
           <Button
             type="submit"
             variant="cta"
-            className="min-h-11 rounded-b-sm rounded-t-none px-5 font-label text-xs uppercase tracking-[0.08em] sm:rounded-l-none sm:rounded-r-sm"
+            className="min-h-12 shrink-0 rounded-md px-6 font-label text-xs uppercase tracking-[0.14em] sm:min-w-32"
             disabled={loading}
           >
             {loading ? "Subscribing..." : "Subscribe"}
           </Button>
         </div>
 
-        <p className="mt-3 font-footer-links text-[0.7rem] leading-relaxed text-on-surface-variant">
+        <p className="mt-4 max-w-md font-footer-links text-xs leading-5 text-on-surface-variant">
           Unsubscribe anytime. We respect your{" "}
           <Link href="/privacy" className="text-primary underline underline-offset-2">
             privacy

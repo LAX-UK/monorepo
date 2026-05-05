@@ -1,0 +1,22 @@
+export type ArtistProfile = {
+  id: string;
+  displayName: string;
+  slug: string;
+  portraitUrl: string | null;
+  heroImageUrl: string | null;
+  shortBio: string | null;
+  longBio: string | null;
+  statement: string | null;
+  nationality: string | null;
+  location: string | null;
+  birthYear: string | null;
+  deathYear: string | null;
+  websiteUrl: string | null;
+  socialLinks: Record<string, string>;
+  featured: boolean;
+  verified: boolean;
+  archived: boolean;
+  ownerUserId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};

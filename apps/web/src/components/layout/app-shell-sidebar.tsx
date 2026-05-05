@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspaceModeSwitcher } from "@/components/dashboard/workspace-mode-switcher";
 import {
   type AppShellRole,
   appShellRoleMeta,
@@ -12,6 +13,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
@@ -26,6 +28,8 @@ type Props = {
   pendingSubmissionCount?: number;
   onNavigate?: () => void;
   collapsible?: boolean;
+  /** Collector vs seller workspace (client shell only). */
+  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
 function initials(name: string) {
@@ -67,10 +71,11 @@ export function AppShellSidebar({
   pendingSubmissionCount = 0,
   onNavigate,
   collapsible = false,
+  clientWorkspaceMode = "buying",
 }: Props) {
   const pathname = usePathname();
   const meta = appShellRoleMeta[role];
-  const items = getAppShellNavItems(role, pendingSubmissionCount);
+  const items = getAppShellNavItems(role, pendingSubmissionCount, clientWorkspaceMode);
   const { collapsed, peeking } = useSidebarState();
   const labelsHidden = collapsible && collapsed && !peeking;
 
@@ -196,6 +201,11 @@ export function AppShellSidebar({
             <p className="truncate text-[10px] text-on-surface-variant">{user.email}</p>
           </div>
         </div>
+        {role === "client" ? (
+          <div className={cn("mb-3 px-0", labelsHidden && "hidden")}>
+            <WorkspaceModeSwitcher mode={clientWorkspaceMode} />
+          </div>
+        ) : null}
         <div className={cn("items-center gap-1", labelsHidden ? "flex justify-center" : "hidden")}>
           {role === "client" ? (
             <Tooltip delayDuration={250}>

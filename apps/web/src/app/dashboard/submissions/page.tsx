@@ -69,7 +69,12 @@ export default async function DashboardSubmissionsPage({
       {error || loadError ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load</AlertTitle>
-          <AlertDescription>{loadError ?? error}</AlertDescription>
+          <AlertDescription className="space-y-3">
+            <p>{loadError ?? error}</p>
+            <Button variant="secondary" asChild>
+              <Link href="/dashboard/submissions">Try again</Link>
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : (
         <Suspense fallback={<PageSkeleton variant="table" />}>

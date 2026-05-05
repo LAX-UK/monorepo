@@ -1,4 +1,5 @@
 import {
+  adminBulkInvitationsBodySchema,
   adminCreateInvitationBodySchema,
   invitationIdUuidParamSchema,
   invitationPreviewQuerySchema,
@@ -29,6 +30,21 @@ export function attachAdminInvitationRoutes(
   r.get("/invitations", async (c) => {
     const data = await container.invitationService.listPendingForActor(c.get("userId") as string);
     return c.json({ data });
+  });
+
+  r.post("/invitations/bulk", zValidator("json", adminBulkInvitationsBodySchema), async (c) => {
+    const actorUserId = c.get("userId") as string;
+    const { ids, op } = c.req.valid("json");
+    for (const invitationId of ids) {
+      const result =
+        op === "revoke"
+          ? await container.invitationService.revoke({ actorUserId, invitationId })
+          : await container.invitationService.resend({ actorUserId, invitationId });
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+    }
+    return c.json({ ok: true, data: { count: ids.length } });
   });
 
   r.post(

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
 import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -34,6 +35,7 @@ type Props = {
   buyerPremium: string;
   total: string;
   premiumPercentLabel: string;
+  addresses: unknown[];
 };
 
 function settlementsEmail(): string {
@@ -44,6 +46,25 @@ function settlementsPhone(): string {
   return process.env.NEXT_PUBLIC_SETTLEMENTS_PHONE?.trim() || "+1 (000) 000-0000";
 }
 
+function parseAddress(raw: unknown): ProfileAddressRow {
+  const row = raw as Record<string, unknown>;
+  return {
+    id: String(row.id ?? ""),
+    label: String(row.label ?? ""),
+    line1: String(row.line1 ?? ""),
+    line2: row.line2 == null ? null : String(row.line2),
+    city: String(row.city ?? ""),
+    state: row.state == null ? null : String(row.state),
+    postalCode: String(row.postalCode ?? ""),
+    country: String(row.country ?? ""),
+    addressType:
+      row.addressType === "shipping" || row.addressType === "billing" || row.addressType === "both"
+        ? row.addressType
+        : "both",
+    isDefault: Boolean(row.isDefault),
+  };
+}
+
 export function CheckoutPurchasePanel({
   sessionUser,
   lotId,
@@ -51,11 +72,19 @@ export function CheckoutPurchasePanel({
   buyerPremium,
   total,
   premiumPercentLabel,
+  addresses: rawAddresses,
 }: Props) {
   const [submitted, setSubmitted] = useState(false);
+  const addresses = rawAddresses.map(parseAddress);
+  const checkoutAddresses = addresses.filter(
+    (address) => address.addressType === "shipping" || address.addressType === "both",
+  );
+  const billingOnlyAddresses = addresses.filter((address) => address.addressType === "billing");
+  const defaultAddress =
+    checkoutAddresses.find((address) => address.isDefault) ?? checkoutAddresses[0];
   const form = useForm<CheckoutTermsAcceptanceValues>({
     resolver: zodResolver(checkoutTermsAcceptanceSchema),
-    defaultValues: { termsAccepted: false },
+    defaultValues: { addressId: defaultAddress?.id ?? "", termsAccepted: false },
   });
 
   if (submitted) {
@@ -148,9 +177,9 @@ export function CheckoutPurchasePanel({
         <Form {...form}>
           <form
             className="space-y-6"
-            onSubmit={form.handleSubmit(async () => {
+            onSubmit={form.handleSubmit(async (values) => {
               form.clearErrors("root");
-              const r = await createCheckoutPaymentAction(lotId);
+              const r = await createCheckoutPaymentAction(lotId, values.addressId);
               if (!r.ok) {
                 notifyAdminCannotBuyIfNeeded(r.error, r.status ?? 500);
                 form.setError("root", { message: r.error });
@@ -167,6 +196,78 @@ export function CheckoutPurchasePanel({
               });
             })}
           >
+            <FormField
+              control={form.control}
+              name="addressId"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="space-y-3">
+                    <FormLabel className="font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary">
+                      Shipping / invoice address
+                    </FormLabel>
+                    {checkoutAddresses.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-outline-variant/40 p-4">
+                        <p className="font-body text-sm text-on-surface-variant">
+                          Add an address before checkout so the settlements team can prepare invoice
+                          and logistics details.
+                        </p>
+                        {billingOnlyAddresses.length > 0 ? (
+                          <p className="mt-3 font-body text-sm text-on-surface-variant">
+                            You only have billing-specific profiles. Update one to include shipping
+                            or choose “Billing & shipping” in{" "}
+                            <Link
+                              href="/dashboard/settings/addresses"
+                              className="text-primary underline"
+                            >
+                              addresses
+                            </Link>
+                            .
+                          </p>
+                        ) : null}
+                        <Button asChild variant="secondary" className="mt-4">
+                          <Link href="/dashboard/settings/addresses">Add address</Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {checkoutAddresses.map((address) => {
+                          const selected = field.value === address.id;
+                          return (
+                            <button
+                              key={address.id}
+                              type="button"
+                              onClick={() => field.onChange(address.id)}
+                              className={`rounded-lg border p-4 text-left transition-colors ${
+                                selected
+                                  ? "border-primary bg-primary-container/10"
+                                  : "border-outline-variant/20 bg-surface-container-low/30 hover:border-primary/50"
+                              }`}
+                            >
+                              <span className="block font-label text-xs uppercase tracking-widest text-on-surface">
+                                {address.label}
+                                {address.isDefault ? " · Default" : ""}
+                              </span>
+                              <span className="mt-1 block font-body text-sm text-on-surface-variant">
+                                {address.line1}
+                                {address.line2 ? `, ${address.line2}` : ""}, {address.city},{" "}
+                                {address.postalCode}, {address.country}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {billingOnlyAddresses.length > 0 && checkoutAddresses.length > 0 ? (
+              <p className="font-body text-xs text-on-surface-variant" role="note">
+                Separate billing addresses remain on file for invoicing. The selection above covers
+                shipment and primary invoice delivery unless operations specifies otherwise.
+              </p>
+            ) : null}
             <FormField
               control={form.control}
               name="termsAccepted"

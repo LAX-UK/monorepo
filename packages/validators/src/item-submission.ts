@@ -136,6 +136,7 @@ export const submissionIdParamSchema = z.object({
 export const listSubmissionsQuerySchema = z.object({
   status: z.enum(itemSubmissionStatuses).optional(),
   sellerId: z.string().min(1).max(191).optional(),
+  q: z.string().trim().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(25),
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
 });
@@ -146,5 +147,12 @@ export const adminSubmissionCountQuerySchema = z.object({
 
 /** Admin-only: optional notes on a submission under review. */
 export const adminSubmissionNotesSchema = z.object({
+  reviewNotes: z.string().max(5000).optional(),
+});
+
+export const adminBulkSubmissionsBodySchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(25),
+  op: z.enum(["approve", "reject"]),
+  reason: z.string().max(500).optional(),
   reviewNotes: z.string().max(5000).optional(),
 });

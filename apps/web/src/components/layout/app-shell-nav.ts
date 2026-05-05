@@ -1,14 +1,22 @@
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import {
   BarChart3,
   Bell,
+  Brush,
   CreditCard,
+  FileText,
   Gauge,
   Heart,
+  Layers,
   LayoutGrid,
+  ListTree,
   Mail,
+  Menu,
+  MonitorPlay,
   Package,
   ScrollText,
   Settings,
+  Store,
   TrendingUp,
   Upload,
   Users,
@@ -59,7 +67,8 @@ function exactOrNested(href: string) {
   return (pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function getClientNavItems(): AppShellNavItem[] {
+/** Collector-focused navigation (bidding & collection). */
+export function getClientBuyingNavItems(): AppShellNavItem[] {
   return [
     {
       id: "overview",
@@ -70,7 +79,6 @@ export function getClientNavItems(): AppShellNavItem[] {
     },
     { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
     { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
-    { id: "submissions", label: "Submissions", href: "/dashboard/submissions", icon: Upload },
     { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
     { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     {
@@ -81,6 +89,85 @@ export function getClientNavItems(): AppShellNavItem[] {
       match: exactOrNested("/dashboard/settings"),
     },
   ];
+}
+
+/** Seller & artist workspace navigation. */
+export function getClientSellingNavItems(): AppShellNavItem[] {
+  return [
+    {
+      id: "seller-overview",
+      label: "Seller overview",
+      href: "/dashboard/seller",
+      icon: Store,
+      match: (pathname) => pathname === "/dashboard/seller",
+    },
+    {
+      id: "submissions",
+      label: "Submissions",
+      href: "/dashboard/submissions",
+      icon: Upload,
+      match: exactOrNested("/dashboard/submissions"),
+    },
+    {
+      id: "in-sale",
+      label: "Items in sale",
+      href: "/dashboard/seller/in-sale",
+      icon: Layers,
+    },
+    {
+      id: "payouts",
+      label: "Sold & payouts",
+      href: "/dashboard/seller/payouts",
+      icon: WalletCards,
+    },
+    {
+      id: "artist",
+      label: "Artist profile",
+      href: "/dashboard/seller/artist",
+      icon: Brush,
+    },
+    { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+    {
+      id: "settings",
+      label: "Settings",
+      href: "/dashboard/settings/profile",
+      icon: Settings,
+      match: exactOrNested("/dashboard/settings"),
+    },
+  ];
+}
+
+export function getClientNavItems(workspace: ClientWorkspaceMode = "buying"): AppShellNavItem[] {
+  return workspace === "selling" ? getClientSellingNavItems() : getClientBuyingNavItems();
+}
+
+export function getClientMobileBottomTabs(
+  workspace: ClientWorkspaceMode = "buying",
+): AppShellNavItem[] {
+  const more = {
+    id: "more",
+    label: "More",
+    href: "#more",
+    icon: Menu,
+  };
+  if (workspace === "selling") {
+    const selling = getClientSellingNavItems();
+    return [
+      selling.find((item) => item.id === "seller-overview"),
+      selling.find((item) => item.id === "submissions"),
+      selling.find((item) => item.id === "in-sale"),
+      selling.find((item) => item.id === "notifications"),
+      more,
+    ].filter((item): item is AppShellNavItem => item != null);
+  }
+  const buying = getClientBuyingNavItems();
+  return [
+    buying.find((item) => item.id === "overview"),
+    buying.find((item) => item.id === "bids"),
+    buying.find((item) => item.id === "watchlist"),
+    buying.find((item) => item.id === "notifications"),
+    more,
+  ].filter((item): item is AppShellNavItem => item != null);
 }
 
 export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] {
@@ -94,6 +181,8 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
     },
     { id: "lots", label: "Lots", href: "/admin/lots", icon: Package },
     { id: "sales", label: "Sales", href: "/admin/sales", icon: ScrollText },
+    { id: "categories", label: "Categories", href: "/admin/categories", icon: ListTree },
+    { id: "artists", label: "Artists", href: "/admin/artists", icon: Brush },
     {
       id: "submissions",
       label: "Submissions",
@@ -105,6 +194,28 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
     { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { id: "invitations", label: "Invitations", href: "/admin/invitations", icon: Mail },
     { id: "email", label: "Email", href: "/admin/email/outbox", icon: Mail },
+    { id: "saleroom", label: "Saleroom", href: "/admin/saleroom", icon: MonitorPlay },
+    {
+      id: "audit",
+      label: "Audit",
+      href: "/admin/audit/events",
+      icon: FileText,
+      match: (pathname) => pathname.startsWith("/admin/audit"),
+    },
+    {
+      id: "system",
+      label: "System",
+      href: "/admin/settings/platform",
+      icon: Settings,
+      match: (pathname) => pathname.startsWith("/admin/settings"),
+    },
+    {
+      id: "cms",
+      label: "CMS",
+      href: "/admin/cms",
+      icon: LayoutGrid,
+      match: (pathname) => pathname.startsWith("/admin/cms"),
+    },
   ];
 }
 
@@ -115,14 +226,22 @@ export function getAccountantNavItems(): AppShellNavItem[] {
   ];
 }
 
-export function getAppShellNavItems(role: AppShellRole, pendingSubmissionCount = 0) {
-  if (role === "client") return getClientNavItems();
+export function getAppShellNavItems(
+  role: AppShellRole,
+  pendingSubmissionCount = 0,
+  clientWorkspace: ClientWorkspaceMode = "buying",
+) {
+  if (role === "client") return getClientNavItems(clientWorkspace);
   if (role === "accountant") return getAccountantNavItems();
   return getAdminNavItems(pendingSubmissionCount);
 }
 
-export function getRouteLabel(pathname: string, role: AppShellRole): string {
-  const items = getAppShellNavItems(role);
+export function getRouteLabel(
+  pathname: string,
+  role: AppShellRole,
+  clientWorkspace: ClientWorkspaceMode = "buying",
+): string {
+  const items = getAppShellNavItems(role, 0, clientWorkspace);
   const active = items.find((item) =>
     item.match ? item.match(pathname) : exactOrNested(item.href)(pathname),
   );
@@ -130,15 +249,30 @@ export function getRouteLabel(pathname: string, role: AppShellRole): string {
   if (pathname.includes("/new")) return "New";
   if (pathname.includes("/edit")) return "Edit";
   if (pathname.includes("/checkout")) return "Checkout";
+  if (role === "client" && pathname.startsWith("/dashboard/live")) return "Live sale";
   return "Detail";
 }
 
-export function getRouteParentLabel(pathname: string, role: AppShellRole): string | null {
+export function getRouteParentLabel(
+  pathname: string,
+  role: AppShellRole,
+  clientWorkspace: ClientWorkspaceMode = "buying",
+): string | null {
   if (role === "client" && pathname.startsWith("/dashboard/settings")) return "Settings";
   if (role === "client" && pathname.startsWith("/dashboard/checkout")) return "Collection";
+  if (role === "client" && pathname.startsWith("/dashboard/seller"))
+    return clientWorkspace === "selling" ? "Selling" : null;
+  if (role === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
   if (role === "admin" && pathname.startsWith("/admin/lots/")) return "Lots";
   if (role === "admin" && pathname.startsWith("/admin/sales/")) return "Sales";
+  if (role === "admin" && pathname.startsWith("/admin/categories/")) return "Categories";
+  if (role === "admin" && pathname.startsWith("/admin/artists/")) return "Artists";
   if (role === "admin" && pathname.startsWith("/admin/submissions/")) return "Submissions";
+  if (role === "admin" && pathname.startsWith("/admin/users/")) return "Users";
+  if (role === "admin" && pathname.startsWith("/admin/saleroom")) return "Saleroom";
+  if (role === "admin" && pathname.startsWith("/admin/audit")) return "Audit";
+  if (role === "admin" && pathname.startsWith("/admin/settings")) return "System";
+  if (role === "admin" && pathname.startsWith("/admin/cms")) return "CMS";
   if (role === "accountant" && pathname.startsWith("/admin/integrations")) return "Xero";
   return null;
 }

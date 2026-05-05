@@ -6,13 +6,20 @@ import {
   getRouteLabel,
   getRouteParentLabel,
 } from "@/components/layout/app-shell-nav";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-export function AppShellBreadcrumbs({ role }: { role: AppShellRole }) {
+export function AppShellBreadcrumbs({
+  role,
+  clientWorkspaceMode = "buying",
+}: {
+  role: AppShellRole;
+  clientWorkspaceMode?: ClientWorkspaceMode;
+}) {
   const pathname = usePathname();
-  const parent = getRouteParentLabel(pathname, role);
-  const current = getRouteLabel(pathname, role);
+  const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode);
+  const current = getRouteLabel(pathname, role, clientWorkspaceMode);
   const workspace = appShellRoleMeta[role].workspaceLabel;
   const segments =
     parent && parent !== current

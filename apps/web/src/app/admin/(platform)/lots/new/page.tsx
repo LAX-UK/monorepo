@@ -1,9 +1,39 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { DisplayHeading } from "@/components/ui/typography";
-import { emptyAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
+import { getAdminLotById, getAdminUserList } from "@/lib/data/http/admin.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import {
+  emptyAdminLotFormValues,
+  lotToAdminLotFormValues,
+} from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 
-export default function AdminNewAuctionPage() {
+type PageProps = { searchParams: Promise<{ fromLot?: string }> };
+
+export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const fromLotId = (sp.fromLot ?? "").trim();
+
+  let cloneDefaults = emptyAdminLotFormValues();
+  if (fromLotId) {
+    try {
+      const existing = await getAdminLotById(fromLotId);
+      if (existing) {
+        cloneDefaults = {
+          ...lotToAdminLotFormValues(existing),
+          title: `${existing.title} (copy)`,
+        };
+      }
+    } catch {
+      /* ignore clone failures — fall back to empty form */
+    }
+  }
+
+  const [categories, users] = await Promise.all([
+    (async () => (await getServerCategoryReader()).tree())(),
+    getAdminUserList({ limit: 100 }),
+  ]);
+
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <Link
@@ -15,8 +45,20 @@ export default function AdminNewAuctionPage() {
       <DisplayHeading as="h1" className="text-4xl">
         New auction
       </DisplayHeading>
+      {fromLotId ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          Cloning catalogue fields from lot{" "}
+          <span className="font-mono text-xs">{fromLotId.slice(0, 8)}…</span>. Schedule new dates
+          before publishing.
+        </p>
+      ) : null}
 
-      <AdminLotForm mode="create" defaultValues={emptyAdminLotFormValues()} />
+      <AdminLotForm
+        mode="create"
+        defaultValues={cloneDefaults}
+        categories={categories}
+        sellers={users.rows}
+      />
     </div>
   );
 }

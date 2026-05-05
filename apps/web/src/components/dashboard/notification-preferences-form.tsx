@@ -203,6 +203,30 @@ function formValuesToPatch(values: NotificationPreferencesFormValues) {
   };
 }
 
+function buildPreset(
+  mode: "essential" | "activeBidder" | "quiet",
+): Partial<NotificationPreferencesFormValues> {
+  const enabled = mode !== "quiet";
+  return {
+    outbidInApp: enabled,
+    wonInApp: enabled,
+    lostInApp: mode === "activeBidder",
+    endingSoonInApp: mode === "activeBidder",
+    watchlistInApp: mode === "activeBidder",
+    paymentInApp: enabled,
+    outbidPush: mode === "activeBidder",
+    wonPush: mode === "activeBidder",
+    endingSoonPush: mode === "activeBidder",
+    outbidEmail: mode === "activeBidder",
+    wonEmail: enabled,
+    lostEmail: mode === "activeBidder",
+    endingSoonEmail: mode === "activeBidder",
+    watchlistEmail: mode === "activeBidder",
+    paymentEmail: enabled,
+    lotEndedSellerEmail: enabled,
+  };
+}
+
 export function NotificationPreferencesForm({
   initial,
 }: { initial: NotificationPreference | null }) {
@@ -290,6 +314,29 @@ export function NotificationPreferencesForm({
               Choose how each alert reaches you. WhatsApp is visible here so the setting is ready
               when delivery launches.
             </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset({ ...form.getValues(), ...buildPreset("essential") })}
+            >
+              Essential only
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset({ ...form.getValues(), ...buildPreset("activeBidder") })}
+            >
+              Active bidder
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset({ ...form.getValues(), ...buildPreset("quiet") })}
+            >
+              Pause optional alerts
+            </Button>
           </div>
           <PreferencesMatrix form={form} />
           <NotificationPushEnableButton saveDisabled={pending} />

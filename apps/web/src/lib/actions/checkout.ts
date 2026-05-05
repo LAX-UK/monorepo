@@ -7,7 +7,11 @@ import { createPaymentBodySchema } from "@auction/validators";
 
 export async function createCheckoutPaymentAction(
   lotId: string,
+  addressId?: string,
 ): Promise<ActionResult<{ checkoutUrl: string | null }>> {
+  if (addressId && !/^[0-9a-f-]{36}$/i.test(addressId)) {
+    return actionFailure("Choose a valid address");
+  }
   const parsed = createPaymentBodySchema.safeParse({ lotId });
   if (!parsed.success) {
     return actionFailure("Invalid lot");
