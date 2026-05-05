@@ -169,6 +169,27 @@
       "when": 1778100000000,
       "tag": "0023_submission_expansion",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1778200000000,
+      "tag": "0024_category_admin_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1778300000000,
+      "tag": "0025_user_address_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1778400000000,
+      "tag": "0026_artist_profiles",
+      "breakpoints": true
     }
   ]
 }

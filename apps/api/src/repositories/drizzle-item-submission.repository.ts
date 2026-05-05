@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { itemSubmission, submissionCategories } from "@auction/db/schema";
 import type { CreateItemSubmissionInput } from "@auction/types";
-import { type InferInsertModel, and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { type InferInsertModel, and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm";
 import { mapItemSubmissionRow } from "../lib/mappers.js";
 import type {
   IItemSubmissionRepository,
@@ -13,6 +13,13 @@ function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [];
   if (f.status) parts.push(eq(itemSubmission.status, f.status));
   if (f.sellerId) parts.push(eq(itemSubmission.sellerId, f.sellerId));
+  if (f.q?.trim()) {
+    const safe = f.q
+      .trim()
+      .slice(0, 200)
+      .replace(/[%_\\]/g, "");
+    if (safe.length > 0) parts.push(ilike(itemSubmission.title, `%${safe}%`));
+  }
   return parts.length > 0 ? and(...parts) : undefined;
 }
 

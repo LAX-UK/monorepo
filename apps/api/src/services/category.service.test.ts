@@ -14,6 +14,9 @@ function category(overrides: Partial<Category>): Category {
     id: rootId,
     name: "Root",
     slug: "root",
+    description: null,
+    archived: false,
+    sortOrder: 0,
     parentId: null,
     ...overrides,
   };
@@ -21,7 +24,7 @@ function category(overrides: Partial<Category>): Category {
 
 function createSut(categories: Category[]) {
   const findAll = vi.fn().mockResolvedValue(categories);
-  const repo: ICategoryRepository = { findAll };
+  const repo = { findAll } as unknown as ICategoryRepository;
   const service = new CategoryService(repo);
   return { service, findAll };
 }

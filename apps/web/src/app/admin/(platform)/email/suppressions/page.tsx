@@ -1,27 +1,15 @@
-import { EmailSuppressionRemoveButton } from "@/components/admin/email-suppression-remove-button";
+import {
+  type EmailSuppressionRow,
+  EmailSuppressionsBoard,
+} from "@/components/admin/email-suppressions-board";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { StatusBadge } from "@auction/ui/components/status-badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@auction/ui/components/table";
 import { MailX } from "lucide-react";
-
-type SuppressionRow = {
-  emailHash: string;
-  reason: "hard_bounce" | "complaint" | "manual" | "unsubscribe";
-  createdAt: string;
-};
 
 export default async function AdminEmailSuppressionsPage() {
   const res = await authedServerFetch("/admin/email/suppressions");
-  const rows = res.ok ? ((await res.json()) as { data: SuppressionRow[] }).data : [];
+  const rows = res.ok ? ((await res.json()) as { data: EmailSuppressionRow[] }).data : [];
 
   return (
     <div className="space-y-6">
@@ -33,39 +21,8 @@ export default async function AdminEmailSuppressionsPage() {
           description="Bounces, complaints, and unsubscribes will appear here."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email hash</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Added</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.emailHash}>
-                  <TableCell>{shortHash(row.emailHash)}</TableCell>
-                  <TableCell>
-                    <StatusBadge variant={row.reason === "complaint" ? "danger" : "warning"}>
-                      {row.reason}
-                    </StatusBadge>
-                  </TableCell>
-                  <TableCell>{new Date(row.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <EmailSuppressionRemoveButton emailHash={row.emailHash} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <EmailSuppressionsBoard rows={rows} />
       )}
     </div>
   );
-}
-
-function shortHash(value: string): string {
-  return `${value.slice(0, 14)}…`;
 }

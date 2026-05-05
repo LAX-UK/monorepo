@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const addressTypes = ["shipping", "billing", "both"] as const;
+export const addressTypeSchema = z.enum(addressTypes);
+
 export const createAddressBodySchema = z.object({
   label: z.string().min(1).max(80),
   line1: z.string().min(1).max(200),
@@ -8,6 +11,7 @@ export const createAddressBodySchema = z.object({
   state: z.string().max(120).optional(),
   postalCode: z.string().min(1).max(32),
   country: z.string().min(2).max(120),
+  addressType: addressTypeSchema.optional(),
   isDefault: z.boolean().optional(),
 });
 

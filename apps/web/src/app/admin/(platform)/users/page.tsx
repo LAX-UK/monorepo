@@ -1,12 +1,13 @@
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
 import { AdminUsersSearchForm } from "@/components/admin/admin-users-search-form";
-import { Button } from "@/components/ui/button";
+import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
+import { ShareFiltersButton } from "@/components/admin/share-filters-button";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { type UserRole, userRoles } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
-import Link from "next/link";
 
 function adminUsersHref(parts: { q?: string; role?: UserRole; suspended?: boolean }) {
   const p = new URLSearchParams();
@@ -63,50 +64,36 @@ export default async function AdminUsersPage({
     });
 
   const roleChips = (
-    <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
-      <legend className="sr-only">Filter by role</legend>
-      <Link
-        href={chipCommon({ suspended: suspendedOnly })}
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-          !roleFilter
-            ? "bg-primary text-on-primary ring-primary"
-            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-        }`}
-      >
-        All roles
-      </Link>
-      {userRoles.map((role) => (
-        <Link
-          key={role}
-          href={chipCommon({ role, suspended: suspendedOnly })}
-          className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-            roleFilter === role
-              ? "bg-primary text-on-primary ring-primary"
-              : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-          }`}
-        >
-          {role === "administrator"
-            ? "Administrators"
-            : role === "accountant"
-              ? "Accountants"
-              : "Clients"}
-        </Link>
-      ))}
-      <Link
-        href={
-          suspendedOnly
+    <FilterChipRow
+      label="Filter by role"
+      chips={[
+        {
+          id: "all",
+          label: "All roles",
+          href: chipCommon({ suspended: suspendedOnly }),
+          active: !roleFilter,
+        },
+        ...userRoles.map((role) => ({
+          id: role,
+          label:
+            role === "administrator"
+              ? "Administrators"
+              : role === "accountant"
+                ? "Accountants"
+                : "Clients",
+          href: chipCommon({ role, suspended: suspendedOnly }),
+          active: roleFilter === role,
+        })),
+        {
+          id: "suspended",
+          label: suspendedOnly ? "Suspended only" : "Suspended only",
+          href: suspendedOnly
             ? chipCommon({ ...(roleFilter ? { role: roleFilter } : {}) })
-            : chipCommon({ ...(roleFilter ? { role: roleFilter } : {}), suspended: true })
-        }
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-          suspendedOnly
-            ? "bg-primary text-on-primary ring-primary"
-            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-        }`}
-      >
-        {suspendedOnly ? "Suspended only ✓" : "Suspended only"}
-      </Link>
-    </fieldset>
+            : chipCommon({ ...(roleFilter ? { role: roleFilter } : {}), suspended: true }),
+          active: suspendedOnly,
+        },
+      ]}
+    />
   );
 
   return (
@@ -114,6 +101,15 @@ export default async function AdminUsersPage({
       <PageHeader
         title="Users"
         description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ShareFiltersButton />
+            <ResetFiltersLink
+              active={Boolean(q || roleFilter || suspendedOnly)}
+              href="/admin/users"
+            />
+          </div>
+        }
       />
 
       {error || loadError ? (

@@ -24,6 +24,7 @@ type Props = {
   value: string[];
   onChange: (value: string[]) => void;
   placeholder?: string;
+  multiple?: boolean;
 };
 
 function flattenCategories(categories: CategoryNode[], parentPath = "", depth = 0): FlatCategory[] {
@@ -38,6 +39,7 @@ export function CategoryPicker({
   value,
   onChange,
   placeholder = "Select categories",
+  multiple = true,
 }: Props) {
   const [open, setOpen] = useState(false);
   const flat = useMemo(() => flattenCategories(categories), [categories]);
@@ -50,6 +52,11 @@ export function CategoryPicker({
         : `${selected[0]?.path} + ${selected.length - 1} more`;
 
   const toggle = (id: string) => {
+    if (!multiple) {
+      onChange(value.includes(id) ? [] : [id]);
+      setOpen(false);
+      return;
+    }
     if (value.includes(id)) {
       onChange(value.filter((categoryId) => categoryId !== id));
       return;

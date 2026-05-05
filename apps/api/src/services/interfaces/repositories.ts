@@ -151,6 +151,7 @@ export interface IUserRepository {
 export type ListSubmissionsFilter = {
   status?: ItemSubmissionStatus | undefined;
   sellerId?: string | undefined;
+  q?: string | undefined;
   limit: number;
   offset: number;
 };

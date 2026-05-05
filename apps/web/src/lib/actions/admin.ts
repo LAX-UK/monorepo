@@ -10,9 +10,17 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import {
+  adminBulkEmailSuppressionsBodySchema,
+  adminBulkInvitationsBodySchema,
+  adminBulkSubmissionsBodySchema,
+  adminBulkUsersBodySchema,
+  adminCreateArtistBodySchema,
+  adminCreateCategoryBodySchema,
   adminCreateInvitationBodySchema,
   adminSetRoleBodySchema,
   adminSuspendBodySchema,
+  adminUpdateArtistBodySchema,
+  adminUpdateCategoryBodySchema,
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
@@ -23,6 +31,23 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
+
+async function postBulkAction(
+  path: string,
+  body: unknown,
+  fallback: string,
+): Promise<ActionResult<void>> {
+  const res = await authedServerFetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    return actionFailure(payload.error ?? fallback, undefined, res.status);
+  }
+  return actionSuccess();
+}
 
 export async function adminBulkLotsAction(formData: FormData): Promise<void> {
   const raw = String(formData.get("payload") ?? "").trim();
@@ -151,6 +176,7 @@ export async function adminCreateLotAction(formData: FormData): Promise<void> {
     description: String(formData.get("description") ?? "").trim() || undefined,
     medium: String(formData.get("medium") ?? "").trim() || undefined,
     dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
+    sellerId: String(formData.get("sellerId") ?? "").trim() || undefined,
     categoryId: String(formData.get("categoryId") ?? "").trim(),
     auctionType: String(formData.get("auctionType") ?? "english"),
     startingPrice: String(formData.get("startingPrice") ?? "").trim(),
@@ -189,6 +215,7 @@ export async function adminUpdateLotAction(formData: FormData): Promise<void> {
     description: String(formData.get("description") ?? "").trim() || undefined,
     medium: String(formData.get("medium") ?? "").trim() || undefined,
     dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
+    sellerId: String(formData.get("sellerId") ?? "").trim() || undefined,
     categoryId: String(formData.get("categoryId") ?? "").trim() || undefined,
     auctionType: String(formData.get("auctionType") ?? "").trim() || undefined,
     startingPrice: String(formData.get("startingPrice") ?? "").trim() || undefined,
@@ -233,6 +260,103 @@ export async function adminCreateLotResultAction(
   }
   revalidatePath("/admin/lots");
   return actionSuccess({ id: r.data.id });
+}
+
+export async function adminCreateCategoryResultAction(
+  input: z.infer<typeof adminCreateCategoryBodySchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = adminCreateCategoryBodySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminCategories } = getWriteContainer();
+  const r = await adminCategories.create(parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/categories");
+  return actionSuccess({ id: r.data.id });
+}
+
+export async function adminUpdateCategoryResultAction(
+  categoryId: string,
+  input: z.infer<typeof adminUpdateCategoryBodySchema>,
+): Promise<ActionResult<void>> {
+  const id = categoryId.trim();
+  if (!id) return actionFailure("Missing category");
+  const parsed = adminUpdateCategoryBodySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminCategories } = getWriteContainer();
+  const r = await adminCategories.update(id, parsed.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/categories");
+  revalidatePath(`/admin/categories/${id}/edit`);
+  return actionSuccess();
+}
+
+export async function adminArchiveCategoryResultAction(
+  categoryId: string,
+): Promise<ActionResult<void>> {
+  const id = categoryId.trim();
+  if (!id) return actionFailure("Missing category");
+  const { adminCategories } = getWriteContainer();
+  const r = await adminCategories.archive(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/categories");
+  revalidatePath(`/admin/categories/${id}/edit`);
+  return actionSuccess();
+}
+
+export async function adminDeleteCategoryResultAction(
+  categoryId: string,
+): Promise<ActionResult<void>> {
+  const id = categoryId.trim();
+  if (!id) return actionFailure("Missing category");
+  const { adminCategories } = getWriteContainer();
+  const r = await adminCategories.delete(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/categories");
+  return actionSuccess();
+}
+
+export async function adminCreateArtistResultAction(
+  input: z.infer<typeof adminCreateArtistBodySchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = adminCreateArtistBodySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminArtists } = getWriteContainer();
+  const r = await adminArtists.create(parsed.data);
+  if (!r.ok) return actionFailure(r.message, undefined, r.status);
+  revalidatePath("/admin/artists");
+  return actionSuccess({ id: r.data.id });
+}
+
+export async function adminUpdateArtistResultAction(
+  artistId: string,
+  input: z.infer<typeof adminUpdateArtistBodySchema>,
+): Promise<ActionResult<void>> {
+  const id = artistId.trim();
+  if (!id) return actionFailure("Missing artist");
+  const parsed = adminUpdateArtistBodySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { adminArtists } = getWriteContainer();
+  const r = await adminArtists.update(id, parsed.data);
+  if (!r.ok) return actionFailure(r.message, undefined, r.status);
+  revalidatePath("/admin/artists");
+  revalidatePath(`/admin/artists/${id}/edit`);
+  return actionSuccess();
 }
 
 export async function adminUpdateLotMarketingDetailsResultAction(
@@ -332,6 +456,71 @@ export async function adminBulkLotsResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
+  revalidatePath("/admin/lots");
+  return actionSuccess();
+}
+
+export async function adminBulkUsersResultAction(
+  body: z.infer<typeof adminBulkUsersBodySchema>,
+): Promise<ActionResult<void>> {
+  const parsed = adminBulkUsersBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const result = await postBulkAction("/admin/users/bulk", parsed.data, "User bulk action failed");
+  if (!result.ok) return result;
+  revalidatePath("/admin/users");
+  return actionSuccess();
+}
+
+export async function adminBulkInvitationsResultAction(
+  body: z.infer<typeof adminBulkInvitationsBodySchema>,
+): Promise<ActionResult<void>> {
+  const parsed = adminBulkInvitationsBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const result = await postBulkAction(
+    "/admin/invitations/bulk",
+    parsed.data,
+    "Invitation bulk action failed",
+  );
+  if (!result.ok) return result;
+  revalidatePath("/admin/invitations");
+  return actionSuccess();
+}
+
+export async function adminBulkEmailSuppressionsResultAction(
+  body: z.infer<typeof adminBulkEmailSuppressionsBodySchema>,
+): Promise<ActionResult<void>> {
+  const parsed = adminBulkEmailSuppressionsBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const result = await postBulkAction(
+    "/admin/email/suppressions/bulk",
+    parsed.data,
+    "Email suppression bulk action failed",
+  );
+  if (!result.ok) return result;
+  revalidatePath("/admin/email/suppressions");
+  return actionSuccess();
+}
+
+export async function adminBulkSubmissionsResultAction(
+  body: z.infer<typeof adminBulkSubmissionsBodySchema>,
+): Promise<ActionResult<void>> {
+  const parsed = adminBulkSubmissionsBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const result = await postBulkAction(
+    "/submissions/bulk",
+    parsed.data,
+    "Submission bulk action failed",
+  );
+  if (!result.ok) return result;
+  revalidatePath("/admin/submissions");
   revalidatePath("/admin/lots");
   return actionSuccess();
 }

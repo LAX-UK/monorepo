@@ -13,6 +13,7 @@ export type UserAddressRow = {
   state: string | null;
   postalCode: string;
   country: string;
+  addressType: "shipping" | "billing" | "both";
   isDefault: boolean;
   createdAt: Date;
 };
@@ -25,6 +26,7 @@ export type CreateAddressInput = {
   state?: string | undefined;
   postalCode: string;
   country: string;
+  addressType?: "shipping" | "billing" | "both" | undefined;
   isDefault?: boolean | undefined;
 };
 

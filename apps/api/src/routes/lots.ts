@@ -191,7 +191,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
-    const result = await container.lotService.create(userId, body);
+    const result = await container.lotService.create(body.sellerId ?? userId, body);
     if (result.isErr()) {
       return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
     }

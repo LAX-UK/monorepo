@@ -1,12 +1,22 @@
 import {
   adminAnalyticsQuerySchema,
+  adminArtistListQuerySchema,
+  adminBulkEmailSuppressionsBodySchema,
+  adminBulkUsersBodySchema,
+  adminCategoryListQuerySchema,
+  adminCreateArtistBodySchema,
+  adminCreateCategoryBodySchema,
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
   adminSetRoleBodySchema,
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
+  adminUpdateArtistBodySchema,
+  adminUpdateCategoryBodySchema,
   adminUserListQuerySchema,
+  artistIdParamSchema,
+  categoryIdParamSchema,
   emailHashParamSchema,
   paymentIdParamSchema,
   userIdParamSchema,
@@ -74,6 +84,91 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ data });
   });
 
+  platform.get("/categories", zValidator("query", adminCategoryListQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const data = await container.categoryService.listForAdmin({
+      includeArchived: q.includeArchived,
+    });
+    return c.json({ data });
+  });
+
+  platform.post("/categories", zValidator("json", adminCreateCategoryBodySchema), async (c) => {
+    const body = c.req.valid("json");
+    const data = await container.categoryService.create(body);
+    return c.json({ data }, 201);
+  });
+
+  platform.get("/categories/:categoryId", zValidator("param", categoryIdParamSchema), async (c) => {
+    const { categoryId } = c.req.valid("param");
+    const data = await container.categoryService.getForAdmin(categoryId);
+    if (!data) return c.json({ error: "Not found" }, 404);
+    return c.json({ data });
+  });
+
+  platform.patch(
+    "/categories/:categoryId",
+    zValidator("param", categoryIdParamSchema),
+    zValidator("json", adminUpdateCategoryBodySchema),
+    async (c) => {
+      const { categoryId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const data = await container.categoryService.update(categoryId, body);
+      return c.json({ data });
+    },
+  );
+
+  platform.post(
+    "/categories/:categoryId/archive",
+    zValidator("param", categoryIdParamSchema),
+    async (c) => {
+      const { categoryId } = c.req.valid("param");
+      const data = await container.categoryService.archive(categoryId);
+      return c.json({ data });
+    },
+  );
+
+  platform.delete(
+    "/categories/:categoryId",
+    zValidator("param", categoryIdParamSchema),
+    async (c) => {
+      const { categoryId } = c.req.valid("param");
+      await container.categoryService.delete(categoryId);
+      return c.json({ ok: true });
+    },
+  );
+
+  platform.get("/artists", zValidator("query", adminArtistListQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const data = await container.artistProfileService.list({
+      includeArchived: q.includeArchived,
+      ...(q.q ? { q: q.q } : {}),
+    });
+    return c.json({ data });
+  });
+
+  platform.post("/artists", zValidator("json", adminCreateArtistBodySchema), async (c) => {
+    const data = await container.artistProfileService.create(c.req.valid("json"));
+    return c.json({ data }, 201);
+  });
+
+  platform.get("/artists/:artistId", zValidator("param", artistIdParamSchema), async (c) => {
+    const { artistId } = c.req.valid("param");
+    const data = await container.artistProfileService.getById(artistId);
+    if (!data) return c.json({ error: "Not found" }, 404);
+    return c.json({ data });
+  });
+
+  platform.patch(
+    "/artists/:artistId",
+    zValidator("param", artistIdParamSchema),
+    zValidator("json", adminUpdateArtistBodySchema),
+    async (c) => {
+      const { artistId } = c.req.valid("param");
+      const data = await container.artistProfileService.update(artistId, c.req.valid("json"));
+      return c.json({ data });
+    },
+  );
+
   platform.get("/email/outbox", zValidator("query", adminListOutboxQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.emailObservabilityRepository.listOutbox({
@@ -110,6 +205,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.post(
+    "/email/suppressions/bulk",
+    zValidator("json", adminBulkEmailSuppressionsBodySchema),
+    async (c) => {
+      const { emailHashes } = c.req.valid("json");
+      for (const emailHash of emailHashes) {
+        await container.emailObservabilityRepository.deleteSuppression({ emailHash });
+      }
+      return c.json({ ok: true, data: { count: emailHashes.length } });
+    },
+  );
+
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.adminUserService.list({
@@ -118,6 +225,19 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       offset: q.offset,
     });
     return c.json({ data });
+  });
+
+  platform.post("/users/bulk", zValidator("json", adminBulkUsersBodySchema), async (c) => {
+    const { ids, op, reason } = c.req.valid("json");
+    const role = c.get("userRole") ?? "client";
+    for (const userId of ids) {
+      if (op === "suspend") {
+        await container.adminUserService.suspend(role, userId, reason ?? null);
+      } else {
+        await container.adminUserService.unsuspend(role, userId);
+      }
+    }
+    return c.json({ ok: true, data: { count: ids.length } });
   });
 
   platform.get("/users/:userId", zValidator("param", userIdParamSchema), async (c) => {

@@ -36,6 +36,7 @@ const emptyAddress: AddressFormValues = {
   state: "",
   postalCode: "",
   country: "United Kingdom",
+  addressType: "both",
   isDefault: false,
 };
 
@@ -48,6 +49,7 @@ function addressToForm(address: ProfileAddressRow): AddressFormValues {
     state: address.state ?? "",
     postalCode: address.postalCode,
     country: address.country,
+    addressType: address.addressType,
     isDefault: address.isDefault,
   };
 }
@@ -61,6 +63,7 @@ function normalizeAddress(values: AddressFormValues): AddressFormValues {
     state: values.state?.trim() || undefined,
     postalCode: values.postalCode.trim(),
     country: values.country.trim(),
+    addressType: values.addressType ?? "both",
     isDefault: values.isDefault ?? false,
   };
 }
@@ -147,6 +150,27 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
           <FormItem>
             <FormControl>
               <UnderlineInput {...field} placeholder="Country" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="addressType"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <select
+                value={field.value ?? "both"}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
+              >
+                <option value="both">Billing and shipping</option>
+                <option value="shipping">Shipping only</option>
+                <option value="billing">Billing only</option>
+              </select>
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -272,6 +296,11 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
                             Default
                           </span>
                         ) : null}
+                        <span className="rounded bg-surface-container-high px-2 py-0.5 font-label text-[10px] uppercase text-on-surface-variant">
+                          {address.addressType === "both"
+                            ? "Billing + shipping"
+                            : address.addressType}
+                        </span>
                       </div>
                       <p className="mt-1">
                         {address.line1}

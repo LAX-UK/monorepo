@@ -1,4 +1,45 @@
 import type { Category } from "@auction/types";
+import { z } from "zod";
+
+const optionalText = z
+  .string()
+  .trim()
+  .max(2000)
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
+const optionalSlug = z
+  .union([
+    z
+      .string()
+      .trim()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens"),
+    z.literal(""),
+  ])
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
+export const categoryIdParamSchema = z.object({
+  categoryId: z.string().uuid(),
+});
+
+export const adminCreateCategoryBodySchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  slug: optionalSlug,
+  description: optionalText,
+  parentId: z.string().uuid().nullable().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(10_000).optional(),
+});
+
+export const adminUpdateCategoryBodySchema = adminCreateCategoryBodySchema.partial().extend({
+  archived: z.boolean().optional(),
+});
+
+export const adminCategoryListQuerySchema = z.object({
+  includeArchived: z.coerce.boolean().optional().default(false),
+});
 
 export type CategoryHierarchyIssueCode = "parent_not_found" | "self_parent" | "cycle";
 

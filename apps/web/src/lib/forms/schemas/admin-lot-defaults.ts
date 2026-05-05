@@ -15,6 +15,7 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     description: auction.description ?? "",
     medium: auction.medium ?? "",
     dimensions: auction.dimensions ?? "",
+    sellerId: auction.sellerId,
     categoryId: auction.categoryId,
     auctionType: auction.auctionType,
     startingPrice: auction.startingPrice,
@@ -25,6 +26,7 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     dutchDecrementAmount: auction.dutchDecrementAmount ?? "",
     dutchDecrementIntervalMs: String(auction.dutchDecrementIntervalMs),
     images: auction.images,
+    imageAlts: auction.images.map((_, index) => auction.marketingDetails.imageAlts?.[index] ?? ""),
     startTime: toDatetimeLocalValue(auction.startTime),
     endTime: toDatetimeLocalValue(auction.endTime),
   };
@@ -40,6 +42,7 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     description: "",
     medium: "",
     dimensions: "",
+    sellerId: "",
     categoryId: "",
     auctionType: "english",
     startingPrice: "0.00",
@@ -50,6 +53,7 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     dutchDecrementAmount: "",
     dutchDecrementIntervalMs: "60000",
     images: [],
+    imageAlts: [],
     startTime: toDatetimeLocalValue(s),
     endTime: toDatetimeLocalValue(e),
   };

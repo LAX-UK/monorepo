@@ -8,6 +8,7 @@ describe("admin lot marketing mappers", () => {
       conditionReport: { summary: "S", details: "D", downloadUrl: "https://x.com/r.pdf" },
       provenance: [{ period: "2010", note: "N" }],
       exhibitions: [{ year: "2011", venue: "V", note: "E" }],
+      sellerArtistId: "00000000-0000-4000-8000-000000000001",
       artistNote: "A",
     };
     const v = marketingDetailsToFormValues(md);
@@ -18,11 +19,13 @@ describe("admin lot marketing mappers", () => {
     });
     expect(v.provenance).toEqual([{ period: "2010", note: "N" }]);
     expect(v.exhibitions).toEqual([{ year: "2011", venue: "V", note: "E" }]);
+    expect(v.sellerArtistId).toBe("00000000-0000-4000-8000-000000000001");
     expect(v.artistNote).toBe("A");
   });
 
   it("produces null sections when empty (clear on save)", () => {
     const patch = formValuesToApiPatch({
+      sellerArtistId: "",
       conditionReport: { summary: "", details: "", downloadUrl: "" },
       provenance: [],
       exhibitions: [],
@@ -32,12 +35,14 @@ describe("admin lot marketing mappers", () => {
       conditionReport: null,
       provenance: null,
       exhibitions: null,
+      sellerArtistId: null,
       artistNote: null,
     });
   });
 
   it("maps list entries and drops empty provenance notes", () => {
     const patch = formValuesToApiPatch({
+      sellerArtistId: "00000000-0000-4000-8000-000000000002",
       conditionReport: { summary: "x", details: "", downloadUrl: "" },
       provenance: [
         { period: "", note: "  " },
@@ -49,6 +54,7 @@ describe("admin lot marketing mappers", () => {
     expect(patch.conditionReport).toEqual({ summary: "x" });
     expect(patch.provenance).toEqual([{ period: "p", note: "real" }]);
     expect(patch.exhibitions).toEqual([{ venue: "Museum" }]);
+    expect(patch.sellerArtistId).toBe("00000000-0000-4000-8000-000000000002");
     expect(patch.artistNote).toBe("note");
   });
 });

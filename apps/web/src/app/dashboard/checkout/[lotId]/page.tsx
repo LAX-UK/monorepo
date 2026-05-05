@@ -1,5 +1,6 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { MediaImage } from "@/components/ui/media-image";
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
@@ -30,6 +31,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
     auction.currentPrice,
     auction.buyerPremiumRate,
   );
+  const addressRes = await authedServerFetch("/users/me/addresses");
+  const addresses = addressRes.ok ? ((await addressRes.json()) as { data: unknown[] }).data : [];
 
   const img = auction.images[0];
 
@@ -103,6 +106,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                 buyerPremium={formatMoney(premium.toFixed(2))}
                 total={formatMoney(total.toFixed(2))}
                 premiumPercentLabel={premiumPercentLabel}
+                addresses={addresses}
               />
             </section>
 

@@ -38,6 +38,7 @@ import {
   DrizzleAdminUserRoleManager,
   DrizzleAdminUserSuspender,
 } from "./repositories/drizzle-admin-user.reader.js";
+import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleEmailObservabilityRepository } from "./repositories/drizzle-email-observability.repository.js";
@@ -70,6 +71,7 @@ import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
+import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
 import { BidService } from "./services/bid.service.js";
@@ -138,6 +140,7 @@ export type Container = {
   saleStatusTransitionService: SaleStatusTransitionService;
   bidService: BidService;
   categoryService: CategoryService;
+  artistProfileService: ArtistProfileService;
   dashboardQueryService: DashboardQueryService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
@@ -346,6 +349,7 @@ export function createContainer(env: Env): Container {
   );
 
   const categoryService = new CategoryService(categoryRepo);
+  const artistProfileService = new ArtistProfileService(new DrizzleArtistProfileRepository(db));
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
 
@@ -485,6 +489,7 @@ export function createContainer(env: Env): Container {
     saleStatusTransitionService,
     bidService,
     categoryService,
+    artistProfileService,
     dashboardQueryService,
     notificationQueryService,
     paymentService,
