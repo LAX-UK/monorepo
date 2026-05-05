@@ -93,42 +93,14 @@ resource "cloudflare_ruleset" "rate_limits" {
 
   rules {
     action      = "block"
-    expression  = "(http.host in {${local.api_host_expression}} and http.request.uri.path eq \"/webhooks/postmark\")"
-    description = "Postmark webhook burst allowance."
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
+    description = "Auth sign-up and verification-email reputation guard."
     enabled     = true
 
     ratelimit {
       characteristics     = ["ip.src", "cf.colo.id"]
       period              = 60
-      requests_per_period = var.postmark_webhook_rpm
-      mitigation_timeout  = 60
-    }
-  }
-
-  rules {
-    action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/sign-up\")"
-    description = "Auth sign-up reputation guard."
-    enabled     = true
-
-    ratelimit {
-      characteristics     = ["ip.src", "cf.colo.id"]
-      period              = 60
-      requests_per_period = var.signup_rpm
-      mitigation_timeout  = 60
-    }
-  }
-
-  rules {
-    action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/send-verification-email\")"
-    description = "Verification-email resend guard."
-    enabled     = true
-
-    ratelimit {
-      characteristics     = ["ip.src", "cf.colo.id"]
-      period              = 60
-      requests_per_period = var.send_verification_email_rpm
+      requests_per_period = min(var.signup_rpm, var.send_verification_email_rpm)
       mitigation_timeout  = 60
     }
   }
