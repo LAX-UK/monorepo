@@ -29,7 +29,7 @@ export default async function NotificationSettingsPage({
 
   if (!prefs) {
     return (
-      <div className="mx-auto max-w-lg space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <Link
           href="/dashboard/notifications"
           className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -49,7 +49,7 @@ export default async function NotificationSettingsPage({
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <Link
         href="/dashboard/notifications"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -58,7 +58,7 @@ export default async function NotificationSettingsPage({
       </Link>
       <PageHeader
         title="Alert settings"
-        description="Choose which alerts you want in-app and via browser push. Quiet hours apply to push only."
+        description="Choose which alerts you want in-app, via push, email, and WhatsApp."
         className="border-0 pb-0"
       />
 

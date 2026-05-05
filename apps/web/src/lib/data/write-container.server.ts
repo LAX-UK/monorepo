@@ -1,6 +1,7 @@
 import "server-only";
 
 import { type IAuthedApiClient, getAuthedApiClient } from "@/lib/services/http/authed-api-client";
+import { AccountService } from "@/lib/services/impl/account.service";
 import { AdminLotService } from "@/lib/services/impl/admin-lot.service";
 import { AdminPaymentOpsService } from "@/lib/services/impl/admin-payment-ops.service";
 import { AdminSaleService } from "@/lib/services/impl/admin-sale.service";
@@ -11,6 +12,7 @@ import { NotificationPrefsService } from "@/lib/services/impl/notification-prefs
 import { PaymentService } from "@/lib/services/impl/payment.service";
 import { ProfileService } from "@/lib/services/impl/profile.service";
 import { SubmissionService } from "@/lib/services/impl/submission.service";
+import type { IAccountService } from "@/lib/services/interfaces/account-service";
 import type { IAdminLotService } from "@/lib/services/interfaces/admin-lot-service";
 import type { IAdminPaymentOpsService } from "@/lib/services/interfaces/admin-payment-ops-service";
 import type { IAdminSaleService } from "@/lib/services/interfaces/admin-sale-service";
@@ -24,6 +26,7 @@ import type { ISubmissionService } from "@/lib/services/interfaces/submission-se
 
 export type WriteServiceContainer = {
   api: IAuthedApiClient;
+  account: IAccountService;
   submissions: ISubmissionService;
   profile: IProfileService;
   biddingPrefs: IBiddingPrefsService;
@@ -47,6 +50,7 @@ export function getWriteContainer(): WriteServiceContainer {
   const api = getAuthedApiClient();
   cached = {
     api,
+    account: new AccountService(api),
     submissions: new SubmissionService(api),
     profile: new ProfileService(api),
     biddingPrefs: new BiddingPrefsService(api),

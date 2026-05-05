@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Gavel,
   LayoutDashboard,
+  Mail,
   MailPlus,
   Plug,
   Users,
@@ -64,6 +65,7 @@ export function getAdminNavGroups(
         { href: "/admin/users", label: "Users", icon: Users },
         { href: "/admin/integrations/xero", label: "Xero", icon: Plug },
         { href: "/admin/invitations", label: "Invitations", icon: MailPlus },
+        { href: "/admin/email/outbox", label: "Email", icon: Mail },
       ],
     },
   ] as const;

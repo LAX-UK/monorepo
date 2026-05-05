@@ -17,11 +17,11 @@ export class StubNewsletterSubmitter implements INewsletterSubmitter {
     if (!res.ok) {
       return { ok: false, message: "Something went wrong. Please try again." };
     }
-    const body = (await res.json()) as { ok?: boolean };
+    const body = (await res.json()) as { ok?: boolean; status?: string };
     if (body.ok !== true) {
       return { ok: false, message: "Something went wrong. Please try again." };
     }
-    return { ok: true };
+    return body.status ? { ok: true, code: body.status } : { ok: true };
   }
 }
 

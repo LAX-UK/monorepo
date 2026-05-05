@@ -14,7 +14,7 @@ export function VerifyPendingActions({ email }: { email: string }) {
     setStatus(null);
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: "/dashboard",
+      callbackURL: `/verify-email?email=${encodeURIComponent(email)}`,
     });
     setPending(false);
     setStatus(error ? "Could not resend right now. Please try again." : "Verification email sent.");

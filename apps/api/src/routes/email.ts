@@ -27,6 +27,26 @@ export function createEmailRoutes(container: Container) {
     }
   });
 
+  r.get("/unsubscribe/preview", async (c) => {
+    const token = c.req.query("t");
+    if (!token) return c.json({ ok: false, error: "Missing unsubscribe token" }, 400);
+    try {
+      const payload = verifyUnsubscribeToken(token, container.env.EMAIL_UNSUBSCRIBE_SECRET);
+      const user = await container.userService.getById(payload.userId);
+      if (!user) return c.json({ ok: false, error: "User not found" }, 404);
+      return c.json({
+        ok: true,
+        data: {
+          scope: payload.scope,
+          notificationType: payload.scope === "type" ? payload.notificationType : null,
+          email: user.email,
+        },
+      });
+    } catch {
+      return c.json({ ok: false, error: "Invalid unsubscribe token" }, 400);
+    }
+  });
+
   r.post("/unsubscribe", async (c) => {
     const token = await tokenFromRequest(c);
     if (!token) return c.json({ ok: false, error: "Missing unsubscribe token" }, 400);

@@ -98,6 +98,6 @@ export class EmailNotificationChannel implements INotificationChannel {
         : { scope: "global", userId },
       this.unsubscribeSecret,
     );
-    return `${base}/api/email/unsubscribe?t=${encodeURIComponent(token)}`;
+    return `${base}/unsubscribe?t=${encodeURIComponent(token)}`;
   }
 }
