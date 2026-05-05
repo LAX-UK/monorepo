@@ -14,7 +14,9 @@ Apps:
 pnpm turbo dev --parallel
 ```
 
-P3 adds `apps/worker`; after that, the same Turborepo command starts API, WS, Web, and Worker.
+This starts all five apps: `apps/web` (3000), `apps/api` (3001), `apps/ws`
+(3002), `apps/auth` (3003), and `apps/worker` (3004 — `/health` and `/metrics`
+only).
 
 ## Database URLs
 
@@ -38,34 +40,40 @@ The second command should fail for `api_app`.
 
 ## OAuth callback testing
 
-Use a stable ngrok domain when testing Google/Apple callbacks:
+Use a stable ngrok or `cloudflared` tunnel when testing Google/Apple callbacks.
+Point the tunnel at whichever app currently serves `/api/auth/*` — either
+`apps/api` (port 3001) or `apps/auth` (port 3003); both are valid today
+(D7 dual-stack).
 
 ```sh
-ngrok http 3001
+ngrok http 3003   # or 3001 if pointing at apps/api
 ```
 
-Set these for the API process:
+Set these on the auth/api process:
 
 ```env
-API_PUBLIC_URL=https://YOUR-NGROK-DOMAIN.ngrok-free.app
-OIDC_ISSUER_URL=https://YOUR-NGROK-DOMAIN.ngrok-free.app
-NEXT_PUBLIC_AUTH_URL=https://YOUR-NGROK-DOMAIN.ngrok-free.app
+API_PUBLIC_URL=https://YOUR-TUNNEL.ngrok-free.app
+OIDC_ISSUER_URL=https://YOUR-TUNNEL.ngrok-free.app
+NEXT_PUBLIC_AUTH_URL=https://YOUR-TUNNEL.ngrok-free.app
 ```
 
 Register callback URLs in each provider:
 
-- Google: `https://YOUR-NGROK-DOMAIN.ngrok-free.app/api/auth/callback/google`
-- Apple: `https://YOUR-NGROK-DOMAIN.ngrok-free.app/api/auth/callback/apple`
+- Google: `https://YOUR-TUNNEL.ngrok-free.app/api/auth/callback/google`
+- Apple: `https://YOUR-TUNNEL.ngrok-free.app/api/auth/callback/apple`
 
-Live OAuth round-trip test for P1.3:
+Live OAuth round-trip:
 
 1. Start postgres/redis and `pnpm turbo dev --parallel`.
-2. Start ngrok and update `API_PUBLIC_URL` / `OIDC_ISSUER_URL`.
-3. Configure Google OAuth client redirect URI.
+2. Start the tunnel and update `API_PUBLIC_URL` / `OIDC_ISSUER_URL`.
+3. Configure the OAuth client redirect URI in Google/Apple's console.
 4. Sign in via Google.
 5. Verify a session is created and `external_accounts(provider='google', external_id=<sub>)` exists.
 
-Apple Sign-In is tested only when the Apple Developer Program is available. If `APPLE_CLIENT_ID` and `APPLE_CLIENT_SECRET` are empty, the Apple provider is intentionally skipped.
+Apple Sign-In requires the Apple Developer Program. If `APPLE_CLIENT_ID` and
+`APPLE_CLIENT_SECRET` are empty, the Apple provider is intentionally skipped.
+See [docs/security/social-login-setup.md](./security/social-login-setup.md) for
+the full provider configuration.
 
 ## Seed users
 

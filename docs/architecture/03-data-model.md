@@ -4,9 +4,10 @@ This document is the source of truth for what's in the database. Every table tha
 
 The database is a single PostgreSQL 16 cluster. Three application roles (`auth_app`, `api_app`, `worker_app`) are created by [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) and granted least-privilege access per D2. The **privileged owner connection** used to run migrations is the Postgres user provisioned by DigitalOcean managed Postgres (referred to as `auction_owner` in env vars and in the runbooks); `migrate-roles.ts` does **not** create that user — it uses it. Migrations run via the dedicated migration entrypoint at [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) (driven by `pnpm db:migrate:prod`), which in production is invoked from a one-shot job per F2; no long-running app process ever holds DDL grants.
 
-> **Implementation status (last reviewed 2026-05-01)**
+> **Implementation status (last reviewed 2026-05-05)**
 >
-> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Role grants in `migrate-roles.ts` enforce the role split.
+> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split, including the email-pipeline grants (`auth_app` INSERT/SELECT on `email_outbox`, SELECT on `email_suppression`; `worker_app` SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`).
+> - **Recent additions since the original schema landing:** multi-category for lots/sales/submissions (`lot_categories`, `sale_categories`, `submission_categories` join tables in migration `0022`), category admin metadata (`category.archived`, `sort_order`, etc. in migration `0024`), structured `user_address` (migration `0025`), `artist_profiles` (migration `0026`), and the submission-expansion fields (`item_submissions` extended in migration `0023`).
 > - **Scaffolded:** `external_accounts` exists with `(provider, external_id)` unique and `(email, provider)` index, but no service writes to it yet outside the seed script. `webhook_event` is written by the Shopify and WordPress handlers; the Xero handler does not write through it (D1 status).
 > - **Planned:** the `(email, provider)` collision-resolution workflow per Q25 (no `collision_state` column today).
 
@@ -22,6 +23,9 @@ erDiagram
   user ||--o{ payment : "makes"
   user ||--o{ domain_events : "actor in"
   user ||--o{ upload_object : "owns"
+  user ||--o| notification_preference : "has"
+  user ||--o{ email_outbox : "addressed to"
+  email_outbox ||--o{ email_event : "ingested as"
 
   auction ||--o{ lot : "contains"
   lot ||--o{ bid : "receives"
@@ -31,6 +35,8 @@ erDiagram
     uuid id PK
     string email UK
     boolean email_verified
+    string email_status "ok | bounced | complained"
+    timestamp email_status_changed_at
     string name
     string image
     string role
@@ -160,6 +166,78 @@ erDiagram
     string status
     timestamp expires_at
   }
+
+  notification_preference {
+    uuid id PK
+    text user_id FK "unique"
+    bool outbid_in_app
+    bool won_in_app
+    bool ending_soon_in_app
+    bool watchlist_in_app
+    bool payment_in_app
+    bool outbid_email
+    bool won_email
+    bool lost_email
+    bool ending_soon_email
+    bool watchlist_email
+    bool payment_email
+    bool lot_ended_seller_email
+    bool outbid_whatsapp
+    bool won_whatsapp
+    bool lost_whatsapp
+    bool ending_soon_whatsapp
+    bool watchlist_whatsapp
+    bool payment_whatsapp
+    bool lot_ended_seller_whatsapp
+    string quiet_start
+    string quiet_end
+  }
+
+  email_outbox {
+    uuid id PK
+    text idempotency_key UK
+    text user_id FK "nullable"
+    text to_email_hash
+    text to_snapshot "nullable, PII"
+    timestamp to_snapshot_purge_at
+    text template
+    jsonb vars
+    string status "pending | sending | sent | failed | suppressed"
+    int attempts
+    timestamp next_attempt_at
+    text last_error
+    text message_id
+    string stream "transactional | broadcast"
+    string category "auth | transactional"
+    bool flagged_address
+    timestamp created_at
+    timestamp sent_at
+  }
+
+  email_event {
+    uuid id PK
+    uuid outbox_id FK "nullable"
+    text message_id
+    string type "delivered | bounce | soft_bounce | complaint | open | click | unsubscribe"
+    text provider "default postmark"
+    jsonb payload
+    timestamp received_at
+  }
+
+  email_suppression {
+    text email_hash PK
+    string reason "hard_bounce | complaint | manual | unsubscribe"
+    timestamp created_at
+  }
+
+  newsletter_signup_log {
+    uuid id PK
+    text email_hash
+    text source
+    string status "queued | pushed | rejected | failed"
+    int zoho_response_code
+    timestamp created_at
+  }
 ```
 
 ## Tables by ownership
@@ -169,6 +247,8 @@ erDiagram
 These tables contain everything related to who a user is and how they prove it. Only the `auth_app` Postgres role has full access. The `api_app` role has read access to `user` (for joins on bid and payment queries) but cannot read `session.token`, cannot read `account.password`, and has no access at all to `jwks_key`.
 
 The `user` table is the canonical identity record. One row per human (modulo the deliberate exceptions documented below). The `email` column is unique, but linking happens by `(email, email_verified=true)` per D3 — an unverified email cannot claim ownership of an existing record.
+
+`user.email_status` carries the deliverability state observed from Postmark feedback (`ok` | `bounced` | `complained`). The Postmark webhook handler in `apps/api` flips this to `bounced` on a hard bounce and `complained` on a spam complaint, and stamps `email_status_changed_at`. The web shell ([apps/web/src/components/layout/app-shell.tsx](../../apps/web/src/components/layout/app-shell.tsx)) renders an in-app banner when this is non-`ok` so the user is aware their notifications are silently failing. See [04-domain-events.md → "Email pipeline"](./04-domain-events.md#email-pipeline) for the full feedback loop.
 
 The `session` table is better-auth's session storage. The `token` column is what the session cookie carries. In production the cookie is scoped to `.lax.bid` per F7, so both apps/web (lax.bid) and apps/auth (auth.lax.bid) can read it. Cross-registrable-suffix domains (lax.art, lax.shop) cannot share cookies and use JWTs instead.
 
@@ -210,6 +290,22 @@ Inbound webhooks from Shopify, WordPress, Xero, and (future) Zoho all land in a 
 
 `received_at` is set when the HTTP handler claims the row, `processed_at` is set when the worker successfully processes it. Failed processing increments `attempts` and records `last_error`; BullMQ handles the retry schedule (1s, 5s, 30s, 5min, 30min, 5 attempts max, then dead-letter).
 
+### Email-pipeline tables — `email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`
+
+These are the four tables behind the email pipeline. They are a **second outbox**, structurally similar to `domain_events` + `projector_state` but unrelated to the domain-events outbox: domain events project business state to external CRMs, the email outbox sends physical mail. See [04-domain-events.md → "Email pipeline"](./04-domain-events.md#email-pipeline) for the runtime flow.
+
+`email_outbox` is the durable record of every transactional or notification email we intend to send. `IEmailService.enqueue()` ([packages/email/src/outbox-service.ts](../../packages/email/src/outbox-service.ts)) writes one row per call, deduplicated on `idempotency_key` (default `template:userId-or-emailHash:sha256(vars)`). Status starts at `pending` (or `suppressed` if the recipient is in `email_suppression` *and* the category is `transactional`), and a BullMQ job is enqueued with `jobId = outboxId` to give the queue itself a second layer of idempotency. The worker's `send-email` job moves the row through `sending` → `sent`/`failed` and stores the Postmark `MessageID`. The `category` column has two values — `auth` (verification, password reset, password changed, change email, invite) and `transactional` (everything else). `auth` sends bypass `email_suppression` because they are operational mail the user must receive even if they previously bounced; the worker still sets `flagged_address=true` so the operator can spot the case in audit. `to_snapshot` is the plaintext recipient address kept for templates that resolve at enqueue time (e.g. invites to people without a `user.id`); `to_snapshot_purge_at` is the 30-day deadline at which a periodic job clears it back to NULL. `to_email_hash` (SHA-256 of the lowercased address) stays forever and is what we look up suppression by.
+
+`email_event` is the append-only log of Postmark webhook callbacks. The Postmark webhook handler at `apps/api/src/routes/webhooks/postmark.ts` validates Basic Auth, parses the body, looks up the matching outbox row by `MessageID`, and inserts one event row per `RecordType` (`Delivery`, `Bounce`, `SpamComplaint`, `Open`, `Click`, `SubscriptionChange`). Hard bounces and complaints additionally upsert `email_suppression` and flip `user.email_status`. `outbox_id` is nullable so we don't lose a webhook when the outbox row was already purged or never wrote (e.g. legacy mail).
+
+`email_suppression` is the deny-list. The primary key is `email_hash` (SHA-256 of the address) so we never store the plain address here. `reason` records why the address was added (`hard_bounce`, `complaint`, `manual`, `unsubscribe`). The unsubscribe route at `apps/api/src/routes/email.ts` writes `reason='unsubscribe'` for global opt-outs, while per-notification opt-outs flip the corresponding `notification_preference.*Email` column instead and never touch this table.
+
+`newsletter_signup_log` is the audit record for the one-way push to Zoho Campaigns. `apps/api/src/routes/newsletter.ts` inserts a `queued` row and enqueues a `marketing-sync` job; the worker's `zoho-campaigns-sync` job calls Zoho and writes the result back as `pushed`, `rejected`, or `failed` plus the `zoho_response_code`. We never read the address back out of this table — it only exists so we can prove what we sent and respond to GDPR access/erasure requests. Subscriber state itself lives in Zoho.
+
+`notification_preference` was extended with `*_email` and `*_whatsapp` columns matching each existing `*_in_app` toggle, plus `lot_ended_seller_email`/`_whatsapp` for the seller-side notification. The defaults intentionally minimize promotional-shaped mail: `outbid_email=false` and `watchlist_email=false` (high volume), but `won_email=true`, `lost_email=true`, `payment_email=true`, `lot_ended_seller_email=true` (operational). All `*_whatsapp` toggles default to `false` because the WhatsApp channel is a stub today (see `apps/api/src/infrastructure/whatsapp-notification.channel.ts` — it throws `NotImplementedError`).
+
+**Role grants (now in place).** `apps/auth` enqueues into `email_outbox` and reads `email_suppression` from the Better Auth send-verification hook; `auth_app` has `INSERT, SELECT` on `email_outbox` and `SELECT` on `email_suppression` (`AUTH_INSERT_SELECT_TABLES` / `AUTH_SELECT_TABLES` in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)). `apps/api` writes all four tables; `api_app` falls into the default `ALL PRIVILEGES` branch for tables outside its deny/read lists. `apps/worker` updates `email_outbox` and `newsletter_signup_log`; `worker_app` has `SELECT, UPDATE` on both via `WORKER_LOCK_READ_TABLES` (the worker is denied `INSERT`/`DELETE` so it cannot inflate the audit trail or collapse it).
+
 ## Critical invariants
 
 These are the rules the schema enforces or the application code maintains. Violating any of them indicates a bug.
@@ -235,6 +331,8 @@ Every foreign key column has an index. The query patterns that matter beyond the
 `webhook_event` is queried as `WHERE event_key = $hash` for dedupe. The unique constraint on `event_key` is sufficient.
 
 `external_accounts` is queried two ways: by `(provider, external_id)` to find the linked user (the unique constraint serves as the index), and by `(email, provider)` for the D3 verified-email lookup at sign-in time (the explicit index on `(email, provider)` exists for this).
+
+`email_outbox` carries four supporting indexes beyond the PK and the unique on `idempotency_key`: `(status, created_at)` for the worker's outbox-drain query that re-enqueues stale `pending` rows; `(user_id)` for "show me this user's email history"; `(message_id)` for webhook lookups; and `(to_snapshot_purge_at)` for the periodic PII-purge job. `email_event` has indexes on `(message_id)`, `(outbox_id)`, and `(type, received_at)` so the daily delivery-stats query stays cheap. `email_suppression` is a single-row-per-address lookup; the PK on `email_hash` is sufficient.
 
 ## Migrations
 

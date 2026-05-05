@@ -42,6 +42,6 @@ SELECT kid, status, created_at, rotated_at FROM jwks_key ORDER BY created_at;
 
 You should see exactly one `active` row and zero or one `retired` rows whose `rotated_at` is more than 30 minutes ago. Anything else means the procedure was interrupted; restart the runbook.
 
-## Why the procedure is on a runbook and not in code
+## Why the procedure is on a runbook and not fully automated
 
-It will be in code eventually — the helper exists, the schedule is planned, and quarterly rotation should not require a human at 9 a.m. on the first business day of a quarter. Until that scheduler ships, the runbook is the source of truth.
+The retirement step (`rotating` → `retired` → row deleted) is automated by the scheduler in `apps/auth`. The promote/insert/wait steps still need human judgement (timing, smoke tests, on-call coordination), so the runbook is the source of truth for the overall procedure even though the back half runs on its own.

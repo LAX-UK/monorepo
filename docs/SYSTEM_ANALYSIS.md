@@ -1,23 +1,33 @@
 # Auction System - Current Analysis
 
-Updated: April 27, 2026
+Updated: 2026-05-05
 
-Note: This document describes current implementation state.
-For V1 target product rules and scope, see `docs/V1_PRODUCT_SPEC.md`.
+Note: This document describes current implementation state of the auction
+domain (sales, lots, bids, payments). For platform/identity architecture see
+`docs/architecture/01-overview.md` and the rest of `docs/architecture/`.
 
 ## System Architecture Overview
 
 ```
 Browser / Next.js app (apps/web, port 3000)
   ├─ REST/RPC JSON calls with Better Auth cookies
-  │    └─ Hono API (apps/api, port 8787)
-  │         ├─ PostgreSQL 16 via Drizzle ORM
+  │    └─ Hono API (apps/api, port 3001)
+  │         ├─ PostgreSQL 16 via Drizzle ORM (api_app role)
   │         ├─ Redis cache, pub/sub, idempotency keys
-  │         ├─ BullMQ lot-lifecycle queue backed by Redis
-  │         └─ Optional Xero accounting / hosted invoices
-  └─ Socket.IO client
-       └─ WebSocket gateway (apps/ws, port 8788)
-            └─ Redis PSUBSCRIBE: lot:*:events and user:*:notifications
+  │         ├─ BullMQ lot-lifecycle queue (in-process today, target: apps/worker)
+  │         ├─ /api/auth/* via Better Auth (also served by apps/auth — D7 dual-stack)
+  │         └─ Inbound webhooks: Shopify, WordPress, Xero, Postmark
+  ├─ Socket.IO client
+  │    └─ WebSocket gateway (apps/ws, port 3002)
+  │         └─ Redis PSUBSCRIBE: lot:*:events and user:*:notifications
+  └─ OIDC sign-in
+       └─ Auth issuer (apps/auth, port 3003)
+            └─ /.well-known/openid-configuration, /.well-known/jwks.json, /api/auth/*
+
+Async work: apps/worker (port 3004, /health + /metrics only)
+  ├─ BullMQ consumers: email, marketing-sync, webhook-events,
+  │  validate-upload, image-cleanup, gc-pending-uploads
+  └─ domain_events polling runner (FOR UPDATE SKIP LOCKED) → Zoho/Xero projectors (stubs today)
 ```
 
 ### Technology Stack
@@ -167,11 +177,12 @@ Admin and integration settlement paths:
 
 | Area | Notes |
 |------|-------|
-| Card processing | Xero hosted invoices and manual capture/refund are implemented; no card gateway/client secret yet. |
+| Card processing | Xero hosted invoices and manual capture/refund are implemented; no Stripe/other gateway/client secret yet. |
 | Bid retraction | Bids are final; no buyer/admin bid retraction flow is implemented. |
 | Dutch scheduling precision | Dutch decrements run in lifecycle processing; there is no separate per-decrement BullMQ job. |
 | Admin override breadth | Admin lot status overrides intentionally avoid moving lots back to active. |
-| Category hierarchy | `category.parent_id` has database FK coverage and a Spec Kit pilot now documents hierarchy validation for parent existence, self-parenting, and cycles. |
+| Domain event projectors | Zoho and Xero projectors are scaffolded as no-op stubs; outbound API calls are **(Phase 2)**. See `docs/architecture/04-domain-events.md`. |
+| Lot lifecycle ownership | `lot-lifecycle` BullMQ scheduler runs in `apps/api` today; migrating it into `apps/worker` is **(Phase 2)**. |
 
 ## File Reference
 

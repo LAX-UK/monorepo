@@ -1,40 +1,52 @@
 # Auction System - Visual Diagrams
 
-Updated: April 27, 2026
+Updated: 2026-05-05
 
-These diagrams can be rendered in any Mermaid-compatible viewer.
+These diagrams can be rendered in any Mermaid-compatible viewer. They focus on
+the auction-domain runtime; the platform-wide architecture (auth, projectors,
+deployment topology) lives in `docs/architecture/`.
 
 ## 1. System Architecture
 
 ```mermaid
 flowchart TB
     subgraph Client["Browser"]
-        WEB["Next.js Web App<br/>(apps/web)"]
+        WEB["Next.js Web App<br/>(apps/web, :3000)"]
     end
 
     subgraph Backend["Backend Services"]
-        API["Hono API<br/>(apps/api)<br/>Port 8787"]
-        WS["Socket.IO Gateway<br/>(apps/ws)<br/>Port 8788"]
+        API["Hono API<br/>(apps/api, :3001)"]
+        AUTH["Auth issuer<br/>(apps/auth, :3003)"]
+        WS["Socket.IO Gateway<br/>(apps/ws, :3002)"]
+        WORKER["BullMQ + projectors<br/>(apps/worker, :3004)"]
     end
 
     subgraph Data["Data + Async"]
-        PG[("PostgreSQL<br/>Drizzle ORM")]
-        REDIS[("Redis<br/>Cache + Pub/Sub")]
-        BULL["BullMQ queue<br/>lot-lifecycle"]
+        PG[("PostgreSQL 16<br/>Drizzle ORM<br/>3 app roles")]
+        REDIS[("Redis<br/>Cache + Pub/Sub + BullMQ")]
     end
 
-    subgraph External["Optional integrations"]
-        XERO["Xero<br/>OAuth + invoices + webhooks"]
+    subgraph External["External integrations"]
+        XERO["Xero<br/>OAuth + hosted invoices + webhooks"]
+        POSTMARK["Postmark<br/>transactional + broadcast"]
+        ZOHO_C["Zoho Campaigns<br/>newsletter push"]
     end
 
     WEB -->|"REST/RPC JSON<br/>Better Auth cookies"| API
+    WEB -->|"OIDC sign-in"| AUTH
     WEB <-->|"Socket.IO"| WS
     API -->|"Drizzle queries"| PG
+    AUTH -->|"Drizzle queries"| PG
     API -->|"cache, idempotency,<br/>pub/sub"| REDIS
-    API -->|"schedule activate/end jobs"| BULL
-    BULL -->|"jobs use Redis connection"| REDIS
+    API -->|"schedule lot-lifecycle jobs"| REDIS
+    AUTH -->|"enqueue email outbox"| REDIS
     WS -->|"PSUBSCRIBE<br/>lot:*:events<br/>user:*:notifications"| REDIS
+    WORKER -->|"BullMQ consumers"| REDIS
+    WORKER -->|"projector polling"| PG
     API <-->|"hosted invoice checkout<br/>sync paid invoices"| XERO
+    WORKER -->|"send transactional mail"| POSTMARK
+    POSTMARK -->|"delivery webhooks"| API
+    WORKER -->|"newsletter push"| ZOHO_C
 ```
 
 ## 2. Entity Relationship Diagram
@@ -274,6 +286,7 @@ flowchart LR
         S2["GET /sales/:id"]
         S3["GET /sales/:id/lots"]
         C1["GET /categories"]
+        WK["GET /.well-known/openid-configuration<br/>GET /.well-known/jwks.json"]
     end
 
     subgraph Authenticated
@@ -282,6 +295,8 @@ flowchart LR
         SF1["POST/DELETE /sales/:id/follow"]
         U1["GET/PATCH /users/me/*"]
         SUB1["/submissions"]
+        UPL["/uploads"]
+        NL["POST /api/newsletter/subscribe"]
     end
 
     subgraph Admin
@@ -295,6 +310,13 @@ flowchart LR
     end
 
     subgraph Auth
-        AUTH["/api/auth/* Better Auth"]
+        AUTH["/api/auth/* Better Auth<br/>(served by apps/api and apps/auth — D7)"]
+    end
+
+    subgraph Webhooks
+        WHX["POST /webhooks/xero"]
+        WHS["POST /webhooks/shopify"]
+        WHW["POST /webhooks/wordpress"]
+        WHP["POST /webhooks/postmark"]
     end
 ```

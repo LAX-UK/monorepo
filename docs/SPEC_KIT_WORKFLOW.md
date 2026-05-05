@@ -13,11 +13,13 @@ This repository is configured to follow a Spec Kit-style flow for AI-assisted de
 
 Use these files as primary context when creating specs and plans:
 
-- `docs/SYSTEM_ANALYSIS.md`
+- `docs/architecture/01-overview.md` and the rest of `docs/architecture/`
+- `docs/SYSTEM_ANALYSIS.md` (auction-domain runtime today)
 - `docs/openapi.yaml`
 - `docs/FORMS.md`
 - `docs/DESIGN_SYSTEM.md`
 - `docs/DIAGRAMS.md`
+- `docs/V1_PRODUCT_SPEC.md`
 
 ## Standard Phase Order
 

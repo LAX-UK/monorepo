@@ -4,7 +4,7 @@ Every non-trivial architectural decision has a number that never changes. When a
 
 This document is the source of truth for *why* the system is built the way it is. If you find yourself disagreeing with one of these decisions, do not change the implementation without first proposing a new D-number with the alternative weighed against the chosen approach. Drift between this document and the code is a worse failure than a controversial decision documented honestly.
 
-> **Convention.** Each decision below ends with a **Status** line: *Implemented*, *Partially implemented*, or *Planned*, plus a one-line citation pointing at the file path that proves it. The "Chosen / Alternatives / Why" sections describe the *target* shape; the Status line is what is true today (last reviewed 2026-05-01).
+> **Convention.** Each decision below ends with a **Status** line: *Implemented*, *Partially implemented*, or *Planned*, plus a one-line citation pointing at the file path that proves it. The "Chosen / Alternatives / Why" sections describe the *target* shape; the Status line is what is true today (last reviewed 2026-05-05).
 
 ## D1. Webhook code lives in apps/api, projection logic in apps/worker
 
@@ -26,7 +26,7 @@ A retired key remains in the published JWKS for thirty minutes before deletion. 
 
 **Why this wins.** The role split is a security boundary that matters. If `apps/api` is compromised by a SQL injection or a leaked credential, the attacker cannot read the signing key — the database role they hold does not permit it. This is the cheapest, most reliable way to bound the blast radius of a single-app compromise. The pattern matches how we already store Xero OAuth refresh tokens, so it adds zero cognitive load. Rotation is zero-downtime because new and retired keys coexist in JWKS during the transition window.
 
-**Status.** *Implemented.* Schema in [packages/db/src/schema/jwks-key.ts](../../packages/db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper and schedule live in [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts), run inside `apps/auth` under `auth_app`, and use a Postgres advisory lock so only one auth replica performs each retirement tick while preserving the `worker_app` deny boundary.
+**Status.** *Implemented.* Schema in [packages/db/src/schema/jwks-key.ts](../../packages/db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper and schedule live in [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts), run inside `apps/auth` under `auth_app`, and use a Postgres advisory lock so only one auth replica performs each retirement tick while preserving the `worker_app` deny boundary. JWKS state is snapshotted to DigitalOcean Spaces (`secrets-backup/jwks/<env>/`) using the env-scoped encryption key set up in [BOOTSTRAP.md](../../infra/terraform/BOOTSTRAP.md).
 
 ## D3. Account linking happens at sign-in, gated on email verification
 

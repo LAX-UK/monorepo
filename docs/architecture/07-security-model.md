@@ -4,10 +4,11 @@ This document is the source of truth for what threats the system defends against
 
 The threat model is real. We have actual attackers — every public-facing auction site does. The model is sized for our actual threat surface (small e-commerce platform, no government adversaries, no targeted nation-state interest), not for hypothetical worst cases. We harden against opportunistic attacks and credential stuffing; we do not harden against zero-days in the Linux kernel.
 
-> **Implementation status (last reviewed 2026-05-01)**
+> **Implementation status (last reviewed 2026-05-05)**
 >
-> - **Implemented:** Postgres role split with least-privilege grants ([packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)). HMAC verification for Shopify and WordPress webhooks with `crypto.timingSafeEqual` ([apps/api/src/lib/shopify-hmac.ts](../../apps/api/src/lib/shopify-hmac.ts), [apps/api/src/lib/wordpress-secret.ts](../../apps/api/src/lib/wordpress-secret.ts)). Per-IP sign-in rate limit (5 / 15 min) enforced at the application layer in [apps/api/src/middleware/auth-rate-limit.ts](../../apps/api/src/middleware/auth-rate-limit.ts). 15-minute access-token lifetime in [packages/auth/src/server.ts](../../packages/auth/src/server.ts). `SameSite=Lax` and `Secure` cookies via better-auth's defaults. Sentry SDK initialization in each app, conditional on env DSN.
-> - **Edge controls (operational, not in repo):** Cloudflare DDoS, full-strict TLS, edge rate limits on `/.well-known/*` (100 req/min/IP) and `/webhooks/*`, WAF challenges on `/api/auth/authorize`, and Pro-tier DDoS protection — all live in the Cloudflare console per [../integrations/cloudflare.md](../integrations/cloudflare.md), not as IaC in this repo.
+> - **Implemented:** Postgres role split with least-privilege grants ([packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)). HMAC verification for Shopify and WordPress webhooks with `crypto.timingSafeEqual` ([apps/api/src/lib/shopify-hmac.ts](../../apps/api/src/lib/shopify-hmac.ts), [apps/api/src/lib/wordpress-secret.ts](../../apps/api/src/lib/wordpress-secret.ts)). Basic Auth verification for the Postmark webhook ([apps/api/src/routes/webhooks/postmark.ts](../../apps/api/src/routes/webhooks/postmark.ts)). HMAC-signed unsubscribe tokens ([apps/api/src/lib/email-unsubscribe-token.ts](../../apps/api/src/lib/email-unsubscribe-token.ts)) for List-Unsubscribe URLs. Per-IP sign-in rate limit (5 / 15 min) enforced at the application layer in [apps/api/src/middleware/auth-rate-limit.ts](../../apps/api/src/middleware/auth-rate-limit.ts). 15-minute access-token lifetime in [packages/auth/src/server.ts](../../packages/auth/src/server.ts). `SameSite=Lax` and `Secure` cookies via better-auth's defaults. Sentry SDK initialization in each app, conditional on env DSN.
+> - **Edge controls (codified in Terraform, applied via the GitHub Actions workflow):** Cloudflare DDoS, full-strict TLS, edge rate limits on `/.well-known/*` (100 req/min/IP), `/api/auth/sign-up`, `/api/auth/send-verification-email`, `/webhooks/postmark`, WAF challenges on `/api/auth/authorize`, and Pro-tier DDoS protection — all live in [infra/terraform/modules/cloudflare-domain/](../../infra/terraform/modules/cloudflare-domain/) and are applied per environment from `infra/terraform/ephemeral/<env>/`. The same rules are documented for human-readable reference in [../integrations/cloudflare.md](../integrations/cloudflare.md).
+> - **Email-pipeline role grants (resolved):** `auth_app` has `INSERT, SELECT` on `email_outbox` and `SELECT` on `email_suppression`; `worker_app` has `SELECT, UPDATE` on `email_outbox` and `newsletter_signup_log`. Wired in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`AUTH_INSERT_SELECT_TABLES`, `AUTH_SELECT_TABLES`, `WORKER_LOCK_READ_TABLES`).
 > - **Planned:** Content-Security-Policy and other security headers (no `headers()` export in [apps/web/next.config.ts](../../apps/web/next.config.ts) and no headers middleware in any backend app today). MFA. Rotation-with-reuse-detection on refresh tokens (today better-auth issues sessions plus short-lived JWTs only). Pino redaction config for the secrets-in-logs claim — currently the apps rely on never logging secrets by convention rather than runtime redaction.
 
 Anywhere the prose below describes a control as if it were active, the status block above is the reality check.
@@ -26,6 +27,8 @@ flowchart TB
   Worker[apps/worker]
   PG[Postgres]
   External[Zoho · Xero · Shopify · WordPress]
+  Postmark[Postmark · Zoho Campaigns]
+  Recipient[User mailbox]
 
   Internet -.->|TLS, WAF, rate limit| CF
   CF -.->|TLS origin cert, request signing| DO
@@ -35,7 +38,11 @@ flowchart TB
   Api -.->|api_app role, no JWKS access| PG
   Worker -.->|worker_app role, read-only events| PG
   External -.->|HMAC signed webhooks| Api
+  Postmark -.->|delivery webhooks, Basic Auth| Api
   Worker -.->|outbound API calls, OAuth tokens| External
+  Worker -.->|outbound mail + newsletter push| Postmark
+  Postmark -.->|delivers TLS-signed mail<br/>SPF/DKIM/DMARC aligned| Recipient
+  Recipient -.->|HMAC-signed unsubscribe links| Api
 ```
 
 **Internet to Cloudflare.** TLS terminates at Cloudflare's edge, with cert auto-renewal via Cloudflare. The WAF and rate limits do their work here. Anyone can attempt this boundary — that's what "internet-facing" means — but request rate, certain paths, and bot signatures are filtered before they reach our origin.
@@ -48,7 +55,11 @@ flowchart TB
 
 **External webhook to API.** Inbound webhooks from Shopify, WordPress, and Xero are HMAC-verified per source per D6. The shared secret is per source, stored in `apps/api`'s environment as `SHOPIFY_WEBHOOK_SECRET` etc. A request without a valid HMAC signature is rejected with 401 before any business logic runs.
 
-**App to external service.** Outbound calls from apps/worker to Zoho, Xero, Shopify, and other external services use OAuth refresh tokens stored in the database. The worker is the only component making these calls; apps/api never calls Zoho directly. This isolates the credential surface to one component.
+**Postmark webhook to API.** Postmark posts delivery, bounce, complaint, open, click, and `SubscriptionChange` callbacks to `POST /webhooks/postmark`. We authenticate them with HTTP Basic Auth (`POSTMARK_WEBHOOK_BASIC_AUTH`) configured on the Postmark side and validated in `apps/api/src/routes/webhooks/postmark.ts`. The handler also writes through `email_event` so a replay is observable in the audit log even if it slips past the auth check. A Cloudflare rate-limit rule on `/webhooks/postmark` bounds enumeration attempts. Postmark does not currently sign webhook bodies, which is why the Basic Auth credential is treated as the trust boundary; on rotation, both Postmark and our env var must be updated together.
+
+**Recipient to API (unsubscribe).** Every notification mail with a List-Unsubscribe URL embeds an HMAC-signed token (`EMAIL_UNSUBSCRIBE_SECRET`) scoped to either `(userId, notificationType)` or `globalUnsubscribe`. The unsubscribe route at `apps/api/src/routes/email.ts` rebuilds the signature and rejects mismatched tokens. This means a leaked or scraped unsubscribe URL cannot be used to opt out a different user, and tokens have no exposure to any other secret.
+
+**App to external service.** Outbound calls from apps/worker to Zoho, Xero, Shopify, Postmark, Zoho Campaigns, and other external services use OAuth refresh tokens or per-vendor API keys stored in the database or environment. The worker is the only component making these calls; `apps/api` never calls them directly. This isolates the credential surface to one component.
 
 ## Threats and mitigations
 
@@ -128,6 +139,36 @@ The dedupe key (`event_key`) on `webhook_event` ensures the same payload is proc
 
 **Acceptance.** If an attacker has access to the victim's email account, they own the account regardless. Email security is the user's responsibility. We do mitigate "I requested a reset 6 hours ago and forgot" by short token lifetimes.
 
+### Sender-reputation abuse via signup or resend-verification
+
+**Likelihood:** Medium. Both endpoints can be scripted by an attacker to generate Postmark sends to addresses they control or third-party addresses, burning our `mail.lax.bid` reputation and tripping Gmail/Yahoo bulk-sender complaint thresholds.
+
+**Impact:** Postmark account suspension, sender domain blacklisting, all transactional mail (including legitimate auth and payment) bouncing or going to spam.
+
+**Mitigations.** `/api/auth/sign-up` and `/api/auth/send-verification-email` each have their own Cloudflare rate-limit rules (separate from the generic sign-in rule) sized for human use — see [../integrations/cloudflare.md](../integrations/cloudflare.md). The `email_outbox` idempotency key (`template:userId-or-emailHash:hash(vars)`) collapses duplicate enqueues for the same content, so even a request flood is bounded to one Postmark send per (template, recipient, vars) combination. `email_suppression` adds long-term memory: an address that hard-bounced once is never sent transactional mail again, so a hostile actor cannot loop the same dead address. Postmaster Tools alerting on `mail.lax.bid` reputation is a manual review trigger.
+
+**Acceptance.** A motivated attacker rotating thousands of fresh addresses through fresh IPs *can* generate one-shot sends until they're rate-limited. The blast radius is bounded but non-zero. The runbook escalation path is documented in [../runbooks/email-provider-incident.md](../runbooks/email-provider-incident.md), including the `REQUIRE_EMAIL_VERIFICATION=false` kill-switch.
+
+### Forged unsubscribe link / opt-out of another user
+
+**Likelihood:** Low. Requires guessing or scraping our unsubscribe URLs.
+
+**Impact:** Attacker quietly unsubscribes a victim from notifications, potentially causing them to miss outbid alerts, won-lot notifications, or payment receipts.
+
+**Mitigations.** Every List-Unsubscribe URL carries an HMAC-SHA256 token signed with `EMAIL_UNSUBSCRIBE_SECRET`, scoped to either `(userId, notificationType)` or a global-unsubscribe identifier. The route in `apps/api/src/routes/email.ts` rebuilds and verifies the signature with `crypto.timingSafeEqual` before flipping the preference or writing `email_suppression`. Token expiry is currently unlimited (matching the indefinite validity expectations of List-Unsubscribe-One-Click); if abuse is observed, adding a rolling expiry is a one-line change. Rotation of `EMAIL_UNSUBSCRIBE_SECRET` invalidates all outstanding tokens — only do this when necessary, because users with old mail in their inbox would lose the ability to opt out via that link.
+
+**Acceptance.** If `EMAIL_UNSUBSCRIBE_SECRET` leaks, an attacker can opt out arbitrary users until rotation. Secret hygiene is the only defense; the secret has no other use, so it is scoped to `apps/api` only.
+
+### Postmark webhook forgery
+
+**Likelihood:** Low. The endpoint URL is not secret, but the Basic Auth credential is.
+
+**Impact:** Attacker injects fake delivery/bounce/complaint events, polluting `email_event` and possibly suppressing real users (writing `email_suppression(reason='complaint')` or flipping `user.email_status='complained'` for a healthy address).
+
+**Mitigations.** `/webhooks/postmark` requires HTTP Basic Auth with `POSTMARK_WEBHOOK_BASIC_AUTH`, validated before the body is parsed. Cloudflare's `/webhooks/*` rate-limit rule plus the dedicated Postmark rule bound brute-force attempts. The handler is idempotent on Postmark `MessageID` so a retry of the same legitimate event is a no-op. Suppression writes are auditable from `email_event` (the row that triggered the suppression is recoverable).
+
+**Acceptance.** If the Basic Auth credential leaks, the attacker can poison delivery state until rotation. The credential lives only in Postmark and our `apps/api` env, so leakage requires a vendor-side or our-side disclosure. Rotation is documented in [../integrations/email.md](../integrations/email.md).
+
 ### DDoS
 
 **Likelihood:** Medium for opportunistic attacks; low for targeted attacks.
@@ -206,7 +247,7 @@ We operate from the UK with EU users in scope per Q45. The compliance burden:
 
 When something does go wrong, the response procedure is in the runbooks. Each runbook is for a specific incident type:
 
-[JWT key leak](../runbooks/jwt-key-leak.md) — emergency key rotation. [Zoho outage](../runbooks/zoho-outage.md) — drain the queue, accept retries, consider scaling worker. [Deletion request](../runbooks/deletion-request.md) — GDPR Article 17 manual procedure.
+[JWT key leak](../runbooks/jwt-key-leak.md) — emergency key rotation. [Zoho outage](../runbooks/incident-zoho-outage.md) — drain the queue, accept retries, consider scaling worker. [Email provider incident](../runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident plus the `REQUIRE_EMAIL_VERIFICATION` kill-switch. [Deletion request](../runbooks/deletion-request.md) — GDPR Article 17 manual procedure.
 
 The general principle: for any incident, update the on-call channel within 15 minutes of detection, contain within 1 hour, and communicate to affected users within 24 hours. The on-call runbook covers escalation.
 
