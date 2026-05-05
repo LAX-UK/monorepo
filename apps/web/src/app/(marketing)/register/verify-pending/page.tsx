@@ -1,5 +1,6 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
+import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -32,12 +33,4 @@ export default async function VerifyPendingPage({
       </AuthLayout>
     </main>
   );
-}
-
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!local || !domain) return "your email address";
-  const first = local.slice(0, 1);
-  const last = local.length > 1 ? local.slice(-1) : "";
-  return `${first}${"*".repeat(Math.max(2, local.length - 2))}${last}@${domain}`;
 }

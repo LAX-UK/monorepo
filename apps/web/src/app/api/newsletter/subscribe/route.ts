@@ -31,5 +31,6 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const body = (await res.json().catch(() => ({}))) as { status?: string };
+  return NextResponse.json({ ok: true, status: body.status ?? "subscribed" });
 }

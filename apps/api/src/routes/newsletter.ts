@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { newsletterSignupLog } from "@auction/db/schema";
 import { newsletterSubscribeSchema } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 
@@ -15,10 +16,18 @@ export function createNewsletterRoutes(container: Container) {
 
   r.post("/subscribe", zValidator("json", newsletterSubscribeSchema), async (c) => {
     const body = c.req.valid("json");
+    const emailHash = hashEmail(body.email);
+    const [existing] = await container.db
+      .select({ id: newsletterSignupLog.id })
+      .from(newsletterSignupLog)
+      .where(eq(newsletterSignupLog.emailHash, emailHash))
+      .limit(1);
+    if (existing) return c.json({ ok: true, status: "already_subscribed" });
+
     const [row] = await container.db
       .insert(newsletterSignupLog)
       .values({
-        emailHash: hashEmail(body.email),
+        emailHash,
         source: body.source ?? "web",
         status: "queued",
       })
@@ -37,7 +46,7 @@ export function createNewsletterRoutes(container: Container) {
       },
     );
 
-    return c.json({ ok: true });
+    return c.json({ ok: true, status: "subscribed" });
   });
 
   return r;

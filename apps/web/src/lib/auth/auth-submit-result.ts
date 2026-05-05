@@ -1,1 +1,3 @@
-export type AuthSubmitResult = { ok: true } | { ok: false; message: string; code?: string };
+export type AuthSubmitResult =
+  | { ok: true; code?: string }
+  | { ok: false; message: string; code?: string };

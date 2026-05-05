@@ -43,13 +43,12 @@ export type ProfileAddressRow = {
 };
 
 type Props = {
-  email: string;
   initialName: string;
   initialImage: string | null;
   addresses: ProfileAddressRow[];
 };
 
-function ProfileNameCard({ email, initialName }: { email: string; initialName: string }) {
+function ProfileNameCard({ initialName }: { initialName: string }) {
   const { form, onSubmit, isSubmitting } = useProfileNameController(initialName);
 
   return (
@@ -59,7 +58,9 @@ function ProfileNameCard({ email, initialName }: { email: string; initialName: s
           <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             Personal details
           </CardTitle>
-          <CardDescription className="mt-1 text-xs">Signed in as {email}</CardDescription>
+          <CardDescription className="mt-1 text-xs">
+            Your public display name and profile details.
+          </CardDescription>
         </div>
         <Button
           type="submit"
@@ -103,6 +104,13 @@ function ProfileNameCard({ email, initialName }: { email: string; initialName: s
             className="text-primary underline-offset-2 hover:underline"
           >
             Security settings
+          </Link>
+          {" · "}
+          <Link
+            href="/dashboard/settings/account"
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            Manage email and sign-in
           </Link>
         </p>
       </CardContent>
@@ -282,11 +290,11 @@ function AddAddressCard() {
   );
 }
 
-export function ProfileSettingsBoard({ email, initialName, initialImage, addresses }: Props) {
+export function ProfileSettingsBoard({ initialName, initialImage, addresses }: Props) {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <ProfileAvatarCard initialImage={initialImage} />
-      <ProfileNameCard email={email} initialName={initialName} />
+      <ProfileNameCard initialName={initialName} />
 
       <Card className="rounded-sm border-outline-variant/20 shadow-none">
         <CardHeader className="flex-row items-start justify-between space-y-0">

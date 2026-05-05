@@ -5,6 +5,7 @@ import {
   legalLinks,
   serviceLinks,
 } from "@/components/layout/footer-link-groups";
+import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { siteCopyrightLine } from "@/lib/brand";
@@ -69,6 +70,7 @@ export function SiteFooter({
               ))}
             </ul>
             <FooterSocials />
+            <FooterNewsletter />
             <a
               href="/register"
               className={`${linkClass} inline-flex min-h-11 items-center underline-offset-2 hover:underline`}

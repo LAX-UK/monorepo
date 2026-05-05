@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function HomeNewsletter() {
-  const [done, setDone] = useState(false);
+  const [status, setStatus] = useState<"subscribed" | "already_subscribed" | null>(null);
   const { run, loading, bannerError } = useNewsletterSubmit((email) =>
     defaultNewsletterSubmitter.submit(email),
   );
@@ -27,7 +27,7 @@ export function HomeNewsletter() {
     const result = await run({ email: values.email });
     if (result.ok) {
       form.reset();
-      setDone(true);
+      setStatus(result.code === "already_subscribed" ? "already_subscribed" : "subscribed");
     }
   });
 
@@ -46,13 +46,15 @@ export function HomeNewsletter() {
           </p>
         </div>
 
-        {done ? (
+        {status ? (
           <output
             className="block text-center font-body text-base font-medium text-primary"
             aria-live="polite"
             aria-atomic="true"
           >
-            You&apos;re on the list.
+            {status === "already_subscribed"
+              ? "You're already subscribed — see you in your inbox."
+              : "You're on the list."}
           </output>
         ) : (
           <Form {...form}>

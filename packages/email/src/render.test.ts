@@ -19,7 +19,7 @@ describe("renderEmail", () => {
       lotTitle: "Untitled",
       lotUrl: "https://lax.bid/artwork/lot",
       currentBid: "GBP 100",
-      unsubscribeUrl: "https://lax.bid/api/email/unsubscribe?t=token",
+      unsubscribeUrl: "https://lax.bid/unsubscribe?t=token",
     });
 
     expect(rendered.subject).toBe("You've been outbid");

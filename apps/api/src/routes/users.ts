@@ -400,6 +400,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         name: row.name,
         role: row.role,
         image,
+        emailVerified: row.emailVerified,
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
       },
