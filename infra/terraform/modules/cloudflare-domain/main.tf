@@ -99,7 +99,7 @@ resource "cloudflare_ruleset" "rate_limits" {
 
     ratelimit {
       characteristics     = ["ip.src", "cf.colo.id"]
-      period              = 60
+      period              = 10
       requests_per_period = min(var.signup_rpm, var.send_verification_email_rpm)
       mitigation_timeout  = 60
     }
