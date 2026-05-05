@@ -5,6 +5,7 @@ import {
   adminRefundPaymentResultAction,
 } from "@/lib/actions/admin";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { notify } from "@/lib/ui/notify";
 import type { PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
@@ -12,7 +13,6 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
-import { toast } from "sonner";
 
 export type AdminPaymentTableRow = {
   id: string;
@@ -43,11 +43,11 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
       void (async () => {
         const r = await adminCapturePaymentResultAction(id);
         if (r.ok) {
-          toast.success("Marked captured");
+          notify.success("Marked captured");
           router.refresh();
           return;
         }
-        toast.error(r.error);
+        notify.error(r.error);
       })();
     });
   };
@@ -56,11 +56,11 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
       void (async () => {
         const r = await adminRefundPaymentResultAction(id);
         if (r.ok) {
-          toast.success("Refunded");
+          notify.success("Refunded");
           router.refresh();
           return;
         }
-        toast.error(r.error);
+        notify.error(r.error);
       })();
     });
   };

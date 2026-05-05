@@ -1,19 +1,15 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import {
-  type UserRole,
-  canAccessPlatformAdminRoutes,
-  canAccessStaffAdminShell,
-} from "@auction/types";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
@@ -22,13 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await getServerSessionUser();
-  if (!user) {
-    redirect("/login?next=/admin&auth=required");
-  }
-  if (!canAccessStaffAdminShell(user.role as UserRole)) {
-    redirect("/dashboard");
-  }
+  const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
 
   let pendingSubmissionCount = 0;
   if (canAccessPlatformAdminRoutes(user.role as UserRole)) {
@@ -51,6 +41,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       pendingSubmissionCount={pendingSubmissionCount}
       cookieDensity={cookieDensity}
     >
+      <WelcomeBackToast />
       {children}
     </AppShell>
   );

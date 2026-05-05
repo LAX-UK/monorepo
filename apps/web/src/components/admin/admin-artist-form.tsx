@@ -4,6 +4,7 @@ import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -20,7 +21,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import type { z } from "zod";
 
 type ArtistFormValues = z.infer<typeof adminCreateArtistBodySchema>;
@@ -53,12 +53,12 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
                   ? await adminUpdateArtistResultAction(artistId, values)
                   : { ok: false as const, error: "Missing artist" };
             if (result.ok) {
-              toast.success(mode === "create" ? "Artist created" : "Artist saved");
+              notify.success(mode === "create" ? "Artist created" : "Artist saved");
               router.push("/admin/artists");
               router.refresh();
               return;
             }
-            toast.error(result.error);
+            notify.error(result.error);
           });
         })}
       >

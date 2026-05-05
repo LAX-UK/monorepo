@@ -1,5 +1,6 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
+import { redirectIfVerifyPendingNotNeeded } from "@/lib/auth/guards.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -16,6 +17,8 @@ export default async function VerifyPendingPage({
 }) {
   const sp = await searchParams;
   const email = typeof sp.email === "string" ? sp.email : "";
+
+  await redirectIfVerifyPendingNotNeeded();
 
   return (
     <main id="main-content">

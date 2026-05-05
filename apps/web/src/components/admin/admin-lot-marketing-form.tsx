@@ -10,6 +10,7 @@ import {
   formValuesToApiPatch,
   marketingDetailsToFormValues,
 } from "@/lib/admin/admin-lot-marketing-mappers";
+import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, LotMarketingDetails } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -27,7 +28,6 @@ import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type UseFormReturn, useFieldArray, useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 type Props = {
   lotId: string;
@@ -59,18 +59,18 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Prop
             const patch = formValuesToApiPatch(values);
             const valid = updateLotMarketingDetailsSchema.safeParse(patch);
             if (!valid.success) {
-              toast.error(valid.error.issues.map((i) => i.message).join("; "));
+              notify.error(valid.error.issues.map((i) => i.message).join("; "));
               return;
             }
             startTransition(() => {
               void (async () => {
                 const r = await adminUpdateLotMarketingDetailsResultAction(lotId, valid.data);
                 if (r.ok) {
-                  toast.success("Catalog details saved");
+                  notify.success("Catalog details saved");
                   router.refresh();
                   return;
                 }
-                toast.error(r.error);
+                notify.error(r.error);
               })();
             });
           })}

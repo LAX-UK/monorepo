@@ -1,7 +1,7 @@
 "use client";
 
+import { Toaster as AuctionToaster } from "@auction/ui";
 import { useEffect, useState } from "react";
-import { Toaster as SonnerToaster } from "sonner";
 
 function useHtmlDarkClass(): "light" | "dark" {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -16,27 +16,8 @@ function useHtmlDarkClass(): "light" | "dark" {
   return theme;
 }
 
-/** Global toast host — accessible defaults (duration, pause on hover). */
+/** Global toast host — theme follows `<html class="dark">`; defaults live in `@auction/ui`. */
 export function Toaster() {
   const resolvedTheme = useHtmlDarkClass();
-
-  return (
-    <SonnerToaster
-      theme={resolvedTheme}
-      position="top-center"
-      duration={6000}
-      visibleToasts={3}
-      closeButton
-      richColors
-      offset="max(12px, env(safe-area-inset-top))"
-      mobileOffset="max(5rem, env(safe-area-inset-bottom))"
-      toastOptions={{
-        classNames: {
-          toast: "font-body",
-          title: "font-label text-xs uppercase tracking-widest",
-          description: "font-body text-sm",
-        },
-      }}
-    />
-  );
+  return <AuctionToaster theme={resolvedTheme} />;
 }

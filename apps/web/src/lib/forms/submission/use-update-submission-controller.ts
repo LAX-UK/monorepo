@@ -2,11 +2,11 @@
 
 import { updateSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import type { FormController } from "@/lib/forms/shared/form-controller";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { type NewSubmissionFormValues, newSubmissionFormSchema } from "./submission-form-schema";
 
 export function useUpdateSubmissionController(
@@ -25,7 +25,7 @@ export function useUpdateSubmissionController(
     startTransition(async () => {
       const r = await updateSubmissionFromValuesAction(submissionId, values);
       if (r.ok) {
-        toast.success("Saved");
+        notify.success("Saved");
         router.push(r.data?.redirectTo ?? `/dashboard/submissions/${submissionId}`);
         return;
       }
@@ -36,7 +36,7 @@ export function useUpdateSubmissionController(
           }
         }
       } else {
-        toast.error(r.error);
+        notify.error(r.error);
       }
     });
   });

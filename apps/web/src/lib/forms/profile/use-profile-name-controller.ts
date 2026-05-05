@@ -2,11 +2,11 @@
 
 import { updateProfileNameFromValuesAction } from "@/lib/actions/profile";
 import type { FormController } from "@/lib/forms/shared/form-controller";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import {
   type ProfileDisplayNameFormValues,
   profileDisplayNameFormSchema,
@@ -27,7 +27,7 @@ export function useProfileNameController(
     startTransition(async () => {
       const r = await updateProfileNameFromValuesAction({ name: values.name.trim() });
       if (r.ok) {
-        toast.success("Profile updated");
+        notify.success("Profile updated");
         router.refresh();
         return;
       }
@@ -38,7 +38,7 @@ export function useProfileNameController(
           }
         }
       } else {
-        toast.error(r.error);
+        notify.error(r.error);
       }
     });
   });

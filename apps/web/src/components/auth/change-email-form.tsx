@@ -3,6 +3,7 @@
 import { UnderlineInput } from "@/components/ui/input";
 import { requestEmailChangeAction } from "@/lib/actions/request-email-change";
 import { maskEmail } from "@/lib/format/mask-email";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -15,7 +16,6 @@ import {
 import { type RequestEmailChangeInput, requestEmailChangeSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const form = useForm<RequestEmailChangeInput>({
@@ -31,7 +31,7 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
           form.clearErrors("root");
           const result = await requestEmailChangeAction(values);
           if (result.ok) {
-            toast.success("Confirmation email sent", {
+            notify.success("Confirmation email sent", {
               description: `Check ${maskEmail(currentEmail)} to approve this change.`,
             });
             form.reset();
@@ -48,7 +48,7 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
             return;
           }
           form.setError("root", { message: result.error });
-          toast.error(result.error);
+          notify.error(result.error);
         })}
       >
         <FormField

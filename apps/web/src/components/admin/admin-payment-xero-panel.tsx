@@ -2,10 +2,10 @@
 
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { adminPaymentXeroSyncResultAction } from "@/lib/actions/admin";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 type Props = Pick<
   AdminPaymentTableRow,
@@ -61,10 +61,10 @@ export function AdminPaymentXeroPanel(p: Props) {
             void (async () => {
               const r = await adminPaymentXeroSyncResultAction(p.id);
               if (!r.ok) {
-                toast.error(r.error);
+                notify.error(r.error);
                 return;
               }
-              toast.success("Synced from Xero");
+              notify.success("Synced from Xero");
               router.refresh();
             })();
           });

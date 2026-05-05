@@ -2,6 +2,7 @@
 
 import { NotificationPushEnableButton } from "@/components/dashboard/notification-push-enable-button";
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
+import { notify } from "@/lib/ui/notify";
 import type { NotificationPreference } from "@auction/types";
 import {
   Accordion,
@@ -28,7 +29,6 @@ import { Bell, Mail, MessageCircle, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 const WHATSAPP_UI_ENABLED = false;
@@ -287,7 +287,7 @@ export function NotificationPreferencesForm({
                 formValuesToPatch(values),
               );
               if (r.ok) {
-                toast.success("Preferences saved");
+                notify.success("Preferences saved");
                 router.replace("/dashboard/settings/notifications?saved=1");
                 router.refresh();
                 return;
@@ -301,7 +301,7 @@ export function NotificationPreferencesForm({
                   }
                 }
               } else {
-                toast.error(r.error);
+                notify.error(r.error);
               }
             })();
           });

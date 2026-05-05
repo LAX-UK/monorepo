@@ -1,5 +1,6 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { SignUpForm } from "@/components/auth/sign-up-form";
+import { redirectIfAuthenticated } from "@/lib/auth/guards.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -16,10 +17,17 @@ function SignUpFormFallback() {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   const inviteToken = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
+  const next = typeof sp.next === "string" ? sp.next : undefined;
+  if (inviteToken == null) {
+    await redirectIfAuthenticated({
+      route: "register",
+      ...(next !== undefined ? { next } : {}),
+    });
+  }
   return (
     <main id="main-content">
       <AuthLayout title="Sign up" description={description}>

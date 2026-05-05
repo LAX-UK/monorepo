@@ -1,9 +1,9 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
 
 export type UseLogoutOptions = {
   /** e.g. close mobile drawer before navigating */
@@ -21,13 +21,13 @@ export function useLogout(options?: UseLogoutOptions) {
     try {
       const { error } = await authClient.signOut();
       if (error) {
-        toast.error(error.message ?? "Could not sign out");
+        notify.error(error.message ?? "Could not sign out");
         return;
       }
       router.push("/");
       router.refresh();
     } catch {
-      toast.error("Could not sign out");
+      notify.error("Could not sign out");
     } finally {
       setPending(false);
     }

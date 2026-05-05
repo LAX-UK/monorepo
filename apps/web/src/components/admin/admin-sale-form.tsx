@@ -15,6 +15,7 @@ import {
   safeParseCreateSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
+import { notify } from "@/lib/ui/notify";
 import { type CategoryNode, saleDeliveryModes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -37,7 +38,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 type Props = {
   mode: "create" | "edit";
@@ -98,20 +98,20 @@ export function AdminSaleForm({ mode, saleId, defaultValues, categories }: Props
                 for (const iss of api.error.issues) {
                   applyZodErrorsToForm(form, iss.path, iss.message);
                 }
-                toast.error("Check the form for errors");
+                notify.error("Check the form for errors");
                 return;
               }
               const r = await adminCreateSaleResultAction(api.data);
               if (r.ok) {
-                toast.success("Draft sale created");
+                notify.success("Draft sale created");
                 if (r.data?.id) router.push(`/admin/sales/${r.data.id}`);
                 return;
               }
-              toast.error(r.error);
+              notify.error(r.error);
               return;
             }
             if (!saleId) {
-              toast.error("Missing sale");
+              notify.error("Missing sale");
               return;
             }
             const api = safeParseUpdateSaleFromForm(values);
@@ -119,16 +119,16 @@ export function AdminSaleForm({ mode, saleId, defaultValues, categories }: Props
               for (const iss of api.error.issues) {
                 applyZodErrorsToForm(form, iss.path, iss.message);
               }
-              toast.error("Check the form for errors");
+              notify.error("Check the form for errors");
               return;
             }
             const r = await adminUpdateSaleResultAction(saleId, api.data);
             if (r.ok) {
-              toast.success("Saved");
+              notify.success("Saved");
               router.push(`/admin/sales/${saleId}`);
               return;
             }
-            toast.error(r.error);
+            notify.error(r.error);
           });
         })}
       >

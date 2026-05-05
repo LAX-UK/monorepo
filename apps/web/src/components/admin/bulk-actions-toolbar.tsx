@@ -1,10 +1,10 @@
 "use client";
 
 import type { ActionResult } from "@/lib/forms/form-result";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 export type BulkOperation = {
   id: string;
@@ -31,10 +31,10 @@ export function BulkActionsToolbar({ selectedIds, operations, onClear }: Props) 
       void (async () => {
         const result = await operation.run(selectedIds);
         if (!result.ok) {
-          toast.error(result.error);
+          notify.error(result.error);
           return;
         }
-        toast.success(`${operation.label} complete`);
+        notify.success(`${operation.label} complete`);
         onClear();
         router.refresh();
       })();

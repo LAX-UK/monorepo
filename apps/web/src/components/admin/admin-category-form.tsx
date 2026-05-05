@@ -6,6 +6,7 @@ import {
   adminCreateCategoryResultAction,
   adminUpdateCategoryResultAction,
 } from "@/lib/actions/admin";
+import { notify } from "@/lib/ui/notify";
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -22,7 +23,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import type { z } from "zod";
 
 type CategoryFormValues = z.infer<typeof adminCreateCategoryBodySchema>;
@@ -55,12 +55,12 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
                   ? await adminUpdateCategoryResultAction(categoryId, values)
                   : { ok: false as const, error: "Missing category" };
             if (result.ok) {
-              toast.success(mode === "create" ? "Category created" : "Category saved");
+              notify.success(mode === "create" ? "Category created" : "Category saved");
               router.push("/admin/categories");
               router.refresh();
               return;
             }
-            toast.error(result.error);
+            notify.error(result.error);
           });
         })}
       >
