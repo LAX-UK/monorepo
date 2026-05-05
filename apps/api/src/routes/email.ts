@@ -1,10 +1,10 @@
-import { emailHash } from "@auction/email";
 import { emailSuppression } from "@auction/db/schema";
-import { Hono, type Context } from "hono";
-import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
+import { emailHash } from "@auction/email";
+import { type Context, Hono } from "hono";
 import type { Container } from "../container.js";
 import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
 import { emailPreferenceKey } from "../lib/notification-preference-keys.js";
+import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
 
 export function createEmailRoutes(container: Container) {
   const r = new Hono();
@@ -70,11 +70,7 @@ async function tokenFromRequest(c: Context): Promise<string | null> {
   const contentType = c.req.header("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const body = (await c.req.json().catch(() => ({}))) as { t?: unknown; token?: unknown };
-    return typeof body.t === "string"
-      ? body.t
-      : typeof body.token === "string"
-        ? body.token
-        : null;
+    return typeof body.t === "string" ? body.t : typeof body.token === "string" ? body.token : null;
   }
   const body = (await c.req.parseBody().catch(() => ({}))) as Record<string, unknown>;
   const formToken = body.t ?? body.token;

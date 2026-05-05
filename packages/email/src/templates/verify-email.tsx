@@ -10,11 +10,16 @@ export default function VerifyEmail({
   userName,
 }: TemplateVarsByName["verify-email"]) {
   return (
-    <Layout preview="Verify your email to finish setting up your account." title="Verify your email">
+    <Layout
+      preview="Verify your email to finish setting up your account."
+      title="Verify your email"
+    >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>Confirm this email address to finish setting up your account.</TextBlock>
       <Button href={verificationUrl}>Verify email</Button>
-      <TextBlock>If you did not create a London Art Exchange account, you can ignore this email.</TextBlock>
+      <TextBlock>
+        If you did not create a London Art Exchange account, you can ignore this email.
+      </TextBlock>
     </Layout>
   );
 }

@@ -46,11 +46,7 @@ const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
 // email_outbox and newsletter_signup_log are also SELECT+UPDATE: the worker drains rows
 // inserted by apps/auth/apps/api but must not insert new ones (callers do that) and must
 // not delete (the rows are part of the audit trail for delivery and Postmaster review).
-const WORKER_LOCK_READ_TABLES = [
-  "domain_events",
-  "email_outbox",
-  "newsletter_signup_log",
-];
+const WORKER_LOCK_READ_TABLES = ["domain_events", "email_outbox", "newsletter_signup_log"];
 const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
 
 type RoleName = "auth_app" | "api_app" | "worker_app";

@@ -4,8 +4,8 @@ import { emailOutbox, emailSuppression } from "@auction/db/schema";
 import type { Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
-import { RECIPIENT_RESOLUTION } from "./types.js";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
+import { RECIPIENT_RESOLUTION } from "./types.js";
 
 type EmailQueuePayload = {
   outboxId: string;
