@@ -55,4 +55,3 @@ const heading = {
   lineHeight: "32px",
   margin: "0 0 20px",
 };
-

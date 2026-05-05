@@ -3,7 +3,7 @@ import { createJwksAdapter } from "@auction/auth";
 import { createAuth } from "@auction/auth/server";
 import type { Auth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
-import { ConsoleEmailService, PostmarkEmailService, type IEmailService } from "@auction/email";
+import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";

@@ -10,9 +10,13 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
-import { enqueueStaleEmailOutboxRows, sendEmailJob, type SendEmailJobData } from "./jobs/send-email.js";
+import {
+  type SendEmailJobData,
+  enqueueStaleEmailOutboxRows,
+  sendEmailJob,
+} from "./jobs/send-email.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
-import { zohoCampaignsSyncJob, type ZohoCampaignsSyncJobData } from "./jobs/zoho-campaigns-sync.js";
+import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
 
@@ -150,7 +154,9 @@ void emailQueue.add(
   { jobId: "email-outbox-drain", repeat: { every: 60_000 }, removeOnComplete: 100 },
 );
 
-const marketingSyncQueue = new Queue<ZohoCampaignsSyncJobData>("marketing-sync", { connection: redis });
+const marketingSyncQueue = new Queue<ZohoCampaignsSyncJobData>("marketing-sync", {
+  connection: redis,
+});
 const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
   "marketing-sync",
   async (job) => {

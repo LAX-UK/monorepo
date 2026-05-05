@@ -1,12 +1,12 @@
 export { renderEmail } from "./render.js";
 export { ConsoleEmailService, PostmarkEmailService, emailHash } from "./outbox-service.js";
-export {
-  type EmailCategory,
-  type EmailEnqueueInput,
-  type EmailSenderPayload,
-  type EmailStream,
-  type IEmailSender,
-  type IEmailService,
+export type {
+  EmailCategory,
+  EmailEnqueueInput,
+  EmailSenderPayload,
+  EmailStream,
+  IEmailSender,
+  IEmailService,
 } from "./service.js";
 export {
   RECIPIENT_RESOLUTION,

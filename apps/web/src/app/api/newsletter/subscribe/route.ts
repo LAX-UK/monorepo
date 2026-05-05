@@ -1,6 +1,6 @@
+import { apiBaseUrl } from "@/lib/auth/api-base";
 import { newsletterSubscribeSchema } from "@auction/validators";
 import { NextResponse } from "next/server";
-import { apiBaseUrl } from "@/lib/auth/api-base";
 
 export async function POST(req: Request) {
   let json: unknown;
