@@ -1,6 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
+import {
+  DASHBOARD_DENSITY_COOKIE,
+  parseDashboardDensityCookie,
+} from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
   type UserRole,
@@ -8,6 +12,7 @@ import {
   canAccessStaffAdminShell,
 } from "@auction/types";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -36,8 +41,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const role = canAccessPlatformAdminRoutes(user.role as UserRole) ? "admin" : "accountant";
 
+  const jar = await cookies();
+  const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
+
   return (
-    <AppShell user={user} shellRole={role} pendingSubmissionCount={pendingSubmissionCount}>
+    <AppShell
+      user={user}
+      shellRole={role}
+      pendingSubmissionCount={pendingSubmissionCount}
+      cookieDensity={cookieDensity}
+    >
       {children}
     </AppShell>
   );

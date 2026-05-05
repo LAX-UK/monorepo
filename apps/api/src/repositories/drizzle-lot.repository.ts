@@ -328,6 +328,7 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.description !== undefined) patch.description = input.description ?? null;
     if (input.medium !== undefined) patch.medium = input.medium ?? null;
     if (input.dimensions !== undefined) patch.dimensions = input.dimensions ?? null;
+    if (input.sellerId !== undefined) patch.sellerId = input.sellerId;
     if (input.images !== undefined) patch.images = input.images;
     const categoryIds =
       input.categoryIds !== undefined

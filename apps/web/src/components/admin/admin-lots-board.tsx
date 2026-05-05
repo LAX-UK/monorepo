@@ -2,25 +2,25 @@
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
-import { adminBulkLotsResultAction } from "@/lib/actions/admin";
+import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
 import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
 import {
-  BulkActionBar,
   DataTable,
+  EmptyState,
   EntityTableShell,
   InlineActionMenu,
   StatusBadge,
 } from "@auction/ui";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useMemo } from "react";
 
 function lotColumns(): ColumnDef<AdminLotTableRow>[] {
   return [
@@ -115,39 +115,11 @@ export function AdminLotsBoard({
   layoutToggle,
 }: Props) {
   const { density } = useTableDensity();
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
-
-  const selectedIds = useMemo(
-    () =>
-      Object.entries(rowSelection)
-        .filter(([, v]) => v)
-        .map(([id]) => id),
-    [rowSelection],
-  );
-
   const columns = useMemo(() => lotColumns(), []);
-
-  const runBulk = useCallback(
-    (op: "publish" | "cancel") => {
-      startTransition(() => {
-        void (async () => {
-          const r = await adminBulkLotsResultAction({ ids: selectedIds, op });
-          if (r.ok) {
-            toast.success(op === "publish" ? "Published" : "Cancelled");
-            setRowSelection({});
-            router.refresh();
-            return;
-          }
-          toast.error(r.error);
-        })();
-      });
-    },
-    [selectedIds, router],
-  );
+  const bulkOperations = useMemo(() => getLotBulkOperations(), []);
 
   if (viewPipeline) {
     return (
@@ -155,7 +127,15 @@ export function AdminLotsBoard({
         {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
         {layoutToggle}
         {fullLots.length === 0 && !listError ? (
-          <p className="text-on-surface-variant">No auctions loaded.</p>
+          <EmptyState
+            title="No lots in the pipeline"
+            description="Create draft lots to see them grouped by operational status."
+            action={
+              <Button variant="primary" asChild>
+                <Link href="/admin/lots/new">New lot</Link>
+              </Button>
+            }
+          />
         ) : (
           <AdminAuctionPipeline auctions={fullLots} />
         )}
@@ -237,24 +217,7 @@ export function AdminLotsBoard({
           </ul>
         }
       />
-      <BulkActionBar count={selectedIds.length}>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={selectedIds.length === 0 || pending}
-          onClick={() => runBulk("publish")}
-        >
-          Publish
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={selectedIds.length === 0 || pending}
-          onClick={() => runBulk("cancel")}
-        >
-          Cancel
-        </Button>
-      </BulkActionBar>
+      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
     </div>
   );
 }

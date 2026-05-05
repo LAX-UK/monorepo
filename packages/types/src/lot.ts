@@ -67,6 +67,7 @@ export type CreateLotInput = {
   medium?: string | undefined;
   dimensions?: string | undefined;
   images?: string[] | undefined;
+  sellerId?: string | undefined;
   categoryIds?: string[];
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;

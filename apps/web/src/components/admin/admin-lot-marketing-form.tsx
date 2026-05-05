@@ -10,7 +10,7 @@ import {
   formValuesToApiPatch,
   marketingDetailsToFormValues,
 } from "@/lib/admin/admin-lot-marketing-mappers";
-import type { LotMarketingDetails } from "@auction/types";
+import type { ArtistProfile, LotMarketingDetails } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -32,9 +32,10 @@ import { toast } from "sonner";
 type Props = {
   lotId: string;
   marketingDetails: LotMarketingDetails;
+  artists: ArtistProfile[];
 };
 
-export function AdminLotMarketingForm({ lotId, marketingDetails }: Props) {
+export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminLotMarketingFormValues>({
@@ -74,6 +75,35 @@ export function AdminLotMarketingForm({ lotId, marketingDetails }: Props) {
             });
           })}
         >
+          <FormField
+            control={form.control}
+            name="sellerArtistId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-label text-xs uppercase">Canonical artist</FormLabel>
+                <FormControl>
+                  <select
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
+                  >
+                    <option value="">No artist attribution</option>
+                    {artists.map((artist) => (
+                      <option key={artist.id} value={artist.id}>
+                        {artist.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <p className="mt-2 text-xs text-on-surface-variant">
+                  Links this lot to a canonical artist profile for related rails and future artist
+                  pages.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <ConditionReportFields form={form} />
           <ProvenanceListField form={form} />
           <ExhibitionsListField form={form} />

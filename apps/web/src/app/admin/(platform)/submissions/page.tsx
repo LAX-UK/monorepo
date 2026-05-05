@@ -1,6 +1,9 @@
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submissions-title-filter-form";
+import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
+import { ShareFiltersButton } from "@/components/admin/share-filters-button";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -49,18 +52,17 @@ export default async function AdminSubmissionsPage({
   let rows: Awaited<ReturnType<typeof getAdminSubmissions>> = [];
   let loadError: string | null = null;
   try {
-    rows = await getAdminSubmissions(
-      status !== undefined ? { status, limit: 100, offset: 0 } : { limit: 100, offset: 0 },
-    );
+    rows = await getAdminSubmissions({
+      ...(status !== undefined ? { status } : {}),
+      ...(initialQ ? { q: initialQ } : {}),
+      limit: 100,
+      offset: 0,
+    });
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
-  const qLower = initialQ.toLowerCase();
-  const rowsAfterTitle =
-    initialQ.length === 0 ? rows : rows.filter((s) => s.title.toLowerCase().includes(qLower));
-
-  const submissionRows: AdminSubmissionTableRow[] = rowsAfterTitle.map((s) => ({
+  const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => ({
     id: s.id,
     title: s.title,
     sellerPreview: `Seller ${s.sellerId.slice(0, 8)}…`,
@@ -74,30 +76,20 @@ export default async function AdminSubmissionsPage({
 
   const filterForm = (
     <div className="flex w-full flex-col gap-4">
-      <div className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-        {statusChips.map((chip) => {
-          const href = adminSubmissionsHref({
+      <FilterChipRow
+        label="Filter by submission status"
+        chips={statusChips.map((chip) => ({
+          id: chip.value || "all",
+          label: chip.label,
+          href: adminSubmissionsHref({
             ...(chip.value ? { status: chip.value as ItemSubmissionStatus } : {}),
             ...(initialQ ? { q: initialQ } : {}),
-          });
-          const active =
+          }),
+          active:
             (chip.value === "" && status === undefined) ||
-            (chip.value !== "" && chip.value === status);
-          return (
-            <Link
-              key={chip.label}
-              href={href}
-              className={`shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-                active
-                  ? "bg-primary text-on-primary ring-primary"
-                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-              }`}
-            >
-              {chip.label}
-            </Link>
-          );
-        })}
-      </div>
+            (chip.value !== "" && chip.value === status),
+        }))}
+      />
       <AdminSubmissionsTitleFilterForm initialQ={initialQ} status={status} />
     </div>
   );
@@ -107,6 +99,12 @@ export default async function AdminSubmissionsPage({
       <PageHeader
         title="Submissions"
         description="Review seller intake. Start review on submitted items, then approve (creates a draft lot) or reject with a clear reason."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ShareFiltersButton />
+            <ResetFiltersLink active={Boolean(status || initialQ)} href="/admin/submissions" />
+          </div>
+        }
       />
 
       {error || loadError ? (
@@ -116,14 +114,14 @@ export default async function AdminSubmissionsPage({
         </Alert>
       ) : null}
 
-      {!loadError && rows.length === 0 ? (
+      {!loadError && rows.length === 0 && !initialQ ? (
         <EmptyState
           title="No submissions"
           description="Nothing matches this filter yet, or the intake queue is empty."
         />
       ) : null}
 
-      {!loadError && rows.length > 0 && submissionRows.length === 0 ? (
+      {!loadError && initialQ && rows.length === 0 ? (
         <EmptyState
           title="No title matches"
           description="Nothing in the current list matches that title. Try another phrase or clear the title filter."

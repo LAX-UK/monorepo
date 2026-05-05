@@ -44,6 +44,12 @@ export const adminSuspendBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const adminBulkUsersBodySchema = z.object({
+  ids: z.array(z.string().min(1).max(191)).min(1).max(50),
+  op: z.enum(["suspend", "unsuspend"]),
+  reason: z.string().max(500).optional(),
+});
+
 export const adminAnalyticsQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(365).optional().default(30),
 });

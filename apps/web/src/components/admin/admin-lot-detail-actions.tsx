@@ -44,6 +44,12 @@ export function AdminLotDetailActions({
           Edit catalog copy
         </Link>
       ) : null}
+      <Link
+        href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}
+        className="inline-flex items-center justify-center rounded-md border border-outline-variant/20 px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-surface hover:bg-surface-container-low"
+      >
+        Duplicate as new draft
+      </Link>
       {canPublish ? (
         <Button
           type="button"

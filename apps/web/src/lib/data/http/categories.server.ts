@@ -9,6 +9,9 @@ function parseCategory(raw: unknown): Category {
     id: String(o.id),
     name: String(o.name),
     slug: String(o.slug),
+    description: o.description == null ? null : String(o.description),
+    archived: Boolean(o.archived ?? false),
+    sortOrder: Number(o.sortOrder ?? 0),
     parentId: o.parentId == null ? null : String(o.parentId),
   };
 }

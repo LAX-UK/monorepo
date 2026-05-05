@@ -52,6 +52,17 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
         }))}
         draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
       />
+
+      {isOnsite ? (
+        <p className="font-body text-sm">
+          <Link
+            href={`/admin/sales/${id}/registrations`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Paddle registrations & approvals
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

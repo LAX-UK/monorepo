@@ -18,3 +18,8 @@ export const adminListSuppressionsQuerySchema = z.object({
 export const emailHashParamSchema = z.object({
   emailHash: z.string().min(16),
 });
+
+export const adminBulkEmailSuppressionsBodySchema = z.object({
+  emailHashes: z.array(z.string().min(16)).min(1).max(50),
+  op: z.enum(["delete"]),
+});

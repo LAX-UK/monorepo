@@ -1,7 +1,10 @@
 "use client";
 
 import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
+import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import type { UserRole } from "@auction/types";
 import {
@@ -17,6 +20,7 @@ import {
 } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -141,6 +145,12 @@ function UserDrawerContent({ u }: { u: AdminUserRow }) {
       </div>
 
       <div className="border-t border-outline-variant/15 pt-4">
+        <Button variant="secondary" className="w-full font-label uppercase" asChild>
+          <Link href={`/admin/users/${u.id}`}>Open full profile</Link>
+        </Button>
+      </div>
+
+      <div className="border-t border-outline-variant/15 pt-4">
         <UserSuspendAction userId={u.id} suspendedAt={u.suspendedAt} fullWidthButton />
       </div>
     </div>
@@ -157,8 +167,10 @@ type Props = {
 export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Props) {
   const [selected, setSelected] = useState<AdminUserRow | null>(null);
   const [q, setQ] = useState("");
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
   const onOpen = useCallback((u: AdminUserRow) => setSelected(u), []);
   const columns = useMemo(() => userColumns(onOpen), [onOpen]);
+  const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -248,10 +260,16 @@ export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Pro
             data={filtered}
             emptyMessage="No users match this filter."
             density="compact"
+            enableRowSelection
+            getRowId={(row) => row.id}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
           />
         }
         cards={cards}
       />
+
+      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">

@@ -2,16 +2,12 @@
 
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { useUserNotifications } from "@/hooks/use-user-notifications";
-import { getBrowserHc } from "@/lib/data/http/hc-browser";
-import { parseUserNotification } from "@/lib/data/http/parse";
+import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { lotPath } from "@/lib/seo/url";
-import type { UserNotification } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Bell } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useRef, useState } from "react";
 
 const MENU_ID = "notification-menu";
 
@@ -21,49 +17,9 @@ function apiBase(): string {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<UserNotification[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { items, setItems, loaded, unread } = useUnreadNotifications();
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const refresh = useCallback(async () => {
-    const client = getBrowserHc();
-    const res = await client.users.me.notifications.$get({ query: { limit: "20" } });
-    if (!res.ok) {
-      setItems([]);
-      setLoaded(true);
-      return;
-    }
-    const body = (await res.json()) as { data: unknown[] };
-    setItems(body.data.map(parseUserNotification));
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const onRealtimeNotification = useCallback((n: UserNotification) => {
-    setItems((prev) => {
-      const idx = prev.findIndex((x) => x.id === n.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = n;
-        return next;
-      }
-      return [n, ...prev].slice(0, 50);
-    });
-    toast.info(n.title, {
-      id: `inbox-${n.id}`,
-      description: n.message,
-      duration: 6000,
-    });
-  }, []);
-
-  useUserNotifications({
-    enabled: loaded,
-    onNotification: onRealtimeNotification,
-  });
 
   const closeMenu = useCallback(() => {
     setOpen(false);
@@ -72,8 +28,6 @@ export function NotificationBell() {
 
   useEscapeKey(open, closeMenu);
   useClickOutside(open, wrapRef, closeMenu);
-
-  const unread = items.filter((n) => !n.read).length;
 
   const markRead = async (id: string) => {
     const res = await fetch(`${apiBase()}/users/me/notifications/${encodeURIComponent(id)}/read`, {

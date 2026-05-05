@@ -1,5 +1,10 @@
 import { lotAuctionTypes } from "@auction/types";
-import { type CreateLotInput, createLotSchema, updateLotSchema } from "@auction/validators";
+import {
+  type CreateLotInput,
+  createLotSchema,
+  mediaReferenceSchema,
+  updateLotSchema,
+} from "@auction/validators";
 import type { z } from "zod";
 import { z as zod } from "zod";
 
@@ -11,6 +16,7 @@ export const adminLotFormValuesSchema = zod.object({
   description: optionalStr,
   medium: optionalStr,
   dimensions: optionalStr,
+  sellerId: zod.string().min(1, "Choose a seller").max(191),
   categoryId: zod.string().uuid("Category must be a valid UUID"),
   auctionType: zod.enum(lotAuctionTypes),
   startingPrice: zod.string().min(1),
@@ -20,7 +26,8 @@ export const adminLotFormValuesSchema = zod.object({
   minBidIncrement: optionalStr,
   dutchDecrementAmount: optionalStr,
   dutchDecrementIntervalMs: optionalStr,
-  images: zod.array(zod.string().url()).max(20),
+  images: zod.array(mediaReferenceSchema).max(20),
+  imageAlts: zod.array(zod.string().max(500)).max(20),
   startTime: zod.string().min(1, "Start time required"),
   endTime: zod.string().min(1, "End time required"),
 });
@@ -33,6 +40,7 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
     description: (v.description && String(v.description).trim()) || undefined,
     medium: (v.medium && String(v.medium).trim()) || undefined,
     dimensions: (v.dimensions && String(v.dimensions).trim()) || undefined,
+    sellerId: v.sellerId.trim(),
     categoryId: v.categoryId,
     auctionType: v.auctionType,
     startingPrice: v.startingPrice.trim(),
@@ -50,6 +58,15 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
     startTime: new Date(v.startTime),
     endTime: new Date(v.endTime),
   } satisfies z.input<typeof createLotSchema>;
+}
+
+export function formValuesToImageAltsPatch(v: AdminLotFormValues): {
+  imageAlts: string[] | null;
+} {
+  const imageAlts = v.images.map((_, index) => (v.imageAlts[index] ?? "").trim());
+  return {
+    imageAlts: imageAlts.some((alt) => alt.length > 0) ? imageAlts : null,
+  };
 }
 
 /** Client + server: map form → API; use `data` on success. */

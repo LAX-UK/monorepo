@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryPicker } from "@/components/forms/category-picker";
 import { UploadField } from "@/components/forms/upload-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
@@ -14,7 +15,7 @@ import {
   safeParseCreateSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { saleDeliveryModes } from "@auction/types";
+import { type CategoryNode, saleDeliveryModes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -42,6 +43,7 @@ type Props = {
   mode: "create" | "edit";
   saleId?: string;
   defaultValues: AdminSaleFormValues;
+  categories: CategoryNode[];
 };
 
 function applyZodErrorsToForm(
@@ -56,7 +58,7 @@ function applyZodErrorsToForm(
   form.setError(path.map(String).join(".") as FieldPath<AdminSaleFormValues>, { message });
 }
 
-export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
+export function AdminSaleForm({ mode, saleId, defaultValues, categories }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminSaleFormValues>({
@@ -190,11 +192,20 @@ export function AdminSaleForm({ mode, saleId, defaultValues }: Props) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="mb-2 block">
-                <LabelCaps>Theme category ID (optional UUID)</LabelCaps>
+                <LabelCaps>Theme category</LabelCaps>
               </FormLabel>
               <FormControl>
-                <UnderlineInput id="categoryId" placeholder="" {...field} />
+                <CategoryPicker
+                  categories={categories}
+                  value={field.value ? [field.value] : []}
+                  onChange={(next) => field.onChange(next[0] ?? "")}
+                  placeholder="Select a category (optional)"
+                  multiple={false}
+                />
               </FormControl>
+              <p className="mt-2 font-body text-xs text-on-surface-variant">
+                Optional theme used for public sale discovery and internal filtering.
+              </p>
               <FormMessage />
             </FormItem>
           )}

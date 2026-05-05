@@ -39,6 +39,7 @@ export type ProfileAddressRow = {
   state: string | null;
   postalCode: string;
   country: string;
+  addressType: "shipping" | "billing" | "both";
   isDefault: boolean;
 };
 
@@ -264,6 +265,27 @@ function AddAddressCard() {
           />
           <FormField
             control={form.control}
+            name="addressType"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <select
+                    value={field.value ?? "both"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
+                  >
+                    <option value="both">Billing and shipping</option>
+                    <option value="shipping">Shipping only</option>
+                    <option value="billing">Billing only</option>
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="isDefault"
             render={({ field }) => (
               <FormItem className="flex flex-row items-center gap-2 space-y-0 md:col-span-2">
@@ -330,6 +352,9 @@ export function ProfileSettingsBoard({ initialName, initialImage, addresses }: P
                         Default
                       </span>
                     ) : null}
+                    <span className="rounded bg-surface-container-high px-2 py-0.5 font-label text-[10px] uppercase text-on-surface-variant">
+                      {a.addressType === "both" ? "Billing + shipping" : a.addressType}
+                    </span>
                   </div>
                   <p className="mt-1 text-on-surface">
                     {a.line1}

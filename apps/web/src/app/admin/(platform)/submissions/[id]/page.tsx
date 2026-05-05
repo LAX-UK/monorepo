@@ -4,6 +4,7 @@ import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
 import { ReviewSplitPane } from "@auction/ui";
+import { Card, CardContent } from "@auction/ui/components/card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -97,7 +98,40 @@ export default async function AdminSubmissionDetailPage({
             Back to queue
           </Link>
         }
-        record={record}
+        record={
+          <div className="space-y-6">
+            {record}
+            <section aria-labelledby="submission-workflow-heading" className="space-y-3">
+              <h3 id="submission-workflow-heading" className="sr-only">
+                Specialist workflow
+              </h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Card className="border-outline-variant/15 bg-surface-container-low/40">
+                  <CardContent className="space-y-2 p-4">
+                    <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                      Assignment
+                    </p>
+                    <p className="font-body text-sm text-on-surface-variant">
+                      Specialist assignee & due date post when submission_workflow tables ship
+                      (Phase 1.3).
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="border-outline-variant/15 bg-surface-container-low/40">
+                  <CardContent className="space-y-2 p-4">
+                    <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                      Conversation
+                    </p>
+                    <p className="font-body text-sm text-on-surface-variant">
+                      Request-more-information threads and attachments will replace ad-hoc email
+                      once messaging lands.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          </div>
+        }
         decision={decision}
       />
     </div>

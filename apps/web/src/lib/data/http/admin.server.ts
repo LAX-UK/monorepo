@@ -4,7 +4,7 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
-import type { Lot, Sale } from "@auction/types";
+import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
 export type AdminPaymentRow = {
@@ -21,6 +21,58 @@ export type AdminPaymentRow = {
   xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
   xeroLastError: string | null;
 };
+
+function parseAdminCategory(raw: unknown): AdminCategory {
+  const o = raw as Record<string, unknown>;
+  const usageRaw = (o.usage ?? {}) as Record<string, unknown>;
+  const lots = Number(usageRaw.lots ?? 0);
+  const sales = Number(usageRaw.sales ?? 0);
+  const submissions = Number(usageRaw.submissions ?? 0);
+  return {
+    id: String(o.id ?? ""),
+    name: String(o.name ?? ""),
+    slug: String(o.slug ?? ""),
+    description: o.description == null ? null : String(o.description),
+    archived: Boolean(o.archived ?? false),
+    sortOrder: Number(o.sortOrder ?? 0),
+    parentId: o.parentId == null ? null : String(o.parentId),
+    usage: {
+      lots,
+      sales,
+      submissions,
+      total: Number(usageRaw.total ?? lots + sales + submissions),
+    },
+  };
+}
+
+function parseArtistProfile(raw: unknown): ArtistProfile {
+  const o = raw as Record<string, unknown>;
+  return {
+    id: String(o.id ?? ""),
+    displayName: String(o.displayName ?? ""),
+    slug: String(o.slug ?? ""),
+    portraitUrl: o.portraitUrl == null ? null : String(o.portraitUrl),
+    heroImageUrl: o.heroImageUrl == null ? null : String(o.heroImageUrl),
+    shortBio: o.shortBio == null ? null : String(o.shortBio),
+    longBio: o.longBio == null ? null : String(o.longBio),
+    statement: o.statement == null ? null : String(o.statement),
+    nationality: o.nationality == null ? null : String(o.nationality),
+    location: o.location == null ? null : String(o.location),
+    birthYear: o.birthYear == null ? null : String(o.birthYear),
+    deathYear: o.deathYear == null ? null : String(o.deathYear),
+    websiteUrl: o.websiteUrl == null ? null : String(o.websiteUrl),
+    socialLinks:
+      o.socialLinks && typeof o.socialLinks === "object"
+        ? (o.socialLinks as Record<string, string>)
+        : {},
+    featured: Boolean(o.featured),
+    verified: Boolean(o.verified),
+    archived: Boolean(o.archived),
+    ownerUserId: o.ownerUserId == null ? null : String(o.ownerUserId),
+    createdAt: new Date(String(o.createdAt ?? "")),
+    updatedAt: new Date(String(o.updatedAt ?? "")),
+  };
+}
 
 function isPaymentStatus(s: string): s is PaymentStatus {
   return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
@@ -61,6 +113,51 @@ export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseLot);
+}
+
+export async function getAdminCategoryList(
+  params: {
+    includeArchived?: boolean;
+  } = {},
+): Promise<AdminCategory[]> {
+  const qs = new URLSearchParams();
+  if (params.includeArchived) qs.set("includeArchived", "true");
+  const res = await authedServerFetch(`/admin/categories${qs.size ? `?${qs.toString()}` : ""}`);
+  if (!res.ok) throw new Error(`Failed to load categories: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseAdminCategory);
+}
+
+export async function getAdminCategoryById(id: string): Promise<AdminCategory | null> {
+  const res = await authedServerFetch(`/admin/categories/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load category: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseAdminCategory(body.data);
+}
+
+export async function getAdminArtistList(
+  params: {
+    includeArchived?: boolean;
+    q?: string;
+  } = {},
+): Promise<ArtistProfile[]> {
+  const qs = new URLSearchParams();
+  if (params.includeArchived) qs.set("includeArchived", "true");
+  if (params.q) qs.set("q", params.q);
+  const query = qs.toString();
+  const res = await authedServerFetch(`/admin/artists${query ? `?${query}` : ""}`);
+  if (!res.ok) throw new Error(`Failed to load artists: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseArtistProfile);
+}
+
+export async function getAdminArtistById(id: string): Promise<ArtistProfile | null> {
+  const res = await authedServerFetch(`/admin/artists/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load artist: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseArtistProfile(body.data);
 }
 
 export type AdminSaleListRow = { sale: Sale; lots: Lot[] };

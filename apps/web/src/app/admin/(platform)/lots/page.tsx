@@ -1,9 +1,13 @@
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
+import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
+import { ShareFiltersButton } from "@/components/admin/share-filters-button";
 import { Button } from "@/components/ui/button";
 import { getAdminLotList } from "@/lib/data/http/admin.server";
 import type { LotStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
@@ -37,7 +41,7 @@ export default async function AdminAuctionsPage({
       limit: viewPipeline ? 200 : 100,
       offset: 0,
       ...(viewPipeline || !statusFilter ? {} : { status: statusFilter }),
-      ...(q ? { search: q } : {}),
+      ...(q ? { q } : {}),
     });
   } catch (e) {
     listError = e instanceof Error ? e.message : "Could not load auctions.";
@@ -53,30 +57,22 @@ export default async function AdminAuctionsPage({
   }));
 
   const statusChips = (
-    <fieldset className="flex min-w-0 flex-wrap gap-2 border-0 p-0">
-      <legend className="sr-only">Filter by status</legend>
-      {statuses.map((s) => {
+    <FilterChipRow
+      label="Filter by status"
+      chips={statuses.map((s) => {
         const qs = new URLSearchParams();
         if (s !== "all") qs.set("status", s);
         if (viewPipeline) qs.set("view", "pipeline");
         if (q) qs.set("q", q);
         const href = qs.toString() ? `/admin/lots?${qs.toString()}` : "/admin/lots";
-        const active = (s === "all" && !sp.status) || sp.status === s;
-        return (
-          <Link
-            key={s}
-            href={href}
-            className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-              active
-                ? "bg-primary text-on-primary ring-primary"
-                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-            }`}
-          >
-            {s}
-          </Link>
-        );
+        return {
+          id: s,
+          label: s,
+          href,
+          active: (s === "all" && !sp.status) || sp.status === s,
+        };
       })}
-    </fieldset>
+    />
   );
 
   const layoutToggle = (
@@ -116,12 +112,19 @@ export default async function AdminAuctionsPage({
         title="Lots"
         description="Publish, schedule, and triage catalog lots. Use bulk actions after selecting rows (desktop and mobile)."
         actions={
-          <Button variant="primary" asChild>
-            <Link href="/admin/lots/new">
-              <Plus className="size-4" aria-hidden />
-              New lot
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <ShareFiltersButton />
+            <ResetFiltersLink
+              active={Boolean(statusFilter || q || viewPipeline)}
+              href="/admin/lots"
+            />
+            <Button variant="primary" asChild>
+              <Link href="/admin/lots/new">
+                <Plus className="size-4" aria-hidden />
+                New lot
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -133,7 +136,28 @@ export default async function AdminAuctionsPage({
       ) : null}
 
       {!listError && !viewPipeline && rows.length === 0 ? (
-        <p className="text-on-surface-variant">No auctions match this filter.</p>
+        <EmptyState
+          title={q || statusFilter ? "No matching lots" : "No lots yet"}
+          description={
+            q || statusFilter
+              ? "Clear the search or status filter to broaden the list."
+              : "Create the first draft lot, assign a seller, and prepare it for publication."
+          }
+          action={
+            !q && !statusFilter ? (
+              <Button variant="primary" asChild>
+                <Link href="/admin/lots/new">
+                  <Plus className="size-4" aria-hidden />
+                  New lot
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="secondary" asChild>
+                <Link href="/admin/lots">Clear filters</Link>
+              </Button>
+            )
+          }
+        />
       ) : (
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminLotsBoard

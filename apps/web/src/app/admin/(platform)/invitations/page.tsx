@@ -1,25 +1,8 @@
+import { AdminInvitationsBoard } from "@/components/admin/admin-invitations-board";
 import { AdminInviteForm } from "@/components/admin/admin-invite-form";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
-import { TableScroll } from "@/components/ui/table-scroll";
-import { adminResendInvitationAction, adminRevokeInvitationAction } from "@/lib/actions/admin";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
-import type { UserRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
-
-function roleLabel(r: UserRole): string {
-  if (r === "administrator") return "Administrator";
-  if (r === "accountant") return "Accountant";
-  return "Client";
-}
 
 export default async function AdminInvitationsPage({
   searchParams,
@@ -64,57 +47,9 @@ export default async function AdminInvitationsPage({
         {rows.length === 0 ? (
           <p className="mt-2 font-body text-sm text-on-surface-variant">No pending invitations.</p>
         ) : (
-          <TableScroll className="mt-4">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Role</TableHeaderCell>
-                  <TableHeaderCell>Expires</TableHeaderCell>
-                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((inv) => (
-                  <TableRow key={inv.id}>
-                    <TableCell className="font-medium text-on-surface">{inv.email}</TableCell>
-                    <TableCell className="text-on-surface-variant">
-                      {roleLabel(inv.targetRole)}
-                    </TableCell>
-                    <TableCell className="text-on-surface-variant">
-                      {inv.expiresAt.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <form action={adminResendInvitationAction}>
-                          <input type="hidden" name="invitationId" value={inv.id} />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            className="font-label text-[10px] uppercase"
-                          >
-                            Resend
-                          </Button>
-                        </form>
-                        <form action={adminRevokeInvitationAction}>
-                          <input type="hidden" name="invitationId" value={inv.id} />
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="sm"
-                            className="font-label text-[10px] uppercase"
-                          >
-                            Revoke
-                          </Button>
-                        </form>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableScroll>
+          <div className="mt-4">
+            <AdminInvitationsBoard rows={rows} />
+          </div>
         )}
       </section>
     </div>

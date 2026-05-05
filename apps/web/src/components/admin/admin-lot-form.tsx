@@ -1,17 +1,25 @@
 "use client";
 
-import { UploadField } from "@/components/forms/upload-field";
+import { LotImageManager } from "@/components/admin/lot-image-manager";
+import { SellerPicker } from "@/components/admin/seller-picker";
+import { CategoryPicker } from "@/components/forms/category-picker";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
-import { adminCreateLotResultAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
+import {
+  adminCreateLotResultAction,
+  adminUpdateLotMarketingDetailsResultAction,
+  adminUpdateLotResultAction,
+} from "@/lib/actions/admin";
+import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import {
   type AdminLotFormValues,
   adminLotFormValuesSchema,
+  formValuesToImageAltsPatch,
   safeParseCreateLotFromForm,
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
-import { lotAuctionTypes } from "@auction/types";
+import { type CategoryNode, lotAuctionTypes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -33,6 +41,8 @@ type Props = {
   mode: "create" | "edit";
   lotId?: string;
   defaultValues: AdminLotFormValues;
+  categories: CategoryNode[];
+  sellers: AdminUserRow[];
 };
 
 function applyZodErrorsToForm(
@@ -48,7 +58,7 @@ function applyZodErrorsToForm(
   form.setError(key as FieldPath<AdminLotFormValues>, { message });
 }
 
-export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
+export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminLotFormValues>({
@@ -74,6 +84,17 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
               }
               const r = await adminCreateLotResultAction(api.data);
               if (r.ok) {
+                if (r.data?.id) {
+                  const alts = await adminUpdateLotMarketingDetailsResultAction(
+                    r.data.id,
+                    formValuesToImageAltsPatch(values),
+                  );
+                  if (!alts.ok) {
+                    toast.error("Draft created, but image alt text could not be saved", {
+                      description: alts.error,
+                    });
+                  }
+                }
                 toast.success("Draft created");
                 router.push(`/admin/lots/${r.data?.id}`);
                 return;
@@ -95,6 +116,16 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
             }
             const r = await adminUpdateLotResultAction(lotId, api.data);
             if (r.ok) {
+              const alts = await adminUpdateLotMarketingDetailsResultAction(
+                lotId,
+                formValuesToImageAltsPatch(values),
+              );
+              if (!alts.ok) {
+                toast.error("Lot saved, but image alt text could not be saved", {
+                  description: alts.error,
+                });
+                return;
+              }
               toast.success("Saved");
               router.push(`/admin/lots/${lotId}`);
               return;
@@ -150,6 +181,25 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
                 options={lotAuctionTypes.map((t) => ({ value: t, label: t }))}
                 triggerClassName="w-full font-body text-sm"
               />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="sellerId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <LabelCaps>Seller</LabelCaps>
+              </FormLabel>
+              <FormControl>
+                <SellerPicker users={sellers} value={field.value} onChange={field.onChange} />
+              </FormControl>
+              <p className="mt-2 font-body text-xs text-on-surface-variant">
+                The selected client owns the lot and will appear in seller payout workflows.
+              </p>
               <FormMessage />
             </FormItem>
           )}
@@ -243,11 +293,20 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  <LabelCaps>Category ID (UUID)</LabelCaps>
+                  <LabelCaps>Category</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <UnderlineInput placeholder="Category UUID" {...field} />
+                  <CategoryPicker
+                    categories={categories}
+                    value={field.value ? [field.value] : []}
+                    onChange={(next) => field.onChange(next[0] ?? "")}
+                    placeholder="Select a category"
+                    multiple={false}
+                  />
                 </FormControl>
+                <p className="mt-2 font-body text-xs text-on-surface-variant">
+                  Choose the primary catalog category used for filtering and public breadcrumbs.
+                </p>
                 <FormMessage />
               </FormItem>
             )}
@@ -370,12 +429,19 @@ export function AdminLotForm({ mode, lotId, defaultValues }: Props) {
                 <LabelCaps>Lot images</LabelCaps>
               </FormLabel>
               <FormControl>
-                <UploadField
-                  kind="lot_image"
-                  multiple
-                  maxFiles={20}
-                  value={field.value}
-                  onChange={field.onChange}
+                <LotImageManager
+                  value={field.value.map((key, index) => ({
+                    key,
+                    alt: form.getValues("imageAlts")[index] ?? "",
+                  }))}
+                  onChange={(next) => {
+                    field.onChange(next.map((item) => item.key));
+                    form.setValue(
+                      "imageAlts",
+                      next.map((item) => item.alt),
+                      { shouldDirty: true, shouldValidate: true },
+                    );
+                  }}
                 />
               </FormControl>
               <FormMessage />

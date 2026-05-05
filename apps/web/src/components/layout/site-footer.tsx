@@ -39,7 +39,7 @@ export function SiteFooter({
           ) : null}
         </div>
         <div className="h-px w-full max-w-[1280px] bg-divider" aria-hidden />
-        <div className="grid max-w-[1280px] grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid max-w-[1280px] grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(20rem,1.35fr)]">
           <FooterColumn
             title="Auctions"
             links={auctionsLinks}
@@ -58,7 +58,7 @@ export function SiteFooter({
             linkClassName={linkClass}
             headingClassName={headingClass}
           />
-          <div className="flex flex-col gap-6">
+          <div className="flex min-w-0 flex-col gap-6">
             <h2 className={headingClass}>Our Services</h2>
             <ul className="flex flex-col gap-4">
               {serviceLinks.map((l) => (

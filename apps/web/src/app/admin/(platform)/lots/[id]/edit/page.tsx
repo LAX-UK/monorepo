@@ -1,7 +1,12 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
 import { DisplayHeading } from "@/components/ui/typography";
-import { getAdminLotById } from "@/lib/data/http/admin.server";
+import {
+  getAdminArtistList,
+  getAdminLotById,
+  getAdminUserList,
+} from "@/lib/data/http/admin.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -10,7 +15,12 @@ export default async function AdminEditAuctionPage({
   params,
 }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const auction = await getAdminLotById(id).catch(() => null);
+  const [auction, categories, users, artists] = await Promise.all([
+    getAdminLotById(id).catch(() => null),
+    (async () => (await getServerCategoryReader()).tree())(),
+    getAdminUserList({ limit: 100 }),
+    getAdminArtistList(),
+  ]);
   if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled") {
     redirect(`/admin/lots/${id}`);
@@ -37,9 +47,19 @@ export default async function AdminEditAuctionPage({
       )}
 
       {isDraft ? (
-        <AdminLotForm mode="edit" lotId={id} defaultValues={lotToAdminLotFormValues(auction)} />
+        <AdminLotForm
+          mode="edit"
+          lotId={id}
+          defaultValues={lotToAdminLotFormValues(auction)}
+          categories={categories}
+          sellers={users.rows}
+        />
       ) : null}
-      <AdminLotMarketingForm lotId={id} marketingDetails={auction.marketingDetails} />
+      <AdminLotMarketingForm
+        lotId={id}
+        marketingDetails={auction.marketingDetails}
+        artists={artists}
+      />
     </div>
   );
 }

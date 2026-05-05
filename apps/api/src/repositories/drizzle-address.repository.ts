@@ -19,6 +19,7 @@ function mapRow(r: typeof userAddress.$inferSelect): UserAddressRow {
     state: r.state ?? null,
     postalCode: r.postalCode,
     country: r.country,
+    addressType: r.addressType as UserAddressRow["addressType"],
     isDefault: r.isDefault,
     createdAt: r.createdAt,
   };
@@ -55,6 +56,7 @@ export class DrizzleAddressRepository implements IAddressRepository {
         state: input.state ?? null,
         postalCode: input.postalCode,
         country: input.country,
+        addressType: input.addressType ?? "both",
         isDefault,
       })
       .returning();
@@ -77,6 +79,7 @@ export class DrizzleAddressRepository implements IAddressRepository {
     if (input.state !== undefined) patch.state = input.state ?? null;
     if (input.postalCode !== undefined) patch.postalCode = input.postalCode;
     if (input.country !== undefined) patch.country = input.country;
+    if (input.addressType !== undefined) patch.addressType = input.addressType;
     if (input.isDefault !== undefined) patch.isDefault = input.isDefault;
     if (input.isDefault === true) await this.clearDefaultForUser(userId);
     await this.db

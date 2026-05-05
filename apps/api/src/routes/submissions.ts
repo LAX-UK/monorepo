@@ -1,6 +1,7 @@
 import type { UpdateItemSubmissionInput } from "@auction/types";
 import { type UserRole, roleHasCapability } from "@auction/types";
 import {
+  adminBulkSubmissionsBodySchema,
   adminSubmissionNotesSchema,
   approveSubmissionBodySchema,
   createItemSubmissionSchema,
@@ -62,6 +63,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const rows = await container.itemSubmissionService.listForAdmin({
         status: q.status,
         sellerId: q.sellerId,
+        q: q.q,
         limit: q.limit,
         offset: q.offset,
       });
@@ -193,6 +195,35 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       return c.json({
         data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
       });
+    },
+  );
+
+  r.post(
+    "/bulk",
+    requireAuth,
+    requirePlatformAdmin,
+    zValidator("json", adminBulkSubmissionsBodySchema),
+    async (c) => {
+      const adminId = c.get("userId") as string;
+      const { ids, op, reason, reviewNotes } = c.req.valid("json");
+      if (op === "reject" && !reason?.trim()) {
+        return c.json({ error: "Reason is required to reject submissions" }, 400);
+      }
+      for (const id of ids) {
+        const result =
+          op === "approve"
+            ? await container.itemSubmissionService.approve(adminId, id, reviewNotes)
+            : await container.itemSubmissionService.reject(
+                adminId,
+                id,
+                reason?.trim() ?? "",
+                reviewNotes,
+              );
+        if (result.isErr()) {
+          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        }
+      }
+      return c.json({ ok: true, data: { count: ids.length } });
     },
   );
 

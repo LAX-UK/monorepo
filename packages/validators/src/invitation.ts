@@ -15,3 +15,8 @@ export const invitationIdUuidParamSchema = z.object({
 export const invitationPreviewQuerySchema = z.object({
   token: z.string().min(16).max(512),
 });
+
+export const adminBulkInvitationsBodySchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(50),
+  op: z.enum(["revoke", "resend"]),
+});
