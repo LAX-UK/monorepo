@@ -18,6 +18,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         name: user.name,
         image: user.image,
         role: user.role,
+        emailStatus: user.emailStatus,
+        emailStatusChangedAt: user.emailStatusChangedAt,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -29,6 +31,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       name: row.name,
       image: row.image ?? null,
       role: row.role,
+      emailStatus: row.emailStatus as "ok" | "bounced" | "complained",
+      emailStatusChangedAt: row.emailStatusChangedAt,
     };
   }
 

@@ -148,6 +148,13 @@
       "when": 1777800000000,
       "tag": "0020_upload_objects",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1777900000000,
+      "tag": "0021_email_integration_schema",
+      "breakpoints": true
     }
   ]
 }

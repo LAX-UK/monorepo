@@ -39,6 +39,8 @@ export interface IProfileReader {
     name: string;
     image: string | null;
     role: string;
+    emailStatus: "ok" | "bounced" | "complained";
+    emailStatusChangedAt: Date | null;
   } | null>;
 }
 

@@ -5,11 +5,13 @@ locals {
   media_cdn    = "lax-media.lon1.cdn.digitaloceanspaces.com"
   app_hostname = "replace-after-app-platform-create.ondigitalocean.app"
   subdomains = {
-    web   = { name = "@", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod web App Platform hostname" }
-    api   = { name = "api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod api App Platform hostname" }
-    auth  = { name = "auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod auth App Platform hostname" }
-    ws    = { name = "ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod ws App Platform hostname" }
-    media = { name = "media", type = "CNAME", value = local.media_cdn, proxied = true, comment = "lax prod media CDN" }
+    web                  = { name = "@", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod web App Platform hostname" }
+    api                  = { name = "api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod api App Platform hostname" }
+    auth                 = { name = "auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod auth App Platform hostname" }
+    ws                   = { name = "ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod ws App Platform hostname" }
+    media                = { name = "media", type = "CNAME", value = local.media_cdn, proxied = true, comment = "lax prod media CDN" }
+    postmark_dkim        = { name = "20260505002152pm._domainkey.mail", type = "TXT", value = "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDi/NrnU+oeVXNo0sJM72mILqXSYfL76kXxMfPFtoivITNVd3bSJjzcurIm2M0VqnE2L7O20xc35lYMTnRddm3BrU8UXJ6D+dq4yp8l+Nl3min0w0V9dCFgBL0TijdVP52yBlQwgQfi/IkUOPo4jxukYdcvu4NNy2r6sdnEvPcjRwIDAQAB", proxied = false, comment = "Postmark prod DKIM" }
+    postmark_return_path = { name = "pm-bounces.mail", type = "CNAME", value = "pm.mtasv.net", proxied = false, comment = "Postmark prod Return-Path" }
   }
 }
 

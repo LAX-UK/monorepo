@@ -8,8 +8,11 @@ import { Redis } from "ioredis";
 import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
+import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
+import { enqueueStaleEmailOutboxRows, sendEmailJob, type SendEmailJobData } from "./jobs/send-email.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
+import { zohoCampaignsSyncJob, type ZohoCampaignsSyncJobData } from "./jobs/zoho-campaigns-sync.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
 
@@ -42,6 +45,8 @@ const heartbeatKeys = [
   "worker:heartbeat:validate-upload",
   "worker:heartbeat:image-cleanup",
   "worker:heartbeat:gc-pending-uploads",
+  "worker:heartbeat:email",
+  "worker:heartbeat:marketing-sync",
 ];
 async function heartbeat(queue: string) {
   await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
@@ -106,11 +111,67 @@ void gcUploadQueue.add(
   {},
   { jobId: "hourly-gc-pending-uploads", repeat: { every: 60 * 60 * 1000 } },
 );
+
+const emailSender =
+  env.EMAIL_PROVIDER === "postmark"
+    ? new PostmarkEmailSender({
+        serverToken: env.POSTMARK_SERVER_TOKEN ?? "",
+        from: env.EMAIL_FROM,
+        replyTo: env.EMAIL_REPLY_TO,
+        transactionalStream: env.POSTMARK_TRANSACTIONAL_STREAM,
+        broadcastStream: env.POSTMARK_BROADCAST_STREAM,
+      })
+    : new ConsoleEmailSender();
+
+type EmailQueueJobData = SendEmailJobData | Record<string, never>;
+const emailQueue = new Queue<EmailQueueJobData>("email", { connection: redis });
+const emailWorker = new Worker<EmailQueueJobData>(
+  "email",
+  async (job) => {
+    if (job.name === "outbox-drain") {
+      const count = await enqueueStaleEmailOutboxRows({ db, queue: emailQueue });
+      log.info({ count }, "email outbox drain completed");
+      await heartbeat("email");
+      return;
+    }
+    await sendEmailJob({ db, sender: emailSender, log }, job.data as SendEmailJobData);
+    await heartbeat("email");
+  },
+  {
+    connection: redis,
+    concurrency: 10,
+    limiter: { max: 50, duration: 1000 },
+  },
+);
+emailWorker.on("completed", () => void heartbeat("email"));
+void emailQueue.add(
+  "outbox-drain",
+  {},
+  { jobId: "email-outbox-drain", repeat: { every: 60_000 }, removeOnComplete: 100 },
+);
+
+const marketingSyncQueue = new Queue<ZohoCampaignsSyncJobData>("marketing-sync", { connection: redis });
+const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
+  "marketing-sync",
+  async (job) => {
+    if (job.name === "zoho-campaigns-sync") {
+      await zohoCampaignsSyncJob({ db, env, log, data: job.data });
+    } else {
+      log.warn({ jobId: job.id, name: job.name }, "unknown marketing-sync job");
+    }
+    await heartbeat("marketing-sync");
+  },
+  { connection: redis, concurrency: 3, limiter: { max: 10, duration: 1000 } },
+);
+marketingSyncWorker.on("completed", () => void heartbeat("marketing-sync"));
+
 void Promise.all([
   heartbeat("webhook-events"),
   heartbeat("validate-upload"),
   heartbeat("image-cleanup"),
   heartbeat("gc-pending-uploads"),
+  heartbeat("email"),
+  heartbeat("marketing-sync"),
 ]);
 
 const projectorRunner = createProjectorRunner({
@@ -167,6 +228,10 @@ function shutdown(signal: NodeJS.Signals) {
     imageCleanupWorker.close(),
     gcPendingUploadsWorker.close(),
     gcUploadQueue.close(),
+    emailWorker.close(),
+    emailQueue.close(),
+    marketingSyncWorker.close(),
+    marketingSyncQueue.close(),
     projectorRunner.stop(),
     redis.quit(),
   ]).finally(() => {

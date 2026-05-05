@@ -26,12 +26,20 @@ resource "random_password" "better_auth_secret" {
   special = false
 }
 
+# Persisted in TF state so List-Unsubscribe links remain valid across applies. Rotation requires
+# a deliberate `terraform taint` of this resource (or supplying a new TF_VAR_email_unsubscribe_secret).
+resource "random_password" "email_unsubscribe_secret" {
+  length  = 48
+  special = false
+}
+
 locals {
-  effective_better_auth_secret     = var.better_auth_secret != "" ? var.better_auth_secret : random_password.better_auth_secret.result
-  effective_spaces_access_key_id   = var.spaces_access_key_id != "" ? var.spaces_access_key_id : "pending-media-spaces-access-key"
-  effective_spaces_secret_key      = var.spaces_secret_access_key != "" ? var.spaces_secret_access_key : "pending-media-spaces-secret-key"
-  effective_shopify_webhook_secret = var.shopify_webhook_secret != "" ? var.shopify_webhook_secret : "pending-shopify-webhook-secret"
-  effective_wordpress_secret       = var.wordpress_webhook_secret != "" ? var.wordpress_webhook_secret : "pending-wordpress-webhook-secret"
+  effective_better_auth_secret       = var.better_auth_secret != "" ? var.better_auth_secret : random_password.better_auth_secret.result
+  effective_spaces_access_key_id     = var.spaces_access_key_id != "" ? var.spaces_access_key_id : "pending-media-spaces-access-key"
+  effective_spaces_secret_key        = var.spaces_secret_access_key != "" ? var.spaces_secret_access_key : "pending-media-spaces-secret-key"
+  effective_shopify_webhook_secret   = var.shopify_webhook_secret != "" ? var.shopify_webhook_secret : "pending-shopify-webhook-secret"
+  effective_wordpress_secret         = var.wordpress_webhook_secret != "" ? var.wordpress_webhook_secret : "pending-wordpress-webhook-secret"
+  effective_email_unsubscribe_secret = var.email_unsubscribe_secret != "" ? var.email_unsubscribe_secret : random_password.email_unsubscribe_secret.result
 
   common_secret_env = [
     { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -42,6 +50,17 @@ locals {
     { key = "GOOGLE_CLIENT_SECRET", value = var.google_client_secret, type = "SECRET", scope = "RUN_TIME" },
     { key = "APPLE_CLIENT_ID", value = var.apple_client_id, type = "SECRET", scope = "RUN_TIME" },
     { key = "APPLE_CLIENT_SECRET", value = var.apple_client_secret, type = "SECRET", scope = "RUN_TIME" }
+  ]
+
+  # Email env shared by api / auth / worker. POSTMARK_SERVER_TOKEN is enforced by the app-side
+  # superRefine when EMAIL_PROVIDER=postmark; the prod default IS postmark so the token MUST be supplied.
+  email_common_env = [
+    { key = "EMAIL_PROVIDER", value = var.email_provider, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "EMAIL_FROM", value = var.email_from, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "EMAIL_REPLY_TO", value = var.email_reply_to, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "POSTMARK_TRANSACTIONAL_STREAM", value = var.postmark_transactional_stream, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "POSTMARK_BROADCAST_STREAM", value = var.postmark_broadcast_stream, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "POSTMARK_SERVER_TOKEN", value = var.postmark_server_token, type = "SECRET", scope = "RUN_TIME" },
   ]
 }
 
@@ -136,7 +155,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.api
       primary_domain    = false
-      env = concat(local.common_secret_env, [
+      env = concat(local.common_secret_env, local.email_common_env, [
         { key = "DATABASE_URL", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
@@ -154,7 +173,11 @@ locals {
         { key = "S3_ACCESS_KEY_ID", value = local.effective_spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
         { key = "S3_SECRET_ACCESS_KEY", value = local.effective_spaces_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "SHOPIFY_WEBHOOK_SECRET", value = local.effective_shopify_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
-        { key = "WORDPRESS_WEBHOOK_SECRET", value = local.effective_wordpress_secret, type = "SECRET", scope = "RUN_TIME" }
+        { key = "WORDPRESS_WEBHOOK_SECRET", value = local.effective_wordpress_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "POSTMARK_WEBHOOK_BASIC_AUTH", value = var.postmark_webhook_basic_auth, type = "SECRET", scope = "RUN_TIME" },
+        { key = "EMAIL_UNSUBSCRIBE_SECRET", value = local.effective_email_unsubscribe_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ENABLE_WHATSAPP_CHANNEL", value = var.enable_whatsapp_channel, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {
@@ -168,15 +191,19 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.auth
       primary_domain    = false
-      env = concat(local.common_secret_env, [
+      env = concat(local.common_secret_env, local.email_common_env, [
         { key = "DATABASE_URL", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
+        # Required: apps/auth uses Redis to push BullMQ jobs from the Better Auth send-verification /
+        # send-reset-password / databaseHooks.user.create.after hooks via IEmailService.enqueue().
+        { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
         { key = "OIDC_ISSUER_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "CORS_ALLOWED_ORIGINS", value = local.cors_allowed_origins, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "APPLE_DOMAIN_ASSOCIATION", value = var.apple_domain_association, type = "SECRET", scope = "RUN_TIME" }
+        { key = "APPLE_DOMAIN_ASSOCIATION", value = var.apple_domain_association, type = "SECRET", scope = "RUN_TIME" },
+        { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {
@@ -207,7 +234,7 @@ locals {
       dockerfile_path = "apps/worker/Dockerfile"
       instance_size   = "professional-xs"
       instance_count  = 1
-      env = [
+      env = concat(local.email_common_env, [
         { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "DATABASE_URL", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_WORKER", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
@@ -220,8 +247,10 @@ locals {
         { key = "S3_ENDPOINT", value = "https://${local.region}.digitaloceanspaces.com", type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_PUBLIC_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "S3_ACCESS_KEY_ID", value = local.effective_spaces_access_key_id, type = "SECRET", scope = "RUN_TIME" },
-        { key = "S3_SECRET_ACCESS_KEY", value = local.effective_spaces_secret_key, type = "SECRET", scope = "RUN_TIME" }
-      ]
+        { key = "S3_SECRET_ACCESS_KEY", value = local.effective_spaces_secret_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "ZOHO_CAMPAIGNS_API_KEY", value = var.zoho_campaigns_api_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "ZOHO_CAMPAIGNS_LIST_KEY", value = var.zoho_campaigns_list_key, type = "SECRET", scope = "RUN_TIME" }
+      ])
     },
     {
       name            = "migrate"

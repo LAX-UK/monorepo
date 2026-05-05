@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@auction/db": "workspace:*",
+    "@auction/email": "workspace:^",
     "@auction/types": "workspace:*",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.41.0",

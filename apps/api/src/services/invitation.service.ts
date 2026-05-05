@@ -9,8 +9,8 @@ import type {
   InvitationRow,
   InvitationSummary,
 } from "./interfaces/invitation.js";
+import type { IEmailService } from "./interfaces/email.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
-import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 
 export type InvitationError = { message: string; status: number };
 
@@ -45,7 +45,7 @@ export class InvitationService {
     private readonly db: Database,
     private readonly invites: IUserInvitationRepository,
     private readonly users: IUserRepository,
-    private readonly mailer: ITransactionalMailer,
+    private readonly email: IEmailService,
     private readonly webOrigin: string,
   ) {}
 
@@ -80,10 +80,17 @@ export class InvitationService {
       createdByUserId: input.actorUserId,
     });
 
-    await this.mailer.sendInviteEmail({
+    await this.email.enqueue({
+      template: "invite",
       to: input.email.trim(),
-      inviteLink: this.inviteLink(token),
-      targetRole: input.targetRole,
+      category: "transactional",
+      vars: {
+        inviteUrl: this.inviteLink(token),
+        inviterName: actor?.name ?? null,
+        inviteeEmail: input.email.trim(),
+        role: input.targetRole,
+        expiresAt: expiresAt.toISOString(),
+      },
     });
 
     return ok({ id, expiresAt });
@@ -219,10 +226,17 @@ export class InvitationService {
     const expiresAt = addDays(new Date(), 7);
     await this.invites.updateStatus(row.id, { tokenHash, expiresAt });
 
-    await this.mailer.sendInviteEmail({
+    await this.email.enqueue({
+      template: "invite",
       to: row.email,
-      inviteLink: this.inviteLink(token),
-      targetRole: row.targetRole,
+      category: "transactional",
+      vars: {
+        inviteUrl: this.inviteLink(token),
+        inviterName: actor?.name ?? null,
+        inviteeEmail: row.email,
+        role: row.targetRole,
+        expiresAt: expiresAt.toISOString(),
+      },
     });
 
     return ok({ expiresAt });

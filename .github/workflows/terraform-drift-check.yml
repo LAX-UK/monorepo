@@ -28,6 +28,11 @@ jobs:
       TF_VAR_spaces_secret_access_key: ${{ secrets.MEDIA_SPACES_SECRET_ACCESS_KEY }}
       TF_VAR_shopify_webhook_secret: ${{ secrets.SHOPIFY_WEBHOOK_SECRET }}
       TF_VAR_wordpress_webhook_secret: ${{ secrets.WORDPRESS_WEBHOOK_SECRET }}
+      TF_VAR_postmark_server_token: ${{ secrets.POSTMARK_SERVER_TOKEN }}
+      TF_VAR_postmark_webhook_basic_auth: ${{ secrets.POSTMARK_WEBHOOK_BASIC_AUTH }}
+      TF_VAR_email_unsubscribe_secret: ${{ secrets.EMAIL_UNSUBSCRIBE_SECRET }}
+      TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
+      TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@v4

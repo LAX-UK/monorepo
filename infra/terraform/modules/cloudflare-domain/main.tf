@@ -83,3 +83,53 @@ resource "cloudflare_ruleset" "auth_waf" {
     enabled     = true
   }
 }
+
+resource "cloudflare_ruleset" "rate_limits" {
+  zone_id     = data.cloudflare_zone.this.id
+  name        = "lax-${var.environment}-rate-limits"
+  description = "Host-scoped API and auth rate limits."
+  kind        = "zone"
+  phase       = "http_ratelimit"
+
+  rules {
+    action      = "block"
+    expression  = "(http.host in {${local.api_host_expression}} and http.request.uri.path eq \"/webhooks/postmark\")"
+    description = "Postmark webhook burst allowance."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src"]
+      period              = 60
+      requests_per_period = var.postmark_webhook_rpm
+      mitigation_timeout  = 60
+    }
+  }
+
+  rules {
+    action      = "block"
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/sign-up\")"
+    description = "Auth sign-up reputation guard."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src"]
+      period              = 60
+      requests_per_period = var.signup_rpm
+      mitigation_timeout  = 60
+    }
+  }
+
+  rules {
+    action      = "block"
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/send-verification-email\")"
+    description = "Verification-email resend guard."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src"]
+      period              = 60
+      requests_per_period = var.send_verification_email_rpm
+      mitigation_timeout  = 60
+    }
+  }
+}
