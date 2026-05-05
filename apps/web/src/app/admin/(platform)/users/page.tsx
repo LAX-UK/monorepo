@@ -1,10 +1,10 @@
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
+import { AdminUsersSearchForm } from "@/components/admin/admin-users-search-form";
 import { Button } from "@/components/ui/button";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { type UserRole, userRoles } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
@@ -124,31 +124,7 @@ export default async function AdminUsersPage({
       ) : null}
 
       {!loadError ? (
-        <form
-          method="get"
-          className="flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
-        >
-          {roleFilter ? <input type="hidden" name="role" value={roleFilter} /> : null}
-          {suspendedOnly ? <input type="hidden" name="suspended" value="1" /> : null}
-          <div className="grid min-w-0 flex-1 gap-1">
-            <label
-              htmlFor="admin-users-server-q"
-              className="font-label text-xs uppercase tracking-widest text-secondary"
-            >
-              Server search
-            </label>
-            <Input
-              id="admin-users-server-q"
-              name="q"
-              defaultValue={q}
-              placeholder="Name or email"
-              className="min-h-11 text-base md:text-sm"
-            />
-          </div>
-          <Button type="submit" className="min-h-11 px-6 py-3">
-            Search
-          </Button>
-        </form>
+        <AdminUsersSearchForm initialQ={q} roleFilter={roleFilter} suspendedOnly={suspendedOnly} />
       ) : null}
 
       {!loadError && rows.length === 0 ? (

@@ -10,8 +10,7 @@ export default async function NewSubmissionPage({
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const catReader = await getServerCategoryReader();
-  const allCats = await catReader.list();
-  const categories = allCats.filter((c) => c.parentId == null);
+  const categories = await catReader.tree();
 
   return (
     <>
@@ -23,7 +22,7 @@ export default async function NewSubmissionPage({
           </Alert>
         </div>
       ) : null}
-      <NewSubmissionForm categories={categories.map((c) => ({ id: c.id, name: c.name }))} />
+      <NewSubmissionForm categories={categories} />
     </>
   );
 }

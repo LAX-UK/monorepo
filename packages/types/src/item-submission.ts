@@ -10,6 +10,13 @@ export const itemSubmissionStatuses = [
 
 export type ItemSubmissionStatus = (typeof itemSubmissionStatuses)[number];
 
+export type ProvenanceEntry = { period?: string | undefined; note: string };
+export type ExhibitionEntry = {
+  year?: string | undefined;
+  venue: string;
+  note?: string | undefined;
+};
+
 export type ItemSubmission = {
   id: string;
   sellerId: string;
@@ -18,8 +25,17 @@ export type ItemSubmission = {
   medium: string | null;
   dimensions: string | null;
   images: string[];
+  yearOfWork?: string | null;
+  isSigned?: boolean;
+  signatureNote?: string | null;
+  edition?: string | null;
+  conditionSelfReport?: string | null;
+  provenance?: ProvenanceEntry[];
+  exhibitions?: ExhibitionEntry[];
   askingPrice: string | null;
   reservePrice: string | null;
+  categoryIds?: string[];
+  /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string;
   submitterNotes: string | null;
   status: ItemSubmissionStatus;
@@ -38,9 +54,18 @@ export type CreateItemSubmissionInput = {
   medium?: string | undefined;
   dimensions?: string | undefined;
   images?: string[] | undefined;
+  yearOfWork?: string | undefined;
+  isSigned?: boolean | undefined;
+  signatureNote?: string | undefined;
+  edition?: string | undefined;
+  conditionSelfReport?: string | undefined;
+  provenance?: ProvenanceEntry[] | undefined;
+  exhibitions?: ExhibitionEntry[] | undefined;
   askingPrice?: string | undefined;
   reservePrice?: string | undefined;
-  categoryId: string;
+  categoryIds?: string[];
+  /** @deprecated Prefer categoryIds. Accepted during the migration window. */
+  categoryId?: string | undefined;
   submitterNotes?: string | undefined;
 };
 

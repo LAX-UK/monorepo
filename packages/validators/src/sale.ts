@@ -15,6 +15,18 @@ const buyerPremiumRateString = z
     return n >= 0 && n <= 1;
   }, "Buyer premium rate must be between 0 and 1");
 
+const optionalCategoryIdsSchema = z.array(z.string().uuid()).max(8).optional();
+
+function normalizeOptionalCategoryIdsInput(raw: unknown): unknown {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  if (Array.isArray(record.categoryIds)) return raw;
+  if (typeof record.categoryId === "string" && record.categoryId.length > 0) {
+    return { ...record, categoryIds: [record.categoryId] };
+  }
+  return raw;
+}
+
 const streamUrlField = z
   .union([z.string().url().max(500), z.literal("")])
   .optional()
@@ -58,6 +70,7 @@ const saleCreateBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
   coverImages: z.array(mediaReferenceSchema).max(20).optional(),
+  categoryIds: optionalCategoryIdsSchema,
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),
   streamUrl: streamUrlField,
@@ -131,18 +144,24 @@ function refineByMode(
   }
 }
 
-export const createSaleSchema = saleCreateBodySchema.superRefine((data, ctx) => {
-  refineByMode(data, ctx, "onsite");
-});
+export const createSaleSchema = z.preprocess(
+  normalizeOptionalCategoryIdsInput,
+  saleCreateBodySchema.superRefine((data, ctx) => {
+    refineByMode(data, ctx, "onsite");
+  }),
+);
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
 
-export const updateSaleSchema = saleCreateBodySchema
-  .partial()
-  .omit({ lots: true })
-  .superRefine((data, ctx) => {
-    refineByMode(data, ctx, "onsite");
-  });
+export const updateSaleSchema = z.preprocess(
+  normalizeOptionalCategoryIdsInput,
+  saleCreateBodySchema
+    .partial()
+    .omit({ lots: true })
+    .superRefine((data, ctx) => {
+      refineByMode(data, ctx, "onsite");
+    }),
+);
 
 export const listSalesQuerySchema = z.object({
   status: z.enum(saleStatuses).optional(),
@@ -160,6 +179,19 @@ export const listSalesQuerySchema = z.object({
       message: "Invalid sale status in statuses",
     }),
   categoryId: z.string().uuid().optional(),
+  categoryIds: z
+    .string()
+    .optional()
+    .transform((s) => {
+      if (!s?.trim()) return undefined;
+      return s
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    })
+    .refine((arr) => arr == null || arr.every((x) => z.string().uuid().safeParse(x).success), {
+      message: "Invalid category ID in categoryIds",
+    }),
   sort: z.enum(["createdDesc", "startAsc"]).optional().default("createdDesc"),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),

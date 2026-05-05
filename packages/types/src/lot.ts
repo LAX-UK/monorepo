@@ -36,6 +36,8 @@ export type Lot = {
   /** Display dimensions (e.g. 180 x 140 cm). */
   dimensions: string | null;
   images: string[];
+  categoryIds?: string[];
+  /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string;
   auctionType: LotAuctionType;
   startingPrice: string;
@@ -65,7 +67,9 @@ export type CreateLotInput = {
   medium?: string | undefined;
   dimensions?: string | undefined;
   images?: string[] | undefined;
-  categoryId: string;
+  categoryIds?: string[];
+  /** @deprecated Prefer categoryIds. Accepted during the migration window. */
+  categoryId?: string | undefined;
   auctionType: LotAuctionType;
   startingPrice: string;
   reservePrice?: string | undefined;

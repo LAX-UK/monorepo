@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
-import { category } from "./categories.js";
 
 export const saleStatusEnum = pgEnum("sale_status", [
   "draft",
@@ -20,9 +19,6 @@ export const sale = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     coverImages: text("cover_images").array().notNull().default([]),
-    categoryId: uuid("category_id").references(() => category.id, {
-      onDelete: "set null",
-    }),
     deliveryMode: saleDeliveryModeEnum("delivery_mode").notNull().default("onsite"),
     streamUrl: text("stream_url"),
     locationName: text("location_name"),
@@ -52,7 +48,6 @@ export const sale = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("sale_category_id_idx").on(table.categoryId),
     index("sale_status_end_time_idx").on(table.status, table.endTime),
     index("sale_created_by_idx").on(table.createdBy),
     index("sale_start_time_idx").on(table.startTime),

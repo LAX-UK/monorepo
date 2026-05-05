@@ -12,7 +12,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
-import { category } from "./categories.js";
 import { sale } from "./sales.js";
 
 export const lotAuctionTypeEnum = pgEnum("auction_type", [
@@ -44,9 +43,6 @@ export const lot = pgTable(
     medium: text("medium"),
     dimensions: text("dimensions"),
     images: text("images").array().notNull().default([]),
-    categoryId: uuid("category_id")
-      .notNull()
-      .references(() => category.id, { onDelete: "restrict" }),
     auctionType: lotAuctionTypeEnum("auction_type").notNull(),
     startingPrice: numeric("starting_price", { precision: 18, scale: 2 }).notNull(),
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
@@ -78,7 +74,6 @@ export const lot = pgTable(
   },
   (table) => [
     index("lot_seller_id_idx").on(table.sellerId),
-    index("lot_category_id_idx").on(table.categoryId),
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
     uniqueIndex("lot_sale_id_lot_number_uid")

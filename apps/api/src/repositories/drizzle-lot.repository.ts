@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { lot, user } from "@auction/db/schema";
+import { lot, lotCategories, user } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
@@ -24,7 +24,21 @@ function endYearBoundsUtc(year: number): { start: Date; end: Date } {
 function listWhere(input: ListWhereInput) {
   const conditions = [];
   if (input.status) conditions.push(eq(lot.status, input.status));
-  if (input.categoryId) conditions.push(eq(lot.categoryId, input.categoryId));
+  const categoryIds = input.categoryIds?.length
+    ? input.categoryIds
+    : input.categoryId
+      ? [input.categoryId]
+      : [];
+  if (categoryIds.length > 0) {
+    conditions.push(sql`exists (
+      select 1 from ${lotCategories}
+      where ${lotCategories.lotId} = ${lot.id}
+        and ${lotCategories.categoryId} in (${sql.join(
+          categoryIds.map((categoryId) => sql`${categoryId}`),
+          sql`, `,
+        )})
+    )`);
+  }
   if (input.sellerId) conditions.push(eq(lot.sellerId, input.sellerId));
   if (input.winnerId) conditions.push(eq(lot.winnerId, input.winnerId));
   if (input.saleId) conditions.push(eq(lot.saleId, input.saleId));
@@ -61,57 +75,99 @@ function listOrderBy(sort: ListLotsSort | undefined) {
 export class DrizzleLotRepository implements ILotRepository {
   constructor(private readonly db: Database) {}
 
+  private async categoryIdsByLotIds(ids: string[]): Promise<Map<string, string[]>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        lotId: lotCategories.lotId,
+        categoryId: lotCategories.categoryId,
+      })
+      .from(lotCategories)
+      .where(inArray(lotCategories.lotId, ids))
+      .orderBy(asc(lotCategories.sortOrder));
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+      const arr = map.get(row.lotId) ?? [];
+      arr.push(row.categoryId);
+      map.set(row.lotId, arr);
+    }
+    return map;
+  }
+
+  private async withCategoryIds<T extends typeof lot.$inferSelect>(rows: T[]): Promise<Lot[]> {
+    const categoriesByLot = await this.categoryIdsByLotIds(rows.map((row) => row.id));
+    return rows.map((row) => mapLotRow(row, categoriesByLot.get(row.id) ?? []));
+  }
+
   async findById(id: string) {
     const rows = await this.db.select().from(lot).where(eq(lot.id, id)).limit(1);
     const row = rows[0];
-    return row ? mapLotRow(row) : null;
+    if (!row) return null;
+    const categories = await this.categoryIdsByLotIds([row.id]);
+    return mapLotRow(row, categories.get(row.id) ?? []);
   }
 
   async findByIdForUpdate(id: string) {
     const rows = await this.db.select().from(lot).where(eq(lot.id, id)).for("update").limit(1);
     const row = rows[0];
-    return row ? mapLotRow(row) : null;
+    if (!row) return null;
+    const categories = await this.categoryIdsByLotIds([row.id]);
+    return mapLotRow(row, categories.get(row.id) ?? []);
   }
 
   async create(sellerId: string, input: CreateLotInput) {
     const images = input.images ?? [];
-    const [row] = await this.db
-      .insert(lot)
-      .values({
-        sellerId,
-        title: input.title,
-        description: input.description ?? null,
-        medium: input.medium ?? null,
-        dimensions: input.dimensions ?? null,
-        images,
-        categoryId: input.categoryId,
-        auctionType: input.auctionType,
-        startingPrice: input.startingPrice,
-        reservePrice: input.reservePrice ?? null,
-        buyNowPrice: input.buyNowPrice ?? null,
-        currentPrice: input.startingPrice,
-        ...(input.buyerPremiumRate !== undefined
-          ? { buyerPremiumRate: input.buyerPremiumRate }
-          : {}),
-        startTime: input.startTime,
-        endTime: input.endTime,
-        status: "draft",
-        ...(input.minBidIncrement !== undefined ? { minBidIncrement: input.minBidIncrement } : {}),
-        ...(input.dutchDecrementAmount !== undefined
-          ? { dutchDecrementAmount: input.dutchDecrementAmount }
-          : {}),
-        ...(input.dutchDecrementIntervalMs !== undefined
-          ? { dutchDecrementIntervalMs: input.dutchDecrementIntervalMs }
-          : {}),
-        ...(input.saleId !== undefined && input.saleId !== null ? { saleId: input.saleId } : {}),
-        ...(input.lotNumber !== undefined && input.lotNumber !== null
-          ? { lotNumber: input.lotNumber }
-          : {}),
-        marketingDetails: {},
-      })
-      .returning();
-    if (!row) throw new Error("Failed to create lot");
-    return mapLotRow(row);
+    const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
+    const row = await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(lot)
+        .values({
+          sellerId,
+          title: input.title,
+          description: input.description ?? null,
+          medium: input.medium ?? null,
+          dimensions: input.dimensions ?? null,
+          images,
+          auctionType: input.auctionType,
+          startingPrice: input.startingPrice,
+          reservePrice: input.reservePrice ?? null,
+          buyNowPrice: input.buyNowPrice ?? null,
+          currentPrice: input.startingPrice,
+          ...(input.buyerPremiumRate !== undefined
+            ? { buyerPremiumRate: input.buyerPremiumRate }
+            : {}),
+          startTime: input.startTime,
+          endTime: input.endTime,
+          status: "draft",
+          ...(input.minBidIncrement !== undefined
+            ? { minBidIncrement: input.minBidIncrement }
+            : {}),
+          ...(input.dutchDecrementAmount !== undefined
+            ? { dutchDecrementAmount: input.dutchDecrementAmount }
+            : {}),
+          ...(input.dutchDecrementIntervalMs !== undefined
+            ? { dutchDecrementIntervalMs: input.dutchDecrementIntervalMs }
+            : {}),
+          ...(input.saleId !== undefined && input.saleId !== null ? { saleId: input.saleId } : {}),
+          ...(input.lotNumber !== undefined && input.lotNumber !== null
+            ? { lotNumber: input.lotNumber }
+            : {}),
+          marketingDetails: {},
+        })
+        .returning();
+      if (!created) throw new Error("Failed to create lot");
+      if (categoryIds.length > 0) {
+        await tx.insert(lotCategories).values(
+          categoryIds.map((categoryId, index) => ({
+            lotId: created.id,
+            categoryId,
+            sortOrder: index,
+          })),
+        );
+      }
+      return created;
+    });
+    return mapLotRow(row, categoryIds);
   }
 
   async list(filter: ListLotsFilter) {
@@ -126,7 +182,7 @@ export class DrizzleLotRepository implements ILotRepository {
         .orderBy(asc(user.name), desc(lot.endTime))
         .limit(filter.limit)
         .offset(filter.offset);
-      return rows.map((r) => mapLotRow(r.lotRow));
+      return this.withCategoryIds(rows.map((r) => r.lotRow));
     }
 
     const orderBy = listOrderBy(filter.sort);
@@ -139,7 +195,7 @@ export class DrizzleLotRepository implements ILotRepository {
       .limit(filter.limit)
       .offset(filter.offset);
 
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async countMatching(filter: ListWhereInput): Promise<number> {
@@ -179,7 +235,7 @@ export class DrizzleLotRepository implements ILotRepository {
       .select()
       .from(lot)
       .where(and(eq(lot.status, "scheduled"), lte(lot.startTime, asOf)));
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async findActivePastEnd(asOf: Date): Promise<Lot[]> {
@@ -187,7 +243,7 @@ export class DrizzleLotRepository implements ILotRepository {
       .select()
       .from(lot)
       .where(and(eq(lot.status, "active"), lte(lot.endTime, asOf)));
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async findActiveByEndTimeBetween(endAfter: Date, endBeforeInclusive: Date): Promise<Lot[]> {
@@ -201,7 +257,7 @@ export class DrizzleLotRepository implements ILotRepository {
           lte(lot.endTime, endBeforeInclusive),
         ),
       );
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async findActiveDutchLots(): Promise<Lot[]> {
@@ -209,7 +265,7 @@ export class DrizzleLotRepository implements ILotRepository {
       .select()
       .from(lot)
       .where(and(eq(lot.status, "active"), eq(lot.auctionType, "dutch")));
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async setDutchLastDecrementAt(id: string, at: Date | null): Promise<void> {
@@ -273,7 +329,12 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.medium !== undefined) patch.medium = input.medium ?? null;
     if (input.dimensions !== undefined) patch.dimensions = input.dimensions ?? null;
     if (input.images !== undefined) patch.images = input.images;
-    if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
+    const categoryIds =
+      input.categoryIds !== undefined
+        ? input.categoryIds
+        : input.categoryId
+          ? [input.categoryId]
+          : undefined;
     if (input.auctionType !== undefined) patch.auctionType = input.auctionType;
     if (input.startingPrice !== undefined) {
       patch.startingPrice = input.startingPrice;
@@ -292,9 +353,25 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.saleId !== undefined) patch.saleId = input.saleId;
     if (input.lotNumber !== undefined) patch.lotNumber = input.lotNumber;
 
-    const [row] = await this.db.update(lot).set(patch).where(eq(lot.id, id)).returning();
-    if (!row) throw new Error("Lot update failed");
-    return mapLotRow(row);
+    const row = await this.db.transaction(async (tx) => {
+      const [updated] = await tx.update(lot).set(patch).where(eq(lot.id, id)).returning();
+      if (!updated) throw new Error("Lot update failed");
+      if (categoryIds !== undefined) {
+        await tx.delete(lotCategories).where(eq(lotCategories.lotId, id));
+        if (categoryIds.length > 0) {
+          await tx.insert(lotCategories).values(
+            categoryIds.map((categoryId, index) => ({
+              lotId: id,
+              categoryId,
+              sortOrder: index,
+            })),
+          );
+        }
+      }
+      return updated;
+    });
+    const categories = await this.categoryIdsByLotIds([row.id]);
+    return mapLotRow(row, categories.get(row.id) ?? []);
   }
 
   async updateMarketingDetails(id: string, patch: UpdateLotMarketingDetailsInput): Promise<Lot> {
@@ -307,7 +384,8 @@ export class DrizzleLotRepository implements ILotRepository {
       .where(eq(lot.id, id))
       .returning();
     if (!row) throw new Error("Lot update failed");
-    return mapLotRow(row);
+    const categories = await this.categoryIdsByLotIds([row.id]);
+    return mapLotRow(row, categories.get(row.id) ?? []);
   }
 
   async setWinner(id: string, winnerId: string) {
@@ -323,12 +401,12 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async findBySaleId(saleId: string): Promise<Lot[]> {
     const rows = await this.db.select().from(lot).where(eq(lot.saleId, saleId));
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 
   async findBySaleIds(saleIds: string[]): Promise<Lot[]> {
     if (saleIds.length === 0) return [];
     const rows = await this.db.select().from(lot).where(inArray(lot.saleId, saleIds));
-    return rows.map(mapLotRow);
+    return this.withCategoryIds(rows);
   }
 }

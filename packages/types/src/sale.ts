@@ -9,6 +9,8 @@ export type Sale = {
   title: string;
   description: string | null;
   coverImages: string[];
+  categoryIds?: string[];
+  /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string | null;
   deliveryMode: SaleDeliveryMode;
   streamUrl: string | null;
@@ -49,7 +51,9 @@ export type CreateSaleInput = {
   title: string;
   description?: string | undefined;
   coverImages?: string[] | undefined;
-  /** Optional theme category (marketing + default for nested lots in admin). */
+  /** Optional theme categories (marketing + defaults for nested lots in admin). */
+  categoryIds?: string[] | undefined;
+  /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;
   deliveryMode?: SaleDeliveryMode | undefined;
   streamUrl?: string | null | undefined;

@@ -51,8 +51,21 @@ export type WatchlistWithLotRow = {
   lot: Lot | null;
 };
 
-export async function getServerMyWatchlist(): Promise<WatchlistWithLotRow[]> {
-  const res = await authedServerFetch("/users/me/watchlist");
+export type WatchlistListParams = {
+  sort?: "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
+  status?: "active" | "scheduled" | "ended";
+  categoryIds?: string[];
+};
+
+export async function getServerMyWatchlist(
+  params: WatchlistListParams = {},
+): Promise<WatchlistWithLotRow[]> {
+  const qs = new URLSearchParams();
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.status) qs.set("status", params.status);
+  if (params.categoryIds?.length) qs.set("categoryIds", params.categoryIds.join(","));
+  const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(`/users/me/watchlist${suffix}`);
   if (!res.ok) {
     throw new Error(`Failed to load watchlist: ${res.status}`);
   }

@@ -14,6 +14,7 @@ import {
   userIdParamSchema,
   watchlistBodySchema,
   watchlistLotIdParamSchema,
+  watchlistQuerySchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
@@ -111,9 +112,14 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data });
   });
 
-  r.get("/me/watchlist", requireAuth, async (c) => {
+  r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
-    const rows = await container.watchlistService.listWithLots(userId);
+    const query = c.req.valid("query");
+    const rows = await container.watchlistService.listWithLots(userId, {
+      sort: query.sort,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
+    });
     const data = await Promise.all(
       rows.map(async (row) => ({
         ...row,

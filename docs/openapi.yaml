@@ -31,9 +31,10 @@ paths:
 
   /lots:
     get:
-      summary: List lots with status, category, seller, winner, sale, archive, search, sort, and pagination filters
+      summary: List lots with status, single or multi-category, seller, winner, sale, archive, search, sort, and pagination filters
+      description: Supports legacy `categoryId` and comma-separated `categoryIds` filters. Responses include `categoryIds` plus a transitional `categoryId` alias for the primary category.
     post:
-      summary: Create a draft standalone lot (admin)
+      summary: Create a draft standalone lot with one or more categories (admin)
   /lots/bulk:
     post:
       summary: Bulk publish or cancel lots (admin)
@@ -75,9 +76,10 @@ paths:
 
   /sales:
     get:
-      summary: List sales with status/statuses, category, sort, and pagination filters
+      summary: List sales with status/statuses, single or multi-category, sort, and pagination filters
+      description: Supports legacy `categoryId` and comma-separated `categoryIds` filters. Responses include `categoryIds` plus a transitional `categoryId` alias for the primary category.
     post:
-      summary: Create a draft sale, optionally with nested draft lots (admin)
+      summary: Create a draft sale, optionally with multi-category nested draft lots (admin)
   /sales/{id}:
     parameters:
       - $ref: "#/components/parameters/SaleId"
@@ -174,7 +176,12 @@ paths:
 
   /submissions:
     post:
-      summary: Create a draft seller item submission (auth)
+      summary: Create a draft seller item submission with multi-category and catalog enrichment fields (auth)
+      description: Accepts `categoryIds`, year/signature/edition/condition fields, and structured provenance/exhibition arrays.
+  /users/me/watchlist:
+    get:
+      summary: List watched lots with sort, status, and multi-category filters (auth)
+      description: Supports `sort=addedDesc|endingSoon|priceAsc|priceDesc`, `status=active|scheduled|ended`, and comma-separated `categoryIds`.
   /categories:
     get:
       summary: List categories

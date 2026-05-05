@@ -10,6 +10,7 @@ import {
 } from "@/lib/forms/form-result";
 import {
   createAddressBodySchema,
+  updateAddressBodySchema,
   updateProfileNameFormSchema,
   updateProfileSchema,
 } from "@auction/validators";
@@ -77,6 +78,47 @@ export async function createAddressFromValuesAction(
     return actionFailure(r.message, undefined, r.status);
   }
   revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
+  return actionSuccess();
+}
+
+export async function updateAddressFromValuesAction(
+  id: string,
+  input: z.infer<typeof updateAddressBodySchema>,
+): Promise<ActionResult<void>> {
+  const addressId = id.trim();
+  if (!addressId) return actionFailure("Missing address");
+  const parsed = updateAddressBodySchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  const { profile } = getWriteContainer();
+  const r = await profile.updateAddress(addressId, parsed.data);
+  if (!r.ok) return actionFailure(r.message, undefined, r.status);
+  revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
+  return actionSuccess();
+}
+
+export async function removeAddressAction(id: string): Promise<ActionResult<void>> {
+  const addressId = id.trim();
+  if (!addressId) return actionFailure("Missing address");
+  const { profile } = getWriteContainer();
+  const r = await profile.removeAddress(addressId);
+  if (!r.ok) return actionFailure(r.message, undefined, r.status);
+  revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
+  return actionSuccess();
+}
+
+export async function setDefaultAddressAction(id: string): Promise<ActionResult<void>> {
+  const addressId = id.trim();
+  if (!addressId) return actionFailure("Missing address");
+  const { profile } = getWriteContainer();
+  const r = await profile.setDefaultAddress(addressId);
+  if (!r.ok) return actionFailure(r.message, undefined, r.status);
+  revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
   return actionSuccess();
 }
 
@@ -95,6 +137,7 @@ export async function updateProfileNameAction(formData: FormData): Promise<void>
     redirect(`/dashboard/settings/profile?error=${encodeURIComponent(r.message)}`);
   }
   revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
   revalidatePath("/dashboard");
   const { redirect } = await import("next/navigation");
   redirect("/dashboard/settings/profile");

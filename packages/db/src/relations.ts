@@ -3,18 +3,18 @@ import { user } from "./schema/auth.js";
 import { bid } from "./schema/bids.js";
 import { category } from "./schema/categories.js";
 import { itemSubmission } from "./schema/item-submissions.js";
+import { lotCategories } from "./schema/lot-categories.js";
 import { lot } from "./schema/lots.js";
+import { saleCategories } from "./schema/sale-categories.js";
 import { sale } from "./schema/sales.js";
+import { submissionCategories } from "./schema/submission-categories.js";
 
 export const saleRelations = relations(sale, ({ one, many }) => ({
   creator: one(user, {
     fields: [sale.createdBy],
     references: [user.id],
   }),
-  themeCategory: one(category, {
-    fields: [sale.categoryId],
-    references: [category.id],
-  }),
+  categories: many(saleCategories),
   lots: many(lot),
 }));
 
@@ -31,10 +31,7 @@ export const lotRelations = relations(lot, ({ one, many }) => ({
     fields: [lot.winnerId],
     references: [user.id],
   }),
-  category: one(category, {
-    fields: [lot.categoryId],
-    references: [category.id],
-  }),
+  categories: many(lotCategories),
   bids: many(bid),
 }));
 
@@ -56,12 +53,12 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
     relationName: "category_parent",
   }),
   children: many(category, { relationName: "category_parent" }),
-  lots: many(lot),
-  themedSales: many(sale),
-  submissions: many(itemSubmission),
+  lots: many(lotCategories),
+  themedSales: many(saleCategories),
+  submissions: many(submissionCategories),
 }));
 
-export const itemSubmissionRelations = relations(itemSubmission, ({ one }) => ({
+export const itemSubmissionRelations = relations(itemSubmission, ({ one, many }) => ({
   seller: one(user, {
     fields: [itemSubmission.sellerId],
     references: [user.id],
@@ -72,12 +69,42 @@ export const itemSubmissionRelations = relations(itemSubmission, ({ one }) => ({
     references: [user.id],
     relationName: "submission_reviewer",
   }),
-  category: one(category, {
-    fields: [itemSubmission.categoryId],
-    references: [category.id],
-  }),
+  categories: many(submissionCategories),
   convertedLot: one(lot, {
     fields: [itemSubmission.convertedLotId],
     references: [lot.id],
+  }),
+}));
+
+export const lotCategoryRelations = relations(lotCategories, ({ one }) => ({
+  lot: one(lot, {
+    fields: [lotCategories.lotId],
+    references: [lot.id],
+  }),
+  category: one(category, {
+    fields: [lotCategories.categoryId],
+    references: [category.id],
+  }),
+}));
+
+export const saleCategoryRelations = relations(saleCategories, ({ one }) => ({
+  sale: one(sale, {
+    fields: [saleCategories.saleId],
+    references: [sale.id],
+  }),
+  category: one(category, {
+    fields: [saleCategories.categoryId],
+    references: [category.id],
+  }),
+}));
+
+export const submissionCategoryRelations = relations(submissionCategories, ({ one }) => ({
+  submission: one(itemSubmission, {
+    fields: [submissionCategories.submissionId],
+    references: [itemSubmission.id],
+  }),
+  category: one(category, {
+    fields: [submissionCategories.categoryId],
+    references: [category.id],
   }),
 }));
