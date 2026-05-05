@@ -6,6 +6,7 @@ import { AppShellSidebar } from "@/components/layout/app-shell-sidebar";
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
+import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import { SidebarStateProvider, useSidebarState } from "@/components/layout/sidebar-state";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
@@ -198,18 +199,7 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
             )}
             data-density={density}
           >
-            {user.emailStatus === "bounced" || user.emailStatus === "complained" ? (
-              <div className="mb-6 rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 font-body text-sm text-on-surface">
-                We could not deliver email to your current address.{" "}
-                <Link
-                  href="/dashboard/settings/account"
-                  className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-                >
-                  Update your email address
-                </Link>
-                .
-              </div>
-            ) : null}
+            <EmailStatusBanner user={user} />
             {children}
           </div>
         </main>

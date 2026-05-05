@@ -4,6 +4,7 @@ import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-t
 
 const items = [
   { href: "/dashboard/settings/profile", label: "Profile" },
+  { href: "/dashboard/settings/account", label: "Account" },
   { href: "/dashboard/settings/notifications", label: "Notifications" },
   { href: "/dashboard/settings/security", label: "Security" },
   { href: "/dashboard/settings/bidding", label: "Bidding" },

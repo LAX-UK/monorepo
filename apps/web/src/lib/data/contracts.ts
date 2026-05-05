@@ -56,6 +56,7 @@ export type SessionUser = {
   image?: string | null;
   /** When true (if API exposes it), bidding UI is blocked client-side. */
   suspended?: boolean;
+  emailVerified?: boolean;
   emailStatus?: "ok" | "bounced" | "complained";
   emailStatusChangedAt?: string | Date | null;
 };

@@ -40,6 +40,7 @@ import {
 } from "./repositories/drizzle-admin-user.reader.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
+import { DrizzleEmailObservabilityRepository } from "./repositories/drizzle-email-observability.repository.js";
 import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
@@ -80,6 +81,7 @@ import { ErrorHandlerService } from "./services/error-handler.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
@@ -151,6 +153,7 @@ export type Container = {
   notificationDispatcher: NotificationDispatcher;
   notificationFactory: NotificationFactory;
   emailService: IEmailService;
+  emailObservabilityRepository: IEmailObservabilityRepository;
   userSuspensionChecker: IUserSuspensionChecker;
   registrationService: RegistrationService;
   invitationService: InvitationService;
@@ -222,6 +225,7 @@ export function createContainer(env: Env): Container {
   const notificationWriteRepo = new DrizzleNotificationWriteRepository(db);
   const paymentRepo = new DrizzlePaymentRepository(db);
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
+  const emailObservabilityRepository = new DrizzleEmailObservabilityRepository(db);
   const pushSubscriptionRepository = new DrizzlePushSubscriptionRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
   const addressRepo = new DrizzleAddressRepository(db);
@@ -496,6 +500,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher,
     notificationFactory,
     emailService,
+    emailObservabilityRepository,
     userSuspensionChecker,
     registrationService,
     invitationService,

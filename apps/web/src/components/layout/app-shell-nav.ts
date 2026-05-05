@@ -104,6 +104,7 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
     { id: "users", label: "Users", href: "/admin/users", icon: Users },
     { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { id: "invitations", label: "Invitations", href: "/admin/invitations", icon: Mail },
+    { id: "email", label: "Email", href: "/admin/email/outbox", icon: Mail },
   ];
 }
 

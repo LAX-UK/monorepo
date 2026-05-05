@@ -42,12 +42,7 @@ export default async function ProfileSettingsPage({
           <AlertDescription>{err}</AlertDescription>
         </Alert>
       ) : null}
-      <ProfileSettingsBoard
-        email={me.email}
-        initialName={me.name}
-        initialImage={me.image}
-        addresses={addresses}
-      />
+      <ProfileSettingsBoard initialName={me.name} initialImage={me.image} addresses={addresses} />
     </div>
   );
 }

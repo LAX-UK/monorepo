@@ -1,9 +1,13 @@
 import {
   adminAnalyticsQuerySchema,
+  adminListEventsQuerySchema,
+  adminListOutboxQuerySchema,
+  adminListSuppressionsQuerySchema,
   adminSetRoleBodySchema,
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
   adminUserListQuerySchema,
+  emailHashParamSchema,
   paymentIdParamSchema,
   userIdParamSchema,
 } from "@auction/validators";
@@ -69,6 +73,42 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.attentionFeedReader.list();
     return c.json({ data });
   });
+
+  platform.get("/email/outbox", zValidator("query", adminListOutboxQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const data = await container.emailObservabilityRepository.listOutbox({
+      ...(q.status ? { status: q.status } : {}),
+      limit: q.limit,
+      offset: q.offset,
+    });
+    return c.json({ data });
+  });
+
+  platform.get("/email/events", zValidator("query", adminListEventsQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const data = await container.emailObservabilityRepository.listEvents(q);
+    return c.json({ data });
+  });
+
+  platform.get(
+    "/email/suppressions",
+    zValidator("query", adminListSuppressionsQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.emailObservabilityRepository.listSuppressions(q);
+      return c.json({ data });
+    },
+  );
+
+  platform.delete(
+    "/email/suppressions/:emailHash",
+    zValidator("param", emailHashParamSchema),
+    async (c) => {
+      const { emailHash } = c.req.valid("param");
+      await container.emailObservabilityRepository.deleteSuppression({ emailHash });
+      return c.json({ ok: true });
+    },
+  );
 
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");

@@ -28,6 +28,14 @@ export function SignInForm() {
           inbox.
         </output>
       ) : null}
+      {searchParams.get("reset") === "1" ? (
+        <output
+          className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
+          aria-live="polite"
+        >
+          Password updated. Sign in with your new password.
+        </output>
+      ) : null}
       {searchParams.get("auth") === "required" ? (
         <p className="rounded-sm border border-brand-300 bg-surface-container-low px-4 py-3 font-footer-links text-sm text-brand-500 dark:border-outline-variant dark:bg-surface-container dark:text-on-surface-variant">
           Please sign in to continue.
