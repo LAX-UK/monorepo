@@ -155,6 +155,20 @@
       "when": 1777900000000,
       "tag": "0021_email_integration_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1778000000000,
+      "tag": "0022_multi_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1778100000000,
+      "tag": "0023_submission_expansion",
+      "breakpoints": true
     }
   ]
 }
