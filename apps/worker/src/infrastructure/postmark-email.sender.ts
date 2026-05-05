@@ -1,4 +1,9 @@
-import { renderEmail, type IEmailSender, type TemplateName, type TemplateVarsByName } from "@auction/email";
+import {
+  type IEmailSender,
+  type TemplateName,
+  type TemplateVarsByName,
+  renderEmail,
+} from "@auction/email";
 import postmark from "postmark";
 
 type PostmarkEmailSenderOptions = {
@@ -34,9 +39,7 @@ export class PostmarkEmailSender implements IEmailSender {
       HtmlBody: rendered.html,
       TextBody: rendered.text,
       MessageStream:
-        payload.stream === "broadcast"
-          ? this.opts.broadcastStream
-          : this.opts.transactionalStream,
+        payload.stream === "broadcast" ? this.opts.broadcastStream : this.opts.transactionalStream,
       Tag: payload.template,
       Metadata: {
         outboxId: payload.outboxId,

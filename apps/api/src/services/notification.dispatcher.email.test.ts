@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
-import type { INotificationChannel, NotificationPayload } from "./interfaces/notification-channel.js";
+import type {
+  INotificationChannel,
+  NotificationPayload,
+} from "./interfaces/notification-channel.js";
 import type { INotificationPreferenceReader } from "./interfaces/notification-preference.js";
 import { NotificationDispatcher } from "./notification.dispatcher.js";
 

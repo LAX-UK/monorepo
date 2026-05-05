@@ -69,7 +69,9 @@ export const emailEvent = pgTable(
     type: text("type").$type<EmailEventType>().notNull(),
     provider: text("provider").notNull().default("postmark"),
     payload: jsonb("payload").notNull().$type<Record<string, unknown>>(),
-    receivedAt: timestamp("received_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    receivedAt: timestamp("received_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("email_event_message_id_idx").on(table.messageId),

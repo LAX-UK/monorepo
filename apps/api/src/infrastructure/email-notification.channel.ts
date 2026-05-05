@@ -1,11 +1,11 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
 import { createUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
 import { notificationTypeToTemplate } from "../lib/notification-preference-keys.js";
+import type { IEmailService } from "../services/interfaces/email.js";
 import type {
   INotificationChannel,
   NotificationPayload,
 } from "../services/interfaces/notification-channel.js";
-import type { IEmailService } from "../services/interfaces/email.js";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
 
 const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);

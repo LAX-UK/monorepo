@@ -8,7 +8,9 @@ import LotEndedSellerEmail, {
   subject as lotEndedSellerSubject,
 } from "./templates/lot-ended-seller.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
-import PasswordChanged, { subject as passwordChangedSubject } from "./templates/password-changed.js";
+import PasswordChanged, {
+  subject as passwordChangedSubject,
+} from "./templates/password-changed.js";
 import PaymentReceiptEmail, {
   subject as paymentReceiptSubject,
 } from "./templates/payment-receipt.js";

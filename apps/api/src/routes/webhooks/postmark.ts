@@ -67,7 +67,9 @@ function mapRecordType(recordType: string, payload: PostmarkPayload) {
     case "Delivery":
       return "delivered" as const;
     case "Bounce":
-      return String(payload.Type ?? "").toLowerCase().includes("transient")
+      return String(payload.Type ?? "")
+        .toLowerCase()
+        .includes("transient")
         ? ("soft_bounce" as const)
         : ("bounce" as const);
     case "SpamComplaint":

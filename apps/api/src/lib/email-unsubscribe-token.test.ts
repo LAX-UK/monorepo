@@ -8,7 +8,10 @@ const secret = "test-unsubscribe-secret-long-enough";
 describe("email unsubscribe identifiers", () => {
   for (const notificationType of ["outbid", "lot_won", "lot_ended_seller"] as const) {
     it(`round-trips ${notificationType}`, () => {
-      const token = createUnsubscribeToken({ scope: "type", userId: "user_1", notificationType }, secret);
+      const token = createUnsubscribeToken(
+        { scope: "type", userId: "user_1", notificationType },
+        secret,
+      );
       expect(verifyUnsubscribeToken(token, secret)).toEqual({
         scope: "type",
         userId: "user_1",

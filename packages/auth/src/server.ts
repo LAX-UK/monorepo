@@ -1,5 +1,4 @@
 import type { Database } from "@auction/db";
-import type { IEmailService } from "@auction/email";
 import {
   account,
   oauthAccessToken,
@@ -9,6 +8,7 @@ import {
   user,
   verification,
 } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { jwt } from "better-auth/plugins/jwt";

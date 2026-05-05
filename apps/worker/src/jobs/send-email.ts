@@ -1,6 +1,6 @@
-import type { IEmailSender, TemplateName } from "@auction/email";
 import type { Database } from "@auction/db";
 import { emailOutbox, emailSuppression, user } from "@auction/db/schema";
+import type { IEmailSender, TemplateName } from "@auction/email";
 import type { Queue } from "bullmq";
 import { and, eq, lt, sql } from "drizzle-orm";
 import type pino from "pino";
@@ -116,7 +116,10 @@ export async function enqueueStaleEmailOutboxRows({
   return stale.length;
 }
 
-async function resolveRecipient(db: Database, row: typeof emailOutbox.$inferSelect): Promise<string> {
+async function resolveRecipient(
+  db: Database,
+  row: typeof emailOutbox.$inferSelect,
+): Promise<string> {
   if (row.toSnapshot) return row.toSnapshot;
   if (!row.userId) {
     throw new Error(`email_outbox row ${row.id} has no recipient snapshot or user_id`);

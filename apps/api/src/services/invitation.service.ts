@@ -4,12 +4,12 @@ import { user, userInvitation } from "@auction/db/schema";
 import { type UserRole, roleHasCapability } from "@auction/types";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type { IEmailService } from "./interfaces/email.js";
 import type {
   IUserInvitationRepository,
   InvitationRow,
   InvitationSummary,
 } from "./interfaces/invitation.js";
-import type { IEmailService } from "./interfaces/email.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
 
 export type InvitationError = { message: string; status: number };
