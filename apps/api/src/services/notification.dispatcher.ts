@@ -5,7 +5,7 @@ import type {
 import type { INotificationPreferenceReader } from "./interfaces/notification-preference.js";
 import type { IQuietHoursChecker } from "./quiet-hours.checker.js";
 
-/** Orchestrates in-app + push delivery with preference + quiet-hours gates. */
+/** Orchestrates notification delivery with preference + quiet-hours gates. */
 export class NotificationDispatcher {
   constructor(
     private readonly channels: INotificationChannel[],
@@ -27,6 +27,14 @@ export class NotificationDispatcher {
         await ch.send(userId, payload);
       } else if (ch.channelKind === "push") {
         if (!(await this.preferences.isChannelEnabled(userId, payload.type, "push"))) continue;
+        if (quiet) continue;
+        await ch.send(userId, payload);
+      } else if (ch.channelKind === "email") {
+        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "email"))) continue;
+        if (quiet) continue;
+        await ch.send(userId, payload);
+      } else if (ch.channelKind === "whatsapp") {
+        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "whatsapp"))) continue;
         if (quiet) continue;
         await ch.send(userId, payload);
       }

@@ -5,11 +5,13 @@ locals {
   media_cdn    = "lax-media.lon1.cdn.digitaloceanspaces.com"
   app_hostname = "lax-test-app-s3u4b.ondigitalocean.app"
   subdomains = {
-    web   = { name = "test", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test web App Platform hostname" }
-    api   = { name = "test-api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test api App Platform hostname" }
-    auth  = { name = "test-auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test auth App Platform hostname" }
-    ws    = { name = "test-ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test ws App Platform hostname" }
-    media = { name = "test-media", type = "CNAME", value = local.media_cdn, proxied = true, comment = "lax test media CDN" }
+    web                  = { name = "test", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test web App Platform hostname" }
+    api                  = { name = "test-api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test api App Platform hostname" }
+    auth                 = { name = "test-auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test auth App Platform hostname" }
+    ws                   = { name = "test-ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax test ws App Platform hostname" }
+    media                = { name = "test-media", type = "CNAME", value = local.media_cdn, proxied = true, comment = "lax test media CDN" }
+    postmark_dkim        = { name = "20260505005739pm._domainkey.mail.test", type = "TXT", value = "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDfWy7bTm/IOyqliVj57Fkq8W3UvPumahYO7OmojSKB/858B7uUIWA7+ywN6TrFgJXYLcJqEPZOXLatIoHqED+Rjbe1xi4ReSjENLUIrvM2WMHNPB5kzoZjBDlTItTIPa1gqmW8TEhiQ+ScZ5KHkS+iEOzlirv/Fnwr32j4Xtt3PQIDAQAB", proxied = false, comment = "Postmark test DKIM" }
+    postmark_return_path = { name = "pm-bounces.mail.test", type = "CNAME", value = "pm.mtasv.net", proxied = false, comment = "Postmark test Return-Path" }
   }
 }
 

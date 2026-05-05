@@ -1,5 +1,6 @@
 import { newsletterSubscribeSchema } from "@auction/validators";
 import { NextResponse } from "next/server";
+import { apiBaseUrl } from "@/lib/auth/api-base";
 
 export async function POST(req: Request) {
   let json: unknown;
@@ -17,7 +18,18 @@ export async function POST(req: Request) {
     );
   }
 
-  await new Promise((r) => setTimeout(r, 250));
+  const res = await fetch(`${apiBaseUrl()}/newsletter/subscribe`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...parsed.data, source: parsed.data.source ?? "web_newsletter_form" }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    return NextResponse.json(
+      { ok: false, message: "We couldn't subscribe you right now. Please try again." },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

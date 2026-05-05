@@ -8,7 +8,12 @@ export async function signInService(input: SignInFormValues): Promise<AuthSubmit
     password: input.password,
   });
   if (error) {
-    return { ok: false, message: error.message ?? "Could not sign in" };
+    const code = "code" in error && typeof error.code === "string" ? error.code : undefined;
+    return {
+      ok: false,
+      message: error.message ?? "Could not sign in",
+      ...(code ? { code } : {}),
+    };
   }
   return { ok: true };
 }

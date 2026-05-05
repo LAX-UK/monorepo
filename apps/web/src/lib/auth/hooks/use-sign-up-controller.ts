@@ -30,7 +30,7 @@ export function useSignUpController(opts?: { inviteToken?: string }) {
     };
     const result = await run(payload);
     if (result.ok) {
-      router.push("/login?registered=1&next=/dashboard");
+      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
       router.refresh();
     }
   });

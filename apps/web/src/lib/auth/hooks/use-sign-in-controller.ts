@@ -21,6 +21,13 @@ export function useSignInController(nextHref: string) {
     if (result.ok) {
       router.push(nextHref.startsWith("/") ? nextHref : "/dashboard");
       router.refresh();
+      return;
+    }
+    const maybeUnverified =
+      result.code === "EMAIL_NOT_VERIFIED" || /email.*not.*verified/i.test(result.message);
+    if (maybeUnverified) {
+      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
+      router.refresh();
     }
   });
 

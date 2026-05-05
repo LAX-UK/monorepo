@@ -14,6 +14,14 @@ const AUTH_FULL_TABLES = [
   "oauth_access_token",
   "oauth_consent",
 ];
+// apps/auth (auth_app) needs to enqueue email via IEmailService.enqueue() from the
+// Better Auth send-verification-email / send-reset-password / databaseHooks.user.create.after
+// hooks. That requires INSERT + SELECT on email_outbox, plus SELECT on email_suppression
+// to honour suppression at enqueue time. Auth must NOT be able to update the outbox
+// (that's the worker's job) or write to the suppression table (that's apps/api via the
+// Postmark webhook and the unsubscribe route).
+const AUTH_INSERT_SELECT_TABLES = ["email_outbox"];
+const AUTH_SELECT_TABLES = ["email_suppression"];
 const API_DENY_TABLES = [
   "session",
   "account",
@@ -34,7 +42,15 @@ const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
 // so worker_app needs SELECT + UPDATE on these tables. Keep them out of WORKER_FULL_TABLES
 // to deny INSERT/DELETE/TRUNCATE on the append-only event log.
-const WORKER_LOCK_READ_TABLES = ["domain_events"];
+//
+// email_outbox and newsletter_signup_log are also SELECT+UPDATE: the worker drains rows
+// inserted by apps/auth/apps/api but must not insert new ones (callers do that) and must
+// not delete (the rows are part of the audit trail for delivery and Postmaster review).
+const WORKER_LOCK_READ_TABLES = [
+  "domain_events",
+  "email_outbox",
+  "newsletter_signup_log",
+];
 const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
@@ -96,7 +112,7 @@ async function grantIfExists(
   client: pg.Client,
   role: RoleName,
   tableName: string,
-  privileges: "SELECT" | "SELECT, UPDATE" | "ALL PRIVILEGES",
+  privileges: "SELECT" | "SELECT, UPDATE" | "INSERT, SELECT" | "ALL PRIVILEGES",
 ): Promise<void> {
   if (!(await tableExists(client, tableName))) return;
   await client.query(
@@ -153,6 +169,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
 
     for (const tableName of AUTH_FULL_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "ALL PRIVILEGES");
+    }
+    for (const tableName of AUTH_INSERT_SELECT_TABLES) {
+      await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
+    }
+    for (const tableName of AUTH_SELECT_TABLES) {
+      await grantIfExists(client, "auth_app", tableName, "SELECT");
     }
     for (const tableName of tables) {
       if (API_DENY_TABLES.includes(tableName)) {

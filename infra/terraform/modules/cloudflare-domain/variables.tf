@@ -25,3 +25,18 @@ variable "auth_hosts" {
 variable "api_hosts" {
   type = set(string)
 }
+
+variable "postmark_webhook_rpm" {
+  type    = number
+  default = 500
+}
+
+variable "signup_rpm" {
+  type    = number
+  default = 10
+}
+
+variable "send_verification_email_rpm" {
+  type    = number
+  default = 5
+}

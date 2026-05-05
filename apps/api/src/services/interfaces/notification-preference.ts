@@ -2,7 +2,11 @@ import type { NotificationPreference } from "@auction/types";
 
 export interface INotificationPreferenceReader {
   getForUser(userId: string): Promise<NotificationPreference | null>;
-  isChannelEnabled(userId: string, type: string, channel: "in_app" | "push"): Promise<boolean>;
+  isChannelEnabled(
+    userId: string,
+    type: string,
+    channel: "in_app" | "push" | "email" | "whatsapp",
+  ): Promise<boolean>;
 }
 
 export interface INotificationPreferenceWriter {

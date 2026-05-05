@@ -15,7 +15,9 @@ import { createAdminRoutes } from "./routes/admin.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
+import { createEmailRoutes } from "./routes/email.js";
 import { createLotRoutes } from "./routes/lots.js";
+import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createPaymentRoutes } from "./routes/payments.js";
 import { createSaleRoutes } from "./routes/sales.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
@@ -103,6 +105,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))
+    .route("/email", createEmailRoutes(container))
+    .route("/newsletter", createNewsletterRoutes(container))
     .route("/auth", createAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
