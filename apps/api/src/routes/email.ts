@@ -1,0 +1,90 @@
+import { emailHash } from "@auction/email";
+import { emailSuppression } from "@auction/db/schema";
+import { Hono, type Context } from "hono";
+import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
+import type { Container } from "../container.js";
+import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
+import { emailPreferenceKey } from "../lib/notification-preference-keys.js";
+
+export function createEmailRoutes(container: Container) {
+  const r = new Hono();
+
+  r.get("/unsubscribe", async (c) => {
+    const token = c.req.query("t");
+    if (!token) return c.text("Missing unsubscribe token", 400);
+    try {
+      const payload = verifyUnsubscribeToken(token, container.env.EMAIL_UNSUBSCRIBE_SECRET);
+      if (payload.scope === "type") {
+        return c.html(
+          `<p>You are unsubscribing from ${escapeHtml(payload.notificationType)} notifications.</p><form method="post"><input type="hidden" name="t" value="${escapeHtml(token)}"><button type="submit">Confirm unsubscribe</button></form>`,
+        );
+      }
+      return c.html(
+        `<p>You are unsubscribing from all non-essential email.</p><form method="post"><input type="hidden" name="t" value="${escapeHtml(token)}"><button type="submit">Confirm unsubscribe</button></form>`,
+      );
+    } catch {
+      return c.text("Invalid unsubscribe token", 400);
+    }
+  });
+
+  r.post("/unsubscribe", async (c) => {
+    const token = await tokenFromRequest(c);
+    if (!token) return c.json({ ok: false, error: "Missing unsubscribe token" }, 400);
+    try {
+      await applyUnsubscribeToken(container, token);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ ok: false, error: "Invalid unsubscribe token" }, 400);
+    }
+  });
+
+  return r;
+}
+
+export async function applyUnsubscribeToken(container: Container, token: string): Promise<void> {
+  const payload = verifyUnsubscribeToken(token, container.env.EMAIL_UNSUBSCRIBE_SECRET);
+  const user = await container.userService.getById(payload.userId);
+  if (!user) throw new Error("User not found");
+
+  if (payload.scope === "global") {
+    await container.db
+      .insert(emailSuppression)
+      .values({ emailHash: emailHash(user.email), reason: "unsubscribe" })
+      .onConflictDoUpdate({
+        target: emailSuppression.emailHash,
+        set: { reason: "unsubscribe", createdAt: new Date() },
+      });
+    return;
+  }
+
+  const key = emailPreferenceKey(payload.notificationType);
+  if (!key) throw new Error("Unsupported notification type");
+  await container.notificationPreferenceRepository.upsert(payload.userId, {
+    [key]: false,
+  } as Partial<NotificationPreferenceInput>);
+}
+
+async function tokenFromRequest(c: Context): Promise<string | null> {
+  const queryToken = c.req.query("t");
+  if (queryToken) return queryToken;
+  const contentType = c.req.header("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = (await c.req.json().catch(() => ({}))) as { t?: unknown; token?: unknown };
+    return typeof body.t === "string"
+      ? body.t
+      : typeof body.token === "string"
+        ? body.token
+        : null;
+  }
+  const body = (await c.req.parseBody().catch(() => ({}))) as Record<string, unknown>;
+  const formToken = body.t ?? body.token;
+  return typeof formToken === "string" ? formToken : null;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}

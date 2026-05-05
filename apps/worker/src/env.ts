@@ -13,11 +13,19 @@ const envSchema = z
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     SENTRY_DSN_WORKER: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
+    EMAIL_FROM: z.string().default("LAX <no-reply@mail.lax.bid>"),
+    EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
+    POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
+    POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     ZOHO_API_HOST: z.string().url().default("https://www.zohoapis.eu"),
     ZOHO_ACCOUNTS_HOST: z.string().url().default("https://accounts.zoho.eu"),
     ZOHO_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     ZOHO_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     ZOHO_REFRESH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    ZOHO_CAMPAIGNS_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    ZOHO_CAMPAIGNS_LIST_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     STORAGE_LOCAL_ROOT: z.string().default("uploads"),
     S3_BUCKET: z.string().optional(),
@@ -28,6 +36,12 @@ const envSchema = z
     S3_PUBLIC_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   })
   .superRefine((e, ctx) => {
+    if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
+      });
+    }
     if (e.STORAGE_DRIVER === "s3") {
       if (!e.S3_BUCKET || !e.S3_REGION || !e.S3_ACCESS_KEY_ID || !e.S3_SECRET_ACCESS_KEY) {
         ctx.addIssue({

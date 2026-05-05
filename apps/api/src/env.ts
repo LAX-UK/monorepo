@@ -30,6 +30,20 @@ const envSchema = z
     }, z.boolean()),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     SENTRY_DSN_API: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
+    EMAIL_FROM: z.string().default("LAX <no-reply@mail.lax.bid>"),
+    EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
+    POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
+    POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
+    POSTMARK_WEBHOOK_BASIC_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
+    EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
+    REQUIRE_EMAIL_VERIFICATION: z
+      .preprocess((val) => {
+        if (val === undefined || val === "") return true;
+        return val === "true" || val === true;
+      }, z.boolean())
+      .default(true),
     GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     GOOGLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     APPLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -43,6 +57,9 @@ const envSchema = z
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
     VAPID_SUBJECT: z.string().optional(),
+    ENABLE_WHATSAPP_CHANNEL: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     /** Directory under process.cwd() for local object storage. */
     STORAGE_LOCAL_ROOT: z.string().default("uploads"),
@@ -79,6 +96,12 @@ const envSchema = z
     INVITE_EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(3).optional()),
   })
   .superRefine((e, ctx) => {
+    if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
+      });
+    }
     if (e.STORAGE_DRIVER === "s3") {
       if (!e.S3_BUCKET || !e.S3_REGION || !e.S3_ACCESS_KEY_ID || !e.S3_SECRET_ACCESS_KEY) {
         ctx.addIssue({

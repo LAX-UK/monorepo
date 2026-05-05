@@ -5,8 +5,10 @@ import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import {
   defaultNotificationPreference,
+  emailPreferenceKey,
   inAppPreferenceKey,
   pushPreferenceKey,
+  whatsappPreferenceKey,
 } from "../lib/notification-preference-keys.js";
 import type {
   INotificationPreferenceReader,
@@ -28,6 +30,20 @@ function mapRow(row: Row): NotificationPreference {
     outbidPush: row.outbidPush,
     wonPush: row.wonPush,
     endingSoonPush: row.endingSoonPush,
+    outbidEmail: row.outbidEmail,
+    wonEmail: row.wonEmail,
+    lostEmail: row.lostEmail,
+    endingSoonEmail: row.endingSoonEmail,
+    watchlistEmail: row.watchlistEmail,
+    paymentEmail: row.paymentEmail,
+    lotEndedSellerEmail: row.lotEndedSellerEmail,
+    outbidWhatsapp: row.outbidWhatsapp,
+    wonWhatsapp: row.wonWhatsapp,
+    lostWhatsapp: row.lostWhatsapp,
+    endingSoonWhatsapp: row.endingSoonWhatsapp,
+    watchlistWhatsapp: row.watchlistWhatsapp,
+    paymentWhatsapp: row.paymentWhatsapp,
+    lotEndedSellerWhatsapp: row.lotEndedSellerWhatsapp,
     quietStart: row.quietStart ?? null,
     quietEnd: row.quietEnd ?? null,
     updatedAt: row.updatedAt,
@@ -51,11 +67,18 @@ export class DrizzleNotificationPreferenceRepository
   async isChannelEnabled(
     userId: string,
     type: string,
-    channel: "in_app" | "push",
+    channel: "in_app" | "push" | "email" | "whatsapp",
   ): Promise<boolean> {
     const row = await this.getForUser(userId);
     const merged = row ?? defaultNotificationPreference(userId);
-    const key = channel === "in_app" ? inAppPreferenceKey(type) : pushPreferenceKey(type);
+    const key =
+      channel === "in_app"
+        ? inAppPreferenceKey(type)
+        : channel === "push"
+          ? pushPreferenceKey(type)
+          : channel === "email"
+            ? emailPreferenceKey(type)
+            : whatsappPreferenceKey(type);
     if (!key) return true;
     const v = merged[key];
     return typeof v === "boolean" ? v : true;
@@ -86,6 +109,20 @@ export class DrizzleNotificationPreferenceRepository
         outbidPush: patch.outbidPush,
         wonPush: patch.wonPush,
         endingSoonPush: patch.endingSoonPush,
+        outbidEmail: patch.outbidEmail,
+        wonEmail: patch.wonEmail,
+        lostEmail: patch.lostEmail,
+        endingSoonEmail: patch.endingSoonEmail,
+        watchlistEmail: patch.watchlistEmail,
+        paymentEmail: patch.paymentEmail,
+        lotEndedSellerEmail: patch.lotEndedSellerEmail,
+        outbidWhatsapp: patch.outbidWhatsapp,
+        wonWhatsapp: patch.wonWhatsapp,
+        lostWhatsapp: patch.lostWhatsapp,
+        endingSoonWhatsapp: patch.endingSoonWhatsapp,
+        watchlistWhatsapp: patch.watchlistWhatsapp,
+        paymentWhatsapp: patch.paymentWhatsapp,
+        lotEndedSellerWhatsapp: patch.lotEndedSellerWhatsapp,
         quietStart: patch.quietStart,
         quietEnd: patch.quietEnd,
         updatedAt: patch.updatedAt,
@@ -102,6 +139,20 @@ export class DrizzleNotificationPreferenceRepository
           outbidPush: patch.outbidPush,
           wonPush: patch.wonPush,
           endingSoonPush: patch.endingSoonPush,
+          outbidEmail: patch.outbidEmail,
+          wonEmail: patch.wonEmail,
+          lostEmail: patch.lostEmail,
+          endingSoonEmail: patch.endingSoonEmail,
+          watchlistEmail: patch.watchlistEmail,
+          paymentEmail: patch.paymentEmail,
+          lotEndedSellerEmail: patch.lotEndedSellerEmail,
+          outbidWhatsapp: patch.outbidWhatsapp,
+          wonWhatsapp: patch.wonWhatsapp,
+          lostWhatsapp: patch.lostWhatsapp,
+          endingSoonWhatsapp: patch.endingSoonWhatsapp,
+          watchlistWhatsapp: patch.watchlistWhatsapp,
+          paymentWhatsapp: patch.paymentWhatsapp,
+          lotEndedSellerWhatsapp: patch.lotEndedSellerWhatsapp,
           quietStart: patch.quietStart,
           quietEnd: patch.quietEnd,
           updatedAt: patch.updatedAt,

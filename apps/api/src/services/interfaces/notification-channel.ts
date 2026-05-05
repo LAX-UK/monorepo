@@ -5,7 +5,7 @@ export type NotificationPayload = {
   lotId?: string | undefined;
 };
 
-export type NotificationChannelKind = "in_app" | "push";
+export type NotificationChannelKind = "in_app" | "push" | "email" | "whatsapp";
 
 /** OCP/LSP: pluggable delivery channels for user notifications. */
 export interface INotificationChannel {

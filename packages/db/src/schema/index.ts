@@ -20,6 +20,7 @@ export * from "./oauth.js";
 export * from "./webhook-events.js";
 export * from "./domain-events.js";
 export * from "./upload-objects.js";
+export * from "./email.js";
 export {
   bidRelations,
   categoryRelations,

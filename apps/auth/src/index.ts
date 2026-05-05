@@ -1,10 +1,13 @@
 import { createAuth, createJwksAdapter, startJwksRetirementSchedule } from "@auction/auth";
 import { createDb } from "@auction/db";
+import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
+import { Queue } from "bullmq";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { Redis } from "ioredis";
 import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadAuthEnv } from "./env.js";
@@ -25,6 +28,12 @@ const log = pino({
 });
 
 const db = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
+const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+const emailQueue = new Queue<{ outboxId: string }>("email", { connection: redis });
+const emailService =
+  env.EMAIL_PROVIDER === "postmark"
+    ? new PostmarkEmailService(db, emailQueue)
+    : new ConsoleEmailService(db, emailQueue);
 const auth = createAuth({
   db,
   secret: env.BETTER_AUTH_SECRET,
@@ -38,6 +47,8 @@ const auth = createAuth({
   googleClientSecret: env.GOOGLE_CLIENT_SECRET,
   appleClientId: env.APPLE_CLIENT_ID,
   appleClientSecret: env.APPLE_CLIENT_SECRET,
+  email: emailService,
+  requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
 });
 const jwks = createJwksAdapter(db);
 const retirementSchedule = startJwksRetirementSchedule({ db, log });
@@ -142,8 +153,10 @@ function shutdown(signal: NodeJS.Signals) {
       log.error({ err }, "failed to close auth server");
       process.exit(1);
     }
-    clearTimeout(timeout);
-    process.exit(0);
+    void Promise.allSettled([emailQueue.close(), redis.quit()]).finally(() => {
+      clearTimeout(timeout);
+      process.exit(0);
+    });
   });
 }
 

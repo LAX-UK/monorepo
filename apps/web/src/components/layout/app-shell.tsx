@@ -198,6 +198,18 @@ function AppShellFrame({ user, shellRole, pendingSubmissionCount = 0, children }
             )}
             data-density={density}
           >
+            {user.emailStatus === "bounced" || user.emailStatus === "complained" ? (
+              <div className="mb-6 rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 font-body text-sm text-on-surface">
+                We could not deliver email to your current address.{" "}
+                <Link
+                  href="/dashboard/settings/account"
+                  className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
+                >
+                  Update your email address
+                </Link>
+                .
+              </div>
+            ) : null}
             {children}
           </div>
         </main>

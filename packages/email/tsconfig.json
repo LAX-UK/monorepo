@@ -1,0 +1,10 @@
+{
+  "extends": "../config-ts/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "include": ["src"]
+}

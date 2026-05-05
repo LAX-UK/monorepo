@@ -3,6 +3,7 @@ import { createJwksAdapter } from "@auction/auth";
 import { createAuth } from "@auction/auth/server";
 import type { Auth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
+import { ConsoleEmailService, PostmarkEmailService, type IEmailService } from "@auction/email";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
@@ -11,6 +12,7 @@ import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-ema
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
+import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
 import { JsonErrorResponseBuilder } from "./infrastructure/json-error-response.builder.js";
 import { JwtAuthenticator } from "./infrastructure/jwt-authenticator.js";
@@ -23,9 +25,9 @@ import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
-import { createTransactionalMailer } from "./infrastructure/transactional-mailer.js";
 import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
+import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
@@ -148,6 +150,7 @@ export type Container = {
   pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
   notificationFactory: NotificationFactory;
+  emailService: IEmailService;
   userSuspensionChecker: IUserSuspensionChecker;
   registrationService: RegistrationService;
   invitationService: InvitationService;
@@ -167,12 +170,19 @@ export type Container = {
   uploadService: UploadService;
   uploadValidationQueue: Queue;
   imageCleanupQueue: Queue;
+  marketingSyncQueue: Queue;
 };
 
 export function createContainer(env: Env): Container {
   const db = createDb(env.DATABASE_URL_API ?? env.DATABASE_URL);
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const redis = new Redis(env.REDIS_URL);
+  const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
+  const emailQueue = new Queue<{ outboxId: string }>("email", { connection: bullConnection });
+  const emailService: IEmailService =
+    env.EMAIL_PROVIDER === "postmark"
+      ? new PostmarkEmailService(db, emailQueue)
+      : new ConsoleEmailService(db, emailQueue);
   const jwksAdapter = createJwksAdapter(authDb);
 
   const auth = createAuth({
@@ -188,6 +198,8 @@ export function createContainer(env: Env): Container {
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     appleClientId: env.APPLE_CLIENT_ID,
     appleClientSecret: env.APPLE_CLIENT_SECRET,
+    email: emailService,
+    requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
   });
 
   const issuer = env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL;
@@ -233,8 +245,17 @@ export function createContainer(env: Env): Container {
     userNotificationPublisher,
   );
   const pushChannel = new PushNotificationChannel(pushSender, pushSubscriptionRepository);
+  const emailChannel = new EmailNotificationChannel(
+    emailService,
+    userRepo,
+    env.WEB_ORIGIN,
+    env.EMAIL_UNSUBSCRIBE_SECRET,
+  );
+  const channels = env.ENABLE_WHATSAPP_CHANNEL
+    ? [inAppChannel, pushChannel, emailChannel, new WhatsappNotificationChannel()]
+    : [inAppChannel, pushChannel, emailChannel];
   const notificationDispatcher = new NotificationDispatcher(
-    [inAppChannel, pushChannel],
+    channels,
     notificationPreferenceRepository,
     quietHoursChecker,
   );
@@ -264,9 +285,9 @@ export function createContainer(env: Env): Container {
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
 
-  const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
   const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
   const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
+  const marketingSyncQueue = new Queue("marketing-sync", { connection: bullConnection });
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
     env.STORAGE_READ_MODE,
@@ -392,13 +413,12 @@ export function createContainer(env: Env): Container {
   const profileService = new ProfileService(profileRepo, profileRepo, imageCleanupService);
   const addressService = new AddressService(addressRepo);
 
-  const transactionalMailer = createTransactionalMailer(env);
   const invitationRepository = new DrizzleUserInvitationRepository(db);
   const invitationService = new InvitationService(
     db,
     invitationRepository,
     userRepo,
-    transactionalMailer,
+    emailService,
     env.WEB_ORIGIN,
   );
 
@@ -475,6 +495,7 @@ export function createContainer(env: Env): Container {
     pushSubscriptionRepository,
     notificationDispatcher,
     notificationFactory,
+    emailService,
     userSuspensionChecker,
     registrationService,
     invitationService,
@@ -494,5 +515,6 @@ export function createContainer(env: Env): Container {
     uploadService,
     uploadValidationQueue,
     imageCleanupQueue,
+    marketingSyncQueue,
   };
 }
