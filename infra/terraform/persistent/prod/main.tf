@@ -22,8 +22,9 @@ module "cloudflare_domain" {
   environment    = local.environment
   security_level = "high"
   subdomains     = local.subdomains
-  auth_hosts     = ["auth.lax.bid"]
-  api_hosts      = ["api.lax.bid"]
+  # Include test hosts so one zone ruleset covers both envs (test stack does not create rulesets).
+  auth_hosts = ["auth.lax.bid", "test-auth.lax.bid"]
+  api_hosts  = ["api.lax.bid", "test-api.lax.bid"]
 }
 
 module "media" {

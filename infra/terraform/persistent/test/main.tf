@@ -16,14 +16,16 @@ locals {
 }
 
 module "cloudflare_domain" {
-  source         = "../../modules/cloudflare-domain"
-  zone_name      = local.zone_name
-  account_id     = var.cloudflare_account_id
-  environment    = local.environment
-  security_level = "medium"
-  subdomains     = local.subdomains
-  auth_hosts     = ["test-auth.lax.bid"]
-  api_hosts      = ["test-api.lax.bid"]
+  source = "../../modules/cloudflare-domain"
+  # Same zone as prod; zone-level rulesets are singletons — prod stack owns merged rules.
+  manage_firewall_rulesets = false
+  zone_name                = local.zone_name
+  account_id               = var.cloudflare_account_id
+  environment              = local.environment
+  security_level           = "medium"
+  subdomains               = local.subdomains
+  auth_hosts               = ["test-auth.lax.bid"]
+  api_hosts                = ["test-api.lax.bid"]
 }
 # lax-media is provisioned once from persistent/prod and shared by prefix.
 

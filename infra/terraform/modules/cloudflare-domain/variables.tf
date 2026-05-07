@@ -40,3 +40,10 @@ variable "send_verification_email_rpm" {
   type    = number
   default = 5
 }
+
+# Zone-level WAF / rate-limit rulesets exist once per Cloudflare zone per phase.
+# Only one stack (e.g. persistent/prod) should manage them when test and prod share lax.bid.
+variable "manage_firewall_rulesets" {
+  type    = bool
+  default = true
+}
