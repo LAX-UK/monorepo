@@ -35,6 +35,39 @@ Observability targets derived from the Round 3 scale audit. These are **investig
 - **Alert:** any single `generate-payout-statement` job **> 30s** wall time or repeated **OOM** kills.
 - **Why:** Large line-item sets are CPU/memory heavy; concurrency is intentionally low (`concurrency: 2`).
 
+## BullMQ rollback controls
+
+During code or database rollback, pause queues before destructive SQL and resume
+only after the deployed code matches the schema.
+
+Recommended pause order:
+
+1. `payout-settlement`
+2. `payout-statements`
+3. `archive-cascade`
+4. `impersonation-sweeper`
+5. `notification-fanout`
+6. `email`
+
+Use the BullMQ admin API/UI where available:
+
+```ts
+await queue.pause();
+await queue.whenCurrentJobsFinished();
+```
+
+Redis-only inspection fallback:
+
+```sh
+redis-cli -u "$REDIS_URL" llen "bull:<queue>:wait"
+redis-cli -u "$REDIS_URL" llen "bull:<queue>:active"
+```
+
+Do not purge queue keys as a rollback shortcut. If a queue has stuck active jobs,
+record job ids and payloads, then move them to failed or replay after the schema
+is stable.
+
 ## Related runbooks
 
 - `docs/runbooks/domain-events-retention.md` — when `domain_events` growth drives query or disk risk.
+- `docs/runbooks/migration-rollback.md` — migration rollback ordering and queue drain procedure.
