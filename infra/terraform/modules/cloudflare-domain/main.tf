@@ -44,13 +44,14 @@ data "cloudflare_zone" "this" {
 resource "cloudflare_record" "subdomain" {
   for_each = var.subdomains
 
-  zone_id = data.cloudflare_zone.this.id
-  name    = each.value.name
-  type    = each.value.type
-  content = each.value.value
-  proxied = each.value.proxied
-  ttl     = 1
-  comment = each.value.comment
+  zone_id         = data.cloudflare_zone.this.id
+  name            = each.value.name
+  type            = each.value.type
+  content         = each.value.value
+  proxied         = each.value.proxied
+  ttl             = 1
+  comment         = each.value.comment
+  allow_overwrite = true
 }
 
 resource "cloudflare_zone_settings_override" "this" {
@@ -69,7 +70,11 @@ locals {
   api_host_expression  = join(" ", [for host in var.api_hosts : "\"${host}\""])
 }
 
-resource "cloudflare_ruleset" "auth_waf" {
+# Named zone_auth_waf (not auth_waf) so upgrades from pre-count state destroy the old
+# address cleanly when test sets manage_firewall_rulesets = false.
+resource "cloudflare_ruleset" "zone_auth_waf" {
+  count = var.manage_firewall_rulesets ? 1 : 0
+
   zone_id     = data.cloudflare_zone.this.id
   name        = "lax-${var.environment}-auth-waf"
   description = "Host-scoped auth WAF rules."
@@ -84,7 +89,9 @@ resource "cloudflare_ruleset" "auth_waf" {
   }
 }
 
-resource "cloudflare_ruleset" "rate_limits" {
+resource "cloudflare_ruleset" "zone_rate_limits" {
+  count = var.manage_firewall_rulesets ? 1 : 0
+
   zone_id     = data.cloudflare_zone.this.id
   name        = "lax-${var.environment}-rate-limits"
   description = "Host-scoped API and auth rate limits."
