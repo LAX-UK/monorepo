@@ -25,6 +25,24 @@ import PayoutTransferFailedNoticeEmail, {
 import PayoutTransferBlockedNoticeEmail, {
   subject as payoutTransferBlockedNoticeSubject,
 } from "./templates/payout-transfer-blocked-notice.js";
+import PayoutInitiatedNoticeEmail, {
+  subject as payoutInitiatedNoticeSubject,
+} from "./templates/payout-initiated-notice.js";
+import PayoutClawbackRequiredNoticeEmail, {
+  subject as payoutClawbackRequiredNoticeSubject,
+} from "./templates/payout-clawback-required-notice.js";
+import DisputeOpenedNoticeEmail, {
+  subject as disputeOpenedNoticeSubject,
+} from "./templates/dispute-opened-notice.js";
+import DisputeClosedNoticeEmail, {
+  subject as disputeClosedNoticeSubject,
+} from "./templates/dispute-closed-notice.js";
+import ProxyCancelledNoticeEmail, {
+  subject as proxyCancelledNoticeSubject,
+} from "./templates/proxy-cancelled-notice.js";
+import LotVoidedNoticeEmail, {
+  subject as lotVoidedNoticeSubject,
+} from "./templates/lot-voided-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued.js";
@@ -108,6 +126,30 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-manual-review-admin-notice": {
     subject: paymentManualReviewAdminNoticeSubject,
     component: (vars) => <PaymentManualReviewAdminNoticeEmail {...vars} />,
+  },
+  "payout-initiated-notice": {
+    subject: payoutInitiatedNoticeSubject,
+    component: (vars) => <PayoutInitiatedNoticeEmail {...vars} />,
+  },
+  "dispute-opened-notice": {
+    subject: disputeOpenedNoticeSubject,
+    component: (vars) => <DisputeOpenedNoticeEmail {...vars} />,
+  },
+  "dispute-closed-notice": {
+    subject: disputeClosedNoticeSubject,
+    component: (vars) => <DisputeClosedNoticeEmail {...vars} />,
+  },
+  "proxy-cancelled-notice": {
+    subject: proxyCancelledNoticeSubject,
+    component: (vars) => <ProxyCancelledNoticeEmail {...vars} />,
+  },
+  "lot-voided-notice": {
+    subject: lotVoidedNoticeSubject,
+    component: (vars) => <LotVoidedNoticeEmail {...vars} />,
+  },
+  "payout-clawback-required-notice": {
+    subject: payoutClawbackRequiredNoticeSubject,
+    component: (vars) => <PayoutClawbackRequiredNoticeEmail {...vars} />,
   },
   "legal-entity-archived-notice": {
     subject: legalEntityArchivedNoticeSubject,
