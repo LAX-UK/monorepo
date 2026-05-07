@@ -42,7 +42,7 @@ async function MarketingHomeContent() {
       ) : null}
       <LaxHero state={heroState} />
       <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
-      {auctionVm ? <LaxUpcomingAuctions auction={auctionVm} /> : null}
+      <LaxUpcomingAuctions auction={auctionVm} />
       <LaxArtists items={artistCards} />
       <LaxEditorialStrip />
       <HomeNewsletter />
