@@ -3,7 +3,7 @@ locals {
   region       = "lon1"
   zone_name    = "lax.bid"
   media_cdn    = "lax-media.lon1.cdn.digitaloceanspaces.com"
-  app_hostname = "replace-after-app-platform-create.ondigitalocean.app"
+  app_hostname = "lax-prod-app-iekuk.ondigitalocean.app"
   subdomains = {
     web                  = { name = "@", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod web App Platform hostname" }
     www                  = { name = "www", type = "CNAME", value = local.app_hostname, proxied = true, comment = "www redirect to apex (handled by Cloudflare redirect rule)" }
