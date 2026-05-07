@@ -9,6 +9,11 @@ on:
       confirmation:
         required: true
         description: Type APPLY-PROD
+      app_git_branch:
+        description: "Ephemeral only — Git branch App Platform builds from (must exist). Use release when that branch exists."
+        type: string
+        default: main
+        required: false
 concurrency:
   group: terraform-prod-${{ inputs.layer }}
   cancel-in-progress: false
@@ -38,6 +43,12 @@ jobs:
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@v4
+      - name: App Platform Git branch (ephemeral prod only)
+        if: inputs.layer == 'ephemeral'
+        run: |
+          b="${{ inputs.app_git_branch }}"
+          [ -n "$b" ] || b="main"
+          echo "TF_VAR_app_git_branch=$b" >> "$GITHUB_ENV"
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: infra/terraform/${{ inputs.layer }}/prod
