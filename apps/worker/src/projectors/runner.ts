@@ -1,6 +1,13 @@
 import { domainEvent, projectorState } from "@auction/db";
-import { sql } from "drizzle-orm";
+import type { IEmailService } from "@auction/email";
+import { eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
+import { processClearArtistBlocks } from "./clear-artist-blocks.js";
+import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
+import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
+import { processPaymentRefundNotify } from "./payment-refund-notify.js";
+import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
+import { redactDomainEventPayload } from "./lib/redact-pii.js";
 
 type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 type ProjectorEventRow = {
@@ -21,6 +28,17 @@ export function createProjectorRunner(options: {
   db: Db;
   log: pino.Logger;
   heartbeat: () => Promise<void>;
+  /** when set, `payout.paid` events trigger Xero bill sync via API. */
+  syncXeroPayoutBill?: (payoutId: string) => Promise<boolean>;
+  /** transactional email outbox for impersonation notices. */
+  emailService?: IEmailService;
+  supportContactEmail?: string;
+  /** URL to admin payouts dashboard for failed transfer notifications. */
+  adminPayoutsUrl?: string;
+  /** Platform admin email address for ops notifications. */
+  adminEmailAddress?: string;
+  /** Web origin for admin lot URLs in ops emails. */
+  webOrigin?: string;
 }) {
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
@@ -32,9 +50,7 @@ export function createProjectorRunner(options: {
       .onConflictDoNothing();
   }
 
-  async function tick() {
-    await ensureCursor("zoho");
-    await ensureCursor("xero");
+  async function processZoho() {
     await options.db.transaction(async (tx) => {
       const rows = await tx.execute(sql`
         select id, event_type, payload
@@ -47,7 +63,11 @@ export function createProjectorRunner(options: {
       const events = rowsFromExecuteResult(rows);
       for (const event of events) {
         options.log.info(
-          { eventId: event.id, eventType: event.event_type },
+          {
+            eventId: event.id,
+            eventType: event.event_type,
+            payload: redactDomainEventPayload(event.event_type, event.payload),
+          },
           "projector observed event",
         );
       }
@@ -59,6 +79,126 @@ export function createProjectorRunner(options: {
           .where(sql`${projectorState.projectorName} = 'zoho'`);
       }
     });
+  }
+
+  async function processXero() {
+    const [cursorRow] = await options.db
+      .select({ last: projectorState.lastProcessedEventId })
+      .from(projectorState)
+      .where(eq(projectorState.projectorName, "xero"))
+      .limit(1);
+    const cursor = cursorRow?.last ?? 0;
+
+    const rows = await options.db
+      .select({
+        id: domainEvent.id,
+        eventType: domainEvent.eventType,
+        aggregateId: domainEvent.aggregateId,
+      })
+      .from(domainEvent)
+      .where(gt(domainEvent.id, cursor))
+      .orderBy(domainEvent.id)
+      .limit(100);
+
+    if (rows.length === 0) {
+      return;
+    }
+
+    let maxId = cursor;
+    for (const row of rows) {
+      maxId = row.id;
+      if (row.eventType === "payout.paid" && options.syncXeroPayoutBill) {
+        const ok = await options.syncXeroPayoutBill(row.aggregateId).catch((err: unknown) => {
+          options.log.error({ err, payoutId: row.aggregateId }, "xero_payout_bill_sync_threw");
+          return false;
+        });
+        if (!ok) {
+          maxId = Math.max(cursor, row.id - 1);
+          break;
+        }
+      }
+    }
+
+    if (maxId > cursor) {
+      await options.db
+        .update(projectorState)
+        .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
+        .where(eq(projectorState.projectorName, "xero"));
+    }
+  }
+
+  async function processImpersonationEmails() {
+    if (!options.emailService || !options.supportContactEmail) {
+      return;
+    }
+    await ensureCursor("admin_impersonation_notify");
+    await processAdminImpersonationNotify({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+    });
+  }
+
+  async function processPayoutTransferFailedEmails() {
+    if (!options.emailService || !options.supportContactEmail || !options.adminPayoutsUrl) {
+      return;
+    }
+    await ensureCursor("payout_transfer_failed_notify");
+    await processPayoutTransferFailedNotify({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      adminPayoutsUrl: options.adminPayoutsUrl,
+    });
+  }
+
+  async function processPaymentRefundEmails() {
+    if (!options.emailService || !options.supportContactEmail || !options.adminEmailAddress) {
+      return;
+    }
+    await ensureCursor("payment_refund_notify");
+    await processPaymentRefundNotify({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      adminEmailAddress: options.adminEmailAddress,
+    });
+  }
+
+  async function processLotVoidedAntiShillingEmails() {
+    if (
+      !options.emailService ||
+      !options.supportContactEmail ||
+      !options.adminEmailAddress ||
+      !options.webOrigin
+    ) {
+      return;
+    }
+    await ensureCursor("lot_voided_anti_shilling_admin_notify");
+    await processLotVoidedAntiShillingAdminNotify({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      adminEmailAddress: options.adminEmailAddress,
+      webOrigin: options.webOrigin,
+    });
+  }
+
+  async function tick() {
+    await ensureCursor("zoho");
+    await ensureCursor("xero");
+    await processZoho();
+    await processXero();
+    await processImpersonationEmails();
+    await processPayoutTransferFailedEmails();
+    await processPaymentRefundEmails();
+    await processLotVoidedAntiShillingEmails();
+    await ensureCursor("clear_artist_blocks");
+    await processClearArtistBlocks({ db: options.db, log: options.log });
     await options.heartbeat();
   }
 

@@ -1,6 +1,21 @@
 import { render } from "@react-email/render";
 import type { ReactElement } from "react";
+import AdminImpersonationNoticeEmail, {
+  subject as adminImpersonationNoticeSubject,
+} from "./templates/admin-impersonation-notice.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
+import PaymentRefundNoticeEmail, {
+  subject as paymentRefundNoticeSubject,
+} from "./templates/payment-refund-notice.js";
+import LegalEntityArchivedNoticeEmail, {
+  subject as legalEntityArchivedNoticeSubject,
+} from "./templates/legal-entity-archived-notice.js";
+import LotVoidedAntiShillingAdminEmail, {
+  subject as lotVoidedAntiShillingAdminSubject,
+} from "./templates/lot-voided-anti-shilling-admin.js";
+import PayoutTransferFailedNoticeEmail, {
+  subject as payoutTransferFailedNoticeSubject,
+} from "./templates/payout-transfer-failed-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued.js";
@@ -11,6 +26,9 @@ import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
 import PasswordChanged, {
   subject as passwordChangedSubject,
 } from "./templates/password-changed.js";
+import PaymentInvoiceEmail, {
+  subject as paymentInvoiceSubject,
+} from "./templates/payment-invoice.js";
 import PaymentReceiptEmail, {
   subject as paymentReceiptSubject,
 } from "./templates/payment-receipt.js";
@@ -20,7 +38,7 @@ import WelcomeEmail, { subject as welcomeSubject } from "./templates/welcome.js"
 import type { RenderedEmail, TemplateName, TemplateVarsByName } from "./types.js";
 
 type TemplateRenderer<T extends TemplateName> = {
-  subject: string;
+  subject: string | ((vars: TemplateVarsByName[T]) => string);
   component: (vars: TemplateVarsByName[T]) => ReactElement;
 };
 
@@ -54,6 +72,30 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: invoiceIssuedSubject,
     component: (vars) => <InvoiceIssuedEmail {...vars} />,
   },
+  "payment-invoice": {
+    subject: paymentInvoiceSubject,
+    component: (vars) => <PaymentInvoiceEmail {...vars} />,
+  },
+  "admin-impersonation-notice": {
+    subject: adminImpersonationNoticeSubject,
+    component: (vars) => <AdminImpersonationNoticeEmail {...vars} />,
+  },
+  "payout-transfer-failed-notice": {
+    subject: payoutTransferFailedNoticeSubject,
+    component: (vars) => <PayoutTransferFailedNoticeEmail {...vars} />,
+  },
+  "payment-refund-notice": {
+    subject: paymentRefundNoticeSubject,
+    component: (vars) => <PaymentRefundNoticeEmail {...vars} />,
+  },
+  "legal-entity-archived-notice": {
+    subject: legalEntityArchivedNoticeSubject,
+    component: (vars) => <LegalEntityArchivedNoticeEmail {...vars} />,
+  },
+  "lot-voided-anti-shilling-admin": {
+    subject: lotVoidedAntiShillingAdminSubject,
+    component: (vars) => <LotVoidedAntiShillingAdminEmail {...vars} />,
+  },
 };
 
 export async function renderEmail<T extends TemplateName>(
@@ -64,5 +106,6 @@ export async function renderEmail<T extends TemplateName>(
   const component = entry.component(vars);
   const html = await render(component);
   const text = await render(component, { plainText: true });
-  return { subject: entry.subject, html, text };
+  const subject = typeof entry.subject === "function" ? entry.subject(vars) : entry.subject;
+  return { subject, html, text };
 }
