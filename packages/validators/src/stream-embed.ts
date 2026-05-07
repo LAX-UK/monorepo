@@ -106,8 +106,7 @@ export function isAllowedStreamUrl(raw: string): boolean {
   }
 }
 
-/**
- * Build a safe embed src for whitelisted providers. Returns null if URL is not embeddable.
+/** Build a safe embed src for whitelisted providers. Returns null if URL is not embeddable.
  * Twitch src omits parent= — append in the client: `${src}&parent=${host}` (repeat parent for multiple domains if needed).
  */
 export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
