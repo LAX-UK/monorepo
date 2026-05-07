@@ -6,6 +6,7 @@ export type CreatePaymentRow = {
   amount: string;
   platformFee: string;
   stripePaymentIntentId: string | null;
+  stripeChargeId?: string | null;
   status?: PaymentRecord["status"];
 };
 
@@ -20,6 +21,7 @@ export type PaymentRecord = {
   amount: string;
   platformFee: string;
   stripePaymentIntentId: string | null;
+  stripeChargeId: string | null;
   status: "pending" | "authorized" | "captured" | "refunded" | "requires_manual_review";
   createdAt: Date;
   /** Populated for admin listing when a Xero invoice row exists. */
@@ -34,6 +36,7 @@ export interface IPaymentWriteRepository {
   findById(id: string): Promise<PaymentRecord | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
+  updateStripeChargeId(id: string, stripeChargeId: string): Promise<void>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;
   /** Payments where the user is the buyer (portfolio). */

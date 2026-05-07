@@ -50,6 +50,7 @@ const payment: PaymentRecord = {
   platformFee: "6.25",
   sellerLegalEntityId: lot.sellerLegalEntityId as string,
   stripePaymentIntentId: null,
+  stripeChargeId: null,
   status: "pending",
   createdAt: new Date(),
 };

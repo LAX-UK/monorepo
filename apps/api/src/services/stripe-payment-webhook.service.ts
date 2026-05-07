@@ -229,7 +229,7 @@ export class StripePaymentWebhookService {
         amount: payment.amount,
       })
       .from(payment)
-      .where(eq(payment.stripePaymentIntentId, chargeId))
+      .where(eq(payment.stripeChargeId, chargeId))
       .limit(1);
     return row ?? null;
   }
