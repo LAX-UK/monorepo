@@ -112,3 +112,31 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
     }
   }
 }
+
+# Redirect www.lax.bid → lax.bid (301 permanent redirect, preserves path/query)
+resource "cloudflare_ruleset" "www_redirect" {
+  count = var.manage_firewall_rulesets ? 1 : 0
+
+  zone_id     = data.cloudflare_zone.this.id
+  name        = "lax-www-to-apex-redirect"
+  description = "Redirect www to apex domain."
+  kind        = "zone"
+  phase       = "http_request_dynamic_redirect"
+
+  rules {
+    action      = "redirect"
+    expression  = "(http.host eq \"www.${var.zone_name}\")"
+    description = "www to apex 301 redirect"
+    enabled     = true
+
+    action_parameters {
+      from_value {
+        status_code = 301
+        target_url {
+          expression = "concat(\"https://${var.zone_name}\", http.request.uri.path)"
+        }
+        preserve_query_string = true
+      }
+    }
+  }
+}
