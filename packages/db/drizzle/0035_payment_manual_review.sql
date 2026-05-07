@@ -1,8 +1,6 @@
+-- New enum value is added in this migration's transaction; the partial unique
+-- index that uses the new value as a literal must be created in a later
+-- migration (see 0036_payment_manual_review_index.sql) because PostgreSQL
+-- forbids using a newly added enum value before the adding transaction commits
+-- (SQLSTATE 55P04: "unsafe use of new value of enum type").
 ALTER TYPE payment_status ADD VALUE IF NOT EXISTS 'requires_manual_review';
-
-DROP INDEX IF EXISTS "payment_lot_buyer_open_unique";
-CREATE UNIQUE INDEX "payment_lot_buyer_open_unique"
-  ON "payment" ("lot_id", "buyer_id")
-  -- Cast to text so PostgreSQL does not require the newly added enum value to be
-  -- committed before this migration transaction can create the predicate.
-  WHERE "status"::text IN ('pending', 'authorized', 'captured', 'requires_manual_review');

@@ -239,6 +239,13 @@
       "when": 1779200000000,
       "tag": "0035_payment_manual_review",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0036_payment_manual_review_index",
+      "breakpoints": true
     }
   ]
 }
