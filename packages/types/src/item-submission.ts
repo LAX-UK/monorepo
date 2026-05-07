@@ -19,7 +19,9 @@ export type ExhibitionEntry = {
 
 export type ItemSubmission = {
   id: string;
-  sellerId: string;
+  /** Transitional compatibility only; new API mappers do not emit this field. */
+  sellerId?: string;
+  legalEntityId?: string | undefined;
   title: string;
   description: string | null;
   medium: string | null;
@@ -67,6 +69,7 @@ export type CreateItemSubmissionInput = {
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;
   submitterNotes?: string | undefined;
+  legalEntityId?: string | undefined;
 };
 
 export type UpdateItemSubmissionInput = Partial<CreateItemSubmissionInput>;
