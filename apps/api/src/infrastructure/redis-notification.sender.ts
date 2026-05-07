@@ -53,7 +53,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
       JSON.stringify({
         type: "lot_ended",
         lotId: lot.id,
-        winnerId: bid.bidderId,
+        winnerId: bid.placedByUserId,
         bidId: bid.id,
         currentPrice: bid.amount,
         status: "ended",

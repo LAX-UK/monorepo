@@ -409,6 +409,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         emailVerified: row.emailVerified,
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
+        hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
       },
     });
   });

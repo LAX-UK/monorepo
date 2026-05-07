@@ -7,6 +7,8 @@ export type DomainEventInput = {
   payload: Record<string, unknown>;
   producer?: string;
   actorUserId?: string | null;
+  /** Optional acting legal entity (matches `domain_events.acting_legal_entity_id`). */
+  actingLegalEntityId?: string | null;
   schemaVersion?: number;
 };
 
@@ -26,6 +28,7 @@ export class DomainEventPublisher {
       payload: event.payload,
       producer: event.producer ?? "apps/api",
       actorUserId: event.actorUserId ?? null,
+      actingLegalEntityId: event.actingLegalEntityId ?? null,
       schemaVersion: event.schemaVersion ?? 1,
     });
   }

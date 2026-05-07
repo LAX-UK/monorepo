@@ -22,8 +22,9 @@ function mapRow(
   return {
     id: row.id,
     lotId: row.lotId,
-    buyerId: row.buyerId,
-    sellerId: row.sellerId,
+    paidByUserId: row.buyerId,
+    buyerLegalEntityId: row.buyerLegalEntityId ?? "",
+    sellerLegalEntityId: row.sellerLegalEntityId ?? "",
     amount: String(row.amount),
     platformFee: String(row.platformFee),
     stripePaymentIntentId: row.stripePaymentIntentId,
@@ -44,8 +45,9 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .insert(payment)
       .values({
         lotId: row.lotId,
-        buyerId: row.buyerId,
-        sellerId: row.sellerId,
+        buyerId: row.paidByUserId,
+        buyerLegalEntityId: row.buyerLegalEntityId,
+        sellerLegalEntityId: row.sellerLegalEntityId,
         amount: row.amount,
         platformFee: row.platformFee,
         stripePaymentIntentId: row.stripePaymentIntentId,

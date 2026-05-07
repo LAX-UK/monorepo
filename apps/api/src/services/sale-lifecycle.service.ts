@@ -1,8 +1,7 @@
 import type { Lot } from "@auction/types";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 
-/**
- * Keeps umbrella `sale` rows aligned with child lots (no per-lot Bull jobs on the sale).
+/** Keeps umbrella `sale` rows aligned with child lots (no per-lot Bull jobs on the sale).
  */
 export class SaleLifecycleService {
   constructor(

@@ -1,7 +1,8 @@
 export type CreatePaymentRow = {
   lotId: string;
-  buyerId: string;
-  sellerId: string;
+  paidByUserId: string;
+  buyerLegalEntityId: string;
+  sellerLegalEntityId: string;
   amount: string;
   platformFee: string;
   stripePaymentIntentId: string | null;
@@ -10,8 +11,11 @@ export type CreatePaymentRow = {
 export type PaymentRecord = {
   id: string;
   lotId: string;
-  buyerId: string;
-  sellerId: string;
+  buyerId?: string;
+  sellerId?: string;
+  paidByUserId?: string;
+  buyerLegalEntityId?: string;
+  sellerLegalEntityId?: string;
   amount: string;
   platformFee: string;
   stripePaymentIntentId: string | null;

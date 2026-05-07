@@ -108,8 +108,7 @@ export class InvitationService {
     return ok({ email: row.email, targetRole: row.targetRole, expiresAt: row.expiresAt });
   }
 
-  /**
-   * Validates an invite for a registration attempt and returns the invitation row snapshot.
+  /** Validates an invite for a registration attempt and returns the invitation row snapshot.
    * Consumption happens in {@link consumeInviteForNewUser} after the auth user is created.
    */
   async validateForRegistration(

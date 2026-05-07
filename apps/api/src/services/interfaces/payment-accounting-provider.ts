@@ -7,6 +7,8 @@ export type AccountingCheckoutContext = {
   buyerEmail: string;
   buyerName: string;
   amount: string;
+  /** when `XERO_USE_LEGAL_ENTITY_CONTACT` is on, buyer AR contact is keyed to this entity. */
+  buyerLegalEntityId?: string | undefined;
 };
 
 export type AccountingCheckoutResult = {
@@ -14,8 +16,7 @@ export type AccountingCheckoutResult = {
   error?: string;
 };
 
-/**
- * Optional accounting / hosted checkout provider (e.g. Xero online invoice).
+/** Optional accounting / hosted checkout provider (e.g. Xero online invoice).
  * When disabled, `checkoutUrl` is always null and local payment rows still work.
  */
 export interface IPaymentAccountingProvider {

@@ -1,10 +1,9 @@
 export class BidError extends Error {
-  constructor(
-    message: string,
-    readonly status: number = 400,
-  ) {
+  readonly code?: string | undefined;
+  constructor(message: string, readonly status: number = 400, code?: string) {
     super(message);
     this.name = "BidError";
+    this.code = code;
   }
 }
 

@@ -16,7 +16,11 @@ export class EnglishAuctionStrategy implements ILotStrategy {
     if (bid.amount + 1e-9 < current + inc) {
       return err(new BidError(`Bid must be at least ${(current + inc).toFixed(2)}`));
     }
-    if (bid.bidderId === lot.sellerId) {
+    if (
+      bid.buyerLegalEntityId && lot.sellerLegalEntityId
+        ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
+        : bid.bidderId === lot.sellerId
+    ) {
       return err(new BidError("Seller cannot bid on own lot"));
     }
     return ok(undefined);

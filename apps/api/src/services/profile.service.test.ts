@@ -10,6 +10,10 @@ describe("ProfileService", () => {
         name: "User",
         image: "uploads/pending/avatar/u1/old.webp",
         role: "client",
+        emailVerified: true,
+        emailStatus: "ok" as const,
+        emailStatusChangedAt: null,
+        hasSeenActingContextTooltip: false,
       }),
     };
     const writer = { updateProfile: vi.fn().mockResolvedValue(undefined) };
