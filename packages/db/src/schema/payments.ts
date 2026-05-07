@@ -43,6 +43,8 @@ export const payment = pgTable(
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     /** Stripe Charge id (`ch_...`) used by dispute/refund webhook lookups. */
     stripeChargeId: text("stripe_charge_id"),
+    /** Stripe Refund id (`re_...`) after an admin-initiated refund. */
+    stripeRefundId: text("stripe_refund_id"),
     status: paymentStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },

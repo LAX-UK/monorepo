@@ -1,7 +1,9 @@
 import { createPaymentBodySchema, paymentIdParamSchema } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Container } from "../container.js";
+import { AuthzError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
@@ -65,17 +67,30 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     requireFinanceEntityWrite,
     zValidator("param", paymentIdParamSchema),
     async (c) => {
+      const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
       const result = await container.paymentService.markCapturedByAdmin(
+        userId,
         role,
         id,
         ctx?.legalEntityId,
       );
       return result.match(
         () => c.json({ ok: true }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+        (error: AuthzError | PaymentProviderError) => {
+          if (error instanceof PaymentProviderError) {
+            return c.json(
+              { error: error.message, stripe_code: error.stripeCode ?? null },
+              error.status as ContentfulStatusCode,
+            );
+          }
+          if (error instanceof AuthzError) {
+            return c.json({ error: error.message }, asHttpStatus(error.status));
+          }
+          throw error;
+        },
       );
     },
   );
@@ -99,7 +114,18 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       );
       return result.match(
         () => c.json({ ok: true }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+        (error: AuthzError | PaymentProviderError) => {
+          if (error instanceof PaymentProviderError) {
+            return c.json(
+              { error: error.message, stripe_code: error.stripeCode ?? null },
+              error.status as ContentfulStatusCode,
+            );
+          }
+          if (error instanceof AuthzError) {
+            return c.json({ error: error.message }, asHttpStatus(error.status));
+          }
+          throw error;
+        },
       );
     },
   );

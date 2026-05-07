@@ -23,6 +23,7 @@ export type Payment = {
   platformFee: string;
   stripePaymentIntentId: string | null;
   stripeChargeId: string | null;
+  stripeRefundId: string | null;
   status: PaymentStatus;
   createdAt: Date;
 };

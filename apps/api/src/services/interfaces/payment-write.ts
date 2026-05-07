@@ -1,3 +1,5 @@
+import type { Database } from "@auction/db";
+
 export type CreatePaymentRow = {
   lotId: string;
   paidByUserId: string;
@@ -22,6 +24,7 @@ export type PaymentRecord = {
   platformFee: string;
   stripePaymentIntentId: string | null;
   stripeChargeId: string | null;
+  stripeRefundId: string | null;
   status: "pending" | "authorized" | "captured" | "refunded" | "requires_manual_review";
   createdAt: Date;
   /** Populated for admin listing when a Xero invoice row exists. */
@@ -45,4 +48,15 @@ export interface IPaymentWriteRepository {
   countPendingOlderThanHours(hours: number): Promise<number>;
   /** Sum captured payment amounts in `[start, end]`. */
   sumCapturedBetween(start: Date, end: Date): Promise<string>;
+
+  applyCapturedInTransaction(
+    tx: Database,
+    id: string,
+    opts: { stripeChargeId?: string | null },
+  ): Promise<void>;
+  applyRefundedInTransaction(
+    tx: Database,
+    id: string,
+    stripeRefundId: string | null,
+  ): Promise<void>;
 }
