@@ -1,4 +1,12 @@
-import { domainEvent, legalEntity, legalEntityMember, payout, projectorState, user } from "@auction/db/schema";
+import {
+  domainEvent,
+  legalEntity,
+  legalEntityMember,
+  lot,
+  payout,
+  projectorState,
+  user,
+} from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
@@ -13,7 +21,17 @@ type TransferBlockedPayload = {
   reason: string;
 };
 
-const SUPPORTED_EVENT_TYPES = ["payout.transfer_blocked"] as const;
+type ManualReviewPayload = {
+  paymentId: string;
+  lotId: string;
+  buyerUserId: string;
+  sellerLegalEntityId: string;
+  amount: string;
+  currency: string;
+  reason: string;
+};
+
+const SUPPORTED_EVENT_TYPES = ["payout.transfer_blocked", "payment.requires_manual_review"] as const;
 
 function formatReason(reason: string): string {
   if (reason === "connect_not_ready") {
@@ -28,6 +46,8 @@ export async function processNotificationFanout(options: {
   emailService: IEmailService;
   supportContactEmail: string;
   adminPayoutsUrl: string;
+  adminEmailAddress?: string | undefined;
+  webOrigin?: string | undefined;
 }): Promise<void> {
   const { db, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
 
@@ -73,6 +93,25 @@ export async function processNotificationFanout(options: {
           payload: row.payload as TransferBlockedPayload,
         });
       }
+      if (row.eventType === "payment.requires_manual_review") {
+        const manualReviewArgs: Parameters<typeof fanoutPaymentManualReview>[0] = {
+          db,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          paymentId: row.aggregateId,
+          payload: row.payload as ManualReviewPayload,
+        };
+        if (options.adminEmailAddress) {
+          manualReviewArgs.adminEmailAddress = options.adminEmailAddress;
+        }
+        if (options.webOrigin) {
+          manualReviewArgs.webOrigin = options.webOrigin;
+        }
+        await fanoutPaymentManualReview({
+          ...manualReviewArgs,
+        });
+      }
       maxId = row.id;
     } catch (err) {
       log.error({ err, eventId: row.id, eventType: row.eventType }, "notification_fanout_failed");
@@ -85,6 +124,84 @@ export async function processNotificationFanout(options: {
       .update(projectorState)
       .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
       .where(eq(projectorState.projectorName, NOTIFICATION_FANOUT_PROJECTOR));
+  }
+}
+
+async function fanoutPaymentManualReview(options: {
+  db: Db;
+  emailService: IEmailService;
+  supportContactEmail: string;
+  adminEmailAddress?: string | undefined;
+  webOrigin?: string | undefined;
+  eventId: number;
+  paymentId: string;
+  payload: ManualReviewPayload;
+}): Promise<void> {
+  const {
+    db,
+    emailService,
+    supportContactEmail,
+    adminEmailAddress,
+    webOrigin,
+    eventId,
+    paymentId,
+    payload,
+  } = options;
+  if (!payload?.buyerUserId || !payload?.lotId || !payload?.sellerLegalEntityId) return;
+
+  const [lotRow] = await db
+    .select({ title: lot.title, lotNumber: lot.lotNumber })
+    .from(lot)
+    .where(eq(lot.id, payload.lotId))
+    .limit(1);
+  const [buyerRow] = await db
+    .select({ email: user.email, name: user.name, firstName: user.firstName })
+    .from(user)
+    .where(eq(user.id, payload.buyerUserId))
+    .limit(1);
+  const [sellerRow] = await db
+    .select({ displayName: legalEntity.displayName })
+    .from(legalEntity)
+    .where(eq(legalEntity.id, payload.sellerLegalEntityId))
+    .limit(1);
+
+  const lotTitle = lotRow?.title ?? "Unknown Lot";
+  const lotReference = lotRow?.lotNumber == null ? null : String(lotRow.lotNumber);
+  const sellerEntityName = sellerRow?.displayName ?? "Unknown Organisation";
+
+  if (buyerRow?.email) {
+    await emailService.enqueue({
+      template: "payment-manual-review-buyer-notice",
+      to: buyerRow.email,
+      userId: payload.buyerUserId,
+      vars: {
+        userName: buyerRow.firstName ?? buyerRow.name,
+        lotTitle,
+        lotReference,
+        supportContactEmail,
+      },
+      category: "transactional",
+      idempotencyKey: `payment-manual-review-buyer-notice:${eventId}:${payload.buyerUserId}`,
+    });
+  }
+
+  if (adminEmailAddress) {
+    const base = webOrigin?.replace(/\/$/, "") ?? "";
+    await emailService.enqueue({
+      template: "payment-manual-review-admin-notice",
+      to: adminEmailAddress,
+      vars: {
+        paymentId,
+        lotTitle,
+        lotReference,
+        sellerEntityName,
+        amount: payload.amount,
+        currency: payload.currency,
+        adminReviewUrl: `${base}/admin/payments/manual-review`,
+      },
+      category: "transactional",
+      idempotencyKey: `payment-manual-review-admin-notice:${eventId}:admin`,
+    });
   }
 }
 

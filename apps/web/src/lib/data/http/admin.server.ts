@@ -108,7 +108,13 @@ function parseArtistProfile(raw: unknown): ArtistProfile {
 }
 
 function isPaymentStatus(s: string): s is PaymentStatus {
-  return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
+  return (
+    s === "pending" ||
+    s === "authorized" ||
+    s === "captured" ||
+    s === "refunded" ||
+    s === "requires_manual_review"
+  );
 }
 
 function isPayoutStatus(s: unknown): s is PayoutStatus {
@@ -397,6 +403,31 @@ export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Prom
     throw new Error(`Failed to load legal entities with Stripe requirements: ${res.status}`);
   }
   const body = (await res.json()) as { data: AdminStripeConnectRequirementRow[] };
+  return body.data;
+}
+
+export type AdminManualReviewPaymentRow = {
+  paymentId: string;
+  lotId: string;
+  lotTitle: string;
+  lotNumber: number | null;
+  winnerUserId: string;
+  winnerEmail: string;
+  sellerLegalEntityId: string;
+  sellerDisplayName: string;
+  sellerStatus: LegalEntityStatus;
+  sellerArchivedAt: string | null;
+  amount: string;
+  currency: string;
+  archiveReason: string | null;
+  archiveTimestamp: string | null;
+  createdAt: string;
+};
+
+export async function getAdminManualReviewPayments(): Promise<AdminManualReviewPaymentRow[]> {
+  const res = await authedServerFetch("/admin/payments/manual-review");
+  if (!res.ok) throw new Error(`Failed to load manual review payments: ${res.status}`);
+  const body = (await res.json()) as { data: AdminManualReviewPaymentRow[] };
   return body.data;
 }
 

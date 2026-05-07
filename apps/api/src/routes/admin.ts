@@ -5,7 +5,10 @@ import {
   kycVerification,
   legalEntity,
   legalEntityDocument,
+  lot,
+  payment,
   payout,
+  user,
 } from "@auction/db/schema";
 import {
   encodeActingContextCookie,
@@ -73,6 +76,10 @@ const impersonationLookupQuerySchema = z.object({
 const impersonationRecordFailedEndBodySchema = z.object({
   sessionId: z.string().uuid(),
   legalEntityId: z.string().uuid(),
+});
+
+const adminPaymentIdParamSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export function createAdminRoutes(container: Container, authenticator: IAuthenticator) {
@@ -277,6 +284,89 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       .limit(200);
     return c.json({ data: rows });
   });
+
+  platform.get("/payments/manual-review", requireFinanceAccess, async (c) => {
+    const rows = await container.db
+      .select({
+        paymentId: payment.id,
+        lotId: payment.lotId,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        winnerUserId: payment.buyerId,
+        winnerEmail: user.email,
+        sellerLegalEntityId: payment.sellerLegalEntityId,
+        sellerDisplayName: legalEntity.displayName,
+        sellerStatus: legalEntity.status,
+        sellerArchivedAt: legalEntity.statusChangedAt,
+        amount: payment.amount,
+        createdAt: payment.createdAt,
+      })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .innerJoin(legalEntity, eq(payment.sellerLegalEntityId, legalEntity.id))
+      .innerJoin(user, eq(payment.buyerId, user.id))
+      .where(sql`${payment.status} = 'requires_manual_review'`)
+      .orderBy(desc(payment.createdAt))
+      .limit(100);
+
+    const data = [];
+    for (const row of rows) {
+      const [archiveEvent] = await container.db
+        .select({ payload: domainEvent.payload, occurredAt: domainEvent.occurredAt })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.aggregateType, "legal_entity"),
+            eq(domainEvent.aggregateId, row.sellerLegalEntityId),
+            eq(domainEvent.eventType, "legal_entity.archived"),
+          ),
+        )
+        .orderBy(desc(domainEvent.id))
+        .limit(1);
+      const payload = archiveEvent?.payload as { reason?: unknown } | undefined;
+      data.push({
+        ...row,
+        amount: String(row.amount),
+        currency: "GBP",
+        archiveReason: typeof payload?.reason === "string" ? payload.reason : null,
+        archiveTimestamp: row.sellerArchivedAt ?? archiveEvent?.occurredAt ?? null,
+      });
+    }
+
+    return c.json({ data });
+  });
+
+  platform.post(
+    "/payments/:id/capture-and-process",
+    requireFinanceAccess,
+    zValidator("param", adminPaymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = c.get("userRole") ?? "client";
+      const { id } = c.req.valid("param");
+      const result = await container.paymentService.releaseManualReviewForCapture(userId, role, id);
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/payments/:id/refund-buyer",
+    requireFinanceAccess,
+    zValidator("param", adminPaymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = c.get("userRole") ?? "client";
+      const { id } = c.req.valid("param");
+      const result = await container.paymentService.refundManualReviewPayment(userId, role, id);
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
   platform.get("/attention", async (c) => {
     const data = await container.attentionFeedReader.list();
