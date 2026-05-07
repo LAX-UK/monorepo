@@ -4,7 +4,8 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { BodyText, DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
+import { EmptyState } from "@auction/ui/components/empty-state";
+import { ChevronRight, Palette } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -39,9 +40,17 @@ export function LaxArtists({ items }: Props) {
           </BodyText>
         </div>
         {items.length === 0 ? (
-          <BodyText className="text-brand-400 dark:text-on-surface-variant">
-            No artists to display.
-          </BodyText>
+          <EmptyState
+            variant="marketing"
+            icon={<Palette aria-hidden />}
+            title="Artists coming soon"
+            description="We're curating our featured artists. Follow us to be notified when new artists are added."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/sales">Browse auctions</Link>
+              </Button>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((a, index) => (
