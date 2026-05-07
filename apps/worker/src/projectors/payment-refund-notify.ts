@@ -52,12 +52,7 @@ export async function processPaymentRefundNotify(options: {
       payload: domainEvent.payload,
     })
     .from(domainEvent)
-    .where(
-      and(
-        gt(domainEvent.id, cursor),
-        eq(domainEvent.eventType, "payment.refunded"),
-      ),
-    )
+    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "payment.refunded")))
     .orderBy(domainEvent.id)
     .limit(50);
 

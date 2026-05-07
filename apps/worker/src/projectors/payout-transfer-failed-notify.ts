@@ -1,4 +1,11 @@
-import { domainEvent, legalEntity, legalEntityMember, payout, projectorState, user } from "@auction/db/schema";
+import {
+  domainEvent,
+  legalEntity,
+  legalEntityMember,
+  payout,
+  projectorState,
+  user,
+} from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
@@ -99,7 +106,7 @@ export async function processPayoutTransferFailedNotify(options: {
 
       const failureReason = payload.stripeErrorMessage
         ? `${payload.stripeErrorCode}: ${payload.stripeErrorMessage}`
-        : payload.stripeErrorCode ?? "Unknown error";
+        : (payload.stripeErrorCode ?? "Unknown error");
 
       for (const m of financeMembers) {
         await emailService.enqueue({

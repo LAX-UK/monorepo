@@ -5,8 +5,8 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IPayoutService } from "../interfaces/payout.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
+import type { IPayoutService } from "../interfaces/payout.js";
 import {
   type AccountLink,
   type ConnectAccountStatus,
@@ -415,9 +415,8 @@ export class StripeConnectService implements IStripeConnectService {
             (err.type === "StripeRateLimitError" && attempt < maxRetries);
 
           if (isRetryable && attempt < maxRetries) {
-            const delayMs = Math.pow(2, attempt) * 1000;
+            const delayMs = 2 ** attempt * 1000;
             await new Promise((resolve) => setTimeout(resolve, delayMs));
-            continue;
           }
         } else {
           throw err;

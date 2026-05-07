@@ -30,9 +30,12 @@ import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
-import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
+import {
+  createRequireLegalEntityContext,
+  createSubmissionsLegalEntityContext,
+} from "./middleware/require-legal-entity-context.js";
 import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
 import {
   DrizzleAdminUserActivityReader,
@@ -69,6 +72,7 @@ import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.re
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
+import { DrizzleWebhookEventRepository } from "./repositories/drizzle-webhook-event.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
 import { AccountLinkingService } from "./services/account-linking.service.js";
@@ -87,16 +91,11 @@ import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
-import {
-  createRequireLegalEntityContext,
-  createSubmissionsLegalEntityContext,
-} from "./middleware/require-legal-entity-context.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
-import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
-import { ImpersonationSessionService } from "./services/impersonation-session.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
-import { InvoiceAddressingService } from "./services/invoice-addressing.js";
+import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
+import { ImpersonationSessionService } from "./services/impersonation-session.service.js";
 import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js";
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
@@ -123,8 +122,10 @@ import type { IStripeConnectService } from "./services/interfaces/stripe-connect
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
 import { InvitationService } from "./services/invitation.service.js";
+import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
+import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
@@ -145,10 +146,9 @@ import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
-import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
+import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { UploadService } from "./services/upload.service.js";
-import { DrizzleWebhookEventRepository } from "./repositories/drizzle-webhook-event.repository.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { XeroOAuthService } from "./services/xero-oauth.service.js";

@@ -56,7 +56,10 @@ async function clearLotsForApprovedArtist(db: Db, artistId: string): Promise<voi
     .where(and(eq(lot.artistId, artistId), eq(lot.artistReviewRequired, true)));
 }
 
-export async function processClearArtistBlocks(options: { db: Db; log: pino.Logger }): Promise<void> {
+export async function processClearArtistBlocks(options: {
+  db: Db;
+  log: pino.Logger;
+}): Promise<void> {
   const { db, log } = options;
 
   await db

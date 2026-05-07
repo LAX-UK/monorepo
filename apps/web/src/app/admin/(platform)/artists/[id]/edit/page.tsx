@@ -1,5 +1,5 @@
-import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
+import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
 import { getAdminArtistById, getAdminUserList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";

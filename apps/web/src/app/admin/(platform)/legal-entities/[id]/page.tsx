@@ -6,7 +6,7 @@ import { legalEntityLifecycleSimpleAction } from "@/lib/admin/legal-entity-lifec
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import type { LegalEntityStatus } from "@auction/types";
-import { canAccessPlatformAdminRoutes, type UserRole } from "@auction/types";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -64,7 +64,7 @@ export default async function AdminLegalEntityDetailPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const success = sp.success ? decodeURIComponent(sp.success) : null;
 
-  let entity;
+  let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
   try {
     entity = await getAdminLegalEntityById(id);
   } catch {

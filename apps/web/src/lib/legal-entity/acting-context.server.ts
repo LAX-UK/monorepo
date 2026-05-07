@@ -2,9 +2,9 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import {
+  type LegalEntitySummary,
   decodeActingContextCookie,
   normalizeUserRole,
-  type LegalEntitySummary,
 } from "@auction/types";
 import { cookies } from "next/headers";
 import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
@@ -21,8 +21,8 @@ async function seedPersonalActingLegalEntityCookieIfAbsent(
   const jar = await cookies();
   if (jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value?.trim()) return;
 
-  const personal =
-    memberships.find((m) => m.kind === "individual") ?? memberships[0]!;
+  const personal = memberships.find((m) => m.kind === "individual") ?? memberships[0];
+  if (!personal) return;
   const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
 
   try {

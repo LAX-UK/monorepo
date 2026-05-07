@@ -1,11 +1,11 @@
 import { openAdminLegalEntityAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { canAccessPlatformAdminRoutes, type UserRole } from "@auction/types";
 import { redirect } from "next/navigation";
 
 export default async function AdminLegalEntitiesLookupPage({

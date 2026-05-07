@@ -1,14 +1,14 @@
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
-import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
+import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /** Scheduled status transitions (scheduled→active, active→ended + winner),
  * Dutch price decrements, and single-lot job hooks for BullMQ.
@@ -125,12 +125,10 @@ export class LotLifecycleService {
           : bidsList;
 
       const meetsReserve = (b: Bid) =>
-        !row.reservePrice ||
-        row.reservePrice === "" ||
-        moneyGte(b.amount, row.reservePrice);
+        !row.reservePrice || row.reservePrice === "" || moneyGte(b.amount, row.reservePrice);
 
-      const reserveMet = ordered.filter(
-        (b) => Boolean(b.placedByUserId && b.buyerLegalEntityId && meetsReserve(b)),
+      const reserveMet = ordered.filter((b) =>
+        Boolean(b.placedByUserId && b.buyerLegalEntityId && meetsReserve(b)),
       );
 
       let chosen: Bid | undefined;

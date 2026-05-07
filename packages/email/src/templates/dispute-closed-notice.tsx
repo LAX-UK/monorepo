@@ -5,7 +5,9 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = (vars: TemplateVarsByName["dispute-closed-notice"]) =>
   `Payment dispute ${vars.outcome} for ${vars.entityName}`;
 
-export default function DisputeClosedNoticeEmail(vars: TemplateVarsByName["dispute-closed-notice"]) {
+export default function DisputeClosedNoticeEmail(
+  vars: TemplateVarsByName["dispute-closed-notice"],
+) {
   return (
     <Layout preview={`Payment dispute ${vars.outcome}`} title="Payment Dispute Closed">
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
@@ -17,7 +19,8 @@ export default function DisputeClosedNoticeEmail(vars: TemplateVarsByName["dispu
         Amount: {vars.currency} {vars.amount}
       </TextBlock>
       <TextBlock>
-        If you have questions, contact <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
+        If you have questions, contact{" "}
+        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
       </TextBlock>
     </Layout>
   );

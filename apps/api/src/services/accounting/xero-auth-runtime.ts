@@ -1,6 +1,9 @@
 import type { TokenSet } from "xero-node";
 import type { XeroClient } from "xero-node";
-import type { IXeroConnectionRepository, XeroConnectionRow } from "../interfaces/xero-repositories.js";
+import type {
+  IXeroConnectionRepository,
+  XeroConnectionRow,
+} from "../interfaces/xero-repositories.js";
 
 export function tokenExpiryDate(tokenSet: TokenSet): Date {
   const raw = tokenSet.expires_at;

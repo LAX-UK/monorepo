@@ -13,11 +13,7 @@ import type {
   PayoutStatus,
   Sale,
 } from "@auction/types";
-import {
-  legalEntityKinds,
-  legalEntityStatuses,
-  legalEntitySubkinds,
-} from "@auction/types";
+import { legalEntityKinds, legalEntityStatuses, legalEntitySubkinds } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
 export type AdminPaymentRow = {
@@ -513,7 +509,8 @@ function parseLegalEntityFromAdminApi(raw: Record<string, unknown>): LegalEntity
       ? (raw.status as LegalEntityStatus)
       : "lead";
   const kind =
-    typeof raw.kind === "string" && legalEntityKinds.includes(raw.kind as "individual" | "organisation")
+    typeof raw.kind === "string" &&
+    legalEntityKinds.includes(raw.kind as "individual" | "organisation")
       ? (raw.kind as LegalEntity["kind"])
       : "individual";
   const subkind =

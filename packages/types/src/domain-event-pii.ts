@@ -196,7 +196,9 @@ function walk(
     return redactLeaf(eventType, path, segment, value, opts);
   }
   if (Array.isArray(value)) {
-    return value.map((item, i) => walk(eventType, item, path === "" ? `${i}` : `${path}.${i}`, opts));
+    return value.map((item, i) =>
+      walk(eventType, item, path === "" ? `${i}` : `${path}.${i}`, opts),
+    );
   }
   if (typeof value === "object") {
     const out: Record<string, unknown> = {};

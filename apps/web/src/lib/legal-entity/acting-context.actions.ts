@@ -1,10 +1,10 @@
 "use server";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { decodeActingContextCookie } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { decodeActingContextCookie } from "@auction/types";
 import { z } from "zod";
 import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
 
@@ -15,11 +15,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function readImpersonationSnapshot(): Promise<{ sessionId: string; legalEntityId: string } | null> {
+async function readImpersonationSnapshot(): Promise<{
+  sessionId: string;
+  legalEntityId: string;
+} | null> {
   const jar = await cookies();
   const raw = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
   if (!raw) return null;
-  let decoded;
+  let decoded: ReturnType<typeof decodeActingContextCookie> = null;
   try {
     decoded = decodeActingContextCookie(decodeURIComponent(raw.trim()));
   } catch {
@@ -124,9 +127,7 @@ export async function endAdminImpersonationAction(): Promise<void> {
     } catch {
       // Best-effort: next `/admin/*` API request runs `reconcileFromAdminRequestCookie`.
     }
-    redirect(
-      recordedRemote ? "/admin" : "/admin?impersonation_end_warning=1",
-    );
+    redirect(recordedRemote ? "/admin" : "/admin?impersonation_end_warning=1");
   }
 
   redirect("/admin");

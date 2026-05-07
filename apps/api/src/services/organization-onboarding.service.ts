@@ -3,13 +3,13 @@ import { legalEntity, legalEntityAddress, legalEntityMember } from "@auction/db/
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { and, eq, sql } from "drizzle-orm";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   CheckNameResult,
   CreateOrganizationResult,
   IOrganizationOnboardingService,
   OrgRequirements,
 } from "./interfaces/organization-onboarding.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 const SUBKIND_LABELS: Record<PublicOrganisationSubkind, string> = {
   gallery: "Gallery",

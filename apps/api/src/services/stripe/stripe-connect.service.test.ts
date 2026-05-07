@@ -177,7 +177,13 @@ describe("StripeConnectService.initiateTransfer", () => {
     } as unknown as DomainEventPublisher;
   }
 
-  function makeMockDb(entityRow: { id: string; stripeConnectAccountId: string | null; stripeConnectPayoutsEnabled: boolean } | null): Database {
+  function makeMockDb(
+    entityRow: {
+      id: string;
+      stripeConnectAccountId: string | null;
+      stripeConnectPayoutsEnabled: boolean;
+    } | null,
+  ): Database {
     const rows = entityRow ? [entityRow] : [];
     return {
       select: vi.fn().mockReturnValue({
@@ -234,7 +240,11 @@ describe("StripeConnectService.initiateTransfer", () => {
 
   it("returns no_connect_account when entity has no Stripe account", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled" }));
-    const db = makeMockDb({ id: "le1", stripeConnectAccountId: null, stripeConnectPayoutsEnabled: false });
+    const db = makeMockDb({
+      id: "le1",
+      stripeConnectAccountId: null,
+      stripeConnectPayoutsEnabled: false,
+    });
     const svc = new StripeConnectService(
       baseEnv(),
       db,
@@ -250,7 +260,11 @@ describe("StripeConnectService.initiateTransfer", () => {
 
   it("returns connect_not_ready when Connect payouts are disabled", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled" }));
-    const db = makeMockDb({ id: "le1", stripeConnectAccountId: "acct_123", stripeConnectPayoutsEnabled: false });
+    const db = makeMockDb({
+      id: "le1",
+      stripeConnectAccountId: "acct_123",
+      stripeConnectPayoutsEnabled: false,
+    });
     const publisher = makeDomainEventPublisher();
     const svc = new StripeConnectService(
       baseEnv(),
@@ -279,7 +293,11 @@ describe("StripeConnectService.initiateTransfer", () => {
 
   it("skips transfer for zero amount payouts and marks as paid", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled", netAmount: "0.00" }));
-    const db = makeMockDb({ id: "le1", stripeConnectAccountId: "acct_123", stripeConnectPayoutsEnabled: true });
+    const db = makeMockDb({
+      id: "le1",
+      stripeConnectAccountId: "acct_123",
+      stripeConnectPayoutsEnabled: true,
+    });
     const svc = new StripeConnectService(
       baseEnv(),
       db,
@@ -291,13 +309,14 @@ describe("StripeConnectService.initiateTransfer", () => {
     const result = await svc.initiateTransfer("po1");
 
     expect(result).toEqual({ ok: true, stripeTransferId: "zero_amount_skipped" });
-    expect(payoutRepo.updateStatus).toHaveBeenCalledWith("po1", expect.objectContaining({ status: "paid" }));
+    expect(payoutRepo.updateStatus).toHaveBeenCalledWith(
+      "po1",
+      expect.objectContaining({ status: "paid" }),
+    );
   });
 
   it("marks negative net payouts as clawback_pending without loading Stripe Connect", async () => {
-    const payoutRepo = makePayoutRepository(
-      payout({ status: "scheduled", netAmount: "-100.00" }),
-    );
+    const payoutRepo = makePayoutRepository(payout({ status: "scheduled", netAmount: "-100.00" }));
     const publisher = makeDomainEventPublisher();
     const db = makeMockDb({
       id: "le1",

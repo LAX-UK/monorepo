@@ -2,9 +2,9 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { reversePayoutAction } from "@/lib/admin/payout.actions";
+import type { PayoutStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Textarea } from "@auction/ui/components/textarea";
-import type { PayoutStatus } from "@auction/types";
 import { useState, useTransition } from "react";
 
 type Props = {
@@ -32,6 +32,7 @@ export function AdminPayoutReverseButton({ payoutId, status }: Props) {
         Marks this payout as reversed for finance records. Requires administrator payout.reverse
         capability.
       </p>
+      {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps Textarea component */}
       <label className="block space-y-1 text-sm">
         <span>Reason (min 10 characters)</span>
         <Textarea

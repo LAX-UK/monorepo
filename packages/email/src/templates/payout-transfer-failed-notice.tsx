@@ -27,10 +27,8 @@ export default function PayoutTransferFailedNoticeEmail(
       </TextBlock>
       <TextBlock>
         <strong>Payout Details:</strong>
-        <br />
-        • Amount: {payoutCurrency} {payoutAmount}
-        <br />
-        • Payout ID: {payoutId}
+        <br />• Amount: {payoutCurrency} {payoutAmount}
+        <br />• Payout ID: {payoutId}
         <br />• Failure Reason: {failureReason}
       </TextBlock>
       <TextBlock>
@@ -39,10 +37,8 @@ export default function PayoutTransferFailedNoticeEmail(
       </TextBlock>
       <TextBlock>
         Common causes include:
-        <br />
-        • Stripe Connect account not fully verified
-        <br />
-        • Insufficient platform balance
+        <br />• Stripe Connect account not fully verified
+        <br />• Insufficient platform balance
         <br />• Invalid or closed bank account on the connected account
       </TextBlock>
       <TextBlock>

@@ -40,7 +40,9 @@ function mount(user: { id: string; role: string } | null) {
 describe("lot bid history privacy", () => {
   it("redacts bidder user ids for anonymous readers", async () => {
     const res = await mount(null).request(`/lots/${lotId}/bids`);
-    const body = (await res.json()) as { data: Array<{ placedByUserId: string | null; bidderRef: string }> };
+    const body = (await res.json()) as {
+      data: Array<{ placedByUserId: string | null; bidderRef: string }>;
+    };
 
     expect(res.status).toBe(200);
     expect(body.data[0]?.placedByUserId).toBeNull();
@@ -56,7 +58,9 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to administrators", async () => {
-    const res = await mount({ id: "admin-1", role: "administrator" }).request(`/lots/${lotId}/bids`);
+    const res = await mount({ id: "admin-1", role: "administrator" }).request(
+      `/lots/${lotId}/bids`,
+    );
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
     expect(res.status).toBe(200);

@@ -1,7 +1,7 @@
-import { err } from "neverthrow";
-import { Hono } from "hono";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import * as AuctionTypes from "@auction/types";
+import { Hono } from "hono";
+import { err } from "neverthrow";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
@@ -140,7 +140,10 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(200);
     expect(publish).toHaveBeenCalledTimes(1);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string; payload: { to_status: string } };
+    const event = publish.mock.calls[0]?.[1] as {
+      eventType: string;
+      payload: { to_status: string };
+    };
     expect(event.eventType).toBe("legal_entity.docs_requested");
     expect(event.payload.to_status).toBe("docs_requested");
     const body = (await res.json()) as { data: { status: string } };
@@ -157,15 +160,13 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
   });
 
   it("maps invalid_transition (422) from service to HTTP 422", async () => {
-    const runTransition = vi
-      .fn()
-      .mockResolvedValue(
-        err({
-          code: "invalid_transition",
-          message: "Cannot apply request_docs from status approved",
-          status: 422,
-        }),
-      );
+    const runTransition = vi.fn().mockResolvedValue(
+      err({
+        code: "invalid_transition",
+        message: "Cannot apply request_docs from status approved",
+        status: 422,
+      }),
+    );
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,

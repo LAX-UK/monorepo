@@ -11,6 +11,7 @@ import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
   IItemSubmissionService,
@@ -25,7 +26,6 @@ import type {
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
 } from "./interfaces/repositories.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";

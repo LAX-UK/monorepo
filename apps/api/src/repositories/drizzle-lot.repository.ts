@@ -327,10 +327,7 @@ export class DrizzleLotRepository implements ILotRepository {
   }
 
   async voidLotAntiShillingClose(id: string): Promise<void> {
-    await this.db
-      .update(bid)
-      .set({ isWinning: false })
-      .where(eq(bid.lotId, id));
+    await this.db.update(bid).set({ isWinning: false }).where(eq(bid.lotId, id));
     await this.db
       .update(lot)
       .set({

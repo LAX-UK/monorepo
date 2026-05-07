@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  classifyLotArtistBackfill,
-  hintFromLotTitle,
-  looksLikeAuthUserId,
-} from "./classifier.js";
+import { classifyLotArtistBackfill, hintFromLotTitle, looksLikeAuthUserId } from "./classifier.js";
 
 describe("classifyLotArtistBackfill", () => {
   it("classifies clean_artist_profile_id from UUID column with single lookup hit", () => {

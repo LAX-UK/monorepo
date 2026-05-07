@@ -4,8 +4,8 @@ import {
   updateLegalEntityMemberRoleSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
 import { and, eq, isNull } from "drizzle-orm";
+import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";

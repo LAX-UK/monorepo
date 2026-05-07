@@ -1,11 +1,14 @@
 import { AdminImpersonateForm } from "@/components/admin/admin-impersonate-form";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { canAccessPlatformAdminRoutes, type UserRole } from "@auction/types";
 import { redirect } from "next/navigation";
 
 export default async function AdminImpersonationPage() {
-  const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin/impersonation" });
+  const user = await requireAuthenticatedUser({
+    shell: "staff",
+    loginNext: "/admin/impersonation",
+  });
   if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
     redirect("/admin");
   }

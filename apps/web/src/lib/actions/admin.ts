@@ -362,7 +362,9 @@ export async function adminMergeArtistResultAction(
     return actionFailure("Cannot merge an artist into itself");
   }
 
-  const canonRes = await authedServerFetch(`/artists/${encodeURIComponent(parsed.data.intoArtistId)}`);
+  const canonRes = await authedServerFetch(
+    `/artists/${encodeURIComponent(parsed.data.intoArtistId)}`,
+  );
   if (!canonRes.ok) {
     return actionFailure("Target artist not found", undefined, canonRes.status);
   }
@@ -386,14 +388,22 @@ export async function adminMergeArtistResultAction(
     }),
   });
   if (!mergeRes.ok) {
-    const payload = (await mergeRes.json().catch(() => ({}))) as { error?: string; message?: string };
-    return actionFailure(payload.message ?? payload.error ?? "merge_failed", undefined, mergeRes.status);
+    const payload = (await mergeRes.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    return actionFailure(
+      payload.message ?? payload.error ?? "merge_failed",
+      undefined,
+      mergeRes.status,
+    );
   }
 
   const body = (await mergeRes.json()) as {
     data?: { remaining?: { id?: string }; canonical?: { id?: string } };
   };
-  const remainingId = body.data?.remaining?.id ?? body.data?.canonical?.id ?? parsed.data.intoArtistId;
+  const remainingId =
+    body.data?.remaining?.id ?? body.data?.canonical?.id ?? parsed.data.intoArtistId;
 
   revalidatePath("/admin/artists");
   revalidatePath(`/admin/artists/${fromId}/edit`);
