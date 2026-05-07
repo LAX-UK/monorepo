@@ -16,6 +16,7 @@ export class DrizzleUserRepository implements IUserRepository {
       name: row.name,
       role: row.role,
       image: row.image ?? null,
+      hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
     };
   }
 
@@ -32,5 +33,12 @@ export class DrizzleUserRepository implements IUserRepository {
       .limit(params.limit)
       .offset(params.offset);
     return rows;
+  }
+
+  async updateActingContextTooltipSeen(userId: string, seen: boolean): Promise<void> {
+    await this.db
+      .update(user)
+      .set({ hasSeenActingContextTooltip: seen })
+      .where(eq(user.id, userId));
   }
 }

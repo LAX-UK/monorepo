@@ -21,6 +21,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         emailVerified: user.emailVerified,
         emailStatus: user.emailStatus,
         emailStatusChangedAt: user.emailStatusChangedAt,
+        hasSeenActingContextTooltip: user.hasSeenActingContextTooltip,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -35,6 +36,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       emailVerified: row.emailVerified,
       emailStatus: row.emailStatus as "ok" | "bounced" | "complained",
       emailStatusChangedAt: row.emailStatusChangedAt,
+      hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
     };
   }
 

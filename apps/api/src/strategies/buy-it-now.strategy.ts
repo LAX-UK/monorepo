@@ -11,7 +11,11 @@ function minIncrement(lot: Lot): number {
 
 export class BuyItNowAuctionStrategy implements ILotStrategy {
   validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
-    if (bid.bidderId === lot.sellerId) {
+    if (
+      bid.buyerLegalEntityId && lot.sellerLegalEntityId
+        ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
+        : bid.bidderId === lot.sellerId
+    ) {
       return err(new BidError("Seller cannot bid on own lot"));
     }
     const current = Number(lot.currentPrice);

@@ -30,6 +30,8 @@ import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
+import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
+import { createBaseLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
 import {
@@ -38,12 +40,16 @@ import {
   DrizzleAdminUserRoleManager,
   DrizzleAdminUserSuspender,
 } from "./repositories/drizzle-admin-user.reader.js";
+import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shilling.repository.js";
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleEmailObservabilityRepository } from "./repositories/drizzle-email-observability.repository.js";
 import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
+import { DrizzleKycRepository } from "./repositories/drizzle-kyc.repository.js";
+import { DrizzleLegalEntityNotificationRecipientRepository } from "./repositories/drizzle-legal-entity-notification-recipient.repository.js";
+import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entity.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
@@ -51,6 +57,7 @@ import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notif
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.repository.js";
+import { DrizzlePayoutRepository } from "./repositories/drizzle-payout.repository.js";
 import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
@@ -67,45 +74,69 @@ import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-w
 import { AccountLinkingService } from "./services/account-linking.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
+import { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.writer.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
+import { ArtistRegistryService } from "./services/artist-registry.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
+import {
+  createRequireLegalEntityContext,
+  createSubmissionsLegalEntityContext,
+} from "./middleware/require-legal-entity-context.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
+import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
+import { ImpersonationSessionService } from "./services/impersonation-session.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
+import { InvoiceAddressingService } from "./services/invoice-addressing.js";
+import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js";
+import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
+import type { IKycRepository } from "./services/interfaces/kyc-repository.js";
+import type { IKycService } from "./services/interfaces/kyc-service.js";
+import type { ILegalEntityNotificationRecipientReader } from "./services/interfaces/legal-entity-notification-recipients.js";
+import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-repository.js";
+import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
+import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
 import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
+import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
+import type { IPayoutService } from "./services/interfaces/payout.js";
 import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IPushSender } from "./services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
+import type { IStripeConnectService } from "./services/interfaces/stripe-connect.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
+import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
+import { MemberManagementService } from "./services/member-management.service.js";
 import { NotificationQueryService } from "./services/notification-query.service.js";
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
+import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { PaymentService } from "./services/payment.service.js";
+import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
@@ -114,7 +145,10 @@ import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
+import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
+import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { UploadService } from "./services/upload.service.js";
+import { DrizzleWebhookEventRepository } from "./repositories/drizzle-webhook-event.repository.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { XeroOAuthService } from "./services/xero-oauth.service.js";
@@ -145,6 +179,10 @@ export type Container = {
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
   accountingProvider: IPaymentAccountingProvider;
+  /** bill-to resolver for Xero + payment-invoice email. */
+  invoiceAddressingService: InvoiceAddressingService;
+  /** Xero ACCPAY bill creation for paid payouts (null when Xero OAuth env not set). */
+  xeroPayoutBillWriter: XeroPayoutBillWriter | null;
   xeroOAuthService: XeroOAuthService | null;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   userService: UserService;
@@ -165,18 +203,49 @@ export type Container = {
   analyticsService: AnalyticsService;
   accountLinkingService: AccountLinkingService;
   domainEventPublisher: DomainEventPublisher;
+  /** admin KYB status transitions + domain events. */
+  legalEntityLifecycleAdminService: LegalEntityLifecycleAdminService;
+  /** timeout audit + shared legal-entity middleware (impersonation cookie). */
+  impersonationAuditService: ImpersonationAuditService;
+  impersonationSessionService: ImpersonationSessionService;
+  requireLegalEntityContext: ReturnType<typeof createRequireLegalEntityContext>;
+  requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   adminUserService: AdminUserService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   httpErrorHandler: ErrorHandlerService;
   itemSubmissionRepository: IItemSubmissionRepository;
   itemSubmissionService: IItemSubmissionService;
+  /** legal entity repository (membership + acting context). */
+  legalEntityRepository: ILegalEntityRepository;
+  /** role-aware notification recipient lookup for legal entities. */
+  legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
+  /** KYC (Stripe Identity). */
+  kycRepository: IKycRepository;
+  kycService: IKycService;
+  /** organisation onboarding. */
+  organizationOnboardingService: IOrganizationOnboardingService;
+  /** artist registry (search, merge, review). */
+  artistRegistryService: IArtistRegistryService;
+  /** Stripe Connect Express. */
+  stripeConnectService: IStripeConnectService;
+  /** legal entity member management (invites, role changes, transfers). */
+  memberManagementService: IMemberManagementService;
+  /** payout aggregation + admin settlement controls. */
+  payoutRepository: IPayoutRepository;
+  payoutService: IPayoutService;
   objectStorage: IObjectStorage;
   mediaUrlResolver: MediaUrlResolver;
   uploadService: UploadService;
   uploadValidationQueue: Queue;
   imageCleanupQueue: Queue;
   marketingSyncQueue: Queue;
+  /** BullMQ queue consumed by worker to render payout PDFs to Spaces. */
+  payoutStatementQueue: Queue<{ payoutId: string }>;
+  /** cascade work when a legal entity is archived (proxies, lots flag, member email). */
+  legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
+  /** Service for handling Stripe payment webhooks (disputes, refunds). */
+  stripePaymentWebhookService: StripePaymentWebhookService | null;
 };
 
 export function createContainer(env: Env): Container {
@@ -221,6 +290,76 @@ export function createContainer(env: Env): Container {
   const saleRepo = new DrizzleSaleRepository(db);
   const userRepo = new DrizzleUserRepository(db);
   const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
+  const legalEntityRepository = new DrizzleLegalEntityRepository(db);
+  const legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader =
+    new DrizzleLegalEntityNotificationRecipientRepository(db);
+  const kycRepository = new DrizzleKycRepository(db);
+  const kycService: IKycService = new StripeKycService(env, kycRepository);
+  const domainEventPublisher = new DomainEventPublisher();
+  const organizationOnboardingService: IOrganizationOnboardingService =
+    new OrganizationOnboardingService(db, domainEventPublisher);
+  const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>("legal-entity-archive", {
+    connection: bullConnection,
+  });
+  const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
+    db,
+    domainEventPublisher,
+    {
+      enqueueArchiveCascade: async (legalEntityId: string) => {
+        await legalEntityArchiveQueue.add(
+          "cascade",
+          { legalEntityId },
+          { removeOnComplete: 200, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
+        );
+      },
+    },
+  );
+  const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
+  const impersonationSessionService = new ImpersonationSessionService(db);
+  const requireLegalEntityContext = createRequireLegalEntityContext(legalEntityRepository, {
+    impersonationSessions: impersonationSessionService,
+    onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
+  });
+  const requireSubmissionsLegalEntityContext = createSubmissionsLegalEntityContext(
+    legalEntityRepository,
+    {
+      impersonationSessions: impersonationSessionService,
+      onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
+    },
+  );
+  const artistRegistryService: IArtistRegistryService = new ArtistRegistryService(
+    db,
+    domainEventPublisher,
+  );
+  const memberManagementService: IMemberManagementService = new MemberManagementService(
+    db,
+    domainEventPublisher,
+  );
+  const payoutRepository: IPayoutRepository = new DrizzlePayoutRepository(db);
+  const payoutService: IPayoutService = new PayoutService(
+    payoutRepository,
+    db,
+    domainEventPublisher,
+  );
+  const stripeConnectService: IStripeConnectService = new StripeConnectService(
+    env,
+    db,
+    payoutService,
+    payoutRepository,
+    domainEventPublisher,
+  );
+
+  const webhookEventRepository = new DrizzleWebhookEventRepository(db);
+  const stripePaymentWebhookService: StripePaymentWebhookService | null =
+    env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
+      ? new StripePaymentWebhookService(
+          db,
+          webhookEventRepository,
+          payoutRepository,
+          domainEventPublisher,
+        )
+      : null;
+
   const categoryRepo = new DrizzleCategoryRepository(db);
   const watchlistRepo = new DrizzleWatchlistRepository(db);
   const artistWatchlistRepo = new DrizzleArtistWatchlistRepository(db);
@@ -232,6 +371,13 @@ export function createContainer(env: Env): Container {
   const pushSubscriptionRepository = new DrizzlePushSubscriptionRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
   const addressRepo = new DrizzleAddressRepository(db);
+  const invoiceAddressingService = new InvoiceAddressingService(
+    paymentRepo,
+    legalEntityRepository,
+    profileRepo,
+    addressRepo,
+    createBaseLogger(env).child({ component: "invoice_addressing" }),
+  );
   const userSuspensionChecker = new DrizzleUserSuspensionChecker(db);
 
   const cache = new RedisCacheProvider(redis);
@@ -240,6 +386,7 @@ export function createContainer(env: Env): Container {
   const notificationService = new NotificationService(notifier, notifier);
   const strategyFactory = new LotStrategyFactory();
   const notificationFactory = new NotificationFactory();
+  const antiShillingGuard: IAntiShillingGuard = new DrizzleAntiShillingRepository(db);
 
   const quietHoursChecker = new QuietHoursChecker();
   const pushSender: IPushSender =
@@ -288,6 +435,8 @@ export function createContainer(env: Env): Container {
     cache,
     notificationDispatcher,
     notificationFactory,
+    antiShillingGuard,
+    domainEventPublisher,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -295,6 +444,9 @@ export function createContainer(env: Env): Container {
   const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
   const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
   const marketingSyncQueue = new Queue("marketing-sync", { connection: bullConnection });
+  const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
+    connection: bullConnection,
+  });
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
     env.STORAGE_READ_MODE,
@@ -326,6 +478,7 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     lotNotificationCoordinator,
     imageCleanupService,
+    legalEntityNotificationRecipients,
   );
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);
@@ -346,6 +499,9 @@ export function createContainer(env: Env): Container {
     userRepo,
     notificationDispatcher,
     imageCleanupService,
+    legalEntityNotificationRecipients,
+    legalEntityRepository,
+    domainEventPublisher,
   );
 
   const categoryService = new CategoryService(categoryRepo);
@@ -372,6 +528,7 @@ export function createContainer(env: Env): Container {
           XERO_DEFAULT_REVENUE_ACCOUNT_CODE: env.XERO_DEFAULT_REVENUE_ACCOUNT_CODE,
           XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
           XERO_INVOICE_DUE_DAYS: env.XERO_INVOICE_DUE_DAYS,
+          XERO_USE_LEGAL_ENTITY_CONTACT: env.XERO_USE_LEGAL_ENTITY_CONTACT,
         },
         xeroConnRepo,
         paymentExtRepo,
@@ -381,8 +538,25 @@ export function createContainer(env: Env): Container {
             await svc.markCapturedFromProviderSync(paymentId);
           }
         },
+        legalEntityRepository,
+        invoiceAddressingService,
       )
     : new NoOpAccountingProvider();
+
+  const xeroPayoutBillWriter: XeroPayoutBillWriter | null = xeroEnvEnabled
+    ? new XeroPayoutBillWriter(
+        {
+          XERO_CLIENT_ID: env.XERO_CLIENT_ID,
+          XERO_CLIENT_SECRET: env.XERO_CLIENT_SECRET,
+          XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
+          XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
+          XERO_PAYOUT_BILL_ACCOUNT_CODE: env.XERO_PAYOUT_BILL_ACCOUNT_CODE,
+        },
+        xeroConnRepo,
+        payoutRepository,
+        legalEntityRepository,
+      )
+    : null;
 
   const paymentService = new PaymentService(
     lotRepo,
@@ -391,6 +565,10 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     userRepo,
     accountingProvider,
+    legalEntityNotificationRecipients,
+    legalEntityRepository,
+    db,
+    domainEventPublisher,
   );
   paymentServiceRef.current = paymentService;
 
@@ -414,6 +592,9 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     adminMetricsService,
     saleModeLookup,
+    antiShillingGuard,
+    domainEventPublisher,
+    legalEntityRepository,
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
@@ -449,7 +630,6 @@ export function createContainer(env: Env): Container {
     metricsAggregator,
   );
   const accountLinkingService = new AccountLinkingService(db);
-  const domainEventPublisher = new DomainEventPublisher();
 
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
@@ -494,6 +674,8 @@ export function createContainer(env: Env): Container {
     notificationQueryService,
     paymentService,
     accountingProvider,
+    invoiceAddressingService,
+    xeroPayoutBillWriter,
     xeroOAuthService,
     xeroWebhookEventRepository,
     userService,
@@ -514,17 +696,35 @@ export function createContainer(env: Env): Container {
     analyticsService,
     accountLinkingService,
     domainEventPublisher,
+    legalEntityLifecycleAdminService,
+    impersonationAuditService,
+    impersonationSessionService,
+    requireLegalEntityContext,
+    requireSubmissionsLegalEntityContext,
     adminUserService,
     adminMetricsService,
     attentionFeedReader,
     httpErrorHandler,
     itemSubmissionRepository,
     itemSubmissionService,
+    legalEntityRepository,
+    legalEntityNotificationRecipients,
+    kycRepository,
+    kycService,
+    organizationOnboardingService,
+    artistRegistryService,
+    stripeConnectService,
+    memberManagementService,
+    payoutRepository,
+    payoutService,
     objectStorage,
     mediaUrlResolver,
     uploadService,
     uploadValidationQueue,
     imageCleanupQueue,
     marketingSyncQueue,
+    payoutStatementQueue,
+    legalEntityArchiveQueue,
+    stripePaymentWebhookService,
   };
 }

@@ -10,7 +10,11 @@ export class DutchAuctionStrategy implements ILotStrategy {
     if (!moneyEq(bid.amount.toFixed(2), lot.currentPrice)) {
       return err(new BidError("Bid must match current dutch price to accept"));
     }
-    if (bid.bidderId === lot.sellerId) {
+    if (
+      bid.buyerLegalEntityId && lot.sellerLegalEntityId
+        ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
+        : bid.bidderId === lot.sellerId
+    ) {
       return err(new BidError("Seller cannot bid on own lot"));
     }
     return ok(undefined);
