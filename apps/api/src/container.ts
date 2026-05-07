@@ -148,6 +148,7 @@ import { SaleStatusTransitionService } from "./services/sale-status-transition.s
 import { SaleService } from "./services/sale.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
+import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
@@ -558,6 +559,8 @@ export function createContainer(env: Env): Container {
       )
     : null;
 
+  const stripePaymentGateway = new StripePaymentGateway(env);
+
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -569,6 +572,7 @@ export function createContainer(env: Env): Container {
     legalEntityRepository,
     db,
     domainEventPublisher,
+    stripePaymentGateway,
   );
   paymentServiceRef.current = paymentService;
 

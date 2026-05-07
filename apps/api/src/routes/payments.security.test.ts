@@ -87,6 +87,7 @@ describe("payment finance entity authorization", () => {
 
     expect(res.status).toBe(200);
     expect(paymentService.markCapturedByAdmin).toHaveBeenCalledWith(
+      "u1",
       "administrator",
       paymentId,
       undefined,
