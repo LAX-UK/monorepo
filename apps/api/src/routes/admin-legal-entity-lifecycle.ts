@@ -3,8 +3,8 @@ import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { createRequireCapability } from "../middleware/require-capability.js";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
+import { createRequireCapability } from "../middleware/require-capability.js";
 
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),

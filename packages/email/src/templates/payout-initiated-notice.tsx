@@ -5,7 +5,9 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = (vars: TemplateVarsByName["payout-initiated-notice"]) =>
   `Payout initiated for ${vars.entityName}`;
 
-export default function PayoutInitiatedNoticeEmail(vars: TemplateVarsByName["payout-initiated-notice"]) {
+export default function PayoutInitiatedNoticeEmail(
+  vars: TemplateVarsByName["payout-initiated-notice"],
+) {
   return (
     <Layout preview={`Payout initiated for ${vars.entityName}`} title="Payout Initiated">
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>

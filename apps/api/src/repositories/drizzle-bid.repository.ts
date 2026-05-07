@@ -135,9 +135,7 @@ export class DrizzleBidRepository implements IBidRepository {
         isAutoBid: Boolean(typed.isAutoBid),
         maxAutoBidAmount: typed.maxAutoBidAmount ?? null,
         createdAt:
-          typed.createdAt instanceof Date
-            ? typed.createdAt
-            : new Date(String(typed.createdAt)),
+          typed.createdAt instanceof Date ? typed.createdAt : new Date(String(typed.createdAt)),
       } as InferSelectModel<typeof bid>);
     });
   }

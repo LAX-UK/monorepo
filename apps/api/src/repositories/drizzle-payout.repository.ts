@@ -92,9 +92,13 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
         .where(
           and(
             eq(payoutLine.payoutId, input.payoutId),
-            input.paymentId ? eq(payoutLine.paymentId, input.paymentId) : sql`${payoutLine.paymentId} IS NULL`,
+            input.paymentId
+              ? eq(payoutLine.paymentId, input.paymentId)
+              : sql`${payoutLine.paymentId} IS NULL`,
             eq(payoutLine.kind, input.kind),
-            input.sourceEventId ? eq(payoutLine.sourceEventId, input.sourceEventId) : sql`${payoutLine.sourceEventId} IS NULL`,
+            input.sourceEventId
+              ? eq(payoutLine.sourceEventId, input.sourceEventId)
+              : sql`${payoutLine.sourceEventId} IS NULL`,
           ),
         )
         .limit(1);
@@ -131,10 +135,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
   }
 
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {
-    await this.db
-      .update(payout)
-      .set({ xeroBillId })
-      .where(eq(payout.id, payoutId));
+    await this.db.update(payout).set({ xeroBillId }).where(eq(payout.id, payoutId));
   }
 
   async findByStripeTransferId(stripeTransferId: string): Promise<Payout | null> {

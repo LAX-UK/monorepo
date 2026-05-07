@@ -2,12 +2,12 @@ import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
 import type { LegalEntityStatus } from "@auction/types";
 import { eq } from "drizzle-orm";
-import { err, ok, type Result } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 import {
   type LifecycleAdminOp,
   nextStatusForLifecycleOp,
 } from "../lib/legal-entity-lifecycle-transitions.js";
-import { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
  * `start_review` maps to `legal_entity.review_started` (past-tense, matches
@@ -58,7 +58,11 @@ export class LegalEntityLifecycleAdminService {
     op: LifecycleAdminOp,
     reason?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>> {
-    const preRows = await this.db.select().from(legalEntity).where(eq(legalEntity.id, entityId)).limit(1);
+    const preRows = await this.db
+      .select()
+      .from(legalEntity)
+      .where(eq(legalEntity.id, entityId))
+      .limit(1);
     const pre = preRows[0];
     if (!pre) {
       return err({ code: "not_found", message: "Legal entity not found", status: 404 });

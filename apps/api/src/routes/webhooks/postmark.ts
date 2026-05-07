@@ -65,7 +65,9 @@ function isAuthorized(header: string | undefined, expected: string | undefined):
     if (process.env.NODE_ENV === "production") return false;
     if (!warnedMissingAuth) {
       warnedMissingAuth = true;
-      console.warn("POSTMARK_WEBHOOK_BASIC_AUTH is unset; accepting Postmark webhook in non-production");
+      console.warn(
+        "POSTMARK_WEBHOOK_BASIC_AUTH is unset; accepting Postmark webhook in non-production",
+      );
     }
     return true;
   }

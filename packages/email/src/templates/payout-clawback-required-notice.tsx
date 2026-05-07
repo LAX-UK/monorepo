@@ -9,7 +9,10 @@ export default function PayoutClawbackRequiredNoticeEmail(
   vars: TemplateVarsByName["payout-clawback-required-notice"],
 ) {
   return (
-    <Layout preview={`Manual clawback required for ${vars.entityName}`} title="Manual Clawback Required">
+    <Layout
+      preview={`Manual clawback required for ${vars.entityName}`}
+      title="Manual Clawback Required"
+    >
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         A payout for <strong>{vars.entityName}</strong> has a negative net amount and requires

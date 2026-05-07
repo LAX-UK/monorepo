@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it } from "vitest";
-import { MemberPermissionError } from "./interfaces/member-management.js";
 import { DomainEventPublisher } from "./domain-event.publisher.js";
+import { MemberPermissionError } from "./interfaces/member-management.js";
 import { MemberManagementService } from "./member-management.service.js";
 
 const testPublisher = new DomainEventPublisher();

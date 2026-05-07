@@ -154,9 +154,9 @@ export interface IBidRepository {
   /** Clears proxy auto-bid fields for all bids by this bidder on the lot. */
   clearProxyAutoBidForBidderOnLot(lotId: string, bidderId: string): Promise<number>;
   /** distinct (lotId, bidderId) with active proxy ceiling for buyer entity on active lots. */
-  listActiveProxyBidPairsForBuyerEntity(buyerLegalEntityId: string): Promise<
-    { lotId: string; bidderId: string }[]
-  >;
+  listActiveProxyBidPairsForBuyerEntity(
+    buyerLegalEntityId: string,
+  ): Promise<{ lotId: string; bidderId: string }[]>;
   /** proxy rows for removed member on entity's active lots. */
   listActiveProxyBidPairsForMemberOnEntity(
     placedByUserId: string,

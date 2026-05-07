@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { ConsoleEmailService, PostmarkEmailService, type IEmailService } from "@auction/email";
+import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
 import { Queue, Worker } from "bullmq";
@@ -11,7 +11,13 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
+import {
+  type GeneratePayoutStatementJobData,
+  generatePayoutStatementJob,
+} from "./jobs/generate-payout-statement.js";
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
+import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
+import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
 import {
   type SendEmailJobData,
   enqueueStaleEmailOutboxRows,
@@ -22,9 +28,6 @@ import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
 import { syncXeroPayoutBillViaApi } from "./projectors/xero-payout-bill-sync.js";
-import { generatePayoutStatementJob } from "./jobs/generate-payout-statement.js";
-import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
-import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
 
 const env = loadWorkerEnv();
 if (env.SENTRY_DSN_WORKER) {
@@ -203,7 +206,7 @@ const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
 );
 marketingSyncWorker.on("completed", () => void heartbeat("marketing-sync"));
 
-type PayoutStatementJobData = import("./jobs/generate-payout-statement.js").GeneratePayoutStatementJobData;
+type PayoutStatementJobData = GeneratePayoutStatementJobData;
 const payoutStatementQueue = new Queue<PayoutStatementJobData>("payout-statements", {
   connection: redis,
 });

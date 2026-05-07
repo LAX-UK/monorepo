@@ -37,7 +37,10 @@ export async function GET(
   }
 
   if (!res.ok) {
-    return NextResponse.json({ error: "statement_fetch_failed", status: res.status }, { status: res.status });
+    return NextResponse.json(
+      { error: "statement_fetch_failed", status: res.status },
+      { status: res.status },
+    );
   }
 
   return NextResponse.json({ error: "unexpected_statement_response" }, { status: 502 });

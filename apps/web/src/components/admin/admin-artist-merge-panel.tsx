@@ -1,7 +1,7 @@
 "use client";
 
-import { ArtistSearch, type ArtistSearchHit } from "@/components/artists/artist-search";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
+import { ArtistSearch, type ArtistSearchHit } from "@/components/artists/artist-search";
 import { adminMergeArtistResultAction } from "@/lib/actions/admin";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -48,7 +48,9 @@ export function AdminArtistMergePanel({ fromArtistId, fromDisplayName }: Props) 
             Selected: <span className="font-medium text-on-surface">{target.displayName}</span> (
             {target.id})
             {target.id === fromArtistId ? (
-              <span className="ml-2 text-destructive">Choose a different artist than this one.</span>
+              <span className="ml-2 text-destructive">
+                Choose a different artist than this one.
+              </span>
             ) : null}
             {target.status === "merged_into" ? (
               <span className="ml-2 text-destructive">
@@ -59,6 +61,7 @@ export function AdminArtistMergePanel({ fromArtistId, fromDisplayName }: Props) 
         ) : null}
       </div>
 
+      {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps Textarea component */}
       <label className="block space-y-1 text-sm">
         <span>Reason (min 10 characters)</span>
         <Textarea

@@ -56,11 +56,7 @@ export class ImpersonationSessionService {
       .where(and(eq(impersonationSession.id, sessionId), isNull(impersonationSession.endedAt)));
   }
 
-  async forceEnd(
-    sessionId: string,
-    _byAdminUserId: string,
-    reason: string,
-  ): Promise<void> {
+  async forceEnd(sessionId: string, _byAdminUserId: string, reason: string): Promise<void> {
     await this.end(sessionId, normalizeEndReason(reason || "force_ended"));
   }
 

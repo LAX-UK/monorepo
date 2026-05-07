@@ -41,8 +41,7 @@ export class StripePaymentWebhookService {
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
-    const chargeId =
-      typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+    const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
     if (!chargeId) {
       await this.webhookEventRepository.markFailed(eventKey, "missing_charge_id");
       return { processed: false, reason: "missing_charge_id" };
@@ -88,8 +87,7 @@ export class StripePaymentWebhookService {
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
-    const chargeId =
-      typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+    const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
     if (!chargeId) {
       await this.webhookEventRepository.markFailed(eventKey, "missing_charge_id");
       return { processed: false, reason: "missing_charge_id" };
@@ -183,10 +181,7 @@ export class StripePaymentWebhookService {
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
-    await this.db
-      .update(payment)
-      .set({ status: "refunded" })
-      .where(eq(payment.id, paymentRow.id));
+    await this.db.update(payment).set({ status: "refunded" }).where(eq(payment.id, paymentRow.id));
 
     const refundedAmount = charge.amount_refunded ?? charge.amount;
     const openPayout = await this.payoutRepository.findOpenPayoutForEntity(

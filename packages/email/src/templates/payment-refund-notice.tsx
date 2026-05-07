@@ -23,9 +23,7 @@ export default function PaymentRefundNoticeEmail(
   } = vars;
 
   const isDisputeLost = eventKind === "dispute_lost";
-  const headline = isDisputeLost
-    ? "A chargeback has been upheld"
-    : "A refund has been processed";
+  const headline = isDisputeLost ? "A chargeback has been upheld" : "A refund has been processed";
 
   const explanation = isDisputeLost
     ? "The buyer's bank ruled in their favour and the disputed amount has been deducted from your account."
@@ -39,15 +37,13 @@ export default function PaymentRefundNoticeEmail(
       </TextBlock>
       <TextBlock>
         <strong>Transaction Details:</strong>
-        <br />
-        • Lot: {lotTitle}
+        <br />• Lot: {lotTitle}
         {lotReference && (
           <>
             <br />• Reference: {lotReference}
           </>
         )}
-        <br />
-        • Amount: {refundCurrency} {refundAmount}
+        <br />• Amount: {refundCurrency} {refundAmount}
         {reason && (
           <>
             <br />• Reason: {reason}
@@ -56,13 +52,11 @@ export default function PaymentRefundNoticeEmail(
       </TextBlock>
       <TextBlock>{explanation}</TextBlock>
       <TextBlock>
-        <strong>Impact on your next payout:</strong> A negative adjustment line
-        will appear on your next payout statement to offset this{" "}
-        {isDisputeLost ? "chargeback" : "refund"}.
+        <strong>Impact on your next payout:</strong> A negative adjustment line will appear on your
+        next payout statement to offset this {isDisputeLost ? "chargeback" : "refund"}.
       </TextBlock>
       <TextBlock>
-        If you have questions or believe this was processed in error, please
-        contact{" "}
+        If you have questions or believe this was processed in error, please contact{" "}
         <a href={`mailto:${supportContactEmail}`}>{supportContactEmail}</a>.
       </TextBlock>
     </Layout>

@@ -10,7 +10,10 @@ const ADMIN_IMPERSONATION_AGGREGATE_TYPE = "admin_impersonation";
 /** close impersonation sessions that never received an explicit `ended`
  * event (browser closed, worker crash, etc.).
  */
-export async function runImpersonationSweeperJob(input: { db: Db; log: pino.Logger }): Promise<void> {
+export async function runImpersonationSweeperJob(input: {
+  db: Db;
+  log: pino.Logger;
+}): Promise<void> {
   const { db, log } = input;
   const cutoff = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -21,12 +24,7 @@ export async function runImpersonationSweeperJob(input: { db: Db; log: pino.Logg
       targetLegalEntityId: impersonationSession.targetLegalEntityId,
     })
     .from(impersonationSession)
-    .where(
-      and(
-        isNull(impersonationSession.endedAt),
-        lt(impersonationSession.expiresAt, cutoff),
-      ),
-    )
+    .where(and(isNull(impersonationSession.endedAt), lt(impersonationSession.expiresAt, cutoff)))
     .limit(500);
 
   let inserted = 0;

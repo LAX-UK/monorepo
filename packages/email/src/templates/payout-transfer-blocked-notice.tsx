@@ -28,10 +28,8 @@ export default function PayoutTransferBlockedNoticeEmail(
       </TextBlock>
       <TextBlock>
         <strong>Payout Details:</strong>
-        <br />
-        • Amount: {payoutCurrency} {payoutAmount}
-        <br />
-        • Payout ID: {payoutId}
+        <br />• Amount: {payoutCurrency} {payoutAmount}
+        <br />• Payout ID: {payoutId}
         <br />• Reason: {blockReason}
       </TextBlock>
       <TextBlock>

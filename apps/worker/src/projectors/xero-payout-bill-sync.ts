@@ -21,12 +21,18 @@ export async function syncXeroPayoutBillViaApi(opts: {
   });
   if (res.status === 503) {
     const text = await res.text();
-    opts.log.warn({ url, body: text }, "xero payout bill skipped (API disabled or cron not configured)");
+    opts.log.warn(
+      { url, body: text },
+      "xero payout bill skipped (API disabled or cron not configured)",
+    );
     return true;
   }
   if (!res.ok) {
     const text = await res.text();
-    opts.log.error({ status: res.status, body: text, payoutId: opts.payoutId }, "xero payout bill request failed");
+    opts.log.error(
+      { status: res.status, body: text, payoutId: opts.payoutId },
+      "xero payout bill request failed",
+    );
     return false;
   }
   return true;

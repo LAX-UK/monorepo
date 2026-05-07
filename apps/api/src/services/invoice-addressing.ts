@@ -1,11 +1,8 @@
 import type { BillToContext } from "@auction/types";
 import type { AppLogger } from "../lib/logger.js";
-import type {
-  IAddressRepository,
-  IProfileReader,
-} from "./interfaces/profile.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
+import type { IAddressRepository, IProfileReader } from "./interfaces/profile.js";
 
 export type InvoiceAddressingResult = {
   billTo: BillToContext;
@@ -96,7 +93,10 @@ export class InvoiceAddressingService {
     const entity = await this.legalEntities.findById(buyerLeId);
     if (!entity) {
       warnings.push("legal_entity_not_found");
-      this.log.warn({ paymentId, buyerLegalEntityId: buyerLeId }, "invoice_addressing_entity_not_found");
+      this.log.warn(
+        { paymentId, buyerLegalEntityId: buyerLeId },
+        "invoice_addressing_entity_not_found",
+      );
       return {
         billTo: {
           kind: "individual",
@@ -110,7 +110,7 @@ export class InvoiceAddressingService {
     }
 
     if (entity.kind === "organisation") {
-      const name = (entity.legalName?.trim() || entity.displayName.trim()) || "—";
+      const name = entity.legalName?.trim() || entity.displayName.trim() || "—";
       const addr = await this.legalEntities.findPreferredBillToLegalEntityAddress(entity.id);
       let addressLines: string[] = [];
       let addressIncomplete = false;
@@ -155,7 +155,7 @@ export class InvoiceAddressingService {
     }
 
     const profile = await this.profiles.getProfile(userId);
-    const billToName = (profile?.name?.trim() || entity.displayName.trim()) || "—";
+    const billToName = profile?.name?.trim() || entity.displayName.trim() || "—";
     const rows = await this.addresses.listByUser(userId);
     const addr = pickDefaultUserAddress(rows);
     let addressLines: string[] = [];

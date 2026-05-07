@@ -1,9 +1,9 @@
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { AppLogger } from "../lib/logger.js";
-import type { IAddressRepository } from "./interfaces/profile.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
+import type { IAddressRepository } from "./interfaces/profile.js";
 import type { IProfileReader } from "./interfaces/profile.js";
 import { InvoiceAddressingService } from "./invoice-addressing.js";
 
@@ -39,7 +39,12 @@ const orgEntity = (overrides: Partial<LegalEntity> = {}): LegalEntity => ({
 });
 
 const indEntity = (overrides: Partial<LegalEntity> = {}): LegalEntity => ({
-  ...orgEntity({ kind: "individual", subkind: "private_collector", legalName: null, displayName: "Jane" }),
+  ...orgEntity({
+    kind: "individual",
+    subkind: "private_collector",
+    legalName: null,
+    displayName: "Jane",
+  }),
   ...overrides,
 });
 
@@ -66,7 +71,13 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
     } as unknown as ILegalEntityRepository;
     const profiles = { getProfile: vi.fn() } as unknown as IProfileReader;
     const addresses = { listByUser: vi.fn() } as unknown as IAddressRepository;
-    const svc = new InvoiceAddressingService(payments, legalEntities, profiles, addresses, silentLogger());
+    const svc = new InvoiceAddressingService(
+      payments,
+      legalEntities,
+      profiles,
+      addresses,
+      silentLogger(),
+    );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
     expect(billTo.kind).toBe("organisation");
     expect(billTo.billToName).toBe("Acme Gallery Ltd");
@@ -177,7 +188,13 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
         },
       ]),
     } as unknown as IAddressRepository;
-    const svc = new InvoiceAddressingService(payments, legalEntities, profiles, addresses, silentLogger());
+    const svc = new InvoiceAddressingService(
+      payments,
+      legalEntities,
+      profiles,
+      addresses,
+      silentLogger(),
+    );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
     expect(billTo.kind).toBe("individual");
     expect(billTo.billToName).toBe("Jane Doe");
@@ -202,7 +219,9 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
     const profiles = {
       getProfile: vi.fn().mockResolvedValue({ name: "Jane" }),
     } as unknown as IProfileReader;
-    const addresses = { listByUser: vi.fn().mockResolvedValue([]) } as unknown as IAddressRepository;
+    const addresses = {
+      listByUser: vi.fn().mockResolvedValue([]),
+    } as unknown as IAddressRepository;
     const log = silentLogger();
     const svc = new InvoiceAddressingService(payments, legalEntities, profiles, addresses, log);
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
@@ -244,7 +263,13 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
         },
       ]),
     } as unknown as IAddressRepository;
-    const svc = new InvoiceAddressingService(payments, legalEntities, profiles, addresses, silentLogger());
+    const svc = new InvoiceAddressingService(
+      payments,
+      legalEntities,
+      profiles,
+      addresses,
+      silentLogger(),
+    );
     const { billTo } = await svc.resolveForPayment("pay1");
     expect(billTo.addressLines[0]).toBe("First line");
   });

@@ -1,12 +1,12 @@
+import { finished } from "node:stream/promises";
 import type { Database } from "@auction/db";
 import { legalEntity, lot, payment, payout, payoutLine, user } from "@auction/db/schema";
-import { eq, inArray } from "drizzle-orm";
 import type { Job } from "bullmq";
-import { finished } from "node:stream/promises";
+import { eq, inArray } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import type pino from "pino";
-import type { UploadStorage } from "../lib/upload-storage.js";
 import type { WorkerEnv } from "../env.js";
+import type { UploadStorage } from "../lib/upload-storage.js";
 
 export type GeneratePayoutStatementJobData = {
   payoutId: string;
@@ -100,9 +100,7 @@ export async function generatePayoutStatementJob(options: {
     doc.on("data", (c: Buffer) => chunks.push(c));
 
     const entityDisplayName =
-      entityRow.legalName?.trim() ||
-      entityRow.displayName?.trim() ||
-      entityRow.id.slice(0, 8);
+      entityRow.legalName?.trim() || entityRow.displayName?.trim() || entityRow.id.slice(0, 8);
 
     doc.fontSize(18).text("LAX", { continued: false });
     doc.moveDown(0.25);
@@ -180,7 +178,10 @@ export async function generatePayoutStatementJob(options: {
     doc.moveDown(2);
     doc.fontSize(9).fillColor("#444444");
     const contact =
-      env.PAYOUT_STATEMENT_CONTACT_EMAIL ?? env.EMAIL_REPLY_TO ?? env.EMAIL_FROM ?? "support@lax.bid";
+      env.PAYOUT_STATEMENT_CONTACT_EMAIL ??
+      env.EMAIL_REPLY_TO ??
+      env.EMAIL_FROM ??
+      "support@lax.bid";
     doc.text(`Stripe transfer reference: ${pRow.stripeTransferId ?? "—"}`);
     doc.text(
       `Settlement / processed: ${pRow.processedAt ? pRow.processedAt.toISOString().slice(0, 10) : "—"}`,

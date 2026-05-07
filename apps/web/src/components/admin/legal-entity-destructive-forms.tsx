@@ -1,6 +1,9 @@
 "use client";
 
-import { legalEntityArchiveAction, legalEntityRejectAction } from "@/lib/admin/legal-entity-lifecycle.actions";
+import {
+  legalEntityArchiveAction,
+  legalEntityRejectAction,
+} from "@/lib/admin/legal-entity-lifecycle.actions";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { Textarea } from "@auction/ui/components/textarea";
@@ -121,7 +124,7 @@ export function LegalEntityArchiveForm({ legalEntityId, displayName }: ArchivePr
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         title="Confirm archive"
-        description={`Permanent terminal state. Type the phrase exactly (case-sensitive), including spaces.`}
+        description="Permanent terminal state. Type the phrase exactly (case-sensitive), including spaces."
         actionLabel="Archive entity"
         confirmationPhrase={phrase}
         severity="danger"

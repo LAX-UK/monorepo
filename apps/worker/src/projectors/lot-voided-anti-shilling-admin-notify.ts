@@ -61,7 +61,11 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
 
     const lotId = row.aggregateId;
     try {
-      const [lotRow] = await db.select({ title: lot.title }).from(lot).where(eq(lot.id, lotId)).limit(1);
+      const [lotRow] = await db
+        .select({ title: lot.title })
+        .from(lot)
+        .where(eq(lot.id, lotId))
+        .limit(1);
       const lotTitle = lotRow?.title ?? "Lot";
 
       await emailService.enqueue({

@@ -1,5 +1,11 @@
 import { getAdminOnboardingIssues } from "@/lib/data/http/admin.server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@auction/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -39,9 +45,14 @@ export default async function AdminOnboardingIssuesPage() {
                 ) : (
                   <ul className="divide-y divide-outline-variant/15">
                     {data.entitiesPendingReview.map((e) => (
-                      <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <li
+                        key={e.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2"
+                      >
                         <span className="font-medium">{e.displayName}</span>
-                        <span className="font-mono text-xs text-on-surface-variant">{e.status}</span>
+                        <span className="font-mono text-xs text-on-surface-variant">
+                          {e.status}
+                        </span>
                         <Link
                           href={`/admin/legal-entities/${e.id}`}
                           className="text-sm font-medium text-primary underline"
@@ -67,7 +78,10 @@ export default async function AdminOnboardingIssuesPage() {
                 ) : (
                   <ul className="divide-y divide-outline-variant/15">
                     {data.artistsPendingApproval.map((a) => (
-                      <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <li
+                        key={a.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2"
+                      >
                         <span className="font-medium">{a.displayName}</span>
                         <Link
                           href={`/admin/artists/${a.id}/edit`}
@@ -94,7 +108,10 @@ export default async function AdminOnboardingIssuesPage() {
                 ) : (
                   <ul className="divide-y divide-outline-variant/15">
                     {data.staleIdentitySessions.map((k) => (
-                      <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <li
+                        key={k.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2"
+                      >
                         <span className="font-mono text-xs">{k.userId}</span>
                         <span className="text-xs text-on-surface-variant">{k.status}</span>
                         <span className="text-xs text-on-surface-variant">
@@ -125,9 +142,14 @@ export default async function AdminOnboardingIssuesPage() {
                 ) : (
                   <ul className="divide-y divide-outline-variant/15">
                     {data.documentsAwaitingReview.map((d) => (
-                      <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <li
+                        key={d.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2"
+                      >
                         <span className="font-medium">{d.entityDisplayName}</span>
-                        <span className="font-mono text-xs text-on-surface-variant">{d.uploadObjectId}</span>
+                        <span className="font-mono text-xs text-on-surface-variant">
+                          {d.uploadObjectId}
+                        </span>
                         <Link
                           href={`/admin/legal-entities/${d.legalEntityId}`}
                           className="text-sm font-medium text-primary underline"

@@ -13,18 +13,18 @@ export default function PaymentManualReviewAdminNoticeEmail(
   const lotLabel = lotReference ? `${lotTitle} (lot ${lotReference})` : lotTitle;
 
   return (
-    <Layout preview={`Manual payment review required for ${lotTitle}`} title="Manual Payment Review">
+    <Layout
+      preview={`Manual payment review required for ${lotTitle}`}
+      title="Manual Payment Review"
+    >
       <TextBlock>
         A winning payment requires manual review because the seller entity is archived.
       </TextBlock>
       <TextBlock>
         <strong>Review Details:</strong>
-        <br />
-        • Lot: {lotLabel}
-        <br />
-        • Seller entity: {sellerEntityName}
-        <br />
-        • Amount: {currency} {amount}
+        <br />• Lot: {lotLabel}
+        <br />• Seller entity: {sellerEntityName}
+        <br />• Amount: {currency} {amount}
         <br />• Payment ID: {paymentId}
       </TextBlock>
       <TextBlock>

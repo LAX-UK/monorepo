@@ -116,7 +116,9 @@ export default async function ManualReviewPaymentsPage({
 
                   <Alert>
                     <AlertTitle>Archive reason</AlertTitle>
-                    <AlertDescription>{payment.archiveReason ?? "No reason recorded."}</AlertDescription>
+                    <AlertDescription>
+                      {payment.archiveReason ?? "No reason recorded."}
+                    </AlertDescription>
                   </Alert>
 
                   <div className="flex flex-wrap gap-3">

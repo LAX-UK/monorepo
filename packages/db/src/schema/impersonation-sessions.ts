@@ -13,15 +13,11 @@ export const impersonationSession = pgTable(
     targetLegalEntityId: uuid("target_legal_entity_id")
       .notNull()
       .references(() => legalEntity.id, { onDelete: "restrict" }),
-    startedAt: timestamp("started_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
     endReason: text("end_reason"),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("impersonation_session_active_idx")
