@@ -33,6 +33,7 @@ export type InitiateTransferResult =
         | "entity_not_found"
         | "no_connect_account"
         | "connect_not_ready"
+        | "negative_net_amount"
         | "stripe_error";
       stripeErrorCode?: string;
       stripeErrorMessage?: string;

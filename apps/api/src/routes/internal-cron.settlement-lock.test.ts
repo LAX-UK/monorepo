@@ -39,6 +39,7 @@ describe("bulk-payout-settlement distributed lock", () => {
         await gate;
         return { eligibleEntityCount: 0, createdCount: 0, items: [] };
       }),
+      adminList: vi.fn().mockResolvedValue([]),
     };
 
     const stripeConnectService = { initiateTransfer: vi.fn() };

@@ -286,7 +286,7 @@ describe("PayoutService.markPaid", () => {
     });
     const svc = new PayoutService(repo);
     await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_1" })).rejects.toMatchObject(
-      { code: "cannot_pay_payout_in_terminal_state" },
+      { code: "cannot_pay_payout_in_state" },
     );
   });
 
