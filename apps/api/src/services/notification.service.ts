@@ -5,8 +5,7 @@ import type {
   ILotNotificationSender,
 } from "./interfaces/notifications.js";
 
-/**
- * Application-level notifications — delegates to segregated senders (ISP).
+/** Application-level notifications — delegates to segregated senders (ISP).
  */
 export class NotificationService {
   constructor(

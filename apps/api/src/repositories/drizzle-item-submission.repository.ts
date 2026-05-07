@@ -12,7 +12,7 @@ import type {
 function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [];
   if (f.status) parts.push(eq(itemSubmission.status, f.status));
-  if (f.sellerId) parts.push(eq(itemSubmission.sellerId, f.sellerId));
+  if (f.legalEntityId) parts.push(eq(itemSubmission.legalEntityId, f.legalEntityId));
   if (f.q?.trim()) {
     const safe = f.q
       .trim()
@@ -63,14 +63,19 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     return mapItemSubmissionRow(row, categories.get(row.id) ?? []);
   }
 
-  async create(sellerId: string, input: CreateItemSubmissionInput) {
+  async create(input: CreateItemSubmissionInput) {
     const now = new Date();
     const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
+    if (!input.legalEntityId) {
+      throw new Error("legal_entity_id_required");
+    }
+    const legalEntityId = input.legalEntityId;
+
     const row = await this.db.transaction(async (tx) => {
       const [created] = await tx
         .insert(itemSubmission)
         .values({
-          sellerId,
+          legalEntityId,
           title: input.title,
           description: input.description ?? null,
           medium: input.medium ?? null,
@@ -163,8 +168,8 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     return mapItemSubmissionRow(row, categories.get(row.id) ?? []);
   }
 
-  async listForSeller(sellerId: string, f: ListSubmissionsFilter) {
-    const parts = [eq(itemSubmission.sellerId, sellerId)];
+  async listForLegalEntity(legalEntityId: string, f: ListSubmissionsFilter) {
+    const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
     if (f.status) parts.push(eq(itemSubmission.status, f.status));
     const where = and(...parts);
     const rows = await this.db

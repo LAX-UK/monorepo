@@ -8,7 +8,11 @@ export class SealedBidAuctionStrategy implements ILotStrategy {
     if (lot.status !== "active") {
       return err(new BidError("Sealed bids are only accepted while lot is active"));
     }
-    if (bid.bidderId === lot.sellerId) {
+    if (
+      bid.buyerLegalEntityId && lot.sellerLegalEntityId
+        ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
+        : bid.bidderId === lot.sellerId
+    ) {
       return err(new BidError("Seller cannot bid on own lot"));
     }
     const min = Number(lot.startingPrice);

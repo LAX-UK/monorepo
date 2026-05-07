@@ -72,4 +72,18 @@ export class NotificationFactory {
       lotId: lot.id,
     };
   }
+
+  createSellerPaymentReceived(
+    lot: Lot,
+    recipientId: string,
+    amount: string,
+  ): CreateNotificationRow {
+    return {
+      userId: recipientId,
+      type: "payment_received",
+      title: "Payment received",
+      message: `Payment of ${amount} was recorded for "${lot.title}".`,
+      lotId: lot.id,
+    };
+  }
 }

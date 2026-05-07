@@ -6,13 +6,12 @@ export type LotBidRepos = {
   bid: IBidRepository;
 };
 
-/**
- * Provides repositories for a DB connection (pool or transaction) so BidService stays on interfaces (DIP).
+/** Provides repositories for a DB connection (pool or transaction) so BidService stays on interfaces (DIP).
  */
 export interface IRepositoryFactory {
   /** Repositories bound to the root pool (read paths, non-transactional). */
   readonly root: LotBidRepos;
   /** Repositories for a specific connection (including transaction scope). */
   forConnection(db: Database): LotBidRepos;
-  runInTransaction<T>(fn: (repos: LotBidRepos) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (repos: LotBidRepos, tx: Database) => Promise<T>): Promise<T>;
 }

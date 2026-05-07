@@ -62,35 +62,38 @@ export class DrizzleSaleRepository implements ISaleRepository {
   async create(input: CreateSaleInput): Promise<Sale> {
     const coverImages = input.coverImages ?? [];
     const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
+    if (!input.createdByLegalEntityId) {
+      throw new Error("created_by_legal_entity_id_required");
+    }
+    const createdByLegalEntityId = input.createdByLegalEntityId;
+
     const row = await this.db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(sale)
-        .values({
-          title: input.title,
-          description: input.description ?? null,
-          coverImages,
-          deliveryMode: input.deliveryMode ?? "onsite",
-          streamUrl: input.streamUrl ?? null,
-          locationName: input.locationName ?? null,
-          locationAddress: input.locationAddress ?? null,
-          locationMapUrl: input.locationMapUrl ?? null,
-          locationAddressLine1: input.locationAddressLine1 ?? null,
-          locationAddressLine2: input.locationAddressLine2 ?? null,
-          locationCity: input.locationCity ?? null,
-          locationCounty: input.locationCounty ?? null,
-          locationPostcode: input.locationPostcode ?? null,
-          locationCountry: input.locationCountry ?? null,
-          startTime: input.startTime,
-          endTime: input.endTime,
-          previewStartTime: input.previewStartTime ?? null,
-          ...(input.buyerPremiumRate !== undefined
-            ? { buyerPremiumRate: input.buyerPremiumRate }
-            : {}),
-          terms: input.terms ?? null,
-          createdBy: input.createdBy,
-          status: "draft",
-        })
-        .returning();
+      const values: typeof sale.$inferInsert = {
+        title: input.title,
+        description: input.description ?? null,
+        coverImages,
+        deliveryMode: input.deliveryMode ?? "onsite",
+        streamUrl: input.streamUrl ?? null,
+        locationName: input.locationName ?? null,
+        locationAddress: input.locationAddress ?? null,
+        locationMapUrl: input.locationMapUrl ?? null,
+        locationAddressLine1: input.locationAddressLine1 ?? null,
+        locationAddressLine2: input.locationAddressLine2 ?? null,
+        locationCity: input.locationCity ?? null,
+        locationCounty: input.locationCounty ?? null,
+        locationPostcode: input.locationPostcode ?? null,
+        locationCountry: input.locationCountry ?? null,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        previewStartTime: input.previewStartTime ?? null,
+        terms: input.terms ?? null,
+        createdByLegalEntityId,
+        status: "draft",
+      };
+      if (input.buyerPremiumRate !== undefined) {
+        values.buyerPremiumRate = input.buyerPremiumRate;
+      }
+      const [created] = await tx.insert(sale).values(values).returning();
       if (!created) throw new Error("Failed to create sale");
       if (categoryIds.length > 0) {
         await tx.insert(saleCategories).values(
