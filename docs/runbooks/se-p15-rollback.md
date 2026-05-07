@@ -1,6 +1,6 @@
 # Payout statements & impersonation index rollback
 
-This runbook covers rolling back database changes shipped as migrations **0030** and **0031**, plus the related **payout statement** BullMQ work.
+This runbook covers rolling back database changes shipped as migrations **0030** and **0031**, plus the related **payout statement** BullMQ work. For the later lot-voiding rollback in **0033**, see the note below until the unified migration rollback runbook replaces this file.
 
 ## What changed
 
@@ -13,6 +13,13 @@ This runbook covers rolling back database changes shipped as migrations **0030**
 ### Migration 0031 (`0031_domain_events_impersonation_index.sql`)
 
 - Adds partial index `domain_events_impersonation_idx` on `domain_events (event_type)` where `event_type` is impersonation-related, for faster audit queries.
+
+### Migration 0033 (`0033_lot_voided_archived_seller.sql`)
+
+- Adds `voided_reason` and `archived_seller` columns to `lot`.
+- Adds the `voided` label to the PostgreSQL `lot_status` enum.
+- Rollback now converts any `lot.status='voided'` rows to `cancelled` before dropping the two columns.
+- PostgreSQL cannot safely drop enum labels in this rollback; the `voided` enum value persists cosmetically in the type definition but becomes unreachable through application code after rollback.
 
 ### Application behaviour (not SQL)
 
