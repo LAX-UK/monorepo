@@ -1,4 +1,5 @@
 import { createDb } from "@auction/db";
+import { ConsoleEmailService, PostmarkEmailService, type IEmailService } from "@auction/email";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
 import { Queue, Worker } from "bullmq";
@@ -9,6 +10,7 @@ import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
+import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
 import {
   type SendEmailJobData,
@@ -19,6 +21,10 @@ import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { createProjectorRunner } from "./projectors/runner.js";
+import { syncXeroPayoutBillViaApi } from "./projectors/xero-payout-bill-sync.js";
+import { generatePayoutStatementJob } from "./jobs/generate-payout-statement.js";
+import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
+import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
 
 const env = loadWorkerEnv();
 if (env.SENTRY_DSN_WORKER) {
@@ -43,6 +49,23 @@ const publicUploadBase =
     : undefined;
 const bootedAt = Date.now();
 
+/** BullMQ `repeat.pattern` uses cron-parser; Monday 09:00 UTC. */
+const BULK_PAYOUT_SETTLEMENT_CRON_PATTERN = "0 9 * * 1";
+
+function nextBulkPayoutSettlementRunUtc(from = new Date()): Date {
+  const hourUtc = 9;
+  const targetDow = 1; // Monday
+  const candidate = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate(), hourUtc, 0, 0, 0),
+  );
+  let addDays = (targetDow - candidate.getUTCDay() + 7) % 7;
+  if (addDays === 0 && from.getTime() >= candidate.getTime()) {
+    addDays = 7;
+  }
+  candidate.setUTCDate(candidate.getUTCDate() + addDays);
+  return candidate;
+}
+
 const heartbeatKeys = [
   "worker:heartbeat:webhook-events",
   "worker:heartbeat:domain-events",
@@ -51,6 +74,10 @@ const heartbeatKeys = [
   "worker:heartbeat:gc-pending-uploads",
   "worker:heartbeat:email",
   "worker:heartbeat:marketing-sync",
+  "worker:heartbeat:payout-statements",
+  ...(env.CRON_INTERNAL_SECRET ? ["worker:heartbeat:payout-settlement"] : []),
+  "worker:heartbeat:legal-entity-archive",
+  "worker:heartbeat:impersonation-sweeper",
 ];
 async function heartbeat(queue: string) {
   await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
@@ -129,6 +156,11 @@ const emailSender =
 
 type EmailQueueJobData = SendEmailJobData | Record<string, never>;
 const emailQueue = new Queue<EmailQueueJobData>("email", { connection: redis });
+
+const emailOutboxService: IEmailService =
+  env.EMAIL_PROVIDER === "postmark"
+    ? new PostmarkEmailService(db, emailQueue as Queue<{ outboxId: string }>)
+    : new ConsoleEmailService(db, emailQueue as Queue<{ outboxId: string }>);
 const emailWorker = new Worker<EmailQueueJobData>(
   "email",
   async (job) => {
@@ -171,6 +203,107 @@ const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
 );
 marketingSyncWorker.on("completed", () => void heartbeat("marketing-sync"));
 
+type PayoutStatementJobData = import("./jobs/generate-payout-statement.js").GeneratePayoutStatementJobData;
+const payoutStatementQueue = new Queue<PayoutStatementJobData>("payout-statements", {
+  connection: redis,
+});
+const payoutStatementWorker = new Worker<PayoutStatementJobData>(
+  "payout-statements",
+  async (job) => {
+    await generatePayoutStatementJob({ db, storage: uploadStorage, env, log, job });
+    await heartbeat("payout-statements");
+  },
+  {
+    connection: redis,
+    concurrency: 2,
+    limiter: { max: 20, duration: 1000 },
+  },
+);
+payoutStatementWorker.on("completed", () => void heartbeat("payout-statements"));
+
+type LegalEntityArchiveJobData = { legalEntityId: string };
+const legalEntityArchiveQueue = new Queue<LegalEntityArchiveJobData>("legal-entity-archive", {
+  connection: redis,
+});
+const legalEntityArchiveWorker = new Worker<LegalEntityArchiveJobData>(
+  "legal-entity-archive",
+  async (job) => {
+    const legalEntityId = String(job.data?.legalEntityId ?? "");
+    if (!legalEntityId) {
+      throw new Error("legal-entity-archive job is missing legalEntityId");
+    }
+    await runLegalEntityArchiveCascadeJob({
+      db,
+      emailService: emailOutboxService,
+      log,
+      webOrigin: env.WEB_ORIGIN,
+      supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
+      legalEntityId,
+    });
+    await heartbeat("legal-entity-archive");
+  },
+  { connection: redis },
+);
+legalEntityArchiveWorker.on("completed", () => void heartbeat("legal-entity-archive"));
+
+const impersonationSweeperQueue = new Queue("impersonation-sweeper", { connection: redis });
+const impersonationSweeperWorker = new Worker(
+  "impersonation-sweeper",
+  async () => {
+    await runImpersonationSweeperJob({ db, log });
+    await heartbeat("impersonation-sweeper");
+  },
+  { connection: redis },
+);
+impersonationSweeperWorker.on("completed", () => void heartbeat("impersonation-sweeper"));
+void impersonationSweeperQueue.add(
+  "sweep-stale-impersonations",
+  {},
+  {
+    jobId: "impersonation-sweeper-repeat",
+    repeat: { every: 6 * 60 * 60 * 1000 },
+    removeOnComplete: 10,
+  },
+);
+
+let payoutSettlementQueue: Queue | undefined;
+let payoutSettlementWorker: Worker | undefined;
+if (env.CRON_INTERNAL_SECRET) {
+  const cronSecret = env.CRON_INTERNAL_SECRET;
+  payoutSettlementQueue = new Queue("payout-settlement", { connection: redis });
+  payoutSettlementWorker = new Worker(
+    "payout-settlement",
+    async () => {
+      await runBulkPayoutSettlementJob({
+        apiBaseUrl: env.API_INTERNAL_BASE_URL,
+        cronSecret,
+        log,
+      });
+      await heartbeat("payout-settlement");
+    },
+    { connection: redis },
+  );
+  payoutSettlementWorker.on("completed", () => void heartbeat("payout-settlement"));
+  void payoutSettlementQueue.add(
+    "bulk-payout-settlement",
+    {},
+    {
+      jobId: "weekly-bulk-payout-settlement-mon-0900-utc",
+      repeat: { pattern: BULK_PAYOUT_SETTLEMENT_CRON_PATTERN, tz: "UTC" },
+      removeOnComplete: 50,
+    },
+  );
+  const nextAt = nextBulkPayoutSettlementRunUtc();
+  log.info(
+    {
+      repeatPattern: BULK_PAYOUT_SETTLEMENT_CRON_PATTERN,
+      tz: "UTC",
+      nextRunAtUtc: nextAt.toISOString(),
+    },
+    `payout-settlement repeat registered; next run at [${nextAt.toISOString()}] (Monday 09:00 UTC)`,
+  );
+}
+
 void Promise.all([
   heartbeat("webhook-events"),
   heartbeat("validate-upload"),
@@ -178,12 +311,35 @@ void Promise.all([
   heartbeat("gc-pending-uploads"),
   heartbeat("email"),
   heartbeat("marketing-sync"),
+  heartbeat("payout-statements"),
+  heartbeat("legal-entity-archive"),
+  heartbeat("impersonation-sweeper"),
+  ...(env.CRON_INTERNAL_SECRET ? [heartbeat("payout-settlement")] : []),
 ]);
 
+const internalCronSecret = env.CRON_INTERNAL_SECRET;
+const adminPayoutsUrl = `${env.WEB_ORIGIN.replace(/\/$/, "")}/admin/payouts`;
+const adminEmailAddress = env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid";
 const projectorRunner = createProjectorRunner({
   db,
   log,
   heartbeat: () => heartbeat("domain-events"),
+  emailService: emailOutboxService,
+  supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
+  adminPayoutsUrl,
+  adminEmailAddress,
+  webOrigin: env.WEB_ORIGIN,
+  ...(internalCronSecret
+    ? {
+        syncXeroPayoutBill: async (payoutId: string) =>
+          syncXeroPayoutBillViaApi({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret: internalCronSecret,
+            payoutId,
+            log,
+          }),
+      }
+    : {}),
 });
 void projectorRunner.start();
 
@@ -238,6 +394,14 @@ function shutdown(signal: NodeJS.Signals) {
     emailQueue.close(),
     marketingSyncWorker.close(),
     marketingSyncQueue.close(),
+    payoutStatementWorker.close(),
+    payoutStatementQueue.close(),
+    legalEntityArchiveWorker.close(),
+    legalEntityArchiveQueue.close(),
+    impersonationSweeperWorker.close(),
+    impersonationSweeperQueue.close(),
+    ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
+    ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
     projectorRunner.stop(),
     redis.quit(),
   ]).finally(() => {

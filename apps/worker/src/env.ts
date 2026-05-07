@@ -34,6 +34,18 @@ const envSchema = z
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_PUBLIC_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Footer contact on payout statement PDFs (defaults to EMAIL_REPLY_TO then EMAIL_FROM). */
+    PAYOUT_STATEMENT_CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** Base URL for server-side calls into the API (cron jobs). */
+    API_INTERNAL_BASE_URL: z.string().url().default("http://127.0.0.1:3001"),
+    /** Public API origin used to build persisted object URLs for local disk storage (must match API static upload mount). */
+    API_PUBLIC_URL: z.string().url().default("http://127.0.0.1:3001"),
+    /** Must match API `CRON_INTERNAL_SECRET` when bulk payout settlement is enabled. */
+    CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** Web app origin for constructing admin dashboard URLs in emails. */
+    WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Platform admin email for ops notifications (refunds, disputes, etc.). */
+    ADMIN_EMAIL_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {

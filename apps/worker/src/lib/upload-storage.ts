@@ -1,14 +1,16 @@
-import { readFile, stat, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import type { WorkerEnv } from "../env.js";
 
 export type UploadStorage = {
+  putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }>;
   headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null>;
   getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null>;
   deleteObject(key: string): Promise<void>;
@@ -18,18 +20,23 @@ export function createUploadStorage(env: WorkerEnv): UploadStorage {
   if (env.STORAGE_DRIVER === "s3") {
     return new WorkerS3UploadStorage(env);
   }
-  return new WorkerLocalUploadStorage(env.STORAGE_LOCAL_ROOT);
+  const publicPrefix = `${env.API_PUBLIC_URL.replace(/\/$/, "")}/static/uploads`;
+  return new WorkerLocalUploadStorage(env.STORAGE_LOCAL_ROOT, publicPrefix);
 }
 
 class WorkerS3UploadStorage implements UploadStorage {
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly publicBaseUrl: string;
 
   constructor(env: WorkerEnv) {
     if (!env.S3_BUCKET || !env.S3_REGION || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
       throw new Error("S3 upload storage is missing required env vars");
     }
     this.bucket = env.S3_BUCKET;
+    this.publicBaseUrl = (
+      env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`
+    ).replace(/\/$/, "");
     this.client = new S3Client({
       region: env.S3_REGION,
       ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
@@ -38,6 +45,18 @@ class WorkerS3UploadStorage implements UploadStorage {
         secretAccessKey: env.S3_SECRET_ACCESS_KEY,
       },
     });
+  }
+
+  async putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+    return { url: `${this.publicBaseUrl}/${key}` };
   }
 
   async headObject(
@@ -85,7 +104,20 @@ class WorkerS3UploadStorage implements UploadStorage {
 }
 
 class WorkerLocalUploadStorage implements UploadStorage {
-  constructor(private readonly rootDir: string) {}
+  constructor(
+    private readonly rootDir: string,
+    private readonly publicUrlPrefix: string,
+  ) {}
+
+  async putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }> {
+    void contentType;
+    const fullPath = join(this.rootDir, key);
+    await mkdir(dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, body);
+    const base = this.publicUrlPrefix.replace(/\/$/, "");
+    const path = key.startsWith("/") ? key : `/${key}`;
+    return { url: `${base}${path}` };
+  }
 
   async headObject(
     key: string,
