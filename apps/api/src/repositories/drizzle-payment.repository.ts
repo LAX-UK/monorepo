@@ -51,7 +51,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         amount: row.amount,
         platformFee: row.platformFee,
         stripePaymentIntentId: row.stripePaymentIntentId,
-        status: "pending",
+        status: row.status ?? "pending",
       })
       .returning();
     if (!created) throw new Error("Payment insert failed");
@@ -72,7 +72,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         and(
           eq(payment.lotId, lotId),
           eq(payment.buyerId, buyerId),
-          inArray(payment.status, ["pending", "authorized", "captured"]),
+          inArray(payment.status, ["pending", "authorized", "captured", "requires_manual_review"]),
         ),
       )
       .limit(1);

@@ -1,6 +1,12 @@
 import type { Lot } from "./lot.js";
 
-export const paymentStatuses = ["pending", "authorized", "captured", "refunded"] as const;
+export const paymentStatuses = [
+  "pending",
+  "authorized",
+  "captured",
+  "refunded",
+  "requires_manual_review",
+] as const;
 export type PaymentStatus = (typeof paymentStatuses)[number];
 
 /** Payment - symmetric buyer/seller with legal entity refs */

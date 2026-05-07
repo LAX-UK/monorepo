@@ -17,6 +17,8 @@ export const templateNames = [
   "payout-transfer-failed-notice",
   "payout-transfer-blocked-notice",
   "payment-refund-notice",
+  "payment-manual-review-buyer-notice",
+  "payment-manual-review-admin-notice",
   "legal-entity-archived-notice",
   "lot-voided-anti-shilling-admin",
 ] as const;
@@ -125,6 +127,21 @@ export type TemplateVarsByName = {
     reason?: string | null;
     supportContactEmail: string;
   };
+  "payment-manual-review-buyer-notice": {
+    userName?: string | null;
+    lotTitle: string;
+    lotReference?: string | null;
+    supportContactEmail: string;
+  };
+  "payment-manual-review-admin-notice": {
+    paymentId: string;
+    lotTitle: string;
+    lotReference?: string | null;
+    sellerEntityName: string;
+    amount: string;
+    currency: string;
+    adminReviewUrl: string;
+  };
   "legal-entity-archived-notice": {
     recipientFirstName?: string | null;
     entityName: string;
@@ -159,6 +176,8 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "payout-transfer-failed-notice": "live",
   "payout-transfer-blocked-notice": "live",
   "payment-refund-notice": "live",
+  "payment-manual-review-buyer-notice": "live",
+  "payment-manual-review-admin-notice": "live",
   "legal-entity-archived-notice": "live",
   "lot-voided-anti-shilling-admin": "live",
 };

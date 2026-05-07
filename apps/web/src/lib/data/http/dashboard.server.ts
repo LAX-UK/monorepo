@@ -24,7 +24,13 @@ export async function getServerMyBids(): Promise<BidWithLot[]> {
 }
 
 function isPaymentStatus(s: string): s is PaymentStatus {
-  return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
+  return (
+    s === "pending" ||
+    s === "authorized" ||
+    s === "captured" ||
+    s === "refunded" ||
+    s === "requires_manual_review"
+  );
 }
 
 export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
