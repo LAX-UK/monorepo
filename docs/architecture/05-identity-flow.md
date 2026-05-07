@@ -203,3 +203,30 @@ The failure modes that have actually happened in production at other companies r
 **WordPress plugin caching the wrong issuer URL.** If the WP plugin was configured during a brief window where the issuer was misconfigured, its cached discovery doc may have the wrong URL. Mitigation: when we change anything in the discovery doc, we also instruct ops to flush the WP plugin's cache (admin → tools → flush OIDC cache). Documented in [the WordPress integration guide](../integrations/wordpress.md).
 
 The single best operational practice is reading the access logs on `apps/auth` after any auth-related change. Most issues show up there as 4xx responses with informative error codes. Sentry catches exceptions; structured logs catch policy decisions (cookie rejected, claim missing, replay detected).
+
+## Authed-aware marketing routes (`apps/web`)
+
+The auction web app treats **public marketing auth pages** (`/login`, `/register` without `invite`, `/forgot-password`) differently from **token-bound** pages (`/verify-email`, `/reset-password`, `/unsubscribe`, `/register?invite=…`). A session cookie alone must not trap users on sign-in when they are already signed in, but it must not break invite or reset-token flows.
+
+### Three layers
+
+```mermaid
+flowchart LR
+  Req[Request] --> Edge[Next middleware cookie heuristic]
+  Edge --> SSR[Server page or layout]
+  SSR --> Guard[redirectIfAuthenticated / requireAuthenticatedUser]
+  Guard --> Resolver[resolvePostAuthDestination + isSafeNextPath]
+  SSR --> Client[Client session hints on login]
+```
+
+1. **Edge (`apps/web/src/middleware.ts`)** — If the request path is `/login` or `/register` (without `invite`) and the `Cookie` header matches `better-auth|session_token`, respond with **307** to a safe `?next` or `/dashboard`, appending `from=auth-edge` and `welcome=back` for loop-safety and UX. `/forgot-password` is **not** redirected at the edge so SSR can send staff to `/admin` and clients to account settings. `/login?switch=1` bypasses the edge redirect (account switch).
+2. **Server (`apps/web/src/lib/auth/guards.server.ts`)** — `getServerSessionUser` is authoritative. `redirectIfAuthenticated` and `redirectIfVerifyPendingNotNeeded` enforce the routing table; `requireAuthenticatedUser` protects `/dashboard`, `/admin`, and handles `x-lax-auth-edge` when the session is missing (redirect to `/login?session_expired=1` instead of bouncing forever).
+3. **Client** — `SignInForm` shows “already signed in” / switch-account UI when Better Auth’s client session disagrees with SSR (multi-tab, rare races).
+
+### `?next=` safety
+
+All relative `next` targets must pass `isSafeNextPath` in [`apps/web/src/lib/auth/post-auth-destination.ts`](../../apps/web/src/lib/auth/post-auth-destination.ts) (blocks `//`, `\`, `/api`, etc.). Staff default homes and suspended routing are centralized in `resolvePostAuthDestination`.
+
+### Constitution
+
+See **VIII. Public Auth Routes And Post-Auth Navigation** in [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md).

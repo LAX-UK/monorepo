@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -10,6 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
 
 export const itemSubmissionStatusEnum = pgEnum("item_submission_status", [
@@ -26,9 +28,11 @@ export const itemSubmission = pgTable(
   "item_submission",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    sellerId: text("seller_id")
+    legalEntityId: uuid("legal_entity_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => legalEntity.id, {
+        onDelete: "restrict",
+      }),
     title: text("title").notNull(),
     description: text("description"),
     medium: text("medium"),
@@ -60,8 +64,15 @@ export const itemSubmission = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("item_submission_seller_id_idx").on(table.sellerId),
+    index("item_submission_legal_entity_id_idx").on(table.legalEntityId),
     index("item_submission_status_created_at_idx").on(table.status, table.createdAt),
     index("item_submission_converted_lot_id_idx").on(table.convertedLotId),
   ],
 );
+
+export const itemSubmissionRelations = relations(itemSubmission, ({ one }) => ({
+  legalEntity: one(legalEntity, {
+    fields: [itemSubmission.legalEntityId],
+    references: [legalEntity.id],
+  }),
+}));

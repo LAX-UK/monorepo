@@ -2,7 +2,7 @@
 export const lotAuctionTypes = ["english", "dutch", "sealed", "buy_it_now"] as const;
 export type LotAuctionType = (typeof lotAuctionTypes)[number];
 
-export const lotStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
+export const lotStatuses = ["draft", "scheduled", "active", "ended", "cancelled", "voided"] as const;
 export type LotStatus = (typeof lotStatuses)[number];
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */
@@ -14,7 +14,7 @@ export type LotMarketingDetails = {
     downloadUrl?: string;
   };
   provenance?: { period?: string; note: string }[];
-  /** When set, canonical “artist” profile id for related-lot rails (often same as sellerId). */
+  /** When set, canonical artist profile id for related-lot rails. */
   sellerArtistId?: string | null;
   /** Parallel alts for `images[index]` when provided */
   imageAlts?: (string | undefined)[];
@@ -28,7 +28,13 @@ export type Lot = {
   id: string;
   saleId: string | null;
   lotNumber: number | null;
-  sellerId: string;
+  /** Transitional compatibility only; new API mappers do not emit this field. */
+  sellerId?: string;
+  sellerLegalEntityId?: string | undefined;
+  /** artist registry FK */
+  artistId?: string | null;
+  /** gates publish when artist is pending */
+  artistReviewRequired?: boolean;
   title: string;
   description: string | null;
   /** Physical / catalog medium (e.g. oil on canvas). */
@@ -55,7 +61,13 @@ export type Lot = {
   startTime: Date;
   endTime: Date;
   status: LotStatus;
+  /** populated when status is voided. */
+  voidedReason?: string | null;
+  /** seller entity archived while lot was draft/scheduled. */
+  archivedSeller?: boolean;
   winnerId: string | null;
+  /** winner's acting legal entity at win time */
+  buyerLegalEntityId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   marketingDetails: LotMarketingDetails;
@@ -67,7 +79,9 @@ export type CreateLotInput = {
   medium?: string | undefined;
   dimensions?: string | undefined;
   images?: string[] | undefined;
-  sellerId?: string | undefined;
+  sellerLegalEntityId?: string | undefined;
+  /** artist registry FK - optional during backfill period */
+  artistId?: string | undefined;
   categoryIds?: string[];
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;
