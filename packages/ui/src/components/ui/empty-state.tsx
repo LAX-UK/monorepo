@@ -2,20 +2,18 @@ import { type VariantProps, cva } from "class-variance-authority";
 import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
-const emptyStateVariants = cva(
-  "flex flex-col items-center justify-center px-8 py-16 text-center",
-  {
-    variants: {
-      variant: {
-        default: "rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40",
-        marketing: "bg-transparent py-12",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
+const emptyStateVariants = cva("flex flex-col items-center justify-center px-8 py-16 text-center", {
+  variants: {
+    variant: {
+      default:
+        "rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40",
+      marketing: "bg-transparent py-12",
     },
   },
-);
+  defaultVariants: {
+    variant: "default",
+  },
+});
 
 const emptyStateIconSlotVariants = cva("mb-4 [&_svg]:size-12", {
   variants: {
