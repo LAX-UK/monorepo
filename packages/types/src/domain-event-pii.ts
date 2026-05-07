@@ -79,6 +79,14 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Stripe Connect account cannot currently receive payouts. */
   "payout.transfer_blocked": new Set(["payoutId", "legalEntityId", "reason"]),
+  /** Negative net payout that requires manual clawback/reconciliation. */
+  "payout.clawback_required": new Set([
+    "payoutId",
+    "legalEntityId",
+    "netAmount",
+    "currency",
+    "reason",
+  ]),
   /** Payment dispute opened via Stripe webhook. */
   "payment.dispute_opened": new Set([
     "stripeDisputeId",

@@ -41,6 +41,7 @@ function badgeClass(status: PayoutStatus): string {
       return "bg-success/10 text-success";
     case "failed":
     case "reversed":
+    case "clawback_pending":
       return "bg-error/10 text-error";
     case "in_transit":
       return "bg-primary/10 text-primary";
@@ -79,6 +80,7 @@ export default async function AdminPayoutsPage({
 
   const scheduled = payouts.filter((p) => p.status === "scheduled").length;
   const inTransit = payouts.filter((p) => p.status === "in_transit").length;
+  const clawbackPending = payouts.filter((p) => p.status === "clawback_pending").length;
   const paid = payouts.filter((p) => p.status === "paid").length;
   const totalNet = payouts.reduce((sum, p) => sum + Number.parseFloat(p.netAmount || "0"), 0);
 
@@ -102,9 +104,10 @@ export default async function AdminPayoutsPage({
         </Alert>
       ) : null}
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-5">
         <MetricCard label="Scheduled" value={String(scheduled)} />
         <MetricCard label="In transit" value={String(inTransit)} />
+        <MetricCard label="Clawback pending" value={String(clawbackPending)} />
         <MetricCard label="Paid" value={String(paid)} />
         <MetricCard label="Visible net" value={formatMoney(totalNet.toFixed(2), "GBP")} />
       </section>
@@ -258,6 +261,17 @@ export default async function AdminPayoutsPage({
                   </Alert>
                 ) : null}
 
+                {payout.status === "clawback_pending" ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>Manual reconciliation required</AlertTitle>
+                    <AlertDescription>
+                      This payout has a negative net amount and cannot be sent through Stripe
+                      Connect. Finance must recover the funds via transfer reversal, next-period
+                      offset, or direct repayment before closing the case.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
                 {payout.statementGenerationError ? (
                   <Alert variant="destructive">
                     <AlertTitle>Statement PDF unavailable</AlertTitle>
@@ -300,7 +314,8 @@ export default async function AdminPayoutsPage({
                       disabled={
                         payout.status === "paid" ||
                         payout.status === "failed" ||
-                        payout.status === "reversed"
+                        payout.status === "reversed" ||
+                        payout.status === "clawback_pending"
                       }
                       className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold disabled:opacity-50"
                     >
@@ -328,7 +343,8 @@ export default async function AdminPayoutsPage({
                       disabled={
                         payout.status === "paid" ||
                         payout.status === "failed" ||
-                        payout.status === "reversed"
+                        payout.status === "reversed" ||
+                        payout.status === "clawback_pending"
                       }
                       className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary disabled:opacity-50"
                     >

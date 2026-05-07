@@ -52,17 +52,17 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     try {
       const settlementResult = await container.payoutService.runBulkSettlement(null);
 
+      const scheduledPayouts = await container.payoutService.adminList({
+        status: "scheduled",
+        limit: 1000,
+      });
       const transferOutcomes: TransferOutcome[] = [];
-      for (const item of settlementResult.items) {
-        if (item.outcome !== "created" || !item.payoutId) {
-          continue;
-        }
-
-        const transferResult = await container.stripeConnectService.initiateTransfer(item.payoutId);
+      for (const payout of scheduledPayouts) {
+        const transferResult = await container.stripeConnectService.initiateTransfer(payout.id);
         if (transferResult.ok) {
           transferOutcomes.push({
-            payoutId: item.payoutId,
-            legalEntityId: item.legalEntityId,
+            payoutId: payout.id,
+            legalEntityId: payout.legalEntityId,
             outcome: "transferred",
             stripeTransferId: transferResult.stripeTransferId,
           });
@@ -70,11 +70,12 @@ export function createInternalCronRoutes(container: Container, env: Env) {
           const isSkippable =
             transferResult.reason === "stripe_not_configured" ||
             transferResult.reason === "no_connect_account" ||
-            transferResult.reason === "connect_not_ready";
+            transferResult.reason === "connect_not_ready" ||
+            transferResult.reason === "negative_net_amount";
 
           transferOutcomes.push({
-            payoutId: item.payoutId,
-            legalEntityId: item.legalEntityId,
+            payoutId: payout.id,
+            legalEntityId: payout.legalEntityId,
             outcome: isSkippable ? "skipped" : "failed",
             failureReason: transferResult.reason,
           });

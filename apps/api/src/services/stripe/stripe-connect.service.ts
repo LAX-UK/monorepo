@@ -297,6 +297,35 @@ export class StripeConnectService implements IStripeConnectService {
       return { ok: false, reason: "payout_already_processed" };
     }
 
+    const amountCents = Math.round(Number.parseFloat(payout.netAmount) * 100);
+    if (amountCents < 0) {
+      await this.payoutRepository.updateStatus(payoutId, {
+        status: "clawback_pending",
+        stripeTransferId: null,
+        processedAt: new Date(),
+        failureReason: "negative_net_amount",
+      });
+
+      if (this.domainEventPublisher) {
+        await this.domainEventPublisher.publish(this.db, {
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.clawback_required",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            netAmount: payout.netAmount,
+            currency: payout.currency,
+            reason: "negative_net_amount",
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
+
+      return { ok: false, reason: "negative_net_amount" };
+    }
+
     const rows = await this.db
       .select()
       .from(legalEntity)
@@ -327,7 +356,6 @@ export class StripeConnectService implements IStripeConnectService {
       return { ok: false, reason: "connect_not_ready" };
     }
 
-    const amountCents = Math.round(Number.parseFloat(payout.netAmount) * 100);
     if (amountCents <= 0) {
       await this.payoutRepository.updateStatus(payoutId, {
         status: "paid",

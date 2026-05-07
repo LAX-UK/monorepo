@@ -293,4 +293,49 @@ describe("StripeConnectService.initiateTransfer", () => {
     expect(result).toEqual({ ok: true, stripeTransferId: "zero_amount_skipped" });
     expect(payoutRepo.updateStatus).toHaveBeenCalledWith("po1", expect.objectContaining({ status: "paid" }));
   });
+
+  it("marks negative net payouts as clawback_pending without loading Stripe Connect", async () => {
+    const payoutRepo = makePayoutRepository(
+      payout({ status: "scheduled", netAmount: "-100.00" }),
+    );
+    const publisher = makeDomainEventPublisher();
+    const db = makeMockDb({
+      id: "le1",
+      stripeConnectAccountId: "acct_123",
+      stripeConnectPayoutsEnabled: true,
+    });
+    const svc = new StripeConnectService(
+      baseEnv(),
+      db,
+      makePayoutService(null),
+      payoutRepo,
+      publisher,
+    );
+
+    const result = await svc.initiateTransfer("po1");
+
+    expect(result).toEqual({ ok: false, reason: "negative_net_amount" });
+    expect(payoutRepo.updateStatus).toHaveBeenCalledWith(
+      "po1",
+      expect.objectContaining({
+        status: "clawback_pending",
+        stripeTransferId: null,
+        failureReason: "negative_net_amount",
+      }),
+    );
+    expect(publisher.publish).toHaveBeenCalledWith(db, {
+      aggregateType: "payout",
+      aggregateId: "po1",
+      eventType: "payout.clawback_required",
+      payload: {
+        payoutId: "po1",
+        legalEntityId: "le1",
+        netAmount: "-100.00",
+        currency: "GBP",
+        reason: "negative_net_amount",
+      },
+      actorUserId: null,
+      actingLegalEntityId: "le1",
+    });
+  });
 });

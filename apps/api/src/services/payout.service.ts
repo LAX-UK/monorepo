@@ -255,8 +255,8 @@ export class PayoutService implements IPayoutService {
       if (found.status === "paid") {
         throw new PayoutStatusTransitionError("payout_already_paid");
       }
-      if (found.status === "reversed" || found.status === "failed") {
-        throw new PayoutStatusTransitionError("cannot_pay_payout_in_terminal_state");
+      if (found.status !== "scheduled" && found.status !== "in_transit") {
+        throw new PayoutStatusTransitionError("cannot_pay_payout_in_state");
       }
       return await this.repo.updateStatus(payoutId, {
         status: "paid",
@@ -273,8 +273,8 @@ export class PayoutService implements IPayoutService {
       if (found.status === "paid") {
         throw new PayoutStatusTransitionError("payout_already_paid");
       }
-      if (found.status === "reversed" || found.status === "failed") {
-        throw new PayoutStatusTransitionError("cannot_pay_payout_in_terminal_state");
+      if (found.status !== "scheduled" && found.status !== "in_transit") {
+        throw new PayoutStatusTransitionError("cannot_pay_payout_in_state");
       }
       const updated = await r.updateStatus(payoutId, {
         status: "paid",
