@@ -132,8 +132,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get("/metrics/finance-issues", async (c) => {
     const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
-    const [[failedRow], [dueRow], [entitiesPendingRow], [artistsPendingRow], [staleKycRow], [docsPendingRow]] =
-      await Promise.all([
+    const staleBlockedPayoutCutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const [
+      [failedRow],
+      [dueRow],
+      [staleBlockedPayoutRow],
+      [entitiesPendingRow],
+      [artistsPendingRow],
+      [staleKycRow],
+      [docsPendingRow],
+    ] = await Promise.all([
         container.db
           .select({ n: sql<number>`count(*)::int` })
           .from(payout)
@@ -142,6 +150,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           .select({ n: sql<number>`count(*)::int` })
           .from(legalEntity)
           .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`),
+        container.db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(payout)
+          .innerJoin(legalEntity, eq(payout.legalEntityId, legalEntity.id))
+          .where(
+            and(
+              eq(payout.status, "scheduled"),
+              lt(payout.createdAt, staleBlockedPayoutCutoff),
+              sql`(
+                ${legalEntity.stripeConnectPayoutsEnabled} = false
+                OR jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0
+              )`,
+            ),
+          ),
         container.db
           .select({ n: sql<number>`count(*)::int` })
           .from(legalEntity)
@@ -168,6 +190,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       data: {
         failedPayoutCount: Number(failedRow?.n ?? 0),
         legalEntitiesWithStripeConnectRequirementsCount: Number(dueRow?.n ?? 0),
+        staleBlockedScheduledPayoutCount: Number(staleBlockedPayoutRow?.n ?? 0),
         entitiesPendingReviewCount: Number(entitiesPendingRow?.n ?? 0),
         artistsPendingApprovalCount: Number(artistsPendingRow?.n ?? 0),
         staleIdentitySessionsCount: Number(staleKycRow?.n ?? 0),

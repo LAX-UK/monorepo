@@ -310,6 +310,20 @@ export class StripeConnectService implements IStripeConnectService {
       return { ok: false, reason: "no_connect_account" };
     }
     if (!entity.stripeConnectPayoutsEnabled) {
+      if (this.domainEventPublisher) {
+        await this.domainEventPublisher.publish(this.db, {
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_blocked",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            reason: "connect_not_ready",
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
       return { ok: false, reason: "connect_not_ready" };
     }
 

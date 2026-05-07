@@ -15,6 +15,7 @@ export const templateNames = [
   "payment-invoice",
   "admin-impersonation-notice",
   "payout-transfer-failed-notice",
+  "payout-transfer-blocked-notice",
   "payment-refund-notice",
   "legal-entity-archived-notice",
   "lot-voided-anti-shilling-admin",
@@ -99,6 +100,17 @@ export type TemplateVarsByName = {
     supportContactEmail: string;
     adminPayoutsUrl: string;
   };
+  /** notify finance-role members when a payout cannot start because Connect is not payout-ready. */
+  "payout-transfer-blocked-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    payoutId: string;
+    payoutAmount: string;
+    payoutCurrency: string;
+    blockReason: string;
+    supportContactEmail: string;
+    adminPayoutsUrl: string;
+  };
   /** notify seller entity members when a payment is refunded or dispute is lost. */
   "payment-refund-notice": {
     recipientFirstName?: string | null;
@@ -145,6 +157,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "payment-invoice": "live",
   "admin-impersonation-notice": "live",
   "payout-transfer-failed-notice": "live",
+  "payout-transfer-blocked-notice": "live",
   "payment-refund-notice": "live",
   "legal-entity-archived-notice": "live",
   "lot-voided-anti-shilling-admin": "live",

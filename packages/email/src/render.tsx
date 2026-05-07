@@ -16,6 +16,9 @@ import LotVoidedAntiShillingAdminEmail, {
 import PayoutTransferFailedNoticeEmail, {
   subject as payoutTransferFailedNoticeSubject,
 } from "./templates/payout-transfer-failed-notice.js";
+import PayoutTransferBlockedNoticeEmail, {
+  subject as payoutTransferBlockedNoticeSubject,
+} from "./templates/payout-transfer-blocked-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued.js";
@@ -83,6 +86,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payout-transfer-failed-notice": {
     subject: payoutTransferFailedNoticeSubject,
     component: (vars) => <PayoutTransferFailedNoticeEmail {...vars} />,
+  },
+  "payout-transfer-blocked-notice": {
+    subject: payoutTransferBlockedNoticeSubject,
+    component: (vars) => <PayoutTransferBlockedNoticeEmail {...vars} />,
   },
   "payment-refund-notice": {
     subject: paymentRefundNoticeSubject,

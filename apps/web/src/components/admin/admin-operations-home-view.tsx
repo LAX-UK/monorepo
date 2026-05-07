@@ -132,10 +132,11 @@ export function AdminOperationsHomeView({
             <CardHeader>
               <CardTitle className="font-headline text-lg">Stripe Connect &amp; payouts</CardTitle>
               <CardDescription>
-                Failed transfers and legal entities with outstanding Stripe Connect requirements.
+                Failed transfers, blocked scheduled payouts, and outstanding Stripe Connect
+                requirements.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 sm:grid-cols-3">
               <Link
                 href="/admin/payouts?status=failed"
                 className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
@@ -148,6 +149,21 @@ export function AdminOperationsHomeView({
                 </span>
                 <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
                   Open filtered list
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/payouts?status=scheduled"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Blocked scheduled payouts
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.staleBlockedScheduledPayoutCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Review scheduled payouts
                   <ChevronRight className="size-4" aria-hidden />
                 </span>
               </Link>
