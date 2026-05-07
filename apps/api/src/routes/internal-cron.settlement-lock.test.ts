@@ -2,23 +2,18 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
-import {
-  BULK_PAYOUT_SETTLEMENT_LOCK_KEY,
-  createInternalCronRoutes,
-} from "./internal-cron.js";
+import { BULK_PAYOUT_SETTLEMENT_LOCK_KEY, createInternalCronRoutes } from "./internal-cron.js";
 
 function createInMemoryRedis() {
   const store = new Map<string, string>();
   return {
     store,
-    set: vi.fn(
-      async (key: string, value: string, ...args: (string | number)[]) => {
-        const nx = args.includes("NX");
-        if (nx && store.has(key)) return null;
-        store.set(key, value);
-        return "OK" as const;
-      },
-    ),
+    set: vi.fn(async (key: string, value: string, ...args: (string | number)[]) => {
+      const nx = args.includes("NX");
+      if (nx && store.has(key)) return null;
+      store.set(key, value);
+      return "OK" as const;
+    }),
     del: vi.fn(async (key: string) => {
       store.delete(key);
       return 1;

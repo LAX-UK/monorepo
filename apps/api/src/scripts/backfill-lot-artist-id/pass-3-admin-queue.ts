@@ -7,11 +7,7 @@ import { adminReviewTask } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import { analyzeLotArtistBackfill, loadAllLotsForBackfill } from "./scan.js";
 
-const NEED_REVIEW = new Set([
-  "ambiguous_text",
-  "value_is_user_id",
-  "corrupt",
-]);
+const NEED_REVIEW = new Set(["ambiguous_text", "value_is_user_id", "corrupt"]);
 
 async function main() {
   const url = process.env.DATABASE_URL;

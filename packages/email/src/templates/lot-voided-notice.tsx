@@ -14,7 +14,8 @@ export default function LotVoidedNoticeEmail(vars: TemplateVarsByName["lot-voide
       </TextBlock>
       <TextBlock>Reason: {vars.reason.replaceAll("_", " ")}</TextBlock>
       <TextBlock>
-        If you have questions, contact <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
+        If you have questions, contact{" "}
+        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
       </TextBlock>
     </Layout>
   );

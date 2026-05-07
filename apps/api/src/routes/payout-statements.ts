@@ -81,7 +81,11 @@ export function createLegalEntityPayoutStatementRoutes(
         return c.redirect(p.statementUrl, 302);
       }
 
-      await ensureStatementQueued(container.payoutRepository, container.payoutStatementQueue, payoutId);
+      await ensureStatementQueued(
+        container.payoutRepository,
+        container.payoutStatementQueue,
+        payoutId,
+      );
       return c.json({ error: "statement_pending" }, 503, {
         "Retry-After": String(RETRY_AFTER_SEC),
       });

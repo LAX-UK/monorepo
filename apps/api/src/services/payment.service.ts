@@ -196,12 +196,7 @@ export class PaymentService {
     if (this.legalEntityRepository && p.sellerLegalEntityId) {
       const sellerEntity = await this.legalEntityRepository.findById(p.sellerLegalEntityId);
       if (sellerEntity && REFUND_BLOCKED_STATUSES.includes(sellerEntity.status)) {
-        return err(
-          new AuthzError(
-            `Cannot refund: seller entity is ${sellerEntity.status}`,
-            400,
-          ),
-        );
+        return err(new AuthzError(`Cannot refund: seller entity is ${sellerEntity.status}`, 400));
       }
     }
 

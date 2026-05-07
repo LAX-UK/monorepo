@@ -104,21 +104,18 @@ describe("redactDomainEventPayload", () => {
     "legal_entity.archived",
   ] as const;
 
-  it.each(seP17LifecycleTypes)(
-    "allows from_status, to_status, reason for %s",
-    (eventType) => {
-      const out = redactDomainEventPayload(eventType, {
-        from_status: "lead",
-        to_status: "docs_requested",
-        reason: "audit note",
-        extra: "secret",
-      }) as Record<string, unknown>;
-      expect(out.from_status).toBe("lead");
-      expect(out.to_status).toBe("docs_requested");
-      expect(out.reason).toBe("audit note");
-      expect(out.extra).toBe("[REDACTED]");
-    },
-  );
+  it.each(seP17LifecycleTypes)("allows from_status, to_status, reason for %s", (eventType) => {
+    const out = redactDomainEventPayload(eventType, {
+      from_status: "lead",
+      to_status: "docs_requested",
+      reason: "audit note",
+      extra: "secret",
+    }) as Record<string, unknown>;
+    expect(out.from_status).toBe("lead");
+    expect(out.to_status).toBe("docs_requested");
+    expect(out.reason).toBe("audit note");
+    expect(out.extra).toBe("[REDACTED]");
+  });
 
   it("allows entity display name and session id for admin.impersonation_started", () => {
     const out = redactDomainEventPayload("admin.impersonation_started", {

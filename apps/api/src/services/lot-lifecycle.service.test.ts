@@ -179,10 +179,12 @@ describe("LotLifecycleService", () => {
 
     const findEligible = vi.fn().mockResolvedValue([]);
     const bids: IBidRepository = {
-      listForLotSettlement: vi.fn().mockResolvedValue([
-        bid({ amount: "500.00", bidderId: "u1" }),
-        bid({ amount: "400.00", bidderId: "u2" }),
-      ]),
+      listForLotSettlement: vi
+        .fn()
+        .mockResolvedValue([
+          bid({ amount: "500.00", bidderId: "u1" }),
+          bid({ amount: "400.00", bidderId: "u2" }),
+        ]),
       findEligibleBidsForLotClose: findEligible,
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1", "u2"]),
     } as unknown as IBidRepository;
@@ -249,7 +251,8 @@ describe("LotLifecycleService", () => {
         buyerLegalEntityId: `entity-u${i}`,
       }),
     );
-    const winnerBid = settlementBids[3]!;
+    const winnerBid = settlementBids[3];
+    if (!winnerBid) throw new Error("expected settlementBids[3]");
     const findEligible = vi.fn().mockResolvedValue([winnerBid]);
     const bids: IBidRepository = {
       listForLotSettlement: vi.fn().mockResolvedValue(settlementBids),

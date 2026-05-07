@@ -150,7 +150,10 @@ export function createRequireLegalEntityContext(
  */
 export function createSubmissionsLegalEntityContext(
   repo: ILegalEntityRepository,
-  opts: Pick<RequireLegalEntityContextOptions, "impersonationSessions" | "onImpersonationExpired"> = {},
+  opts: Pick<
+    RequireLegalEntityContextOptions,
+    "impersonationSessions" | "onImpersonationExpired"
+  > = {},
 ) {
   return createMiddleware<{
     Variables: { userId?: string; userRole?: string; legalEntityContext?: LegalEntityContext };

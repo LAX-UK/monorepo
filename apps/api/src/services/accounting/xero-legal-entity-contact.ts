@@ -1,5 +1,5 @@
-import { Address, Contact, Contacts, type XeroClient } from "xero-node";
 import type { LegalEntity } from "@auction/types";
+import { Address, Contact, Contacts, type XeroClient } from "xero-node";
 
 /** Stable Xero `ContactNumber` for idempotent find/create (≤50 chars). */
 export function xeroContactNumberForLegalEntity(legalEntityId: string): string {

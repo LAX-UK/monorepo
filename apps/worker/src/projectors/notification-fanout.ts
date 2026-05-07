@@ -101,7 +101,9 @@ export async function processNotificationFanout(options: {
       payload: domainEvent.payload,
     })
     .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), inArray(domainEvent.eventType, [...SUPPORTED_EVENT_TYPES])))
+    .where(
+      and(gt(domainEvent.id, cursor), inArray(domainEvent.eventType, [...SUPPORTED_EVENT_TYPES])),
+    )
     .orderBy(domainEvent.id)
     .limit(50);
 

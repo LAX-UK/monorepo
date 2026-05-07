@@ -1,7 +1,7 @@
 import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { ensureStatementQueued } from "./payout-statements.js";
 import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
+import { ensureStatementQueued } from "./payout-statements.js";
 
 describe("payout statement queue ", () => {
   it("first request clears error bit and enqueues idempotent job", async () => {
@@ -10,7 +10,11 @@ describe("payout statement queue ", () => {
     const repo: Pick<IPayoutRepository, "clearStatementGenerationError"> = {
       clearStatementGenerationError: vi.fn().mockResolvedValue(undefined),
     };
-    await ensureStatementQueued(repo as IPayoutRepository, queue, "00000000-0000-4000-8000-000000000099");
+    await ensureStatementQueued(
+      repo as IPayoutRepository,
+      queue,
+      "00000000-0000-4000-8000-000000000099",
+    );
     expect(repo.clearStatementGenerationError).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000099",
     );

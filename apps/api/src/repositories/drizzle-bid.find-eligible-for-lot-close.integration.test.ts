@@ -15,6 +15,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
     `80000000-0000-4000-8000-${String(10_000 + i).padStart(12, "0")}`;
 
   it("returns the first reserve-eligible bid that passes anti-shilling (4th of 10 by hammer)", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);
     const rollback = new Error("rollback_test_tx");
 
@@ -131,8 +132,10 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         });
 
         expect(eligible).toHaveLength(1);
-        expect(eligible[0]!.placedByUserId).toBe(buyerUser(3));
-        expect(eligible[0]!.amount).toBe("700.00");
+        const winner = eligible[0];
+        if (!winner) throw new Error("expected eligible winner");
+        expect(winner.placedByUserId).toBe(buyerUser(3));
+        expect(winner.amount).toBe("700.00");
 
         throw rollback;
       });
@@ -143,6 +146,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
   });
 
   it("returns empty when every reserve-eligible bid violates anti-shilling", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);
     const rollback = new Error("rollback_test_tx");
     const lotId2 = "44444444-4444-4444-8444-444444444444";
@@ -151,7 +155,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
       await db.transaction(async (tx) => {
         const t = new Date();
         await tx.insert(user).values({
-          id: sellerUserId + "_2",
+          id: `${sellerUserId}_2`,
           name: "Seller2",
           email: "p21_seller2_u@integration.test",
           emailVerified: true,
@@ -160,7 +164,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         });
         for (let i = 0; i < 3; i++) {
           await tx.insert(user).values({
-            id: buyerUser(i) + "_2",
+            id: `${buyerUser(i)}_2`,
             name: `B${i}2`,
             email: `p21_b${i}_u2@integration.test`,
             emailVerified: true,
@@ -175,14 +179,14 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           displayName: "Seller2 LE",
           kind: "organisation",
           subkind: "gallery",
-          createdByUserId: sellerUserId + "_2",
+          createdByUserId: `${sellerUserId}_2`,
           status: "approved",
           createdAt: t,
           updatedAt: t,
         });
         await tx.insert(legalEntityMember).values({
           legalEntityId: leSeller,
-          userId: sellerUserId + "_2",
+          userId: `${sellerUserId}_2`,
           role: "owner",
           isPrimaryAdmin: true,
           acceptedAt: t,
@@ -194,9 +198,9 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         const buyerLeC = "88888888-8888-4888-8888-888888888888";
 
         const buyers2 = [
-          { uid: buyerUser(0) + "_2", le: buyerLeA },
-          { uid: buyerUser(1) + "_2", le: buyerLeB },
-          { uid: buyerUser(2) + "_2", le: buyerLeC },
+          { uid: `${buyerUser(0)}_2`, le: buyerLeA },
+          { uid: `${buyerUser(1)}_2`, le: buyerLeB },
+          { uid: `${buyerUser(2)}_2`, le: buyerLeC },
         ];
 
         for (const { uid, le } of buyers2) {
@@ -245,8 +249,9 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         });
 
         for (let i = 0; i < 3; i++) {
-          const uid = buyers2[i]!.uid;
-          const le = buyers2[i]!.le;
+          const entry = buyers2[i];
+          if (!entry) throw new Error("expected buyer entry");
+          const { uid, le } = entry;
           const amt = 500 - i * 50;
           await tx.insert(bid).values({
             lotId: lotId2,

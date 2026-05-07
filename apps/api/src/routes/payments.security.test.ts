@@ -72,7 +72,12 @@ describe("payment finance entity authorization", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(paymentService.refundPayment).toHaveBeenCalledWith("u1", "accountant", paymentId, entityId);
+    expect(paymentService.refundPayment).toHaveBeenCalledWith(
+      "u1",
+      "accountant",
+      paymentId,
+      entityId,
+    );
   });
 
   it("allows administrator capture without entity context", async () => {

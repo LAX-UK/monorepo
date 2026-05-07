@@ -5,9 +5,14 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = (vars: TemplateVarsByName["dispute-opened-notice"]) =>
   `Payment dispute opened for ${vars.entityName}`;
 
-export default function DisputeOpenedNoticeEmail(vars: TemplateVarsByName["dispute-opened-notice"]) {
+export default function DisputeOpenedNoticeEmail(
+  vars: TemplateVarsByName["dispute-opened-notice"],
+) {
   return (
-    <Layout preview={`Payment dispute opened for ${vars.entityName}`} title="Payment Dispute Opened">
+    <Layout
+      preview={`Payment dispute opened for ${vars.entityName}`}
+      title="Payment Dispute Opened"
+    >
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         A buyer has opened a payment dispute affecting <strong>{vars.entityName}</strong>.
@@ -18,7 +23,8 @@ export default function DisputeOpenedNoticeEmail(vars: TemplateVarsByName["dispu
         Reason: {vars.reason || "Not provided"}
       </TextBlock>
       <TextBlock>
-        If you have questions, contact <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
+        If you have questions, contact{" "}
+        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
       </TextBlock>
     </Layout>
   );

@@ -179,11 +179,7 @@ export function MemberList({
               if (!res.ok) throw new Error(res.error);
               return;
             }
-            const res = await transferPrimaryAdminAction(
-              legalEntityId,
-              d.memberId,
-              d.phrase,
-            );
+            const res = await transferPrimaryAdminAction(legalEntityId, d.memberId, d.phrase);
             if (!res.ok) throw new Error(res.error);
           }}
         />

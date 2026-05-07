@@ -4,7 +4,7 @@ import { legalEntityMember, user, userInvitation } from "@auction/db/schema";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { DrizzleBidRepository } from "../repositories/drizzle-bid.repository.js";
-import { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import {
   type AcceptInviteResult,
   type IMemberManagementService,

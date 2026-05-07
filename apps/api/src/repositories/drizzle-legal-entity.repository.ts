@@ -82,9 +82,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
       .where(eq(legalEntity.id, legalEntityId));
   }
 
-  async findPreferredBillToLegalEntityAddress(
-    legalEntityId: string,
-  ): Promise<{
+  async findPreferredBillToLegalEntityAddress(legalEntityId: string): Promise<{
     line1: string;
     line2: string | null;
     city: string;
@@ -118,7 +116,8 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
       if (oa !== ob) return oa - ob;
       return (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0);
     });
-    const r = sorted[0]!;
+    const r = sorted[0];
+    if (!r) return null;
     return {
       line1: r.line1,
       line2: r.line2 ?? null,
@@ -130,9 +129,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
     };
   }
 
-  async findPrimaryAddressForXero(
-    legalEntityId: string,
-  ): Promise<{
+  async findPrimaryAddressForXero(legalEntityId: string): Promise<{
     line1: string;
     line2: string | null;
     city: string;

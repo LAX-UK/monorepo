@@ -36,12 +36,15 @@ function artistNoteHint(details: Record<string, unknown>): string | null {
   return n || null;
 }
 
-export async function analyzeLotArtistBackfill(db: Database, lotRow: {
-  id: string;
-  artistId: string | null;
-  title: string;
-  marketingDetails: Record<string, unknown>;
-}): Promise<LotArtistBackfillRow> {
+export async function analyzeLotArtistBackfill(
+  db: Database,
+  lotRow: {
+    id: string;
+    artistId: string | null;
+    title: string;
+    marketingDetails: Record<string, unknown>;
+  },
+): Promise<LotArtistBackfillRow> {
   const seller = sellerArtistFromMarketing(lotRow.marketingDetails);
   const noteHint = artistNoteHint(lotRow.marketingDetails);
   const titleHint = hintFromLotTitle(lotRow.title);
@@ -92,7 +95,8 @@ export async function analyzeLotArtistBackfill(db: Database, lotRow: {
     ambiguityCount: result.ambiguityCount,
   };
   if (result.suggestedArtistId !== undefined) row.suggestedArtistId = result.suggestedArtistId;
-  if (result.suggestedArtistName !== undefined) row.suggestedArtistName = result.suggestedArtistName;
+  if (result.suggestedArtistName !== undefined)
+    row.suggestedArtistName = result.suggestedArtistName;
   return row;
 }
 

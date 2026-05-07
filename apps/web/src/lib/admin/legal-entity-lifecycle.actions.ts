@@ -11,10 +11,7 @@ function val(fd: FormData, k: string): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function redirectToDetail(
-  id: string,
-  query?: { error?: string; success?: string },
-): never {
+function redirectToDetail(id: string, query?: { error?: string; success?: string }): never {
   const sp = new URLSearchParams();
   if (query?.error) sp.set("error", query.error);
   if (query?.success) sp.set("success", query.success);
@@ -63,10 +60,9 @@ export async function legalEntityLifecycleSimpleAction(formData: FormData): Prom
   if (!id || !seg) {
     redirectToList({ error: "Invalid request." });
   }
-  const res = await authedServerFetch(
-    `/admin/legal-entities/${encodeURIComponent(id)}/${seg}`,
-    { method: "POST" },
-  );
+  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/${seg}`, {
+    method: "POST",
+  });
   if (!res.ok) {
     redirectToDetail(id, { error: await readFailureMessage(res) });
   }
@@ -85,14 +81,11 @@ export async function legalEntityRejectAction(formData: FormData): Promise<void>
   if (reason.length < 3) {
     redirectToDetail(id, { error: "Reason must be at least 3 characters." });
   }
-  const res = await authedServerFetch(
-    `/admin/legal-entities/${encodeURIComponent(id)}/reject`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason, confirmationPhrase }),
-    },
-  );
+  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason, confirmationPhrase }),
+  });
   if (!res.ok) {
     redirectToDetail(id, { error: await readFailureMessage(res) });
   }
@@ -118,14 +111,11 @@ export async function legalEntityArchiveAction(formData: FormData): Promise<void
   if (reason.length < 3) {
     redirectToDetail(id, { error: "Reason must be at least 3 characters." });
   }
-  const res = await authedServerFetch(
-    `/admin/legal-entities/${encodeURIComponent(id)}/archive`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason, confirmationPhrase }),
-    },
-  );
+  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/archive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason, confirmationPhrase }),
+  });
   if (!res.ok) {
     redirectToDetail(id, { error: await readFailureMessage(res) });
   }

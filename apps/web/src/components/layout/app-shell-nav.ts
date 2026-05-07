@@ -2,8 +2,8 @@ import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode"
 import {
   BarChart3,
   Bell,
-  Building2,
   Brush,
+  Building2,
   CreditCard,
   FileText,
   Gauge,

@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
-import { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 export const ADMIN_IMPERSONATION_AGGREGATE_TYPE = "admin_impersonation";
 

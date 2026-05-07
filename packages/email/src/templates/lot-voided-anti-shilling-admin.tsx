@@ -11,7 +11,9 @@ export default function LotVoidedAntiShillingAdminEmail(
   const { lotTitle, lotId, adminLotUrl, supportContactEmail } = vars;
   return (
     <Layout preview="Lot voided — anti-shilling at close" title="Lot voided at close">
-      <TextBlock>A lot was voided at auction end after anti-shilling checks left no eligible winner.</TextBlock>
+      <TextBlock>
+        A lot was voided at auction end after anti-shilling checks left no eligible winner.
+      </TextBlock>
       <TextBlock>
         <strong>{lotTitle}</strong>
         <br />

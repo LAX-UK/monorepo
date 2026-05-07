@@ -149,50 +149,50 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       [staleKycRow],
       [docsPendingRow],
     ] = await Promise.all([
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(payout)
-          .where(eq(payout.status, "failed")),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(legalEntity)
-          .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(payout)
-          .innerJoin(legalEntity, eq(payout.legalEntityId, legalEntity.id))
-          .where(
-            and(
-              eq(payout.status, "scheduled"),
-              lt(payout.createdAt, staleBlockedPayoutCutoff),
-              sql`(
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(payout)
+        .where(eq(payout.status, "failed")),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(legalEntity)
+        .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(payout)
+        .innerJoin(legalEntity, eq(payout.legalEntityId, legalEntity.id))
+        .where(
+          and(
+            eq(payout.status, "scheduled"),
+            lt(payout.createdAt, staleBlockedPayoutCutoff),
+            sql`(
                 ${legalEntity.stripeConnectPayoutsEnabled} = false
                 OR jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0
               )`,
-            ),
           ),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(legalEntity)
-          .where(inArray(legalEntity.status, ["docs_received", "under_review"])),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(artistProfile)
-          .where(eq(artistProfile.status, "pending")),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(kycVerification)
-          .where(
-            and(
-              inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-              lt(kycVerification.createdAt, staleIdentityCutoff),
-            ),
+        ),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(legalEntity)
+        .where(inArray(legalEntity.status, ["docs_received", "under_review"])),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(artistProfile)
+        .where(eq(artistProfile.status, "pending")),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(kycVerification)
+        .where(
+          and(
+            inArray(kycVerification.status, ["created", "requires_input", "processing"]),
+            lt(kycVerification.createdAt, staleIdentityCutoff),
           ),
-        container.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(legalEntityDocument)
-          .where(eq(legalEntityDocument.reviewStatus, "pending")),
-      ]);
+        ),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(legalEntityDocument)
+        .where(eq(legalEntityDocument.reviewStatus, "pending")),
+    ]);
     return c.json({
       data: {
         failedPayoutCount: Number(failedRow?.n ?? 0),
@@ -379,10 +379,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       .select()
       .from(adminReviewTask)
       .where(
-        and(
-          eq(adminReviewTask.kind, "lot_artist_backfill"),
-          eq(adminReviewTask.status, "pending"),
-        ),
+        and(eq(adminReviewTask.kind, "lot_artist_backfill"), eq(adminReviewTask.status, "pending")),
       )
       .orderBy(desc(adminReviewTask.createdAt))
       .limit(200);
@@ -731,7 +728,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       }
 
       await container.db.transaction(async (tx) => {
-        await container.impersonationSessionService.end(sessionId, "cookie_cleared_after_failed_end");
+        await container.impersonationSessionService.end(
+          sessionId,
+          "cookie_cleared_after_failed_end",
+        );
         await container.domainEventPublisher.publish(tx, {
           aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
           aggregateId: sessionId,

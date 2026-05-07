@@ -2,7 +2,14 @@
 export const lotAuctionTypes = ["english", "dutch", "sealed", "buy_it_now"] as const;
 export type LotAuctionType = (typeof lotAuctionTypes)[number];
 
-export const lotStatuses = ["draft", "scheduled", "active", "ended", "cancelled", "voided"] as const;
+export const lotStatuses = [
+  "draft",
+  "scheduled",
+  "active",
+  "ended",
+  "cancelled",
+  "voided",
+] as const;
 export type LotStatus = (typeof lotStatuses)[number];
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */

@@ -4,51 +4,27 @@ import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
-import PaymentRefundNoticeEmail, {
-  subject as paymentRefundNoticeSubject,
-} from "./templates/payment-refund-notice.js";
-import PaymentManualReviewAdminNoticeEmail, {
-  subject as paymentManualReviewAdminNoticeSubject,
-} from "./templates/payment-manual-review-admin-notice.js";
-import PaymentManualReviewBuyerNoticeEmail, {
-  subject as paymentManualReviewBuyerNoticeSubject,
-} from "./templates/payment-manual-review-buyer-notice.js";
-import LegalEntityArchivedNoticeEmail, {
-  subject as legalEntityArchivedNoticeSubject,
-} from "./templates/legal-entity-archived-notice.js";
-import LotVoidedAntiShillingAdminEmail, {
-  subject as lotVoidedAntiShillingAdminSubject,
-} from "./templates/lot-voided-anti-shilling-admin.js";
-import PayoutTransferFailedNoticeEmail, {
-  subject as payoutTransferFailedNoticeSubject,
-} from "./templates/payout-transfer-failed-notice.js";
-import PayoutTransferBlockedNoticeEmail, {
-  subject as payoutTransferBlockedNoticeSubject,
-} from "./templates/payout-transfer-blocked-notice.js";
-import PayoutInitiatedNoticeEmail, {
-  subject as payoutInitiatedNoticeSubject,
-} from "./templates/payout-initiated-notice.js";
-import PayoutClawbackRequiredNoticeEmail, {
-  subject as payoutClawbackRequiredNoticeSubject,
-} from "./templates/payout-clawback-required-notice.js";
-import DisputeOpenedNoticeEmail, {
-  subject as disputeOpenedNoticeSubject,
-} from "./templates/dispute-opened-notice.js";
+import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import DisputeClosedNoticeEmail, {
   subject as disputeClosedNoticeSubject,
 } from "./templates/dispute-closed-notice.js";
-import ProxyCancelledNoticeEmail, {
-  subject as proxyCancelledNoticeSubject,
-} from "./templates/proxy-cancelled-notice.js";
-import LotVoidedNoticeEmail, {
-  subject as lotVoidedNoticeSubject,
-} from "./templates/lot-voided-notice.js";
-import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
+import DisputeOpenedNoticeEmail, {
+  subject as disputeOpenedNoticeSubject,
+} from "./templates/dispute-opened-notice.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued.js";
+import LegalEntityArchivedNoticeEmail, {
+  subject as legalEntityArchivedNoticeSubject,
+} from "./templates/legal-entity-archived-notice.js";
 import LotEndedSellerEmail, {
   subject as lotEndedSellerSubject,
 } from "./templates/lot-ended-seller.js";
+import LotVoidedAntiShillingAdminEmail, {
+  subject as lotVoidedAntiShillingAdminSubject,
+} from "./templates/lot-voided-anti-shilling-admin.js";
+import LotVoidedNoticeEmail, {
+  subject as lotVoidedNoticeSubject,
+} from "./templates/lot-voided-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
 import PasswordChanged, {
   subject as passwordChangedSubject,
@@ -56,9 +32,33 @@ import PasswordChanged, {
 import PaymentInvoiceEmail, {
   subject as paymentInvoiceSubject,
 } from "./templates/payment-invoice.js";
+import PaymentManualReviewAdminNoticeEmail, {
+  subject as paymentManualReviewAdminNoticeSubject,
+} from "./templates/payment-manual-review-admin-notice.js";
+import PaymentManualReviewBuyerNoticeEmail, {
+  subject as paymentManualReviewBuyerNoticeSubject,
+} from "./templates/payment-manual-review-buyer-notice.js";
 import PaymentReceiptEmail, {
   subject as paymentReceiptSubject,
 } from "./templates/payment-receipt.js";
+import PaymentRefundNoticeEmail, {
+  subject as paymentRefundNoticeSubject,
+} from "./templates/payment-refund-notice.js";
+import PayoutClawbackRequiredNoticeEmail, {
+  subject as payoutClawbackRequiredNoticeSubject,
+} from "./templates/payout-clawback-required-notice.js";
+import PayoutInitiatedNoticeEmail, {
+  subject as payoutInitiatedNoticeSubject,
+} from "./templates/payout-initiated-notice.js";
+import PayoutTransferBlockedNoticeEmail, {
+  subject as payoutTransferBlockedNoticeSubject,
+} from "./templates/payout-transfer-blocked-notice.js";
+import PayoutTransferFailedNoticeEmail, {
+  subject as payoutTransferFailedNoticeSubject,
+} from "./templates/payout-transfer-failed-notice.js";
+import ProxyCancelledNoticeEmail, {
+  subject as proxyCancelledNoticeSubject,
+} from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
 import WelcomeEmail, { subject as welcomeSubject } from "./templates/welcome.js";

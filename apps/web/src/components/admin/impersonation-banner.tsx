@@ -35,6 +35,7 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
   return (
     <div
       className="fixed inset-x-0 top-0 z-[200] border-b border-red-900/40 bg-red-600 px-4 py-2 text-white shadow-md"
+      // biome-ignore lint/a11y/useSemanticElements: status role on a fixed banner div is intentional
       role="status"
       aria-live="polite"
     >

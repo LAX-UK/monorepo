@@ -451,9 +451,13 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const db = {
       transaction: vi.fn().mockImplementation(async (fn) => fn(mockTx)),
     };
-    const svc = new PayoutService(repo, db as unknown as Database, {
-      publish,
-    } as unknown as DomainEventPublisher);
+    const svc = new PayoutService(
+      repo,
+      db as unknown as Database,
+      {
+        publish,
+      } as unknown as DomainEventPublisher,
+    );
 
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",

@@ -2,16 +2,13 @@ import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
-import { processClearArtistBlocks } from "./clear-artist-blocks.js";
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
+import { processClearArtistBlocks } from "./clear-artist-blocks.js";
+import { redactDomainEventPayload } from "./lib/redact-pii.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
+import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
-import {
-  NOTIFICATION_FANOUT_PROJECTOR,
-  processNotificationFanout,
-} from "./notification-fanout.js";
-import { redactDomainEventPayload } from "./lib/redact-pii.js";
 
 type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 type ProjectorEventRow = {

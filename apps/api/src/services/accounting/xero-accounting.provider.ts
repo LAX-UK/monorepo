@@ -11,18 +11,18 @@ import {
 import type { TokenSet } from "xero-node";
 import type { Env } from "../../env.js";
 import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
-import type { InvoiceAddressingService } from "../invoice-addressing.js";
+import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
   AccountingCheckoutContext,
   AccountingCheckoutResult,
   IPaymentAccountingProvider,
 } from "../interfaces/payment-accounting-provider.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
+import type { InvoiceAddressingService } from "../invoice-addressing.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
@@ -119,11 +119,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
 
     let contactId: string;
     try {
-      if (
-        this.env.XERO_USE_LEGAL_ENTITY_CONTACT &&
-        this.legalEntities &&
-        ctx.buyerLegalEntityId
-      ) {
+      if (this.env.XERO_USE_LEGAL_ENTITY_CONTACT && this.legalEntities && ctx.buyerLegalEntityId) {
         const ent = await this.legalEntities.findById(ctx.buyerLegalEntityId);
         if (!ent) {
           await this.externalRefs.updateError(ctx.paymentId, "Buyer legal entity not found");
@@ -135,6 +131,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
           tenantId,
           entity: ent,
           billingAddress,
+          // biome-ignore lint/style/noNonNullAssertion: guarded by the surrounding conditional
           persistContactId: (id, cid) => this.legalEntities!.setXeroContactId(id, cid),
         });
       } else {
@@ -343,7 +340,6 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     }
     return out.contactID;
   }
-
 }
 
 /** Scopes used for Xero OAuth (exported for OAuth service). */

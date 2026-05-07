@@ -13,7 +13,10 @@ describe.skipIf(!url)("migration 0033 lot voided + archived_seller columns", () 
     const client = new pg.Client({ connectionString: url });
     await client.connect();
     try {
-      const up = readFileSync(join(__dirname, "../drizzle/0033_lot_voided_archived_seller.sql"), "utf8");
+      const up = readFileSync(
+        join(__dirname, "../drizzle/0033_lot_voided_archived_seller.sql"),
+        "utf8",
+      );
       const down = readFileSync(join(__dirname, "../drizzle/0033_rollback.sql"), "utf8");
 
       await client.query(down);
@@ -24,7 +27,10 @@ describe.skipIf(!url)("migration 0033 lot voided + archived_seller columns", () 
          where table_schema = 'public' and table_name = 'lot'
          and column_name in ('voided_reason','archived_seller')`,
       );
-      expect(cols.rows.map((r) => r.column_name).sort()).toEqual(["archived_seller", "voided_reason"]);
+      expect(cols.rows.map((r) => r.column_name).sort()).toEqual([
+        "archived_seller",
+        "voided_reason",
+      ]);
 
       await client.query(down);
       const after = await client.query<{ column_name: string }>(

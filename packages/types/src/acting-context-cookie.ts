@@ -32,14 +32,18 @@ export function encodeActingContextCookie(payload: ActingContextCookieV1): strin
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
-export function decodeActingContextCookie(raw: string | undefined | null): ActingContextCookieV1 | null {
+export function decodeActingContextCookie(
+  raw: string | undefined | null,
+): ActingContextCookieV1 | null {
   if (raw == null || raw === "") return null;
   const trimmed = raw.trim();
   if (isUuidString(trimmed)) {
     return { v: 1, e: trimmed };
   }
   try {
-    const json = JSON.parse(Buffer.from(trimmed, "base64url").toString("utf8")) as ActingContextCookieV1;
+    const json = JSON.parse(
+      Buffer.from(trimmed, "base64url").toString("utf8"),
+    ) as ActingContextCookieV1;
     if (json?.v === 1 && typeof json.e === "string" && isUuidString(json.e)) {
       if (json.i !== undefined) {
         if (typeof json.i?.sid !== "string" || !isUuidString(json.i.sid)) return null;
@@ -57,7 +61,10 @@ export function impersonationExpiresAt(payload: ActingContextCookieV1): Date | n
   return null;
 }
 
-export function isImpersonationExpired(payload: ActingContextCookieV1, nowMs = Date.now()): boolean {
+export function isImpersonationExpired(
+  payload: ActingContextCookieV1,
+  nowMs = Date.now(),
+): boolean {
   const exp = impersonationExpiresAt(payload);
   if (!exp) return false;
   return nowMs > exp.getTime();

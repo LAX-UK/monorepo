@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 /**
  * Pass 2 — idempotent writes: link lots to resolved artists; create pending artists for text_no_match.
  * Run: `pnpm exec tsx src/scripts/backfill-lot-artist-id/pass-2-write.ts`
@@ -5,7 +6,6 @@
 import { createDb } from "@auction/db";
 import { artistProfile, lot } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import {
   analyzeLotArtistBackfill,
   artistReviewRequiredForStatus,
@@ -45,11 +45,7 @@ async function main() {
         .from(lot)
         .where(eq(lot.id, row.id))
         .limit(1);
-      if (
-        current &&
-        current.artistId === suggested &&
-        current.artistReviewRequired === flag
-      ) {
+      if (current && current.artistId === suggested && current.artistReviewRequired === flag) {
         continue;
       }
       await db

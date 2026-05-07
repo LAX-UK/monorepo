@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import Stripe from "stripe";
 import type { Container } from "../../container.js";
-import { progressIndividualsAfterIdentityVerification } from "../../services/kyc/kyc-post-verification-progression.js";
 import { KycNotConfiguredError } from "../../services/interfaces/kyc-service.js";
+import { progressIndividualsAfterIdentityVerification } from "../../services/kyc/kyc-post-verification-progression.js";
 
 /** Stripe webhook hub. We expose three endpoints — one per webhook secret —
  * because Stripe Identity, Stripe Connect, and Stripe Payments have separate
  * signing secrets in the dashboard:
  * * - POST /webhooks/stripe/identity → Stripe Identity events
- * - POST /webhooks/stripe/connect  → Stripe Connect events 
- * - POST /webhooks/stripe/payments → Stripe Payment events 
+ * - POST /webhooks/stripe/connect  → Stripe Connect events
+ * - POST /webhooks/stripe/payments → Stripe Payment events
  */
 export function createStripeWebhookRoutes(container: Container) {
   const r = new Hono();
