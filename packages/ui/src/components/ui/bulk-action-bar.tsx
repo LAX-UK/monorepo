@@ -9,8 +9,7 @@ export type BulkActionBarProps = {
   className?: string;
 };
 
-/**
- * Desktop: inline bar. Mobile: fixed bottom with safe-area inset.
+/** Desktop: inline bar. Mobile: fixed bottom with safe-area inset.
  */
 export function BulkActionBar({ count, children, className }: BulkActionBarProps) {
   if (count <= 0) return null;

@@ -18,8 +18,7 @@ function parseDimensionsAspect(
   return { w, h };
 }
 
-/**
- * Figma: ~786×502 hero; not sticky. Wraps the lightbox + thumbs stack.
+/** Figma: ~786×502 hero; not sticky. Wraps the lightbox + thumbs stack.
  * Uses catalog `dimensions` for aspect when two numbers are present; else Figma ratio.
  */
 export function LotMediaBlock({ lot }: Props) {

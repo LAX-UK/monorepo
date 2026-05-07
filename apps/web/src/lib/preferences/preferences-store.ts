@@ -1,5 +1,4 @@
-/**
- * DIP: sidebar / UI preferences without coupling components to `localStorage`.
+/** DIP: sidebar / UI preferences without coupling components to `localStorage`.
  */
 export type SidebarCollapsedStore = {
   getCollapsed(): boolean;

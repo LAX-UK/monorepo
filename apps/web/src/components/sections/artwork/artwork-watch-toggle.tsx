@@ -10,8 +10,7 @@ type Props = {
   lotId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
-  /**
-   * `outlined-block` — saleroom lot card: 40px, light border #A3A3A3, 4px radius.
+  /** `outlined-block` — saleroom lot card: 40px, light border #A3A3A3, 4px radius.
    * `default` — existing card / detail rail (unchanged for LSP).
    */
   appearance?: "default" | "outlined-block";

@@ -7,8 +7,7 @@ type Props = {
   initialFollowing: boolean;
 };
 
-/**
- * Sale Follow action — the Figma hero does not include a registration CTA.
+/** Sale Follow action — the Figma hero does not include a registration CTA.
  */
 export function SaleroomHeroActions({
   saleId,

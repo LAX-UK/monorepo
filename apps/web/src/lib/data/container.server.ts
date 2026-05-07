@@ -28,8 +28,7 @@ export type ServerDataContainer = {
   liveSale: LiveSaleReader;
 };
 
-/**
- * Composition root (DIP): server pages depend on this container, not on `fetch` / `hc` directly.
+/** Composition root (DIP): server pages depend on this container, not on `fetch` / `hc` directly.
  */
 export async function getServerDataContainer(): Promise<ServerDataContainer> {
   const lotReader = await getServerLotReader();

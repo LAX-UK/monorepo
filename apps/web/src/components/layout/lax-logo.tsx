@@ -6,8 +6,7 @@ type LaxLogoProps = {
   /** "header" = compact nav bar; "footer" = larger mark; "auth" = centered sign-in/up */
   variant?: "header" | "footer" | "auth";
   className?: string;
-  /**
-   * Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
+  /** Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
    * Pass `""` to force the typeset wordmark (no image).
    */
   imageSrc?: string;

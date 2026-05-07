@@ -8,8 +8,7 @@ type Props = {
   saleTitle: string | null;
 };
 
-/**
- * Mockup-aligned status row that sits between the breadcrumb and the right
+/** Mockup-aligned status row that sits between the breadcrumb and the right
  * summary. Existing bid count rendering inside `LotInfoStack` is preserved.
  */
 export function LotStatusRow({ isLive, bidCount, saleHref, saleTitle }: Props) {

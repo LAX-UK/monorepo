@@ -51,6 +51,7 @@ const STATUS_DISPLAY: Record<LotStatus, LotStatusDisplay> = {
   draft: { label: "upcoming", className: "text-brand-300" },
   ended: { label: "past", className: "text-brand-300" },
   scheduled: { label: "upcoming", className: "text-lot-orange" },
+  voided: { label: "voided", className: "text-brand-300" },
 };
 
 function getFilter(filter: WorkFilter) {

@@ -47,8 +47,7 @@ export function lotProductJsonLd(
   };
 }
 
-/**
- * Sale events render as virtual auction-style events. `eventStatus` mirrors the
+/** Sale events render as virtual auction-style events. `eventStatus` mirrors the
  * sale's lifecycle so Google's rich result understands current state.
  */
 export function saleEventJsonLd(sale: Sale): Record<string, unknown> {

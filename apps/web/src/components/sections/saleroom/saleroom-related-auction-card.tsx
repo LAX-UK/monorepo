@@ -7,8 +7,7 @@ type Props = {
   sale: RelatedSaleVM;
 };
 
-/**
- * Full-width horizontal row: image | meta | Explore (Figma).
+/** Full-width horizontal row: image | meta | Explore (Figma).
  */
 export function SaleroomRelatedAuctionCard({ sale }: Props) {
   return (
