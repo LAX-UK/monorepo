@@ -19,6 +19,12 @@ export const templateNames = [
   "payment-refund-notice",
   "payment-manual-review-buyer-notice",
   "payment-manual-review-admin-notice",
+  "payout-initiated-notice",
+  "dispute-opened-notice",
+  "dispute-closed-notice",
+  "proxy-cancelled-notice",
+  "lot-voided-notice",
+  "payout-clawback-required-notice",
   "legal-entity-archived-notice",
   "lot-voided-anti-shilling-admin",
 ] as const;
@@ -142,6 +148,50 @@ export type TemplateVarsByName = {
     currency: string;
     adminReviewUrl: string;
   };
+  "payout-initiated-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    payoutId: string;
+    amount: string;
+    currency: string;
+    adminPayoutsUrl: string;
+  };
+  "dispute-opened-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    amount: string;
+    currency: string;
+    reason?: string | null;
+    supportContactEmail: string;
+  };
+  "dispute-closed-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    amount: string;
+    currency: string;
+    outcome: string;
+    supportContactEmail: string;
+  };
+  "proxy-cancelled-notice": {
+    userName?: string | null;
+    lotTitle: string;
+    reason: string;
+    supportContactEmail: string;
+  };
+  "lot-voided-notice": {
+    recipientFirstName?: string | null;
+    lotTitle: string;
+    reason: string;
+    supportContactEmail: string;
+  };
+  "payout-clawback-required-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    payoutId: string;
+    netAmount: string;
+    currency: string;
+    adminPayoutsUrl: string;
+  };
   "legal-entity-archived-notice": {
     recipientFirstName?: string | null;
     entityName: string;
@@ -178,6 +228,12 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "payment-refund-notice": "live",
   "payment-manual-review-buyer-notice": "live",
   "payment-manual-review-admin-notice": "live",
+  "payout-initiated-notice": "live",
+  "dispute-opened-notice": "live",
+  "dispute-closed-notice": "live",
+  "proxy-cancelled-notice": "live",
+  "lot-voided-notice": "live",
+  "payout-clawback-required-notice": "live",
   "legal-entity-archived-notice": "live",
   "lot-voided-anti-shilling-admin": "live",
 };

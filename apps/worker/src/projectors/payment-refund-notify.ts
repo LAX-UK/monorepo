@@ -23,15 +23,6 @@ type RefundPayload = {
   via?: string;
 };
 
-type DisputeClosedPayload = {
-  stripeDisputeId?: string;
-  stripeChargeId?: string;
-  outcome: string;
-  amountCents: number;
-  currency: string;
-  sellerLegalEntityId: string;
-};
-
 export async function processPaymentRefundNotify(options: {
   db: Db;
   log: pino.Logger;
@@ -64,10 +55,7 @@ export async function processPaymentRefundNotify(options: {
     .where(
       and(
         gt(domainEvent.id, cursor),
-        or(
-          eq(domainEvent.eventType, "payment.refunded"),
-          eq(domainEvent.eventType, "payment.dispute_closed"),
-        ),
+        eq(domainEvent.eventType, "payment.refunded"),
       ),
     )
     .orderBy(domainEvent.id)
@@ -79,17 +67,7 @@ export async function processPaymentRefundNotify(options: {
 
   let maxId = cursor;
   for (const row of rows) {
-    const isDispute = row.eventType === "payment.dispute_closed";
-
-    if (isDispute) {
-      const payload = row.payload as DisputeClosedPayload;
-      if (payload.outcome !== "lost") {
-        maxId = row.id;
-        continue;
-      }
-    }
-
-    const payload = row.payload as RefundPayload | DisputeClosedPayload;
+    const payload = row.payload as RefundPayload;
     const sellerLegalEntityId = payload.sellerLegalEntityId;
     if (!sellerLegalEntityId) {
       log.warn({ eventId: row.id }, "payment_refund_notify_skipped_missing_seller");
@@ -136,10 +114,8 @@ export async function processPaymentRefundNotify(options: {
       const amountCents = payload.amountCents;
       const refundAmount = (amountCents / 100).toFixed(2);
       const refundCurrency = payload.currency?.toUpperCase() ?? "GBP";
-      const eventKind = isDispute ? "dispute_lost" : "refund";
-      const reason: string | null = isDispute
-        ? ((payload as DisputeClosedPayload).stripeDisputeId ?? null)
-        : null;
+      const eventKind = "refund";
+      const reason: string | null = null;
 
       const sellerMembers = await db
         .selectDistinct({
