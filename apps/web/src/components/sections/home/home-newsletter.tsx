@@ -32,7 +32,10 @@ export function HomeNewsletter() {
   });
 
   return (
-    <section className="border-t border-outline-variant bg-surface-container-low px-6 py-20 text-center dark:bg-surface-container-lowest md:px-10 lg:px-14">
+    <section
+      id="newsletter"
+      className="border-t border-outline-variant bg-surface-container-low px-6 py-20 text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
+    >
       <div className="mx-auto flex max-w-[600px] flex-col items-center gap-7">
         <div>
           <p className="mb-3 font-artists-serif text-xs font-light uppercase tracking-[0.18em] text-primary">

@@ -6,7 +6,8 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
+import { EmptyState } from "@auction/ui/components/empty-state";
+import { ChevronRight, Gavel } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -46,9 +47,17 @@ export function LaxUpcomingLots({ items, saleMetaLine, currentUserId = null }: P
           }
         />
         {items.length === 0 ? (
-          <BodyText className="text-brand-400 dark:text-on-surface-variant">
-            No upcoming lots to display.
-          </BodyText>
+          <EmptyState
+            variant="marketing"
+            icon={<Gavel aria-hidden />}
+            title="No lots available yet"
+            description="New lots are added regularly. Check back soon or browse our upcoming auctions."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/sales">View auctions</Link>
+              </Button>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item, index) => (
