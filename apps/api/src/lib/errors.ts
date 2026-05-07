@@ -50,3 +50,15 @@ export class SubmissionError extends Error {
     this.name = "SubmissionError";
   }
 }
+
+/** Stripe or payment-gateway failure after retries, or non-retryable Stripe error. */
+export class PaymentProviderError extends Error {
+  constructor(
+    message: string,
+    readonly status: number = 502,
+    readonly stripeCode?: string,
+  ) {
+    super(message);
+    this.name = "PaymentProviderError";
+  }
+}

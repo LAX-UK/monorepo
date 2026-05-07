@@ -29,6 +29,7 @@ function mapRow(
     platformFee: String(row.platformFee),
     stripePaymentIntentId: row.stripePaymentIntentId,
     stripeChargeId: row.stripeChargeId,
+    stripeRefundId: row.stripeRefundId,
     status: row.status,
     createdAt: row.createdAt,
     xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
@@ -88,6 +89,26 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
 
   async updateStripeChargeId(id: string, stripeChargeId: string): Promise<void> {
     await this.db.update(payment).set({ stripeChargeId }).where(eq(payment.id, id));
+  }
+
+  async applyCapturedInTransaction(
+    tx: Database,
+    id: string,
+    opts: { stripeChargeId?: string | null },
+  ): Promise<void> {
+    const patch: Partial<typeof payment.$inferInsert> = { status: "captured" };
+    if (opts.stripeChargeId != null && opts.stripeChargeId !== "") {
+      patch.stripeChargeId = opts.stripeChargeId;
+    }
+    await tx.update(payment).set(patch).where(eq(payment.id, id));
+  }
+
+  async applyRefundedInTransaction(
+    tx: Database,
+    id: string,
+    stripeRefundId: string | null,
+  ): Promise<void> {
+    await tx.update(payment).set({ status: "refunded", stripeRefundId }).where(eq(payment.id, id));
   }
 
   async listAll(): Promise<PaymentRecord[]> {

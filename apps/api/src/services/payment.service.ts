@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
 import { type Lot, type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import { AuthzError, LotError } from "../lib/errors.js";
+import Stripe from "stripe";
+import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
@@ -12,12 +13,26 @@ import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notific
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
-
-/** Valid statuses for payment capture. */
-const CAPTURABLE_SELLER_STATUSES = ["approved", "restricted", "connect_pending"];
+import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 /** Seller entity must not be in these states for refund. */
 const REFUND_BLOCKED_STATUSES = ["archived", "rejected"];
+
+function gbpAmountToPence(amount: string): number {
+  return Math.round(Number.parseFloat(amount) * 100);
+}
+
+function paymentProviderErrorFromUnknown(e: unknown): PaymentProviderError {
+  if (e instanceof Stripe.errors.StripeError) {
+    const status =
+      e.type === "StripeInvalidRequestError" || e.type === "StripeCardError" ? 400 : 502;
+    return new PaymentProviderError(e.message, status, e.code ?? undefined);
+  }
+  if (e instanceof Error) {
+    return new PaymentProviderError(e.message, 502);
+  }
+  return new PaymentProviderError("Payment provider error", 502);
+}
 
 export class PaymentService {
   constructor(
@@ -31,6 +46,7 @@ export class PaymentService {
     private readonly legalEntityRepository?: ILegalEntityRepository,
     private readonly db?: Database,
     private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly stripePayments: IStripePaymentGateway | null = null,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -171,7 +187,7 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-  ): Promise<Result<void, AuthzError>> {
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     const isPlatformFinanceWrite = roleHasCapability(
       userRole as UserRole,
       "finance.platform.write",
@@ -200,10 +216,37 @@ export class PaymentService {
       }
     }
 
-    await this.payments.updateStatus(paymentId, "refunded");
+    if (!p.stripeChargeId) {
+      return err(new PaymentProviderError("Cannot refund: payment has no Stripe charge id", 400));
+    }
+    if (!this.stripePayments?.isConfigured()) {
+      return err(
+        new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
+      );
+    }
+    if (!this.db || !this.domainEventPublisher) {
+      return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
+    }
 
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
+    const db = this.db;
+    const publisher = this.domainEventPublisher;
+
+    let refundOutcome: Awaited<ReturnType<IStripePaymentGateway["createRefund"]>>;
+    try {
+      refundOutcome = await this.stripePayments.createRefund({
+        chargeId: p.stripeChargeId,
+        amount: gbpAmountToPence(p.amount),
+        reason: "requested_by_customer",
+      });
+    } catch (e) {
+      return err(paymentProviderErrorFromUnknown(e));
+    }
+
+    const stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
+
+    await db.transaction(async (tx) => {
+      await this.payments.applyRefundedInTransaction(tx, paymentId, stripeRefundId);
+      await publisher.publish(tx, {
         aggregateType: "payment",
         aggregateId: paymentId,
         eventType: "payment.refunded",
@@ -212,20 +255,22 @@ export class PaymentService {
           currency: "GBP",
           sellerLegalEntityId: p.sellerLegalEntityId ?? null,
           via: "admin_manual",
+          stripeRefundId,
         },
         actorUserId: adminUserId,
         actingLegalEntityId: p.sellerLegalEntityId ?? null,
       });
-    }
+    });
 
     return ok(undefined);
   }
 
   async markCapturedByAdmin(
+    adminUserId: string | null | undefined,
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-  ): Promise<Result<void, AuthzError>> {
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     const isPlatformFinanceWrite = roleHasCapability(
       userRole as UserRole,
       "finance.platform.write",
@@ -249,8 +294,71 @@ export class PaymentService {
     if (p.status === "requires_manual_review") {
       return err(new AuthzError("Payment requires platform manual review", 409));
     }
-    await this.payments.updateStatus(paymentId, "captured");
-    await this.dispatchPaymentReceived(p);
+
+    let resolvedChargeId: string | null = p.stripeChargeId;
+
+    if (p.stripePaymentIntentId) {
+      if (!this.stripePayments?.isConfigured()) {
+        return err(
+          new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
+        );
+      }
+      let pi: Stripe.PaymentIntent;
+      try {
+        pi = await this.stripePayments.capturePaymentIntent(p.stripePaymentIntentId);
+      } catch (e) {
+        return err(paymentProviderErrorFromUnknown(e));
+      }
+      const lc = pi.latest_charge;
+      const fromPi =
+        typeof lc === "string"
+          ? lc
+          : lc && typeof lc === "object" && "id" in lc
+            ? (lc as Stripe.Charge).id
+            : null;
+      if (fromPi) {
+        resolvedChargeId = fromPi;
+      }
+    }
+
+    if (!this.db || !this.domainEventPublisher) {
+      return err(new PaymentProviderError("Payment capture persistence is not configured", 500));
+    }
+
+    const db = this.db;
+    const publisher = this.domainEventPublisher;
+
+    const buyerId = p.paidByUserId ?? p.buyerId ?? null;
+    const buyer = buyerId ? await this.users.findById(buyerId) : null;
+
+    await db.transaction(async (tx) => {
+      const captureOpts: { stripeChargeId?: string | null } = {};
+      if (resolvedChargeId) {
+        captureOpts.stripeChargeId = resolvedChargeId;
+      }
+      await this.payments.applyCapturedInTransaction(tx, paymentId, captureOpts);
+      await publisher.publish(tx, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.captured",
+        payload: {
+          paymentId: p.id,
+          lotId: p.lotId,
+          userId: buyerId,
+          amountCents: gbpAmountToPence(p.amount),
+          capturedAt: new Date().toISOString(),
+          stripeIntentId: p.stripePaymentIntentId,
+          stripeChargeId: resolvedChargeId,
+          buyerName: buyer?.name ?? null,
+          buyerEmail: buyer?.email ?? null,
+        },
+        actorUserId: adminUserId ?? null,
+        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+      });
+    });
+
+    const after = (await this.payments.findById(paymentId)) ?? p;
+    await this.dispatchPaymentReceived(after);
     return ok(undefined);
   }
 
