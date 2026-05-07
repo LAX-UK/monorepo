@@ -7,8 +7,7 @@ type FaqAccordionProps = {
   defaultValue?: string;
 };
 
-/**
- * Historical accordion variant; preserved as a sibling to {@link FaqFlatList}
+/** Historical accordion variant; preserved as a sibling to {@link FaqFlatList}
  * for any surface that prefers progressive disclosure (e.g. embedded help).
  */
 export function FaqAccordion({ items, defaultValue }: FaqAccordionProps) {

@@ -133,8 +133,7 @@ export function BidStickyMobileBar({
   );
 }
 
-/**
- * Pre-sale variant — invites visitors to register so they can bid the moment
+/** Pre-sale variant — invites visitors to register so they can bid the moment
  * the lot opens. Bidding controls are intentionally absent (no live bid yet).
  */
 function UpcomingBar({

@@ -23,8 +23,7 @@ export type EntityTableShellProps = {
   className?: string;
 };
 
-/**
- * Wraps admin/user tables with a consistent toolbar and responsive table/card split.
+/** Wraps admin/user tables with a consistent toolbar and responsive table/card split.
  */
 export function EntityTableShell({
   search,

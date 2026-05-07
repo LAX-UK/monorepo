@@ -6,15 +6,13 @@ import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lot: SaleLotCardVM;
-  /**
-   * OCP: callers slot in Bid / Watch / Results actions without modifying the card.
+  /** OCP: callers slot in Bid / Watch / Results actions without modifying the card.
    * Pass `null` to render the card without actions (e.g. ended sales).
    */
   actions?: ReactNode;
   /** Image sizes hint — defaults to 4-col grid; override for different grids. */
   sizes?: string;
-  /**
-   * Visual emphasis hint for the price block. Defaults preserve the historical
+  /** Visual emphasis hint for the price block. Defaults preserve the historical
    * rendering (estimate calm, current-bid bold) so callers that don't pass a
    * variant render unchanged.
    */
@@ -40,8 +38,7 @@ function MetaStack({
   );
 }
 
-/**
- * Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
+/** Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
  * countdown pill (live / opens-in / closed) overlaid on the artwork.
  */
 export function SaleroomLotCard({ lot, actions, sizes = DEFAULT_SIZES, priceEmphasis }: Props) {

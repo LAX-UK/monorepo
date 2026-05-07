@@ -6,8 +6,7 @@ type Props = {
   vm: LotHeroVM;
 };
 
-/**
- * Figma: uppercase trail `Auctions` › sale › lot number.
+/** Figma: uppercase trail `Auctions` › sale › lot number.
  */
 export function LotBreadcrumbTabs({ vm }: Props) {
   return (

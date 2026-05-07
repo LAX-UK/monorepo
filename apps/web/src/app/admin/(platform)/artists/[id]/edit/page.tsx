@@ -1,3 +1,4 @@
+import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { getAdminArtistById, getAdminUserList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
@@ -18,6 +19,8 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
         title={`Edit ${artist.displayName}`}
         description="Manage profile copy, public visibility, and client ownership linkage."
       />
+      <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
+
       <Card>
         <CardContent className="pt-6">
           <AdminArtistForm

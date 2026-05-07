@@ -40,6 +40,7 @@ const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
   active: ["ended", "cancelled"],
   ended: [],
   cancelled: [],
+  voided: [],
 };
 
 export function AdminSaleDetailActions({

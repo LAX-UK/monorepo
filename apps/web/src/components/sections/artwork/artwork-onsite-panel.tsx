@@ -14,10 +14,8 @@ type Props = {
   summarySeed: LotSummarySeedVM;
 };
 
-/**
- * Read-only marketing panel for lots inside an onsite (in-person) auction.
- *
- * Onsite sales are catalog-only and do not accept bids on the website. We
+/** Read-only marketing panel for lots inside an onsite (in-person) auction.
+ * * Onsite sales are catalog-only and do not accept bids on the website. We
  * intentionally render a different component than {@link ArtworkBidPanel} so
  * the bid controls, BidGate, and realtime bid hooks are not even mounted for
  * these lots (Single Responsibility / Liskov: each panel renders one mode).

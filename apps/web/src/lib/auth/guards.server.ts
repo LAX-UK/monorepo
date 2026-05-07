@@ -14,8 +14,7 @@ import { redirect } from "next/navigation";
 
 export type AuthenticatedShell = "client" | "staff";
 
-/**
- * Ensures a valid session for protected areas. Handles stale edge cookie loop (`x-lax-auth-edge`).
+/** Ensures a valid session for protected areas. Handles stale edge cookie loop (`x-lax-auth-edge`).
  */
 export async function requireAuthenticatedUser(opts: {
   shell: AuthenticatedShell;
@@ -72,8 +71,7 @@ export async function redirectIfVerifyPendingNotNeeded(): Promise<void> {
   }
 }
 
-/**
- * Marketing auth pages: bounce authenticated users to the appropriate home (unless bypass / email rules).
+/** Marketing auth pages: bounce authenticated users to the appropriate home (unless bypass / email rules).
  */
 export async function redirectIfAuthenticated(opts: {
   route: RedirectIfAuthenticatedRoute;

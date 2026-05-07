@@ -27,8 +27,7 @@ export type PortfolioLotCardVm = {
 
 type Props = {
   items: PortfolioLotCardVm[];
-  /**
-   * `split` (default) keeps the historical image-left / detail-right card.
+  /** `split` (default) keeps the historical image-left / detail-right card.
    * `stacked` (mockup parity) renders image on top + 3-col hammer/premium/total
    * + a single primary "Complete checkout" CTA. Drawer detail is unchanged.
    */

@@ -22,14 +22,12 @@ type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 type SiteHeaderProps = {
   user?: SessionUser | null;
   nav?: MegaMenuSection[];
-  /**
-   * Routes whose hero is meant to read directly into the header (the header
+  /** Routes whose hero is meant to read directly into the header (the header
    * fades from transparent to solid as the user scrolls).
    * Anything not in this list keeps the existing solid chrome.
    */
   transparentPaths?: string[];
-  /**
-   * Optional explicit override; if provided this wins regardless of route.
+  /** Optional explicit override; if provided this wins regardless of route.
    * Defaults to "solid" so every existing call site renders unchanged.
    */
   chromeVariant?: SiteHeaderChromeVariant;

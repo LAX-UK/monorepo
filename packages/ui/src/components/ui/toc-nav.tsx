@@ -14,8 +14,7 @@ export type TocNavProps = {
   "aria-label"?: string;
 };
 
-/**
- * Table-of-contents style anchor list for long legal / policy pages.
+/** Table-of-contents style anchor list for long legal / policy pages.
  */
 export function TocNav({
   items,

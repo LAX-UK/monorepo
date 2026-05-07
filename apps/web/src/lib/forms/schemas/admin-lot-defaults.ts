@@ -15,7 +15,7 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     description: auction.description ?? "",
     medium: auction.medium ?? "",
     dimensions: auction.dimensions ?? "",
-    sellerId: auction.sellerId,
+    sellerId: auction.sellerId ?? auction.sellerLegalEntityId ?? "",
     categoryId: auction.categoryId,
     auctionType: auction.auctionType,
     startingPrice: auction.startingPrice,

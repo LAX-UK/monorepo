@@ -8,8 +8,7 @@ export type ToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
   actions?: React.ReactNode;
 };
 
-/**
- * Unified list/toolbar chrome: search | filters | views | actions.
+/** Unified list/toolbar chrome: search | filters | views | actions.
  * Slots are optional; layout wraps on small screens.
  */
 export function Toolbar({ className, search, filters, views, actions, ...props }: ToolbarProps) {

@@ -37,8 +37,7 @@ export type CountdownProps = {
   announce?: boolean;
 };
 
-/**
- * Countdown with polite `aria-live` updates when the announce bucket changes (minute-level for &lt; 24h).
+/** Countdown with polite `aria-live` updates when the announce bucket changes (minute-level for &lt; 24h).
  */
 export function Countdown({ end, className, announce = true }: CountdownProps) {
   const [now, setNow] = React.useState(() => Date.now());

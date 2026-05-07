@@ -1,8 +1,7 @@
 import type { AppType } from "@auction/api/app";
 import { hc } from "hono/client";
 
-/**
- * Hono's inferred `hc<AppType>` client type can collapse to `unknown` in this workspace.
+/** Hono's inferred `hc<AppType>` client type can collapse to `unknown` in this workspace.
  * We keep a narrow structural type for the routes the web app calls.
  */
 export type RpcApp = {

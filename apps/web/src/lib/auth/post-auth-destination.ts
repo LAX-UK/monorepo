@@ -14,8 +14,7 @@ export type ResolvePostAuthDestinationInput = {
   withWelcomeBack?: boolean;
 };
 
-/**
- * Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
+/** Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
  */
 export function isSafeNextPath(next: string | null | undefined): boolean {
   if (next == null || next === "") return false;
@@ -41,8 +40,7 @@ function appendWelcomeBack(path: string, withWelcomeBack: boolean): string {
   return `${path}${joiner}welcome=back`;
 }
 
-/**
- * Central post-auth navigation for web (server guards, middleware heuristic, client after sign-in).
+/** Central post-auth navigation for web (server guards, middleware heuristic, client after sign-in).
  */
 export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInput): string {
   const {

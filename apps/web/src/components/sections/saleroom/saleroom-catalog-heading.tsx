@@ -2,8 +2,7 @@ type Props = {
   totalLots: number;
 };
 
-/**
- * Single Figma “LOTS (n)” strip — catalog-first (no tab switcher).
+/** Single Figma “LOTS (n)” strip — catalog-first (no tab switcher).
  */
 export function SaleroomCatalogHeading({ totalLots }: Props) {
   return (

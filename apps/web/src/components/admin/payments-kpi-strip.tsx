@@ -16,8 +16,7 @@ type Props = {
   className?: string;
 };
 
-/**
- * Mockup-aligned KPI strip for the accountant payments page. Composes the
+/** Mockup-aligned KPI strip for the accountant payments page. Composes the
  * shared `KpiGrid` with payment-specific aggregates — Total volume, Settled
  * (captured), Awaiting action (pending + authorized), Refunded.
  */

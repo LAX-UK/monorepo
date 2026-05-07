@@ -3,8 +3,7 @@ import type { NextRequest } from "next/server";
 
 const sessionCookiePattern = /better-auth|session_token/i;
 
-/**
- * When the browser lands on a protected route with `?from=auth-edge`, forward a header so SSR
+/** When the browser lands on a protected route with `?from=auth-edge`, forward a header so SSR
  * can avoid redirect loops if the session cookie was stale.
  */
 export function buildRequestWithAuthEdgeHeader(
@@ -21,8 +20,7 @@ export function buildRequestWithAuthEdgeHeader(
   return { request: { headers: requestHeaders } };
 }
 
-/**
- * Fast-path redirect for marketing auth pages when a session cookie is present.
+/** Fast-path redirect for marketing auth pages when a session cookie is present.
  * Skips `/forgot-password` so SSR can send staff/clients to the correct destination.
  */
 export function getAuthPublicCookieRedirectUrl(requestUrl: URL, cookieHeader: string): URL | null {

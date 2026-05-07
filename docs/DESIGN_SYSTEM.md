@@ -154,6 +154,24 @@ Tailwind overrides are acceptable for context-specific sizing, not for replacing
 - **List/table rows**: thin divider rhythm, compact chips, clear numeric alignment.
 - **Header/footer**: shared shell language across web and account surfaces.
 
+### Toasts (Sonner)
+
+The global host is `@auction/ui`’s `Toaster`, mounted once from `apps/web` (see `apps/web/src/components/ui/toaster.tsx`). Imperative calls MUST go through `{ notify }` from [`apps/web/src/lib/ui/notify.ts`](../apps/web/src/lib/ui/notify.ts), not `import { toast } from "sonner"` (contract: [`apps/web/src/lib/ui/__tests__/sonner-import.contract.test.ts`](../apps/web/src/lib/ui/__tests__/sonner-import.contract.test.ts)).
+
+| API | When to use | Notes |
+|-----|-------------|--------|
+| `notify.success` | Action completed, no follow-up | Default duration 6s (matches host). |
+| `notify.info` | System pushed info you did not request | **Must** pass `id` for dedupe (e.g. realtime inbox: `inbox-${n.id}`). |
+| `notify.warning` | Expected adverse outcome, not a failure | Polite; e.g. outbid on a lot. |
+| `notify.error` | Mutation/auth failure, user must read | Default duration 8s. |
+| `notify.promise` | Long async with clear outcome | Prefer for slow staff actions when you adopt it. |
+
+Conventions:
+
+- **Title vs description**: short title (often verb + object); optional description for detail. Do not toast field-level validation errors — keep those on the form; `useActionForm` already toasts only the root error.
+- **Dedupe**: pass a stable `id` when the same toast could fire repeatedly (`admin-cannot-buy`, inbox websocket, outbid).
+- **Not toasts**: URL-driven banners (e.g. auth required, welcome back) stay as bespoke fixed UI, not Sonner.
+
 ## Icons
 
 Use Lucide via `MaterialIcon` (`apps/web/src/components/ui/material-icon.tsx`) for consistency and bundle hygiene.
