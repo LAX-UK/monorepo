@@ -107,8 +107,27 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment.refunded": new Set([
     "stripeChargeId",
     "amountCents",
+    "amount",
     "currency",
     "via",
+    "reason",
+  ]),
+  /** Buyer payment paused because seller was archived before capture. */
+  "payment.requires_manual_review": new Set([
+    "paymentId",
+    "lotId",
+    "buyerUserId",
+    "buyerLegalEntityId",
+    "sellerLegalEntityId",
+    "amount",
+    "currency",
+    "reason",
+  ]),
+  "payment.manual_review_released": new Set([
+    "paymentId",
+    "lotId",
+    "sellerLegalEntityId",
+    "action",
   ]),
   /** Stripe transfer reversal — negative payout_line inserted for balance correction. */
   "payout.transfer_reversed": new Set([

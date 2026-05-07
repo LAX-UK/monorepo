@@ -64,6 +64,9 @@ export class PaymentService {
 
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
+      if (existing.status === "requires_manual_review") {
+        return ok({ paymentId: existing.id, clientSecret: null, checkoutUrl: null });
+      }
       let checkoutUrl: string | null = null;
       if (this.accounting.isConfigured()) {
         checkoutUrl = await this.accounting.getCheckoutUrlIfAny(existing.id);
@@ -88,6 +91,10 @@ export class PaymentService {
     const total = this.totalDue(lot);
     const platformFee = (total * 0.05).toFixed(2);
     const amount = total.toFixed(2);
+    const sellerEntity = this.legalEntityRepository
+      ? await this.legalEntityRepository.findById(lot.sellerLegalEntityId)
+      : null;
+    const requiresManualReview = sellerEntity?.status === "archived";
 
     const created = await this.payments.create({
       lotId,
@@ -97,10 +104,31 @@ export class PaymentService {
       amount,
       platformFee,
       stripePaymentIntentId: null,
+      status: requiresManualReview ? "requires_manual_review" : "pending",
     });
 
+    if (requiresManualReview && this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: created.id,
+        eventType: "payment.requires_manual_review",
+        payload: {
+          paymentId: created.id,
+          lotId,
+          buyerUserId: buyerId,
+          buyerLegalEntityId: lot.buyerLegalEntityId,
+          sellerLegalEntityId: lot.sellerLegalEntityId,
+          amount,
+          currency: "GBP",
+          reason: "seller_archived",
+        },
+        actorUserId: buyerId,
+        actingLegalEntityId: lot.buyerLegalEntityId,
+      });
+    }
+
     let checkoutUrl: string | null = null;
-    if (this.accounting.isConfigured()) {
+    if (!requiresManualReview && this.accounting.isConfigured()) {
       const buyer = await this.users.findById(buyerId);
       if (buyer?.email) {
         const r = await this.accounting.createCheckoutForWinner({
@@ -223,8 +251,80 @@ export class PaymentService {
     if (p.status === "captured") {
       return ok(undefined);
     }
+    if (p.status === "requires_manual_review") {
+      return err(new AuthzError("Payment requires platform manual review", 409));
+    }
     await this.payments.updateStatus(paymentId, "captured");
     await this.dispatchPaymentReceived(p);
+    return ok(undefined);
+  }
+
+  async releaseManualReviewForCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError>> {
+    if (!roleHasCapability(userRole as UserRole, "finance.platform.write")) {
+      return err(new AuthzError("Forbidden", 403));
+    }
+    const p = await this.payments.findById(paymentId);
+    if (!p) {
+      return err(new AuthzError("Payment not found", 404));
+    }
+    if (p.status !== "requires_manual_review") {
+      return err(new AuthzError("Payment is not in manual review", 409));
+    }
+    await this.payments.updateStatus(paymentId, "pending");
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.manual_review_released",
+        payload: {
+          paymentId,
+          lotId: p.lotId,
+          sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+          action: "capture_and_process",
+        },
+        actorUserId: adminUserId,
+        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+      });
+    }
+    return ok(undefined);
+  }
+
+  async refundManualReviewPayment(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError>> {
+    if (!roleHasCapability(userRole as UserRole, "finance.platform.write")) {
+      return err(new AuthzError("Forbidden", 403));
+    }
+    const p = await this.payments.findById(paymentId);
+    if (!p) {
+      return err(new AuthzError("Payment not found", 404));
+    }
+    if (p.status !== "requires_manual_review") {
+      return err(new AuthzError("Payment is not in manual review", 409));
+    }
+    await this.payments.updateStatus(paymentId, "refunded");
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.refunded",
+        payload: {
+          amount: p.amount,
+          currency: "GBP",
+          sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+          via: "admin_manual_review",
+          reason: "seller_archived",
+        },
+        actorUserId: adminUserId,
+        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+      });
+    }
     return ok(undefined);
   }
 

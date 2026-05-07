@@ -203,6 +203,8 @@ export function createProjectorRunner(options: {
       emailService: options.emailService,
       supportContactEmail: options.supportContactEmail,
       adminPayoutsUrl: options.adminPayoutsUrl,
+      adminEmailAddress: options.adminEmailAddress,
+      webOrigin: options.webOrigin,
     });
   }
 

@@ -7,6 +7,12 @@ import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-out
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PaymentManualReviewAdminNoticeEmail, {
+  subject as paymentManualReviewAdminNoticeSubject,
+} from "./templates/payment-manual-review-admin-notice.js";
+import PaymentManualReviewBuyerNoticeEmail, {
+  subject as paymentManualReviewBuyerNoticeSubject,
+} from "./templates/payment-manual-review-buyer-notice.js";
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
@@ -94,6 +100,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-refund-notice": {
     subject: paymentRefundNoticeSubject,
     component: (vars) => <PaymentRefundNoticeEmail {...vars} />,
+  },
+  "payment-manual-review-buyer-notice": {
+    subject: paymentManualReviewBuyerNoticeSubject,
+    component: (vars) => <PaymentManualReviewBuyerNoticeEmail {...vars} />,
+  },
+  "payment-manual-review-admin-notice": {
+    subject: paymentManualReviewAdminNoticeSubject,
+    component: (vars) => <PaymentManualReviewAdminNoticeEmail {...vars} />,
   },
   "legal-entity-archived-notice": {
     subject: legalEntityArchivedNoticeSubject,
