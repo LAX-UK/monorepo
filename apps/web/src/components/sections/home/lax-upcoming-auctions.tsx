@@ -4,15 +4,55 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { BodyText, DisplayHeading, SectionHeader } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { EmptyState } from "@auction/ui/components/empty-state";
+import { ArrowRight, Calendar, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
-  auction: UpcomingAuctionVM;
+  auction: UpcomingAuctionVM | null;
   currentUserId?: string | null;
 };
 
 export function LaxUpcomingAuctions({ auction, currentUserId = null }: Props) {
+  if (!auction) {
+    return (
+      <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pb-0 pt-20 md:px-10 lg:px-14">
+        <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
+          <SectionHeader
+            heading={
+              <DisplayHeading
+                as="h2"
+                className="text-[40px] font-semibold leading-[60px] text-brand-900 dark:text-on-surface"
+              >
+                Upcoming Auctions
+              </DisplayHeading>
+            }
+            action={
+              <Button variant="chevron" asChild>
+                <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
+                  View all
+                  <span className="sr-only"> auctions and sales</span>
+                  <ChevronRight className="size-5 shrink-0" aria-hidden />
+                </Link>
+              </Button>
+            }
+          />
+          <EmptyState
+            variant="marketing"
+            icon={<Calendar aria-hidden />}
+            title="No auctions scheduled"
+            description="Our next auction is being prepared. Sign up for our newsletter to be the first to know."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="#newsletter">Get notified</Link>
+              </Button>
+            }
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pb-0 pt-20 md:px-10 lg:px-14">
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">

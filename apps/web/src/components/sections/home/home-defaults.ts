@@ -1,4 +1,4 @@
-export const HERO_PLACEHOLDER_TITLE = "Discover salerooms";
-export const HERO_PLACEHOLDER_ARTIST = "LAX London Auction House";
-export const HERO_PLACEHOLDER_SALE_LINE = "Browse live and timed auctions";
-export const HERO_PLACEHOLDER_FEATURED_HEADING = "WELCOME";
+export const HERO_PLACEHOLDER_TITLE = "Fine Art, Redefined";
+export const HERO_PLACEHOLDER_ARTIST = "Discover curated collections";
+export const HERO_PLACEHOLDER_SALE_LINE = "Upcoming auctions launching soon";
+export const HERO_PLACEHOLDER_FEATURED_HEADING = "COMING SOON";

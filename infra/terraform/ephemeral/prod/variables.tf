@@ -39,6 +39,14 @@ variable "repository_clone_url" {
   type    = string
   default = "https://github.com/LAX-UK/monorepo.git"
 }
+
+# DigitalOcean returns "Git branch not found" if this branch does not exist on the repo.
+# Default release matches .github/workflows/app-deploy-prod.yml; override via TF_VAR_app_git_branch.
+variable "app_git_branch" {
+  type        = string
+  default     = "release"
+  description = "Git branch App Platform builds from (must exist on GitHub)."
+}
 variable "better_auth_secret" {
   type      = string
   default   = ""
