@@ -6,6 +6,7 @@ locals {
   app_hostname = "replace-after-app-platform-create.ondigitalocean.app"
   subdomains = {
     web                  = { name = "@", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod web App Platform hostname" }
+    www                  = { name = "www", type = "CNAME", value = local.app_hostname, proxied = true, comment = "www redirect to apex (handled by Cloudflare redirect rule)" }
     api                  = { name = "api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod api App Platform hostname" }
     auth                 = { name = "auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod auth App Platform hostname" }
     ws                   = { name = "ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod ws App Platform hostname" }
