@@ -14,8 +14,7 @@ type Props = {
   variant?: "default" | "accordion";
 };
 
-/**
- * Figma “LOT DETAILS” block: catalog + reserve + open/close, plus policy links.
+/** Figma “LOT DETAILS” block: catalog + reserve + open/close, plus policy links.
  */
 export function LotDetailsInline({
   lot,

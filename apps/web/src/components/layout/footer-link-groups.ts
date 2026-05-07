@@ -1,7 +1,6 @@
 import type { FooterLink } from "@/components/layout/footer-column";
 
-/**
- * Existing legacy groupings — kept exported so any future page can recompose
+/** Existing legacy groupings — kept exported so any future page can recompose
  * the historical layout without reaching back into the footer component.
  */
 export const aboutLinks: FooterLink[] = [
@@ -24,8 +23,7 @@ export const policyLinks: FooterLink[] = [
   { href: "/shipping", label: "Shipping & Logistics" },
 ];
 
-/**
- * Mockup-aligned groupings — additive; rendered as the default footer grid
+/** Mockup-aligned groupings — additive; rendered as the default footer grid
  * but old groupings stay exported for callers that prefer them.
  */
 export const auctionsLinks: FooterLink[] = [

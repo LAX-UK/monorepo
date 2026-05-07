@@ -9,8 +9,7 @@ type Props = {
   emptyMessage?: string;
 };
 
-/**
- * Pure layout: Figma 4-up at xl; 32px column gap, 49px row gap.
+/** Pure layout: Figma 4-up at xl; 32px column gap, 49px row gap.
  */
 export function SaleroomLotsGrid({
   lots,

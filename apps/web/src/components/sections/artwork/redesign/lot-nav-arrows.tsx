@@ -7,8 +7,7 @@ type Props = {
   vm: LotHeroVM;
 };
 
-/**
- * Figma: `< 1 of N >` style; uses sibling index when `href`s exist.
+/** Figma: `< 1 of N >` style; uses sibling index when `href`s exist.
  */
 export function LotNavArrows({ vm }: Props) {
   const hasNav = Boolean(vm.prevHref || vm.nextHref);

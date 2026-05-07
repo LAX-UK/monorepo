@@ -16,8 +16,7 @@ type Props = {
   children: ReactNode;
 };
 
-/**
- * Figma: kicker (optional) + title; children = info stack + bid region.
+/** Figma: kicker (optional) + title; children = info stack + bid region.
  */
 export function LotRightSummary({ seed, children }: Props) {
   const av = seed.sellerImageUrl?.trim();

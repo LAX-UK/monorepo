@@ -30,7 +30,7 @@ import {
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { z } from "zod";
+import { z } from "zod";
 
 async function postBulkAction(
   path: string,
@@ -339,6 +339,66 @@ export async function adminCreateArtistResultAction(
   if (!r.ok) return actionFailure(r.message, undefined, r.status);
   revalidatePath("/admin/artists");
   return actionSuccess({ id: r.data.id });
+}
+
+const mergeArtistPhraseSchema = z.object({
+  intoArtistId: z.string().uuid(),
+  reason: z.string().trim().min(10).max(1000),
+  confirmationPhrase: z.string().min(1).max(500),
+});
+
+export async function adminMergeArtistResultAction(
+  fromArtistId: string,
+  input: z.infer<typeof mergeArtistPhraseSchema>,
+): Promise<ActionResult<{ remainingId: string }>> {
+  const fromId = fromArtistId.trim();
+  if (!fromId) return actionFailure("Missing artist");
+
+  const parsed = mergeArtistPhraseSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+  }
+  if (parsed.data.intoArtistId === fromId) {
+    return actionFailure("Cannot merge an artist into itself");
+  }
+
+  const canonRes = await authedServerFetch(`/artists/${encodeURIComponent(parsed.data.intoArtistId)}`);
+  if (!canonRes.ok) {
+    return actionFailure("Target artist not found", undefined, canonRes.status);
+  }
+  const canonBody = (await canonRes.json()) as { data?: { displayName?: string } };
+  const displayName = canonBody.data?.displayName;
+  if (!displayName) {
+    return actionFailure("Target artist not found");
+  }
+  const expected = `MERGE INTO ${displayName}`;
+  if (parsed.data.confirmationPhrase !== expected) {
+    return actionFailure("Confirmation phrase does not match — type it exactly as shown.");
+  }
+
+  const mergeRes = await authedServerFetch(`/artists/${encodeURIComponent(fromId)}/merge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      intoArtistId: parsed.data.intoArtistId,
+      reason: parsed.data.reason,
+      confirmationPhrase: parsed.data.confirmationPhrase,
+    }),
+  });
+  if (!mergeRes.ok) {
+    const payload = (await mergeRes.json().catch(() => ({}))) as { error?: string; message?: string };
+    return actionFailure(payload.message ?? payload.error ?? "merge_failed", undefined, mergeRes.status);
+  }
+
+  const body = (await mergeRes.json()) as {
+    data?: { remaining?: { id?: string }; canonical?: { id?: string } };
+  };
+  const remainingId = body.data?.remaining?.id ?? body.data?.canonical?.id ?? parsed.data.intoArtistId;
+
+  revalidatePath("/admin/artists");
+  revalidatePath(`/admin/artists/${fromId}/edit`);
+  revalidatePath(`/admin/artists/${remainingId}/edit`);
+  return actionSuccess({ remainingId });
 }
 
 export async function adminUpdateArtistResultAction(

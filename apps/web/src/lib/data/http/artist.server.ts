@@ -25,14 +25,11 @@ export function mapPublicUserToArtist(row: {
   };
 }
 
-/**
- * Composition root for artist reads (DIP).
+/** Composition root for artist reads (DIP).
  * Uses `/users/public/artists` when `NEXT_PUBLIC_ENABLE_ARTISTS` is not `"false"`.
  */
-/**
- * Sitemap-only helper: list public artists for the discovery sitemap.
- *
- * Returns an empty array when artists are disabled or when the upstream
+/** Sitemap-only helper: list public artists for the discovery sitemap.
+ * * Returns an empty array when artists are disabled or when the upstream
  * endpoint fails — sitemaps must still be generated even on partial outages.
  */
 export type SitemapArtist = { id: string; name: string };

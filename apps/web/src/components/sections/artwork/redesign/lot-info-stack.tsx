@@ -14,8 +14,7 @@ type Props = {
   bidCount: number;
   /** When set, show reserve met / not met next to the current-bid label. */
   reservePrice: string | null;
-  /**
-   * Lot timer state derived from `classifyLotTimerState` upstream — drives the
+  /** Lot timer state derived from `classifyLotTimerState` upstream — drives the
    * banner switch between "Closing" (live), "Opens in" (scheduled), and
    * "Closed/Cancelled" (terminal).
    */
@@ -32,12 +31,11 @@ type Props = {
   startAtIso?: string;
 };
 
-/**
- * Three-row bidding header:
+/** Three-row bidding header:
  * Row 1 — Estimate · Current bid (with optional reserve badge)
  * Row 2 — State-aware banner: Closing (red, live) / Opens in (amber, scheduled) /
- *          Closed (muted, terminal). Pulse + urgency tier are derived from the
- *          relevant `msLeft`.
+ * Closed (muted, terminal). Pulse + urgency tier are derived from the
+ * relevant `msLeft`.
  */
 export function LotInfoStack({
   estimateLine,

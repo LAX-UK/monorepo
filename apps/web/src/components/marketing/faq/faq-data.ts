@@ -14,8 +14,7 @@ export type FaqItem = {
   title: string;
   /** Plain text — always available so JSON-LD/FAQ rich results work. */
   body: string;
-  /**
-   * Optional richer body for rendering. When omitted, consumers should fall
+  /** Optional richer body for rendering. When omitted, consumers should fall
    * back to `body`.
    */
   bodyNode?: ReactNode;

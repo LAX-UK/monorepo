@@ -1,5 +1,4 @@
-/**
- * Re-exports from @auction/validators (SSOT). Local names preserved for existing imports.
+/** Re-exports from @auction/validators (SSOT). Local names preserved for existing imports.
  */
 import { createAddressBodySchema } from "@auction/validators";
 import { updateProfileNameFormSchema } from "@auction/validators";

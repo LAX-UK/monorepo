@@ -19,8 +19,7 @@ function parseMs(s: string | null): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/**
- * Pure classifier: maps lot timing inputs + wall clock to a display state.
+/** Pure classifier: maps lot timing inputs + wall clock to a display state.
  * When `now` is null (SSR / first paint), only status-derived states are returned — no `msLeft`.
  */
 export function classifyLotTimerState(i: LotTimerInputs, now: number | null): LotTimerState {

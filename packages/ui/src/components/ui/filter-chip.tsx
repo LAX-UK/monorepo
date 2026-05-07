@@ -9,8 +9,7 @@ export type FilterChipProps = Omit<React.ComponentProps<"button">, "type"> & {
   pending?: boolean;
 };
 
-/**
- * Toggle-style filter chip with visible focus ring and `aria-pressed`.
+/** Toggle-style filter chip with visible focus ring and `aria-pressed`.
  */
 export const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(function FilterChip(
   { className, pressed = false, pending = false, disabled, children, ...rest },

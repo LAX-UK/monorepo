@@ -11,8 +11,7 @@ type Props = {
   activeLotIds: readonly string[];
 };
 
-/**
- * Subscribes to a capped set of lot rooms and pulses the ticker on each `bidUpdate`.
+/** Subscribes to a capped set of lot rooms and pulses the ticker on each `bidUpdate`.
  */
 export function AdminLiveBidActivity({ initialBidsPerMinute, activeLotIds }: Props) {
   const [extra, setExtra] = useState(0);

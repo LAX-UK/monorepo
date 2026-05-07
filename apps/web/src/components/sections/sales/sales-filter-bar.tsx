@@ -4,8 +4,7 @@ type Props = {
   children: ReactNode;
 };
 
-/**
- * Second nav row: filter-style chips. Add more chip components as `children` without changing this shell (OCP).
+/** Second nav row: filter-style chips. Add more chip components as `children` without changing this shell (OCP).
  */
 export function SalesFilterBar({ children }: Props) {
   return (
