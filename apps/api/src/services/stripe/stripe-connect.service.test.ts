@@ -251,17 +251,30 @@ describe("StripeConnectService.initiateTransfer", () => {
   it("returns connect_not_ready when Connect payouts are disabled", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled" }));
     const db = makeMockDb({ id: "le1", stripeConnectAccountId: "acct_123", stripeConnectPayoutsEnabled: false });
+    const publisher = makeDomainEventPublisher();
     const svc = new StripeConnectService(
       baseEnv(),
       db,
       makePayoutService(null),
       payoutRepo,
-      makeDomainEventPublisher(),
+      publisher,
     );
 
     const result = await svc.initiateTransfer("po1");
 
     expect(result).toEqual({ ok: false, reason: "connect_not_ready" });
+    expect(publisher.publish).toHaveBeenCalledWith(db, {
+      aggregateType: "payout",
+      aggregateId: "po1",
+      eventType: "payout.transfer_blocked",
+      payload: {
+        payoutId: "po1",
+        legalEntityId: "le1",
+        reason: "connect_not_ready",
+      },
+      actorUserId: null,
+      actingLegalEntityId: "le1",
+    });
   });
 
   it("skips transfer for zero amount payouts and marks as paid", async () => {

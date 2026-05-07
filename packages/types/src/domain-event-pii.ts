@@ -77,6 +77,8 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
   ]),
+  /** Stripe Connect account cannot currently receive payouts. */
+  "payout.transfer_blocked": new Set(["payoutId", "legalEntityId", "reason"]),
   /** Payment dispute opened via Stripe webhook. */
   "payment.dispute_opened": new Set([
     "stripeDisputeId",

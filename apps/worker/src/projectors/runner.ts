@@ -7,6 +7,10 @@ import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
+import {
+  NOTIFICATION_FANOUT_PROJECTOR,
+  processNotificationFanout,
+} from "./notification-fanout.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
 
 type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
@@ -188,6 +192,20 @@ export function createProjectorRunner(options: {
     });
   }
 
+  async function processNotificationFanoutEmails() {
+    if (!options.emailService || !options.supportContactEmail || !options.adminPayoutsUrl) {
+      return;
+    }
+    await ensureCursor(NOTIFICATION_FANOUT_PROJECTOR);
+    await processNotificationFanout({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      adminPayoutsUrl: options.adminPayoutsUrl,
+    });
+  }
+
   async function tick() {
     await ensureCursor("zoho");
     await ensureCursor("xero");
@@ -195,6 +213,7 @@ export function createProjectorRunner(options: {
     await processXero();
     await processImpersonationEmails();
     await processPayoutTransferFailedEmails();
+    await processNotificationFanoutEmails();
     await processPaymentRefundEmails();
     await processLotVoidedAntiShillingEmails();
     await ensureCursor("clear_artist_blocks");
