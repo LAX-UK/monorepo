@@ -107,9 +107,9 @@ export class StripePaymentWebhookService {
       const openPayout = await this.payoutRepository.findOpenPayoutForEntity(
         paymentRow.sellerLegalEntityId,
       );
+      const negativeAmount = (-dispute.amount / 100).toFixed(2);
 
       if (openPayout) {
-        const negativeAmount = (-dispute.amount / 100).toFixed(2);
         await this.payoutRepository.insertLine({
           payoutId: openPayout.id,
           paymentId: paymentRow.id,
@@ -117,6 +117,27 @@ export class StripePaymentWebhookService {
           kind: "dispute",
           createdByUserId: null,
           note: `Dispute lost: ${dispute.id}`,
+          sourceEventId: event.id,
+        });
+      } else {
+        const now = new Date();
+        const created = await this.payoutRepository.create({
+          legalEntityId: paymentRow.sellerLegalEntityId,
+          periodStart: new Date(now.getTime() - 1),
+          periodEnd: now,
+          grossAmount: negativeAmount,
+          platformFee: "0.00",
+          stripeFee: "0.00",
+          netAmount: negativeAmount,
+          currency: "GBP",
+        });
+        await this.payoutRepository.insertLine({
+          payoutId: created.id,
+          paymentId: paymentRow.id,
+          amount: negativeAmount,
+          kind: "dispute",
+          createdByUserId: null,
+          note: `Dispute lost after paid payout: ${dispute.id}`,
           sourceEventId: event.id,
         });
       }

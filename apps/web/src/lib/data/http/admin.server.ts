@@ -113,7 +113,12 @@ function isPaymentStatus(s: string): s is PaymentStatus {
 
 function isPayoutStatus(s: unknown): s is PayoutStatus {
   return (
-    s === "scheduled" || s === "in_transit" || s === "paid" || s === "failed" || s === "reversed"
+    s === "scheduled" ||
+    s === "in_transit" ||
+    s === "paid" ||
+    s === "failed" ||
+    s === "reversed" ||
+    s === "clawback_pending"
   );
 }
 

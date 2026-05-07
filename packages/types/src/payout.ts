@@ -1,5 +1,12 @@
 /** Payout Status */
-export const payoutStatuses = ["scheduled", "in_transit", "paid", "failed", "reversed"] as const;
+export const payoutStatuses = [
+  "scheduled",
+  "in_transit",
+  "paid",
+  "failed",
+  "reversed",
+  "clawback_pending",
+] as const;
 export type PayoutStatus = (typeof payoutStatuses)[number];
 
 /** Payout Line Kind */

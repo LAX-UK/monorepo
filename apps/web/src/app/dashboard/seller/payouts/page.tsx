@@ -38,6 +38,8 @@ function statusLabel(status: PayoutStatus): string {
       return "Failed";
     case "reversed":
       return "Reversed";
+    case "clawback_pending":
+      return "Manual reconciliation pending";
   }
 }
 
@@ -47,6 +49,7 @@ function statusBadgeClass(status: PayoutStatus): string {
       return "bg-success/10 text-success";
     case "failed":
     case "reversed":
+    case "clawback_pending":
       return "bg-error/10 text-error";
     case "in_transit":
       return "bg-primary/10 text-primary";
