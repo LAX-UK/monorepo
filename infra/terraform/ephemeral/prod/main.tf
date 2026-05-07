@@ -3,7 +3,6 @@ locals {
   region      = "lon1"
   # Valkey region list is account-specific; nyc3 matches DO examples when EU slugs 422.
   redis_region         = "nyc3"
-  branch               = "release"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"
   oidc_issuer_url      = "https://auth.lax.bid"
@@ -277,7 +276,7 @@ module "app" {
   environment          = local.environment
   region               = local.region
   repository_clone_url = var.repository_clone_url
-  branch               = local.branch
+  branch               = var.app_git_branch
   components           = local.components
   depends_on           = [module.postgres_rbac]
 }
