@@ -172,6 +172,7 @@ export function mapPaymentRow(row: PaymentRow): Payment {
     amount: String(row.amount),
     platformFee: String(row.platformFee),
     stripePaymentIntentId: row.stripePaymentIntentId ?? null,
+    stripeChargeId: row.stripeChargeId ?? null,
     status: row.status as PaymentStatus,
     createdAt: row.createdAt,
   };
