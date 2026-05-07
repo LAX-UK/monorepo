@@ -144,6 +144,7 @@ function paymentRow(
     amount: "125.00",
     platformFee: "6.25",
     stripePaymentIntentId: null,
+    stripeChargeId: null,
     status: "pending",
     createdAt: now,
     ...overrides,

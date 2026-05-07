@@ -28,6 +28,7 @@ function mapRow(
     amount: String(row.amount),
     platformFee: String(row.platformFee),
     stripePaymentIntentId: row.stripePaymentIntentId,
+    stripeChargeId: row.stripeChargeId,
     status: row.status,
     createdAt: row.createdAt,
     xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
@@ -51,6 +52,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         amount: row.amount,
         platformFee: row.platformFee,
         stripePaymentIntentId: row.stripePaymentIntentId,
+        stripeChargeId: row.stripeChargeId ?? null,
         status: row.status ?? "pending",
       })
       .returning();
@@ -82,6 +84,10 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
 
   async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
     await this.db.update(payment).set({ status }).where(eq(payment.id, id));
+  }
+
+  async updateStripeChargeId(id: string, stripeChargeId: string): Promise<void> {
+    await this.db.update(payment).set({ stripeChargeId }).where(eq(payment.id, id));
   }
 
   async listAll(): Promise<PaymentRecord[]> {
