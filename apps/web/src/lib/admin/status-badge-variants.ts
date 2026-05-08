@@ -51,6 +51,7 @@ export function paymentStatusToBadgeVariant(status: PaymentStatus): AdminStatusB
     case "authorized":
       return "info";
     case "pending":
+    case "requires_manual_review":
       return "warning";
     case "refunded":
       return "neutral";

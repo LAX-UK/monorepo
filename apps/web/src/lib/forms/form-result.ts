@@ -3,8 +3,7 @@ import type { ZodError } from "zod";
 /** Field path → error messages (RHF `setError` / `formState`) */
 export type FieldErrorMap = Record<string, string[] | undefined>;
 
-/**
- * Server action return shape for RHF: success or structured failure with optional field errors.
+/** Server action return shape for RHF: success or structured failure with optional field errors.
  */
 export type ActionResult<T = void> =
   | { ok: true; data?: T }

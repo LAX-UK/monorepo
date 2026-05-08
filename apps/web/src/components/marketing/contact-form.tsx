@@ -28,8 +28,7 @@ const topics = [
 ] as const;
 
 type ContactFormProps = {
-  /**
-   * Render the historical single `Name` field instead of the mockup's
+  /** Render the historical single `Name` field instead of the mockup's
    * split first/last fields. Both submit through the same wire schema.
    */
   nameMode?: "split" | "single";

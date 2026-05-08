@@ -19,8 +19,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-/**
- * Read-only marketing overview: all salient `Sale` fields. Data via `SaleOverviewVM` (DIP).
+/** Read-only marketing overview: all salient `Sale` fields. Data via `SaleOverviewVM` (DIP).
  */
 export function SaleroomOverviewPanel({ overview, hideDescription = false }: Props) {
   return (

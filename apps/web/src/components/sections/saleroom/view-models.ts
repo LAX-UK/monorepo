@@ -1,5 +1,4 @@
-/**
- * View-models for the saleroom page (ISP).
+/** View-models for the saleroom page (ISP).
  * These types are intentionally small and opinionated toward rendering; mappers in
  * `mappers.ts` are the only place raw `Sale` / `Lot` types are read (DIP).
  */
@@ -15,7 +14,7 @@ export type SaleHeroVM = {
   title: string;
   coverImage: string | null;
   startEndLabel: string;
-  status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   isLive: boolean;
   registrationClosesLabel: string | null;
   biddingStartsLabel: string | null;
@@ -25,12 +24,10 @@ export type SaleHeroVM = {
   tags: string[];
   /** Uppercased one-line: date range | time | location (or empty tail if unknown). */
   dateLine: string;
-  /**
-   * Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
+  /** Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
    */
   registrationClosesShort: string | null;
-  /**
-   * Bidding state: relative to `startTime` when scheduled, "Live now" when active, else null.
+  /** Bidding state: relative to `startTime` when scheduled, "Live now" when active, else null.
    */
   biddingStartsShort: string | null;
   /** Shown in the left bordered cell when `registrationClosesShort` is the preview value. */
@@ -42,15 +39,13 @@ export type SaleHeroVM = {
   liveLabel: string;
   /** Hero headline pill: live / upcoming / ended (Figma), or null for draft/cancelled. */
   statusBadge: SaleHeroStatusBadge;
-  /**
-   * Optional precomputed count of lots that are currently live within this
+  /** Optional precomputed count of lots that are currently live within this
    * sale. When present and the sale is live, the hero kicker reads
    * "· {liveLotsCount} lots live"; when omitted, the existing
    * "· {itemsLabel}" copy is preserved.
    */
   liveLotsCount?: number;
-  /**
-   * Optional aggregated estimate total for the sale (e.g. "£8.4M"). When
+  /** Optional aggregated estimate total for the sale (e.g. "£8.4M"). When
    * present the third hero stat becomes "Est. Total"; absent leaves the
    * existing "Format" stat in place.
    */
@@ -71,8 +66,7 @@ export type SaleLotCardVM = {
   /** Public lot payloads omit bid count; keep null until the API adds it. */
   bidsCountLabel: string | null;
   closingLabel: string | null;
-  /**
-   * Short relative phrase e.g. "2 days" / "Soon".
+  /** Short relative phrase e.g. "2 days" / "Soon".
    * For scheduled lots this is relative to `startTime` (opens-in);
    * for active lots it is relative to `endTime` (closes-in).
    */
@@ -84,7 +78,7 @@ export type SaleLotCardVM = {
   /** Initial watch state for the Follow control. */
   viewerIsWatching: boolean;
   /** Lot status for the live card timer (drives the live/opens-in/closed pill). */
-  status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   /** ISO 8601 start of bidding for opens-in countdowns. */
   startTime: string;
   /** ISO 8601 end of bidding for closing countdowns. */

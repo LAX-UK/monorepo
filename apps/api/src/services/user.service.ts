@@ -10,4 +10,9 @@ export class UserService {
   listPublicArtists(params: { limit: number; offset: number }) {
     return this.users.listPublicProfiles(params);
   }
+
+  /** dismiss the first-time acting-context tooltip. */
+  markActingContextTooltipSeen(userId: string) {
+    return this.users.updateActingContextTooltipSeen(userId, true);
+  }
 }

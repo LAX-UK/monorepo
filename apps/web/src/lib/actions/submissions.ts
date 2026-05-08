@@ -83,8 +83,7 @@ function parseFormDataToUpdateInput(formData: FormData) {
   };
 }
 
-/**
- * RHF: validated form values → create submission. Returns `ActionResult` for field errors.
+/** RHF: validated form values → create submission. Returns `ActionResult` for field errors.
  */
 export async function createSubmissionFromValuesAction(
   values: ItemSubmissionFormValues,
@@ -117,8 +116,7 @@ export async function createSubmissionFromValuesAction(
   return actionSuccess({ redirectTo: "/dashboard/submissions" });
 }
 
-/**
- * Back-compat: `FormData` (e.g. native forms, tests).
+/** Back-compat: `FormData` (e.g. native forms, tests).
  */
 export async function createSubmissionAction(formData: FormData): Promise<void> {
   const input = parseFormDataToCreateInput(formData);

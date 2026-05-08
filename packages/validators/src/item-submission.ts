@@ -39,8 +39,7 @@ export function splitSubmissionUrlLines(raw: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * RHF form: text fields + uploaded image URLs. Validates then maps to `createItemSubmissionSchema` input.
+/** RHF form: text fields + uploaded image URLs. Validates then maps to `createItemSubmissionSchema` input.
  */
 export const itemSubmissionFormSchema = z
   .object({

@@ -14,8 +14,7 @@ export type AdminTodayMetrics = {
   revenueToday: string;
 };
 
-/**
- * SRP: admin cockpit counters + rolling 1m bid rate (Redis).
+/** SRP: admin cockpit counters + rolling 1m bid rate (Redis).
  */
 export class AdminMetricsService {
   constructor(

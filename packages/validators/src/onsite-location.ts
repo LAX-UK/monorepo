@@ -1,25 +1,20 @@
-/**
- * Pure helpers for onsite auction location data.
- *
- * The onsite-event model stores both structured UK-friendly address fields
+/** Pure helpers for onsite auction location data.
+ * * The onsite-event model stores both structured UK-friendly address fields
  * (`locationAddressLine1`, `locationCity`, `locationPostcode`, ...) and a
  * legacy free-form `locationAddress`. UI and validators ask the helpers in
  * this module to:
- *   1. validate / normalize UK postcodes consistently;
- *   2. assemble a single human-readable address string;
- *   3. derive a Google Maps "directions" URL without depending on a Google
- *      API key (so onsite events get a maps preview/link out of the box).
- *
- * Keeping all of this logic in a single, dependency-free module lets routes,
+ * 1. validate / normalize UK postcodes consistently;
+ * 2. assemble a single human-readable address string;
+ * 3. derive a Google Maps "directions" URL without depending on a Google
+ * API key (so onsite events get a maps preview/link out of the box).
+ * * Keeping all of this logic in a single, dependency-free module lets routes,
  * services, and React components share the same behavior (DIP / SRP) and
  * keeps controllers thin.
  */
 
-/**
- * UK postcode regex (case-insensitive, optional space). Source: gov.uk
+/** UK postcode regex (case-insensitive, optional space). Source: gov.uk
  * "Bulk Data Transfer" specification, simplified for client-side validation.
- *
- * This is intentionally lenient: we want to catch obvious typos in the admin
+ * * This is intentionally lenient: we want to catch obvious typos in the admin
  * form without rejecting valid Crown Dependency or BFPO postcodes.
  */
 const UK_POSTCODE_REGEX = /^([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})$/i;
@@ -29,8 +24,7 @@ export function isUkPostcode(value: string): boolean {
   return UK_POSTCODE_REGEX.test(value.trim());
 }
 
-/**
- * Normalize a UK postcode to uppercase with a single space before the
+/** Normalize a UK postcode to uppercase with a single space before the
  * inward code, e.g. `sw1y6qu` -> `SW1Y 6QU`. Returns the original trimmed
  * input when it is not a recognizable UK postcode (so we never silently
  * drop user data).
@@ -62,8 +56,7 @@ function nonEmpty(s: string | null | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
-/**
- * Returns true when the structured UK address fields contain at least one
+/** Returns true when the structured UK address fields contain at least one
  * piece of data (so callers know whether to prefer them over the legacy
  * `locationAddress` string).
  */
@@ -78,8 +71,7 @@ export function hasStructuredAddress(parts: OnsiteAddressParts): boolean {
   );
 }
 
-/**
- * Assemble a single-line, human-readable address from structured fields.
+/** Assemble a single-line, human-readable address from structured fields.
  * Falls back to `locationAddress` when no structured fields are populated,
  * and to an empty string when neither source has data.
  */
@@ -98,8 +90,7 @@ export function formatPostalAddress(parts: OnsiteAddressParts): string {
   return [line1, line2, cityWithPostcode, country].filter(Boolean).join(", ");
 }
 
-/**
- * Multi-line postal address, suitable for rendering in a column with
+/** Multi-line postal address, suitable for rendering in a column with
  * `whitespace-pre-line`. Mirrors how UK addresses are typically printed
  * on envelopes.
  */
@@ -129,14 +120,12 @@ export function formatPostalAddressLines(parts: OnsiteAddressParts): string[] {
   return lines;
 }
 
-/**
- * Build a Google Maps "search" URL from structured address parts and the
+/** Build a Google Maps "search" URL from structured address parts and the
  * optional venue name. We use the `?api=1&query=...` form, which:
- *   1. does NOT require a Google Maps API key;
- *   2. opens the Maps app on iOS/Android and the web Maps site on desktop;
- *   3. degrades gracefully when only some fields are present.
- *
- * Returns `null` if there is nothing to search for (callers should then
+ * 1. does NOT require a Google Maps API key;
+ * 2. opens the Maps app on iOS/Android and the web Maps site on desktop;
+ * 3. degrades gracefully when only some fields are present.
+ * * Returns `null` if there is nothing to search for (callers should then
  * fall back to a custom `locationMapUrl`, if any).
  */
 export function buildGoogleMapsSearchUrl(parts: OnsiteAddressParts): string | null {
@@ -147,11 +136,9 @@ export function buildGoogleMapsSearchUrl(parts: OnsiteAddressParts): string | nu
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-/**
- * Build a Google Maps embed URL (no key) using the public `/maps?output=embed`
+/** Build a Google Maps embed URL (no key) using the public `/maps?output=embed`
  * endpoint, suitable for use in an `<iframe>` for a non-interactive preview.
- *
- * Note: the embed endpoint is rate-limited and does not support all features
+ * * Note: the embed endpoint is rate-limited and does not support all features
  * of the Maps Embed API, but it works without a key for simple address
  * previews and is good enough for an onsite venue card.
  */
@@ -163,8 +150,7 @@ export function buildGoogleMapsEmbedUrl(parts: OnsiteAddressParts): string | nul
   return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
-/**
- * Resolve the best "open in maps" URL for an onsite sale: prefer an
+/** Resolve the best "open in maps" URL for an onsite sale: prefer an
  * explicit `locationMapUrl` set by the admin, else fall back to a
  * generated Google Maps search URL.
  */

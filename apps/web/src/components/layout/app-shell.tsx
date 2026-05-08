@@ -35,6 +35,10 @@ type Props = {
   children: ReactNode;
   clientWorkspaceMode?: ClientWorkspaceMode;
   cookieDensity?: DashboardDensity | null;
+  /** Server-rendered slot rendered in the header next to the action buttons.
+   * Used for the legal-entity acting-context switcher .
+   */
+  headerSlot?: ReactNode;
 };
 
 function AppShellFrame({
@@ -43,6 +47,7 @@ function AppShellFrame({
   pendingSubmissionCount = 0,
   clientWorkspaceMode = "buying",
   children,
+  headerSlot,
 }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -193,6 +198,7 @@ function AppShellFrame({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {headerSlot}
             <Button
               type="button"
               variant="ghost"

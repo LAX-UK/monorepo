@@ -80,7 +80,13 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     totalCount = count;
     auctions = list;
 
-    const sellerIds = [...new Set(auctions.map((a) => a.sellerId))];
+    const sellerIds = [
+      ...new Set(
+        auctions
+          .map((a) => a.sellerId ?? a.sellerLegalEntityId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
     const nameEntries = await Promise.all(
       sellerIds.map(async (id) => {
         const u = await publicReader.getById(id).catch(() => null);
@@ -91,7 +97,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
 
     const items: ArchiveLotVM[] = auctions.map((a) => ({
       auction: a,
-      sellerName: sellerNames.get(a.sellerId) ?? "Private seller",
+      sellerName: sellerNames.get(a.sellerId ?? a.sellerLegalEntityId ?? "") ?? "Private seller",
     }));
 
     const totalPages = Math.max(1, Math.ceil(totalCount / q.pageSize));

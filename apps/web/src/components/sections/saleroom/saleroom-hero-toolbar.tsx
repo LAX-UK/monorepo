@@ -14,8 +14,7 @@ type Props = {
 const linkClass =
   "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-white/80 transition-colors hover:text-white";
 
-/**
- * Upcoming (→ sales list) lives on its own row; Share / Print are grouped below.
+/** Upcoming (→ sales list) lives on its own row; Share / Print are grouped below.
  */
 export function SaleroomHeroToolbar({ shareUrl, shareTitle }: Props) {
   return (

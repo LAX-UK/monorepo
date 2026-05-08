@@ -4,7 +4,10 @@ import { AdminLiveBidActivity } from "@/components/admin/admin-live-bid-activity
 import { AttentionList } from "@/components/dashboard/attention-list";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { Button } from "@/components/ui/button";
-import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
+import type {
+  AdminFinanceIssuesPayload,
+  AdminTodayMetricsPayload,
+} from "@/lib/data/http/admin.server";
 import { LabelCaps } from "@auction/ui";
 import {
   Card,
@@ -49,6 +52,8 @@ type Props = {
   activeLotIds: readonly string[];
   attention: AdminAttentionRow[];
   activity: AdminActivityRow[];
+  /** Failed payouts and Stripe Connect requirement backlog; null when the metrics API call failed. */
+  financeIssues: AdminFinanceIssuesPayload | null;
 };
 
 export function AdminOperationsHomeView({
@@ -57,6 +62,7 @@ export function AdminOperationsHomeView({
   activeLotIds,
   attention,
   activity,
+  financeIssues,
 }: Props) {
   return (
     <div className="space-y-10">
@@ -119,6 +125,139 @@ export function AdminOperationsHomeView({
           },
         ]}
       />
+
+      {financeIssues ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-outline-variant/15">
+            <CardHeader>
+              <CardTitle className="font-headline text-lg">Stripe Connect &amp; payouts</CardTitle>
+              <CardDescription>
+                Failed transfers, blocked scheduled payouts, and outstanding Stripe Connect
+                requirements.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <Link
+                href="/admin/payouts?status=failed"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Failed payouts
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.failedPayoutCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open filtered list
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/payouts?status=scheduled"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Blocked scheduled payouts
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.staleBlockedScheduledPayoutCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Review scheduled payouts
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/legal-entities/stripe-connect-requirements"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Stripe Connect requirement issues
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.legalEntitiesWithStripeConnectRequirementsCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open entity list
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="border-outline-variant/15">
+            <CardHeader>
+              <CardTitle className="font-headline text-lg">Onboarding &amp; verification</CardTitle>
+              <CardDescription>
+                KYB/KYC queues with drill-down lists (docs received, artists, Identity sessions,
+                documents).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Link
+                href="/admin/onboarding-issues#entities-pending-review"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Entities pending review
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.entitiesPendingReviewCount ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/onboarding-issues#artists-pending"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Artists pending approval
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.artistsPendingApprovalCount ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/onboarding-issues#stale-identity"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Stale Identity sessions
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.staleIdentitySessionsCount ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <Link
+                href="/admin/onboarding-issues#documents-awaiting"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Documents awaiting review
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.documentsAwaitingReviewCount ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <section

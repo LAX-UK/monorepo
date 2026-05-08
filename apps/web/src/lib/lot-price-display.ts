@@ -11,8 +11,7 @@ function toNum(amount: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/**
- * Human-readable price label + formatted value for marketing cards,
+/** Human-readable price label + formatted value for marketing cards,
  * derived from lot status, auction type, and price fields (no separate estimate range on Lot).
  */
 export function lotPriceDisplay(lot: Lot): LotPriceDisplay {

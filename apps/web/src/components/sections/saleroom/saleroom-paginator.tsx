@@ -44,8 +44,7 @@ function buildLoadAllHref(basePath: string, preserved: Array<[string, string]> =
   return `${basePath}?${qs.toString()}`;
 }
 
-/**
- * Figma: narrow column, flat progress, Load more, optional Load all.
+/** Figma: narrow column, flat progress, Load more, optional Load all.
  */
 export function SaleroomPaginator({
   shown,

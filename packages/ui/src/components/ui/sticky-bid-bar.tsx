@@ -8,8 +8,7 @@ export type StickyBidBarProps = {
   innerClassName?: string;
 };
 
-/**
- * Fixed bottom marketing / bid bar with safe-area padding (mobile-first; hide at `lg` via className from caller).
+/** Fixed bottom marketing / bid bar with safe-area padding (mobile-first; hide at `lg` via className from caller).
  */
 export function StickyBidBar({ children, className, innerClassName }: StickyBidBarProps) {
   return (

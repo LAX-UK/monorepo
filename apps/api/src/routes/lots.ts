@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { type CreateLotInput, type UserRole, roleHasCapability } from "@auction/types";
 import {
   archiveCountQuerySchema,
@@ -27,6 +28,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   const optionalAuth = createOptionalAuth(authenticator);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
+  function bidderRef(lotId: string, userId: string): string {
+    return createHash("sha256").update(`${lotId}:${userId}`).digest("hex").slice(0, 16);
+  }
+
   r.get("/", optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {
     const query = c.req.valid("query");
     const role = c.get("userRole");
@@ -34,7 +39,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       status: query.status,
       categoryId: query.categoryId,
       categoryIds: query.categoryIds,
-      sellerId: query.sellerId,
+      sellerLegalEntityId: query.sellerId,
       winnerId: query.winnerId,
       saleId: query.saleId,
       endYear: query.endYear,
@@ -170,7 +175,19 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
 
     const bids = await container.bidService.listForLot(id, limit);
-    return c.json({ data: bids });
+    const viewerId = c.get("userId");
+    const canSeeBidderIds = roleHasCapability(role, "auction.manage");
+    return c.json({
+      data: bids.map((bid) => {
+        const isOwnBid = viewerId && bid.placedByUserId === viewerId;
+        const placedByUserId = bid.placedByUserId ?? "unknown";
+        return {
+          ...bid,
+          bidderRef: bidderRef(id, placedByUserId),
+          placedByUserId: canSeeBidderIds || isOwnBid ? bid.placedByUserId : null,
+        };
+      }),
+    });
   });
 
   r.get("/:id", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
@@ -190,8 +207,11 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       return c.json({ error: "Only administrators can create lots" }, 403);
     }
     const userId = c.get("userId") as string;
-    const body = c.req.valid("json");
-    const result = await container.lotService.create(body.sellerId ?? userId, body);
+    const body = c.req.valid("json") as CreateLotInput;
+    if (!body.sellerLegalEntityId) {
+      return c.json({ error: "sellerLegalEntityId is required" }, 400);
+    }
+    const result = await container.lotService.create(userId, body);
     if (result.isErr()) {
       return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
     }

@@ -30,6 +30,7 @@ describe("SaleService.create", () => {
       buyerPremiumRate: "0.25",
       terms: null,
       createdBy: "admin-1",
+      createdByLegalEntityId: "admin-1",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -43,6 +44,7 @@ describe("SaleService.create", () => {
       saleId: "s-new",
       lotNumber: 1,
       sellerId: "seller-1",
+      sellerLegalEntityId: "seller-1",
       title: "Work",
       description: null,
       medium: null,
@@ -108,9 +110,9 @@ describe("SaleService.create", () => {
 
     expect(saleRepo.create).toHaveBeenCalled();
     expect(lotCreate).toHaveBeenCalledWith(
-      "seller-1",
       expect.objectContaining({
         saleId: "s-new",
+        sellerLegalEntityId: "seller-1",
         title: "Work",
       }),
     );

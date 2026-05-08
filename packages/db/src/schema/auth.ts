@@ -1,5 +1,13 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+/** KYC status for Stripe Identity verification */
+export const userKycStatusEnum = pgEnum("user_kyc_status", [
+  "unverified",
+  "pending",
+  "approved",
+  "rejected",
+]);
 
 /** Better Auth core tables — extended with `role` on `user`. */
 export const user = pgTable(
@@ -21,6 +29,14 @@ export const user = pgTable(
     }),
     suspendedAt: timestamp("suspended_at", { mode: "date", withTimezone: true }),
     suspendedReason: text("suspended_reason"),
+    /** Stripe Identity KYC status  */
+    kycStatus: userKycStatusEnum("kyc_status").notNull().default("unverified"),
+    kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
+    dateOfBirth: date("date_of_birth"),
+    /** first-time acting context tooltip dismissed */
+    hasSeenActingContextTooltip: boolean("has_seen_acting_context_tooltip")
+      .notNull()
+      .default(false),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },

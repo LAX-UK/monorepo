@@ -59,6 +59,8 @@ export type SessionUser = {
   emailVerified?: boolean;
   emailStatus?: "ok" | "bounced" | "complained";
   emailStatusChangedAt?: string | Date | null;
+  /** From GET /users/me; omitted in client-only session shapes (treat as seen). */
+  hasSeenActingContextTooltip?: boolean;
 };
 
 /** Session / “who am I” without exposing auth client (DIP). */

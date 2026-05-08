@@ -21,8 +21,7 @@ export type LotHeroVM = {
   nextHref: string | null;
   /** e.g. "1 / 8" when navigating within a sale; null if unknown */
   positionLabel: string | null;
-  /**
-   * Optional Home segment prepended to the breadcrumb so the trail reads
+  /** Optional Home segment prepended to the breadcrumb so the trail reads
    * Home › Sale › Lot N (mockup parity). When omitted the breadcrumb keeps
    * the historical "Auctions" first crumb behaviour.
    */
@@ -72,8 +71,7 @@ function sortSaleLotsForNav(lots: Lot[]): Lot[] {
   });
 }
 
-/**
- * Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
+/** Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
  */
 export function mapLotToHeroVM(
   lot: Lot,
@@ -131,8 +129,7 @@ export type LotSummarySeedVM = {
   sellerImageUrl: string | null;
 };
 
-/**
- * Static hero copy; live bid/close values come from `ArtworkBidPanel` client state.
+/** Static hero copy; live bid/close values come from `ArtworkBidPanel` client state.
  */
 export function mapLotToSummarySeed(
   lot: Lot,
@@ -182,8 +179,7 @@ export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): st
   );
 }
 
-/**
- * Data-driven accordion list; `hidden` items are filtered out in the component.
+/** Data-driven accordion list; `hidden` items are filtered out in the component.
  */
 export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): AccordionBlock[] {
   const md = lot.marketingDetails;
@@ -237,14 +233,13 @@ function lotToRailCard(lot: Lot, artistName: string): LotRailCardVM {
     currentPrice: lot.currentPrice,
     endTime: lot.endTime,
     status: lot.status,
-    sellerId: lot.sellerId,
+    sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
   };
 }
 
 const MIN_SALE_SIBLINGS = 1;
 
-/**
- * Prefers other lots from the same sale; falls back to the seller’s active list when the sale
+/** Prefers other lots from the same sale; falls back to the seller’s active list when the sale
  * is missing or has too few peers.
  */
 export function mapSiblingsToRailVM(
@@ -274,8 +269,7 @@ export function mapSiblingsToRailVM(
   };
 }
 
-/**
- * For auto-bid panel: latest bid from this user with optional max.
+/** For auto-bid panel: latest bid from this user with optional max.
  */
 export function findUserLatestBidMeta(
   userId: string | undefined,

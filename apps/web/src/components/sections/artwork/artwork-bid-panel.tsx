@@ -219,12 +219,13 @@ export function ArtworkBidPanel({
       return;
     }
     setCurrentPrice(result.bid.amount);
-    setLeadingBidderId(result.bid.bidderId);
+    const bidderId = result.bid.bidderId ?? result.bid.placedByUserId ?? "";
+    setLeadingBidderId(bidderId || null);
     setLastKnownMaxAuto(result.bid.maxAutoBidAmount ?? null);
     triggerPriceFlash();
     pushHistory({
       id: result.bid.id,
-      bidderId: result.bid.bidderId,
+      bidderId,
       amount: result.bid.amount,
     });
     setAmount("");

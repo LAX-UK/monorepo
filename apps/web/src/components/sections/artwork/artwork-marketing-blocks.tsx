@@ -18,8 +18,7 @@ type Props = {
 const detailsSummaryClass =
   "cursor-pointer font-label text-xs font-bold uppercase tracking-widest text-on-surface marker:text-primary";
 
-/**
- * Standalone marketing stack (e.g. alternate layouts). Uses the same four section **titles** and
+/** Standalone marketing stack (e.g. alternate layouts). Uses the same four section **titles** and
  * **order** as the lot page accordion: Condition report → Provenance → Exhibited → About artist.
  */
 export function ArtworkMarketingBlocks({ auction, artist = null }: Props) {

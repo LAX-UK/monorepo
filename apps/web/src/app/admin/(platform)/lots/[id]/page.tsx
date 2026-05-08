@@ -68,7 +68,9 @@ export default async function AdminAuctionDetailPage({
             {bids.map((b) => (
               <li key={b.id} className="flex justify-between font-body text-sm">
                 <span>{b.amount}</span>
-                <span className="text-on-surface-variant">{b.bidderId.slice(0, 8)}…</span>
+                <span className="text-on-surface-variant">
+                  {(b.bidderId ?? b.placedByUserId ?? "").slice(0, 8)}…
+                </span>
               </li>
             ))}
           </ul>

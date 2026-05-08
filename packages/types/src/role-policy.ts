@@ -5,16 +5,29 @@ import { userRoles } from "./user.js";
 export type RoleCapability =
   | "platform.admin.full"
   | "finance.read"
+  | "finance.platform.write"
+  | "finance.entity.write"
+  /** @deprecated Use finance.platform.write for platform-wide writes. */
   | "finance.write"
   | "user.invite"
   | "auction.manage"
   | "bid.place"
-  | "client.submit";
+  | "client.submit"
+  | "legal_entity.read"
+  | "legal_entity.write"
+  | "legal_entity.approve"
+  | "legal_entity.archive"
+  | "artist.read"
+  | "artist.review"
+  | "artist.merge"
+  | "payout.read"
+  | "payout.process"
+  | "payout.reverse"
+  | "audit.read_pii";
 
 const roleSet = new Set<string>(userRoles);
 
-/**
- * Maps persisted/session role strings to V1 {@link UserRole}.
+/** Maps persisted/session role strings to V1 {@link UserRole}.
  * Returns null when the value cannot be mapped (unknown legacy).
  */
 export function normalizeUserRole(role: string | null | undefined): UserRole | null {
@@ -36,21 +49,42 @@ export function isKnownUserRole(role: string | null | undefined): role is UserRo
 }
 
 export function roleHasCapability(role: UserRole, capability: RoleCapability): boolean {
+  const isAdmin = role === "administrator";
+  const isAccountant = role === "accountant";
   switch (capability) {
     case "platform.admin.full":
-      return role === "administrator";
+      return isAdmin;
     case "finance.read":
-      return role === "administrator" || role === "accountant";
+      return isAdmin || isAccountant;
+    case "finance.platform.write":
+      return isAdmin;
+    case "finance.entity.write":
+      return isAdmin;
     case "finance.write":
-      return role === "administrator" || role === "accountant";
+      return roleHasCapability(role, "finance.platform.write");
     case "user.invite":
-      return role === "administrator";
+      return isAdmin;
     case "auction.manage":
-      return role === "administrator";
+      return isAdmin;
     case "bid.place":
       return role === "client";
     case "client.submit":
       return role === "client";
+    case "legal_entity.read":
+    case "legal_entity.write":
+    case "legal_entity.approve":
+    case "legal_entity.archive":
+    case "artist.read":
+    case "artist.review":
+    case "artist.merge":
+    case "audit.read_pii":
+      return isAdmin;
+    case "payout.read":
+      return isAdmin || isAccountant;
+    case "payout.process":
+      return isAdmin || isAccountant;
+    case "payout.reverse":
+      return isAdmin;
     default:
       return false;
   }

@@ -1,7 +1,6 @@
 type EmptyObject = Record<string, never>;
 
-/**
- * For `exactOptionalPropertyTypes`: include `key` only when `value` is defined.
+/** For `exactOptionalPropertyTypes`: include `key` only when `value` is defined.
  */
 export function optionalString<K extends string>(
   key: K,

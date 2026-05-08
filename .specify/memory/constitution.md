@@ -46,7 +46,16 @@ Any feature that ships or changes user-facing UI in `apps/web` MUST:
 
 - Reuse **shadcn-compatible primitives** from `@auction/ui` (and established app wrappers) before introducing bespoke controls. Follow `docs/DESIGN_SYSTEM.md` for tokens, layout, accessibility, and dark mode.
 - Implement **non-trivial forms** with **React Hook Form** for client state and submission orchestration, and **Zod** (or existing shared validators in `packages/validators` where appropriate) for input validation and typed defaults. Follow `docs/FORMS.md` for server actions, action/result patterns, and error handling.
+- **Imperative toasts** in `apps/web` MUST use `{ notify }` from `@/lib/ui/notify`; do not import `sonner` directly (enforced by a Vitest contract test). See `docs/DESIGN_SYSTEM.md` (Toasts).
 - Document any intentional deviation (e.g. native `<select>` only where justified) in the feature **spec** and **plan**, with rationale and review expectations.
+
+### VIII. Public Auth Routes And Post-Auth Navigation
+
+In `apps/web`, marketing auth surfaces and redirects MUST follow the centralized guard model:
+
+- Pages that must bounce an **already authenticated** user away from sign-in / sign-up / forgot-password MUST use `redirectIfAuthenticated` from `@/lib/auth/guards.server` (or the paired `redirectIfVerifyPendingNotNeeded` for `/register/verify-pending`).
+- **Token-bound** public pages (`/verify-email`, `/reset-password`, `/unsubscribe`, and `/register?invite=…`) MUST NOT apply `redirectIfAuthenticated` on session alone; token flows take precedence.
+- Any post-login or post-guard destination (including `?next=`) MUST be validated with `isSafeNextPath` and resolved through `resolvePostAuthDestination` from `@/lib/auth/post-auth-destination` so open redirects and role defaults stay consistent.
 
 ## Source Of Truth And Constraints
 

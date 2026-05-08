@@ -1,3 +1,11 @@
+/** Artist Kind - taxonomy for the artist registry */
+export const artistKinds = ["artist", "maker", "brand", "marque"] as const;
+export type ArtistKind = (typeof artistKinds)[number];
+
+/** Artist Status - lifecycle in the registry */
+export const artistStatuses = ["pending", "approved", "rejected", "merged_into"] as const;
+export type ArtistStatus = (typeof artistStatuses)[number];
+
 export type ArtistProfile = {
   id: string;
   displayName: string;
@@ -16,7 +24,16 @@ export type ArtistProfile = {
   featured: boolean;
   verified: boolean;
   archived: boolean;
+  /** artist registry taxonomy - defaults to artist */
+  kind?: ArtistKind;
+  /** artist registry status - defaults to pending */
+  status?: ArtistStatus;
+  /** merge target for duplicate resolution */
+  mergedIntoArtistId?: string | null;
+  /** @deprecated Use ownerLegalEntityId. Dual-write period until 0029. */
   ownerUserId: string | null;
+  /** legal entity ownership - optional during migration */
+  ownerLegalEntityId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

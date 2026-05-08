@@ -10,8 +10,7 @@ export type DashboardOverviewSlots = {
 };
 
 type Props = {
-  /**
-   * `stack` (mockup parity) renders KPIs -> active bids full-width -> banner ->
+  /** `stack` (mockup parity) renders KPIs -> active bids full-width -> banner ->
    * watchlist preview -> secondary action stack. `twoCol` (legacy default)
    * keeps the historical 1.2fr/0.8fr split for active-bids + watchlist and
    * mounts the secondary stack below the banner. Both layouts mount the same

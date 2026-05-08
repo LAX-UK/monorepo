@@ -4,8 +4,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import type { ToasterProps } from "sonner";
 import { cn } from "../../lib/utils.js";
 
-/**
- * Shared Sonner host for apps — design tokens + LAX defaults (position, duration, safe-area).
+/** Shared Sonner host for apps — design tokens + LAX defaults (position, duration, safe-area).
  * Pass `theme` from the app shell (e.g. sync with `<html class="dark">`).
  */
 export function Toaster({

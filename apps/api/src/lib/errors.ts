@@ -1,10 +1,13 @@
 export class BidError extends Error {
+  readonly code?: string | undefined;
   constructor(
     message: string,
     readonly status: number = 400,
+    code?: string,
   ) {
     super(message);
     this.name = "BidError";
+    this.code = code;
   }
 }
 
@@ -45,5 +48,17 @@ export class SubmissionError extends Error {
   ) {
     super(message);
     this.name = "SubmissionError";
+  }
+}
+
+/** Stripe or payment-gateway failure after retries, or non-retryable Stripe error. */
+export class PaymentProviderError extends Error {
+  constructor(
+    message: string,
+    readonly status: number = 502,
+    readonly stripeCode?: string,
+  ) {
+    super(message);
+    this.name = "PaymentProviderError";
   }
 }

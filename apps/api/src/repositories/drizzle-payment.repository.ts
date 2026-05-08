@@ -22,11 +22,14 @@ function mapRow(
   return {
     id: row.id,
     lotId: row.lotId,
-    buyerId: row.buyerId,
-    sellerId: row.sellerId,
+    paidByUserId: row.buyerId,
+    buyerLegalEntityId: row.buyerLegalEntityId ?? "",
+    sellerLegalEntityId: row.sellerLegalEntityId ?? "",
     amount: String(row.amount),
     platformFee: String(row.platformFee),
     stripePaymentIntentId: row.stripePaymentIntentId,
+    stripeChargeId: row.stripeChargeId,
+    stripeRefundId: row.stripeRefundId,
     status: row.status,
     createdAt: row.createdAt,
     xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
@@ -44,12 +47,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .insert(payment)
       .values({
         lotId: row.lotId,
-        buyerId: row.buyerId,
-        sellerId: row.sellerId,
+        buyerId: row.paidByUserId,
+        buyerLegalEntityId: row.buyerLegalEntityId,
+        sellerLegalEntityId: row.sellerLegalEntityId,
         amount: row.amount,
         platformFee: row.platformFee,
         stripePaymentIntentId: row.stripePaymentIntentId,
-        status: "pending",
+        stripeChargeId: row.stripeChargeId ?? null,
+        status: row.status ?? "pending",
       })
       .returning();
     if (!created) throw new Error("Payment insert failed");
@@ -70,7 +75,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         and(
           eq(payment.lotId, lotId),
           eq(payment.buyerId, buyerId),
-          inArray(payment.status, ["pending", "authorized", "captured"]),
+          inArray(payment.status, ["pending", "authorized", "captured", "requires_manual_review"]),
         ),
       )
       .limit(1);
@@ -80,6 +85,30 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
 
   async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
     await this.db.update(payment).set({ status }).where(eq(payment.id, id));
+  }
+
+  async updateStripeChargeId(id: string, stripeChargeId: string): Promise<void> {
+    await this.db.update(payment).set({ stripeChargeId }).where(eq(payment.id, id));
+  }
+
+  async applyCapturedInTransaction(
+    tx: Database,
+    id: string,
+    opts: { stripeChargeId?: string | null },
+  ): Promise<void> {
+    const patch: Partial<typeof payment.$inferInsert> = { status: "captured" };
+    if (opts.stripeChargeId != null && opts.stripeChargeId !== "") {
+      patch.stripeChargeId = opts.stripeChargeId;
+    }
+    await tx.update(payment).set(patch).where(eq(payment.id, id));
+  }
+
+  async applyRefundedInTransaction(
+    tx: Database,
+    id: string,
+    stripeRefundId: string | null,
+  ): Promise<void> {
+    await tx.update(payment).set({ status: "refunded", stripeRefundId }).where(eq(payment.id, id));
   }
 
   async listAll(): Promise<PaymentRecord[]> {
