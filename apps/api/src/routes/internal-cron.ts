@@ -2,18 +2,11 @@ import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
+import { createBaseLogger } from "../lib/logger.js";
 
 /** Redis key for `SET … NX` — only one bulk settlement across API instances. */
 export const BULK_PAYOUT_SETTLEMENT_LOCK_KEY = "payout:settlement:lock";
 const BULK_PAYOUT_SETTLEMENT_LOCK_TTL_SEC = 30 * 60;
-
-type TransferOutcome = {
-  payoutId: string;
-  legalEntityId: string;
-  outcome: "transferred" | "failed" | "skipped";
-  stripeTransferId?: string;
-  failureReason?: string;
-};
 
 function timingSafeSecretMatches(actual: string | undefined, expected: string): boolean {
   if (!actual) return false;
@@ -50,48 +43,29 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
 
     try {
-      const settlementResult = await container.payoutService.runBulkSettlement(null);
-
-      const scheduledPayouts = await container.payoutService.adminList({
-        status: "scheduled",
-        limit: 1000,
+      const log = createBaseLogger(env).child({ component: "bulk_payout_settlement" });
+      const bulk = await container.payoutService.runBulkSettlementWithTransfers(null, {
+        initiateTransfer: (payoutId, opts) =>
+          container.stripeConnectService.initiateTransfer(payoutId, opts),
+        onEntityOutcome: (row) => {
+          log.info(
+            {
+              legalEntityId: row.legalEntityId,
+              payoutId: row.payoutId,
+              outcome: row.outcome,
+              resume: row.resume ?? false,
+              reason: row.reason,
+              stripeErrorCode: row.stripeErrorCode,
+            },
+            "bulk_payout_settlement_entity",
+          );
+        },
       });
-      const transferOutcomes: TransferOutcome[] = [];
-      for (const payout of scheduledPayouts) {
-        const transferResult = await container.stripeConnectService.initiateTransfer(payout.id);
-        if (transferResult.ok) {
-          transferOutcomes.push({
-            payoutId: payout.id,
-            legalEntityId: payout.legalEntityId,
-            outcome: "transferred",
-            stripeTransferId: transferResult.stripeTransferId,
-          });
-        } else {
-          const isSkippable =
-            transferResult.reason === "stripe_not_configured" ||
-            transferResult.reason === "no_connect_account" ||
-            transferResult.reason === "connect_not_ready" ||
-            transferResult.reason === "negative_net_amount";
-
-          transferOutcomes.push({
-            payoutId: payout.id,
-            legalEntityId: payout.legalEntityId,
-            outcome: isSkippable ? "skipped" : "failed",
-            failureReason: transferResult.reason,
-          });
-        }
-      }
 
       return c.json({
         data: {
-          settlement: settlementResult,
-          transfers: {
-            attempted: transferOutcomes.length,
-            transferred: transferOutcomes.filter((t) => t.outcome === "transferred").length,
-            failed: transferOutcomes.filter((t) => t.outcome === "failed").length,
-            skipped: transferOutcomes.filter((t) => t.outcome === "skipped").length,
-            items: transferOutcomes,
-          },
+          settlement: bulk.settlement,
+          transfers: bulk.transfers,
         },
       });
     } finally {

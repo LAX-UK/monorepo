@@ -30,11 +30,16 @@ describe("bulk-payout-settlement distributed lock", () => {
     });
 
     const payoutService = {
-      runBulkSettlement: vi.fn(async () => {
+      runBulkSettlementWithTransfers: vi.fn(async () => {
         await gate;
-        return { eligibleEntityCount: 0, createdCount: 0, items: [] };
+        return {
+          settlement: { eligibleEntityCount: 0, createdCount: 0, items: [] },
+          transfers: {
+            items: [],
+            summary: { totalTransferAttempts: 0, byOutcome: {} },
+          },
+        };
       }),
-      adminList: vi.fn().mockResolvedValue([]),
     };
 
     const stripeConnectService = { initiateTransfer: vi.fn() };
@@ -45,17 +50,21 @@ describe("bulk-payout-settlement distributed lock", () => {
       stripeConnectService,
     } as unknown as Container;
 
-    const env: Env = { CRON_INTERNAL_SECRET: "test-cron-secret" } as Env;
+    const env: Env = {
+      CRON_INTERNAL_SECRET: "test-cron-secret",
+      LOG_LEVEL: "error",
+      NODE_ENV: "test",
+    } as Env;
     const app = new Hono().route("/internal/jobs", createInternalCronRoutes(container, env));
 
     const headers = { "x-cron-secret": "test-cron-secret" };
 
     const p1 = app.request("/internal/jobs/bulk-payout-settlement", { method: "POST", headers });
     for (let i = 0; i < 200; i++) {
-      if (payoutService.runBulkSettlement.mock.calls.length > 0) break;
+      if (payoutService.runBulkSettlementWithTransfers.mock.calls.length > 0) break;
       await new Promise((r) => setTimeout(r, 5));
     }
-    expect(payoutService.runBulkSettlement).toHaveBeenCalled();
+    expect(payoutService.runBulkSettlementWithTransfers).toHaveBeenCalled();
 
     const p2 = app.request("/internal/jobs/bulk-payout-settlement", { method: "POST", headers });
 

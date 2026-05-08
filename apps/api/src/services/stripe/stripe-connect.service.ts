@@ -280,7 +280,10 @@ export class StripeConnectService implements IStripeConnectService {
   /** Initiate a Stripe Connect transfer for a settled payout.
    * Retries up to 3 times with exponential backoff on transient errors.
    */
-  async initiateTransfer(payoutId: string): Promise<InitiateTransferResult> {
+  async initiateTransfer(
+    payoutId: string,
+    opts?: { keepScheduledOnTransferFailure?: boolean },
+  ): Promise<InitiateTransferResult> {
     if (!this.stripe) {
       return { ok: false, reason: "stripe_not_configured" };
     }
@@ -426,12 +429,13 @@ export class StripeConnectService implements IStripeConnectService {
 
     const errorCode = lastError?.code ?? "unknown";
     const errorMessage = lastError?.message ?? "Transfer failed after retries";
+    const failureReason = `stripe_transfer_failed: ${errorCode} - ${errorMessage}`;
 
     await this.payoutRepository.updateStatus(payoutId, {
-      status: "failed",
+      status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",
       stripeTransferId: null,
-      processedAt: new Date(),
-      failureReason: `stripe_transfer_failed: ${errorCode} - ${errorMessage}`,
+      processedAt: opts?.keepScheduledOnTransferFailure ? null : new Date(),
+      failureReason,
     });
 
     if (this.domainEventPublisher) {
