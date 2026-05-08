@@ -222,6 +222,22 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       .filter((id): id is string => typeof id === "string" && id.length > 0);
   }
 
+  async listScheduledPayoutsAwaitingTransfer(limit = 1000): Promise<Payout[]> {
+    const rows = await this.db
+      .select()
+      .from(payout)
+      .where(
+        and(
+          eq(payout.status, "scheduled"),
+          sql`${payout.stripeTransferId} IS NULL`,
+          sql`(${payout.netAmount})::numeric > 0`,
+        ),
+      )
+      .orderBy(desc(payout.createdAt))
+      .limit(limit);
+    return rows.map(rowToPayout);
+  }
+
   async updateTotals(
     payoutId: string,
     totals: { grossAmount: string; platformFee: string; netAmount: string },

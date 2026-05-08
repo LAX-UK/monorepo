@@ -81,6 +81,11 @@ export interface IPayoutRepository {
    */
   listLegalEntityIdsWithUnlinkedCapturedPayments(): Promise<string[]>;
 
+  /** `scheduled` payouts with positive net and no `stripe_transfer_id` yet —
+   * includes rows awaiting a Connect transfer retry after a transient failure.
+   */
+  listScheduledPayoutsAwaitingTransfer(limit?: number): Promise<Payout[]>;
+
   /** Update only the totals on a payout (used after appending an
    * adjustment line). Returns the updated row.
    */

@@ -46,6 +46,8 @@ function makePayoutService(result: Payout | null): IPayoutService {
     previewPending: vi.fn(),
     adminList: vi.fn(),
     createSettlement: vi.fn(),
+    runBulkSettlement: vi.fn(),
+    runBulkSettlementWithTransfers: vi.fn(),
     addAdjustment: vi.fn(),
     markPaid: vi.fn(),
     reconcileStripeTransfer: vi.fn().mockResolvedValue(result),
@@ -164,6 +166,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       listLines: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
       updateTotals: vi.fn(),
       updateXeroBillId: vi.fn(),
       findByStripeTransferId: vi.fn(),
@@ -356,5 +359,62 @@ describe("StripeConnectService.initiateTransfer", () => {
       actorUserId: null,
       actingLegalEntityId: "le1",
     });
+  });
+
+  it("keepScheduledOnTransferFailure leaves payout scheduled after non-retryable stripe errors", async () => {
+    const StripeSdk = await import("stripe");
+    const rejectErr = new StripeSdk.default.errors.StripeInvalidRequestError({
+      message: "card declined",
+      type: "invalid_request_error",
+      code: "card_declined",
+    } as never);
+    const payoutRow = payout({ status: "scheduled", netAmount: "10.00", stripeTransferId: null });
+    const updateStatus = vi.fn().mockResolvedValue({ ...payoutRow, status: "scheduled" as const });
+    const payoutRepo = {
+      findById: vi.fn().mockResolvedValue(payoutRow),
+      updateStatus,
+      list: vi.fn(),
+      create: vi.fn(),
+      insertLine: vi.fn(),
+      listLines: vi.fn(),
+      findUnlinkedCapturedPayments: vi.fn(),
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      updateTotals: vi.fn(),
+      updateXeroBillId: vi.fn(),
+      findByStripeTransferId: vi.fn(),
+      reconcileStripeTransfer: vi.fn(),
+    } as unknown as IPayoutRepository;
+    const db = makeMockDb({
+      id: "le1",
+      stripeConnectAccountId: "acct_123",
+      stripeConnectPayoutsEnabled: true,
+    });
+    const publisher = makeDomainEventPublisher();
+    const svc = new StripeConnectService(
+      baseEnv(),
+      db,
+      makePayoutService(null),
+      payoutRepo,
+      publisher,
+    );
+    (svc as unknown as { stripe: { transfers: { create: ReturnType<typeof vi.fn> } } }).stripe = {
+      transfers: {
+        create: vi.fn().mockRejectedValue(rejectErr),
+      },
+    };
+    const result = await svc.initiateTransfer("po1", { keepScheduledOnTransferFailure: true });
+    expect(result).toEqual(
+      expect.objectContaining({ ok: false, reason: "stripe_error", stripeErrorCode: "card_declined" }),
+    );
+    expect(
+      updateStatus.mock.calls.some(
+        (c) => c[0] === "po1" && c[1].status === "scheduled" && String(c[1].failureReason).includes("stripe_transfer_failed"),
+      ),
+    ).toBe(true);
+    expect(publisher.publish).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ eventType: "payout.transfer_failed", aggregateId: "po1" }),
+    );
   });
 });
