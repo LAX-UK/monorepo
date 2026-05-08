@@ -5,8 +5,7 @@ const LOT_EVENTS_PATTERN = "lot:*:events";
 const USER_NOTIFICATIONS_PATTERN = "user:*:notifications";
 const MAX_REDIS_MESSAGE_BYTES = 32 * 1024;
 
-/**
- * Subscribes to Redis pub/sub channels published by the API (`lot:{id}:events`,
+/** Subscribes to Redis pub/sub channels published by the API (`lot:{id}:events`,
  * `user:{userId}:notifications`) and broadcasts JSON payloads to matching Socket.IO rooms.
  */
 export function bridgeRedisToSockets(io: Server, sub: Redis): void {

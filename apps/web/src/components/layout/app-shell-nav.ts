@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bell,
   Brush,
+  Building2,
   CreditCard,
   FileText,
   Gauge,
@@ -13,6 +14,7 @@ import {
   Mail,
   Menu,
   MonitorPlay,
+  MonitorSmartphone,
   Package,
   ScrollText,
   Settings,
@@ -126,6 +128,12 @@ export function getClientSellingNavItems(): AppShellNavItem[] {
       href: "/dashboard/seller/artist",
       icon: Brush,
     },
+    {
+      id: "team",
+      label: "Team",
+      href: "/dashboard/team",
+      icon: Users,
+    },
     { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     {
       id: "settings",
@@ -191,7 +199,21 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       ...(pendingSubmissionCount > 0 ? { badge: pendingSubmissionCount } : {}),
     },
     { id: "users", label: "Users", href: "/admin/users", icon: Users },
+    {
+      id: "impersonation",
+      label: "Impersonate",
+      href: "/admin/impersonation",
+      icon: MonitorSmartphone,
+    },
+    {
+      id: "legal-entities",
+      label: "Legal entities",
+      href: "/admin/legal-entities",
+      icon: Building2,
+      match: (pathname) => pathname.startsWith("/admin/legal-entities"),
+    },
     { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
     { id: "invitations", label: "Invitations", href: "/admin/invitations", icon: Mail },
     { id: "email", label: "Email", href: "/admin/email/outbox", icon: Mail },
     { id: "saleroom", label: "Saleroom", href: "/admin/saleroom", icon: MonitorPlay },
@@ -222,6 +244,7 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
 export function getAccountantNavItems(): AppShellNavItem[] {
   return [
     { id: "payments", label: "Payments", href: "/admin/payments", icon: WalletCards },
+    { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
     { id: "xero", label: "Xero", href: "/admin/integrations/xero", icon: CreditCard },
   ];
 }
@@ -263,6 +286,7 @@ export function getRouteParentLabel(
   if (role === "client" && pathname.startsWith("/dashboard/seller"))
     return clientWorkspace === "selling" ? "Selling" : null;
   if (role === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
+  if (role === "client" && pathname.startsWith("/dashboard/team")) return "Team";
   if (role === "admin" && pathname.startsWith("/admin/lots/")) return "Lots";
   if (role === "admin" && pathname.startsWith("/admin/sales/")) return "Sales";
   if (role === "admin" && pathname.startsWith("/admin/categories/")) return "Categories";
@@ -273,6 +297,8 @@ export function getRouteParentLabel(
   if (role === "admin" && pathname.startsWith("/admin/audit")) return "Audit";
   if (role === "admin" && pathname.startsWith("/admin/settings")) return "System";
   if (role === "admin" && pathname.startsWith("/admin/cms")) return "CMS";
+  if (role === "admin" && pathname.startsWith("/admin/payouts")) return "Finance";
+  if (role === "accountant" && pathname.startsWith("/admin/payouts")) return "Finance";
   if (role === "accountant" && pathname.startsWith("/admin/integrations")) return "Xero";
   return null;
 }

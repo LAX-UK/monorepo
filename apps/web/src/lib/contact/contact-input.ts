@@ -9,14 +9,12 @@ export const contactSchema = z.object({
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
-/**
- * RHF schema. Adds:
+/** RHF schema. Adds:
  * - Honeypot `website` (ignored when non-empty).
  * - Optional split-name fields `firstName` / `lastName`. The mockup splits
- *   the legacy single `Name` field into two; we keep the wire contract by
- *   collapsing both back into `name` before submission.
- *
- * Schema-level `name` is widened to optional + an extra refine: either
+ * the legacy single `Name` field into two; we keep the wire contract by
+ * collapsing both back into `name` before submission.
+ * * Schema-level `name` is widened to optional + an extra refine: either
  * `name` or `firstName/lastName` must be populated.
  */
 export const contactFormValuesSchema = contactSchema

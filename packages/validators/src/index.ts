@@ -25,3 +25,6 @@ export * from "./email-change.js";
 export * from "./checkout.js";
 export * from "./xero.js";
 export * from "./admin-email.js";
+/** Legal Entity Model validators */
+export * from "./legal-entity.js";
+export * from "./payout.js";

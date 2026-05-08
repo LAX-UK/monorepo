@@ -1,4 +1,4 @@
-import type { bid, itemSubmission, lot, sale } from "@auction/db/schema";
+import type { bid, itemSubmission, lot, payment, sale } from "@auction/db/schema";
 import type {
   Bid,
   ItemSubmission,
@@ -7,6 +7,8 @@ import type {
   LotAuctionType,
   LotMarketingDetails,
   LotStatus,
+  Payment,
+  PaymentStatus,
   Sale,
   SaleDeliveryMode,
   SaleStatus,
@@ -17,10 +19,18 @@ type LotRow = InferSelectModel<typeof lot>;
 type BidRow = InferSelectModel<typeof bid>;
 type SaleRow = InferSelectModel<typeof sale>;
 type ItemSubmissionRow = InferSelectModel<typeof itemSubmission>;
+type PaymentRow = InferSelectModel<typeof payment>;
 
 function parseMarketingDetails(raw: unknown): LotMarketingDetails {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as LotMarketingDetails;
+}
+
+function requireBackfilledLegalEntityId(value: string | null, context: string): string {
+  if (!value) {
+    throw new Error(`missing_backfilled_legal_entity_id:${context}`);
+  }
+  return value;
 }
 
 export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
@@ -29,7 +39,9 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     id: row.id,
     saleId: row.saleId ?? null,
     lotNumber: row.lotNumber ?? null,
-    sellerId: row.sellerId,
+    sellerLegalEntityId: requireBackfilledLegalEntityId(row.sellerLegalEntityId, `lot:${row.id}`),
+    artistId: row.artistId ?? null,
+    artistReviewRequired: row.artistReviewRequired ?? false,
     title: row.title,
     description: row.description,
     medium: row.medium ?? null,
@@ -51,18 +63,22 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     startTime: row.startTime,
     endTime: row.endTime,
     status: row.status as LotStatus,
+    voidedReason: row.voidedReason ?? null,
+    archivedSeller: row.archivedSeller ?? false,
     winnerId: row.winnerId,
+    buyerLegalEntityId: row.buyerLegalEntityId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     marketingDetails: parseMarketingDetails(row.marketingDetails),
-  };
+  } as Lot;
 }
 
 export function mapBidRow(row: BidRow): Bid {
   return {
     id: row.id,
     lotId: row.lotId,
-    bidderId: row.bidderId,
+    placedByUserId: row.bidderId,
+    buyerLegalEntityId: requireBackfilledLegalEntityId(row.buyerLegalEntityId, `bid:${row.id}`),
     amount: String(row.amount),
     isWinning: row.isWinning,
     isAutoBid: row.isAutoBid,
@@ -78,7 +94,7 @@ export function mapItemSubmissionRow(
   const primaryCategoryId = categoryIds[0] ?? "";
   return {
     id: row.id,
-    sellerId: row.sellerId,
+    legalEntityId: requireBackfilledLegalEntityId(row.legalEntityId, `item_submission:${row.id}`),
     title: row.title,
     description: row.description,
     medium: row.medium,
@@ -132,8 +148,33 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     previewStartTime: row.previewStartTime ?? null,
     buyerPremiumRate: String(row.buyerPremiumRate),
     terms: row.terms ?? null,
-    createdBy: row.createdBy,
+    createdByLegalEntityId: requireBackfilledLegalEntityId(
+      row.createdByLegalEntityId,
+      `sale:${row.id}`,
+    ),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+export function mapPaymentRow(row: PaymentRow): Payment {
+  return {
+    id: row.id,
+    lotId: row.lotId,
+    buyerLegalEntityId: requireBackfilledLegalEntityId(
+      row.buyerLegalEntityId,
+      `payment:${row.id}:buyer`,
+    ),
+    sellerLegalEntityId: requireBackfilledLegalEntityId(
+      row.sellerLegalEntityId,
+      `payment:${row.id}:seller`,
+    ),
+    amount: String(row.amount),
+    platformFee: String(row.platformFee),
+    stripePaymentIntentId: row.stripePaymentIntentId ?? null,
+    stripeChargeId: row.stripeChargeId ?? null,
+    stripeRefundId: row.stripeRefundId ?? null,
+    status: row.status as PaymentStatus,
+    createdAt: row.createdAt,
   };
 }

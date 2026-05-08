@@ -1,3 +1,26 @@
+/**
+ * Better Auth session cookie security (verified against `better-auth@1.6.9`,
+ * `dist/cookies/index.mjs` → `createCookie`):
+ *
+ * - **httpOnly:** `true` on all auth cookies (session token, session data cache,
+ *   account store, etc.).
+ * - **sameSite:** `"lax"` by default; merged with {@link AuthEnv} `cookieDomain`
+ *   overrides below.
+ * - **secure:** `true` on the cookie *attributes* when Better Auth uses the
+ *   `__Secure-` name prefix. That prefix is applied when `advanced.useSecureCookies`
+ *   is explicitly set, **or** when `baseURL` uses `https:`, **or** when
+ *   `NODE_ENV` is production (`isProduction` from `@better-auth/core/env`).
+ *   Local HTTP dev therefore gets non-`__Secure-` names unless you force HTTPS.
+ * - **This wrapper:** `advanced.useSecureCookies` is set to `false` only when
+ *   `allowInsecureCookies` is true (tests). When `cookieDomain` is set for
+ *   cross-subdomain cookies, `defaultCookieAttributes` adds
+ *   `{ domain, sameSite: "lax", secure: true }`, aligning session cookies with
+ *   HTTPS production deployments.
+ *
+ * JWT access tokens (15m) are configured via the `jwt` plugin separately from
+ * the DB-backed session cookie TTL (`session.expiresIn` / `updateAge` below).
+ */
+
 import type { Database } from "@auction/db";
 import {
   account,

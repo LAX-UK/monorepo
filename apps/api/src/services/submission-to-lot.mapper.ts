@@ -10,6 +10,7 @@ export function submissionToCreateLotInput(submission: ItemSubmission): CreateLo
   const startingPrice = submission.askingPrice?.trim() ? submission.askingPrice : "1.00";
   return {
     title: submission.title,
+    sellerLegalEntityId: submission.legalEntityId,
     description: submission.description ?? undefined,
     medium: submission.medium ?? undefined,
     dimensions: submission.dimensions ?? undefined,

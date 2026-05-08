@@ -1,5 +1,4 @@
-/**
- * @deprecated import from @auction/validators — kept for stable import paths.
+/** @deprecated import from @auction/validators — kept for stable import paths.
  */
 export {
   itemSubmissionFormSchema as newSubmissionFormSchema,

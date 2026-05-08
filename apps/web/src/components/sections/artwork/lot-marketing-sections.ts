@@ -1,5 +1,4 @@
-/**
- * Single source of truth for catalog marketing copy on the lot/artwork surface.
+/** Single source of truth for catalog marketing copy on the lot/artwork surface.
  * Use these ids + titles everywhere (accordion, marketing blocks, tests, search snippets).
  */
 export const lotMarketingSection = {

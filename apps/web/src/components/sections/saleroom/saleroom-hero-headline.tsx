@@ -6,8 +6,7 @@ type Props = {
   hero: SaleHeroVM;
 };
 
-/**
- * Date row (date line + status pill) and title; sits above the hero image (Figma 1440).
+/** Date row (date line + status pill) and title; sits above the hero image (Figma 1440).
  */
 export function SaleroomHeroHeadline({ hero }: Props) {
   const { statusBadge } = hero;

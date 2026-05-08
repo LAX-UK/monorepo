@@ -23,14 +23,20 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
       }
     }
     const body = c.req.valid("json");
+    const buyerEntity = await container.legalEntityRepository.ensurePersonalEntity(userId);
     const result = await container.bidService.placeBid(
       userId,
+      buyerEntity.id,
       body.lotId,
       body.amount,
       body.maxAutoBidAmount,
     );
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      const e = result.error;
+      return c.json(
+        e.code ? { error: e.message, code: e.code } : { error: e.message },
+        asHttpStatus(e.status),
+      );
     }
     const bid = result.value;
     const payload = { data: bid };

@@ -13,8 +13,7 @@ function numericAmount(row: AdminPaymentTableRow): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-/**
- * Aggregate the loaded payment rows into the four KPI tiles displayed in the
+/** Aggregate the loaded payment rows into the four KPI tiles displayed in the
  * accountant payments header. Pure helper; consumers may compose with their
  * own formatting layer.
  */

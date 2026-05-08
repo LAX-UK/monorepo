@@ -14,8 +14,7 @@ export function LiveIndicator() {
   );
 }
 
-/**
- * Figma right column: “Overview”, description, format line, bordered two-column preview/bidding row.
+/** Figma right column: “Overview”, description, format line, bordered two-column preview/bidding row.
  */
 export function SaleroomHeroOverview({ hero }: Props) {
   const hasLeft = Boolean(hero.leftColumnLabel && hero.registrationClosesShort);

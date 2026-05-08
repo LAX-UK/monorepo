@@ -16,8 +16,7 @@ type Props = {
 
 const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
 
-/**
- * First-class auto-bid surface; values are submitted with `placeBid` via parent `ArtworkBidPanel`.
+/** First-class auto-bid surface; values are submitted with `placeBid` via parent `ArtworkBidPanel`.
  */
 export function LotAutoBidPanel({
   auctionType,

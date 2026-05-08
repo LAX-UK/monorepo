@@ -86,20 +86,51 @@ const envSchema = z
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
     /** Days after invoice date for due date. */
     XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+    /** use one Xero Contact per buyer `legal_entity` (stored on `legal_entity.xero_contact_id`)
+     * instead of creating contacts from winner email only.
+     */
+    XERO_USE_LEGAL_ENTITY_CONTACT: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    /** chart account for supplier bill line items (ACCPAY) created from paid payouts. */
+    XERO_PAYOUT_BILL_ACCOUNT_CODE: z.string().min(1).default("400"),
     /** After OAuth, redirect browser here (web app), e.g. https://app.example.com/admin/integrations/xero */
     XERO_POST_CONNECT_WEB_REDIRECT: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    /**
-     * Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
+    /** Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
      * Expected to accept payloads like: { to, subject, text }.
      */
     INVITE_EMAIL_WEBHOOK_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     INVITE_EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(3).optional()),
+    /** Stripe secret key (sk_test_… / sk_live_…). Optional until KYC enabled. */
+    STRIPE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe publishable key (pk_test_… / pk_live_…). Public for client SDK. */
+    STRIPE_PUBLISHABLE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Identity webhook signing secret (whsec_…). */
+    STRIPE_IDENTITY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Connect webhook signing secret (whsec_…). */
+    STRIPE_CONNECT_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Payments webhook signing secret (whsec_…) for disputes/refunds. */
+    STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Threshold (in major currency units, e.g. 1000.00 for £1000) at which KYC is required for buyer exposure. */
+    KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
+    /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
+    KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
+     * Optional until bulk jobs are enabled in deploy.
+     */
+    CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
+      });
+    }
+    if (e.NODE_ENV === "production" && !e.POSTMARK_WEBHOOK_BASIC_AUTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "POSTMARK_WEBHOOK_BASIC_AUTH is required in production",
       });
     }
     if (e.STORAGE_DRIVER === "s3") {

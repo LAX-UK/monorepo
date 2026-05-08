@@ -1,10 +1,7 @@
-/**
- * Full demo seed: wipes auth + app tables, then loads categories, users (with Better Auth
+/** Full demo seed: wipes auth + app tables, then loads categories, users (with Better Auth
  * credential accounts), sales + lots (all statuses/types), bids, watchlist, notifications, payments.
- *
- * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed
- *
- * Same password for every seeded account (email/password sign-in).
+ * * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed
+ * * Same password for every seeded account (email/password sign-in).
  */
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "@better-auth/utils/password";
@@ -24,6 +21,34 @@ const USER1_ID = "user-seed-001";
 const USER2_ID = "user-seed-002";
 const GOOGLE_TEST_ID = "user-seed-google";
 const APPLE_TEST_ID = "user-seed-apple";
+
+const LE = {
+  admin: "10000000-0000-4000-8000-000000000001",
+  accountant: "10000000-0000-4000-8000-000000000002",
+  user1: "10000000-0000-4000-8000-000000000003",
+  user2: "10000000-0000-4000-8000-000000000004",
+  google: "10000000-0000-4000-8000-000000000005",
+  apple: "10000000-0000-4000-8000-000000000006",
+} as const;
+
+const legalEntityIdForUser = (userId: string): string => {
+  switch (userId) {
+    case ADMIN_ID:
+      return LE.admin;
+    case ACCOUNTANT_ID:
+      return LE.accountant;
+    case USER1_ID:
+      return LE.user1;
+    case USER2_ID:
+      return LE.user2;
+    case GOOGLE_TEST_ID:
+      return LE.google;
+    case APPLE_TEST_ID:
+      return LE.apple;
+    default:
+      throw new Error(`Missing seeded legal entity for user ${userId}`);
+  }
+};
 
 const CAT = {
   paintings: "c1000001-0000-4000-8000-000000000001",
@@ -91,6 +116,8 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     lot,
     saleCategories,
     sale,
+    legalEntityMember,
+    legalEntity,
     category,
     session,
     account,
@@ -109,6 +136,8 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(lot);
   await db.delete(saleCategories);
   await db.delete(sale);
+  await db.delete(legalEntityMember);
+  await db.delete(legalEntity);
   await db.delete(category);
   await db.delete(session);
   await db.delete(account);
@@ -144,6 +173,8 @@ async function main() {
     payment,
     itemSubmission,
     submissionCategories,
+    legalEntity,
+    legalEntityMember,
     externalAccount,
   } = schema;
 
@@ -258,6 +289,102 @@ async function main() {
     },
   ]);
 
+  await db.insert(legalEntity).values([
+    {
+      id: LE.admin,
+      displayName: "Eleanor Pereira",
+      legalName: "Eleanor Pereira",
+      slug: "eleanor-pereira",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: ADMIN_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LE.accountant,
+      displayName: "Erin Ledger",
+      legalName: "Erin Ledger",
+      slug: "erin-ledger",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: ACCOUNTANT_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LE.user1,
+      displayName: "Robert Thorne",
+      legalName: "Robert Thorne",
+      slug: "robert-thorne",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: USER1_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LE.user2,
+      displayName: "Carolina Price",
+      legalName: "Carolina Price",
+      slug: "carolina-price",
+      kind: "individual",
+      subkind: "artist",
+      createdByUserId: USER2_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LE.google,
+      displayName: "Google Test",
+      legalName: "Google Test",
+      slug: "google-test",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: GOOGLE_TEST_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LE.apple,
+      displayName: "Apple Test",
+      legalName: "Apple Test",
+      slug: "apple-test",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: APPLE_TEST_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+  ]);
+
+  await db.insert(legalEntityMember).values([
+    { legalEntityId: LE.admin, userId: ADMIN_ID, role: "owner", acceptedAt: stamp },
+    { legalEntityId: LE.accountant, userId: ACCOUNTANT_ID, role: "owner", acceptedAt: stamp },
+    { legalEntityId: LE.user1, userId: USER1_ID, role: "owner", acceptedAt: stamp },
+    { legalEntityId: LE.user2, userId: USER2_ID, role: "owner", acceptedAt: stamp },
+    { legalEntityId: LE.google, userId: GOOGLE_TEST_ID, role: "owner", acceptedAt: stamp },
+    { legalEntityId: LE.apple, userId: APPLE_TEST_ID, role: "owner", acceptedAt: stamp },
+  ]);
+
   await db.insert(category).values([
     { id: CAT.paintings, name: "Paintings", slug: "paintings", parentId: null },
     { id: CAT.sculpture, name: "Sculpture", slug: "sculpture", parentId: null },
@@ -296,7 +423,10 @@ async function main() {
     ...extra,
   });
 
-  const saleRows: (typeof sale.$inferInsert & { categoryId: string | null })[] = [
+  const saleRows: (Omit<typeof sale.$inferInsert, "createdByLegalEntityId"> & {
+    categoryId: string | null;
+    createdBy: string;
+  })[] = [
     {
       id: S.evening,
       title: "Spring Contemporary Evening Sale",
@@ -339,7 +469,12 @@ async function main() {
       updatedAt: stamp,
     },
   ];
-  await db.insert(sale).values(saleRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(sale).values(
+    saleRows.map(({ categoryId: _categoryId, createdBy, ...row }) => ({
+      ...row,
+      createdByLegalEntityId: legalEntityIdForUser(createdBy),
+    })),
+  );
   await db.insert(saleCategories).values(
     saleRows
       .filter((row) => row.categoryId != null)
@@ -350,7 +485,10 @@ async function main() {
       })),
   );
 
-  const lotRows: (typeof lot.$inferInsert & { categoryId: string })[] = [
+  const lotRows: (Omit<typeof lot.$inferInsert, "sellerLegalEntityId"> & {
+    categoryId: string;
+    sellerId: string;
+  })[] = [
     {
       id: L.ethereal,
       saleId: S.evening,
@@ -845,7 +983,12 @@ async function main() {
       ]),
     },
   ];
-  await db.insert(lot).values(lotRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(lot).values(
+    lotRows.map(({ categoryId: _categoryId, sellerId, ...row }) => ({
+      ...row,
+      sellerLegalEntityId: legalEntityIdForUser(sellerId),
+    })),
+  );
   await db.insert(lotCategories).values(
     lotRows.map((row) => ({
       lotId: row.id as string,
@@ -854,7 +997,10 @@ async function main() {
     })),
   );
 
-  const submissionRows: (typeof itemSubmission.$inferInsert & { categoryId: string })[] = [
+  const submissionRows: (Omit<typeof itemSubmission.$inferInsert, "legalEntityId"> & {
+    categoryId: string;
+    sellerId: string;
+  })[] = [
     {
       id: SUB.draft,
       sellerId: USER2_ID,
@@ -978,9 +1124,12 @@ async function main() {
       updatedAt: new Date(now - 5 * day),
     },
   ];
-  await db
-    .insert(itemSubmission)
-    .values(submissionRows.map(({ categoryId: _categoryId, ...row }) => row));
+  await db.insert(itemSubmission).values(
+    submissionRows.map(({ categoryId: _categoryId, sellerId, ...row }) => ({
+      ...row,
+      legalEntityId: legalEntityIdForUser(sellerId),
+    })),
+  );
   await db.insert(submissionCategories).values(
     submissionRows.map((row) => ({
       submissionId: row.id as string,
@@ -999,6 +1148,7 @@ async function main() {
   ): typeof bid.$inferInsert => ({
     lotId,
     bidderId,
+    buyerLegalEntityId: legalEntityIdForUser(bidderId),
     amount,
     isWinning,
     isAutoBid: false,
@@ -1153,7 +1303,12 @@ async function main() {
   ]);
 
   const payId = () => randomUUID();
-  await db.insert(payment).values([
+  const paymentRows: (Omit<
+    typeof payment.$inferInsert,
+    "buyerLegalEntityId" | "sellerLegalEntityId"
+  > & {
+    sellerId: string;
+  })[] = [
     {
       id: payId(),
       lotId: L.amber,
@@ -1162,6 +1317,7 @@ async function main() {
       amount: "525000.00",
       platformFee: "26250.00",
       stripePaymentIntentId: "pi_seed_amber_captured",
+      stripeChargeId: "ch_seed_amber_captured",
       status: "captured",
       createdAt: new Date(now - 29 * day),
     },
@@ -1173,6 +1329,7 @@ async function main() {
       amount: "143750.00",
       platformFee: "7187.50",
       stripePaymentIntentId: "pi_seed_marginal_pending",
+      stripeChargeId: null,
       status: "pending",
       createdAt: new Date(now - 28 * day),
     },
@@ -1184,10 +1341,19 @@ async function main() {
       amount: "35000.00",
       platformFee: "1750.00",
       stripePaymentIntentId: "pi_seed_golden_refunded",
+      stripeChargeId: "ch_seed_golden_refunded",
       status: "refunded",
       createdAt: new Date(now - 14 * day),
     },
-  ]);
+  ];
+  await db.insert(payment).values(
+    paymentRows.map(({ sellerId, buyerId, ...row }) => ({
+      ...row,
+      buyerId,
+      buyerLegalEntityId: legalEntityIdForUser(buyerId),
+      sellerLegalEntityId: legalEntityIdForUser(sellerId),
+    })),
+  );
 
   console.log("");
   console.log("Seed complete — polished LAX demo dataset loaded.");

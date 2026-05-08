@@ -36,15 +36,16 @@ export class SaleService {
     }
     const mode = input.deliveryMode ?? "onsite";
     const caps = getSaleModeCapabilities(mode);
-    const sale = await this.saleRepo.create({ ...input, createdBy: adminId });
+    const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId: adminId });
     if (input.lots?.length) {
       for (const row of input.lots) {
         const { sellerId, ...lotFields } = row;
         const inherited = caps.inheritsLotTiming
           ? { startTime: input.startTime, endTime: input.endTime }
           : {};
-        await this.lotRepo.create(sellerId, {
+        await this.lotRepo.create({
           ...lotFields,
+          sellerLegalEntityId: sellerId,
           ...inherited,
           saleId: sale.id,
         });
@@ -206,8 +207,9 @@ export class SaleService {
     if (endTime <= startTime) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const created = await this.lotRepo.create(sellerId, {
+    const created = await this.lotRepo.create({
       ...lotFields,
+      sellerLegalEntityId: sellerId,
       startTime,
       endTime,
       saleId,

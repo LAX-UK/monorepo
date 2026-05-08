@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/**
- * Monotonic wall clock for client-only countdowns.
+/** Monotonic wall clock for client-only countdowns.
  * Returns `null` on the first render (SSR-safe); then `Date.now()` on a fixed interval while the tab is visible.
  */
 export function useNow(intervalMs = 1000): number | null {

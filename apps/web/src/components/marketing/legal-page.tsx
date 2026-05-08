@@ -6,8 +6,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 type Props = {
   title: string;
-  /**
-   * Eyebrow rendered above the title. Pass a string for the historical
+  /** Eyebrow rendered above the title. Pass a string for the historical
    * styled <p>; pass any ReactNode to fully customise the slot; pass
    * `null` to omit it (mockup-minimal pages).
    */
@@ -91,8 +90,7 @@ export function LegalPage({
   );
 }
 
-/**
- * Mockup-aligned heading for legal/marketing copy. Smaller than the historical
+/** Mockup-aligned heading for legal/marketing copy. Smaller than the historical
  * `font-headline text-2xl` h2 so dense legal pages match the LAX HTML mocks.
  */
 export function LegalH2({ className, children, id, ...rest }: HTMLAttributes<HTMLHeadingElement>) {

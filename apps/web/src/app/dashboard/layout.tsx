@@ -1,6 +1,9 @@
+import { EntityStatusBanner } from "@/components/dashboard/entity-status-banner";
+import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { AppShell } from "@/components/layout/app-shell";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -21,6 +24,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
+  const actingContext = await resolveActingContext(user.role);
 
   const jar = await cookies();
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
@@ -32,7 +36,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       shellRole="client"
       clientWorkspaceMode={clientWorkspaceMode}
       cookieDensity={cookieDensity}
+      headerSlot={
+        <ActingAsBanner
+          hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
+          userRole={user.role}
+          prefetchedActingContext={actingContext}
+        />
+      }
     >
+      <EntityStatusBanner acting={actingContext.acting} />
       <WelcomeBackToast />
       {children}
     </AppShell>

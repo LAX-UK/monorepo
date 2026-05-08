@@ -17,8 +17,7 @@ export type ChangePasswordInput = {
   confirmPassword: string;
 };
 
-/**
- * Server action: POST to Better Auth `change-password` (API base + cookies).
+/** Server action: POST to Better Auth `change-password` (API base + cookies).
  */
 export async function changePasswordAction(
   input: ChangePasswordInput,

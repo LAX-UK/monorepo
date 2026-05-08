@@ -31,8 +31,7 @@ function relativeTime(date: Date): string {
   return date.toLocaleDateString();
 }
 
-/**
- * Mockup-aligned minimalist notifications feed: dot + title + message + time.
+/** Mockup-aligned minimalist notifications feed: dot + title + message + time.
  * The full inbox board is preserved at `?view=inbox` (see page).
  */
 export function NotificationsFeedView() {

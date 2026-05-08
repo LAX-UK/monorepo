@@ -12,13 +12,11 @@ export type SaleCalendarRowVM = {
   auctionTypeLabel: string;
   status: Sale["status"];
   itemsLabel: string;
-  /**
-   * Optional category label (e.g. "Modern & Contemporary"). When present
+  /** Optional category label (e.g. "Modern & Contemporary"). When present
    * appended to the meta line; absent leaves current rendering unchanged.
    */
   categoryLabel?: string;
-  /**
-   * Optional results summary for past sales. When present, the row appends a
+  /** Optional results summary for past sales. When present, the row appends a
    * "{hammer} hammer · {total} total" suffix. Both halves are individually
    * optional so partial data (only `hammer` or only `total`) renders cleanly.
    */
@@ -64,8 +62,7 @@ function mapDeliveryToAuctionTypeLabel(mode: Sale["deliveryMode"]): string {
   }
 }
 
-/**
- * Build the calendar row label line, e.g. "9–16 April 2026 | 11 AM GMT | London".
+/** Build the calendar row label line, e.g. "9–16 April 2026 | 11 AM GMT | London".
  * Location is optional (no field on Sale yet per plan).
  */
 function endedHammerTotal(lots: Lot[]): string | undefined {

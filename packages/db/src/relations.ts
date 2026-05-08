@@ -3,6 +3,7 @@ import { user } from "./schema/auth.js";
 import { bid } from "./schema/bids.js";
 import { category } from "./schema/categories.js";
 import { itemSubmission } from "./schema/item-submissions.js";
+import { legalEntity } from "./schema/legal-entities.js";
 import { lotCategories } from "./schema/lot-categories.js";
 import { lot } from "./schema/lots.js";
 import { saleCategories } from "./schema/sale-categories.js";
@@ -10,9 +11,9 @@ import { sale } from "./schema/sales.js";
 import { submissionCategories } from "./schema/submission-categories.js";
 
 export const saleRelations = relations(sale, ({ one, many }) => ({
-  creator: one(user, {
-    fields: [sale.createdBy],
-    references: [user.id],
+  creatorLegalEntity: one(legalEntity, {
+    fields: [sale.createdByLegalEntityId],
+    references: [legalEntity.id],
   }),
   categories: many(saleCategories),
   lots: many(lot),
@@ -23,9 +24,9 @@ export const lotRelations = relations(lot, ({ one, many }) => ({
     fields: [lot.saleId],
     references: [sale.id],
   }),
-  seller: one(user, {
-    fields: [lot.sellerId],
-    references: [user.id],
+  sellerLegalEntity: one(legalEntity, {
+    fields: [lot.sellerLegalEntityId],
+    references: [legalEntity.id],
   }),
   winner: one(user, {
     fields: [lot.winnerId],
@@ -59,10 +60,10 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
 }));
 
 export const itemSubmissionRelations = relations(itemSubmission, ({ one, many }) => ({
-  seller: one(user, {
-    fields: [itemSubmission.sellerId],
-    references: [user.id],
-    relationName: "submission_seller",
+  legalEntity: one(legalEntity, {
+    fields: [itemSubmission.legalEntityId],
+    references: [legalEntity.id],
+    relationName: "submission_legal_entity",
   }),
   reviewer: one(user, {
     fields: [itemSubmission.reviewedBy],

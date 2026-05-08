@@ -124,8 +124,7 @@ export function metadataForNotFound(title: string, description?: string): Metada
   };
 }
 
-/**
- * Defense-in-depth metadata for private (dashboard / admin / accountant)
+/** Defense-in-depth metadata for private (dashboard / admin / accountant)
  * routes. Robots.txt already disallows these paths but accidental link sharing
  * could still index them; this metadata provides an HTML-level signal.
  */
