@@ -6,7 +6,6 @@ import type {
   IPayoutRepository,
   ReconcileStripeTransferPatch,
 } from "./interfaces/payout-repository.js";
-import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 import type {
   AdminListPayoutsFilter,
   BulkPayoutSettlementResult,
@@ -27,6 +26,7 @@ import {
   PayoutPermissionError,
   PayoutStatusTransitionError,
 } from "./interfaces/payout.js";
+import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 
 const DEFAULT_CURRENCY = "GBP";
 
@@ -94,7 +94,9 @@ function outcomeFromTransfer(
   };
 }
 
-function summarizeTransferOutcomes(items: BulkSettlementEntityOutcomeLog[]): Record<string, number> {
+function summarizeTransferOutcomes(
+  items: BulkSettlementEntityOutcomeLog[],
+): Record<string, number> {
   const by: Record<string, number> = {};
   for (const i of items) {
     by[i.outcome] = (by[i.outcome] ?? 0) + 1;
