@@ -5,6 +5,7 @@ import type {
   PayoutLineKind,
   PayoutStatus,
 } from "@auction/types";
+import type { InitiateTransferResult } from "./stripe-connect.js";
 
 /** Aggregate row used by the seller "next payout" tile. */
 export type PendingPayoutPreview = {
@@ -55,6 +56,45 @@ export type BulkPayoutSettlementResult = {
   eligibleEntityCount: number;
   createdCount: number;
   items: BulkPayoutSettlementItemResult[];
+};
+
+/** Port for Stripe Connect transfer attempts (bulk cron injects `stripeConnectService.initiateTransfer`). */
+export type BulkSettlementTransferPort = {
+  initiateTransfer: (
+    payoutId: string,
+    opts?: { keepScheduledOnTransferFailure?: boolean },
+  ) => Promise<InitiateTransferResult>;
+  /** Optional structured log per entity / resume row (cron supplies a pino child). */
+  onEntityOutcome?: (row: BulkSettlementEntityOutcomeLog) => void;
+};
+
+export type BulkSettlementEntityOutcomeLog = {
+  legalEntityId: string;
+  payoutId?: string;
+  /** When true, this row came from `listScheduledPayoutsAwaitingTransfer` (retry path). */
+  resume?: boolean;
+  outcome:
+    | "settlement_skipped"
+    | "settlement_db_error"
+    | "transfer_initiated"
+    | "transfer_failed"
+    | "connect_not_ready"
+    | "committed_no_transfer"
+    | "transfer_skipped";
+  reason?: string;
+  stripeTransferId?: string;
+  stripeErrorCode?: string;
+};
+
+export type BulkSettlementWithTransfersResult = {
+  settlement: BulkPayoutSettlementResult;
+  transfers: {
+    items: BulkSettlementEntityOutcomeLog[];
+    summary: {
+      totalTransferAttempts: number;
+      byOutcome: Record<string, number>;
+    };
+  };
 };
 
 export type MarkPaidInput = {
@@ -138,6 +178,17 @@ export interface IPayoutService {
     actorUserId: string | null,
     opts?: { periodEnd?: Date },
   ): Promise<BulkPayoutSettlementResult>;
+
+  /** Bulk cron: per legal entity, commit settlement (payout + lines +
+   * `payout.settlement_created`) in one DB transaction, then attempt Stripe
+   * transfer outside the transaction. Processes resume rows (`scheduled`, no
+   * transfer id, positive net) in a second pass. Continues after per-entity failures.
+   */
+  runBulkSettlementWithTransfers(
+    actorUserId: string | null,
+    port: BulkSettlementTransferPort,
+    opts?: { periodEnd?: Date },
+  ): Promise<BulkSettlementWithTransfersResult>;
 
   /** Admin: append a manual adjustment line. Adjustments require both a
    * `note` and a positive/negative `amount`. The payout's `gross / fee /

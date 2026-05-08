@@ -3,6 +3,7 @@ import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutRepository, PendingPaymentRow } from "./interfaces/payout-repository.js";
+import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
@@ -33,6 +34,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     clearStatementGenerationError: vi.fn(),
     findOpenPayoutForEntity: vi.fn().mockResolvedValue(null),
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
+    listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -517,5 +519,153 @@ describe("PayoutService.runBulkSettlement", () => {
     expect(result.items).toHaveLength(2);
     expect(result.items.every((i) => i.outcome === "created")).toBe(true);
     expect(create).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("PayoutService.runBulkSettlementWithTransfers", () => {
+  function entityId(i: number) {
+    return `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+  }
+
+  it("continues after Stripe failure on one entity and completes the rest", async () => {
+    const entities = Array.from({ length: 10 }, (_, idx) => entityId(idx + 1));
+    let transferCalls = 0;
+    const initiateTransfer = vi.fn(async (): Promise<InitiateTransferResult> => {
+      transferCalls++;
+      if (transferCalls === 5) {
+        return {
+          ok: false,
+          reason: "stripe_error",
+          stripeErrorCode: "x",
+          stripeErrorMessage: "nope",
+        };
+      }
+      return { ok: true, stripeTransferId: `tr_${transferCalls}` };
+    });
+    const create = vi.fn().mockImplementation(async (input: { legalEntityId: string }) =>
+      payout({
+        id: `po-${input.legalEntityId.replace(/-/g, "").slice(-8)}`,
+        legalEntityId: input.legalEntityId,
+      }),
+    );
+    const insertLine = vi.fn().mockImplementation(async (input: { payoutId: string }) => ({
+      id: `line-${input.payoutId}`,
+      payoutId: input.payoutId,
+      paymentId: "pay-1",
+      amount: "10.00",
+      kind: "sale" as const,
+      createdByUserId: null,
+      note: null,
+      createdAt: new Date(),
+    }));
+    const repo = makeRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue(entities),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      findUnlinkedCapturedPayments: vi.fn().mockImplementation(async (id: string) =>
+        entities.includes(id)
+          ? pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])
+          : [],
+      ),
+      create,
+      insertLine,
+    });
+    const svc = new PayoutService(repo);
+    const r = await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
+    expect(r.settlement.createdCount).toBe(10);
+    expect(initiateTransfer).toHaveBeenCalledTimes(10);
+    expect(r.transfers.items.filter((i) => i.outcome === "transfer_failed")).toHaveLength(1);
+    expect(r.transfers.items.filter((i) => i.outcome === "transfer_initiated")).toHaveLength(9);
+    expect(r.transfers.summary.byOutcome.transfer_failed).toBe(1);
+    expect(r.transfers.summary.byOutcome.transfer_initiated).toBe(9);
+  });
+
+  it("skips transfer when settlement creation throws; other entities still process", async () => {
+    const e1 = entityId(1);
+    const e2 = entityId(2);
+    const e3 = entityId(3);
+    const e4 = entityId(4);
+    const create = vi.fn().mockImplementation(async (input: { legalEntityId: string }) => {
+      if (input.legalEntityId === e3) {
+        throw new Error("db connection reset");
+      }
+      return payout({
+        id: `po-${input.legalEntityId.slice(-2)}`,
+        legalEntityId: input.legalEntityId,
+      });
+    });
+    const insertLine = vi.fn().mockImplementation(async (input: { payoutId: string }) => ({
+      id: `line-${input.payoutId}`,
+      payoutId: input.payoutId,
+      paymentId: "pay-1",
+      amount: "10.00",
+      kind: "sale" as const,
+      createdByUserId: null,
+      note: null,
+      createdAt: new Date(),
+    }));
+    const initiateTransfer = vi.fn().mockResolvedValue({ ok: true, stripeTransferId: "tr_ok" });
+    const repo = makeRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1, e2, e3, e4]),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
+        pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }]),
+      ),
+      create,
+      insertLine,
+    });
+    const svc = new PayoutService(repo);
+    const r = await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
+    expect(initiateTransfer).toHaveBeenCalledTimes(3);
+    expect(r.settlement.items.filter((i) => i.outcome === "error")).toHaveLength(1);
+    expect(r.transfers.items.filter((i) => i.outcome === "settlement_db_error")).toHaveLength(1);
+  });
+
+  it("second cron run retries initiateTransfer for a scheduled payout left after failure", async () => {
+    const e5 = entityId(5);
+    const po5 = payout({ id: "po-resume-5", legalEntityId: e5, status: "scheduled" });
+    const listUnlinked = vi.fn().mockResolvedValueOnce([e5]).mockResolvedValueOnce([]);
+    const listResume = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([po5]);
+    let transferRound = 0;
+    const initiateTransfer = vi.fn(async (payoutId: string): Promise<InitiateTransferResult> => {
+      if (payoutId !== "po-resume-5") {
+        return { ok: true, stripeTransferId: "tr_other" };
+      }
+      transferRound++;
+      if (transferRound === 1) {
+        return {
+          ok: false,
+          reason: "stripe_error",
+          stripeErrorCode: "x",
+          stripeErrorMessage: "retry",
+        };
+      }
+      return { ok: true, stripeTransferId: "tr_final" };
+    });
+    const create = vi.fn().mockImplementation(async (input: { legalEntityId: string }) =>
+      payout({ id: "po-resume-5", legalEntityId: input.legalEntityId }),
+    );
+    const insertLine = vi.fn().mockImplementation(async (input: { payoutId: string }) => ({
+      id: `line-${input.payoutId}`,
+      payoutId: input.payoutId,
+      paymentId: "pay-1",
+      amount: "10.00",
+      kind: "sale" as const,
+      createdByUserId: null,
+      note: null,
+      createdAt: new Date(),
+    }));
+    const repo = makeRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: listUnlinked,
+      listScheduledPayoutsAwaitingTransfer: listResume,
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
+        pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }]),
+      ),
+      create,
+      insertLine,
+    });
+    const svc = new PayoutService(repo);
+    await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
+    await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
+    expect(initiateTransfer.mock.calls.filter((c) => c[0] === "po-resume-5")).toHaveLength(2);
   });
 });

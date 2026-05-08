@@ -78,7 +78,10 @@ export interface IStripeConnectService {
   /** Initiate a Stripe Connect transfer for a payout.
    * Called after settlement creation. Handles retry logic internally.
    * On success, emits `payout.transfer_initiated` and updates payout row.
-   * On final failure, emits `payout.transfer_failed`, marks payout as failed.
+   * On final failure, emits `payout.transfer_failed` (see opts for status).
    */
-  initiateTransfer(payoutId: string): Promise<InitiateTransferResult>;
+  initiateTransfer(
+    payoutId: string,
+    opts?: { keepScheduledOnTransferFailure?: boolean },
+  ): Promise<InitiateTransferResult>;
 }
