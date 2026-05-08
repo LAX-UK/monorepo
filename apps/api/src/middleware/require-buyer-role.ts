@@ -18,8 +18,7 @@ export function createRequireBuyerRole(src: RoleSource = honoContextRoleSource) 
 /** Default middleware using Hono context `userRole`. */
 export const requireBuyerRole = createRequireBuyerRole();
 
-/**
- * For routes where platform administrators take a different code path (e.g. PATCH submission).
+/** For routes where platform administrators take a different code path (e.g. PATCH submission).
  * Administrators skip buyer gate; everyone else must pass {@link createRequireBuyerRole}.
  */
 export function createRequireBuyerRoleUnlessAdministrator(src: RoleSource = honoContextRoleSource) {

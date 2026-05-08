@@ -2,8 +2,7 @@ import "server-only";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
 import { cookies } from "next/headers";
 
-/**
- * Base URL for Server Components / Route Handlers calling the API.
+/** Base URL for Server Components / Route Handlers calling the API.
  * Prefer INTERNAL_API_URL on the host (e.g. http://127.0.0.1:3001) so SSR does not rely on
  * NEXT_PUBLIC_API_URL (often the public IP), which can fail with hairpin NAT or wrong host.
  */

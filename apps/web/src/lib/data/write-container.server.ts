@@ -47,8 +47,7 @@ export type WriteServiceContainer = {
 
 let cached: WriteServiceContainer | null = null;
 
-/**
- * Server-only composition root for write paths (server actions + services).
+/** Server-only composition root for write paths (server actions + services).
  * Tests can inject a different container by not using this in unit tests, or we expand with factory later.
  */
 export function getWriteContainer(): WriteServiceContainer {

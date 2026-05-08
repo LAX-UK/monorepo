@@ -44,6 +44,7 @@ export interface IProfileReader {
     emailVerified: boolean;
     emailStatus: "ok" | "bounced" | "complained";
     emailStatusChangedAt: Date | null;
+    hasSeenActingContextTooltip: boolean;
   } | null>;
 }
 

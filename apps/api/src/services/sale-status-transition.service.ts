@@ -12,8 +12,7 @@ import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 
-/**
- * Allowed admin overrides per current lot status. These intentionally do not
+/** Allowed admin overrides per current lot status. These intentionally do not
  * include moves back into `active` (admins should only be ending or cancelling).
  */
 const ALLOWED_LOT_TRANSITIONS: Record<LotStatus, ReadonlySet<LotStatus>> = {
@@ -22,6 +21,7 @@ const ALLOWED_LOT_TRANSITIONS: Record<LotStatus, ReadonlySet<LotStatus>> = {
   active: new Set(["ended", "cancelled"]),
   ended: new Set(),
   cancelled: new Set(),
+  voided: new Set(),
 };
 
 export class SaleStatusTransitionService implements ISaleStatusTransitionService {

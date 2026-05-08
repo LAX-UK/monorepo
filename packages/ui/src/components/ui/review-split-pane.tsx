@@ -14,8 +14,7 @@ export type ReviewSplitPaneProps = {
   className?: string;
 };
 
-/**
- * Two columns lg+; Record / Decision tabs below lg.
+/** Two columns lg+; Record / Decision tabs below lg.
  */
 export function ReviewSplitPane({
   recordTitle,

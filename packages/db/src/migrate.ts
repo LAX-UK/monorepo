@@ -1,12 +1,6 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
-import * as schema from "./schema/index.js";
+import { runMigrationsPerTransaction } from "./migrate-runner.js";
 import { buildPgConnectionConfig } from "./ssl.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -14,10 +8,11 @@ async function main() {
     throw new Error("DATABASE_URL is required");
   }
   const pool = new pg.Pool(buildPgConnectionConfig(url));
-  const db = drizzle(pool, { schema });
-  const migrationsFolder = path.join(__dirname, "../drizzle");
-  await migrate(db, { migrationsFolder });
-  await pool.end();
+  try {
+    await runMigrationsPerTransaction(pool);
+  } finally {
+    await pool.end();
+  }
   console.log("Migrations applied.");
 }
 

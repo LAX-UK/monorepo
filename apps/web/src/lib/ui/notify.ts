@@ -17,11 +17,9 @@ export type NotifyPromiseMessages<T> = {
   error: string | ((error: unknown) => string);
 };
 
-/**
- * Imperative toasts — single chokepoint for Sonner.
+/** Imperative toasts — single chokepoint for Sonner.
  * Do not import `sonner` elsewhere in `apps/web` (see `sonner-import.contract.test.ts`).
- *
- * TODO: optional Sentry breadcrumb on `error` for production diagnostics.
+ * * TODO: optional Sentry breadcrumb on `error` for production diagnostics.
  */
 export const notify = {
   success(title: string, opts?: NotifyOpts): string | number {

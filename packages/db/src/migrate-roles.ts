@@ -32,7 +32,16 @@ const API_DENY_TABLES = [
   "oauth_consent",
 ];
 const API_READ_TABLES = ["user"];
-const WORKER_READ_TABLES = ["user"];
+const WORKER_READ_TABLES = [
+  "user",
+  /** Legal Entity Model - worker needs SELECT for projectors */
+  "legal_entity",
+  "legal_entity_member",
+  "legal_entity_payout_method",
+  "kyc_verification",
+  "artist_alias",
+  "admin_review_task",
+];
 // API profile endpoints may update only these Better Auth user columns. Keep this
 // narrower than table-level UPDATE so api_app cannot mutate auth/security fields.
 const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
@@ -46,7 +55,17 @@ const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
 // email_outbox and newsletter_signup_log are also SELECT+UPDATE: the worker drains rows
 // inserted by apps/auth/apps/api but must not insert new ones (callers do that) and must
 // not delete (the rows are part of the audit trail for delivery and Postmaster review).
-const WORKER_LOCK_READ_TABLES = ["domain_events", "email_outbox", "newsletter_signup_log"];
+const WORKER_LOCK_READ_TABLES = [
+  "domain_events",
+  "email_outbox",
+  "newsletter_signup_log",
+  /** Payouts - worker needs SELECT + UPDATE for settlement processing */
+  "payout",
+  "payout_line",
+  /** archive cascade updates bids + draft/scheduled lots. */
+  "bid",
+  "lot",
+];
 const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
@@ -108,7 +127,7 @@ async function grantIfExists(
   client: pg.Client,
   role: RoleName,
   tableName: string,
-  privileges: "SELECT" | "SELECT, UPDATE" | "INSERT, SELECT" | "ALL PRIVILEGES",
+  privileges: "SELECT" | "SELECT, UPDATE" | "INSERT" | "INSERT, SELECT" | "ALL PRIVILEGES",
 ): Promise<void> {
   if (!(await tableExists(client, tableName))) return;
   await client.query(
@@ -195,6 +214,8 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of WORKER_LOCK_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
     }
+    /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
+    await grantIfExists(client, "worker_app", "domain_events", "INSERT");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }

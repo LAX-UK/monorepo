@@ -14,8 +14,7 @@ import { Columns3, Rows3, SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
 type TweaksPopoverProps = {
-  /**
-   * Sections rendered inside the popover. Defaults preserve the historical
+  /** Sections rendered inside the popover. Defaults preserve the historical
    * order: density first, then theme. Pass an explicit array to compose other
    * surfaces without forking this component.
    */

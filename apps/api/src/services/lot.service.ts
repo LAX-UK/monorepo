@@ -4,6 +4,7 @@ import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -12,6 +13,7 @@ import type {
   ListLotsFilter,
 } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
+import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
@@ -23,13 +25,14 @@ export class LotService {
     private readonly jobScheduler: ILotJobScheduler | null,
     private readonly lotNotifications: ILotNotificationCoordinator | null,
     private readonly imageCleanup?: ImageCleanupService,
+    private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
   ) {}
 
-  async create(sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
+  async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
     if (input.endTime <= input.startTime) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const created = await this.lotRepo.create(sellerId, input);
+    const created = await this.lotRepo.create(input);
     return ok(created);
   }
 
@@ -77,7 +80,15 @@ export class LotService {
     if (this.lotNotifications) {
       const bidders = await this.bids.listDistinctBidderIds(lotId);
       const watchers = await this.watchlist.listUserIdsForLot(lotId);
-      const recipientIds = [...new Set<string>([...bidders, ...watchers, a.sellerId])];
+      const sellerRecipients = await resolveLegalEntityNotificationRecipients(
+        this.legalEntityNotificationRecipients,
+        {
+          legalEntityId: a.sellerLegalEntityId,
+          fallbackUserId: _userId,
+          audience: "seller",
+        },
+      );
+      const recipientIds = [...new Set<string>([...bidders, ...watchers, ...sellerRecipients])];
       await this.lotNotifications.notifyLotCancelled({
         lotId,
         title: a.title,

@@ -33,8 +33,7 @@ export type HeroLotVM = {
   lotLabel: string;
   /** True when lot status is active (for live region announcements). */
   isAuctionLive: boolean;
-  /**
-   * When present and the lot is live, the secondary hero CTA links to the
+  /** When present and the lot is live, the secondary hero CTA links to the
    * saleroom. Falls back to the lot artwork URL otherwise.
    */
   saleroomHref?: string;
@@ -88,8 +87,7 @@ export type LotCardVM = {
   startTime: string;
   /** ISO 8601 — used by client lot timer */
   endTime: string;
-  /**
-   * Visual emphasis hint for marketing cards. The card always renders
+  /** Visual emphasis hint for marketing cards. The card always renders
    * `priceLabel` + `priceFormatted`; emphasis tells it which line to make
    * dominant. Defaults to `estimate` when omitted (current behaviour).
    */
@@ -219,7 +217,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
-    sellerId: lot.sellerId,
+    sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
     status: lot.status,
     startTime,
     endTime,
@@ -243,7 +241,7 @@ function toAuctionFeaturedLotVM(lot: Lot): AuctionFeaturedLotVM {
     priceFormatted: value,
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
-    sellerId: lot.sellerId,
+    sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
   };
 }
 

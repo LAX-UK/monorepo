@@ -5,8 +5,7 @@ type Props = {
   shareSlot: ReactNode;
 };
 
-/**
- * Figma: two equal outline buttons (Follow, Share). Children bring their own button/link styles.
+/** Figma: two equal outline buttons (Follow, Share). Children bring their own button/link styles.
  */
 export function LotActionsRow({ followSlot, shareSlot }: Props) {
   return (

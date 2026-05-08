@@ -9,8 +9,7 @@ import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { Lot } from "@auction/types";
 
-/**
- * Marketing accordion plus “Lot details” and “Bid history” (rich nodes).
+/** Marketing accordion plus “Lot details” and “Bid history” (rich nodes).
  * Use from the artwork page (RSC); `BidHistoryInAccordion` is a client child.
  */
 export function buildArtworkPageAccordionBlocks(args: {

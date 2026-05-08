@@ -1,13 +1,7 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import { applyApplicationRoleGrants } from "./migrate-roles.js";
-import * as schema from "./schema/index.js";
+import { runMigrationsPerTransaction } from "./migrate-runner.js";
 import { buildPgConnectionConfig } from "./ssl.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   const url = process.env.DATABASE_URL_OWNER;
@@ -16,9 +10,7 @@ async function main() {
   }
   const pool = new pg.Pool(buildPgConnectionConfig(url));
   try {
-    const db = drizzle(pool, { schema });
-    const migrationsFolder = path.join(__dirname, "../drizzle");
-    await migrate(db, { migrationsFolder });
+    await runMigrationsPerTransaction(pool);
     await applyApplicationRoleGrants(url);
   } finally {
     await pool.end();

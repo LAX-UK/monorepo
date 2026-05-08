@@ -31,8 +31,7 @@ export type AdminUsersKpiStrip = {
   pageCount: number;
 };
 
-/**
- * Mockup-aligned global aggregates. When provided, the KPI strip switches its
+/** Mockup-aligned global aggregates. When provided, the KPI strip switches its
  * labels to "Total users / Admins / Clients / Suspended" with the matching
  * tile values; when absent the existing per-page labelling is preserved so
  * legacy callers don't change behavior.

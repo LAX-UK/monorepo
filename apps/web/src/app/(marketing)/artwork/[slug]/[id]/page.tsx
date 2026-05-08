@@ -62,13 +62,16 @@ export default async function ArtworkPage({ params }: PageProps) {
         .catch(() => [])
     : Promise.resolve([]);
 
+  const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
   const [initialBids, seller, relatedRaw, watchlist, saleBundle, artistForAccordion] =
     await Promise.all([
       getServerLotBids(id, 30).catch(() => []),
-      publicReader.getById(auction.sellerId).catch(() => null),
+      sellerLookupId
+        ? publicReader.getById(sellerLookupId).catch(() => null)
+        : Promise.resolve(null),
       reader
         .list({
-          sellerId: auction.sellerId,
+          ...(sellerLookupId ? { sellerId: sellerLookupId } : {}),
           limit: 12,
           status: "active",
           sort: "endingAsc",
@@ -79,17 +82,20 @@ export default async function ArtworkPage({ params }: PageProps) {
         ? getServerSaleWithLots(auction.saleId).catch(() => null)
         : Promise.resolve(null),
       publicReader
-        .getById(auction.marketingDetails.sellerArtistId ?? auction.sellerId)
+        .getById(auction.marketingDetails.sellerArtistId ?? sellerLookupId)
         .catch(() => null),
     ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
     id: b.id,
-    bidderId: b.bidderId,
+    bidderId: b.bidderId ?? b.placedByUserId ?? "",
     amount: b.amount,
     at: b.createdAt.getTime(),
   }));
-  const initialLeadingBidderId = initialBids.find((b) => b.isWinning)?.bidderId ?? null;
+  const initialLeadingBidderId =
+    initialBids.find((b) => b.isWinning)?.bidderId ??
+    initialBids.find((b) => b.isWinning)?.placedByUserId ??
+    null;
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);

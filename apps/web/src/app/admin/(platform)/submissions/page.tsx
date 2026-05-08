@@ -65,7 +65,7 @@ export default async function AdminSubmissionsPage({
   const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => ({
     id: s.id,
     title: s.title,
-    sellerPreview: `Seller ${s.sellerId.slice(0, 8)}…`,
+    sellerPreview: `Seller ${(s.sellerId ?? s.legalEntityId ?? "").slice(0, 8)}…`,
     status: s.status,
     createdAtLabel: s.createdAt.toLocaleString(),
   }));

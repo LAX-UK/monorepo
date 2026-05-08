@@ -16,16 +16,14 @@ type Props = {
   isAuthenticated: boolean;
   /** Lot ids in the user's watchlist (for `initialWatching`). */
   watchedLotIds: readonly string[];
-  /**
-   * `rich` (default) keeps the historical card with estimate / current bid /
+  /** `rich` (default) keeps the historical card with estimate / current bid /
    * Bid + Watch CTAs. `compact` renders a slimmed mockup tile (image + title,
    * artist · price). Both layouts are LSP-substitutable.
    */
   density?: "rich" | "compact";
 };
 
-/**
- * Figma: “More from …” with up to four 320px cards and Bid / Follow CTAs.
+/** Figma: “More from …” with up to four 320px cards and Bid / Follow CTAs.
  */
 export function LotMoreFromRail({
   rail,

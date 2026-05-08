@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type {
   IItemSubmissionRepository,
   ILotRepository,
@@ -41,6 +42,7 @@ function mkSubmission(
 ): ItemSubmission {
   return {
     sellerId: "seller-1",
+    legalEntityId: "seller-entity-1",
     title: "Work",
     description: "Desc",
     medium: null,
@@ -81,13 +83,12 @@ describe("ItemSubmissionService", () => {
     });
     expect(r.isOk()).toBe(true);
     expect(submissions.create).toHaveBeenCalledWith(
-      "seller-1",
-      expect.objectContaining({ title: "Work" }),
+      expect.objectContaining({ title: "Work", legalEntityId: "seller-1" }),
     );
   });
 
   it("submitForReview notifies admins", async () => {
-    const draft = mkSubmission({ id: "sub-1", status: "draft", sellerId: "u1" });
+    const draft = mkSubmission({ id: "sub-1", status: "draft", legalEntityId: "u1" });
     const submitted = { ...draft, status: "submitted" as const };
     const submissions: IItemSubmissionRepository = {
       findById: vi.fn().mockResolvedValue(draft),
@@ -120,6 +121,7 @@ describe("ItemSubmissionService", () => {
       id: "sub-1",
       status: "under_review",
       sellerId: "alice",
+      legalEntityId: "00000000-0000-4000-8000-000000000010",
       title: "Blue Study",
     });
     const createdLot: Lot = {
@@ -127,6 +129,7 @@ describe("ItemSubmissionService", () => {
       saleId: null,
       lotNumber: null,
       sellerId: "alice",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000010",
       title: "Blue Study",
       description: null,
       medium: null,
@@ -172,6 +175,9 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
+    const legalEntityRecipients: ILegalEntityNotificationRecipientReader = {
+      listUserIdsForAudience: vi.fn().mockResolvedValue(["owner-1", "consignor-1"]),
+    };
 
     const svc = new ItemSubmissionService(
       db,
@@ -179,30 +185,45 @@ describe("ItemSubmissionService", () => {
       {} as ILotRepository,
       {} as unknown as IUserRepository,
       dispatcher,
+      undefined,
+      legalEntityRecipients,
     );
     const r = await svc.approve("admin-1", "sub-1", "Nice work");
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
-      expect(r.value.lot.sellerId).toBe("alice");
+      expect(r.value.lot.sellerLegalEntityId).toBe(under.legalEntityId);
       expect(r.value.submission.status).toBe("converted");
       expect(r.value.submission.convertedLotId).toBe("lot-new");
     }
     expect(hoisted.txLotCreate).toHaveBeenCalledWith(
-      "alice",
       expect.objectContaining({
         title: "Blue Study",
+        sellerLegalEntityId: under.legalEntityId,
         categoryIds: [catId],
         auctionType: "english",
       }),
     );
+    expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
+      under.legalEntityId,
+      "seller",
+    );
     expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "alice",
+      "owner-1",
+      expect.objectContaining({ type: "submission_approved", lotId: "lot-new" }),
+    );
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      "consignor-1",
       expect.objectContaining({ type: "submission_approved", lotId: "lot-new" }),
     );
   });
 
   it("reject stores reason and notifies seller", async () => {
-    const under = mkSubmission({ id: "sub-1", status: "under_review", sellerId: "bob" });
+    const under = mkSubmission({
+      id: "sub-1",
+      status: "under_review",
+      sellerId: "bob",
+      legalEntityId: "00000000-0000-4000-8000-000000000010",
+    });
     const rejected = {
       ...under,
       status: "rejected" as const,
@@ -217,20 +238,29 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
+    const legalEntityRecipients: ILegalEntityNotificationRecipientReader = {
+      listUserIdsForAudience: vi.fn().mockResolvedValue(["admin-entity-1"]),
+    };
     const svc = new ItemSubmissionService(
       stubDb,
       submissions,
       {} as ILotRepository,
       {} as unknown as IUserRepository,
       dispatcher,
+      undefined,
+      legalEntityRecipients,
     );
     const r = await svc.reject("admin-1", "sub-1", "Not suitable", "See policy");
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
       expect(r.value.rejectionReason).toBe("Not suitable");
     }
+    expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
+      under.legalEntityId,
+      "seller",
+    );
     expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "bob",
+      "admin-entity-1",
       expect.objectContaining({ type: "submission_rejected" }),
     );
   });
@@ -239,7 +269,7 @@ describe("ItemSubmissionService", () => {
     const submissions: IItemSubmissionRepository = {
       findById: vi
         .fn()
-        .mockResolvedValue(mkSubmission({ id: "s1", status: "draft", sellerId: "alice" })),
+        .mockResolvedValue(mkSubmission({ id: "s1", status: "draft", legalEntityId: "alice" })),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
       stubDb,

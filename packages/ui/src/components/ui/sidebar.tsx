@@ -1,8 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/utils.js";
 
-/**
- * Main content column beside a fixed sidebar (naming aligned with shadcn SidebarInset).
+/** Main content column beside a fixed sidebar (naming aligned with shadcn SidebarInset).
  */
 export function SidebarInset({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("flex min-h-screen flex-1 flex-col", className)} {...props} />;

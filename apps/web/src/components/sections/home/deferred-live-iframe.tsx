@@ -14,8 +14,7 @@ type Props = {
   className?: string;
 };
 
-/**
- * Defers heavy embed until the user opts in — improves LCP vs eager iframe.
+/** Defers heavy embed until the user opts in — improves LCP vs eager iframe.
  */
 function srcWithCurrentHost(src: string): string {
   if (typeof window === "undefined") return src;

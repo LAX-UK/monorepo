@@ -15,8 +15,7 @@ export type TimelineStagesProps = {
   className?: string;
 };
 
-/**
- * Horizontal stepper at sm+; vertical stack on &lt;sm. Keyboard: Tab through stages (decorative) or use roving tabindex on parent.
+/** Horizontal stepper at sm+; vertical stack on &lt;sm. Keyboard: Tab through stages (decorative) or use roving tabindex on parent.
  */
 export function TimelineStages({ stages, activeIndex, className }: TimelineStagesProps) {
   return (

@@ -4,7 +4,16 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
-import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
+import type {
+  AdminCategory,
+  ArtistProfile,
+  LegalEntity,
+  LegalEntityStatus,
+  Lot,
+  PayoutStatus,
+  Sale,
+} from "@auction/types";
+import { legalEntityKinds, legalEntityStatuses, legalEntitySubkinds } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
 export type AdminPaymentRow = {
@@ -20,6 +29,26 @@ export type AdminPaymentRow = {
   xeroOnlineInvoiceUrl: string | null;
   xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
   xeroLastError: string | null;
+};
+
+export type AdminPayoutRow = {
+  id: string;
+  legalEntityId: string;
+  periodStart: string;
+  periodEnd: string;
+  grossAmount: string;
+  platformFee: string;
+  stripeFee: string;
+  netAmount: string;
+  currency: string;
+  status: PayoutStatus;
+  stripeTransferId: string | null;
+  xeroBillId: string | null;
+  failureReason: string | null;
+  processedAt: string | null;
+  statementUrl: string | null;
+  statementGenerationError: string | null;
+  createdAt: string;
 };
 
 function parseAdminCategory(raw: unknown): AdminCategory {
@@ -75,7 +104,24 @@ function parseArtistProfile(raw: unknown): ArtistProfile {
 }
 
 function isPaymentStatus(s: string): s is PaymentStatus {
-  return s === "pending" || s === "authorized" || s === "captured" || s === "refunded";
+  return (
+    s === "pending" ||
+    s === "authorized" ||
+    s === "captured" ||
+    s === "refunded" ||
+    s === "requires_manual_review"
+  );
+}
+
+function isPayoutStatus(s: unknown): s is PayoutStatus {
+  return (
+    s === "scheduled" ||
+    s === "in_transit" ||
+    s === "paid" ||
+    s === "failed" ||
+    s === "reversed" ||
+    s === "clawback_pending"
+  );
 }
 
 function isXeroSyncStatus(s: unknown): s is NonNullable<AdminPaymentRow["xeroSyncStatus"]> {
@@ -100,6 +146,30 @@ function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
     xeroOnlineInvoiceUrl: o.xeroOnlineInvoiceUrl != null ? String(o.xeroOnlineInvoiceUrl) : null,
     xeroSyncStatus: isXeroSyncStatus(xeroSync) ? xeroSync : null,
     xeroLastError: o.xeroLastError != null ? String(o.xeroLastError) : null,
+  };
+}
+
+function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
+  const o = raw as Record<string, unknown>;
+  return {
+    id: String(o.id ?? ""),
+    legalEntityId: String(o.legalEntityId ?? ""),
+    periodStart: String(o.periodStart ?? ""),
+    periodEnd: String(o.periodEnd ?? ""),
+    grossAmount: String(o.grossAmount ?? "0.00"),
+    platformFee: String(o.platformFee ?? "0.00"),
+    stripeFee: String(o.stripeFee ?? "0.00"),
+    netAmount: String(o.netAmount ?? "0.00"),
+    currency: String(o.currency ?? "GBP"),
+    status: isPayoutStatus(o.status) ? o.status : "scheduled",
+    stripeTransferId: o.stripeTransferId == null ? null : String(o.stripeTransferId),
+    xeroBillId: o.xeroBillId == null ? null : String(o.xeroBillId),
+    failureReason: o.failureReason == null ? null : String(o.failureReason),
+    processedAt: o.processedAt == null ? null : String(o.processedAt),
+    statementUrl: o.statementUrl == null ? null : String(o.statementUrl),
+    statementGenerationError:
+      o.statementGenerationError == null ? null : String(o.statementGenerationError),
+    createdAt: String(o.createdAt ?? ""),
   };
 }
 
@@ -212,6 +282,27 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   return body.data.map(parseAdminPaymentRow);
 }
 
+export async function getAdminPayoutList(
+  params: {
+    legalEntityId?: string;
+    status?: PayoutStatus;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<AdminPayoutRow[]> {
+  const qs = new URLSearchParams();
+  if (params.legalEntityId) qs.set("legalEntityId", params.legalEntityId);
+  if (params.status) qs.set("status", params.status);
+  qs.set("limit", String(params.limit ?? 50));
+  qs.set("offset", String(params.offset ?? 0));
+  const res = await authedServerFetch(`/admin/payouts?${qs.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load payouts: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseAdminPayoutRow);
+}
+
 export type AdminXeroIntegrationStatus = {
   connected: boolean;
   tenantId: string | null;
@@ -256,6 +347,85 @@ export type AdminTodayMetricsPayload = {
   stalePendingPayments: number;
   revenueToday: string;
 };
+
+export type AdminFinanceIssuesPayload = {
+  failedPayoutCount: number;
+  legalEntitiesWithStripeConnectRequirementsCount: number;
+  staleBlockedScheduledPayoutCount: number;
+  entitiesPendingReviewCount: number;
+  artistsPendingApprovalCount: number;
+  staleIdentitySessionsCount: number;
+  documentsAwaitingReviewCount: number;
+};
+
+export async function getAdminFinanceIssues(): Promise<AdminFinanceIssuesPayload> {
+  const res = await authedServerFetch("/admin/metrics/finance-issues");
+  if (!res.ok) throw new Error(`Failed to load finance issue metrics: ${res.status}`);
+  const body = (await res.json()) as { data: AdminFinanceIssuesPayload };
+  return body.data;
+}
+
+export type AdminOnboardingIssuesPayload = {
+  entitiesPendingReview: { id: string; displayName: string; status: string }[];
+  artistsPendingApproval: { id: string; displayName: string; status: string }[];
+  staleIdentitySessions: { id: string; userId: string; status: string; createdAt: string }[];
+  documentsAwaitingReview: {
+    id: string;
+    legalEntityId: string;
+    entityDisplayName: string;
+    uploadObjectId: string;
+    uploadedAt: string;
+  }[];
+};
+
+export async function getAdminOnboardingIssues(): Promise<AdminOnboardingIssuesPayload> {
+  const res = await authedServerFetch("/admin/onboarding-issues");
+  if (!res.ok) throw new Error(`Failed to load onboarding issues: ${res.status}`);
+  const body = (await res.json()) as { data: AdminOnboardingIssuesPayload };
+  return body.data;
+}
+
+export type AdminStripeConnectRequirementRow = {
+  id: string;
+  displayName: string;
+  status: LegalEntityStatus;
+};
+
+export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Promise<
+  AdminStripeConnectRequirementRow[]
+> {
+  const res = await authedServerFetch("/admin/legal-entities/stripe-connect-requirements");
+  if (!res.ok) {
+    throw new Error(`Failed to load legal entities with Stripe requirements: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminStripeConnectRequirementRow[] };
+  return body.data;
+}
+
+export type AdminManualReviewPaymentRow = {
+  paymentId: string;
+  lotId: string;
+  lotTitle: string;
+  lotNumber: number | null;
+  winnerUserId: string;
+  winnerEmail: string;
+  sellerLegalEntityId: string;
+  sellerDisplayName: string;
+  sellerStatus: LegalEntityStatus;
+  sellerArchivedAt: string | null;
+  amount: string;
+  currency: string;
+  archiveReason: string | null;
+  archiveTimestamp: string | null;
+  createdAt: string;
+};
+
+export async function getAdminManualReviewPayments(): Promise<AdminManualReviewPaymentRow[]> {
+  const res = await authedServerFetch("/admin/payments/manual-review");
+  if (!res.ok) throw new Error(`Failed to load manual review payments: ${res.status}`);
+  const body = (await res.json()) as { data: AdminManualReviewPaymentRow[] };
+  return body.data;
+}
 
 export async function getAdminMetricsToday(): Promise<AdminTodayMetricsPayload> {
   const res = await authedServerFetch("/admin/metrics/today");
@@ -331,4 +501,81 @@ export async function getAdminUserById(id: string): Promise<AdminUserDetailPaylo
   if (!res.ok) throw new Error(`Failed to load user: ${res.status}`);
   const body = (await res.json()) as { data: AdminUserDetailPayload };
   return body.data;
+}
+
+function parseLegalEntityFromAdminApi(raw: Record<string, unknown>): LegalEntity {
+  const status =
+    typeof raw.status === "string" && legalEntityStatuses.includes(raw.status as LegalEntityStatus)
+      ? (raw.status as LegalEntityStatus)
+      : "lead";
+  const kind =
+    typeof raw.kind === "string" &&
+    legalEntityKinds.includes(raw.kind as "individual" | "organisation")
+      ? (raw.kind as LegalEntity["kind"])
+      : "individual";
+  const subkind =
+    typeof raw.subkind === "string" &&
+    legalEntitySubkinds.includes(raw.subkind as LegalEntity["subkind"])
+      ? (raw.subkind as LegalEntity["subkind"])
+      : "other";
+  const req = raw.stripeConnectRequirementsCurrentlyDue;
+  const stripeConnectRequirementsCurrentlyDue = Array.isArray(req)
+    ? (req as unknown[]).map((x) => String(x))
+    : [];
+  return {
+    id: String(raw.id ?? ""),
+    displayName: String(raw.displayName ?? ""),
+    legalName: raw.legalName == null ? null : String(raw.legalName),
+    slug: raw.slug == null ? null : String(raw.slug),
+    kind,
+    subkind,
+    createdByUserId: String(raw.createdByUserId ?? ""),
+    status,
+    statusChangedAt: raw.statusChangedAt ? new Date(String(raw.statusChangedAt)) : null,
+    statusChangedByUserId:
+      raw.statusChangedByUserId == null ? null : String(raw.statusChangedByUserId),
+    stripeConnectAccountId:
+      raw.stripeConnectAccountId == null ? null : String(raw.stripeConnectAccountId),
+    stripeConnectChargesEnabled: Boolean(raw.stripeConnectChargesEnabled ?? false),
+    stripeConnectPayoutsEnabled: Boolean(raw.stripeConnectPayoutsEnabled ?? false),
+    stripeConnectRequirementsCurrentlyDue,
+    xeroContactId: raw.xeroContactId == null ? null : String(raw.xeroContactId),
+    vatNumber: raw.vatNumber == null ? null : String(raw.vatNumber),
+    marginSchemeEligible: Boolean(raw.marginSchemeEligible ?? false),
+    isLaxManaged: Boolean(raw.isLaxManaged ?? false),
+    platformFeeBps: raw.platformFeeBps == null ? null : Number(raw.platformFeeBps),
+    createdAt: new Date(String(raw.createdAt ?? "")),
+    updatedAt: new Date(String(raw.updatedAt ?? "")),
+  };
+}
+
+export async function getAdminLegalEntityById(id: string): Promise<LegalEntity | null> {
+  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load legal entity: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown> };
+  return parseLegalEntityFromAdminApi(body.data);
+}
+
+export type LotArtistBackfillReviewTask = {
+  id: string;
+  kind: string;
+  status: string;
+  targetLotId: string | null;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+};
+
+export async function getLotArtistBackfillReviewTasks(): Promise<LotArtistBackfillReviewTask[]> {
+  const res = await authedServerFetch("/admin/lots/artist-backfill-review");
+  if (!res.ok) throw new Error(`Failed to load artist backfill tasks: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return body.data.map((row) => ({
+    id: String(row.id ?? ""),
+    kind: String(row.kind ?? ""),
+    status: String(row.status ?? ""),
+    targetLotId: row.targetLotId == null ? null : String(row.targetLotId),
+    payload: (row.payload as Record<string, unknown>) ?? {},
+    createdAt: new Date(String(row.createdAt ?? "")),
+  }));
 }

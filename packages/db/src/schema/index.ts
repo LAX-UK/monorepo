@@ -23,8 +23,18 @@ export * from "./external-accounts.js";
 export * from "./oauth.js";
 export * from "./webhook-events.js";
 export * from "./domain-events.js";
+export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
 export * from "./email.js";
+/** Legal Entity Model */
+export * from "./legal-entities.js";
+export * from "./legal-entity-members.js";
+export * from "./legal-entity-addresses.js";
+export * from "./legal-entity-documents.js";
+export * from "./payouts.js";
+export * from "./kyc.js";
+export * from "./artist-aliases.js";
+export * from "./admin-review-tasks.js";
 export {
   bidRelations,
   categoryRelations,
