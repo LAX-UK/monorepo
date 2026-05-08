@@ -405,11 +405,18 @@ describe("StripeConnectService.initiateTransfer", () => {
     };
     const result = await svc.initiateTransfer("po1", { keepScheduledOnTransferFailure: true });
     expect(result).toEqual(
-      expect.objectContaining({ ok: false, reason: "stripe_error", stripeErrorCode: "card_declined" }),
+      expect.objectContaining({
+        ok: false,
+        reason: "stripe_error",
+        stripeErrorCode: "card_declined",
+      }),
     );
     expect(
       updateStatus.mock.calls.some(
-        (c) => c[0] === "po1" && c[1].status === "scheduled" && String(c[1].failureReason).includes("stripe_transfer_failed"),
+        (c) =>
+          c[0] === "po1" &&
+          c[1].status === "scheduled" &&
+          String(c[1].failureReason).includes("stripe_transfer_failed"),
       ),
     ).toBe(true);
     expect(publisher.publish).toHaveBeenCalledWith(

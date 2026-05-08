@@ -3,12 +3,12 @@ import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutRepository, PendingPaymentRow } from "./interfaces/payout-repository.js";
-import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
   PayoutStatusTransitionError,
 } from "./interfaces/payout.js";
+import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 import { PayoutService } from "./payout.service.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
@@ -561,11 +561,13 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue(entities),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
-      findUnlinkedCapturedPayments: vi.fn().mockImplementation(async (id: string) =>
-        entities.includes(id)
-          ? pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])
-          : [],
-      ),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockImplementation(async (id: string) =>
+          entities.includes(id)
+            ? pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])
+            : [],
+        ),
       create,
       insertLine,
     });
@@ -607,9 +609,9 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1, e2, e3, e4]),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
-      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
-        pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }]),
-      ),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockResolvedValue(pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])),
       create,
       insertLine,
     });
@@ -641,9 +643,11 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
       }
       return { ok: true, stripeTransferId: "tr_final" };
     });
-    const create = vi.fn().mockImplementation(async (input: { legalEntityId: string }) =>
-      payout({ id: "po-resume-5", legalEntityId: input.legalEntityId }),
-    );
+    const create = vi
+      .fn()
+      .mockImplementation(async (input: { legalEntityId: string }) =>
+        payout({ id: "po-resume-5", legalEntityId: input.legalEntityId }),
+      );
     const insertLine = vi.fn().mockImplementation(async (input: { payoutId: string }) => ({
       id: `line-${input.payoutId}`,
       payoutId: input.payoutId,
@@ -657,9 +661,9 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: listUnlinked,
       listScheduledPayoutsAwaitingTransfer: listResume,
-      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
-        pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }]),
-      ),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockResolvedValue(pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])),
       create,
       insertLine,
     });
