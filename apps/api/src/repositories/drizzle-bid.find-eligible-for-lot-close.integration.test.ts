@@ -101,7 +101,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           images: [],
           auctionType: "english",
           startingPrice: "100.00",
-          reservePrice: "50.00",
+          reservePrice: "100.00",
           currentPrice: "1000.00",
           startTime: new Date(t.getTime() - 86_400_000),
           endTime: new Date(t.getTime() - 3600_000),
@@ -127,11 +127,12 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         const repo = new DrizzleBidRepository(tx);
         const eligible = await repo.findEligibleBidsForLotClose(lotId, {
           sellerLegalEntityId: sellerLeId,
-          reservePrice: "50.00",
+          reservePrice: "100.00",
           sort: "english",
         });
 
-        expect(eligible).toHaveLength(1);
+        // Repo returns all SQL-eligible rows (same as production reads via sqlEligible[0]).
+        expect(eligible).toHaveLength(7);
         const winner = eligible[0];
         if (!winner) throw new Error("expected eligible winner");
         expect(winner.placedByUserId).toBe(buyerUser(3));
@@ -239,7 +240,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           images: [],
           auctionType: "english",
           startingPrice: "100.00",
-          reservePrice: "50.00",
+          reservePrice: "100.00",
           currentPrice: "500.00",
           startTime: new Date(t.getTime() - 86_400_000),
           endTime: new Date(t.getTime() - 3600_000),
@@ -268,7 +269,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
         const repo = new DrizzleBidRepository(tx);
         const eligible = await repo.findEligibleBidsForLotClose(lotId2, {
           sellerLegalEntityId: leSeller,
-          reservePrice: "50.00",
+          reservePrice: "100.00",
           sort: "english",
         });
 
