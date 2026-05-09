@@ -1,4 +1,4 @@
-import { payoutLineKinds, payoutStatuses } from "@auction/types";
+import { payoutStatuses } from "@auction/types";
 import { z } from "zod";
 
 const decimalString = z.string().regex(/^-?\d+(\.\d{1,2})?$/, "Must be a valid decimal string");

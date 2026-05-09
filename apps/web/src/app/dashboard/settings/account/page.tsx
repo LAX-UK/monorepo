@@ -1,4 +1,5 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
+import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import {
@@ -70,6 +71,8 @@ export default async function AccountSettingsPage({
           <ChangeEmailForm currentEmail={user.email} />
         </CardContent>
       </Card>
+
+      <ReduceMotionCard />
     </div>
   );
 }

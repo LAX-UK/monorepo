@@ -1,6 +1,4 @@
 "use client";
-
-import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
 import type { SubmitService } from "@/lib/auth/submit-service";
 import { useCallback, useState } from "react";
 

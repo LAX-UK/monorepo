@@ -148,7 +148,9 @@ export type {
   MarketingPaginationProps,
 } from "./components/ui/marketing-pagination.js";
 export { Countdown } from "./components/ui/countdown.js";
-export type { CountdownProps } from "./components/ui/countdown.js";
+export type { CountdownProps, CountdownUrgency } from "./components/ui/countdown.js";
+export { CountUp } from "./components/ui/count-up.js";
+export type { CountUpProps } from "./components/ui/count-up.js";
 export { TocNav } from "./components/ui/toc-nav.js";
 export type { TocNavItem, TocNavProps } from "./components/ui/toc-nav.js";
 export { SectionCta } from "./components/ui/section-cta.js";

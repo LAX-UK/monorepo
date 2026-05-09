@@ -7,13 +7,7 @@ import { and, eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
-import {
-  type UploadKind,
-  canUploadKind,
-  createUploadKey,
-  isUploadKind,
-  uploadPolicies,
-} from "./upload.policy.js";
+import { canUploadKind, createUploadKey, isUploadKind, uploadPolicies } from "./upload.policy.js";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);

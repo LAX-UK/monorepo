@@ -1,8 +1,10 @@
+import { BuyersPremiumChip } from "@/components/marketing/buyers-premium-chip";
+import { MagneticButton } from "@/components/marketing/magnetic-button";
 import type { HeroLotVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
-import { DisplayHeading, LabelCaps, LiveDot, StatTile } from "@auction/ui";
+import { Countdown, DisplayHeading, LabelCaps, LiveDot, StatTile } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -74,23 +76,38 @@ export function LaxHeroLot({ lot }: Props) {
                 <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
                 <StatTile label="Current bid" value={lot.currentBidFormatted} tone="white" />
                 <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
+                {lot.isAuctionLive && lot.endTime ? (
+                  <div className="flex min-w-0 flex-col gap-2 border-l-2 border-accent-gold pl-4">
+                    <span className="font-label text-[13px] font-medium uppercase leading-4 text-white/80">
+                      Closes in
+                    </span>
+                    <Countdown
+                      end={new Date(lot.endTime)}
+                      variant="display"
+                      className="font-headline text-2xl font-normal leading-none tracking-[-0.96px] text-white md:text-[28px]"
+                    />
+                  </div>
+                ) : null}
               </div>
+              <BuyersPremiumChip tone="dark" className="fade-up-d2" />
             </div>
             <div className="fade-up-d3 flex flex-col gap-4 sm:flex-row sm:items-start">
-              <Button
-                variant="cta"
-                size="xl"
-                className="min-h-[44px] min-w-0 sm:min-w-[218px]"
-                asChild
-              >
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center gap-[11px]"
+              <MagneticButton strength={10}>
+                <Button
+                  variant="cta"
+                  size="xl"
+                  className="min-h-[44px] min-w-0 sm:min-w-[218px]"
+                  asChild
                 >
-                  Register to Bid
-                  <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
-                </Link>
-              </Button>
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center justify-center gap-[11px]"
+                  >
+                    Register to Bid
+                    <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
+                  </Link>
+                </Button>
+              </MagneticButton>
               {lot.isAuctionLive ? (
                 <Button
                   variant="liveJoin"

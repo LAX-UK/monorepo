@@ -1,15 +1,17 @@
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
-import { ArtworkOnsitePanel } from "@/components/sections/artwork/artwork-onsite-panel";
-import { ArtworkSplitView } from "@/components/sections/artwork/artwork-split-view";
 import {
   findUserLatestBidMeta,
-  mapLotToHeroVM,
+  mapAuctionSessionHeaderVM,
   mapLotToSummarySeed,
+  mapSaleLotsToQueueVMs,
   mapSiblingsToRailVM,
 } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/build-artwork-accordion-blocks";
+import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwork-online-layout";
+import { ArtworkOnsiteLayout } from "@/components/sections/artwork/layouts/artwork-onsite-layout";
+import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
@@ -106,7 +108,6 @@ export default async function ArtworkPage({ params }: PageProps) {
 
   const sellerHref = seller ? artistPath(seller) : `/artist/${auction.sellerId}`;
   const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref, seller?.image ?? null);
-  const heroVM = mapLotToHeroVM(auction, parentSale, saleLots);
   const marketingBlocks = buildArtworkPageAccordionBlocks({
     lot: auction,
     artist: artistForAccordion,
@@ -138,23 +139,27 @@ export default async function ArtworkPage({ params }: PageProps) {
     crumbs,
   );
 
-  const saleContext = saleBundle
-    ? {
-        backHref: salePath(saleBundle.sale),
-        title: saleBundle.sale.title,
-        lotCount: saleBundle.lots?.length ?? 0,
-        closesLabel: new Date(saleBundle.sale.endTime).toLocaleString(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }),
-      }
-    : null;
-
   const isOnsiteSale = saleBundle?.sale.deliveryMode === "onsite";
-  const bidPanel =
-    isOnsiteSale && saleBundle ? (
-      <ArtworkOnsitePanel auction={auction} sale={saleBundle.sale} summarySeed={summarySeed} />
-    ) : (
+
+  const queueVMs = mapSaleLotsToQueueVMs(auction, saleLots, (l) =>
+    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  );
+
+  const sessionHeaderVM = mapAuctionSessionHeaderVM({
+    saleTitle: parentSale?.title ?? "Auction",
+    lot: auction,
+    userVerified: session?.emailVerified ?? false,
+    paddleNumber: null,
+  });
+
+  const onlineBidPanel = (
+    <OnlineBidsView
+      lotId={auction.id}
+      lot={auction}
+      initialHistory={initialHistory}
+      currentUserId={session?.id ?? null}
+      watcherCount={null}
+    >
       <ArtworkBidPanel
         auction={auction}
         initialHistory={initialHistory}
@@ -163,11 +168,23 @@ export default async function ArtworkPage({ params }: PageProps) {
         summarySeed={summarySeed}
         initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
         loginNextPath={lotPath(auction)}
+        omitPricingHeader
       />
-    );
+    </OnlineBidsView>
+  );
+
+  const followSlot = (
+    <ArtworkWatchToggle
+      lotId={auction.id}
+      initialWatching={watching}
+      isAuthenticated={Boolean(session)}
+      loginNextPath={lotPath(auction)}
+      appearance="outlined-block"
+    />
+  );
 
   return (
-    <main id="main-content" className="pt-[var(--header-height)]">
+    <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
       <script
         id={`auction-jsonld-${auction.id}`}
         type="application/ld+json"
@@ -176,28 +193,37 @@ export default async function ArtworkPage({ params }: PageProps) {
         {jsonLdText}
       </script>
       <LotPortsProvider>
-        <ArtworkSplitView
-          auction={auction}
-          heroVM={heroVM}
-          summarySeed={summarySeed}
-          marketingAccordionBlocks={marketingBlocks}
-          rail={rail}
-          saleContext={saleContext}
-          isAuthenticated={Boolean(session)}
-          watchedLotIds={watchedLotIds}
-          currentUserId={session?.id ?? null}
-          shareUrl={shareUrl}
-          followSlot={
-            <ArtworkWatchToggle
-              lotId={auction.id}
-              initialWatching={watching}
-              isAuthenticated={Boolean(session)}
-              loginNextPath={lotPath(auction)}
-              appearance="outlined-block"
-            />
-          }
-          bidPanel={bidPanel}
-        />
+        {isOnsiteSale && saleBundle ? (
+          <ArtworkOnsiteLayout
+            auction={auction}
+            sale={saleBundle.sale}
+            summarySeed={summarySeed}
+            marketingAccordionBlocks={marketingBlocks}
+            rail={rail}
+            isAuthenticated={Boolean(session)}
+            watchedLotIds={watchedLotIds}
+            currentUserId={session?.id ?? null}
+            shareUrl={shareUrl}
+            followSlot={followSlot}
+            initialHistory={initialHistory}
+          />
+        ) : (
+          <ArtworkOnlineLayout
+            auction={auction}
+            sessionHeader={sessionHeaderVM}
+            queueCurrent={queueVMs.current}
+            queueUpNext={queueVMs.upNext}
+            queueRest={queueVMs.queue}
+            marketingAccordionBlocks={marketingBlocks}
+            rail={rail}
+            isAuthenticated={Boolean(session)}
+            watchedLotIds={watchedLotIds}
+            currentUserId={session?.id ?? null}
+            shareUrl={shareUrl}
+            followSlot={followSlot}
+            bidPanel={onlineBidPanel}
+          />
+        )}
       </LotPortsProvider>
     </main>
   );
