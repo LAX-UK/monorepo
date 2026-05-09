@@ -1,7 +1,10 @@
-/** Full demo seed: wipes auth + app tables, then loads categories, users (with Better Auth
- * credential accounts), sales + lots (all statuses/types), bids, watchlist, notifications, payments.
- * * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed
- * * Same password for every seeded account (email/password sign-in).
+/** Comprehensive demo seed: covers every platform role, legal-entity subkind,
+ * entity status, entity-member role, KYC state, email state, invitation status,
+ * user-address variant, and KYB document. Wipes auth + app tables, then loads
+ * all demo data.
+ *
+ * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed
+ * Same password for every seeded account (email/password sign-in).
  */
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "@better-auth/utils/password";
@@ -15,6 +18,7 @@ const { Pool } = pg;
 /** One password for all seeded accounts — safe for local/staging only. */
 const SEED_PASSWORD = "Password123!";
 
+// ─── Original user IDs ────────────────────────────────────────────────────────
 const ADMIN_ID = "admin-seed-001";
 const ACCOUNTANT_ID = "accountant-seed-001";
 const USER1_ID = "user-seed-001";
@@ -24,6 +28,31 @@ const APPLE_TEST_ID = "user-seed-apple";
 const GALLERY_ADMIN_ID = "gallery-admin-seed-001";
 const GALLERY_FINANCE_ID = "gallery-finance-seed-001";
 
+// ─── Extended user IDs ────────────────────────────────────────────────────────
+/** Platform role: client | Suspended user — email verified, KYC approved, account suspended. */
+const SUSPENDED_ID = "user-seed-suspended";
+/** Platform role: client | New registrant — email NOT yet verified, KYC unverified. */
+const UNVERIFIED_ID = "user-seed-unverified";
+/** Platform role: client | emailStatus=bounced — delivery hard-failed after prior verification. */
+const BOUNCED_ID = "user-seed-bounced";
+/** Platform role: client | KYC in progress — Stripe Identity session is processing. */
+const KYC_PENDING_ID = "user-seed-kyc-pending";
+/** Platform role: client | KYC hard-rejected by Stripe Identity. */
+const KYC_REJECTED_ID = "user-seed-kyc-rejected";
+/** Platform role: client | Owns an estate organisation. */
+const ESTATE_OWNER_ID = "user-seed-estate-owner";
+/** Platform role: client | Owns company, charity, institution, and other-subkind organisations. */
+const COMPANY_OWNER_ID = "user-seed-company-owner";
+/** Platform role: client | consignor seat in Northbank Gallery + staff seat in the estate. */
+const CONSIGNOR_ID = "user-seed-consignor";
+/** Platform role: client | buyer_agent seat in the otherRestricted entity. */
+const BUYER_AGENT_ID = "user-seed-buyer-agent";
+/** Platform role: client | viewer seat in Northbank Gallery. */
+const VIEWER_ID = "user-seed-viewer";
+/** Platform role: client | LAX specialist invited into Northbank Gallery (opt-in by gallery). */
+const SPECIALIST_ID = "user-seed-specialist";
+
+// ─── Original personal legal-entity IDs ──────────────────────────────────────
 const LE = {
   admin: "10000000-0000-4000-8000-000000000001",
   accountant: "10000000-0000-4000-8000-000000000002",
@@ -35,28 +64,63 @@ const LE = {
   restrictedDealer: "10000000-0000-4000-8000-000000000008",
 } as const;
 
-const legalEntityIdForUser = (userId: string): string => {
-  switch (userId) {
-    case ADMIN_ID:
-      return LE.admin;
-    case ACCOUNTANT_ID:
-      return LE.accountant;
-    case USER1_ID:
-      return LE.user1;
-    case USER2_ID:
-      return LE.user2;
-    case GOOGLE_TEST_ID:
-      return LE.google;
-    case APPLE_TEST_ID:
-      return LE.apple;
-    case GALLERY_ADMIN_ID:
-    case GALLERY_FINANCE_ID:
-      return LE.gallery;
-    default:
-      throw new Error(`Missing seeded legal entity for user ${userId}`);
-  }
-};
+// ─── Extended personal legal-entity IDs ──────────────────────────────────────
+/**
+ * Personal (individual) entities for newly-added users, plus Maya Okafor and
+ * Samir Patel who were missing personal entities in the original seed (every
+ * user must have at least one individual entity per the LAX data model).
+ */
+const LEX = {
+  /** Maya Okafor — her own individual entity (was missing from original seed). */
+  mayaPersonal: "10000000-0000-4000-8000-000000000009",
+  /** Samir Patel — his own individual entity (was missing from original seed). */
+  samirPersonal: "10000000-0000-4000-8000-000000000010",
+  suspended: "10000000-0000-4000-8000-000000000011",
+  unverified: "10000000-0000-4000-8000-000000000012",
+  bounced: "10000000-0000-4000-8000-000000000013",
+  kycPending: "10000000-0000-4000-8000-000000000014",
+  kycRejected: "10000000-0000-4000-8000-000000000015",
+  estateOwner: "10000000-0000-4000-8000-000000000016",
+  companyOwner: "10000000-0000-4000-8000-000000000017",
+  consignor: "10000000-0000-4000-8000-000000000018",
+  buyerAgent: "10000000-0000-4000-8000-000000000019",
+  viewer: "10000000-0000-4000-8000-000000000020",
+  specialist: "10000000-0000-4000-8000-000000000021",
+} as const;
 
+// ─── Organisation legal-entity IDs — all subkinds × all statuses ─────────────
+/**
+ * Eight new org entities — one per missing subkind and/or status combination.
+ * Together with the original gallery (approved) and restrictedDealer
+ * (connect_pending), every legal_entity_status value is now represented.
+ */
+const LEO = {
+  /** estate / lead — brand new, no docs yet. */
+  estateLead: "20000000-0000-4000-8000-000000000001",
+  /** company / docs_requested — admin has asked for KYB documents. */
+  companyDocsRequested: "20000000-0000-4000-8000-000000000002",
+  /** charity / docs_received — docs uploaded, awaiting admin re-review. */
+  charityDocsReceived: "20000000-0000-4000-8000-000000000003",
+  /** institution / under_review — admin is actively reviewing. */
+  institutionUnderReview: "20000000-0000-4000-8000-000000000004",
+  /** lax_stock / approved — LAX-managed inventory; skips Stripe Connect entirely. */
+  laxStockApproved: "20000000-0000-4000-8000-000000000005",
+  /** other / restricted — flagged but still operational; admin co-sign required. */
+  otherRestricted: "20000000-0000-4000-8000-000000000006",
+  /** dealer / rejected — hard fail from KYB review. */
+  dealerRejected: "20000000-0000-4000-8000-000000000007",
+  /** gallery / archived — terminal; hidden from the entity switcher. */
+  galleryArchived: "20000000-0000-4000-8000-000000000008",
+} as const;
+
+// ─── Upload-object IDs needed for KYB document seeding ───────────────────────
+const UPLOAD = {
+  charityHouseExtract: "f0000001-0000-4000-8000-000000000001",
+  institutionBeneficialOwner: "f0000002-0000-4000-8000-000000000002",
+  institutionVatCert: "f0000003-0000-4000-8000-000000000003",
+} as const;
+
+// ─── Original lookup maps ─────────────────────────────────────────────────────
 const CAT = {
   paintings: "c1000001-0000-4000-8000-000000000001",
   sculpture: "c1000002-0000-4000-8000-000000000002",
@@ -70,13 +134,11 @@ const CAT = {
   finePrints: "c1000010-0000-4000-8000-000000000010",
 } as const;
 
-/** Sale ids — must be valid UUID hex only (PostgreSQL uuid type). */
 const S = {
   evening: "e1000001-0000-4000-8000-000000000001",
   online: "e1000002-0000-4000-8000-000000000002",
 } as const;
 
-/** Fixed UUIDs for seeded item submissions (admin queue / demos). */
 const SUB = {
   draft: "d2000001-0000-4000-8000-000000000001",
   submitted: "d2000002-0000-4000-8000-000000000002",
@@ -128,6 +190,52 @@ const IMG = {
   d: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=1200&q=80",
   e: "https://images.unsplash.com/photo-1501472312651-726afe119ff1?w=1200&q=80",
 } as const;
+
+// ─── Legal-entity lookup (personal entity for bid/payment attribution) ────────
+const legalEntityIdForUser = (userId: string): string => {
+  switch (userId) {
+    case ADMIN_ID:
+      return LE.admin;
+    case ACCOUNTANT_ID:
+      return LE.accountant;
+    case USER1_ID:
+      return LE.user1;
+    case USER2_ID:
+      return LE.user2;
+    case GOOGLE_TEST_ID:
+      return LE.google;
+    case APPLE_TEST_ID:
+      return LE.apple;
+    case GALLERY_ADMIN_ID:
+      return LEX.mayaPersonal;
+    case GALLERY_FINANCE_ID:
+      return LEX.samirPersonal;
+    case SUSPENDED_ID:
+      return LEX.suspended;
+    case UNVERIFIED_ID:
+      return LEX.unverified;
+    case BOUNCED_ID:
+      return LEX.bounced;
+    case KYC_PENDING_ID:
+      return LEX.kycPending;
+    case KYC_REJECTED_ID:
+      return LEX.kycRejected;
+    case ESTATE_OWNER_ID:
+      return LEX.estateOwner;
+    case COMPANY_OWNER_ID:
+      return LEX.companyOwner;
+    case CONSIGNOR_ID:
+      return LEX.consignor;
+    case BUYER_AGENT_ID:
+      return LEX.buyerAgent;
+    case VIEWER_ID:
+      return LEX.viewer;
+    case SPECIALIST_ID:
+      return LEX.specialist;
+    default:
+      throw new Error(`Missing seeded legal entity for user ${userId}`);
+  }
+};
 
 async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   const {
@@ -234,6 +342,7 @@ async function main() {
   const db = drizzle(pool, { schema });
   const now = Date.now();
   const day = 86_400_000;
+  const hour = 3_600_000;
   const stamp = new Date();
 
   const {
@@ -255,6 +364,7 @@ async function main() {
     submissionCategories,
     legalEntity,
     legalEntityAddress,
+    legalEntityDocument,
     legalEntityMember,
     legalEntityPayoutMethod,
     kycVerification,
@@ -266,6 +376,9 @@ async function main() {
     saleFollow,
     artistWatchlist,
     externalAccount,
+    uploadObject,
+    userAddress,
+    userInvitation,
   } = schema;
 
   await clearAll(db);
@@ -288,47 +401,74 @@ async function main() {
     updatedAt: stamp,
   });
 
+  // ── Users ──────────────────────────────────────────────────────────────────
+  // kycStatus, firstName, lastName, dateOfBirth, kycVerifiedAt are now set
+  // consistently with the corresponding kycVerification records below.
+
   await db.insert(user).values([
+    // ── Platform staff ───────────────────────────────────────────────────────
     {
       id: ADMIN_ID,
       name: "Eleanor Pereira",
+      firstName: "Eleanor",
+      lastName: "Pereira",
       email: "admin@lax.bid",
       emailVerified: true,
       image: null,
       role: "administrator",
+      kycStatus: "unverified",
       createdAt: new Date(now - 180 * day),
       updatedAt: stamp,
     },
     {
       id: ACCOUNTANT_ID,
       name: "Erin Ledger",
+      firstName: "Erin",
+      lastName: "Ledger",
       email: "accountant@lax.bid",
       emailVerified: true,
       image: null,
       role: "accountant",
+      kycStatus: "unverified",
       createdAt: new Date(now - 150 * day),
       updatedAt: stamp,
     },
+
+    // ── Fully-verified clients ────────────────────────────────────────────────
     {
       id: USER1_ID,
       name: "Robert Thorne",
+      firstName: "Robert",
+      lastName: "Thorne",
+      mobile: "+44 7700 900001",
       email: "user1@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 89 * day),
+      dateOfBirth: "1982-04-11",
       createdAt: new Date(now - 120 * day),
       updatedAt: stamp,
     },
     {
       id: USER2_ID,
       name: "Carolina Price",
+      firstName: "Carolina",
+      lastName: "Price",
+      mobile: "+44 7700 900002",
       email: "user2@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 89 * day),
+      dateOfBirth: "1990-09-03",
       createdAt: new Date(now - 45 * day),
       updatedAt: stamp,
     },
+
+    // ── OAuth provider fixtures ───────────────────────────────────────────────
     {
       id: GOOGLE_TEST_ID,
       name: "Google Test",
@@ -336,6 +476,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      kycStatus: "unverified",
       createdAt: new Date(now - 30 * day),
       updatedAt: stamp,
     },
@@ -346,44 +487,243 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      kycStatus: "unverified",
       createdAt: new Date(now - 30 * day),
       updatedAt: stamp,
     },
+
+    // ── Gallery members ───────────────────────────────────────────────────────
     {
       id: GALLERY_ADMIN_ID,
       name: "Maya Okafor",
+      firstName: "Maya",
+      lastName: "Okafor",
       email: "gallery-admin@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
+      /** KYC session is in requires_input → maps to platform kycStatus pending. */
+      kycStatus: "pending",
       createdAt: new Date(now - 75 * day),
       updatedAt: stamp,
     },
     {
       id: GALLERY_FINANCE_ID,
       name: "Samir Patel",
+      firstName: "Samir",
+      lastName: "Patel",
+      mobile: "+44 7700 900008",
       email: "gallery-finance@lax.bid",
       emailVerified: true,
       image: null,
       role: "client",
+      kycStatus: "unverified",
       createdAt: new Date(now - 70 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case: suspended client ───────────────────────────────────────────
+    {
+      id: SUSPENDED_ID,
+      name: "Isabelle Laurent",
+      firstName: "Isabelle",
+      lastName: "Laurent",
+      email: "suspended@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 20 * day),
+      dateOfBirth: "1985-07-22",
+      suspendedAt: new Date(now - 3 * day),
+      suspendedReason: "Chargeback dispute under investigation.",
+      createdAt: new Date(now - 60 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case: unverified email ───────────────────────────────────────────
+    {
+      id: UNVERIFIED_ID,
+      name: "Felix Nakamura",
+      firstName: "Felix",
+      lastName: "Nakamura",
+      email: "unverified@lax.bid",
+      emailVerified: false,
+      image: null,
+      role: "client",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 1 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case: bounced email ──────────────────────────────────────────────
+    {
+      id: BOUNCED_ID,
+      name: "Yara Siddiqui",
+      firstName: "Yara",
+      lastName: "Siddiqui",
+      email: "bounced@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "unverified",
+      emailStatus: "bounced",
+      emailStatusChangedAt: new Date(now - 5 * day),
+      createdAt: new Date(now - 40 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case: KYC pending (Stripe Identity in processing) ───────────────
+    {
+      id: KYC_PENDING_ID,
+      name: "Marcus Obi",
+      firstName: "Marcus",
+      lastName: "Obi",
+      email: "kyc-pending@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "pending",
+      createdAt: new Date(now - 7 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case: KYC rejected ───────────────────────────────────────────────
+    {
+      id: KYC_REJECTED_ID,
+      name: "Priya Mehta",
+      firstName: "Priya",
+      lastName: "Mehta",
+      email: "kyc-rejected@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "rejected",
+      createdAt: new Date(now - 14 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Org owners ────────────────────────────────────────────────────────────
+    {
+      id: ESTATE_OWNER_ID,
+      name: "Victoria Harrington",
+      firstName: "Victoria",
+      lastName: "Harrington",
+      mobile: "+44 7700 900010",
+      email: "estate-owner@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 30 * day),
+      dateOfBirth: "1968-03-14",
+      createdAt: new Date(now - 50 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: COMPANY_OWNER_ID,
+      name: "James Crowley",
+      firstName: "James",
+      lastName: "Crowley",
+      mobile: "+44 7700 900011",
+      email: "company-owner@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 35 * day),
+      dateOfBirth: "1975-11-30",
+      createdAt: new Date(now - 55 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Entity-role fixtures ──────────────────────────────────────────────────
+    {
+      id: CONSIGNOR_ID,
+      name: "Lena Fischer",
+      firstName: "Lena",
+      lastName: "Fischer",
+      email: "consignor@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 25 * day),
+      dateOfBirth: "1992-06-08",
+      createdAt: new Date(now - 40 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: BUYER_AGENT_ID,
+      name: "Hassan Al-Rashid",
+      firstName: "Hassan",
+      lastName: "Al-Rashid",
+      mobile: "+44 7700 900013",
+      email: "buyer-agent@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 22 * day),
+      dateOfBirth: "1988-02-19",
+      createdAt: new Date(now - 35 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: VIEWER_ID,
+      name: "Sofia Petrov",
+      firstName: "Sofia",
+      lastName: "Petrov",
+      email: "viewer@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 20 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: SPECIALIST_ID,
+      name: "Dominic Ward",
+      firstName: "Dominic",
+      lastName: "Ward",
+      mobile: "+44 7700 900015",
+      email: "specialist@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 40 * day),
+      dateOfBirth: "1983-09-25",
+      createdAt: new Date(now - 60 * day),
       updatedAt: stamp,
     },
   ]);
 
-  await db
-    .insert(account)
-    .values([
-      credentialAccount(ADMIN_ID),
-      credentialAccount(ACCOUNTANT_ID),
-      credentialAccount(USER1_ID),
-      credentialAccount(USER2_ID),
-      credentialAccount(GOOGLE_TEST_ID),
-      credentialAccount(APPLE_TEST_ID),
-      credentialAccount(GALLERY_ADMIN_ID),
-      credentialAccount(GALLERY_FINANCE_ID),
-    ]);
+  // ── Credential accounts ────────────────────────────────────────────────────
+  await db.insert(account).values([
+    credentialAccount(ADMIN_ID),
+    credentialAccount(ACCOUNTANT_ID),
+    credentialAccount(USER1_ID),
+    credentialAccount(USER2_ID),
+    credentialAccount(GOOGLE_TEST_ID),
+    credentialAccount(APPLE_TEST_ID),
+    credentialAccount(GALLERY_ADMIN_ID),
+    credentialAccount(GALLERY_FINANCE_ID),
+    credentialAccount(SUSPENDED_ID),
+    credentialAccount(UNVERIFIED_ID),
+    credentialAccount(BOUNCED_ID),
+    credentialAccount(KYC_PENDING_ID),
+    credentialAccount(KYC_REJECTED_ID),
+    credentialAccount(ESTATE_OWNER_ID),
+    credentialAccount(COMPANY_OWNER_ID),
+    credentialAccount(CONSIGNOR_ID),
+    credentialAccount(BUYER_AGENT_ID),
+    credentialAccount(VIEWER_ID),
+    credentialAccount(SPECIALIST_ID),
+  ]);
 
+  // ── OAuth external accounts ────────────────────────────────────────────────
   await db.insert(externalAccount).values([
     {
       userId: GOOGLE_TEST_ID,
@@ -401,7 +741,9 @@ async function main() {
     },
   ]);
 
+  // ── Legal entities — personal (individual) ─────────────────────────────────
   await db.insert(legalEntity).values([
+    // ── Original personal entities ────────────────────────────────────────────
     {
       id: LE.admin,
       displayName: "Eleanor Pereira",
@@ -500,6 +842,8 @@ async function main() {
       createdAt: stamp,
       updatedAt: stamp,
     },
+
+    // ── Original organisation entities ────────────────────────────────────────
     {
       id: LE.gallery,
       displayName: "Northbank Gallery",
@@ -543,51 +887,362 @@ async function main() {
       createdAt: new Date(now - 20 * day),
       updatedAt: stamp,
     },
+
+    // ── Extended personal entities: Maya & Samir (were missing) ───────────────
+    {
+      id: LEX.mayaPersonal,
+      displayName: "Maya Okafor",
+      legalName: "Maya Okafor",
+      slug: "maya-okafor",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: GALLERY_ADMIN_ID,
+      status: "lead",
+      createdAt: new Date(now - 75 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.samirPersonal,
+      displayName: "Samir Patel",
+      legalName: "Samir Patel",
+      slug: "samir-patel",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: GALLERY_FINANCE_ID,
+      status: "lead",
+      createdAt: new Date(now - 70 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Edge-case personal entities ────────────────────────────────────────────
+    {
+      id: LEX.suspended,
+      displayName: "Isabelle Laurent",
+      legalName: "Isabelle Laurent",
+      slug: "isabelle-laurent",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: SUSPENDED_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 20 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_isabelle_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 60 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.unverified,
+      displayName: "Felix Nakamura",
+      legalName: "Felix Nakamura",
+      slug: "felix-nakamura",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: UNVERIFIED_ID,
+      /** Email not yet verified → cannot auto-progress past lead. */
+      status: "lead",
+      createdAt: new Date(now - 1 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.bounced,
+      displayName: "Yara Siddiqui",
+      legalName: "Yara Siddiqui",
+      slug: "yara-siddiqui",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: BOUNCED_ID,
+      status: "lead",
+      createdAt: new Date(now - 40 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.kycPending,
+      displayName: "Marcus Obi",
+      legalName: "Marcus Obi",
+      slug: "marcus-obi",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: KYC_PENDING_ID,
+      /** KYC in flight → Connect not started yet. */
+      status: "lead",
+      createdAt: new Date(now - 7 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.kycRejected,
+      displayName: "Priya Mehta",
+      legalName: "Priya Mehta",
+      slug: "priya-mehta",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: KYC_REJECTED_ID,
+      /** KYC hard-rejected → entity stays at lead (no admin doc review for individuals). */
+      status: "lead",
+      createdAt: new Date(now - 14 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.estateOwner,
+      displayName: "Victoria Harrington",
+      legalName: "Victoria Harrington",
+      slug: "victoria-harrington",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: ESTATE_OWNER_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 28 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_victoria_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 50 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.companyOwner,
+      displayName: "James Crowley",
+      legalName: "James Crowley",
+      slug: "james-crowley",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: COMPANY_OWNER_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 33 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_james_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 55 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.consignor,
+      displayName: "Lena Fischer",
+      legalName: "Lena Fischer",
+      slug: "lena-fischer",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: CONSIGNOR_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 23 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_lena_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 40 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.buyerAgent,
+      displayName: "Hassan Al-Rashid",
+      legalName: "Hassan Al-Rashid",
+      slug: "hassan-al-rashid",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: BUYER_AGENT_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 20 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_hassan_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 35 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.viewer,
+      displayName: "Sofia Petrov",
+      legalName: "Sofia Petrov",
+      slug: "sofia-petrov",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: VIEWER_ID,
+      status: "lead",
+      createdAt: new Date(now - 20 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.specialist,
+      displayName: "Dominic Ward",
+      legalName: "Dominic Ward",
+      slug: "dominic-ward",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: SPECIALIST_ID,
+      status: "approved",
+      statusChangedAt: new Date(now - 38 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_dominic_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 60 * day),
+      updatedAt: stamp,
+    },
   ]);
 
+  // ── Legal entities — organisations (all subkinds + all remaining statuses) ──
+  await db.insert(legalEntity).values([
+    // estate / lead ────────────────────────────────────────────────────────────
+    {
+      id: LEO.estateLead,
+      displayName: "Harrington Estate",
+      legalName: "The Harrington Estate Trust",
+      slug: "harrington-estate",
+      kind: "organisation",
+      subkind: "estate",
+      createdByUserId: ESTATE_OWNER_ID,
+      status: "lead",
+      createdAt: new Date(now - 10 * day),
+      updatedAt: stamp,
+    },
+
+    // company / docs_requested ─────────────────────────────────────────────────
+    {
+      id: LEO.companyDocsRequested,
+      displayName: "Crowley Fine Art Ltd",
+      legalName: "Crowley Fine Art Limited",
+      slug: "crowley-fine-art",
+      kind: "organisation",
+      subkind: "company",
+      createdByUserId: COMPANY_OWNER_ID,
+      status: "docs_requested",
+      statusChangedAt: new Date(now - 12 * day),
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: new Date(now - 20 * day),
+      updatedAt: stamp,
+    },
+
+    // charity / docs_received ──────────────────────────────────────────────────
+    {
+      id: LEO.charityDocsReceived,
+      displayName: "Crowley Arts Foundation",
+      legalName: "Crowley Arts Foundation (Registered Charity 1234567)",
+      slug: "crowley-arts-foundation",
+      kind: "organisation",
+      subkind: "charity",
+      createdByUserId: COMPANY_OWNER_ID,
+      status: "docs_received",
+      statusChangedAt: new Date(now - 8 * day),
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: new Date(now - 25 * day),
+      updatedAt: stamp,
+    },
+
+    // institution / under_review ───────────────────────────────────────────────
+    {
+      id: LEO.institutionUnderReview,
+      displayName: "Meridian Institute of Art",
+      legalName: "Meridian Institute of Art",
+      slug: "meridian-institute",
+      kind: "organisation",
+      subkind: "institution",
+      createdByUserId: COMPANY_OWNER_ID,
+      status: "under_review",
+      statusChangedAt: new Date(now - 4 * day),
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: new Date(now - 30 * day),
+      updatedAt: stamp,
+    },
+
+    // lax_stock / approved — LAX-managed inventory ─────────────────────────────
+    {
+      id: LEO.laxStockApproved,
+      displayName: "LAX House Stock",
+      legalName: "LAX London Auction House Stock Account",
+      slug: "lax-house-stock",
+      kind: "organisation",
+      subkind: "lax_stock",
+      /** Only platform admins may create lax_stock entities. */
+      createdByUserId: ADMIN_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      /** Skips Stripe Connect entirely — settles internally. */
+      isLaxManaged: true,
+      xeroContactId: "xero-contact-lax-stock-seed",
+      createdAt: new Date(now - 365 * day),
+      updatedAt: stamp,
+    },
+
+    // other / restricted ───────────────────────────────────────────────────────
+    {
+      id: LEO.otherRestricted,
+      displayName: "Harrington Advisors",
+      legalName: "Harrington Advisors Partnership",
+      slug: "harrington-advisors",
+      kind: "organisation",
+      subkind: "other",
+      createdByUserId: ESTATE_OWNER_ID,
+      status: "restricted",
+      statusChangedAt: new Date(now - 6 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_harrington_advisors",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      createdAt: new Date(now - 45 * day),
+      updatedAt: stamp,
+    },
+
+    // dealer / rejected ────────────────────────────────────────────────────────
+    {
+      id: LEO.dealerRejected,
+      displayName: "Crowley Secondary Market",
+      legalName: "Crowley Secondary Market Ltd",
+      slug: "crowley-secondary-market",
+      kind: "organisation",
+      subkind: "dealer",
+      createdByUserId: COMPANY_OWNER_ID,
+      status: "rejected",
+      statusChangedAt: new Date(now - 5 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_crowley_rejected",
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [
+        "company.verification.document",
+        "beneficial_owner.verification.document",
+      ],
+      createdAt: new Date(now - 40 * day),
+      updatedAt: stamp,
+    },
+
+    // gallery / archived ───────────────────────────────────────────────────────
+    {
+      id: LEO.galleryArchived,
+      displayName: "Northbank Pop-Up",
+      legalName: "Northbank Pop-Up Ltd",
+      slug: "northbank-popup",
+      kind: "organisation",
+      subkind: "gallery",
+      createdByUserId: GALLERY_ADMIN_ID,
+      status: "archived",
+      statusChangedAt: new Date(now - 90 * day),
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: new Date(now - 200 * day),
+      updatedAt: stamp,
+    },
+  ]);
+
+  // ── Legal entity members ────────────────────────────────────────────────────
   await db.insert(legalEntityMember).values([
-    {
-      legalEntityId: LE.admin,
-      userId: ADMIN_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
-    {
-      legalEntityId: LE.accountant,
-      userId: ACCOUNTANT_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
-    {
-      legalEntityId: LE.user1,
-      userId: USER1_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
-    {
-      legalEntityId: LE.user2,
-      userId: USER2_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
-    {
-      legalEntityId: LE.google,
-      userId: GOOGLE_TEST_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
-    {
-      legalEntityId: LE.apple,
-      userId: APPLE_TEST_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-      acceptedAt: stamp,
-    },
+    // ── Personal entity owners (original) ─────────────────────────────────────
+    { legalEntityId: LE.admin, userId: ADMIN_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    { legalEntityId: LE.accountant, userId: ACCOUNTANT_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    { legalEntityId: LE.user1, userId: USER1_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    { legalEntityId: LE.user2, userId: USER2_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    { legalEntityId: LE.google, userId: GOOGLE_TEST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    { legalEntityId: LE.apple, userId: APPLE_TEST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+
+    // ── Northbank Gallery members (original roles + new roles) ────────────────
     {
       legalEntityId: LE.gallery,
       userId: GALLERY_ADMIN_ID,
@@ -605,6 +1260,45 @@ async function main() {
       invitedAt: new Date(now - 70 * day),
       acceptedAt: new Date(now - 69 * day),
     },
+    /** consignor — can submit lots, view own financials only. */
+    {
+      legalEntityId: LE.gallery,
+      userId: CONSIGNOR_ID,
+      role: "consignor",
+      invitedByUserId: GALLERY_ADMIN_ID,
+      invitedAt: new Date(now - 35 * day),
+      acceptedAt: new Date(now - 34 * day),
+    },
+    /** viewer — read-only summary access. */
+    {
+      legalEntityId: LE.gallery,
+      userId: VIEWER_ID,
+      role: "viewer",
+      invitedByUserId: GALLERY_ADMIN_ID,
+      invitedAt: new Date(now - 18 * day),
+      acceptedAt: new Date(now - 17 * day),
+    },
+    /** specialist — LAX staff member invited by the gallery (opt-in). */
+    {
+      legalEntityId: LE.gallery,
+      userId: SPECIALIST_ID,
+      role: "specialist",
+      invitedByUserId: GALLERY_ADMIN_ID,
+      invitedAt: new Date(now - 15 * day),
+      acceptedAt: new Date(now - 14 * day),
+    },
+    /** soft-deleted member: USER2 briefly had a viewer seat, then was removed. */
+    {
+      legalEntityId: LE.gallery,
+      userId: USER2_ID,
+      role: "viewer",
+      invitedByUserId: GALLERY_ADMIN_ID,
+      invitedAt: new Date(now - 50 * day),
+      acceptedAt: new Date(now - 49 * day),
+      removedAt: new Date(now - 40 * day),
+    },
+
+    // ── Cedar & Stone (restrictedDealer) ──────────────────────────────────────
     {
       legalEntityId: LE.restrictedDealer,
       userId: GALLERY_ADMIN_ID,
@@ -614,9 +1308,106 @@ async function main() {
       invitedAt: new Date(now - 20 * day),
       acceptedAt: new Date(now - 19 * day),
     },
+
+    // ── Extended personal entity owners ──────────────────────────────────────
+    { legalEntityId: LEX.mayaPersonal, userId: GALLERY_ADMIN_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 75 * day) },
+    { legalEntityId: LEX.samirPersonal, userId: GALLERY_FINANCE_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 70 * day) },
+    { legalEntityId: LEX.suspended, userId: SUSPENDED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 60 * day) },
+    { legalEntityId: LEX.unverified, userId: UNVERIFIED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 1 * day) },
+    { legalEntityId: LEX.bounced, userId: BOUNCED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 40 * day) },
+    { legalEntityId: LEX.kycPending, userId: KYC_PENDING_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 7 * day) },
+    { legalEntityId: LEX.kycRejected, userId: KYC_REJECTED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 14 * day) },
+    { legalEntityId: LEX.estateOwner, userId: ESTATE_OWNER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 50 * day) },
+    { legalEntityId: LEX.companyOwner, userId: COMPANY_OWNER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 55 * day) },
+    { legalEntityId: LEX.consignor, userId: CONSIGNOR_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 40 * day) },
+    { legalEntityId: LEX.buyerAgent, userId: BUYER_AGENT_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 35 * day) },
+    { legalEntityId: LEX.viewer, userId: VIEWER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 20 * day) },
+    { legalEntityId: LEX.specialist, userId: SPECIALIST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 60 * day) },
+
+    // ── New org entity owners ─────────────────────────────────────────────────
+    {
+      legalEntityId: LEO.estateLead,
+      userId: ESTATE_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 10 * day),
+    },
+    /** staff — can submit on behalf of entity, limited lot editing. */
+    {
+      legalEntityId: LEO.estateLead,
+      userId: CONSIGNOR_ID,
+      role: "staff",
+      invitedByUserId: ESTATE_OWNER_ID,
+      invitedAt: new Date(now - 9 * day),
+      acceptedAt: new Date(now - 8 * day),
+    },
+
+    {
+      legalEntityId: LEO.companyDocsRequested,
+      userId: COMPANY_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 20 * day),
+    },
+    {
+      legalEntityId: LEO.charityDocsReceived,
+      userId: COMPANY_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 25 * day),
+    },
+    {
+      legalEntityId: LEO.institutionUnderReview,
+      userId: COMPANY_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 30 * day),
+    },
+    /** LAX-managed stock — admin is the sole member. */
+    {
+      legalEntityId: LEO.laxStockApproved,
+      userId: ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 365 * day),
+    },
+
+    {
+      legalEntityId: LEO.otherRestricted,
+      userId: ESTATE_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 45 * day),
+    },
+    /** buyer_agent — can place bids on behalf of the entity, no seller capabilities. */
+    {
+      legalEntityId: LEO.otherRestricted,
+      userId: BUYER_AGENT_ID,
+      role: "buyer_agent",
+      invitedByUserId: ESTATE_OWNER_ID,
+      invitedAt: new Date(now - 30 * day),
+      acceptedAt: new Date(now - 29 * day),
+    },
+
+    {
+      legalEntityId: LEO.dealerRejected,
+      userId: COMPANY_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 40 * day),
+    },
+    {
+      legalEntityId: LEO.galleryArchived,
+      userId: GALLERY_ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 200 * day),
+    },
   ]);
 
+  // ── Legal entity addresses ─────────────────────────────────────────────────
   await db.insert(legalEntityAddress).values([
+    // Originals
     {
       legalEntityId: LE.user1,
       addressType: "billing",
@@ -661,8 +1452,99 @@ async function main() {
       country: "GB",
       isDefault: true,
     },
+
+    // New org addresses
+    {
+      legalEntityId: LEO.estateLead,
+      addressType: "registered",
+      line1: "Harrington Estate",
+      line2: "The Manor, High Lane",
+      city: "Cheshire",
+      state: null,
+      postalCode: "SK6 8DR",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.companyDocsRequested,
+      addressType: "registered",
+      line1: "Crowley Fine Art Ltd",
+      line2: "77 St James's Street",
+      city: "London",
+      state: null,
+      postalCode: "SW1A 1PH",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.charityDocsReceived,
+      addressType: "registered",
+      line1: "Crowley Arts Foundation",
+      line2: "9 Portman Square",
+      city: "London",
+      state: null,
+      postalCode: "W1H 6AZ",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.institutionUnderReview,
+      addressType: "registered",
+      line1: "Meridian Institute of Art",
+      line2: "Meridian Square, South Bank",
+      city: "London",
+      state: null,
+      postalCode: "SE1 7PB",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.laxStockApproved,
+      addressType: "registered",
+      line1: "LAX London Auction House",
+      line2: "12 King Street, St James's",
+      city: "London",
+      state: null,
+      postalCode: "SW1Y 6QU",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.otherRestricted,
+      addressType: "registered",
+      line1: "Harrington Advisors",
+      line2: "8 Curzon Street",
+      city: "London",
+      state: null,
+      postalCode: "W1J 5HP",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.dealerRejected,
+      addressType: "registered",
+      line1: "Crowley Secondary Market",
+      line2: "120 New Bond Street",
+      city: "London",
+      state: null,
+      postalCode: "W1S 1DX",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LEO.galleryArchived,
+      addressType: "registered",
+      line1: "Northbank Pop-Up",
+      line2: "Unit 4, Bermondsey Square",
+      city: "London",
+      state: null,
+      postalCode: "SE1 3UN",
+      country: "GB",
+      isDefault: true,
+    },
   ]);
 
+  // ── Legal entity payout methods ────────────────────────────────────────────
   await db.insert(legalEntityPayoutMethod).values([
     {
       legalEntityId: LE.user1,
@@ -685,9 +1567,48 @@ async function main() {
       status: "active",
       createdAt: new Date(now - 70 * day),
     },
+    {
+      legalEntityId: LEX.estateOwner,
+      stripeExternalAccountId: "ba_seed_victoria_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 27 * day),
+    },
+    {
+      legalEntityId: LEX.companyOwner,
+      stripeExternalAccountId: "ba_seed_james_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 32 * day),
+    },
+    {
+      legalEntityId: LEX.suspended,
+      stripeExternalAccountId: "ba_seed_isabelle_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 55 * day),
+    },
+    {
+      legalEntityId: LEX.consignor,
+      stripeExternalAccountId: "ba_seed_lena_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 22 * day),
+    },
+    /** Retired payout method — demonstrates the retired status. */
+    {
+      legalEntityId: LE.user1,
+      stripeExternalAccountId: "ba_seed_robert_old_gbp",
+      isDefault: false,
+      status: "retired",
+      createdAt: new Date(now - 200 * day),
+      retiredAt: new Date(now - 80 * day),
+    },
   ]);
 
+  // ── KYC verifications ──────────────────────────────────────────────────────
   await db.insert(kycVerification).values([
+    // Robert — verified
     {
       userId: USER1_ID,
       stripeVerificationSessionId: "vs_seed_robert_verified",
@@ -703,6 +1624,7 @@ async function main() {
       createdAt: new Date(now - 90 * day),
       decisionAt: new Date(now - 89 * day),
     },
+    // Carolina — verified
     {
       userId: USER2_ID,
       stripeVerificationSessionId: "vs_seed_carolina_verified",
@@ -718,6 +1640,7 @@ async function main() {
       createdAt: new Date(now - 90 * day),
       decisionAt: new Date(now - 89 * day),
     },
+    // Maya — requires_input (pending on user)
     {
       userId: GALLERY_ADMIN_ID,
       stripeVerificationSessionId: "vs_seed_maya_requires_input",
@@ -726,22 +1649,389 @@ async function main() {
       createdAt: new Date(now - 8 * day),
       decisionAt: null,
     },
+    // Isabelle (suspended) — verified before account suspension
+    {
+      userId: SUSPENDED_ID,
+      stripeVerificationSessionId: "vs_seed_isabelle_verified",
+      status: "verified",
+      verifiedFirstName: "Isabelle",
+      verifiedLastName: "Laurent",
+      verifiedDateOfBirth: "1985-07-22",
+      verifiedIdNumberLast4: "3311",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2031-07-22",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 25 * day),
+      decisionAt: new Date(now - 20 * day),
+    },
+    // Marcus — processing (KYC pending)
+    {
+      userId: KYC_PENDING_ID,
+      stripeVerificationSessionId: "vs_seed_marcus_processing",
+      status: "processing",
+      decisionPayload: { seeded: true, phase: "document_check" },
+      createdAt: new Date(now - 2 * day),
+      decisionAt: null,
+    },
+    // Priya — canceled (KYC rejected)
+    {
+      userId: KYC_REJECTED_ID,
+      stripeVerificationSessionId: "vs_seed_priya_canceled",
+      status: "canceled",
+      decisionPayload: {
+        seeded: true,
+        reason: "id_document_expired",
+        outcome: "requires_input",
+      },
+      createdAt: new Date(now - 10 * day),
+      decisionAt: new Date(now - 9 * day),
+    },
+    // Victoria — verified
+    {
+      userId: ESTATE_OWNER_ID,
+      stripeVerificationSessionId: "vs_seed_victoria_verified",
+      status: "verified",
+      verifiedFirstName: "Victoria",
+      verifiedLastName: "Harrington",
+      verifiedDateOfBirth: "1968-03-14",
+      verifiedIdNumberLast4: "9901",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2028-03-14",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 35 * day),
+      decisionAt: new Date(now - 30 * day),
+    },
+    // James — verified
+    {
+      userId: COMPANY_OWNER_ID,
+      stripeVerificationSessionId: "vs_seed_james_verified",
+      status: "verified",
+      verifiedFirstName: "James",
+      verifiedLastName: "Crowley",
+      verifiedDateOfBirth: "1975-11-30",
+      verifiedIdNumberLast4: "5566",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "driving_license",
+      verifiedIdExpiry: "2027-11-30",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 40 * day),
+      decisionAt: new Date(now - 35 * day),
+    },
+    // Lena (consignor) — verified
+    {
+      userId: CONSIGNOR_ID,
+      stripeVerificationSessionId: "vs_seed_lena_verified",
+      status: "verified",
+      verifiedFirstName: "Lena",
+      verifiedLastName: "Fischer",
+      verifiedDateOfBirth: "1992-06-08",
+      verifiedIdNumberLast4: "2244",
+      verifiedIdCountry: "DE",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2032-06-08",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 30 * day),
+      decisionAt: new Date(now - 25 * day),
+    },
+    // Hassan (buyer_agent) — verified
+    {
+      userId: BUYER_AGENT_ID,
+      stripeVerificationSessionId: "vs_seed_hassan_verified",
+      status: "verified",
+      verifiedFirstName: "Hassan",
+      verifiedLastName: "Al-Rashid",
+      verifiedDateOfBirth: "1988-02-19",
+      verifiedIdNumberLast4: "8877",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2029-02-19",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 28 * day),
+      decisionAt: new Date(now - 22 * day),
+    },
+    // Dominic (specialist) — verified
+    {
+      userId: SPECIALIST_ID,
+      stripeVerificationSessionId: "vs_seed_dominic_verified",
+      status: "verified",
+      verifiedFirstName: "Dominic",
+      verifiedLastName: "Ward",
+      verifiedDateOfBirth: "1983-09-25",
+      verifiedIdNumberLast4: "6655",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2030-09-25",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 45 * day),
+      decisionAt: new Date(now - 40 * day),
+    },
   ]);
 
-  await db.insert(notificationPreference).values([
+  // ── User addresses (personal shipping/billing — separate from entity addresses) ─
+  await db.insert(userAddress).values([
     {
-      userId: ADMIN_ID,
-      paymentEmail: true,
-      endingSoonEmail: false,
-      quietStart: "22:00",
-      quietEnd: "07:00",
+      userId: USER1_ID,
+      label: "Home",
+      line1: "42 Redcliffe Square",
+      city: "London",
+      postalCode: "SW10 9JY",
+      country: "GB",
+      addressType: "both",
+      isDefault: true,
     },
+    {
+      userId: USER2_ID,
+      label: "Studio",
+      line1: "18 Princelet Street",
+      city: "London",
+      postalCode: "E1 6QH",
+      country: "GB",
+      addressType: "both",
+      isDefault: true,
+    },
+    {
+      userId: USER2_ID,
+      label: "Parents",
+      line1: "5 Clifton Villas",
+      city: "Bristol",
+      postalCode: "BS8 4PH",
+      country: "GB",
+      addressType: "shipping",
+      isDefault: false,
+    },
+    {
+      userId: ESTATE_OWNER_ID,
+      label: "Estate Office",
+      line1: "The Manor, High Lane",
+      city: "Cheshire",
+      postalCode: "SK6 8DR",
+      country: "GB",
+      addressType: "both",
+      isDefault: true,
+    },
+    {
+      userId: COMPANY_OWNER_ID,
+      label: "London Office",
+      line1: "77 St James's Street",
+      city: "London",
+      postalCode: "SW1A 1PH",
+      country: "GB",
+      addressType: "billing",
+      isDefault: true,
+    },
+    {
+      userId: SUSPENDED_ID,
+      label: "Home",
+      line1: "3 Rue du Faubourg Saint-Honoré",
+      city: "Paris",
+      state: "Île-de-France",
+      postalCode: "75008",
+      country: "FR",
+      addressType: "both",
+      isDefault: true,
+    },
+  ]);
+
+  // ── Upload objects for KYB documents ──────────────────────────────────────
+  await db.insert(uploadObject).values([
+    {
+      id: UPLOAD.charityHouseExtract,
+      ownerUserId: COMPANY_OWNER_ID,
+      kind: "legal_entity_document",
+      key: "seed/kyb/charity-house-extract.pdf",
+      declaredContentType: "application/pdf",
+      declaredByteSize: 204_800,
+      actualContentType: "application/pdf",
+      actualByteSize: 204_800,
+      status: "confirmed",
+      createdAt: new Date(now - 9 * day),
+      uploadedAt: new Date(now - 9 * day),
+      validatedAt: new Date(now - 9 * day),
+      expiresAt: new Date(now + 365 * day),
+    },
+    {
+      id: UPLOAD.institutionBeneficialOwner,
+      ownerUserId: COMPANY_OWNER_ID,
+      kind: "legal_entity_document",
+      key: "seed/kyb/institution-beneficial-owner.pdf",
+      declaredContentType: "application/pdf",
+      declaredByteSize: 512_000,
+      actualContentType: "application/pdf",
+      actualByteSize: 512_000,
+      status: "confirmed",
+      createdAt: new Date(now - 5 * day),
+      uploadedAt: new Date(now - 5 * day),
+      validatedAt: new Date(now - 5 * day),
+      expiresAt: new Date(now + 365 * day),
+    },
+    {
+      id: UPLOAD.institutionVatCert,
+      ownerUserId: COMPANY_OWNER_ID,
+      kind: "legal_entity_document",
+      key: "seed/kyb/institution-vat-cert.pdf",
+      declaredContentType: "application/pdf",
+      declaredByteSize: 81_920,
+      actualContentType: "application/pdf",
+      actualByteSize: 81_920,
+      status: "confirmed",
+      createdAt: new Date(now - 5 * day),
+      uploadedAt: new Date(now - 5 * day),
+      validatedAt: new Date(now - 5 * day),
+      expiresAt: new Date(now + 365 * day),
+    },
+  ]);
+
+  // ── Legal entity KYB documents ─────────────────────────────────────────────
+  await db.insert(legalEntityDocument).values([
+    /** Charity — docs_received: companies_house_extract pending admin review. */
+    {
+      legalEntityId: LEO.charityDocsReceived,
+      uploadObjectId: UPLOAD.charityHouseExtract,
+      kind: "companies_house_extract",
+      reviewStatus: "pending",
+      uploadedByUserId: COMPANY_OWNER_ID,
+      uploadedAt: new Date(now - 9 * day),
+    },
+    /** Institution — under_review: beneficial owner doc approved, VAT cert pending. */
+    {
+      legalEntityId: LEO.institutionUnderReview,
+      uploadObjectId: UPLOAD.institutionBeneficialOwner,
+      kind: "beneficial_owner_id",
+      reviewStatus: "approved",
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 3 * day),
+      reviewNotes: "Passport scan clear; beneficial owner identity confirmed.",
+      uploadedByUserId: COMPANY_OWNER_ID,
+      uploadedAt: new Date(now - 5 * day),
+    },
+    {
+      legalEntityId: LEO.institutionUnderReview,
+      uploadObjectId: UPLOAD.institutionVatCert,
+      kind: "vat_certificate",
+      reviewStatus: "pending",
+      uploadedByUserId: COMPANY_OWNER_ID,
+      uploadedAt: new Date(now - 5 * day),
+    },
+  ]);
+
+  // ── Notification preferences ───────────────────────────────────────────────
+  await db.insert(notificationPreference).values([
+    { userId: ADMIN_ID, paymentEmail: true, endingSoonEmail: false, quietStart: "22:00", quietEnd: "07:00" },
     { userId: USER1_ID, outbidPush: true, wonEmail: true, paymentEmail: true },
     { userId: USER2_ID, outbidEmail: true, lotEndedSellerEmail: true, paymentEmail: true },
     { userId: GALLERY_ADMIN_ID, paymentEmail: true, watchlistEmail: true },
     { userId: GALLERY_FINANCE_ID, paymentEmail: true, lotEndedSellerEmail: true },
+    { userId: ESTATE_OWNER_ID, paymentEmail: true, wonEmail: true, outbidEmail: true },
+    { userId: COMPANY_OWNER_ID, paymentEmail: true },
+    { userId: CONSIGNOR_ID, lotEndedSellerEmail: true },
+    { userId: BUYER_AGENT_ID, outbidPush: true, wonEmail: true },
   ]);
 
+  // ── User invitations ────────────────────────────────────────────────────────
+  // tokenHash values are deterministic fakes; real tokens are 32 random bytes → SHA-256.
+  await db.insert(userInvitation).values([
+    // ── Platform invitations ─────────────────────────────────────────────────
+    /** pending — admin has invited a prospective second accountant. */
+    {
+      email: "new-accountant@example.com",
+      targetRole: "accountant",
+      tokenHash: "seed_hash_platform_pending_accountant_0000000000000001",
+      status: "pending",
+      expiresAt: new Date(now + 7 * day),
+      createdByUserId: ADMIN_ID,
+    },
+    /** accepted — the accountant invitation that created ACCOUNTANT_ID. */
+    {
+      email: "accountant@lax.bid",
+      targetRole: "accountant",
+      tokenHash: "seed_hash_platform_accepted_accountant_000000000000002",
+      status: "accepted",
+      expiresAt: new Date(now + 7 * day),
+      acceptedAt: new Date(now - 149 * day),
+      acceptedUserId: ACCOUNTANT_ID,
+      createdByUserId: ADMIN_ID,
+      createdAt: new Date(now - 151 * day),
+      updatedAt: new Date(now - 149 * day),
+    },
+    /** revoked — admin retracted a pending administrator invite. */
+    {
+      email: "revoked-admin@example.com",
+      targetRole: "administrator",
+      tokenHash: "seed_hash_platform_revoked_admin_0000000000000000003",
+      status: "revoked",
+      expiresAt: new Date(now + 3 * day),
+      createdByUserId: ADMIN_ID,
+      createdAt: new Date(now - 10 * day),
+      updatedAt: new Date(now - 2 * day),
+    },
+    /** expired — a client invitation whose 7-day window has passed. */
+    {
+      email: "expired-client@example.com",
+      targetRole: "client",
+      tokenHash: "seed_hash_platform_expired_client_00000000000000004",
+      status: "expired",
+      expiresAt: new Date(now - 1 * day),
+      createdByUserId: ADMIN_ID,
+      createdAt: new Date(now - 8 * day),
+      updatedAt: new Date(now - 1 * day),
+    },
+
+    // ── Entity invitations ───────────────────────────────────────────────────
+    /** accepted — the gallery consignor invitation that CONSIGNOR_ID accepted. */
+    {
+      email: "consignor@lax.bid",
+      targetRole: "client",
+      targetLegalEntityId: LE.gallery,
+      targetLegalEntityMemberRole: "consignor",
+      tokenHash: "seed_hash_entity_accepted_consignor_00000000000005",
+      status: "accepted",
+      expiresAt: new Date(now + 7 * day),
+      acceptedAt: new Date(now - 34 * day),
+      acceptedUserId: CONSIGNOR_ID,
+      createdByUserId: GALLERY_ADMIN_ID,
+      createdAt: new Date(now - 35 * day),
+      updatedAt: new Date(now - 34 * day),
+    },
+    /** pending — gallery is waiting on a new admin to accept. */
+    {
+      email: "future-gallery-admin@example.com",
+      targetRole: "client",
+      targetLegalEntityId: LE.gallery,
+      targetLegalEntityMemberRole: "admin",
+      tokenHash: "seed_hash_entity_pending_gallery_admin_000000000006",
+      status: "pending",
+      expiresAt: new Date(now + 5 * day),
+      createdByUserId: GALLERY_ADMIN_ID,
+    },
+    /** revoked — a buyer_agent invitation that was withdrawn before acceptance. */
+    {
+      email: "withdrawn-buyer-agent@example.com",
+      targetRole: "client",
+      targetLegalEntityId: LEO.otherRestricted,
+      targetLegalEntityMemberRole: "buyer_agent",
+      tokenHash: "seed_hash_entity_revoked_buyer_agent_0000000000007",
+      status: "revoked",
+      expiresAt: new Date(now + 7 * day),
+      createdByUserId: ESTATE_OWNER_ID,
+      createdAt: new Date(now - 20 * day),
+      updatedAt: new Date(now - 15 * day),
+    },
+    /** pending — Northbank has sent a viewer invitation to a potential partner. */
+    {
+      email: "partner-viewer@example.com",
+      targetRole: "client",
+      targetLegalEntityId: LE.gallery,
+      targetLegalEntityMemberRole: "viewer",
+      tokenHash: "seed_hash_entity_pending_viewer_0000000000000000008",
+      status: "pending",
+      expiresAt: new Date(now + 6 * day),
+      createdByUserId: GALLERY_ADMIN_ID,
+    },
+  ]);
+
+  // ── Categories ─────────────────────────────────────────────────────────────
   await db.insert(category).values([
     { id: CAT.paintings, name: "Paintings", slug: "paintings", parentId: null },
     { id: CAT.sculpture, name: "Sculpture", slug: "sculpture", parentId: null },
@@ -751,15 +2041,11 @@ async function main() {
     { id: CAT.drawings, name: "Drawings", slug: "drawings", parentId: null },
     { id: CAT.finePrints, name: "Fine Prints", slug: "fine-prints", parentId: null },
     { id: CAT.contemporary, name: "Contemporary", slug: "contemporary", parentId: CAT.paintings },
-    {
-      id: CAT.impressionist,
-      name: "Impressionist",
-      slug: "impressionist",
-      parentId: CAT.paintings,
-    },
+    { id: CAT.impressionist, name: "Impressionist", slug: "impressionist", parentId: CAT.paintings },
     { id: CAT.bronze, name: "Bronze", slug: "bronze", parentId: CAT.sculpture },
   ]);
 
+  // ── Artist profiles ────────────────────────────────────────────────────────
   await db.insert(artistProfile).values([
     {
       id: ARTIST.carolina,
@@ -832,26 +2118,12 @@ async function main() {
   ]);
 
   await db.insert(artistAlias).values([
-    {
-      artistProfileId: ARTIST.carolina,
-      alias: "C. Price",
-      kind: "signature",
-      createdByUserId: ADMIN_ID,
-    },
-    {
-      artistProfileId: ARTIST.carolina,
-      alias: "Carolina P.",
-      kind: "synonym",
-      createdByUserId: ADMIN_ID,
-    },
-    {
-      artistProfileId: ARTIST.pendingStudio,
-      alias: "Northbank Archive",
-      kind: "proposed",
-      createdByUserId: GALLERY_ADMIN_ID,
-    },
+    { artistProfileId: ARTIST.carolina, alias: "C. Price", kind: "signature", createdByUserId: ADMIN_ID },
+    { artistProfileId: ARTIST.carolina, alias: "Carolina P.", kind: "synonym", createdByUserId: ADMIN_ID },
+    { artistProfileId: ARTIST.pendingStudio, alias: "Northbank Archive", kind: "proposed", createdByUserId: GALLERY_ADMIN_ID },
   ]);
 
+  // ── Sale + lot dates ────────────────────────────────────────────────────────
   const activeEnd = new Date(now + 10 * day);
   const activeStart = new Date(now - 2 * day);
   const scheduledStart = new Date(now + 3 * day);
@@ -861,6 +2133,7 @@ async function main() {
   const draftStart = new Date(now + 1 * day);
   const draftEnd = new Date(now + 30 * day);
   const soonEnd = new Date(now + 2 * day);
+
   const lotMarketingDetails = (
     low: string,
     high: string,
@@ -872,6 +2145,7 @@ async function main() {
     ...extra,
   });
 
+  // ── Sales ──────────────────────────────────────────────────────────────────
   const saleRows: (Omit<typeof sale.$inferInsert, "createdByLegalEntityId"> & {
     categoryId: string | null;
     createdBy: string;
@@ -934,6 +2208,7 @@ async function main() {
       })),
   );
 
+  // ── Lots ───────────────────────────────────────────────────────────────────
   const lotRows: (Omit<typeof lot.$inferInsert, "sellerLegalEntityId"> & {
     categoryId: string;
     sellerId: string;
@@ -1446,6 +2721,7 @@ async function main() {
     })),
   );
 
+  // ── Admin review tasks ──────────────────────────────────────────────────────
   await db.insert(adminReviewTask).values([
     {
       kind: "lot_artist_backfill",
@@ -1484,6 +2760,7 @@ async function main() {
     },
   ]);
 
+  // ── Item submissions ────────────────────────────────────────────────────────
   const submissionRows: (Omit<typeof itemSubmission.$inferInsert, "legalEntityId"> & {
     categoryId: string;
     sellerId: string;
@@ -1625,7 +2902,7 @@ async function main() {
     })),
   );
 
-  const hour = 3_600_000;
+  // ── Bids ───────────────────────────────────────────────────────────────────
   const mkBid = (
     lotId: string,
     bidderId: string,
@@ -1684,6 +2961,7 @@ async function main() {
   ];
   await db.insert(bid).values(bidRows);
 
+  // ── Watchlists ─────────────────────────────────────────────────────────────
   await db.insert(watchlist).values([
     { userId: USER1_ID, lotId: L.ethereal },
     { userId: USER1_ID, lotId: L.winter },
@@ -1708,6 +2986,7 @@ async function main() {
     { userId: APPLE_TEST_ID, artistId: USER1_ID },
   ]);
 
+  // ── Notifications ──────────────────────────────────────────────────────────
   const notifId = () => randomUUID();
   await db.insert(notification).values([
     {
@@ -1718,7 +2997,7 @@ async function main() {
       message: "Robert Thorne placed a higher bid on The Winter Study.",
       lotId: L.winter,
       read: false,
-      createdAt: new Date(now - 6 * 3600_000),
+      createdAt: new Date(now - 6 * 3_600_000),
     },
     {
       id: notifId(),
@@ -1728,7 +3007,7 @@ async function main() {
       message: "Paper Thin Horizon closes in under 72 hours.",
       lotId: L.paperThin,
       read: true,
-      createdAt: new Date(now - 12 * 3600_000),
+      createdAt: new Date(now - 12 * 3_600_000),
     },
     {
       id: notifId(),
@@ -1758,7 +3037,7 @@ async function main() {
       message: "Silent Architecture has new bidding activity.",
       lotId: L.silent,
       read: false,
-      createdAt: new Date(now - 1800_000),
+      createdAt: new Date(now - 1_800_000),
     },
     {
       id: notifId(),
@@ -1795,13 +3074,14 @@ async function main() {
       userId: ADMIN_ID,
       type: "system",
       title: "Seed data loaded",
-      message: "Demo catalog is ready for QA.",
+      message: "Comprehensive demo catalog is ready for QA.",
       lotId: null,
       read: true,
       createdAt: stamp,
     },
   ]);
 
+  // ── Payments ───────────────────────────────────────────────────────────────
   const paymentRows: (Omit<
     typeof payment.$inferInsert,
     "buyerLegalEntityId" | "sellerLegalEntityId"
@@ -1857,6 +3137,7 @@ async function main() {
     })),
   );
 
+  // ── Payouts ────────────────────────────────────────────────────────────────
   await db.insert(payout).values([
     {
       id: PO.paid,
@@ -1948,6 +3229,7 @@ async function main() {
     },
   ]);
 
+  // ── Domain events ──────────────────────────────────────────────────────────
   await db.insert(domainEvent).values([
     {
       aggregateType: "payment",
@@ -2013,8 +3295,106 @@ async function main() {
       actingLegalEntityId: LE.user1,
       occurredAt: new Date(now - 13 * day),
     },
+    // Entity lifecycle events
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.companyDocsRequested,
+      eventType: "legal_entity.docs_requested",
+      payload: {
+        legalEntityId: LEO.companyDocsRequested,
+        reason: "Companies House extract and director ID required before Stripe KYB can proceed.",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 12 * day),
+    },
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.charityDocsReceived,
+      eventType: "legal_entity.docs_received",
+      payload: {
+        legalEntityId: LEO.charityDocsReceived,
+        uploadedDocumentKinds: ["companies_house_extract"],
+      },
+      producer: "seed",
+      actorUserId: COMPANY_OWNER_ID,
+      actingLegalEntityId: LEX.companyOwner,
+      occurredAt: new Date(now - 9 * day),
+    },
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.institutionUnderReview,
+      eventType: "legal_entity.review_started",
+      payload: {
+        legalEntityId: LEO.institutionUnderReview,
+        assignedToUserId: ADMIN_ID,
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 4 * day),
+    },
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.otherRestricted,
+      eventType: "legal_entity.restricted",
+      payload: {
+        legalEntityId: LEO.otherRestricted,
+        reason: "Unresolved chargeback dispute; payout requires admin co-sign until resolved.",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 6 * day),
+    },
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.dealerRejected,
+      eventType: "legal_entity.rejected",
+      payload: {
+        legalEntityId: LEO.dealerRejected,
+        reason: "Beneficial ownership documentation could not be verified; director IDs expired.",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 5 * day),
+    },
+    {
+      aggregateType: "legal_entity",
+      aggregateId: LEO.galleryArchived,
+      eventType: "legal_entity.archived",
+      payload: {
+        legalEntityId: LEO.galleryArchived,
+        reason: "Pop-up entity dissolved; all transactions migrated to primary Northbank Gallery entity.",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 90 * day),
+    },
+    {
+      aggregateType: "user",
+      aggregateId: SUSPENDED_ID,
+      eventType: "user.suspended",
+      payload: {
+        userId: SUSPENDED_ID,
+        reason: "Chargeback dispute under investigation.",
+        suspendedByUserId: ADMIN_ID,
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 3 * day),
+    },
   ]);
 
+  // ── Projector state ────────────────────────────────────────────────────────
+  // The app's projector service may re-insert these rows while the seed is
+  // running, so we delete then upsert as close together as possible to avoid
+  // a duplicate-key race with the running test-env service.
+  await db.delete(projectorState);
   await db.insert(projectorState).values([
     {
       projectorName: "notification_fanout",
@@ -2028,28 +3408,68 @@ async function main() {
       updatedAt: stamp,
       lastError: null,
     },
-  ]);
+  ]).onConflictDoUpdate({
+    target: projectorState.projectorName,
+    set: { lastProcessedEventId: 0, updatedAt: stamp, lastError: null },
+  });
 
+  // ── Summary ────────────────────────────────────────────────────────────────
   console.log("");
-  console.log("Seed complete — polished LAX demo dataset loaded.");
+  console.log("Seed complete — comprehensive LAX demo dataset loaded.");
   console.log("");
   console.log(`  Password for every seeded login: ${SEED_PASSWORD}`);
   console.log("");
-  console.log("  Login accounts:");
-  console.log("    admin@lax.bid       Eleanor Pereira   administrator");
-  console.log("    accountant@lax.bid  Erin Ledger       accountant");
-  console.log("    user1@lax.bid       Robert Thorne     client");
-  console.log("    user2@lax.bid       Carolina Price    client");
-  console.log("    google-test@lax.bid Google Test       client / google fixture");
-  console.log("    apple-test@lax.bid  Apple Test        client / apple fixture");
-  console.log("    gallery-admin@lax.bid   Maya Okafor   Northbank Gallery admin");
-  console.log("    gallery-finance@lax.bid Samir Patel   Northbank Gallery finance");
+  console.log("  ┌─────────────────────────────────────────────────────────────────────────┐");
+  console.log("  │  Login accounts                                                         │");
+  console.log("  ├──────────────────────────────┬──────────────────────┬───────────────────┤");
+  console.log("  │  Email                        │  Name                │  Notes            │");
+  console.log("  ├──────────────────────────────┼──────────────────────┼───────────────────┤");
+  console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  administrator    │");
+  console.log("  │  accountant@lax.bid          │  Erin Ledger         │  accountant       │");
+  console.log("  │  user1@lax.bid               │  Robert Thorne       │  client, KYC ✓    │");
+  console.log("  │  user2@lax.bid               │  Carolina Price      │  client, artist   │");
+  console.log("  │  google-test@lax.bid         │  Google Test         │  Google OAuth     │");
+  console.log("  │  apple-test@lax.bid          │  Apple Test          │  Apple OAuth      │");
+  console.log("  │  gallery-admin@lax.bid       │  Maya Okafor         │  Northbank admin  │");
+  console.log("  │  gallery-finance@lax.bid     │  Samir Patel         │  Northbank finance│");
+  console.log("  ├──────────────────────────────┼──────────────────────┼───────────────────┤");
+  console.log("  │  suspended@lax.bid           │  Isabelle Laurent    │  SUSPENDED        │");
+  console.log("  │  unverified@lax.bid          │  Felix Nakamura      │  email unverified │");
+  console.log("  │  bounced@lax.bid             │  Yara Siddiqui       │  email bounced    │");
+  console.log("  │  kyc-pending@lax.bid         │  Marcus Obi          │  KYC processing   │");
+  console.log("  │  kyc-rejected@lax.bid        │  Priya Mehta         │  KYC rejected     │");
+  console.log("  │  estate-owner@lax.bid        │  Victoria Harrington │  estate org owner │");
+  console.log("  │  company-owner@lax.bid       │  James Crowley       │  multi-org owner  │");
+  console.log("  │  consignor@lax.bid           │  Lena Fischer        │  consignor+staff  │");
+  console.log("  │  buyer-agent@lax.bid         │  Hassan Al-Rashid    │  buyer_agent role │");
+  console.log("  │  viewer@lax.bid              │  Sofia Petrov        │  viewer role      │");
+  console.log("  │  specialist@lax.bid          │  Dominic Ward        │  LAX specialist   │");
+  console.log("  └──────────────────────────────┴──────────────────────┴───────────────────┘");
   console.log("");
-  console.log("  Includes: 2 sales, 16 lots, nested categories, 26 bids, 8 watchlist rows,");
-  console.log("  sale/artist follows, notifications, payments (captured/pending/refunded),");
-  console.log("  payout rows (paid, scheduled retry, clawback_pending), domain events,");
-  console.log("  KYC/Connect states, admin review tasks, and item submissions across");
-  console.log("  draft, submitted, rejected, and converted states.");
+  console.log("  Legal entity coverage:");
+  console.log("    Subkinds     : private_collector · artist · gallery · dealer · estate");
+  console.log("                   company · charity · institution · lax_stock · other");
+  console.log("    Statuses     : lead · docs_requested · docs_received · under_review");
+  console.log("                   connect_pending · approved · restricted · rejected · archived");
+  console.log("    Member roles : owner · admin · consignor · finance · buyer_agent");
+  console.log("                   viewer · specialist · staff  (+ 1 soft-deleted row)");
+  console.log("");
+  console.log("  User / auth coverage:");
+  console.log("    Platform roles   : administrator · accountant · client");
+  console.log("    KYC states       : unverified · pending · approved · rejected");
+  console.log("    Email statuses   : ok · bounced");
+  console.log("    Suspended        : yes (Isabelle Laurent)");
+  console.log("    Email unverified : yes (Felix Nakamura)");
+  console.log("    OAuth fixtures   : Google · Apple");
+  console.log("");
+  console.log("  Invitations:");
+  console.log("    Platform (all 4 statuses) : pending · accepted · revoked · expired");
+  console.log("    Entity   (3 of 4 statuses): pending · accepted · revoked");
+  console.log("");
+  console.log("  Also includes: 2 sales · 16 lots · 3 artists · 26 bids · 8 watchlist rows");
+  console.log("  sale/artist follows · notifications · payments (captured/pending/refunded)");
+  console.log("  payouts (paid/scheduled-retry/clawback) · KYB documents · domain events");
+  console.log("  user addresses · legal entity addresses · retired payout method");
   console.log("");
 
   await pool.end();
