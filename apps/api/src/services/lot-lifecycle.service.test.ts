@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { LotLifecycleService } from "./lot-lifecycle.service.js";
@@ -73,8 +72,6 @@ function createFactory(lots: ILotRepository, bids: IBidRepository): IRepositoryF
 }
 
 describe("LotLifecycleService", () => {
-  const strategyFactory = new LotStrategyFactory();
-
   it("does not set winner when reserve is not met", async () => {
     const lot = baseLot({
       reservePrice: "1000.00",
@@ -103,7 +100,6 @@ describe("LotLifecycleService", () => {
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,
@@ -147,7 +143,6 @@ describe("LotLifecycleService", () => {
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,
@@ -199,7 +194,6 @@ describe("LotLifecycleService", () => {
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,
@@ -267,7 +261,6 @@ describe("LotLifecycleService", () => {
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,

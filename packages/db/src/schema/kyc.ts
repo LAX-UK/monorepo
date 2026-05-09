@@ -1,15 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  date,
-  index,
-  jsonb,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { date, index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 
 export const kycVerificationStatusEnum = pgEnum("kyc_verification_status", [

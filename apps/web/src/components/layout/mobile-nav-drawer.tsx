@@ -13,7 +13,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MobileAuthSection } from "./header-auth-chip";
-import { navItemActive, utilityNav } from "./header-nav-config";
+import { megaMenuSectionActive, utilityNav } from "./header-nav-config";
 import { HeaderSearchForm } from "./header-search";
 import { LaxLogo } from "./lax-logo";
 import { ThemeToggle } from "./theme-toggle";
@@ -22,13 +22,20 @@ type MobileNavDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pathname: string;
+  searchParams: Pick<URLSearchParams, "get"> | null;
   sections: MegaMenuSection[];
 };
 
 const drawerContentClass =
   "fixed inset-y-0 top-0 right-0 left-auto z-50 !flex h-full max-h-[100dvh] w-full max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-surface p-0 shadow-xl sm:max-w-sm sm:rounded-none";
 
-export function MobileNavDrawer({ open, onOpenChange, pathname, sections }: MobileNavDrawerProps) {
+export function MobileNavDrawer({
+  open,
+  onOpenChange,
+  pathname,
+  searchParams,
+  sections,
+}: MobileNavDrawerProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const close = () => {
@@ -68,14 +75,11 @@ export function MobileNavDrawer({ open, onOpenChange, pathname, sections }: Mobi
           <nav aria-label="Mobile primary">
             <ul className="flex flex-col gap-1">
               {sections.map((section, index) => {
-                const active = navItemActive(pathname, section.href);
+                const active = megaMenuSectionActive(pathname, section, searchParams);
                 const expanded = expandedIndex === index;
                 const panelId = `mobile-nav-section-${index}`;
                 return (
-                  <li
-                    key={section.href}
-                    className="border-b border-nav-border pb-2 last:border-b-0"
-                  >
+                  <li key={section.id} className="border-b border-nav-border pb-2 last:border-b-0">
                     <Button
                       type="button"
                       variant="ghost"
@@ -103,7 +107,7 @@ export function MobileNavDrawer({ open, onOpenChange, pathname, sections }: Mobi
                         {section.items.length > 0 ? (
                           <ul className="flex flex-col gap-1">
                             {section.items.map((row) => (
-                              <li key={row.href}>
+                              <li key={`${section.id}-${row.label}-${row.href}`}>
                                 <Link
                                   href={row.href}
                                   className="block py-1.5 font-body text-sm text-brand-900 dark:text-on-surface"
@@ -119,13 +123,15 @@ export function MobileNavDrawer({ open, onOpenChange, pathname, sections }: Mobi
                             Nothing to show yet.
                           </p>
                         )}
-                        <Link
-                          href={section.viewAllHref ?? section.href}
-                          className="py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface"
-                          onClick={close}
-                        >
-                          View all
-                        </Link>
+                        {section.viewAllHref ? (
+                          <Link
+                            href={section.viewAllHref}
+                            className="py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface"
+                            onClick={close}
+                          >
+                            {section.viewAllLabel ?? "View all"}
+                          </Link>
+                        ) : null}
                       </div>
                     ) : null}
                   </li>

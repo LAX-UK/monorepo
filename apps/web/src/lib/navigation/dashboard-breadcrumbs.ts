@@ -32,7 +32,7 @@ function labelForSegment(seg: string, isAdmin: boolean): string {
   return map[seg] ?? seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function breadcrumbsForPath(pathname: string, user: SessionUser): Crumb[] {
+export function breadcrumbsForPath(pathname: string, _user: SessionUser): Crumb[] {
   const isAdmin = pathname.startsWith("/admin");
   const root = isAdmin ? "/admin" : "/dashboard";
   const rootLabel = isAdmin ? "Admin" : "Dashboard";
