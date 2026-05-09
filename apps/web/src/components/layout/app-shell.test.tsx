@@ -40,6 +40,20 @@ vi.mock("./command-palette-lazy", () => ({
   CommandPaletteLazy: () => null,
 }));
 
+vi.mock("@/hooks/use-unread-notifications", () => ({
+  useUnreadNotifications: () => ({
+    items: [],
+    setItems: () => {},
+    loaded: true,
+    unread: 0,
+    refresh: async () => {},
+  }),
+}));
+
+vi.mock("@/lib/socket", () => ({
+  getSocket: () => ({ emit: () => {}, on: () => {}, off: () => {} }),
+}));
+
 const clientUser = {
   id: "user-1",
   email: "client@example.com",

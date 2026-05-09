@@ -45,6 +45,9 @@ jobs:
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
+      - name: Biome root check
+        run: pnpm exec biome check .
+
       - name: Lint
         run: pnpm turbo run lint
 
