@@ -5,6 +5,14 @@
 -- mandatory and removes deprecated user-id ownership columns that were only
 -- present for dual-write compatibility during development.
 
+-- Idempotent backfill for any rows still missing legal entity references
+-- (handles case where 0027 ran without bid backfill)
+UPDATE "bid" b
+SET "buyer_legal_entity_id" = le."id"
+FROM "legal_entity" le
+WHERE le."created_by_user_id" = b."bidder_id" AND le."kind" = 'individual'
+AND b."buyer_legal_entity_id" IS NULL;
+
 ALTER TABLE "lot"
   ALTER COLUMN "seller_legal_entity_id" SET NOT NULL;
 
