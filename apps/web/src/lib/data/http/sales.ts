@@ -1,6 +1,5 @@
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
-import type { Sale } from "@auction/types";
 import type { ListSalesQuery, SaleListRow, SaleWithLots } from "./sales.server";
 
 function buildSalesQuery(params: ListSalesQuery): Record<string, string> {

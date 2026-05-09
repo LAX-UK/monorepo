@@ -1,6 +1,5 @@
 import { bigint, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
-import { legalEntity } from "./legal-entities.js";
 
 export const domainEvent = pgTable(
   "domain_events",

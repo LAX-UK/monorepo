@@ -11,7 +11,7 @@ describe("formatRemaining", () => {
   it("prefixes whole days at or over 24 hours", () => {
     const ms = 25 * 60 * 60 * 1000;
     const remainder = ms % (24 * 60 * 60 * 1000);
-    expect(formatRemaining(ms)).toBe(`1d ${formatCountdownClock(remainder)}`);
+    expect(formatRemaining(ms)).toBe(`1D ${formatCountdownClock(remainder)}`);
   });
 
   it("maps non-positive ms to zero clock", () => {

@@ -21,7 +21,6 @@ import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type {
   IItemSubmissionRepository,
-  ILotRepository,
   IUserRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
@@ -36,7 +35,6 @@ export class ItemSubmissionService implements IItemSubmissionService {
   constructor(
     private readonly db: Database,
     private readonly submissions: IItemSubmissionRepository,
-    private readonly lots: ILotRepository,
     private readonly users: IUserRepository,
     private readonly dispatcher: NotificationDispatcher,
     private readonly imageCleanup?: ImageCleanupService,

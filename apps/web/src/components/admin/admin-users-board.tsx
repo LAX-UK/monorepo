@@ -21,7 +21,6 @@ import {
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 export type AdminUsersKpiStrip = {

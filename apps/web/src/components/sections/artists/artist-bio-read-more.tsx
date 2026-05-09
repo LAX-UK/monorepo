@@ -8,8 +8,6 @@ type Props = {
   className?: string;
 };
 
-const COLLAPSED_LINES = 5;
-
 export function ArtistBioReadMore({ bio, className = "" }: Props) {
   const [open, setOpen] = useState(false);
   const fullId = useId();

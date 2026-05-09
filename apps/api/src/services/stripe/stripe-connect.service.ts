@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
-import type { LegalEntity, Payout } from "@auction/types";
+import type { LegalEntity } from "@auction/types";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
@@ -61,7 +61,7 @@ export class StripeConnectService implements IStripeConnectService {
   private readonly webhookSecret: string | undefined;
 
   constructor(
-    private readonly env: Env,
+    env: Env,
     private readonly db: Database,
     private readonly payoutService: IPayoutService,
     private readonly payoutRepository?: IPayoutRepository,
