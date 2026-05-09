@@ -8,6 +8,12 @@ node_modules
 coverage
 **/*.tsbuildinfo
 *.md
+
+# Not needed for app builds/tests; keeps `docker compose … build` context small.
+infra
+**/.terraform
+*.tfstate
+*.tfstate.*
 .env
 .env.*
 .env.local
