@@ -1,0 +1,35 @@
+name: auction-test
+
+# Run the full Vitest suite against a fresh Postgres (integration tests, migration round-trips).
+#
+# Usage (from repo root):
+#   pnpm test:docker
+#   # or:
+#   docker compose -f docker-compose.test.yml build test
+#   docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test --attach test
+#   docker compose -f docker-compose.test.yml down -v --remove-orphans
+#
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auction_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auction_test
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auction_test
+      NODE_OPTIONS: "--max-old-space-size=6144"
+    depends_on:
+      postgres:
+        condition: service_healthy

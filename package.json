@@ -9,6 +9,8 @@
     "lint:ui-guardrails": "bash ./scripts/check-ui-guardrails.sh",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:docker": "bash scripts/docker-test.sh",
+    "ci:verify": "pnpm exec biome check . && pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test && pnpm turbo run build",
     "format": "biome format --write .",
     "check": "biome check --write .",
     "db:generate": "pnpm --filter @auction/db db:generate",
