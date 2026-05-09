@@ -1,8 +1,11 @@
+export type SignupPersona = "individual" | "organisation";
+
 export type RegistrationInput = {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
+  persona: SignupPersona;
   mobile?: string;
   inviteToken?: string | undefined;
 };
