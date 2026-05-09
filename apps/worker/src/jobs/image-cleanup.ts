@@ -25,7 +25,7 @@ export async function cleanupImageJob(args: {
 
 async function isImageKeyReferenced(
   db: Database,
-  key: string,
+  _key: string,
   values: readonly string[],
 ): Promise<boolean> {
   const refs = sql`array[${sql.join(

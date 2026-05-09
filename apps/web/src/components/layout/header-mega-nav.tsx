@@ -1,7 +1,8 @@
 "use client";
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
-import { navItemActive } from "@/components/layout/header-nav-config";
+import { megaMenuSectionActive } from "@/components/layout/header-nav-config";
+import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -16,6 +17,7 @@ const HOVER_CLOSE_MS = 160;
 type HeaderMegaNavProps = {
   sections: MegaMenuSection[];
   pathname: string;
+  searchParams: Pick<URLSearchParams, "get"> | null;
   onOpenChange?: (open: boolean) => void;
   logo: ReactNode;
   trailing: ReactNode;
@@ -24,10 +26,12 @@ type HeaderMegaNavProps = {
 export function HeaderMegaNav({
   sections,
   pathname,
+  searchParams,
   onOpenChange,
   logo,
   trailing,
 }: HeaderMegaNavProps) {
+  const { blendWithHero } = useSiteHeaderChrome();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const openHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,12 +75,14 @@ export function HeaderMegaNav({
     }, HOVER_CLOSE_MS);
   }, [clearCloseHover, clearOpenHover]);
 
+  const searchKey = searchParams == null ? "" : searchParams.toString();
   useEffect(() => {
     void pathname;
+    void searchKey;
     clearOpenHover();
     clearCloseHover();
     setOpenIndex(null);
-  }, [pathname, clearOpenHover, clearCloseHover]);
+  }, [pathname, searchKey, clearOpenHover, clearCloseHover]);
 
   useEffect(() => {
     onOpenChange?.(openIndex !== null);
@@ -179,10 +185,10 @@ export function HeaderMegaNav({
 
           <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary">
             {sections.map((item, index) => {
-              const active = navItemActive(pathname, item.href);
+              const active = megaMenuSectionActive(pathname, item, searchParams);
               const open = openIndex === index;
               return (
-                <div key={item.href} className="flex flex-col items-start">
+                <div key={item.id} className="flex flex-col items-start">
                   <Button
                     type="button"
                     variant="ghost"
@@ -192,8 +198,20 @@ export function HeaderMegaNav({
                     }}
                     className={cn(
                       "group h-auto gap-1 rounded-none border-b-2 border-transparent px-0 pb-1 font-label text-sm font-medium uppercase leading-[21px] hover:bg-transparent motion-reduce:transition-none",
-                      active || open ? "text-brand-900" : "text-nav-text hover:text-brand-900",
-                      open ? "border-brand-900" : "border-transparent hover:border-brand-900/40",
+                      blendWithHero
+                        ? active || open
+                          ? "text-white dark:text-on-surface"
+                          : "text-white/85 hover:text-white dark:text-nav-text dark:hover:text-on-surface"
+                        : active || open
+                          ? "text-brand-900 dark:text-on-surface"
+                          : "text-nav-text hover:text-brand-900",
+                      open
+                        ? blendWithHero
+                          ? "border-white dark:border-on-surface"
+                          : "border-brand-900"
+                        : blendWithHero
+                          ? "border-transparent hover:border-white/35 dark:hover:border-on-surface/40"
+                          : "border-transparent hover:border-brand-900/40",
                     )}
                     aria-current={active ? "page" : undefined}
                     aria-haspopup="true"
@@ -212,7 +230,10 @@ export function HeaderMegaNav({
                     <span>{item.label}</span>
                     <ChevronDown
                       className={cn(
-                        "text-base! transition-transform motion-reduce:transition-none",
+                        "text-base! transition-[transform,color] duration-200 motion-reduce:transition-none",
+                        blendWithHero
+                          ? "text-white/90 dark:text-nav-text"
+                          : "text-brand-900 dark:text-on-surface",
                         open ? "rotate-180" : "rotate-0",
                       )}
                       aria-hidden
@@ -256,16 +277,16 @@ function HeaderMegaMenuPanelContent({
   section: MegaMenuSection;
   onNavigate: () => void;
 }) {
-  const viewAll = section.viewAllHref ?? section.href;
+  const viewAllHref = section.viewAllHref;
   const viewAllLabel =
-    section.href === "/" ? "View all upcoming auctions" : `View all ${section.label.toLowerCase()}`;
+    section.viewAllLabel ?? (viewAllHref ? `View all ${section.label.toLowerCase()}` : undefined);
 
   return (
     <div className="flex flex-col gap-4">
       {section.items.length > 0 ? (
         <ul className="flex max-w-xl flex-col gap-3">
           {section.items.map((row) => (
-            <li key={row.href}>
+            <li key={`${section.id}-${row.label}-${row.href}`}>
               <Link
                 href={row.href}
                 data-megamenu-link
@@ -280,14 +301,16 @@ function HeaderMegaMenuPanelContent({
       ) : (
         <p className="font-body text-sm text-brand-400">Nothing to show yet.</p>
       )}
-      <Link
-        href={viewAll}
-        data-megamenu-link
-        className="w-fit font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:text-on-surface"
-        onClick={onNavigate}
-      >
-        {viewAllLabel}
-      </Link>
+      {viewAllHref && viewAllLabel ? (
+        <Link
+          href={viewAllHref}
+          data-megamenu-link
+          className="w-fit font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:text-on-surface"
+          onClick={onNavigate}
+        >
+          {viewAllLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }
