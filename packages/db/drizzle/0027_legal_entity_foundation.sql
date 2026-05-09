@@ -398,6 +398,13 @@ FROM "legal_entity" le
 WHERE le."created_by_user_id" = s."created_by" AND le."kind" = 'individual'
 AND s."created_by_legal_entity_id" IS NULL;
 
+-- bid.buyer_legal_entity_id
+UPDATE "bid" b
+SET "buyer_legal_entity_id" = le."id"
+FROM "legal_entity" le
+WHERE le."created_by_user_id" = b."bidder_id" AND le."kind" = 'individual'
+AND b."buyer_legal_entity_id" IS NULL;
+
 -- 8. Backfill artist_alias for existing artists
 INSERT INTO "artist_alias" ("artist_profile_id", "alias", "kind", "created_at")
 SELECT 
