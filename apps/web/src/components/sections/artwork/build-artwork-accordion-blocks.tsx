@@ -19,7 +19,7 @@ export function buildArtworkPageAccordionBlocks(args: {
 }): AccordionBlock[] {
   const { lot, artist, initialHistory } = args;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
-  const saleEndLocal = new Date(lot.endTime).toLocaleString(undefined, {
+  const saleEndLocal = new Date(lot.endTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });

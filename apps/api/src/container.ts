@@ -431,7 +431,6 @@ export function createContainer(env: Env): Container {
 
   const lotLifecycleService = new LotLifecycleService(
     repoFactory,
-    strategyFactory,
     watchlistRepo,
     cache,
     notificationDispatcher,
@@ -496,7 +495,6 @@ export function createContainer(env: Env): Container {
   const itemSubmissionService = new ItemSubmissionService(
     db,
     itemSubmissionRepository,
-    lotRepo,
     userRepo,
     notificationDispatcher,
     imageCleanupService,

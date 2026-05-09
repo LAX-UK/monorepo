@@ -7,14 +7,15 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
+import { SiteHeaderChromeProvider, useSiteHeaderChrome } from "./site-header-chrome-context";
 import { ThemeToggle } from "./theme-toggle";
 
 type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
@@ -22,30 +23,30 @@ type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 type SiteHeaderProps = {
   user?: SessionUser | null;
   nav?: MegaMenuSection[];
-  /** Routes whose hero is meant to read directly into the header (the header
-   * fades from transparent to solid as the user scrolls).
-   * Anything not in this list keeps the existing solid chrome.
-   */
   transparentPaths?: string[];
-  /** Optional explicit override; if provided this wins regardless of route.
-   * Defaults to "solid" so every existing call site renders unchanged.
-   */
   chromeVariant?: SiteHeaderChromeVariant;
 };
 
 const SCROLL_FADE_THRESHOLD_PX = 12;
 
-export function SiteHeader({
-  user,
+type SiteHeaderShellProps = SiteHeaderProps & {
+  searchParams: ReturnType<typeof useSearchParams> | null;
+};
+
+function SiteHeaderShell({
+  user: _user,
   nav: navProp,
   transparentPaths,
   chromeVariant,
-}: SiteHeaderProps) {
+  searchParams,
+}: SiteHeaderShellProps) {
+  void _user;
   const nav = navProp ?? emptyMegaMenuSections();
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [atTop, setAtTop] = useState(true);
   const pathname = usePathname();
+  const searchKey = searchParams == null ? "" : searchParams.toString();
 
   const resolvedVariant: SiteHeaderChromeVariant =
     chromeVariant ??
@@ -56,9 +57,9 @@ export function SiteHeader({
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {
     setMenuOpen(false);
-  }, [pathname]);
+  }, [pathname, searchKey]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (resolvedVariant !== "transparentUntilScroll") {
       setAtTop(true);
       return;
@@ -74,68 +75,106 @@ export function SiteHeader({
   const isTransparent =
     resolvedVariant === "transparentUntilScroll" && atTop && !megaOpen && !menuOpen;
 
+  const blendWithHero = false;
+
   return (
     <header
       data-chrome-variant={resolvedVariant}
       data-at-top={atTop ? "true" : "false"}
+      data-blend-hero={blendWithHero ? "true" : "false"}
       className={cn(
-        "fixed top-0 z-50 w-full transition-colors",
+        "fixed top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
         isTransparent
-          ? "border-b border-transparent bg-transparent"
+          ? "border-transparent bg-transparent"
           : cn(
-              "bg-surface",
-              megaOpen ? "border-b border-transparent" : "border-b border-nav-border",
+              "border-nav-border bg-surface shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
+              megaOpen && "border-transparent shadow-none backdrop-blur-none",
             ),
       )}
     >
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-3 md:px-10">
-        <div className="hidden lg:block">
-          <HeaderUtilityBar />
+      <SiteHeaderChromeProvider value={{ blendWithHero }}>
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 pt-3 pb-4 md:px-10">
+          <div className="hidden lg:block">
+            <HeaderUtilityBar />
+          </div>
+
+          <HeaderMegaNav
+            sections={nav}
+            pathname={pathname}
+            searchParams={searchParams}
+            onOpenChange={setMegaOpen}
+            logo={
+              <Link
+                href="/"
+                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
+              >
+                <LaxLogo variant="header" />
+              </Link>
+            }
+            trailing={
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
+                <HeaderSearchTrigger />
+                <ThemeToggle />
+                <HeaderAuthChip variant="notifications" />
+                <div className="lg:hidden">
+                  <HeaderAuthChip variant="account" />
+                </div>
+                <MobileMenuIconButton menuOpen={menuOpen} onToggle={() => setMenuOpen((o) => !o)} />
+              </div>
+            }
+          />
         </div>
 
-        <HeaderMegaNav
-          sections={nav}
+        <MobileNavDrawer
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
           pathname={pathname}
-          onOpenChange={setMegaOpen}
-          logo={
-            <Link
-              href="/"
-              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
-            >
-              <LaxLogo variant="header" />
-            </Link>
-          }
-          trailing={
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
-              <HeaderSearchTrigger />
-              <ThemeToggle />
-              <HeaderAuthChip variant="notifications" />
-              <div className="lg:hidden">
-                <HeaderAuthChip variant="account" />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="min-h-[44px] min-w-[44px] text-brand-800 hover:bg-page-bg lg:hidden dark:text-on-surface"
-                aria-haspopup="dialog"
-                aria-expanded={menuOpen}
-                aria-label={menuOpen ? "Close menu" : "Open menu"}
-                onClick={() => setMenuOpen((o) => !o)}
-              >
-                {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
-              </Button>
-            </div>
-          }
+          searchParams={searchParams}
+          sections={nav}
         />
-      </div>
-
-      <MobileNavDrawer
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        pathname={pathname}
-        sections={nav}
-      />
+      </SiteHeaderChromeProvider>
     </header>
+  );
+}
+
+function SiteHeaderWithSearchParams(props: SiteHeaderProps) {
+  const searchParams = useSearchParams();
+  return <SiteHeaderShell {...props} searchParams={searchParams} />;
+}
+
+export function SiteHeader(props: SiteHeaderProps) {
+  return (
+    <Suspense fallback={<SiteHeaderShell {...props} searchParams={null} />}>
+      <SiteHeaderWithSearchParams {...props} />
+    </Suspense>
+  );
+}
+
+function MobileMenuIconButton({
+  menuOpen,
+  onToggle,
+}: {
+  menuOpen: boolean;
+  onToggle: () => void;
+}) {
+  const { blendWithHero } = useSiteHeaderChrome();
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "min-h-[44px] min-w-[44px] lg:hidden",
+        blendWithHero
+          ? "text-white hover:bg-white/10 hover:text-white dark:text-on-surface dark:hover:bg-surface-container-low dark:hover:text-on-surface"
+          : "text-brand-800 hover:bg-page-bg dark:text-on-surface",
+      )}
+      aria-haspopup="dialog"
+      aria-expanded={menuOpen}
+      aria-label={menuOpen ? "Close menu" : "Open menu"}
+      onClick={onToggle}
+    >
+      {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
+    </Button>
   );
 }

@@ -100,7 +100,7 @@ export const legalEntity = pgTable(
   ],
 );
 
-export const legalEntityRelations = relations(legalEntity, ({ one, many }) => ({
+export const legalEntityRelations = relations(legalEntity, ({ one }) => ({
   createdBy: one(user, {
     fields: [legalEntity.createdByUserId],
     references: [user.id],

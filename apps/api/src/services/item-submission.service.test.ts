@@ -2,11 +2,7 @@ import type { Database } from "@auction/db";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
-import type {
-  IItemSubmissionRepository,
-  ILotRepository,
-  IUserRepository,
-} from "./interfaces/repositories.js";
+import type { IItemSubmissionRepository, IUserRepository } from "./interfaces/repositories.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 
 const hoisted = vi.hoisted(() => ({
@@ -73,10 +69,9 @@ describe("ItemSubmissionService", () => {
     const submissions: IItemSubmissionRepository = {
       create: vi.fn().mockResolvedValue(created),
     } as unknown as IItemSubmissionRepository;
-    const lots = {} as unknown as ILotRepository;
     const users = {} as unknown as IUserRepository;
     const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(stubDb, submissions, lots, users, dispatcher);
+    const svc = new ItemSubmissionService(stubDb, submissions, users, dispatcher);
     const r = await svc.createDraft("seller-1", {
       title: "Work",
       categoryId: catId,
@@ -100,13 +95,7 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(
-      stubDb,
-      submissions,
-      {} as ILotRepository,
-      users,
-      dispatcher,
-    );
+    const svc = new ItemSubmissionService(stubDb, submissions, users, dispatcher);
     const r = await svc.submitForReview("u1", "sub-1");
     expect(r.isOk()).toBe(true);
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
@@ -182,7 +171,6 @@ describe("ItemSubmissionService", () => {
     const svc = new ItemSubmissionService(
       db,
       {} as IItemSubmissionRepository,
-      {} as ILotRepository,
       {} as unknown as IUserRepository,
       dispatcher,
       undefined,
@@ -244,7 +232,6 @@ describe("ItemSubmissionService", () => {
     const svc = new ItemSubmissionService(
       stubDb,
       submissions,
-      {} as ILotRepository,
       {} as unknown as IUserRepository,
       dispatcher,
       undefined,
@@ -274,7 +261,6 @@ describe("ItemSubmissionService", () => {
     const svc = new ItemSubmissionService(
       stubDb,
       submissions,
-      {} as ILotRepository,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
     );

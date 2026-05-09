@@ -1,18 +1,35 @@
-import { SaleCalendarRow } from "@/components/sections/sales/sale-calendar-row";
-import { SalesCategoryFilter } from "@/components/sections/sales/sales-category-filter";
-import { SalesFilterBar } from "@/components/sections/sales/sales-filter-bar";
-import { SalesFilterLeadChip } from "@/components/sections/sales/sales-filter-lead-chip";
-import { SalesHeader } from "@/components/sections/sales/sales-header";
-import { SalesTabs } from "@/components/sections/sales/sales-tabs";
-import { mapSaleToCalendarRowVM } from "@/components/sections/sales/sales-view-models";
+import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
+import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
+import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
+import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
+import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
+import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
+import {
+  mapSaleToAuctionRowVM,
+  mapSaleToFeaturedAuctionCardVM,
+} from "@/components/sections/sales/sales-view-models";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerSalesList } from "@/lib/data/http/sales.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { parseSaleFilter, parseSalesCategoryId } from "@/lib/marketing/sales-filters";
+import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
+import {
+  type CalendarPrimaryTab,
+  type CalendarSalesUrlState,
+  parseCalendarPrimaryTab,
+  parseDeliveryMode,
+  parseLocationFilter,
+  parseMonth,
+  parsePriceRange,
+  parseSort,
+  parseYear,
+} from "@/lib/marketing/sales-calendar-params";
+import { parseSalesCategoryId } from "@/lib/marketing/sales-filters";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { salePath } from "@/lib/seo/url";
+import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import type { Lot } from "@auction/types";
 import { Button, EmptyState, SectionCta } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -20,9 +37,57 @@ import Link from "next/link";
 export const metadata: Metadata = metadataForStatic({
   title: "Calendar",
   description:
-    "Explore upcoming auctions and browse past results from London, featuring the best of Modern & Contemporary Art, Design and Luxury.",
+    "Explore upcoming auctions and browse past results from London, featuring the best of Modern & Contemporary Art, Design, and luxury.",
   path: "/sales",
 });
+
+function collectYears(rows: SaleListRow[]): number[] {
+  const ys = new Set<number>();
+  for (const { sale } of rows) {
+    ys.add(new Date(sale.startTime).getFullYear());
+  }
+  const list = [...ys].sort((a, b) => b - a);
+  if (list.length === 0) list.push(new Date().getFullYear());
+  return list;
+}
+
+async function loadSaleRowsForTab(
+  tab: CalendarPrimaryTab,
+  categoryId: string | undefined,
+  sort: "startAsc" | "createdDesc",
+): Promise<SaleListRow[]> {
+  const cat = categoryId ? { categoryId } : {};
+  const sortParam = sort;
+  try {
+    switch (tab) {
+      case "upcoming":
+        return await getServerSalesList({
+          status: "scheduled",
+          limit: 48,
+          sort: sortParam,
+          ...cat,
+        });
+      case "live":
+        return await getServerSalesList({
+          status: "active",
+          limit: 48,
+          sort: sortParam,
+          ...cat,
+        });
+      case "results":
+        return await getServerSalesList({
+          status: "ended",
+          limit: 48,
+          sort: sortParam,
+          ...cat,
+        });
+      default:
+        return [];
+    }
+  } catch {
+    return [];
+  }
+}
 
 export default async function SalesListPage({
   searchParams,
@@ -30,33 +95,67 @@ export default async function SalesListPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const filter = parseSaleFilter(sp.filter);
   const categories = await getServerCategoryReader()
     .then((r) => r.list())
     .catch(() => []);
   const categoryId = parseSalesCategoryId(sp, categories);
 
-  let rows: Awaited<ReturnType<typeof getServerSalesList>> = [];
+  const tab = parseCalendarPrimaryTab(sp);
+  const deliveryMode = parseDeliveryMode(sp);
+  const location = parseLocationFilter(sp);
+  const sort = parseSort(sp);
+  const month = parseMonth(sp);
+  const year = parseYear(sp);
+  const { minPrice, maxPrice } = parsePriceRange(sp);
+
+  const calendarState: CalendarSalesUrlState = {
+    tab,
+    deliveryMode,
+    location,
+    sort,
+    ...(categoryId ? { categoryId } : {}),
+    ...(month != null ? { month } : {}),
+    ...(year != null ? { year } : {}),
+    ...(minPrice != null ? { minPrice } : {}),
+    ...(maxPrice != null ? { maxPrice } : {}),
+  };
+
+  let saleRows: SaleListRow[] = [];
+  let newLots: Lot[] = [];
   let err: string | null = null;
+
   try {
-    const cat = categoryId ? { categoryId } : {};
-    if (filter === "ended") {
-      rows = await getServerSalesList({ status: "ended", limit: 48, ...cat });
-    } else if (filter === "live" || filter === "active") {
-      rows = await getServerSalesList({ status: "active", limit: 48, sort: "startAsc", ...cat });
-    } else if (filter === "scheduled") {
-      rows = await getServerSalesList({ status: "scheduled", limit: 48, sort: "startAsc", ...cat });
+    if (tab === "newLots") {
+      const reader = await getServerLotReader();
+      newLots = await reader.list({ limit: 36, sort: "createdDesc" });
+    } else if (tab === "privateSales" || tab === "artists") {
+      saleRows = [];
     } else {
-      rows = await getServerSalesList({
-        statuses: ["active", "scheduled"],
-        limit: 48,
-        sort: "startAsc",
-        ...cat,
-      });
+      saleRows = await loadSaleRowsForTab(tab, categoryId, sort);
     }
   } catch (e) {
-    err = e instanceof Error ? e.message : "Could not load sales.";
+    err = e instanceof Error ? e.message : "Could not load data.";
   }
+
+  let featuredRows: SaleListRow[] = [];
+  try {
+    featuredRows = await getServerSalesList({
+      statuses: ["active", "scheduled"],
+      limit: 3,
+      sort: "startAsc",
+    });
+  } catch {
+    featuredRows = [];
+  }
+
+  const filteredSales = applyCalendarRowFilters(saleRows, {
+    ...(deliveryMode !== "all" ? { deliveryMode } : {}),
+    ...(location !== "all" ? { location } : {}),
+    ...(month != null ? { month } : {}),
+    ...(year != null ? { year } : {}),
+    ...(minPrice != null ? { minPrice } : {}),
+    ...(maxPrice != null ? { maxPrice } : {}),
+  });
 
   const session = await getServerSessionUser();
   const base = getSiteUrl();
@@ -65,21 +164,34 @@ export default async function SalesListPage({
     { name: "Calendar", path: "/sales" },
   ]);
   const crumbText = jsonLdScript(crumbLd);
-  const listLd =
-    !err && rows.length > 0
-      ? itemListJsonLd(
-          rows.map((r) => ({
-            name: r.sale.title,
-            url: `${base}${salePath(r.sale)}`,
-          })),
-        )
-      : null;
+
+  const listLdSource =
+    tab === "newLots"
+      ? newLots.map((l) => ({ name: l.title, url: `${base}${lotPath(l)}` }))
+      : filteredSales.map((r) => ({
+          name: r.sale.title,
+          url: `${base}${salePath(r.sale)}`,
+        }));
+  const listLd = !err && listLdSource.length > 0 ? itemListJsonLd(listLdSource) : null;
   const listLdText = listLd ? jsonLdScript(listLd) : null;
+
+  const featuredVms = featuredRows.map(({ sale, lots }) =>
+    mapSaleToFeaturedAuctionCardVM(sale, lots),
+  );
+
+  const yearOptions = collectYears(saleRows.length > 0 ? saleRows : featuredRows);
+
+  const showSalesBrowse = tab === "upcoming" || tab === "live" || tab === "results";
+  const rowVms = filteredSales.map(({ sale, lots }) =>
+    mapSaleToAuctionRowVM(sale, lots, {
+      showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
+    }),
+  );
 
   return (
     <main
       id="main-content"
-      className="bg-page-bg px-4 pb-24 pt-[var(--header-height)] sm:px-6 md:px-8 dark:bg-background"
+      className="bg-page-bg pb-24 pt-[var(--header-height)] dark:bg-background"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {crumbText}
@@ -90,59 +202,111 @@ export default async function SalesListPage({
         </script>
       ) : null}
 
-      <div className="mx-auto max-w-[1440px]">
-        <div className="flex flex-col gap-12">
-          <SalesHeader />
-          <div className="flex flex-col">
-            <SalesTabs filter={filter} categoryId={categoryId} />
-            <SalesFilterBar>
-              <SalesFilterLeadChip />
-              {categories.length > 0 ? (
-                <SalesCategoryFilter
-                  filter={filter}
-                  categoryId={categoryId}
-                  categories={categories}
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-8">
+        <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
+          <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
+            <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
+              <SalesHeroHeader />
+              <FeaturedAuctionsGrid vms={featuredVms} />
+            </div>
+
+            <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
+              <SalesPrimaryTabs state={calendarState} />
+
+              {err ? (
+                <p className="text-sm text-error" role="alert">
+                  {err}
+                </p>
+              ) : null}
+
+              {tab === "privateSales" ? (
+                <EmptyState
+                  className="border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                  title="Private sales"
+                  description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
+                  action={
+                    <Button variant="cta" asChild>
+                      <Link href="/#private-sale-heading">View highlights</Link>
+                    </Button>
+                  }
                 />
               ) : null}
-            </SalesFilterBar>
+
+              {tab === "artists" ? (
+                <EmptyState
+                  className="border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                  title="Artists"
+                  description="Public artist profiles are coming soon. Explore auctions and lots in the meantime."
+                  action={
+                    <Button variant="outline" asChild>
+                      <Link href="/">Back to home</Link>
+                    </Button>
+                  }
+                />
+              ) : null}
+
+              {tab === "newLots" ? (
+                <div className="flex flex-col gap-6">
+                  {!session ? (
+                    <SectionCta
+                      className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                      title="Ready to bid?"
+                      description="Create a free account to place bids, track lots, and receive saleroom updates."
+                      primary={
+                        <Button variant="cta" asChild>
+                          <Link href="/register">Register to bid</Link>
+                        </Button>
+                      }
+                      secondary={
+                        <Button variant="outline" asChild>
+                          <Link href="/login">Sign in</Link>
+                        </Button>
+                      }
+                    />
+                  ) : null}
+                  <SalesNewLotsGrid lots={newLots} />
+                </div>
+              ) : null}
+
+              {showSalesBrowse ? (
+                <SalesCalendarBrowse
+                  state={calendarState}
+                  resultCount={filteredSales.length}
+                  categories={categories}
+                  years={yearOptions}
+                >
+                  {!session ? (
+                    <SectionCta
+                      className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                      title="Ready to bid?"
+                      description="Create a free account to place bids, track lots, and receive saleroom updates."
+                      primary={
+                        <Button variant="cta" asChild>
+                          <Link href="/register">Register to bid</Link>
+                        </Button>
+                      }
+                      secondary={
+                        <Button variant="outline" asChild>
+                          <Link href="/login">Sign in</Link>
+                        </Button>
+                      }
+                    />
+                  ) : null}
+
+                  {filteredSales.length === 0 && !err ? (
+                    <EmptyState
+                      className="border border-dashed border-outline-variant/30 bg-white dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                      title="No sales match this filter"
+                      description="Try another tab or adjust filters in the sidebar."
+                    />
+                  ) : (
+                    <SalesAuctionList rows={rowVms} />
+                  )}
+                </SalesCalendarBrowse>
+              ) : null}
+            </div>
           </div>
-
-          {!session ? (
-            <SectionCta
-              className="mb-0 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
-              title="Ready to bid?"
-              description="Create a free account to place bids, track lots, and receive saleroom updates."
-              primary={
-                <Button variant="cta" asChild>
-                  <Link href="/register">Register to bid</Link>
-                </Button>
-              }
-              secondary={
-                <Button variant="outline" asChild>
-                  <Link href="/login">Sign in</Link>
-                </Button>
-              }
-            />
-          ) : null}
-
-          {err ? (
-            <p className="text-sm text-error" role="alert">
-              {err}
-            </p>
-          ) : rows.length === 0 ? (
-            <EmptyState
-              className="border-dashed border-outline-variant/20 bg-surface/30 dark:border-outline-variant/30"
-              title="No sales match this filter"
-              description="Try another tab or clear the category."
-            />
-          ) : (
-            <ul className="list-none p-0">
-              {rows.map(({ sale, lots }) => (
-                <SaleCalendarRow key={sale.id} vm={mapSaleToCalendarRowVM(sale, lots)} />
-              ))}
-            </ul>
-          )}
-        </div>
+        </section>
       </div>
     </main>
   );

@@ -1,9 +1,11 @@
 "use client";
 
+import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { lotPath } from "@/lib/seo/url";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +18,7 @@ function apiBase(): string {
 }
 
 export function NotificationBell() {
+  const { blendWithHero } = useSiteHeaderChrome();
   const [open, setOpen] = useState(false);
   const { items, setItems, loaded, unread } = useUnreadNotifications();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -68,7 +71,12 @@ export function NotificationBell() {
         type="button"
         variant="ghost"
         size="icon"
-        className="relative min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
+        className={cn(
+          "relative min-h-[44px] min-w-[44px] transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+          blendWithHero
+            ? "text-white hover:bg-white/10 hover:text-white dark:text-on-surface-variant dark:hover:bg-surface-container-low dark:hover:text-on-surface"
+            : "text-secondary hover:bg-surface-container-low hover:text-primary",
+        )}
         aria-label="Notifications"
         aria-expanded={open}
         aria-controls={MENU_ID}

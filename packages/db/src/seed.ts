@@ -21,6 +21,8 @@ const USER1_ID = "user-seed-001";
 const USER2_ID = "user-seed-002";
 const GOOGLE_TEST_ID = "user-seed-google";
 const APPLE_TEST_ID = "user-seed-apple";
+const GALLERY_ADMIN_ID = "gallery-admin-seed-001";
+const GALLERY_FINANCE_ID = "gallery-finance-seed-001";
 
 const LE = {
   admin: "10000000-0000-4000-8000-000000000001",
@@ -29,6 +31,8 @@ const LE = {
   user2: "10000000-0000-4000-8000-000000000004",
   google: "10000000-0000-4000-8000-000000000005",
   apple: "10000000-0000-4000-8000-000000000006",
+  gallery: "10000000-0000-4000-8000-000000000007",
+  restrictedDealer: "10000000-0000-4000-8000-000000000008",
 } as const;
 
 const legalEntityIdForUser = (userId: string): string => {
@@ -45,6 +49,9 @@ const legalEntityIdForUser = (userId: string): string => {
       return LE.google;
     case APPLE_TEST_ID:
       return LE.apple;
+    case GALLERY_ADMIN_ID:
+    case GALLERY_FINANCE_ID:
+      return LE.gallery;
     default:
       throw new Error(`Missing seeded legal entity for user ${userId}`);
   }
@@ -96,6 +103,24 @@ const L = {
   riverStudy: "b1000016-0000-4000-8000-000000000016",
 } as const;
 
+const ARTIST = {
+  carolina: "a1000001-0000-4000-8000-000000000001",
+  robert: "a1000002-0000-4000-8000-000000000002",
+  pendingStudio: "a1000003-0000-4000-8000-000000000003",
+} as const;
+
+const PAY = {
+  amber: "90000001-0000-4000-8000-000000000001",
+  marginal: "90000002-0000-4000-8000-000000000002",
+  golden: "90000003-0000-4000-8000-000000000003",
+} as const;
+
+const PO = {
+  paid: "91000001-0000-4000-8000-000000000001",
+  scheduledFailure: "91000002-0000-4000-8000-000000000002",
+  clawback: "91000003-0000-4000-8000-000000000003",
+} as const;
+
 const IMG = {
   a: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=1200&q=80",
   b: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=1200&q=80",
@@ -106,8 +131,29 @@ const IMG = {
 
 async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   const {
+    adminReviewTask,
+    artistAlias,
+    artistProfile,
+    artistWatchlist,
+    emailEvent,
+    emailOutbox,
+    emailSuppression,
+    domainEvent,
+    jwksKey,
+    kycVerification,
+    legalEntityAddress,
+    legalEntityDocument,
+    legalEntityPayoutMethod,
     payment,
     notification,
+    notificationPreference,
+    newsletterSignupLog,
+    paymentExternalRef,
+    payoutLine,
+    payout,
+    projectorState,
+    pushSubscription,
+    saleFollow,
     watchlist,
     bid,
     submissionCategories,
@@ -124,26 +170,57 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     verification,
     userInvitation,
     externalAccount,
+    uploadObject,
+    userAddress,
+    webhookEvent,
+    xeroConnection,
+    xeroWebhookEvent,
     user,
   } = schema;
+  await db.delete(projectorState);
+  await db.delete(domainEvent);
+  await db.delete(emailEvent);
+  await db.delete(emailOutbox);
+  await db.delete(emailSuppression);
+  await db.delete(newsletterSignupLog);
+  await db.delete(webhookEvent);
+  await db.delete(xeroWebhookEvent);
+  await db.delete(pushSubscription);
+  await db.delete(notificationPreference);
+  await db.delete(userAddress);
+  await db.delete(kycVerification);
+  await db.delete(payoutLine);
+  await db.delete(payout);
+  await db.delete(legalEntityPayoutMethod);
+  await db.delete(paymentExternalRef);
   await db.delete(payment);
+  await db.delete(xeroConnection);
   await db.delete(notification);
+  await db.delete(artistWatchlist);
   await db.delete(watchlist);
+  await db.delete(saleFollow);
   await db.delete(bid);
   await db.delete(submissionCategories);
   await db.delete(itemSubmission);
+  await db.delete(adminReviewTask);
   await db.delete(lotCategories);
   await db.delete(lot);
   await db.delete(saleCategories);
   await db.delete(sale);
+  await db.delete(artistAlias);
+  await db.delete(artistProfile);
+  await db.delete(legalEntityDocument);
+  await db.delete(legalEntityAddress);
   await db.delete(legalEntityMember);
   await db.delete(legalEntity);
+  await db.delete(uploadObject);
   await db.delete(category);
   await db.delete(session);
   await db.delete(account);
   await db.delete(verification);
   await db.delete(userInvitation);
   await db.delete(externalAccount);
+  await db.delete(jwksKey);
   await db.delete(user);
 }
 
@@ -160,6 +237,9 @@ async function main() {
   const stamp = new Date();
 
   const {
+    adminReviewTask,
+    artistAlias,
+    artistProfile,
     user,
     account,
     category,
@@ -174,7 +254,17 @@ async function main() {
     itemSubmission,
     submissionCategories,
     legalEntity,
+    legalEntityAddress,
     legalEntityMember,
+    legalEntityPayoutMethod,
+    kycVerification,
+    notificationPreference,
+    payout,
+    payoutLine,
+    domainEvent,
+    projectorState,
+    saleFollow,
+    artistWatchlist,
     externalAccount,
   } = schema;
 
@@ -259,6 +349,26 @@ async function main() {
       createdAt: new Date(now - 30 * day),
       updatedAt: stamp,
     },
+    {
+      id: GALLERY_ADMIN_ID,
+      name: "Maya Okafor",
+      email: "gallery-admin@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      createdAt: new Date(now - 75 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: GALLERY_FINANCE_ID,
+      name: "Samir Patel",
+      email: "gallery-finance@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      createdAt: new Date(now - 70 * day),
+      updatedAt: stamp,
+    },
   ]);
 
   await db
@@ -270,6 +380,8 @@ async function main() {
       credentialAccount(USER2_ID),
       credentialAccount(GOOGLE_TEST_ID),
       credentialAccount(APPLE_TEST_ID),
+      credentialAccount(GALLERY_ADMIN_ID),
+      credentialAccount(GALLERY_FINANCE_ID),
     ]);
 
   await db.insert(externalAccount).values([
@@ -329,6 +441,13 @@ async function main() {
       status: "approved",
       statusChangedAt: stamp,
       statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_robert_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      xeroContactId: "xero-contact-robert-seed",
+      marginSchemeEligible: true,
+      platformFeeBps: 500,
       createdAt: stamp,
       updatedAt: stamp,
     },
@@ -343,6 +462,13 @@ async function main() {
       status: "approved",
       statusChangedAt: stamp,
       statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_carolina_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      xeroContactId: "xero-contact-carolina-seed",
+      marginSchemeEligible: true,
+      platformFeeBps: 500,
       createdAt: stamp,
       updatedAt: stamp,
     },
@@ -374,15 +500,246 @@ async function main() {
       createdAt: stamp,
       updatedAt: stamp,
     },
+    {
+      id: LE.gallery,
+      displayName: "Northbank Gallery",
+      legalName: "Northbank Gallery Ltd",
+      slug: "northbank-gallery",
+      kind: "organisation",
+      subkind: "gallery",
+      createdByUserId: GALLERY_ADMIN_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_northbank_ready",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      xeroContactId: "xero-contact-northbank-seed",
+      vatNumber: "GB123456789",
+      marginSchemeEligible: true,
+      platformFeeBps: 450,
+      createdAt: new Date(now - 75 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: LE.restrictedDealer,
+      displayName: "Cedar & Stone Fine Art",
+      legalName: "Cedar & Stone Fine Art LLP",
+      slug: "cedar-stone-fine-art",
+      kind: "organisation",
+      subkind: "dealer",
+      createdByUserId: GALLERY_ADMIN_ID,
+      status: "connect_pending",
+      statusChangedAt: new Date(now - 10 * day),
+      statusChangedByUserId: ADMIN_ID,
+      stripeConnectAccountId: "acct_seed_cedar_needs_info",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: ["company.verification.document", "external_account"],
+      vatNumber: "GB987654321",
+      marginSchemeEligible: true,
+      platformFeeBps: 500,
+      createdAt: new Date(now - 20 * day),
+      updatedAt: stamp,
+    },
   ]);
 
   await db.insert(legalEntityMember).values([
-    { legalEntityId: LE.admin, userId: ADMIN_ID, role: "owner", acceptedAt: stamp },
-    { legalEntityId: LE.accountant, userId: ACCOUNTANT_ID, role: "owner", acceptedAt: stamp },
-    { legalEntityId: LE.user1, userId: USER1_ID, role: "owner", acceptedAt: stamp },
-    { legalEntityId: LE.user2, userId: USER2_ID, role: "owner", acceptedAt: stamp },
-    { legalEntityId: LE.google, userId: GOOGLE_TEST_ID, role: "owner", acceptedAt: stamp },
-    { legalEntityId: LE.apple, userId: APPLE_TEST_ID, role: "owner", acceptedAt: stamp },
+    {
+      legalEntityId: LE.admin,
+      userId: ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.accountant,
+      userId: ACCOUNTANT_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.user1,
+      userId: USER1_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.user2,
+      userId: USER2_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.google,
+      userId: GOOGLE_TEST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.apple,
+      userId: APPLE_TEST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.gallery,
+      userId: GALLERY_ADMIN_ID,
+      role: "admin",
+      isPrimaryAdmin: true,
+      invitedByUserId: ADMIN_ID,
+      invitedAt: new Date(now - 74 * day),
+      acceptedAt: new Date(now - 73 * day),
+    },
+    {
+      legalEntityId: LE.gallery,
+      userId: GALLERY_FINANCE_ID,
+      role: "finance",
+      invitedByUserId: GALLERY_ADMIN_ID,
+      invitedAt: new Date(now - 70 * day),
+      acceptedAt: new Date(now - 69 * day),
+    },
+    {
+      legalEntityId: LE.restrictedDealer,
+      userId: GALLERY_ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      invitedByUserId: ADMIN_ID,
+      invitedAt: new Date(now - 20 * day),
+      acceptedAt: new Date(now - 19 * day),
+    },
+  ]);
+
+  await db.insert(legalEntityAddress).values([
+    {
+      legalEntityId: LE.user1,
+      addressType: "billing",
+      line1: "42 Redcliffe Square",
+      line2: null,
+      city: "London",
+      state: null,
+      postalCode: "SW10 9JY",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LE.user2,
+      addressType: "billing",
+      line1: "18 Princelet Street",
+      line2: null,
+      city: "London",
+      state: null,
+      postalCode: "E1 6QH",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LE.gallery,
+      addressType: "registered",
+      line1: "Northbank Gallery",
+      line2: "14 Wapping High Street",
+      city: "London",
+      state: null,
+      postalCode: "E1W 1NG",
+      country: "GB",
+      isDefault: true,
+    },
+    {
+      legalEntityId: LE.restrictedDealer,
+      addressType: "registered",
+      line1: "Cedar & Stone Fine Art",
+      line2: "2 Market Place",
+      city: "Bath",
+      state: null,
+      postalCode: "BA1 1HX",
+      country: "GB",
+      isDefault: true,
+    },
+  ]);
+
+  await db.insert(legalEntityPayoutMethod).values([
+    {
+      legalEntityId: LE.user1,
+      stripeExternalAccountId: "ba_seed_robert_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 80 * day),
+    },
+    {
+      legalEntityId: LE.user2,
+      stripeExternalAccountId: "ba_seed_carolina_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 80 * day),
+    },
+    {
+      legalEntityId: LE.gallery,
+      stripeExternalAccountId: "ba_seed_northbank_gbp",
+      isDefault: true,
+      status: "active",
+      createdAt: new Date(now - 70 * day),
+    },
+  ]);
+
+  await db.insert(kycVerification).values([
+    {
+      userId: USER1_ID,
+      stripeVerificationSessionId: "vs_seed_robert_verified",
+      status: "verified",
+      verifiedFirstName: "Robert",
+      verifiedLastName: "Thorne",
+      verifiedDateOfBirth: "1982-04-11",
+      verifiedIdNumberLast4: "4242",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "passport",
+      verifiedIdExpiry: "2030-04-11",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 90 * day),
+      decisionAt: new Date(now - 89 * day),
+    },
+    {
+      userId: USER2_ID,
+      stripeVerificationSessionId: "vs_seed_carolina_verified",
+      status: "verified",
+      verifiedFirstName: "Carolina",
+      verifiedLastName: "Price",
+      verifiedDateOfBirth: "1990-09-03",
+      verifiedIdNumberLast4: "7788",
+      verifiedIdCountry: "GB",
+      verifiedIdType: "driving_license",
+      verifiedIdExpiry: "2029-09-03",
+      decisionPayload: { seeded: true, outcome: "verified" },
+      createdAt: new Date(now - 90 * day),
+      decisionAt: new Date(now - 89 * day),
+    },
+    {
+      userId: GALLERY_ADMIN_ID,
+      stripeVerificationSessionId: "vs_seed_maya_requires_input",
+      status: "requires_input",
+      decisionPayload: { seeded: true, missing: ["document.front"] },
+      createdAt: new Date(now - 8 * day),
+      decisionAt: null,
+    },
+  ]);
+
+  await db.insert(notificationPreference).values([
+    {
+      userId: ADMIN_ID,
+      paymentEmail: true,
+      endingSoonEmail: false,
+      quietStart: "22:00",
+      quietEnd: "07:00",
+    },
+    { userId: USER1_ID, outbidPush: true, wonEmail: true, paymentEmail: true },
+    { userId: USER2_ID, outbidEmail: true, lotEndedSellerEmail: true, paymentEmail: true },
+    { userId: GALLERY_ADMIN_ID, paymentEmail: true, watchlistEmail: true },
+    { userId: GALLERY_FINANCE_ID, paymentEmail: true, lotEndedSellerEmail: true },
   ]);
 
   await db.insert(category).values([
@@ -401,6 +758,98 @@ async function main() {
       parentId: CAT.paintings,
     },
     { id: CAT.bronze, name: "Bronze", slug: "bronze", parentId: CAT.sculpture },
+  ]);
+
+  await db.insert(artistProfile).values([
+    {
+      id: ARTIST.carolina,
+      displayName: "Carolina Price",
+      slug: "carolina-price",
+      portraitUrl: IMG.a,
+      heroImageUrl: IMG.b,
+      shortBio:
+        "London-based painter and mixed-media artist focused on light, surface, and memory.",
+      longBio:
+        "Carolina Price works across oil, pigment, and assemblage. Her seeded profile powers artist registry, lot attribution, and featured artist UI states.",
+      nationality: "British",
+      location: "London, UK",
+      birthYear: "1990",
+      websiteUrl: "https://example.com/carolina-price",
+      socialLinks: { instagram: "https://instagram.com/carolina.seed" },
+      featured: true,
+      verified: true,
+      kind: "artist",
+      status: "approved",
+      createdByUserId: USER2_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 60 * day),
+      reviewNotes: "Seeded approved artist profile linked to Carolina's legal entity.",
+      ownerLegalEntityId: LE.user2,
+      createdAt: new Date(now - 90 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.robert,
+      displayName: "Robert Thorne Studio",
+      slug: "robert-thorne-studio",
+      portraitUrl: IMG.c,
+      heroImageUrl: IMG.d,
+      shortBio:
+        "Collector-artist profile used for registry ownership and seller attribution demos.",
+      nationality: "British",
+      location: "Manchester, UK",
+      birthYear: "1982",
+      socialLinks: {},
+      featured: false,
+      verified: true,
+      kind: "artist",
+      status: "approved",
+      createdByUserId: USER1_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 50 * day),
+      reviewNotes: "Seeded secondary artist profile for admin registry tests.",
+      ownerLegalEntityId: LE.user1,
+      createdAt: new Date(now - 70 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.pendingStudio,
+      displayName: "Northbank Studio Archive",
+      slug: "northbank-studio-archive",
+      shortBio: "Pending gallery-managed artist/maker record for merge and review queues.",
+      nationality: "British",
+      location: "London, UK",
+      socialLinks: {},
+      featured: false,
+      verified: false,
+      kind: "maker",
+      status: "pending",
+      createdByUserId: GALLERY_ADMIN_ID,
+      ownerLegalEntityId: LE.gallery,
+      createdAt: new Date(now - 5 * day),
+      updatedAt: stamp,
+    },
+  ]);
+
+  await db.insert(artistAlias).values([
+    {
+      artistProfileId: ARTIST.carolina,
+      alias: "C. Price",
+      kind: "signature",
+      createdByUserId: ADMIN_ID,
+    },
+    {
+      artistProfileId: ARTIST.carolina,
+      alias: "Carolina P.",
+      kind: "synonym",
+      createdByUserId: ADMIN_ID,
+    },
+    {
+      artistProfileId: ARTIST.pendingStudio,
+      alias: "Northbank Archive",
+      kind: "proposed",
+      createdByUserId: GALLERY_ADMIN_ID,
+    },
   ]);
 
   const activeEnd = new Date(now + 10 * day);
@@ -525,7 +974,7 @@ async function main() {
           { period: "2022", note: "Acquired from the artist's studio by the consignor." },
           { note: "Private collection, London." },
         ],
-        sellerArtistId: USER2_ID,
+        sellerArtistId: ARTIST.carolina,
         imageAlts: [
           "Ethereal Form & Found Light — installation view",
           "Ethereal Form & Found Light — detail of gold leaf",
@@ -997,6 +1446,44 @@ async function main() {
     })),
   );
 
+  await db.insert(adminReviewTask).values([
+    {
+      kind: "lot_artist_backfill",
+      status: "pending",
+      targetLotId: L.suspended,
+      payload: {
+        suggestedArtistIds: [ARTIST.carolina],
+        source: "seed",
+        reason: "Lot lacks explicit approved artist attribution.",
+      },
+      assignedToUserId: ADMIN_ID,
+      createdAt: new Date(now - 2 * day),
+    },
+    {
+      kind: "legal_entity_kyb_review",
+      status: "in_progress",
+      targetLotId: null,
+      payload: {
+        legalEntityId: LE.restrictedDealer,
+        currentlyDue: ["company.verification.document", "external_account"],
+      },
+      assignedToUserId: ADMIN_ID,
+      createdAt: new Date(now - 4 * day),
+    },
+    {
+      kind: "artist_merge_review",
+      status: "pending",
+      targetLotId: null,
+      payload: {
+        candidateArtistId: ARTIST.pendingStudio,
+        possibleMatchArtistId: ARTIST.carolina,
+        confidence: 0.62,
+      },
+      assignedToUserId: ADMIN_ID,
+      createdAt: new Date(now - 1 * day),
+    },
+  ]);
+
   const submissionRows: (Omit<typeof itemSubmission.$inferInsert, "legalEntityId"> & {
     categoryId: string;
     sellerId: string;
@@ -1208,6 +1695,19 @@ async function main() {
     { userId: USER2_ID, lotId: L.paperThin },
   ]);
 
+  await db.insert(saleFollow).values([
+    { userId: USER1_ID, saleId: S.evening },
+    { userId: USER2_ID, saleId: S.online },
+    { userId: GOOGLE_TEST_ID, saleId: S.evening },
+    { userId: GALLERY_ADMIN_ID, saleId: S.online },
+  ]);
+
+  await db.insert(artistWatchlist).values([
+    { userId: USER1_ID, artistId: USER2_ID },
+    { userId: GOOGLE_TEST_ID, artistId: USER2_ID },
+    { userId: APPLE_TEST_ID, artistId: USER1_ID },
+  ]);
+
   const notifId = () => randomUUID();
   await db.insert(notification).values([
     {
@@ -1302,7 +1802,6 @@ async function main() {
     },
   ]);
 
-  const payId = () => randomUUID();
   const paymentRows: (Omit<
     typeof payment.$inferInsert,
     "buyerLegalEntityId" | "sellerLegalEntityId"
@@ -1310,7 +1809,7 @@ async function main() {
     sellerId: string;
   })[] = [
     {
-      id: payId(),
+      id: PAY.amber,
       lotId: L.amber,
       buyerId: USER1_ID,
       sellerId: USER2_ID,
@@ -1318,11 +1817,12 @@ async function main() {
       platformFee: "26250.00",
       stripePaymentIntentId: "pi_seed_amber_captured",
       stripeChargeId: "ch_seed_amber_captured",
+      stripeRefundId: null,
       status: "captured",
       createdAt: new Date(now - 29 * day),
     },
     {
-      id: payId(),
+      id: PAY.marginal,
       lotId: L.marginal,
       buyerId: USER1_ID,
       sellerId: USER2_ID,
@@ -1330,11 +1830,12 @@ async function main() {
       platformFee: "7187.50",
       stripePaymentIntentId: "pi_seed_marginal_pending",
       stripeChargeId: null,
+      stripeRefundId: null,
       status: "pending",
       createdAt: new Date(now - 28 * day),
     },
     {
-      id: payId(),
+      id: PAY.golden,
       lotId: L.golden,
       buyerId: USER2_ID,
       sellerId: USER1_ID,
@@ -1342,6 +1843,7 @@ async function main() {
       platformFee: "1750.00",
       stripePaymentIntentId: "pi_seed_golden_refunded",
       stripeChargeId: "ch_seed_golden_refunded",
+      stripeRefundId: "re_seed_golden_full",
       status: "refunded",
       createdAt: new Date(now - 14 * day),
     },
@@ -1355,6 +1857,179 @@ async function main() {
     })),
   );
 
+  await db.insert(payout).values([
+    {
+      id: PO.paid,
+      legalEntityId: LE.user2,
+      periodStart: new Date(now - 35 * day),
+      periodEnd: new Date(now - 25 * day),
+      grossAmount: "525000.00",
+      platformFee: "26250.00",
+      stripeFee: "0.00",
+      netAmount: "498750.00",
+      currency: "GBP",
+      status: "paid",
+      stripeTransferId: "tr_seed_amber_paid",
+      xeroBillId: "xero-bill-amber-seed",
+      failureReason: null,
+      processedAt: new Date(now - 24 * day),
+      statementUrl: "https://assets.lax.bid/seed/statements/payout-amber.pdf",
+      statementGenerationError: null,
+      createdAt: new Date(now - 25 * day),
+    },
+    {
+      id: PO.scheduledFailure,
+      legalEntityId: LE.gallery,
+      periodStart: new Date(now - 7 * day),
+      periodEnd: new Date(now - 1 * day),
+      grossAmount: "1200.00",
+      platformFee: "60.00",
+      stripeFee: "0.00",
+      netAmount: "1140.00",
+      currency: "GBP",
+      status: "scheduled",
+      stripeTransferId: null,
+      xeroBillId: null,
+      failureReason: "stripe_transfer_failed: account temporarily unavailable",
+      processedAt: null,
+      statementUrl: null,
+      statementGenerationError: null,
+      createdAt: new Date(now - 1 * day),
+    },
+    {
+      id: PO.clawback,
+      legalEntityId: LE.user1,
+      periodStart: new Date(now - 15 * day),
+      periodEnd: new Date(now - 14 * day),
+      grossAmount: "-35000.00",
+      platformFee: "0.00",
+      stripeFee: "0.00",
+      netAmount: "-35000.00",
+      currency: "GBP",
+      status: "clawback_pending",
+      stripeTransferId: null,
+      xeroBillId: null,
+      failureReason: "manual_reconciliation_required: refunded after settlement window",
+      processedAt: null,
+      statementUrl: null,
+      statementGenerationError: null,
+      createdAt: new Date(now - 13 * day),
+    },
+  ]);
+
+  await db.insert(payoutLine).values([
+    {
+      payoutId: PO.paid,
+      paymentId: PAY.amber,
+      amount: "525000.00",
+      kind: "sale",
+      createdByUserId: null,
+      note: null,
+      createdAt: new Date(now - 25 * day),
+    },
+    {
+      payoutId: PO.scheduledFailure,
+      paymentId: null,
+      amount: "1200.00",
+      kind: "adjustment",
+      createdByUserId: ADMIN_ID,
+      note: "Seed manual adjustment used to demonstrate scheduled payout retry after transfer failure.",
+      createdAt: new Date(now - 1 * day),
+    },
+    {
+      payoutId: PO.clawback,
+      paymentId: PAY.golden,
+      amount: "-35000.00",
+      kind: "refund",
+      createdByUserId: null,
+      note: "Seed clawback after refund",
+      sourceEventId: "evt_seed_golden_refund",
+      createdAt: new Date(now - 13 * day),
+    },
+  ]);
+
+  await db.insert(domainEvent).values([
+    {
+      aggregateType: "payment",
+      aggregateId: PAY.amber,
+      eventType: "payment.captured",
+      payload: {
+        paymentId: PAY.amber,
+        lotId: L.amber,
+        buyerLegalEntityId: LE.user1,
+        sellerLegalEntityId: LE.user2,
+        amount: "525000.00",
+        stripePaymentIntentId: "pi_seed_amber_captured",
+        stripeChargeId: "ch_seed_amber_captured",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 29 * day),
+    },
+    {
+      aggregateType: "payout",
+      aggregateId: PO.paid,
+      eventType: "payout.transfer_initiated",
+      payload: {
+        payoutId: PO.paid,
+        legalEntityId: LE.user2,
+        stripeTransferId: "tr_seed_amber_paid",
+        netAmount: "498750.00",
+        currency: "GBP",
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: LE.user2,
+      occurredAt: new Date(now - 25 * day),
+    },
+    {
+      aggregateType: "payout",
+      aggregateId: PO.scheduledFailure,
+      eventType: "payout.transfer_failed",
+      payload: {
+        payoutId: PO.scheduledFailure,
+        legalEntityId: LE.gallery,
+        reason: "stripe_transfer_failed",
+        retryMode: "next_cron_run",
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: LE.gallery,
+      occurredAt: new Date(now - 1 * day),
+    },
+    {
+      aggregateType: "payout",
+      aggregateId: PO.clawback,
+      eventType: "payout.clawback_required",
+      payload: {
+        payoutId: PO.clawback,
+        legalEntityId: LE.user1,
+        amount: "-35000.00",
+        reason: "refund_after_payout",
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: LE.user1,
+      occurredAt: new Date(now - 13 * day),
+    },
+  ]);
+
+  await db.insert(projectorState).values([
+    {
+      projectorName: "notification_fanout",
+      lastProcessedEventId: 0,
+      updatedAt: stamp,
+      lastError: "Seed state: projector has not processed seeded events yet.",
+    },
+    {
+      projectorName: "xero_payout_bill_sync",
+      lastProcessedEventId: 0,
+      updatedAt: stamp,
+      lastError: null,
+    },
+  ]);
+
   console.log("");
   console.log("Seed complete — polished LAX demo dataset loaded.");
   console.log("");
@@ -1367,10 +2042,14 @@ async function main() {
   console.log("    user2@lax.bid       Carolina Price    client");
   console.log("    google-test@lax.bid Google Test       client / google fixture");
   console.log("    apple-test@lax.bid  Apple Test        client / apple fixture");
+  console.log("    gallery-admin@lax.bid   Maya Okafor   Northbank Gallery admin");
+  console.log("    gallery-finance@lax.bid Samir Patel   Northbank Gallery finance");
   console.log("");
   console.log("  Includes: 2 sales, 16 lots, nested categories, 26 bids, 8 watchlist rows,");
-  console.log("  notifications, payments (captured/pending/refunded), and item submissions");
-  console.log("  across draft, submitted, rejected, and converted states.");
+  console.log("  sale/artist follows, notifications, payments (captured/pending/refunded),");
+  console.log("  payout rows (paid, scheduled retry, clawback_pending), domain events,");
+  console.log("  KYC/Connect states, admin review tasks, and item submissions across");
+  console.log("  draft, submitted, rejected, and converted states.");
   console.log("");
 
   await pool.end();

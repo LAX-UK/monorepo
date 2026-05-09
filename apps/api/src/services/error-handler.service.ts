@@ -1,6 +1,5 @@
 import type { Context } from "hono";
 import type {
-  ClassifiedError,
   IErrorClassifier,
   IErrorLogger,
   IErrorReporter,

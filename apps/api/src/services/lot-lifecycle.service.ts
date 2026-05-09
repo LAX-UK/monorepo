@@ -2,7 +2,6 @@ import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
-import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -16,7 +15,6 @@ import type { NotificationFactory } from "./notification.factory.js";
 export class LotLifecycleService {
   constructor(
     private readonly repos: IRepositoryFactory,
-    private readonly strategyFactory: ILotStrategyFactory,
     private readonly watchlist: IWatchlistRepository | null,
     private readonly cache: ICacheProvider | null,
     private readonly notificationDispatcher: NotificationDispatcher | null,
