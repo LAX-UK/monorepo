@@ -1,4 +1,3 @@
-import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { formatMoney } from "@/lib/format-currency";
 import type { Lot, Sale } from "@auction/types";
@@ -21,11 +20,11 @@ type Props = {
  * these lots (Single Responsibility / Liskov: each panel renders one mode).
  */
 export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
-  const eventStartLabel = new Date(sale.startTime).toLocaleString(undefined, {
+  const eventStartLabel = new Date(sale.startTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const eventEndLabel = new Date(sale.endTime).toLocaleString(undefined, {
+  const eventEndLabel = new Date(sale.endTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -129,10 +128,6 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
           Bidding takes place in person at the venue or via a registered representative. Online
           bidding is not available for this lot.
         </p>
-
-        <div className="mt-6">
-          <ArtworkTrustStrip compact />
-        </div>
       </div>
     </div>
   );

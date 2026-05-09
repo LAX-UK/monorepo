@@ -1,4 +1,5 @@
 import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
+import { cn } from "@auction/ui";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -53,7 +54,11 @@ export function LaxLogo({
           alt={imageAlt}
           width={imageWidth}
           height={imageHeight}
-          className={`h-auto w-auto ${imgMax} dark:brightness-0 dark:invert`}
+          className={cn(
+            "h-auto w-auto motion-reduce:transition-none",
+            imgMax,
+            variant === "header" && "dark:brightness-0 dark:invert",
+          )}
           priority={variant === "header"}
         />
         {children}

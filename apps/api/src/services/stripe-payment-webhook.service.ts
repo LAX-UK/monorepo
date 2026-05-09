@@ -2,10 +2,7 @@ import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
-import type {
-  DrizzleWebhookEventRepository,
-  IWebhookEventRepository,
-} from "../repositories/drizzle-webhook-event.repository.js";
+import type { IWebhookEventRepository } from "../repositories/drizzle-webhook-event.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 

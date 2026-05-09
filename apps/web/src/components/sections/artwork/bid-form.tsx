@@ -1,6 +1,7 @@
 "use client";
 
 import { BidErrorView } from "@/components/bid/bid-error-view";
+import { BidStepper } from "@/components/sections/artwork/online/bid-stepper";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
@@ -23,6 +24,11 @@ type Props = {
   showMaxAutoField?: boolean;
   className?: string;
   reviewButtonClassName?: string;
+  amountFieldVariant?: "input" | "stepper" | "hidden";
+  /** Used when `amountFieldVariant` is `stepper` (typically `lot.minBidIncrement`). */
+  stepNumeric?: number;
+  /** Label for the primary step-1 action (default Review bid). */
+  step1ButtonLabel?: string;
 };
 
 const CHIP_ADDS = [500, 1000, 5000] as const;
@@ -40,11 +46,15 @@ export function BidForm({
   showMaxAutoField = true,
   className,
   reviewButtonClassName,
+  amountFieldVariant = "input",
+  stepNumeric = 0.01,
+  step1ButtonLabel = "Review bid",
 }: Props) {
   const minStr = minNumeric.toFixed(2);
   const amountInputId = useId();
 
-  const showIncrementChips = auctionType === "english" || auctionType === "buy_it_now";
+  const showIncrementChips =
+    amountFieldVariant === "input" && (auctionType === "english" || auctionType === "buy_it_now");
 
   const previewNum = Number.parseFloat(amount.trim() === "" ? minStr : amount);
   const previewForConfirm = Number.isFinite(previewNum) ? previewNum.toFixed(2) : minStr;
@@ -94,25 +104,39 @@ export function BidForm({
           </Button>
         ) : null}
       </div>
-      <div>
-        <label
-          htmlFor={amountInputId}
-          className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
-        >
-          Enter bid amount (min. {formatMoney(minStr)})
-        </label>
-        <div className="flex items-center border-b-2 border-outline-variant/40 py-4 transition-colors focus-within:border-primary">
-          <span className="mr-4 font-headline text-2xl text-on-surface">$</span>
-          <UnderlineInput
-            id={amountInputId}
-            inputMode="decimal"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => onAmountChange(e.target.value)}
-            className="border-0 p-0 text-3xl focus:shadow-none"
+      {amountFieldVariant === "hidden" ? null : amountFieldVariant === "stepper" ? (
+        <div className="space-y-3">
+          <span className="block font-label text-xs uppercase tracking-widest text-on-surface-variant">
+            Enter bid amount (min. {formatMoney(minStr)})
+          </span>
+          <BidStepper
+            amount={amount.trim() === "" ? minStr : amount}
+            minNumeric={minNumeric}
+            stepNumeric={stepNumeric}
+            onAmountChange={onAmountChange}
           />
         </div>
-      </div>
+      ) : (
+        <div>
+          <label
+            htmlFor={amountInputId}
+            className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+          >
+            Enter bid amount (min. {formatMoney(minStr)})
+          </label>
+          <div className="flex items-center border-b-2 border-outline-variant/40 py-4 transition-colors focus-within:border-primary">
+            <span className="mr-4 font-headline text-2xl text-on-surface">$</span>
+            <UnderlineInput
+              id={amountInputId}
+              inputMode="decimal"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              className="border-0 p-0 text-3xl focus:shadow-none"
+            />
+          </div>
+        </div>
+      )}
       {showMaxAutoField && (auctionType === "english" || auctionType === "buy_it_now") ? (
         <div>
           <label
@@ -141,7 +165,7 @@ export function BidForm({
           className={cn("h-auto w-full py-6", reviewButtonClassName)}
           onClick={onReview}
         >
-          Review bid
+          {step1ButtonLabel}
         </Button>
         <p className="text-center text-xs text-on-surface-variant">
           You&apos;ll confirm {formatMoney(previewForConfirm)} before it&apos;s placed.

@@ -8,7 +8,6 @@ import {
   LineItem,
   XeroClient,
 } from "xero-node";
-import type { TokenSet } from "xero-node";
 import type { Env } from "../../env.js";
 import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";

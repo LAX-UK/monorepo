@@ -253,6 +253,13 @@
       "when": 1779400000000,
       "tag": "0037_payment_stripe_refund_id",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0038_payment_stripe_charge_id",
+      "breakpoints": true
     }
   ]
 }
