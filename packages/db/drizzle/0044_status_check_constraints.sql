@@ -29,6 +29,28 @@ BEGIN
   END IF;
 END $$;
 
+-- Remap legacy auction_* type names that existed before the lots rename (commit 81a2d2b5).
+-- Safe to run repeatedly: UPDATE is a no-op when no matching rows exist.
+UPDATE notification SET type = 'lot_won'          WHERE type = 'auction_won';
+UPDATE notification SET type = 'lot_lost'         WHERE type = 'auction_lost';
+UPDATE notification SET type = 'lot_ending_soon'  WHERE type = 'auction_ending_soon';
+
+-- Remove any remaining rows whose type cannot be mapped to a current value.
+-- These are test/seed artefacts; the allow-list below is the source of truth.
+DELETE FROM notification
+WHERE type NOT IN (
+  'outbid',
+  'lot_cancelled',
+  'lot_won',
+  'lot_lost',
+  'lot_ending_soon',
+  'watchlist_starting',
+  'watchlist_ending_soon',
+  'payment_received',
+  'payment_due',
+  'lot_ended_seller'
+);
+
 DO $$
 BEGIN
   IF EXISTS (
