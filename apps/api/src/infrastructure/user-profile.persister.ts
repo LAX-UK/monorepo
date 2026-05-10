@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
+import type { SignupPersona } from "@auction/validators";
 import { eq } from "drizzle-orm";
 import type { IUserProfilePersister } from "../services/interfaces/registration.js";
 
@@ -10,6 +11,7 @@ export class DrizzleUserProfilePersister implements IUserProfilePersister {
     userId: string;
     firstName: string;
     lastName: string;
+    persona: SignupPersona;
     mobile?: string;
   }): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
@@ -19,6 +21,7 @@ export class DrizzleUserProfilePersister implements IUserProfilePersister {
           firstName: input.firstName,
           lastName: input.lastName,
           mobile: input.mobile ?? null,
+          signupPersona: input.persona,
           updatedAt: new Date(),
         })
         .where(eq(user.id, input.userId));

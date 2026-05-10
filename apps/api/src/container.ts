@@ -135,6 +135,7 @@ import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
+import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { PaymentService } from "./services/payment.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
@@ -260,6 +261,8 @@ export function createContainer(env: Env): Container {
       : new ConsoleEmailService(db, emailQueue);
   const jwksAdapter = createJwksAdapter(authDb);
 
+  const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
+
   const auth = createAuth({
     db: authDb,
     secret: env.BETTER_AUTH_SECRET,
@@ -275,6 +278,13 @@ export function createContainer(env: Env): Container {
     appleClientSecret: env.APPLE_CLIENT_SECRET,
     email: emailService,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    onUserCreated: async (authUser) => {
+      await ensurePersonalLegalEntityService.ensure({
+        userId: authUser.id,
+        displayName: authUser.name,
+        email: authUser.email,
+      });
+    },
   });
 
   const issuer = env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL;

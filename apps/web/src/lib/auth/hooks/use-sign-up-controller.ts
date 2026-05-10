@@ -20,6 +20,7 @@ export function useSignUpController(opts?: { inviteToken?: string }) {
       email: "",
       mobile: "",
       password: "",
+      persona: "individual",
       acceptTerms: false,
     },
   });
@@ -31,7 +32,8 @@ export function useSignUpController(opts?: { inviteToken?: string }) {
     };
     const result = await run(payload);
     if (result.ok) {
-      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
+      const params = new URLSearchParams({ email: data.email, persona: data.persona });
+      router.push(`/register/verify-pending?${params.toString()}`);
       router.refresh();
     }
   });
