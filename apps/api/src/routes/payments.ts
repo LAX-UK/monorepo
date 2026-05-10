@@ -1,4 +1,8 @@
-import { createPaymentBodySchema, paymentIdParamSchema } from "@auction/validators";
+import {
+  createPaymentBodySchema,
+  myPaymentsQuerySchema,
+  paymentIdParamSchema,
+} from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -11,6 +15,7 @@ import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
 import { createOptionalLegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { presentMyPayments } from "./payment-me-presenter.js";
 
 export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -32,6 +37,24 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
+  });
+
+  /** Buyer-facing payments list. Strictly scoped to the JWT user; the route never
+   * accepts a buyerId from the client. Optional `?status` narrows the result.
+   */
+  r.get("/me", requireAuth, zValidator("query", myPaymentsQuerySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { status } = c.req.valid("query");
+    const all = await container.paymentService.listForBuyer(userId);
+    const filtered = status ? all.filter((p) => p.status === status) : all;
+    const lotIds = Array.from(new Set(filtered.map((p) => p.lotId)));
+    const lots = await Promise.all(lotIds.map((id) => container.lotService.getById(id)));
+    const lotById = new Map<string, NonNullable<(typeof lots)[number]>>();
+    for (const lot of lots) {
+      if (lot) lotById.set(lot.id, lot);
+    }
+    const data = await presentMyPayments(filtered, lotById, container.mediaUrlResolver);
+    return c.json({ data });
   });
 
   r.post(
