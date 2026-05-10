@@ -4,6 +4,7 @@ import {
   legalEntityStatuses,
   legalEntitySubkinds,
 } from "@auction/types";
+import { ORG_ONBOARDING_STEPS } from "@auction/types";
 import { z } from "zod";
 
 /** Create Legal Entity Input */
@@ -122,17 +123,32 @@ export const legalEntityAddressSchema = z.object({
 export type LegalEntityAddressInput = z.infer<typeof legalEntityAddressSchema>;
 
 /** KYB Document Upload Input */
-export const legalEntityDocumentUploadSchema = z.object({
-  kind: z.enum([
-    "companies_house_extract",
-    "vat_certificate",
-    "beneficial_owner_id",
-    "provenance_sample",
-    "bank_statement",
-    "other",
-  ]),
-  uploadObjectId: z.string().uuid(),
-});
+export const legalEntityDocumentUploadSchema = z
+  .object({
+    kind: z.enum([
+      "companies_house_extract",
+      "vat_certificate",
+      "beneficial_owner_id",
+      "provenance_sample",
+      "bank_statement",
+      "other",
+    ]),
+    uploadObjectId: z.string().uuid(),
+    /** Required (non-empty when trimmed) when `kind` is `other`. */
+    label: z.string().max(200).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.kind === "other") {
+      const t = data.label?.trim() ?? "";
+      if (!t) {
+        ctx.addIssue({
+          code: "custom",
+          message: "other_document_label_required",
+          path: ["label"],
+        });
+      }
+    }
+  });
 
 export type LegalEntityDocumentUploadInput = z.infer<typeof legalEntityDocumentUploadSchema>;
 
@@ -167,6 +183,27 @@ export const createOrganizationSchema = z.object({
 });
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+const ORG_ONBOARDING_STEP_KEYS = ORG_ONBOARDING_STEPS as unknown as [
+  (typeof ORG_ONBOARDING_STEPS)[number],
+  ...(typeof ORG_ONBOARDING_STEPS)[number][],
+];
+
+export const orgOnboardingStepKeySchema = z.enum(ORG_ONBOARDING_STEP_KEYS);
+
+export type OrgOnboardingStepKeyInput = z.infer<typeof orgOnboardingStepKeySchema>;
+
+/** PATCH body while completing organisation onboarding "details". */
+export const organizationOnboardingProfileSchema = z.object({
+  displayName: z.string().min(1).max(200),
+  legalName: z.string().max(200).optional(),
+  vatNumber: z.string().max(50).optional(),
+  primaryAddress: legalEntityAddressSchema,
+});
+
+export type OrganizationOnboardingProfileInput = z.infer<
+  typeof organizationOnboardingProfileSchema
+>;
 
 export const checkOrgNameSchema = z.object({
   displayName: z.string().min(1).max(200),
