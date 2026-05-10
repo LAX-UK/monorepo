@@ -1,4 +1,5 @@
-export type SignupPersona = "individual" | "organisation";
+import type { SignupPersona } from "@auction/validators";
+export type { SignupPersona };
 
 export type RegistrationInput = {
   firstName: string;
@@ -31,6 +32,7 @@ export interface IUserProfilePersister {
     userId: string;
     firstName: string;
     lastName: string;
+    persona: SignupPersona;
     mobile?: string;
   }): Promise<{ ok: true } | { ok: false; message: string }>;
 }
