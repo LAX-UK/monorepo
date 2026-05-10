@@ -36,6 +36,14 @@ export async function requireAuthenticatedUser(opts: {
     redirect("/account-suspended");
   }
 
+  if (user.emailVerified !== true) {
+    const qs = new URLSearchParams({
+      next: opts.loginNext,
+      email: user.email,
+    });
+    redirect(`/register/verify-pending?${qs.toString()}`);
+  }
+
   const role = user.role as UserRole;
 
   if (opts.shell === "client" && canAccessStaffAdminShell(role)) {

@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
+import { legalEntity, user } from "@auction/db/schema";
+import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { LegalEntity } from "@auction/types";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
@@ -84,26 +85,72 @@ export class StripeConnectService implements IStripeConnectService {
     return row;
   }
 
+  /** Legal entity row plus owner user fields (Connect onboarding needs human identity for individuals). */
+  private async loadLegalEntityWithOwner(legalEntityId: string) {
+    const rows = await this.db
+      .select({
+        entity: legalEntity,
+        ownerEmail: user.email,
+        ownerFirstName: user.firstName,
+        ownerLastName: user.lastName,
+        ownerDisplayName: user.name,
+      })
+      .from(legalEntity)
+      .innerJoin(user, eq(user.id, legalEntity.createdByUserId))
+      .where(eq(legalEntity.id, legalEntityId))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new Error("legal_entity_not_found");
+    return row;
+  }
+
   async ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
     if (!this.stripe) throw new StripeConnectNotConfiguredError();
-    const row = await this.loadEntity(legalEntityId);
-    if (row.kind !== "organisation") {
-      throw new Error("connect_only_for_organisations");
-    }
+    const { entity: row, ownerEmail, ownerFirstName, ownerLastName, ownerDisplayName } =
+      await this.loadLegalEntityWithOwner(legalEntityId);
     if (row.stripeConnectAccountId) {
       return { stripeAccountId: row.stripeConnectAccountId, legalEntity: rowToEntity(row) };
     }
 
-    const account = await this.stripe.accounts.create({
-      type: "express",
-      country,
-      capabilities: {
-        transfers: { requested: true },
-      },
-      business_type: row.subkind === "charity" ? "non_profit" : "company",
-      metadata: { legalEntityId, subkind: row.subkind },
-      ...(row.legalName ? { business_profile: { name: row.legalName } } : {}),
-    });
+    const accountCreateParams: Stripe.AccountCreateParams =
+      row.kind === "organisation"
+        ? {
+            type: "express",
+            country,
+            capabilities: {
+              transfers: { requested: true },
+            },
+            business_type: row.subkind === "charity" ? "non_profit" : "company",
+            metadata: { legalEntityId, subkind: row.subkind },
+            ...(row.legalName ? { business_profile: { name: row.legalName } } : {}),
+          }
+        : (() => {
+            const display = ownerDisplayName?.trim() || "";
+            const parts = display.split(/\s+/).filter(Boolean);
+            const first =
+              ownerFirstName?.trim() || (parts.length > 0 ? parts[0]! : ownerEmail.split("@")[0]!);
+            const last =
+              ownerLastName?.trim() ||
+              (parts.length > 1 ? parts.slice(1).join(" ") : "") ||
+              first ||
+              "Individual";
+            return {
+              type: "express" as const,
+              country,
+              capabilities: {
+                transfers: { requested: true },
+              },
+              business_type: "individual" as const,
+              individual: {
+                first_name: first.slice(0, 100),
+                last_name: last.slice(0, 100),
+                email: ownerEmail,
+              },
+              metadata: { legalEntityId, subkind: row.subkind },
+            };
+          })();
+
+    const account = await this.stripe.accounts.create(accountCreateParams);
 
     const [updated] = await this.db
       .update(legalEntity)
@@ -182,6 +229,10 @@ export class StripeConnectService implements IStripeConnectService {
     const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
 
     if (event.type === "account.updated") {
+      const { claimed } = await tryClaimProcessedStripeEvent(this.db, event.id, "stripe_connect");
+      if (!claimed) {
+        return { processed: true };
+      }
       const account = event.data.object as Stripe.Account;
       await this.applyAccountUpdate(account);
       return { processed: true };
@@ -189,6 +240,10 @@ export class StripeConnectService implements IStripeConnectService {
     if (event.type === "capability.updated") {
       // Capability updates also bubble through account.updated; refresh
       // anyway in case Stripe sends only the capability event.
+      const { claimed } = await tryClaimProcessedStripeEvent(this.db, event.id, "stripe_connect");
+      if (!claimed) {
+        return { processed: true };
+      }
       const cap = event.data.object as Stripe.Capability;
       const accountId = typeof cap.account === "string" ? cap.account : cap.account?.id;
       if (accountId) {
