@@ -12,6 +12,8 @@ locals {
     media                = { name = "test-media", type = "CNAME", value = local.media_cdn, proxied = true, comment = "lax test media CDN" }
     postmark_dkim        = { name = "20260505005739pm._domainkey.mail.test", type = "TXT", value = "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDfWy7bTm/IOyqliVj57Fkq8W3UvPumahYO7OmojSKB/858B7uUIWA7+ywN6TrFgJXYLcJqEPZOXLatIoHqED+Rjbe1xi4ReSjENLUIrvM2WMHNPB5kzoZjBDlTItTIPa1gqmW8TEhiQ+ScZ5KHkS+iEOzlirv/Fnwr32j4Xtt3PQIDAQAB", proxied = false, comment = "Postmark test DKIM" }
     postmark_return_path = { name = "pm-bounces.mail.test", type = "CNAME", value = "pm.mtasv.net", proxied = false, comment = "Postmark test Return-Path" }
+    mail_test_spf = { name = "mail.test", type = "TXT", value = "v=spf1 include:spf.mtasv.net ~all", proxied = false, comment = "Postmark SPF for mail.test.lax.bid" }
+    mail_test_dmarc = { name = "_dmarc.mail.test", type = "TXT", value = "v=DMARC1; p=none; rua=mailto:support@lax.bid", proxied = false, comment = "DMARC for mail.test.lax.bid" }
   }
 }
 
