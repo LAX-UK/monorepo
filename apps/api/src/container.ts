@@ -521,7 +521,10 @@ export function createContainer(env: Env): Container {
   );
 
   const categoryService = new CategoryService(categoryRepo);
-  const artistProfileService = new ArtistProfileService(new DrizzleArtistProfileRepository(db));
+  const artistProfileService = new ArtistProfileService(
+    new DrizzleArtistProfileRepository(db),
+    artistRegistryService,
+  );
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
 
@@ -621,7 +624,14 @@ export function createContainer(env: Env): Container {
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
-  const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, userRepo);
+  // Watchlist now references `artist_profile.id` (post-0046 migration), so the
+  // existence check delegates to the artist registry instead of the user table.
+  const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, {
+    findById: async (id: string) => {
+      const a = await artistProfileService.getById(id);
+      return a ? { id: a.id } : null;
+    },
+  });
   const profileService = new ProfileService(profileRepo, profileRepo, imageCleanupService);
   const addressService = new AddressService(addressRepo);
 

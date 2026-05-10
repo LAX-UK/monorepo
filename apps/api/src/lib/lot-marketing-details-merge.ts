@@ -2,7 +2,6 @@ import type { LotMarketingDetails } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 
 const MANAGED_KEYS = [
-  "sellerArtistId",
   "conditionReport",
   "provenance",
   "exhibitions",

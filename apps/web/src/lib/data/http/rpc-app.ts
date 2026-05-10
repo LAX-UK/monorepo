@@ -36,11 +36,16 @@ export type RpcApp = {
       json: { lotId: string; amount: number; maxAutoBidAmount?: number };
     }) => Promise<Response>;
   };
+  artists: {
+    public: {
+      $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+    };
+    ":id": {
+      $get: (args: { param: { id: string } }) => Promise<Response>;
+    };
+  };
   users: {
     public: {
-      artists: {
-        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
-      };
       ":userId": {
         $get: (args: { param: { userId: string } }) => Promise<Response>;
       };

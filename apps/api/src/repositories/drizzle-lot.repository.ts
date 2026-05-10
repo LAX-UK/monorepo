@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bid, legalEntity, lot, lotCategories } from "@auction/db/schema";
+import { artistProfile, bid, legalEntity, lot, lotCategories } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
@@ -43,6 +43,7 @@ function listWhere(input: ListWhereInput) {
     conditions.push(eq(lot.sellerLegalEntityId, input.sellerLegalEntityId));
   if (input.winnerId) conditions.push(eq(lot.winnerId, input.winnerId));
   if (input.saleId) conditions.push(eq(lot.saleId, input.saleId));
+  if (input.artistId) conditions.push(eq(lot.artistId, input.artistId));
   if (input.endYear !== undefined) {
     const { start, end } = endYearBoundsUtc(input.endYear);
     conditions.push(gte(lot.endTime, start));
@@ -125,10 +126,27 @@ export class DrizzleLotRepository implements ILotRepository {
     const sellerLegalEntityId = input.sellerLegalEntityId;
 
     const row = await this.db.transaction(async (tx) => {
+      // When an artist FK is supplied, the lot inherits a publish-gate flag if
+      // the artist isn't approved yet. This keeps the catalogue consistent
+      // when admins attach a freshly-created `pending` registry row.
+      let artistReviewRequired = false;
+      let artistId: string | null = null;
+      if (input.artistId) {
+        const [ap] = await tx
+          .select({ status: artistProfile.status })
+          .from(artistProfile)
+          .where(eq(artistProfile.id, input.artistId))
+          .limit(1);
+        if (!ap) throw new Error("artist_not_found");
+        artistId = input.artistId;
+        artistReviewRequired = ap.status !== "approved";
+      }
+
       const [created] = await tx
         .insert(lot)
         .values({
           sellerLegalEntityId,
+          ...(artistId !== null ? { artistId, artistReviewRequired } : {}),
           title: input.title,
           description: input.description ?? null,
           medium: input.medium ?? null,
@@ -392,6 +410,25 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.lotNumber !== undefined) patch.lotNumber = input.lotNumber;
 
     const row = await this.db.transaction(async (tx) => {
+      // Resolve the artist FK transition so that `artistReviewRequired` stays
+      // in sync with the new artist's status. We keep this inside the same
+      // transaction as the lot update for consistency.
+      if (input.artistId !== undefined) {
+        if (input.artistId === null) {
+          patch.artistId = null;
+          patch.artistReviewRequired = false;
+        } else {
+          const [ap] = await tx
+            .select({ status: artistProfile.status })
+            .from(artistProfile)
+            .where(eq(artistProfile.id, input.artistId))
+            .limit(1);
+          if (!ap) throw new Error("artist_not_found");
+          patch.artistId = input.artistId;
+          patch.artistReviewRequired = ap.status !== "approved";
+        }
+      }
+
       const [updated] = await tx.update(lot).set(patch).where(eq(lot.id, id)).returning();
       if (!updated) throw new Error("Lot update failed");
       if (categoryIds !== undefined) {

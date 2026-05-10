@@ -1,6 +1,6 @@
 # Artist review / merge — post-hotfix audit
 
-After deploying the hotfix that gates `POST /artists/:id/review`, `POST /artists/:id/merge`, and `POST /artists/propose-matches` with platform administrator capability, review historical rows where a non-administrator may have changed catalogue state. (`propose-matches` does not persist reviewer id; this runbook focuses on approve/merge attribution.)
+After deploying the hotfix that gates `POST /artists`, `POST /artists/:id/review`, `POST /artists/:id/merge`, and `POST /artists/propose-matches` behind the `artist.review` / `artist.merge` capabilities (admin-only), review historical rows where a non-administrator may have changed catalogue state. (`propose-matches` does not persist reviewer id; this runbook focuses on approve/merge attribution.)
 
 `artist_profile.reviewed_by_user_id` is set on approve, reject, and merge flows. There is no `domain_events` stream for every artist decision in v1, so use SQL against `artist_profile` + `"user"`.
 

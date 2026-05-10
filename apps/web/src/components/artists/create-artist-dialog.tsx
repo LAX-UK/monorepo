@@ -25,6 +25,12 @@ type Props = {
   initialName: string;
   onCreated: (artist: CreatedArtist) => void;
   onCancel: () => void;
+  /** Pre-fill `kind` when the host already knows it (e.g. picker has the
+   * "Maker" filter chip selected). */
+  defaultKind?: Kind | undefined;
+  /** When set, the new artist is linked to this user (Flow B: submitter is
+   * the artist). The dialog passes it through on submit; not user-editable. */
+  ownerUserId?: string | null;
 };
 
 const KINDS = [
@@ -36,11 +42,18 @@ const KINDS = [
 
 type Kind = (typeof KINDS)[number]["value"];
 
-export function CreateArtistDialog({ open, initialName, onCreated, onCancel }: Props) {
+export function CreateArtistDialog({
+  open,
+  initialName,
+  onCreated,
+  onCancel,
+  defaultKind,
+  ownerUserId,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(initialName);
-  const [kind, setKind] = useState<Kind>("artist");
+  const [kind, setKind] = useState<Kind>(defaultKind ?? "artist");
   const [shortBio, setShortBio] = useState("");
   const [nationality, setNationality] = useState("");
   const [birthYear, setBirthYear] = useState("");
@@ -93,6 +106,7 @@ export function CreateArtistDialog({ open, initialName, onCreated, onCancel }: P
           ...(nationality.trim() ? { nationality: nationality.trim() } : {}),
           ...(birthYear.trim() ? { birthYear: birthYear.trim() } : {}),
           ...(deathYear.trim() ? { deathYear: deathYear.trim() } : {}),
+          ...(ownerUserId ? { ownerUserId } : {}),
         }),
       });
       if (!res.ok) {

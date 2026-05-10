@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import { artistProfile, lot } from "@auction/db/schema";
-import type { LotMarketingDetails } from "@auction/types";
 import { and, eq, ilike, inArray, ne } from "drizzle-orm";
 import {
   type ArtistCandidate,
@@ -22,17 +21,19 @@ export type LotArtistBackfillRow = {
   ambiguityCount: number;
 };
 
-function sellerArtistFromMarketing(details: Record<string, unknown>): string | null {
-  const md = details as LotMarketingDetails;
-  const v = md.sellerArtistId;
+/** Pre-migration rows may still have `marketing_details.sellerArtistId`; read
+ * via loose JSON so the audit script works without the field on `LotMarketingDetails`. */
+function legacySellerArtistIdFromMarketing(details: Record<string, unknown>): string | null {
+  const v = details.sellerArtistId;
   if (typeof v === "string" && v.trim()) return v.trim();
   if (v === null) return null;
   return null;
 }
 
 function artistNoteHint(details: Record<string, unknown>): string | null {
-  const md = details as LotMarketingDetails;
-  const n = md.artistNote?.trim();
+  const raw = details.artistNote;
+  if (typeof raw !== "string") return null;
+  const n = raw.trim();
   return n || null;
 }
 
@@ -45,7 +46,7 @@ export async function analyzeLotArtistBackfill(
     marketingDetails: Record<string, unknown>;
   },
 ): Promise<LotArtistBackfillRow> {
-  const seller = sellerArtistFromMarketing(lotRow.marketingDetails);
+  const seller = legacySellerArtistIdFromMarketing(lotRow.marketingDetails);
   const noteHint = artistNoteHint(lotRow.marketingDetails);
   const titleHint = hintFromLotTitle(lotRow.title);
   const hintText = noteHint ?? titleHint;

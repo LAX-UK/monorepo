@@ -229,7 +229,7 @@ describe("ItemSubmissionService", () => {
       undefined,
       legalEntityRecipients,
     );
-    const r = await svc.approve("admin-1", "sub-1", "Nice work");
+    const r = await svc.approve("admin-1", "sub-1", { reviewNotes: "Nice work" });
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
       expect(r.value.lot.sellerLegalEntityId).toBe(under.legalEntityId);
@@ -242,6 +242,7 @@ describe("ItemSubmissionService", () => {
         sellerLegalEntityId: under.legalEntityId,
         categoryIds: [catId],
         auctionType: "english",
+        artistId: null,
       }),
     );
     expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
@@ -256,6 +257,102 @@ describe("ItemSubmissionService", () => {
       "consignor-1",
       expect.objectContaining({ type: "submission_approved", lotId: "lot-new" }),
     );
+  });
+
+  it("approve passes a pre-existing artistId straight through to the lot mapper", async () => {
+    const under = mkSubmission({
+      id: "sub-2",
+      status: "under_review",
+      legalEntityId: "00000000-0000-4000-8000-000000000010",
+      title: "Marcia Lot",
+    });
+    const createdLot: Lot = {
+      id: "lot-marcia",
+      saleId: null,
+      lotNumber: null,
+      sellerLegalEntityId: under.legalEntityId,
+      title: under.title,
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: catId,
+      auctionType: "english",
+      startingPrice: "50.00",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "50.00",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "1.00",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(),
+      endTime: new Date(),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+    hoisted.txSubFindById.mockResolvedValue(under);
+    hoisted.txLotCreate.mockResolvedValue(createdLot);
+    hoisted.txSubUpdate.mockResolvedValue({
+      ...under,
+      status: "converted" as const,
+      convertedLotId: createdLot.id,
+    });
+
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    } as unknown as Database;
+    const dispatcher = {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+    } as unknown as NotificationDispatcher;
+    const legalEntityRecipients: ILegalEntityNotificationRecipientReader = {
+      listUserIdsForAudience: vi.fn().mockResolvedValue([]),
+    };
+
+    const svc = new ItemSubmissionService(
+      db,
+      {} as IItemSubmissionRepository,
+      {} as unknown as IUserRepository,
+      dispatcher,
+      undefined,
+      legalEntityRecipients,
+    );
+
+    const ARTIST_ID = "11111111-2222-4333-8444-555555555555";
+    const r = await svc.approve("admin-1", "sub-2", { artistId: ARTIST_ID });
+    expect(r.isOk()).toBe(true);
+    expect(hoisted.txLotCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ artistId: ARTIST_ID }),
+    );
+  });
+
+  it("approve rejects when both artistId and newArtist are supplied", async () => {
+    const under = mkSubmission({
+      id: "sub-3",
+      status: "under_review",
+      legalEntityId: "00000000-0000-4000-8000-000000000010",
+    });
+    hoisted.txSubFindById.mockResolvedValue(under);
+
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    } as unknown as Database;
+    const svc = new ItemSubmissionService(
+      db,
+      {} as IItemSubmissionRepository,
+      {} as unknown as IUserRepository,
+      { dispatch: vi.fn() } as unknown as NotificationDispatcher,
+    );
+    const r = await svc.approve("admin-1", "sub-3", {
+      artistId: "11111111-2222-4333-8444-555555555555",
+      newArtist: { displayName: "Inline" },
+    });
+    expect(r.isErr()).toBe(true);
+    expect(hoisted.txLotCreate).not.toHaveBeenCalled();
   });
 
   it("reject stores reason and notifies seller", async () => {

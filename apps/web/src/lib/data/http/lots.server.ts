@@ -20,6 +20,7 @@ export function buildLotListQuery(params: ListLotsParams): Record<string, string
   if (params.sellerId) q.sellerId = params.sellerId;
   if (params.winnerId) q.winnerId = params.winnerId;
   if (params.saleId) q.saleId = params.saleId;
+  if (params.artistId) q.artistId = params.artistId;
   if (params.endYear !== undefined) q.endYear = String(params.endYear);
   if (params.sort) q.sort = params.sort;
   if (params.q?.trim()) q.q = params.q.trim();

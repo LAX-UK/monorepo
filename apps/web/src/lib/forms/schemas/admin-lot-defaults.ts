@@ -29,6 +29,7 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     imageAlts: auction.images.map((_, index) => auction.marketingDetails.imageAlts?.[index] ?? ""),
     startTime: toDatetimeLocalValue(auction.startTime),
     endTime: toDatetimeLocalValue(auction.endTime),
+    artistId: auction.artistId ?? null,
   };
 }
 
@@ -56,5 +57,6 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     imageAlts: [],
     startTime: toDatetimeLocalValue(s),
     endTime: toDatetimeLocalValue(e),
+    artistId: null,
   };
 }

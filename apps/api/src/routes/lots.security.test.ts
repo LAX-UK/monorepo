@@ -9,10 +9,12 @@ const bidderId = "bidder-1";
 
 function mount(user: { id: string; role: string } | null) {
   const app = new Hono();
+  const lotServiceCreate = vi.fn();
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService: {
       getById: vi.fn().mockResolvedValue({ id: lotId, auctionType: "english", status: "active" }),
+      create: lotServiceCreate,
     },
     bidService: {
       listForLot: vi.fn().mockResolvedValue([
@@ -29,17 +31,18 @@ function mount(user: { id: string; role: string } | null) {
         },
       ]),
     },
+    mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(user),
   };
   app.route("/lots", createLotRoutes(container, authenticator));
-  return app;
+  return { app, lotServiceCreate };
 }
 
 describe("lot bid history privacy", () => {
   it("redacts bidder user ids for anonymous readers", async () => {
-    const res = await mount(null).request(`/lots/${lotId}/bids`);
+    const res = await mount(null).app.request(`/lots/${lotId}/bids`);
     const body = (await res.json()) as {
       data: Array<{ placedByUserId: string | null; bidderRef: string }>;
     };
@@ -50,7 +53,7 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to the bidder", async () => {
-    const res = await mount({ id: bidderId, role: "client" }).request(`/lots/${lotId}/bids`);
+    const res = await mount({ id: bidderId, role: "client" }).app.request(`/lots/${lotId}/bids`);
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
     expect(res.status).toBe(200);
@@ -58,12 +61,67 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to administrators", async () => {
-    const res = await mount({ id: "admin-1", role: "administrator" }).request(
+    const res = await mount({ id: "admin-1", role: "administrator" }).app.request(
       `/lots/${lotId}/bids`,
     );
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
     expect(res.status).toBe(200);
     expect(body.data[0]?.placedByUserId).toBe(bidderId);
+  });
+});
+
+describe("POST /lots persists artistId from request body", () => {
+  const sellerLegalEntityId = "33333333-3333-4333-8333-333333333333";
+  const artistId = "44444444-4444-4444-8444-444444444444";
+  const categoryId = "55555555-5555-4555-8555-555555555555";
+
+  function buildBody(overrides: Record<string, unknown> = {}) {
+    const start = new Date();
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+      sellerLegalEntityId,
+      title: "Test Lot",
+      categoryIds: [categoryId],
+      auctionType: "english",
+      startingPrice: "100.00",
+      reservePrice: "100.00",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "1.00",
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      ...overrides,
+    };
+  }
+
+  it("forwards artistId straight through to the lot service", async () => {
+    const { app, lotServiceCreate } = mount({ id: "admin-1", role: "administrator" });
+    lotServiceCreate.mockResolvedValue({
+      isOk: () => true,
+      isErr: () => false,
+      value: { id: "lot-1", marketingDetails: {}, images: [] },
+    });
+
+    const res = await app.request("/lots", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(buildBody({ artistId })),
+    });
+
+    expect(res.status).toBe(201);
+    expect(lotServiceCreate).toHaveBeenCalledWith("admin-1", expect.objectContaining({ artistId }));
+  });
+
+  it("rejects non-administrator callers", async () => {
+    const { app, lotServiceCreate } = mount({ id: "user-1", role: "client" });
+
+    const res = await app.request("/lots", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(buildBody({ artistId })),
+    });
+
+    expect(res.status).toBe(403);
+    expect(lotServiceCreate).not.toHaveBeenCalled();
   });
 });

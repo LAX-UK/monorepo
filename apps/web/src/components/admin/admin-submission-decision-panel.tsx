@@ -1,5 +1,6 @@
 "use client";
 
+import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { Button } from "@/components/ui/button";
 import { LabelCaps } from "@/components/ui/typography";
 import {
@@ -8,7 +9,7 @@ import {
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
 import { notify } from "@/lib/ui/notify";
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ArtistKind, ArtistProfile, ItemSubmissionStatus } from "@auction/types";
 import {
   Form,
   FormControl,
@@ -18,10 +19,10 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
-import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
+import { rejectSubmissionBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -36,11 +37,24 @@ type RejectFormValues = z.infer<typeof rejectFormSchema>;
 type Props = {
   submissionId: string;
   status: ItemSubmissionStatus;
+  /** Display name to seed the inline-create dialog when the admin clicks
+   * "Use submitter as artist". Typically the submitter's legal entity name. */
+  submitterDisplayName?: string;
+  /** Pre-fetched canonical artists used to render the selected chip without an
+   * extra round-trip. The picker still searches over the wire. */
+  artists: ArtistProfile[];
 };
 
-export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
+export function AdminSubmissionDecisionPanel({
+  submissionId,
+  status,
+  submitterDisplayName,
+  artists,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [createSeed, setCreateSeed] = useState<string | null>(null);
 
   const approveForm = useForm<ApproveFormValues>({
     resolver: zodResolver(approveFormSchema),
@@ -51,6 +65,19 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
     resolver: zodResolver(rejectFormSchema),
     defaultValues: { rejectionReason: "", reviewNotes: "" },
   });
+
+  function chipFromId(id: string | null): ArtistChipModel | null {
+    if (!id) return null;
+    const found = artists.find((a) => a.id === id);
+    if (!found) return null;
+    return {
+      id: found.id,
+      displayName: found.displayName,
+      slug: found.slug,
+      kind: (found.kind ?? "artist") as ArtistKind,
+      status: found.status ?? "approved",
+    };
+  }
 
   return (
     <div className="space-y-8">
@@ -85,14 +112,10 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
               onSubmit={approveForm.handleSubmit((values) => {
                 startTransition(() => {
                   void (async () => {
-                    const body = approveSubmissionBodySchema.safeParse({
+                    const r = await adminApproveSubmissionResultAction(submissionId, {
                       reviewNotes: values.reviewNotes.trim() || undefined,
+                      ...(selectedArtistId ? { artistId: selectedArtistId } : {}),
                     });
-                    if (!body.success) {
-                      notify.error("Check review notes");
-                      return;
-                    }
-                    const r = await adminApproveSubmissionResultAction(submissionId, body.data);
                     if (r.ok) {
                       notify.success("Approved — draft lot created");
                       if (r.data?.lotId) {
@@ -107,6 +130,31 @@ export function AdminSubmissionDecisionPanel({ submissionId, status }: Props) {
                 });
               })}
             >
+              <div className="space-y-3 rounded-md border border-outline-variant/30 bg-surface-container-lowest/60 p-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <LabelCaps>Catalogue artist</LabelCaps>
+                  {submitterDisplayName ? (
+                    <button
+                      type="button"
+                      onClick={() => setCreateSeed(submitterDisplayName)}
+                      disabled={pending}
+                      className="inline-flex items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Use submitter as artist
+                    </button>
+                  ) : null}
+                </div>
+                <ArtistPicker
+                  value={selectedArtistId}
+                  onChange={(id) => {
+                    setSelectedArtistId(id);
+                    setCreateSeed(null);
+                  }}
+                  selected={chipFromId(selectedArtistId)}
+                  {...(createSeed ? { createInitialName: createSeed } : {})}
+                  helpText="Required before publish but can be left blank to attach later. Inline-creating an artist here defaults to status=approved."
+                />
+              </div>
               <FormField
                 control={approveForm.control}
                 name="reviewNotes"

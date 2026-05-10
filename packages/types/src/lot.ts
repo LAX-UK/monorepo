@@ -21,8 +21,6 @@ export type LotMarketingDetails = {
     downloadUrl?: string;
   };
   provenance?: { period?: string; note: string }[];
-  /** When set, canonical artist profile id for related-lot rails. */
-  sellerArtistId?: string | null;
   /** Parallel alts for `images[index]` when provided */
   imageAlts?: (string | undefined)[];
   /** Optional exhibition history (authoring via marketing JSON; no column migration). */
@@ -87,8 +85,9 @@ export type CreateLotInput = {
   dimensions?: string | undefined;
   images?: string[] | undefined;
   sellerLegalEntityId?: string | undefined;
-  /** artist registry FK - optional during backfill period */
-  artistId?: string | undefined;
+  /** Artist registry FK. Pass `null` to clear an existing attribution; pass a
+   * uuid to attach. Admin-only via the route layer. */
+  artistId?: string | null | undefined;
   categoryIds?: string[];
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;

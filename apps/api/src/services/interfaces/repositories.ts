@@ -27,6 +27,9 @@ export type ListLotsFilter = {
   sellerLegalEntityId?: string | undefined;
   winnerId?: string | undefined;
   saleId?: string | undefined;
+  /** Filter to lots whose `artist_id` FK matches. Used by the admin artist
+   * edit page ("Lots by this artist" panel) and the public artist detail rail. */
+  artistId?: string | undefined;
   /** Restrict lots whose endTime falls in this calendar year (UTC). */
   endYear?: number | undefined;
   /** Case-insensitive substring match on title (public catalogue search). */

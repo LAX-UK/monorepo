@@ -2183,7 +2183,7 @@ async function main() {
       shortBio:
         "London-based painter and mixed-media artist focused on light, surface, and memory.",
       longBio:
-        "Carolina Price works across oil, pigment, and assemblage. Her seeded profile powers artist registry, lot attribution, and featured artist UI states.",
+        "Carolina Price works across oil, pigment, and assemblage. This catalogue profile is admin-curated (same model as production): it drives public artist pages, lot attribution via lot.artist_id, and featured states.",
       nationality: "British",
       location: "London, UK",
       birthYear: "1990",
@@ -2193,10 +2193,12 @@ async function main() {
       verified: true,
       kind: "artist",
       status: "approved",
-      createdByUserId: USER2_ID,
+      createdByUserId: ADMIN_ID,
       reviewedByUserId: ADMIN_ID,
       reviewedAt: new Date(now - 60 * day),
-      reviewNotes: "Seeded approved artist profile linked to Carolina's legal entity.",
+      reviewNotes:
+        "Seeded approved profile: Eleanor (admin) created the catalogue row; optional owner_user_id links Carolina the client for Flow B demos; legal entity remains consignment/settlement identity.",
+      ownerUserId: USER2_ID,
       ownerLegalEntityId: LE.user2,
       createdAt: new Date(now - 90 * day),
       updatedAt: stamp,
@@ -2208,7 +2210,7 @@ async function main() {
       portraitUrl: IMG.c,
       heroImageUrl: IMG.d,
       shortBio:
-        "Collector-artist profile used for registry ownership and seller attribution demos.",
+        "Admin-curated catalogue profile for Robert Thorne (client): registry + lot attribution demos.",
       nationality: "British",
       location: "Manchester, UK",
       birthYear: "1982",
@@ -2217,10 +2219,12 @@ async function main() {
       verified: true,
       kind: "artist",
       status: "approved",
-      createdByUserId: USER1_ID,
+      createdByUserId: ADMIN_ID,
       reviewedByUserId: ADMIN_ID,
       reviewedAt: new Date(now - 50 * day),
-      reviewNotes: "Seeded secondary artist profile for admin registry tests.",
+      reviewNotes:
+        "Seeded secondary approved profile: created by platform admin; owner_user_id links the consigning client user1 for optional Flow B metadata.",
+      ownerUserId: USER1_ID,
       ownerLegalEntityId: LE.user1,
       createdAt: new Date(now - 70 * day),
       updatedAt: stamp,
@@ -2229,7 +2233,8 @@ async function main() {
       id: ARTIST.pendingStudio,
       displayName: "Northbank Studio Archive",
       slug: "northbank-studio-archive",
-      shortBio: "Pending gallery-managed artist/maker record for merge and review queues.",
+      shortBio:
+        "Pending maker catalogue row created by admin on behalf of the gallery org (merge/review queue demos).",
       nationality: "British",
       location: "London, UK",
       socialLinks: {},
@@ -2237,7 +2242,7 @@ async function main() {
       verified: false,
       kind: "maker",
       status: "pending",
-      createdByUserId: GALLERY_ADMIN_ID,
+      createdByUserId: ADMIN_ID,
       ownerLegalEntityId: LE.gallery,
       createdAt: new Date(now - 5 * day),
       updatedAt: stamp,
@@ -2261,7 +2266,7 @@ async function main() {
       artistProfileId: ARTIST.pendingStudio,
       alias: "Northbank Archive",
       kind: "proposed",
-      createdByUserId: GALLERY_ADMIN_ID,
+      createdByUserId: ADMIN_ID,
     },
   ]);
 
@@ -2360,6 +2365,10 @@ async function main() {
       saleId: S.evening,
       lotNumber: 1,
       sellerId: USER2_ID,
+      // Canonical artist attribution (post-consolidation). The legacy
+      // `marketing_details.sellerArtistId` JSON copy has been retired; admins
+      // now manage the link via the ArtistPicker -> lot.artist_id FK.
+      artistId: ARTIST.carolina,
       title: "Ethereal Form & Found Light",
       description:
         "A large-scale abstract composition exploring luminosity and negative space. Oil and gold leaf on linen.",
@@ -2391,7 +2400,6 @@ async function main() {
           { period: "2022", note: "Acquired from the artist's studio by the consignor." },
           { note: "Private collection, London." },
         ],
-        sellerArtistId: ARTIST.carolina,
         imageAlts: [
           "Ethereal Form & Found Light — installation view",
           "Ethereal Form & Found Light — detail of gold leaf",
@@ -3122,10 +3130,12 @@ async function main() {
     { userId: GALLERY_ADMIN_ID, saleId: S.online },
   ]);
 
+  // artist_watchlist now references artist_profile.id directly (post
+  // 0046_artist_consolidation) — the legacy mapping to user.id is gone.
   await db.insert(artistWatchlist).values([
-    { userId: USER1_ID, artistId: USER2_ID },
-    { userId: GOOGLE_TEST_ID, artistId: USER2_ID },
-    { userId: APPLE_TEST_ID, artistId: USER1_ID },
+    { userId: USER1_ID, artistId: ARTIST.carolina },
+    { userId: GOOGLE_TEST_ID, artistId: ARTIST.carolina },
+    { userId: APPLE_TEST_ID, artistId: ARTIST.robert },
   ]);
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -3572,8 +3582,12 @@ async function main() {
   console.log("  ├──────────────────────────────┼──────────────────────┼───────────────────┤");
   console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  administrator    │");
   console.log("  │  accountant@lax.bid          │  Erin Ledger         │  accountant       │");
-  console.log("  │  user1@lax.bid               │  Robert Thorne       │  client, KYC ✓    │");
-  console.log("  │  user2@lax.bid               │  Carolina Price      │  client, artist   │");
+  console.log(
+    "  │  user1@lax.bid               │  Robert Thorne       │  client, KYC ✓, demo owner_user_id │",
+  );
+  console.log(
+    "  │  user2@lax.bid               │  Carolina Price      │  client, demo owner_user_id     │",
+  );
   console.log("  │  google-test@lax.bid         │  Google Test         │  Google OAuth     │");
   console.log("  │  apple-test@lax.bid          │  Apple Test          │  Apple OAuth      │");
   console.log("  │  gallery-admin@lax.bid       │  Maya Okafor         │  Northbank admin  │");

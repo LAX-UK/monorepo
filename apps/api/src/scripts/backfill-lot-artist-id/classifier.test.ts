@@ -14,7 +14,7 @@ describe("classifyLotArtistBackfill", () => {
     expect(r.suggestedArtistId).toBe("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
   });
 
-  it("uses marketing sellerArtistId when artist column empty", () => {
+  it("uses legacy marketing UUID when artist column empty", () => {
     const id = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
     const r = classifyLotArtistBackfill({
       artistIdColumn: null,

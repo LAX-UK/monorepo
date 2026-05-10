@@ -1,6 +1,10 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { DisplayHeading } from "@/components/ui/typography";
-import { getAdminLotById, getAdminUserList } from "@/lib/data/http/admin.server";
+import {
+  getAdminArtistList,
+  getAdminLotById,
+  getAdminUserList,
+} from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import {
   emptyAdminLotFormValues,
@@ -29,9 +33,10 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
     }
   }
 
-  const [categories, users] = await Promise.all([
+  const [categories, users, artists] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
+    getAdminArtistList(),
   ]);
 
   return (
@@ -58,6 +63,7 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
         defaultValues={cloneDefaults}
         categories={categories}
         sellers={users.rows}
+        artists={artists}
       />
     </div>
   );

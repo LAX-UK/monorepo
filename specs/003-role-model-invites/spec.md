@@ -62,8 +62,8 @@ As a client, I need one account that can act as both buyer and seller so I can p
 
 **Acceptance Scenarios**:
 
-1. **Given** an approved client submission, **When** lot is generated, **Then** submitter defaults as artist/seller association.
-2. **Given** admin reassignment, **When** assigning another artist/client to lot, **Then** lot reflects reassigned artist/seller link.
+1. **Given** an approved client submission, **When** the lot is generated, **Then** submitter is recorded as the lot's seller (consignor) and admin's chosen `artist_profile` (existing or inline-created via the approval payload) is recorded on `lot.artist_id`.
+2. **Given** an existing lot, **When** admin updates `lot.artist_id` from the admin lot edit screen via the `<ArtistPicker />`, **Then** catalogue attribution updates without changing the seller.
 
 ---
 
@@ -90,7 +90,7 @@ As a developer, I need explicit handling rules for existing non-V1 states (legac
 - What happens to existing users if role migration to `accountant` is incomplete?
 - How are invitations invalidated when inviter role changes or account is disabled?
 - How are legacy lots with non-English strategy surfaced in V1 UI?
-- What happens if artist reassignment occurs after active bidding has started?
+- What happens if catalogue artist (`lot.artist_id`) reassignment occurs after active bidding has started?
 
 ## Requirements *(mandatory)*
 
@@ -108,7 +108,11 @@ As a developer, I need explicit handling rules for existing non-V1 states (legac
 - **FR-005**: System MUST provide admin-controlled invitation flow with target role assignment.
 - **FR-006**: Invitation acceptance MUST create account with invited role and preserve invitation audit metadata.
 - **FR-007**: System MUST reject expired, invalid, and reused invitation tokens.
-- **FR-008**: Approved submissions MUST default submitter as artist/seller association with admin override support.
+- **FR-008**: Submission approval MUST require an explicit catalogue artist
+  decision (`{ artistId } | { newArtist }`) — submitters never auto-promote
+  to a catalogue artist. Catalogue artist creation is admin-only via
+  `POST /artists` (capability `artist.review`); the resolved id is written to
+  `lot.artist_id` (FK to `artist_profile`).
 - **FR-009**: Product-facing V1 flows MUST expose English strategy only.
 - **FR-010**: Authorization and invitation logic MUST be covered by automated tests.
 
@@ -117,7 +121,8 @@ As a developer, I need explicit handling rules for existing non-V1 states (legac
 - **UserRole**: Role assignment for `administrator`, `accountant`, and `client`.
 - **Invitation**: Role-targeted onboarding token and status lifecycle.
 - **UserPermissionScope**: Authorization boundaries for finance, admin, and client features.
-- **ArtistAssignment**: Link between lot/submission and effective artist/seller identity.
+- **ArtistProfile**: Admin-curated catalogue identity (`artist | maker | brand | marque`) with admin lifecycle (`pending | approved | rejected | merged_into`). Decoupled from the consigning user.
+- **LotArtistLink**: `lot.artist_id` FK to `artist_profile.id` — canonical catalogue link, set/changed only via admin flows.
 
 ## SOLID Impact *(mandatory for code-affecting features)*
 
