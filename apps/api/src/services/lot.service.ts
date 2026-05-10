@@ -5,6 +5,7 @@ import { AuthzError, LotError } from "../lib/errors.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -26,6 +27,12 @@ export class LotService {
     private readonly lotNotifications: ILotNotificationCoordinator | null,
     private readonly imageCleanup?: ImageCleanupService,
     private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
+    private readonly legalEntityRepository: ILegalEntityRepository | null = null,
+    /**
+     * When false (e.g. Stripe Connect not configured), individual Connect readiness is not
+     * enforced on publish.
+     */
+    private readonly enforceIndividualConnectOnPublish: boolean = false,
   ) {}
 
   async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
@@ -51,6 +58,28 @@ export class LotService {
     }
     if (a.startTime.getTime() <= Date.now()) {
       return err(new LotError("startTime must be in the future to publish"));
+    }
+    if (
+      this.enforceIndividualConnectOnPublish &&
+      this.legalEntityRepository &&
+      a.sellerLegalEntityId
+    ) {
+      const seller = await this.legalEntityRepository.findById(a.sellerLegalEntityId);
+      if (seller?.kind === "individual") {
+        const connectReady =
+          seller.status === "approved" &&
+          seller.stripeConnectChargesEnabled &&
+          seller.stripeConnectPayoutsEnabled;
+        if (!connectReady) {
+          return err(
+            new LotError(
+              "This seller must complete Stripe Connect onboarding before the lot can be scheduled.",
+              409,
+              "connect_required",
+            ),
+          );
+        }
+      }
     }
     await this.lotRepo.updateStatus(lotId, "scheduled");
     const updated = await this.lotRepo.findById(lotId);

@@ -5,16 +5,18 @@ import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useState } from "react";
 
-export function VerifyPendingActions({ email }: { email: string }) {
+export function VerifyPendingActions({ email, next }: { email: string; next?: string }) {
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function resend() {
     setPending(true);
     setStatus(null);
+    const nextQs =
+      next?.startsWith("/") && !next.startsWith("//") ? `&next=${encodeURIComponent(next)}` : "";
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: `/verify-email?email=${encodeURIComponent(email)}`,
+      callbackURL: `/verify-email?email=${encodeURIComponent(email)}${nextQs}`,
     });
     setPending(false);
     setStatus(error ? "Could not resend right now. Please try again." : "Verification email sent.");

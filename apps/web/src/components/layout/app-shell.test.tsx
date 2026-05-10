@@ -60,6 +60,8 @@ const clientUser = {
   name: "Client User",
   role: "client" as const,
   image: null,
+  emailVerified: true,
+  emailStatus: "ok" as const,
 };
 
 const adminUser = {
@@ -68,6 +70,8 @@ const adminUser = {
   name: "Admin User",
   role: "administrator" as const,
   image: null,
+  emailVerified: true,
+  emailStatus: "ok" as const,
 };
 
 describe("AppShell", () => {

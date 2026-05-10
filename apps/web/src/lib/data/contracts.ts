@@ -61,6 +61,10 @@ export type SessionUser = {
   emailStatusChangedAt?: string | Date | null;
   /** From GET /users/me; omitted in client-only session shapes (treat as seen). */
   hasSeenActingContextTooltip?: boolean;
+  /** From GET /users/me. Drives KYC banner + bid gating (Phase C). */
+  kycStatus?: "unverified" | "pending" | "approved" | "rejected";
+  /** Persona captured at signup; null for users created before Phase B. */
+  signupPersona?: "individual" | "organisation" | null;
 };
 
 /** Session / “who am I” without exposing auth client (DIP). */

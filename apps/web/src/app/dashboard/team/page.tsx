@@ -9,9 +9,11 @@ import {
 } from "@/lib/legal-entity/client-acting-context";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { Users } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
@@ -51,6 +53,7 @@ export default async function DashboardTeamPage() {
   }
 
   if (acting.kind === "individual") {
+    const hasOrgMembership = memberships.some((m) => m.kind === "organisation");
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
@@ -62,10 +65,21 @@ export default async function DashboardTeamPage() {
           icon={<Users className="size-6" aria-hidden />}
           title="Team is for organisations"
           description={
-            memberships.some((m) => m.kind === "organisation")
+            hasOrgMembership
               ? "Switch to one of your organisations from the header to manage its members."
-              : "You don't currently belong to any organisation. Submit a consignment to LAX as an organisation to enable team management."
+              : "You don't currently belong to any organisation. Set up an organisation to enable team management."
           }
+          {...(!hasOrgMembership
+            ? {
+                action: (
+                  <Button asChild variant="outline" size="sm" className="min-h-11">
+                    <Link href="/onboarding/organisation" prefetch>
+                      Set up an organisation
+                    </Link>
+                  </Button>
+                ),
+              }
+            : {})}
         />
       </div>
     );
