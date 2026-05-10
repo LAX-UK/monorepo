@@ -109,5 +109,3 @@ V1 has three user role types:
   exist in code/schema. V1 product flows must hide non-English strategies.
 - Onsite non-bid engagement (follow/watch) behavior must be confirmed as
   consistent in API + UI.
-- See `docs/design/dashboard-ux-roadmap.md` for the prioritised V1 dashboard
-  delivery plan.
