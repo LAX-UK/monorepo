@@ -45,6 +45,7 @@ export class RegistrationService implements IRegistrationService {
       userId: signup.userId,
       firstName: input.firstName,
       lastName: input.lastName,
+      persona: input.persona,
       ...(input.mobile !== undefined ? { mobile: input.mobile } : {}),
     });
     if (!profile.ok) {

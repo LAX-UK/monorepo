@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
-import type { IWebhookEventRepository } from "../repositories/drizzle-webhook-event.repository.js";
+import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 
@@ -12,6 +12,8 @@ type PaymentWebhookResult = {
   reason?: string;
 };
 
+const PAYMENT_WEBHOOK_EVENT_SOURCE = "stripe_payment_webhook";
+
 /** Service for handling Stripe payment-related webhooks.
  * Processes: charge.dispute.created, charge.dispute.funds_withdrawn,
  * charge.dispute.closed, charge.refunded.
@@ -19,7 +21,6 @@ type PaymentWebhookResult = {
 export class StripePaymentWebhookService {
   constructor(
     private readonly db: Database,
-    private readonly webhookEventRepository: IWebhookEventRepository,
     private readonly payoutRepository: IPayoutRepository,
     private readonly domainEventPublisher: DomainEventPublisher,
   ) {}
@@ -28,25 +29,22 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     dispute: Stripe.Dispute,
   ): Promise<PaymentWebhookResult> {
-    const eventKey = `stripe:${event.id}`;
-    const { claimed } = await this.webhookEventRepository.tryClaimEvent({
-      source: "stripe",
-      eventKey,
-      payload: { eventType: event.type, disputeId: dispute.id },
-    });
+    const { claimed } = await tryClaimProcessedStripeEvent(
+      this.db,
+      event.id,
+      PAYMENT_WEBHOOK_EVENT_SOURCE,
+    );
     if (!claimed) {
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
     const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
     if (!chargeId) {
-      await this.webhookEventRepository.markFailed(eventKey, "missing_charge_id");
       return { processed: false, reason: "missing_charge_id" };
     }
 
     const paymentRow = await this.findPaymentByStripeChargeId(chargeId);
     if (!paymentRow) {
-      await this.webhookEventRepository.markProcessed(eventKey);
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
@@ -66,7 +64,6 @@ export class StripePaymentWebhookService {
       actingLegalEntityId: paymentRow.sellerLegalEntityId,
     });
 
-    await this.webhookEventRepository.markProcessed(eventKey);
     return { processed: true, action: "dispute_created" };
   }
 
@@ -74,25 +71,22 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     dispute: Stripe.Dispute,
   ): Promise<PaymentWebhookResult> {
-    const eventKey = `stripe:${event.id}`;
-    const { claimed } = await this.webhookEventRepository.tryClaimEvent({
-      source: "stripe",
-      eventKey,
-      payload: { eventType: event.type, disputeId: dispute.id, status: dispute.status },
-    });
+    const { claimed } = await tryClaimProcessedStripeEvent(
+      this.db,
+      event.id,
+      PAYMENT_WEBHOOK_EVENT_SOURCE,
+    );
     if (!claimed) {
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
     const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
     if (!chargeId) {
-      await this.webhookEventRepository.markFailed(eventKey, "missing_charge_id");
       return { processed: false, reason: "missing_charge_id" };
     }
 
     const paymentRow = await this.findPaymentByStripeChargeId(chargeId);
     if (!paymentRow) {
-      await this.webhookEventRepository.markProcessed(eventKey);
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
@@ -154,7 +148,6 @@ export class StripePaymentWebhookService {
       actingLegalEntityId: paymentRow.sellerLegalEntityId,
     });
 
-    await this.webhookEventRepository.markProcessed(eventKey);
     return { processed: true, action: "dispute_closed" };
   }
 
@@ -162,19 +155,17 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     charge: Stripe.Charge,
   ): Promise<PaymentWebhookResult> {
-    const eventKey = `stripe:${event.id}`;
-    const { claimed } = await this.webhookEventRepository.tryClaimEvent({
-      source: "stripe",
-      eventKey,
-      payload: { eventType: event.type, chargeId: charge.id },
-    });
+    const { claimed } = await tryClaimProcessedStripeEvent(
+      this.db,
+      event.id,
+      PAYMENT_WEBHOOK_EVENT_SOURCE,
+    );
     if (!claimed) {
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
     const paymentRow = await this.findPaymentByStripeChargeId(charge.id);
     if (!paymentRow) {
-      await this.webhookEventRepository.markProcessed(eventKey);
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
@@ -213,7 +204,6 @@ export class StripePaymentWebhookService {
       actingLegalEntityId: paymentRow.sellerLegalEntityId,
     });
 
-    await this.webhookEventRepository.markProcessed(eventKey);
     return { processed: true, action: "refund_received" };
   }
 

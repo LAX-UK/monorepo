@@ -72,7 +72,6 @@ import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.re
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
-import { DrizzleWebhookEventRepository } from "./repositories/drizzle-webhook-event.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
 import { AccountLinkingService } from "./services/account-linking.service.js";
@@ -126,6 +125,7 @@ import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
+import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
@@ -261,6 +261,8 @@ export function createContainer(env: Env): Container {
       : new ConsoleEmailService(db, emailQueue);
   const jwksAdapter = createJwksAdapter(authDb);
 
+  const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
+
   const auth = createAuth({
     db: authDb,
     secret: env.BETTER_AUTH_SECRET,
@@ -276,6 +278,13 @@ export function createContainer(env: Env): Container {
     appleClientSecret: env.APPLE_CLIENT_SECRET,
     email: emailService,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    onUserCreated: async (authUser) => {
+      await ensurePersonalLegalEntityService.ensure({
+        userId: authUser.id,
+        displayName: authUser.name,
+        email: authUser.email,
+      });
+    },
   });
 
   const issuer = env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL;
@@ -350,15 +359,9 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
   );
 
-  const webhookEventRepository = new DrizzleWebhookEventRepository(db);
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
-      ? new StripePaymentWebhookService(
-          db,
-          webhookEventRepository,
-          payoutRepository,
-          domainEventPublisher,
-        )
+      ? new StripePaymentWebhookService(db, payoutRepository, domainEventPublisher)
       : null;
 
   const categoryRepo = new DrizzleCategoryRepository(db);
@@ -479,6 +482,8 @@ export function createContainer(env: Env): Container {
     lotNotificationCoordinator,
     imageCleanupService,
     legalEntityNotificationRecipients,
+    legalEntityRepository,
+    stripeConnectService.isConfigured(),
   );
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);

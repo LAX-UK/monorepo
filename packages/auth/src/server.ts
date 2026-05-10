@@ -57,6 +57,13 @@ export type AuthEnv = {
   appleClientSecret?: string | undefined;
   email?: IEmailService | undefined;
   requireEmailVerification?: boolean | undefined;
+  /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth).
+   * The api wires this to provision the user's personal legal entity (Phase B / SE-P24).
+   * Errors are caught + logged and never block account creation.
+   */
+  onUserCreated?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
 };
 
 export type Auth = {
@@ -196,6 +203,20 @@ export function createAuth(env: AuthEnv): Auth {
       user: {
         create: {
           after: async (authUser) => {
+            if (env.onUserCreated) {
+              try {
+                await env.onUserCreated({
+                  id: authUser.id,
+                  email: authUser.email,
+                  name: authUser.name,
+                });
+              } catch (err) {
+                console.error("[auth.user.create.after] onUserCreated failed", {
+                  userId: authUser.id,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              }
+            }
             if (!authUser.emailVerified) return;
             void env.email?.enqueue({
               template: "welcome",

@@ -1,7 +1,8 @@
-import type { Lot } from "@auction/types";
+import type { LegalEntity, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -39,6 +40,33 @@ const baseLot: Lot = {
   updatedAt: new Date(),
   marketingDetails: { artistNote: "x" },
 };
+
+function mkIndividualEntity(overrides: Partial<LegalEntity> = {}): LegalEntity {
+  return {
+    id: "ent-1",
+    displayName: "Alice",
+    legalName: null,
+    slug: null,
+    kind: "individual",
+    subkind: "private_collector",
+    createdByUserId: "u1",
+    status: "approved",
+    statusChangedAt: null,
+    statusChangedByUserId: null,
+    stripeConnectAccountId: "acct_1",
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectRequirementsCurrentlyDue: [],
+    xeroContactId: null,
+    vatNumber: null,
+    marginSchemeEligible: false,
+    isLaxManaged: false,
+    platformFeeBps: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
 
 function createSut(overrides: { lot?: Partial<Lot> } = {}) {
   const lot: Lot = { ...baseLot, ...overrides.lot };
@@ -144,5 +172,120 @@ describe("LotService.cancel", () => {
       title: activeLot.title,
       recipientIds: ["bidder-1", "watcher-1", "owner-1", "consignor-1"],
     });
+  });
+});
+
+describe("LotService.publish", () => {
+  const futureStart = new Date(Date.now() + 86_400_000);
+  const futureEnd = new Date(Date.now() + 172_800_000);
+
+  const draftLotBase: Lot = {
+    ...baseLot,
+    status: "draft",
+    startTime: futureStart,
+    endTime: futureEnd,
+    sellerLegalEntityId: "ent-1",
+  };
+
+  it("returns 409 connect_required when individual seller Stripe Connect is not ready", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(draftLotBase),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue(
+        mkIndividualEntity({
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+        }),
+      ),
+    } as unknown as ILegalEntityRepository;
+    const svc = new LotService(
+      lotRepo,
+      {} as IBidRepository,
+      {} as IWatchlistRepository,
+      {
+        scheduleLot: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotJobs: vi.fn(),
+      },
+      null,
+      undefined,
+      null,
+      legalEntityRepository,
+      true,
+    );
+    const result = await svc.publish("admin", "administrator", lotId);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error instanceof LotError) {
+      expect(result.error.code).toBe("connect_required");
+      expect(result.error.status).toBe(409);
+    }
+    expect(lotRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("schedules when individual seller Connect is ready and enforcement is on", async () => {
+    const scheduled: Lot = { ...draftLotBase, status: "scheduled" };
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValueOnce(draftLotBase).mockResolvedValueOnce(scheduled),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue(mkIndividualEntity()),
+    } as unknown as ILegalEntityRepository;
+    const scheduler = {
+      scheduleLot: vi.fn(),
+      rescheduleEnd: vi.fn(),
+      cancelLotJobs: vi.fn(),
+    };
+    const svc = new LotService(
+      lotRepo,
+      {} as IBidRepository,
+      {} as IWatchlistRepository,
+      scheduler,
+      null,
+      undefined,
+      null,
+      legalEntityRepository,
+      true,
+    );
+    const result = await svc.publish("admin", "administrator", lotId);
+    expect(result.isOk()).toBe(true);
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "scheduled");
+    expect(scheduler.scheduleLot).toHaveBeenCalled();
+  });
+
+  it("does not enforce Connect when enforcement flag is off", async () => {
+    const scheduled: Lot = { ...draftLotBase, status: "scheduled" };
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValueOnce(draftLotBase).mockResolvedValueOnce(scheduled),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue(
+        mkIndividualEntity({
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+        }),
+      ),
+    } as unknown as ILegalEntityRepository;
+    const scheduler = {
+      scheduleLot: vi.fn(),
+      rescheduleEnd: vi.fn(),
+      cancelLotJobs: vi.fn(),
+    };
+    const svc = new LotService(
+      lotRepo,
+      {} as IBidRepository,
+      {} as IWatchlistRepository,
+      scheduler,
+      null,
+      undefined,
+      null,
+      legalEntityRepository,
+      false,
+    );
+    const result = await svc.publish("admin", "administrator", lotId);
+    expect(result.isOk()).toBe(true);
   });
 });

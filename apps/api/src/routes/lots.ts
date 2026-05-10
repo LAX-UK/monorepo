@@ -12,8 +12,10 @@ import {
   updateLotSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
+import { type AuthzError, LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { presentLotImages, presentLotsImages } from "../lib/media-presenters.js";
@@ -27,6 +29,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   });
   const optionalAuth = createOptionalAuth(authenticator);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+
+  function jsonLotOrAuthzError(c: Context, e: LotError | AuthzError) {
+    if (e instanceof LotError && e.code) {
+      return c.json({ error: e.message, code: e.code }, asHttpStatus(e.status));
+    }
+    return c.json({ error: e.message }, asHttpStatus(e.status));
+  }
 
   function bidderRef(lotId: string, userId: string): string {
     return createHash("sha256").update(`${lotId}:${userId}`).digest("hex").slice(0, 16);
@@ -101,7 +110,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const { id } = c.req.valid("param");
     const result = await container.lotService.publish(userId, role, id);
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      return jsonLotOrAuthzError(c, result.error);
     }
     return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
   });

@@ -40,6 +40,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       lastName: body.lastName,
       email: body.email,
       password: body.password,
+      persona: body.persona,
       ...(body.inviteToken !== undefined ? { inviteToken: body.inviteToken } : {}),
       ...(body.mobile !== undefined ? { mobile: body.mobile } : {}),
     });
@@ -410,6 +411,8 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
         hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
+        kycStatus: row.kycStatus,
+        signupPersona: row.signupPersona,
       },
     });
   });

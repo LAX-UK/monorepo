@@ -8,6 +8,8 @@ export type BidPolicyContext = {
   lotStatus: Lot["status"];
   /** Post-login return path for the sign-in CTA (e.g. `/artwork/:id`). */
   loginNextPath: string;
+  /** When true, bidding is blocked until identity verification (Stripe Identity threshold). */
+  kycBidGate?: { requiresKyc: boolean } | null;
 };
 
 export type BidPolicyDecision =

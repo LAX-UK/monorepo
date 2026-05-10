@@ -108,6 +108,11 @@ function copyForStatus(status: LegalEntityStatus): {
   }
 }
 
+export function isEntityStatusBannerVisible(acting: LegalEntitySummary | null): boolean {
+  if (!acting) return false;
+  return copyForStatus(acting.status) !== null;
+}
+
 /**
  * When the acting workspace entity is not fully approved, explain limitations on every dashboard page.
  */

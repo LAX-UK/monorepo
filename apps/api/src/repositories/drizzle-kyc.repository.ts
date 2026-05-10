@@ -51,6 +51,81 @@ export class DrizzleKycRepository implements IKycRepository {
     return rowToKyc(row);
   }
 
+  async createWithCurrentStripeSession(
+    input: CreateKycVerificationInput,
+  ): Promise<KycVerification> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(kycVerification)
+        .values({
+          userId: input.userId,
+          stripeVerificationSessionId: input.stripeVerificationSessionId,
+          status: input.status,
+        })
+        .returning();
+      if (!row) throw new Error("kyc_create_failed");
+      await tx
+        .update(user)
+        .set({
+          currentKycSessionId: input.stripeVerificationSessionId,
+          kycStatus: "pending",
+          updatedAt: new Date(),
+        })
+        .where(eq(user.id, input.userId));
+      return rowToKyc(row);
+    });
+  }
+
+  async getUserKycWebhookState(userId: string): Promise<{
+    currentKycSessionId: string | null;
+    kycRetryCount: number;
+  } | null> {
+    const rows = await this.db
+      .select({
+        currentKycSessionId: user.currentKycSessionId,
+        kycRetryCount: user.kycRetryCount,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      currentKycSessionId: row.currentKycSessionId ?? null,
+      kycRetryCount: row.kycRetryCount ?? 0,
+    };
+  }
+
+  async incrementUserKycRetryCount(userId: string): Promise<void> {
+    await this.db
+      .update(user)
+      .set({
+        kycRetryCount: sql`${user.kycRetryCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(user.id, userId));
+  }
+
+  async getUserKycState(userId: string): Promise<{
+    kycStatus: "unverified" | "pending" | "approved" | "rejected";
+    kycVerifiedAt: Date | null;
+  } | null> {
+    const rows = await this.db
+      .select({
+        kycStatus: user.kycStatus,
+        kycVerifiedAt: user.kycVerifiedAt,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      kycStatus: row.kycStatus,
+      kycVerifiedAt: row.kycVerifiedAt ?? null,
+    };
+  }
+
   async findById(id: string): Promise<KycVerification | null> {
     const rows = await this.db
       .select()
@@ -166,7 +241,12 @@ export class DrizzleKycRepository implements IKycRepository {
   ): Promise<void> {
     await this.db
       .update(user)
-      .set({ kycStatus: status, kycVerifiedAt: verifiedAt, updatedAt: new Date() })
+      .set({
+        kycStatus: status,
+        kycVerifiedAt: verifiedAt,
+        ...(status === "approved" ? { kycRetryCount: 0 } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(user.id, userId));
   }
 }
