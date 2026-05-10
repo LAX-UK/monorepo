@@ -32,6 +32,7 @@ export * from "./legal-entities.js";
 export * from "./legal-entity-members.js";
 export * from "./legal-entity-addresses.js";
 export * from "./legal-entity-documents.js";
+export * from "./legal-entity-onboarding-progress.js";
 export * from "./payouts.js";
 export * from "./kyc.js";
 export * from "./artist-aliases.js";
