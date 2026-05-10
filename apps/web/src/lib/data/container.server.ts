@@ -9,11 +9,13 @@ import {
   getServerMyWatchlist,
 } from "@/lib/data/http/dashboard.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerMyPayments } from "@/lib/data/http/payments.server";
 import { getServerSalesList } from "@/lib/data/http/sales.server";
 import type {
   DashboardActiveLotsReader,
   DashboardArtistFollowReader,
   DashboardBidsReader,
+  DashboardPaymentsReader,
   DashboardPortfolioReader,
   DashboardWatchlistReader,
 } from "@/lib/data/readers/dashboard-readers";
@@ -25,6 +27,7 @@ export type ServerDataContainer = {
   watchlist: DashboardWatchlistReader;
   artistFollow: DashboardArtistFollowReader;
   activeLots: DashboardActiveLotsReader;
+  payments: DashboardPaymentsReader;
   liveSale: LiveSaleReader;
 };
 
@@ -37,6 +40,7 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
     portfolio: { listMine: getServerMyPortfolio },
     watchlist: { listMine: getServerMyWatchlist },
     artistFollow: { listMine: getServerMyArtistFollows },
+    payments: { listMine: getServerMyPayments },
     activeLots: {
       listActivePreview: (limit) => lotReader.list({ status: "active", limit, sort: "endingAsc" }),
     },
