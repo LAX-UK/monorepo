@@ -1,0 +1,2 @@
+# Vitest-only HMAC fixture (hex-looking string); code fixed in 6bf10f39 — historical FP in 49c57ba3.
+49c57ba31743353b0ddb2c166256b95bf38f06a0:apps/api/src/routes/auth-email-change.routes.test.ts:generic-api-key:6
