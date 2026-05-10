@@ -31,6 +31,8 @@ import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";
 
 const SELLER_ENTITY_WRITE_STATUSES = new Set<LegalEntityStatus>(["approved", "restricted"]);
 
+const INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES = new Set<LegalEntityStatus>(["rejected", "archived"]);
+
 export class ItemSubmissionService implements IItemSubmissionService {
   constructor(
     private readonly db: Database,
@@ -49,6 +51,17 @@ export class ItemSubmissionService implements IItemSubmissionService {
     if (!this.legalEntityRepository) return ok(undefined);
     const e = await this.legalEntityRepository.findById(legalEntityId);
     if (!e) return err(new SubmissionError("Not found", 404));
+    if (e.kind === "individual") {
+      if (INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES.has(e.status)) {
+        return err(
+          new SubmissionError(
+            "Your account cannot submit items in its current verification state",
+            403,
+          ),
+        );
+      }
+      return ok(undefined);
+    }
     if (!SELLER_ENTITY_WRITE_STATUSES.has(e.status)) {
       return err(
         new SubmissionError(

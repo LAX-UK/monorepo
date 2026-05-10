@@ -57,8 +57,7 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
             className="min-h-11 shrink-0"
             onClick={() => {
               const next =
-                pathname &&
-                pathname.startsWith("/") &&
+                pathname?.startsWith("/") &&
                 !pathname.startsWith("//") &&
                 (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
                   ? pathname

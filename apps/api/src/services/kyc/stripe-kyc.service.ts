@@ -5,10 +5,10 @@ import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import {
   type CreateKycSessionResult,
   type IKycService,
-  type KycWebhookHandleResult,
   KycNotConfiguredError,
   KycRequiredError,
   type KycStatusSummary,
+  type KycWebhookHandleResult,
 } from "../interfaces/kyc-service.js";
 
 function mapStripeStatus(
@@ -191,7 +191,7 @@ export class StripeKycService implements IKycService {
     const webhookState = await this.repo.getUserKycWebhookState(existing.userId);
     const isCurrentSession =
       Boolean(webhookState) &&
-      webhookState!.currentKycSessionId === existing.stripeVerificationSessionId;
+      webhookState?.currentKycSessionId === existing.stripeVerificationSessionId;
 
     const decision = userKycUpdateFromStripeSession(obj);
 
@@ -200,11 +200,7 @@ export class StripeKycService implements IKycService {
 
     if (isCurrentSession) {
       if (decision.setStatus !== null) {
-        await this.repo.setUserKycStatus(
-          existing.userId,
-          decision.setStatus,
-          decision.verifiedAt,
-        );
+        await this.repo.setUserKycStatus(existing.userId, decision.setStatus, decision.verifiedAt);
         appliedUserKycUpdate = true;
       }
       if (decision.incrementRetry) {
