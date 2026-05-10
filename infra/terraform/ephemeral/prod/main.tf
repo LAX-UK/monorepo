@@ -41,6 +41,7 @@ locals {
 
   common_secret_env = [
     { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+    { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
     { key = "LOG_LEVEL", value = "info", type = "GENERAL", scope = "RUN_TIME" },
     { key = "COOKIE_DOMAIN", value = local.cookie_domain, type = "GENERAL", scope = "RUN_TIME" },
     { key = "BETTER_AUTH_SECRET", value = local.effective_better_auth_secret, type = "SECRET", scope = "RUN_TIME" },
@@ -237,6 +238,7 @@ locals {
       primary_domain    = false
       env = [
         { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "OIDC_ISSUER", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
@@ -254,6 +256,7 @@ locals {
       instance_count  = 1
       env = concat(local.email_common_env, [
         { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "DATABASE_URL", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_WORKER", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
