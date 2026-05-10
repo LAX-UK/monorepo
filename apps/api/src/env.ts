@@ -9,6 +9,9 @@ function emptyToUndefined(val: unknown): unknown {
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    /** Deployment environment for financial / ops validation. Decoupled from NODE_ENV so that the
+     * test stack can run with NODE_ENV=production (Node.js optimisations) but sk_test_ keys. */
+    APP_ENV: z.enum(["production", "test", "development"]).default("development"),
     PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
@@ -134,7 +137,7 @@ const envSchema = z
     if (e.NODE_ENV === "production" && !e.POSTMARK_WEBHOOK_BASIC_AUTH) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "POSTMARK_WEBHOOK_BASIC_AUTH is required in production",
+        message: "POSTMARK_WEBHOOK_BASIC_AUTH is required when NODE_ENV=production",
       });
     }
     if (e.STORAGE_DRIVER === "s3") {
@@ -176,7 +179,11 @@ const envSchema = z
       });
     }
 
-    if (e.NODE_ENV === "production") {
+    const appEnv = e.APP_ENV;
+
+    // Stripe key format — enforced per deployment environment.
+    // production: live keys required. test: test keys required (prevents accidental live key use).
+    if (appEnv === "production") {
       const stripeSk = e.STRIPE_SECRET_KEY;
       if (!stripeSk || !stripeSk.startsWith("sk_live_")) {
         ctx.addIssue({
@@ -206,14 +213,37 @@ const envSchema = z
           });
         }
       }
+    } else if (appEnv === "test") {
+      if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_SECRET_KEY in test must use a test key (sk_test_…)",
+          path: ["STRIPE_SECRET_KEY"],
+        });
+      }
+      if (e.STRIPE_PUBLISHABLE_KEY && !e.STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
+          path: ["STRIPE_PUBLISHABLE_KEY"],
+        });
+      }
+    }
+
+    // CRON secret required for all deployed environments (prevents misconfigured cron jobs).
+    if (appEnv !== "development") {
       const cron = e.CRON_INTERNAL_SECRET;
       if (!cron || cron.length < 32) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRON_INTERNAL_SECRET is required in production (min 32 characters)",
+          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
+    }
+
+    // Ops contacts required only in production (test stack uses debug channels).
+    if (appEnv === "production") {
       if (!e.OPS_SUPPORT_EMAIL) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
