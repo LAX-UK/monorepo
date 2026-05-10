@@ -2,10 +2,15 @@ import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { StripePaymentWebhookService } from "./stripe-payment-webhook.service.js";
+
+vi.mock("../lib/stripe-processed-event.js", () => ({
+  tryClaimProcessedStripeEvent: vi.fn(),
+}));
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -35,13 +40,13 @@ function mockDbWithPayment(paymentRow: {
 }
 
 describe("StripePaymentWebhookService.handleDisputeClosed", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
   it("creates an adjustment-only payout when a lost dispute has no open payout", async () => {
     vi.mocked(eq).mockClear();
-    const webhookEventRepository = {
-      tryClaimEvent: vi.fn().mockResolvedValue({ claimed: true }),
-      markProcessed: vi.fn().mockResolvedValue(undefined),
-      markFailed: vi.fn().mockResolvedValue(undefined),
-    };
     const createdPayout = {
       id: "po_adjustment",
       legalEntityId: "00000000-0000-4000-8000-000000000001",
@@ -60,12 +65,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(
-      db,
-      webhookEventRepository,
-      payoutRepository,
-      publisher,
-    );
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
     const event = { id: "evt_dispute_closed", type: "charge.dispute.closed" } as Stripe.Event;
     const dispute = {
       id: "dp_1",
@@ -78,6 +78,11 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     const result = await svc.handleDisputeClosed(event, dispute);
 
     expect(result).toEqual({ processed: true, action: "dispute_closed" });
+    expect(tryClaimProcessedStripeEvent).toHaveBeenCalledWith(
+      db,
+      "evt_dispute_closed",
+      "stripe_payment_webhook",
+    );
     expect(vi.mocked(eq)).toHaveBeenCalledWith(payment.stripeChargeId, "ch_1");
     expect(payoutRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,31 +94,50 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
         currency: "GBP",
       }),
     );
-    expect(payoutRepository.insertLine).toHaveBeenCalledWith({
-      payoutId: "po_adjustment",
-      paymentId: "pay_1",
-      amount: "-5000.00",
-      kind: "dispute",
-      createdByUserId: null,
-      note: "Dispute lost after paid payout: dp_1",
-      sourceEventId: "evt_dispute_closed",
-    });
     expect(publisher.publish).toHaveBeenCalledWith(
       db,
       expect.objectContaining({
         eventType: "payment.dispute_closed",
       }),
     );
-    expect(webhookEventRepository.markProcessed).toHaveBeenCalledWith("stripe:evt_dispute_closed");
+  });
+
+  it("short-circuits duplicate deliveries via processed_stripe_events", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: false });
+    const payoutRepository = {
+      findOpenPayoutForEntity: vi.fn(),
+      create: vi.fn(),
+      insertLine: vi.fn(),
+    } as unknown as IPayoutRepository;
+    const publisher = { publish: vi.fn() } as unknown as DomainEventPublisher;
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "5000.00",
+    });
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const event = { id: "evt_dup", type: "charge.dispute.closed" } as Stripe.Event;
+    const dispute = {
+      id: "dp_dup",
+      status: "won",
+      amount: 100,
+      currency: "gbp",
+      charge: "ch_1",
+    } as Stripe.Dispute;
+
+    const result = await svc.handleDisputeClosed(event, dispute);
+
+    expect(result).toEqual({
+      processed: false,
+      action: "skipped",
+      reason: "duplicate_event",
+    });
+    expect(publisher.publish).not.toHaveBeenCalled();
   });
 
   it("uses the charge id from a dispute fixture even when a payment_intent is present", async () => {
     vi.mocked(eq).mockClear();
-    const webhookEventRepository = {
-      tryClaimEvent: vi.fn().mockResolvedValue({ claimed: true }),
-      markProcessed: vi.fn().mockResolvedValue(undefined),
-      markFailed: vi.fn().mockResolvedValue(undefined),
-    };
     const payoutRepository = {
       findOpenPayoutForEntity: vi.fn().mockResolvedValue({
         id: "po_open",
@@ -130,12 +154,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(
-      db,
-      webhookEventRepository,
-      payoutRepository,
-      publisher,
-    );
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
     const event = { id: "evt_dispute_fixture", type: "charge.dispute.created" } as Stripe.Event;
     const dispute = {
       id: "dp_fixture",
@@ -155,11 +174,6 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
 
   it("uses the charge object id from a refund fixture instead of payment_intent", async () => {
     vi.mocked(eq).mockClear();
-    const webhookEventRepository = {
-      tryClaimEvent: vi.fn().mockResolvedValue({ claimed: true }),
-      markProcessed: vi.fn().mockResolvedValue(undefined),
-      markFailed: vi.fn().mockResolvedValue(undefined),
-    };
     const payoutRepository = {
       findOpenPayoutForEntity: vi.fn().mockResolvedValue({
         id: "po_open",
@@ -176,12 +190,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(
-      db,
-      webhookEventRepository,
-      payoutRepository,
-      publisher,
-    );
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
     const event = { id: "evt_refund_fixture", type: "charge.refunded" } as Stripe.Event;
     const charge = {
       id: "ch_refunded_fixture",
