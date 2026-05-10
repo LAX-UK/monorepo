@@ -9,7 +9,14 @@ function emptyToUndefined(val: unknown): unknown {
 function trimEmptyToUndefined(val: unknown): unknown {
   if (val === "" || val === null) return undefined;
   if (typeof val === "string") {
-    const t = val.trim();
+    let t = val.trim();
+    if (t.length >= 2) {
+      const first = t[0];
+      const last = t[t.length - 1];
+      if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+        t = t.slice(1, -1).trim();
+      }
+    }
     return t === "" ? undefined : t;
   }
   return val;
@@ -238,14 +245,14 @@ const envSchema = z
       if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "STRIPE_SECRET_KEY in test must use a test key (sk_test_…)",
+          message: `STRIPE_SECRET_KEY in test must use a test key (sk_test_…). got prefix=${JSON.stringify(e.STRIPE_SECRET_KEY.slice(0, 8))} length=${e.STRIPE_SECRET_KEY.length}`,
           path: ["STRIPE_SECRET_KEY"],
         });
       }
       if (e.STRIPE_PUBLISHABLE_KEY && !e.STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
+          message: `STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…). got prefix=${JSON.stringify(e.STRIPE_PUBLISHABLE_KEY.slice(0, 8))} length=${e.STRIPE_PUBLISHABLE_KEY.length}`,
           path: ["STRIPE_PUBLISHABLE_KEY"],
         });
       }
