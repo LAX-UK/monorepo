@@ -12,7 +12,7 @@ describe("PINO_REDACT", () => {
         cb();
       },
     });
-    const log = pino({ level: "info", redact: PINO_REDACT, sync: true }, dest);
+    const log = pino({ level: "info", redact: PINO_REDACT }, dest);
     log.info({ stripeSecretKey: "sk_test_should_not_appear", ok: true });
     const line = chunks.join("");
     expect(line).toContain("[REDACTED]");
