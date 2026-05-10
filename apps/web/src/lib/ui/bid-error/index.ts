@@ -1,6 +1,7 @@
 import { adminBidErrorMatcher } from "./matchers/admin.matcher";
 import { dutchPriceBidErrorMatcher } from "./matchers/dutch-price.matcher";
 import { endedBidErrorMatcher } from "./matchers/ended.matcher";
+import { kycRequiredBidErrorMatcher } from "./matchers/kyc-required.matcher";
 import { minBidBidErrorMatcher } from "./matchers/min-bid.matcher";
 import { notAcceptingBidErrorMatcher } from "./matchers/not-accepting.matcher";
 import { sealedClosedBidErrorMatcher } from "./matchers/sealed-closed.matcher";
@@ -11,6 +12,7 @@ import type { BidErrorMatcher, BidErrorPresentation } from "./types";
 export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   sellerOwnLotBidErrorMatcher,
   adminBidErrorMatcher,
+  kycRequiredBidErrorMatcher,
   suspendedBidErrorMatcher,
   notAcceptingBidErrorMatcher,
   endedBidErrorMatcher,

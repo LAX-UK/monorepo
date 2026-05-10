@@ -38,8 +38,7 @@ export function resolvePostVerifyDestination(
     return { href: input.requestedNext as string, label: "Continue" };
   }
 
-  const persona =
-    normalisePersona(input.sessionPersona) ?? normalisePersona(input.queryPersona);
+  const persona = normalisePersona(input.sessionPersona) ?? normalisePersona(input.queryPersona);
 
   if (persona === "organisation") {
     return { href: "/onboarding/organisation", label: "Set up your organisation" };

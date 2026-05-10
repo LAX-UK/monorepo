@@ -14,6 +14,7 @@ import { ArtworkOnsiteLayout } from "@/components/sections/artwork/layouts/artwo
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
   getServerLotBids,
   getServerLotById,
@@ -64,8 +65,12 @@ export default async function ArtworkPage({ params }: PageProps) {
         .catch(() => [])
     : Promise.resolve([]);
 
+  const kycSummaryPromise = session
+    ? getServerKycStatusSummary().catch(() => null)
+    : Promise.resolve(null);
+
   const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
-  const [initialBids, seller, relatedRaw, watchlist, saleBundle, artistForAccordion] =
+  const [initialBids, seller, relatedRaw, watchlist, saleBundle, artistForAccordion, kycSummary] =
     await Promise.all([
       getServerLotBids(id, 30).catch(() => []),
       sellerLookupId
@@ -86,6 +91,7 @@ export default async function ArtworkPage({ params }: PageProps) {
       publicReader
         .getById(auction.marketingDetails.sellerArtistId ?? sellerLookupId)
         .catch(() => null),
+      kycSummaryPromise,
     ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
@@ -169,6 +175,7 @@ export default async function ArtworkPage({ params }: PageProps) {
         initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
+        kycSummary={kycSummary}
       />
     </OnlineBidsView>
   );

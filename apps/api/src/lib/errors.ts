@@ -12,12 +12,15 @@ export class BidError extends Error {
 }
 
 export class LotError extends Error {
+  readonly code?: string | undefined;
   constructor(
     message: string,
     readonly status: number = 400,
+    code?: string,
   ) {
     super(message);
     this.name = "LotError";
+    if (code !== undefined) this.code = code;
   }
 }
 
