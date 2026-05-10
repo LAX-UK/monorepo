@@ -72,7 +72,6 @@ import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.re
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
-import { DrizzleWebhookEventRepository } from "./repositories/drizzle-webhook-event.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
 import { AccountLinkingService } from "./services/account-linking.service.js";
@@ -350,15 +349,9 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
   );
 
-  const webhookEventRepository = new DrizzleWebhookEventRepository(db);
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
-      ? new StripePaymentWebhookService(
-          db,
-          webhookEventRepository,
-          payoutRepository,
-          domainEventPublisher,
-        )
+      ? new StripePaymentWebhookService(db, payoutRepository, domainEventPublisher)
       : null;
 
   const categoryRepo = new DrizzleCategoryRepository(db);
