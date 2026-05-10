@@ -35,6 +35,8 @@ type Props = {
   children: ReactNode;
   clientWorkspaceMode?: ClientWorkspaceMode;
   cookieDensity?: DashboardDensity | null;
+  /** When true, skip the inline email banner (e.g. dashboard uses `DashboardBannerStack`). */
+  hideEmailStatusBanner?: boolean;
   /** Server-rendered slot rendered in the header next to the action buttons.
    * Used for the legal-entity acting-context switcher .
    */
@@ -46,6 +48,7 @@ function AppShellFrame({
   shellRole,
   pendingSubmissionCount = 0,
   clientWorkspaceMode = "buying",
+  hideEmailStatusBanner = false,
   children,
   headerSlot,
 }: Props) {
@@ -228,7 +231,7 @@ function AppShellFrame({
             )}
             data-density={density}
           >
-            <EmailStatusBanner user={user} />
+            {hideEmailStatusBanner ? null : <EmailStatusBanner user={user} />}
             {children}
           </div>
         </main>
