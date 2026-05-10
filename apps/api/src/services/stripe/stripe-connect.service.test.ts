@@ -1,12 +1,17 @@
 import type { Database } from "@auction/db";
 import type { Payout } from "@auction/types";
 import type Stripe from "stripe";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
+import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import { StripeConnectService } from "./stripe-connect.service.js";
+
+vi.mock("../../lib/stripe-processed-event.js", () => ({
+  tryClaimProcessedStripeEvent: vi.fn().mockResolvedValue({ claimed: true }),
+}));
 
 function baseEnv(overrides: Partial<Env> = {}): Env {
   return {
@@ -52,6 +57,12 @@ function makePayoutService(result: Payout | null): IPayoutService {
     markPaid: vi.fn(),
     reconcileStripeTransfer: vi.fn().mockResolvedValue(result),
   } as unknown as IPayoutService;
+}
+
+function makeDomainEventPublisher(): DomainEventPublisher {
+  return {
+    publish: vi.fn().mockResolvedValue(undefined),
+  } as unknown as DomainEventPublisher;
 }
 
 function injectWebhookEvent(service: StripeConnectService, event: Stripe.Event): void {
@@ -172,12 +183,6 @@ describe("StripeConnectService.initiateTransfer", () => {
       findByStripeTransferId: vi.fn(),
       reconcileStripeTransfer: vi.fn(),
     } as unknown as IPayoutRepository;
-  }
-
-  function makeDomainEventPublisher(): DomainEventPublisher {
-    return {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
   }
 
   function makeMockDb(
@@ -423,5 +428,210 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       expect.objectContaining({ eventType: "payout.transfer_failed", aggregateId: "po1" }),
     );
+  });
+});
+
+describe("StripeConnectService.ensureAccount", () => {
+  it("creates individual Express account with business_type individual", async () => {
+    const entityRow = {
+      id: "le1",
+      displayName: "Ada",
+      legalName: null,
+      slug: null,
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: "user-1",
+      status: "lead",
+      statusChangedAt: null,
+      statusChangedByUserId: null,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [],
+      xeroContactId: null,
+      vatNumber: null,
+      marginSchemeEligible: false,
+      isLaxManaged: false,
+      platformFeeBps: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const updatedRow = {
+      ...entityRow,
+      stripeConnectAccountId: "acct_test_1",
+      status: "connect_pending" as const,
+    };
+    const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_test_1" });
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                {
+                  entity: entityRow,
+                  ownerEmail: "ada@example.com",
+                  ownerFirstName: "Ada",
+                  ownerLastName: "Lovelace",
+                  ownerDisplayName: "Ada Lovelace",
+                },
+              ]),
+            }),
+          }),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([updatedRow]),
+          }),
+        }),
+      }),
+    } as unknown as Database;
+
+    const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
+    (svc as unknown as { stripe: { accounts: { create: typeof accountsCreate } } }).stripe = {
+      accounts: { create: accountsCreate },
+    };
+
+    const result = await svc.ensureAccount("le1", "GB");
+
+    expect(accountsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "express",
+        country: "GB",
+        business_type: "individual",
+        individual: {
+          first_name: "Ada",
+          last_name: "Lovelace",
+          email: "ada@example.com",
+        },
+        capabilities: { transfers: { requested: true } },
+      }),
+    );
+    expect(result.stripeAccountId).toBe("acct_test_1");
+    expect(result.legalEntity.status).toBe("connect_pending");
+  });
+
+  it("creates organisation Express account with company business_type", async () => {
+    const entityRow = {
+      id: "le-org",
+      displayName: "Gallery",
+      legalName: "Gallery Ltd",
+      slug: null,
+      kind: "organisation",
+      subkind: "gallery",
+      createdByUserId: "user-1",
+      status: "lead",
+      statusChangedAt: null,
+      statusChangedByUserId: null,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [],
+      xeroContactId: null,
+      vatNumber: null,
+      marginSchemeEligible: false,
+      isLaxManaged: false,
+      platformFeeBps: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const updatedRow = {
+      ...entityRow,
+      stripeConnectAccountId: "acct_org",
+      status: "connect_pending" as const,
+    };
+    const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_org" });
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                {
+                  entity: entityRow,
+                  ownerEmail: "owner@example.com",
+                  ownerFirstName: null,
+                  ownerLastName: null,
+                  ownerDisplayName: "Gallery Owner",
+                },
+              ]),
+            }),
+          }),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([updatedRow]),
+          }),
+        }),
+      }),
+    } as unknown as Database;
+
+    const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
+    (svc as unknown as { stripe: { accounts: { create: typeof accountsCreate } } }).stripe = {
+      accounts: { create: accountsCreate },
+    };
+
+    await svc.ensureAccount("le-org", "GB");
+
+    expect(accountsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        business_type: "company",
+        metadata: expect.objectContaining({ legalEntityId: "le-org" }),
+      }),
+    );
+  });
+});
+
+describe("StripeConnectService.handleWebhook account.updated dedup", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it("skips applyAccountUpdate when event was already processed", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValueOnce({ claimed: false });
+    const publisher = makeDomainEventPublisher();
+    const transaction = vi.fn();
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+      transaction,
+    } as unknown as Database;
+
+    const svc = new StripeConnectService(
+      baseEnv(),
+      db,
+      makePayoutService(null),
+      undefined,
+      publisher,
+    );
+
+    injectWebhookEvent(svc, {
+      id: "evt_acct_1",
+      type: "account.updated",
+      data: {
+        object: {
+          id: "acct_1",
+          charges_enabled: true,
+          payouts_enabled: true,
+          requirements: { currently_due: [] },
+        },
+      },
+    } as unknown as Stripe.Event);
+
+    const result = await svc.handleWebhook("{}", "sig");
+
+    expect(result.processed).toBe(true);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(publisher.publish).not.toHaveBeenCalled();
   });
 });

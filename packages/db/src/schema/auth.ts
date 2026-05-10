@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, date, index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /** KYC status for Stripe Identity verification */
 export const userKycStatusEnum = pgEnum("user_kyc_status", [
@@ -31,6 +31,10 @@ export const user = pgTable(
     suspendedReason: text("suspended_reason"),
     /** Stripe Identity KYC status  */
     kycStatus: userKycStatusEnum("kyc_status").notNull().default("unverified"),
+    /** Latest Stripe Identity session id; webhooks for older sessions are ignored for user state. */
+    currentKycSessionId: text("current_kyc_session_id"),
+    /** Count of hard verification failures (not `requires_input` retries). */
+    kycRetryCount: integer("kyc_retry_count").notNull().default(0),
     kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
     dateOfBirth: date("date_of_birth"),
     /** first-time acting context tooltip dismissed */
