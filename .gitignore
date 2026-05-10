@@ -15,3 +15,6 @@ coverage
 playwright-report
 test-results
 .cursor/plans/
+
+# Pre-go-live audit artifact — keep local only (do not commit or stage).
+docs/audits/pre-go-live-audit.md
