@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
+import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
@@ -270,6 +271,9 @@ export class StripeConnectService implements IStripeConnectService {
       eventType === "transfer.failed" ||
       eventType === "transfer.reversed"
     ) {
+      if (eventType === "transfer.failed") {
+        recordMoneyPathEvent("stripe_connect_transfer_failed");
+      }
       const transfer = event.data.object as Stripe.Transfer;
       const isReversal = eventType === "transfer.reversed";
       const reconciled = await this.payoutService.reconcileStripeTransfer({
@@ -390,6 +394,7 @@ export class StripeConnectService implements IStripeConnectService {
           actingLegalEntityId: payout.legalEntityId,
         });
       }
+      recordMoneyPathEvent("payout_clawback_required");
 
       return { ok: false, reason: "negative_net_amount" };
     }

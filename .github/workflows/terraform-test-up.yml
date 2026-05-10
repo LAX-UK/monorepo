@@ -26,6 +26,20 @@ jobs:
       TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
       TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+      TF_VAR_stripe_identity_webhook_secret: ${{ secrets.STRIPE_IDENTITY_WEBHOOK_SECRET }}
+      TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
+      TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
+      TF_VAR_ops_support_email: ${{ secrets.OPS_SUPPORT_EMAIL }}
+      TF_VAR_ops_oncall_email: ${{ secrets.OPS_ONCALL_EMAIL }}
+      TF_VAR_admin_email_address: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
+      TF_VAR_xero_client_id: ${{ secrets.XERO_CLIENT_ID }}
+      TF_VAR_xero_client_secret: ${{ secrets.XERO_CLIENT_SECRET }}
+      TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
+      TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
+      TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}

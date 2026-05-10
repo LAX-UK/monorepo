@@ -47,6 +47,6 @@ resource "sentry_issue_alert" "high_error_count" {
   filter_match = "all"
   frequency    = 30
 
-  conditions = [{ id = "sentry.rules.conditions.first_seen_event.FirstSeenEventCondition" }]
-  actions    = [{ id = "sentry.rules.actions.notify_event_service.NotifyEventServiceAction", service = "mail" }]
+  conditions = jsonencode([{ id = "sentry.rules.conditions.first_seen_event.FirstSeenEventCondition" }])
+  actions    = jsonencode([{ id = "sentry.rules.actions.notify_event_service.NotifyEventServiceAction", service = "mail" }])
 }

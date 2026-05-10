@@ -187,3 +187,113 @@ variable "zoho_campaigns_list_key" {
   sensitive   = true
   description = "Zoho Campaigns target list key used by apps/worker."
 }
+
+# --- Stripe + internal jobs + KYC + ops (apps/api, apps/worker) ---
+variable "stripe_secret_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe secret key (sk_test_… in test)."
+}
+variable "stripe_publishable_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe publishable key (pk_test_… in test)."
+}
+variable "stripe_identity_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Identity webhook signing secret (whsec_…)."
+}
+variable "stripe_connect_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Connect webhook signing secret (whsec_…)."
+}
+variable "stripe_payments_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Payments webhook signing secret (whsec_…) for disputes/refunds."
+}
+variable "cron_internal_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Shared secret for worker → API internal cron (min 32 chars). Auto-generated if empty."
+}
+variable "kyc_threshold_amount" {
+  type        = string
+  default     = "1000"
+  description = "KYC threshold in major currency units."
+}
+variable "kyc_threshold_currency" {
+  type        = string
+  default     = "GBP"
+  description = "ISO 4217 currency code for KYC threshold."
+}
+variable "ops_support_email" {
+  type        = string
+  default     = ""
+  description = "Support inbox for ops alerts (only required when APP_ENV=production)."
+}
+variable "ops_oncall_email" {
+  type        = string
+  default     = ""
+  description = "On-call escalation email (only required when APP_ENV=production)."
+}
+variable "admin_email_address" {
+  type        = string
+  default     = ""
+  description = "Worker ops notifications (only required when APP_ENV=production)."
+}
+
+# --- Xero (optional OAuth; all three must be set together in app env) ---
+variable "xero_client_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_client_secret" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_redirect_uri" {
+  type        = string
+  default     = ""
+  description = "OAuth redirect URI registered in Xero (e.g. https://test-api.lax.bid/admin/integrations/xero/callback)."
+}
+variable "xero_webhook_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_default_revenue_account_code" {
+  type    = string
+  default = "200"
+}
+variable "xero_default_tax_type" {
+  type    = string
+  default = "NONE"
+}
+variable "xero_invoice_due_days" {
+  type    = string
+  default = "14"
+}
+variable "xero_post_connect_web_redirect" {
+  type        = string
+  default     = ""
+  description = "Browser redirect after Xero OAuth (e.g. https://test.lax.bid/admin/integrations/xero)."
+}
+variable "xero_use_legal_entity_contact" {
+  type    = string
+  default = "false"
+}
+variable "xero_payout_bill_account_code" {
+  type    = string
+  default = "400"
+}
