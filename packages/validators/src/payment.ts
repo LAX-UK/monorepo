@@ -11,7 +11,7 @@ export const paymentIdParamSchema = z.object({
 /** Optional `?status` filter for `GET /payments/me`. Mirrors `PaymentStatus`. */
 export const myPaymentsQuerySchema = z.object({
   status: z
-    .enum(["pending", "authorized", "captured", "refunded", "requires_manual_review"])
+    .enum(["pending", "authorized", "captured", "refunded", "requires_manual_review", "cancelled"])
     .optional(),
 });
 

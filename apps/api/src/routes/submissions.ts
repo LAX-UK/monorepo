@@ -37,6 +37,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/",
     requireAuth,
+    requireBuyerRole,
     requireSubmissionEntityContext,
     zValidator("json", createItemSubmissionSchema),
     async (c) => {
@@ -59,17 +60,22 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     },
   );
 
-  r.get("/mine", requireAuth, zValidator("query", listSubmissionsQuerySchema), async (c) => {
-    const userId = c.get("userId") as string;
-    const entity = await container.legalEntityRepository.ensurePersonalEntity(userId);
-    const q = c.req.valid("query");
-    const rows = await container.itemSubmissionService.listForSeller(entity.id, {
-      status: q.status,
-      limit: q.limit,
-      offset: q.offset,
-    });
-    return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
-  });
+  r.get(
+    "/mine",
+    requireAuth,
+    requireSubmissionEntityContext,
+    zValidator("query", listSubmissionsQuerySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const q = c.req.valid("query");
+      const rows = await container.itemSubmissionService.listForSeller(ctx.legalEntityId, {
+        status: q.status,
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
+    },
+  );
 
   r.get(
     "/",
@@ -89,38 +95,44 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     },
   );
 
-  r.get("/:id", requireAuth, zValidator("param", submissionIdParamSchema), async (c) => {
-    const { id } = c.req.valid("param");
-    const role = (c.get("userRole") ?? "client") as UserRole;
-    const userId = c.get("userId") as string;
-    if (roleHasCapability(role, "platform.admin.full")) {
-      const result = await container.itemSubmissionService.getForAdmin(id);
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+  r.get(
+    "/:id",
+    requireAuth,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      if (roleHasCapability(role, "platform.admin.full")) {
+        const result = await container.itemSubmissionService.getForAdmin(id);
+        if (result.isErr()) {
+          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        }
+        return c.json({
+          data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+        });
       }
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const result = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+      if (result.isErr())
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       return c.json({
         data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
       });
-    }
-    const entity = await container.legalEntityRepository.ensurePersonalEntity(userId);
-    const result = await container.itemSubmissionService.getForSeller(entity.id, id);
-    if (result.isErr())
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-    return c.json({
-      data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-    });
-  });
+    },
+  );
 
   r.patch(
     "/:id",
     requireAuth,
     requireBuyerRoleUnlessAdministrator,
+    requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
       const role = (c.get("userRole") ?? "client") as UserRole;
       const userId = c.get("userId") as string;
-      const entity = await container.legalEntityRepository.ensurePersonalEntity(userId);
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       let raw: unknown = {};
       try {
         raw = await c.req.json();
@@ -150,7 +162,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
       }
       const result = await container.itemSubmissionService.updateForActor({
-        actorId: entity.id,
+        actorId: ctx.legalEntityId,
         role,
         submissionId: id,
         sellerPatch: parsed.data as UpdateItemSubmissionInput,
@@ -168,12 +180,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     "/:id/submit",
     requireAuth,
     requireBuyerRole,
+    requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-      const userId = c.get("userId") as string;
-      const entity = await container.legalEntityRepository.ensurePersonalEntity(userId);
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.submitForReview(entity.id, id);
+      const result = await container.itemSubmissionService.submitForReview(ctx.legalEntityId, id);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -187,12 +199,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     "/:id/withdraw",
     requireAuth,
     requireBuyerRole,
+    requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-      const userId = c.get("userId") as string;
-      const entity = await container.legalEntityRepository.ensurePersonalEntity(userId);
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.withdraw(entity.id, id);
+      const result = await container.itemSubmissionService.withdraw(ctx.legalEntityId, id);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }

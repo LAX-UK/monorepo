@@ -10,6 +10,7 @@ import {
 } from "xero-node";
 import type { Env } from "../../env.js";
 import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
   AccountingCheckoutContext,
@@ -63,7 +64,26 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     private readonly legalEntities: ILegalEntityRepository | null,
     /** when `XERO_USE_LEGAL_ENTITY_CONTACT`, sets Xero `invoiceAddresses` to match email/PDF bill-to. */
     private readonly invoiceAddressing: InvoiceAddressingService | null,
+    private readonly errorReporter: IErrorReporter,
   ) {}
+
+  private async refreshXeroTokensReporting(
+    xero: XeroClient,
+    conn: XeroConnectionRow,
+  ): Promise<XeroConnectionRow> {
+    try {
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    } catch (cause) {
+      this.errorReporter.report({
+        severity: "error",
+        code: "xero_refresh_failed",
+        message: "Xero OAuth token refresh failed",
+        status: 502,
+        cause,
+      });
+      throw cause;
+    }
+  }
 
   isConfigured(): boolean {
     return Boolean(
@@ -103,7 +123,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     const xero = this.baseClient();
     await xero.initialize();
     await applyStoredTokens(xero, conn);
-    const liveConn = await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    const liveConn = await this.refreshXeroTokensReporting(xero, conn);
 
     const tenantId = liveConn.tenantId;
     const lot = ctx.lot as Lot;
@@ -274,7 +294,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     const xero = this.baseClient();
     await xero.initialize();
     await applyStoredTokens(xero, conn);
-    await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    await this.refreshXeroTokensReporting(xero, conn);
     try {
       const res = await xero.accountingApi.getInvoice(conn.tenantId, invoiceId);
       const inv = res.body.invoices?.[0];

@@ -32,6 +32,7 @@ export const legalEntityPayoutMethod = pgTable(
     uniqueIndex("legal_entity_payout_method_default_uidx")
       .on(table.legalEntityId)
       .where(sql`${table.isDefault} = true AND ${table.status} = 'active'`),
+    check("legal_entity_payout_method_status_check", sql`${table.status} IN ('active', 'retired')`),
   ],
 );
 
@@ -69,6 +70,10 @@ export const payout = pgTable(
       sql`${table.netAmount} = ${table.grossAmount} - ${table.platformFee} - ${table.stripeFee}`,
     ),
     check("payout_currency_gbp", sql`${table.currency} = 'GBP'`),
+    check(
+      "payout_status_check",
+      sql`${table.status} IN ('scheduled', 'in_transit', 'paid', 'failed', 'reversed', 'clawback_pending')`,
+    ),
   ],
 );
 

@@ -7,6 +7,8 @@ export type ConnectAccountStatus = {
   payoutsEnabled: boolean;
   /** Stripe `requirements.currently_due` field. */
   requirementsCurrentlyDue: string[];
+  /** Stripe `requirements.disabled_reason` when the account is blocked. */
+  disabledReason: string | null;
   /** True when the account is active and ready to receive payouts. */
   ready: boolean;
 };

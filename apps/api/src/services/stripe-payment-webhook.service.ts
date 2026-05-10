@@ -8,7 +8,12 @@ import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 
 type PaymentWebhookResult = {
   processed: boolean;
-  action?: "dispute_created" | "dispute_closed" | "refund_received" | "skipped";
+  action?:
+    | "dispute_created"
+    | "dispute_funds_withdrawn"
+    | "dispute_closed"
+    | "refund_received"
+    | "skipped";
   reason?: string;
 };
 
@@ -65,6 +70,48 @@ export class StripePaymentWebhookService {
     });
 
     return { processed: true, action: "dispute_created" };
+  }
+
+  /** Funds removed from your Stripe balance when a dispute is opened (before final outcome). */
+  async handleDisputeFundsWithdrawn(
+    event: Stripe.Event,
+    dispute: Stripe.Dispute,
+  ): Promise<PaymentWebhookResult> {
+    const { claimed } = await tryClaimProcessedStripeEvent(
+      this.db,
+      event.id,
+      PAYMENT_WEBHOOK_EVENT_SOURCE,
+    );
+    if (!claimed) {
+      return { processed: false, action: "skipped", reason: "duplicate_event" };
+    }
+
+    const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+    if (!chargeId) {
+      return { processed: false, reason: "missing_charge_id" };
+    }
+
+    const paymentRow = await this.findPaymentByStripeChargeId(chargeId);
+    if (!paymentRow) {
+      return { processed: true, action: "skipped", reason: "no_matching_payment" };
+    }
+
+    await this.domainEventPublisher.publish(this.db, {
+      aggregateType: "payment",
+      aggregateId: paymentRow.id,
+      eventType: "payment.dispute_funds_withdrawn",
+      payload: {
+        stripeDisputeId: dispute.id,
+        stripeChargeId: chargeId,
+        amountCents: dispute.amount,
+        currency: dispute.currency,
+        sellerLegalEntityId: paymentRow.sellerLegalEntityId,
+      },
+      actorUserId: null,
+      actingLegalEntityId: paymentRow.sellerLegalEntityId,
+    });
+
+    return { processed: true, action: "dispute_funds_withdrawn" };
   }
 
   async handleDisputeClosed(

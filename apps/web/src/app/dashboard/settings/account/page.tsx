@@ -26,7 +26,12 @@ export default async function AccountSettingsPage({
   if (!meRes.ok) redirect("/dashboard?error=account");
 
   const meBody = (await meRes.json()) as {
-    data: { email: string; emailStatus?: string; emailVerified?: boolean };
+    data: {
+      email: string;
+      emailStatus?: string;
+      emailVerified?: boolean;
+      pendingNewEmail?: string | null;
+    };
   };
   const user = meBody.data;
 
@@ -81,11 +86,15 @@ export default async function AccountSettingsPage({
             Change email
           </CardTitle>
           <CardDescription>
-            We will send a confirmation link to your current email before switching addresses.
+            We send confirmation links to your current address and the new address — both must
+            confirm before the switch.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ChangeEmailForm currentEmail={user.email} />
+          <ChangeEmailForm
+            currentEmail={user.email}
+            hasPendingEmailChange={Boolean(user.pendingNewEmail)}
+          />
         </CardContent>
       </Card>
 

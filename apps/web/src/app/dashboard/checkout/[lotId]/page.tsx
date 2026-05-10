@@ -65,7 +65,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               {auction.title}
             </h1>
             <p className="mb-10 font-body text-sm text-on-surface-variant">
-              Lot settled in your favor. Review your invoice and confirm to begin settlement.
+              Lot settled in your favor. You will be redirected to Xero-hosted checkout when an
+              invoice is ready; until then you can refresh this page or return from your collection.
             </p>
 
             <section

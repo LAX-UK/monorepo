@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { xeroWebhookEvent } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import type { IXeroWebhookEventRepository } from "../services/interfaces/xero-repositories.js";
 
 export class DrizzleXeroWebhookEventRepository implements IXeroWebhookEventRepository {
@@ -38,5 +38,18 @@ export class DrizzleXeroWebhookEventRepository implements IXeroWebhookEventRepos
       .update(xeroWebhookEvent)
       .set({ error, processedAt: new Date() })
       .where(eq(xeroWebhookEvent.eventKey, eventKey));
+  }
+
+  async listRecentFailures(limit: number) {
+    return this.db
+      .select({
+        tenantId: xeroWebhookEvent.tenantId,
+        resourceId: xeroWebhookEvent.resourceId,
+        eventKey: xeroWebhookEvent.eventKey,
+      })
+      .from(xeroWebhookEvent)
+      .where(isNotNull(xeroWebhookEvent.error))
+      .orderBy(desc(xeroWebhookEvent.createdAt))
+      .limit(limit);
   }
 }

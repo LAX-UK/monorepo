@@ -43,9 +43,13 @@ export type ProfileMeRow = {
   emailVerified: boolean;
   emailStatus: "ok" | "bounced" | "complained";
   emailStatusChangedAt: Date | null;
+  /** Target address for an in-flight dual-confirm email change, if any. */
+  pendingNewEmail: string | null;
   hasSeenActingContextTooltip: boolean;
   kycStatus: "unverified" | "pending" | "approved" | "rejected";
   signupPersona: "individual" | "organisation" | null;
+  /** When set, a self-serve deletion has been requested (GDPR). */
+  deletionRequestedAt: Date | null;
 };
 
 export interface IProfileReader {

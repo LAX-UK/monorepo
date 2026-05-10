@@ -236,43 +236,85 @@
     {
       "idx": 33,
       "version": "7",
+      "when": 1779100000000,
+      "tag": "0034_impersonation_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
       "when": 1779200000000,
       "tag": "0035_payment_manual_review",
       "breakpoints": true
     },
     {
-      "idx": 34,
+      "idx": 35,
       "version": "7",
       "when": 1779300000000,
       "tag": "0036_payment_manual_review_index",
       "breakpoints": true
     },
     {
-      "idx": 35,
+      "idx": 36,
       "version": "7",
       "when": 1779400000000,
       "tag": "0037_payment_stripe_refund_id",
       "breakpoints": true
     },
     {
-      "idx": 36,
+      "idx": 37,
       "version": "7",
       "when": 1779500000000,
       "tag": "0038_payment_stripe_charge_id",
       "breakpoints": true
     },
     {
-      "idx": 37,
+      "idx": 38,
       "version": "7",
       "when": 1779600000000,
       "tag": "0039_audit_fixes_foundation",
       "breakpoints": true
     },
     {
-      "idx": 38,
+      "idx": 39,
       "version": "7",
       "when": 1779700000000,
       "tag": "0040_signup_persona",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1779750000000,
+      "tag": "0041_org_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0042_email_change_connect_payment_cancel_hotpath_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0043_org_onboarding_idempotent_replay",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0044_status_check_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0045_withdrawal_two_factor_deletion",
       "breakpoints": true
     }
   ]

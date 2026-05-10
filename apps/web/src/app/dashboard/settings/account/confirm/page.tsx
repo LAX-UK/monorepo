@@ -22,15 +22,23 @@ export default async function ConfirmEmailChangePage({
         description="Finish updating your account email."
         className="border-b border-outline-variant/20 pb-5"
       />
-      {result.ok ? (
+      {result.ok && result.data?.completed ? (
         <Alert>
           <AlertTitle>Email updated</AlertTitle>
           <AlertDescription>Your account email has been changed.</AlertDescription>
         </Alert>
+      ) : result.ok && !result.data?.completed ? (
+        <Alert>
+          <AlertTitle>One more step</AlertTitle>
+          <AlertDescription>
+            {result.data?.message ??
+              "Check the other inbox for a second confirmation link to finish the change."}
+          </AlertDescription>
+        </Alert>
       ) : (
         <Alert variant="destructive">
           <AlertTitle>Could not confirm</AlertTitle>
-          <AlertDescription>{result.error}</AlertDescription>
+          <AlertDescription>{!result.ok ? result.error : "Something went wrong."}</AlertDescription>
         </Alert>
       )}
       <Button asChild className="min-h-11">

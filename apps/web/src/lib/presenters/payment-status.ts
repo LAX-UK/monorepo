@@ -54,5 +54,7 @@ export function getPaymentStatusView(status: PaymentStatus): StatusBadgeView {
       return view("Refunded", "danger");
     case "requires_manual_review":
       return view("Awaiting manual review", "info");
+    case "cancelled":
+      return view("Cancelled", "neutral");
   }
 }

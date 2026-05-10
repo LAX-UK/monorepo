@@ -25,6 +25,7 @@ import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
+import { SentryErrorReporter } from "./infrastructure/sentry-error.reporter.js";
 import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
@@ -493,6 +494,8 @@ export function createContainer(env: Env): Container {
     legalEntityNotificationRecipients,
     legalEntityRepository,
     stripeConnectService.isConfigured(),
+    db,
+    domainEventPublisher,
   );
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);
@@ -526,6 +529,8 @@ export function createContainer(env: Env): Container {
   const paymentExtRepo = new DrizzlePaymentExternalRefRepository(db);
   const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
 
+  const errorReporter = env.SENTRY_DSN_API ? new SentryErrorReporter() : new NoOpErrorReporter();
+
   const xeroEnvEnabled = Boolean(
     env.XERO_CLIENT_ID && env.XERO_CLIENT_SECRET && env.XERO_REDIRECT_URI,
   );
@@ -553,6 +558,7 @@ export function createContainer(env: Env): Container {
         },
         legalEntityRepository,
         invoiceAddressingService,
+        errorReporter,
       )
     : new NoOpAccountingProvider();
 
@@ -568,6 +574,7 @@ export function createContainer(env: Env): Container {
         xeroConnRepo,
         payoutRepository,
         legalEntityRepository,
+        errorReporter,
       )
     : null;
 
@@ -662,7 +669,7 @@ export function createContainer(env: Env): Container {
   const httpErrorHandler = new ErrorHandlerService(
     new DefaultErrorClassifier(),
     new ConsoleErrorLogger(env),
-    new NoOpErrorReporter(),
+    errorReporter,
     new JsonErrorResponseBuilder(),
   );
 

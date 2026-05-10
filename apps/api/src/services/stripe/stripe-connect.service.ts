@@ -34,6 +34,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+    stripeConnectDisabledReason: row.stripeConnectDisabledReason ?? null,
     xeroContactId: row.xeroContactId ?? null,
     vatNumber: row.vatNumber ?? null,
     marginSchemeEligible: row.marginSchemeEligible,
@@ -186,6 +187,7 @@ export class StripeConnectService implements IStripeConnectService {
         chargesEnabled: false,
         payoutsEnabled: false,
         requirementsCurrentlyDue: [],
+        disabledReason: null,
         ready: false,
       };
     }
@@ -194,6 +196,7 @@ export class StripeConnectService implements IStripeConnectService {
       chargesEnabled: row.stripeConnectChargesEnabled,
       payoutsEnabled: row.stripeConnectPayoutsEnabled,
       requirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+      disabledReason: row.stripeConnectDisabledReason ?? null,
       ready:
         row.stripeConnectChargesEnabled &&
         row.stripeConnectPayoutsEnabled &&
@@ -297,6 +300,10 @@ export class StripeConnectService implements IStripeConnectService {
 
   private async applyAccountUpdate(account: Stripe.Account): Promise<void> {
     const requirementsCurrentlyDue = (account.requirements?.currently_due ?? []) as string[];
+    const disabledReason =
+      typeof account.requirements?.disabled_reason === "string"
+        ? account.requirements.disabled_reason
+        : null;
     const chargesEnabled = Boolean(account.charges_enabled);
     const payoutsEnabled = Boolean(account.payouts_enabled);
 
@@ -318,6 +325,7 @@ export class StripeConnectService implements IStripeConnectService {
           stripeConnectChargesEnabled: chargesEnabled,
           stripeConnectPayoutsEnabled: payoutsEnabled,
           stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
+          stripeConnectDisabledReason: disabledReason,
           ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
           updatedAt: new Date(),
         })

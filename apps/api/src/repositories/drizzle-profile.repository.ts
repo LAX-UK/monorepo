@@ -22,9 +22,11 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         emailVerified: user.emailVerified,
         emailStatus: user.emailStatus,
         emailStatusChangedAt: user.emailStatusChangedAt,
+        pendingNewEmail: user.pendingNewEmail,
         hasSeenActingContextTooltip: user.hasSeenActingContextTooltip,
         kycStatus: user.kycStatus,
         signupPersona: user.signupPersona,
+        deletionRequestedAt: user.deletionRequestedAt,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -43,9 +45,11 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       emailVerified: row.emailVerified,
       emailStatus: row.emailStatus as "ok" | "bounced" | "complained",
       emailStatusChangedAt: row.emailStatusChangedAt,
+      pendingNewEmail: row.pendingNewEmail ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
       kycStatus: row.kycStatus,
       signupPersona: persona,
+      deletionRequestedAt: row.deletionRequestedAt ?? null,
     };
   }
 

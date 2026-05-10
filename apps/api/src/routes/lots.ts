@@ -115,6 +115,16 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
   });
 
+  r.post("/:id/withdraw-request", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
+    const sellerUserId = c.get("userId") as string;
+    const { id } = c.req.valid("param");
+    const result = await container.lotService.requestWithdrawal(sellerUserId, id);
+    if (result.isErr()) {
+      return jsonLotOrAuthzError(c, result.error);
+    }
+    return c.json({ data: result.value }, result.value.alreadyPending ? 200 : 201);
+  });
+
   r.post(
     "/:id/cancel",
     requireAuth,

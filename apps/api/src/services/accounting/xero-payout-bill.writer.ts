@@ -8,9 +8,13 @@ import {
   XeroClient,
 } from "xero-node";
 import type { Env } from "../../env.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
-import type { IXeroConnectionRepository } from "../interfaces/xero-repositories.js";
+import type {
+  IXeroConnectionRepository,
+  XeroConnectionRow,
+} from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
@@ -44,7 +48,26 @@ export class XeroPayoutBillWriter {
     private readonly connections: IXeroConnectionRepository,
     private readonly payouts: IPayoutRepository,
     private readonly legalEntities: ILegalEntityRepository,
+    private readonly errorReporter: IErrorReporter,
   ) {}
+
+  private async refreshXeroTokensReporting(
+    xero: XeroClient,
+    conn: XeroConnectionRow,
+  ): Promise<XeroConnectionRow> {
+    try {
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    } catch (cause) {
+      this.errorReporter.report({
+        severity: "error",
+        code: "xero_refresh_failed",
+        message: "Xero OAuth token refresh failed",
+        status: 502,
+        cause,
+      });
+      throw cause;
+    }
+  }
 
   private baseClient(): XeroClient {
     return new XeroClient({
@@ -90,7 +113,7 @@ export class XeroPayoutBillWriter {
     const xero = this.baseClient();
     await xero.initialize();
     await applyStoredTokens(xero, conn);
-    const liveConn = await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    const liveConn = await this.refreshXeroTokensReporting(xero, conn);
     const tenantId = liveConn.tenantId;
 
     try {
