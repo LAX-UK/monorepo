@@ -119,6 +119,10 @@ const envSchema = z
      * Optional until bulk jobs are enabled in deploy.
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** Support inbox for money-path alerts and ops (required in production). */
+    OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** On-call / escalation inbox (required in production). */
+    OPS_ONCALL_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
@@ -170,6 +174,60 @@ const envSchema = z
         message:
           "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
       });
+    }
+
+    if (e.NODE_ENV === "production") {
+      const stripeSk = e.STRIPE_SECRET_KEY;
+      if (!stripeSk || !stripeSk.startsWith("sk_live_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_SECRET_KEY is required in production and must start with sk_live_",
+          path: ["STRIPE_SECRET_KEY"],
+        });
+      }
+      const stripePk = e.STRIPE_PUBLISHABLE_KEY;
+      if (!stripePk || !stripePk.startsWith("pk_live_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_PUBLISHABLE_KEY is required in production and must start with pk_live_",
+          path: ["STRIPE_PUBLISHABLE_KEY"],
+        });
+      }
+      for (const [key, val] of [
+        ["STRIPE_IDENTITY_WEBHOOK_SECRET", e.STRIPE_IDENTITY_WEBHOOK_SECRET] as const,
+        ["STRIPE_CONNECT_WEBHOOK_SECRET", e.STRIPE_CONNECT_WEBHOOK_SECRET] as const,
+        ["STRIPE_PAYMENTS_WEBHOOK_SECRET", e.STRIPE_PAYMENTS_WEBHOOK_SECRET] as const,
+      ]) {
+        if (!val || !val.startsWith("whsec_")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${key} is required in production and must start with whsec_`,
+            path: [key],
+          });
+        }
+      }
+      const cron = e.CRON_INTERNAL_SECRET;
+      if (!cron || cron.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CRON_INTERNAL_SECRET is required in production (min 32 characters)",
+          path: ["CRON_INTERNAL_SECRET"],
+        });
+      }
+      if (!e.OPS_SUPPORT_EMAIL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "OPS_SUPPORT_EMAIL is required in production",
+          path: ["OPS_SUPPORT_EMAIL"],
+        });
+      }
+      if (!e.OPS_ONCALL_EMAIL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "OPS_ONCALL_EMAIL is required in production",
+          path: ["OPS_ONCALL_EMAIL"],
+        });
+      }
     }
   });
 

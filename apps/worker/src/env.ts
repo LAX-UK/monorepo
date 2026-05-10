@@ -63,6 +63,23 @@ const envSchema = z
         });
       }
     }
+    if (e.NODE_ENV === "production") {
+      const cron = e.CRON_INTERNAL_SECRET;
+      if (!cron || cron.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CRON_INTERNAL_SECRET is required in production (min 32 characters)",
+          path: ["CRON_INTERNAL_SECRET"],
+        });
+      }
+      if (!e.ADMIN_EMAIL_ADDRESS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "ADMIN_EMAIL_ADDRESS is required in production for ops notifications",
+          path: ["ADMIN_EMAIL_ADDRESS"],
+        });
+      }
+    }
   });
 
 export type WorkerEnv = z.infer<typeof envSchema>;
