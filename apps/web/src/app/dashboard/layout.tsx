@@ -1,4 +1,4 @@
-import { EntityStatusBanner } from "@/components/dashboard/entity-status-banner";
+import { DashboardBannerStack } from "@/components/dashboard/dashboard-banner-stack";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { AppShell } from "@/components/layout/app-shell";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
@@ -36,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       shellRole="client"
       clientWorkspaceMode={clientWorkspaceMode}
       cookieDensity={cookieDensity}
+      hideEmailStatusBanner
       headerSlot={
         <ActingAsBanner
           hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
@@ -44,7 +45,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         />
       }
     >
-      <EntityStatusBanner acting={actingContext.acting} />
+      <DashboardBannerStack user={user} acting={actingContext.acting} />
       <WelcomeBackToast />
       {children}
     </AppShell>
