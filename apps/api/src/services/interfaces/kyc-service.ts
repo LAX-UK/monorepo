@@ -12,6 +12,14 @@ export type CreateKycSessionResult = {
   verification: KycVerification;
 };
 
+export type KycWebhookHandleResult = {
+  verification: KycVerification | null;
+  /** True when this delivery updated user KYC columns (not a stale session / no-op branch). */
+  appliedUserKycUpdate: boolean;
+  /** True when Identity verified the *current* session — run post-verification progression. */
+  shouldProgressIndividuals: boolean;
+};
+
 export type KycStatusSummary = {
   status: UserKycStatus;
   verifiedAt: Date | null;
@@ -59,10 +67,12 @@ export interface IKycService {
   getStatus(userId: string): Promise<KycStatusSummary>;
 
   /** Verify and process an `identity.verification_session.*` event.
-   * Returns the updated `KycVerification` row when matched, `null` when the
-   * event is unrelated.
+   * Returns `{ verification: null }` when the event is unrelated or unmatched.
    */
-  handleWebhook(rawBody: string, signature: string | undefined): Promise<KycVerification | null>;
+  handleWebhook(
+    rawBody: string,
+    signature: string | undefined,
+  ): Promise<KycWebhookHandleResult>;
 
   /** Pure helper used by middleware: throws KycRequiredError when the user is
    * over threshold and not approved.
