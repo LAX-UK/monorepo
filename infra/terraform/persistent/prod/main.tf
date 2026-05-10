@@ -53,3 +53,12 @@ module "sentry_projects" {
   environment       = local.environment
   project_names     = [for app in ["web", "api", "auth", "ws", "worker"] : "lax-${local.environment}-${app}"]
 }
+
+module "sentry_alerts" {
+  count = var.sentry_auth_token != "" ? 1 : 0
+
+  source              = "../../modules/sentry-alerts"
+  organization_slug   = var.sentry_organization_slug
+  team_slug           = var.sentry_team_slug
+  project_slugs       = toset([for _k, slug in module.sentry_projects[0].project_slugs : slug])
+}

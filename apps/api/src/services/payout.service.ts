@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import { DrizzlePayoutRepository } from "../repositories/drizzle-payout.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
@@ -546,6 +547,10 @@ export class PayoutService implements IPayoutService {
           actorUserId: null,
           actingLegalEntityId: updated.legalEntityId,
         });
+      }
+
+      if (updated.status === "failed" && previousStatus !== "failed") {
+        recordMoneyPathEvent("payout_reconciled_failed");
       }
 
       return updated;
