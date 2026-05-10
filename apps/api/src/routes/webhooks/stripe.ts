@@ -112,6 +112,12 @@ export function createStripeWebhookRoutes(container: Container) {
       if (event.type === "charge.dispute.created") {
         const dispute = event.data.object as Stripe.Dispute;
         result = await container.stripePaymentWebhookService.handleDisputeCreated(event, dispute);
+      } else if (event.type === "charge.dispute.funds_withdrawn") {
+        const dispute = event.data.object as Stripe.Dispute;
+        result = await container.stripePaymentWebhookService.handleDisputeFundsWithdrawn(
+          event,
+          dispute,
+        );
       } else if (event.type === "charge.dispute.closed") {
         const dispute = event.data.object as Stripe.Dispute;
         result = await container.stripePaymentWebhookService.handleDisputeClosed(event, dispute);

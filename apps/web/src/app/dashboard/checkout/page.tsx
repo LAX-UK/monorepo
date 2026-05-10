@@ -40,8 +40,8 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
         <Alert>
           <AlertTitle>{ids.length} lot(s) queued</AlertTitle>
           <AlertDescription className="font-body text-sm">
-            Payment orchestration UI lands with Paddle settlement upgrades. For now complete each
-            lot from its individual checkout route.
+            Multi-lot basket invoicing is not enabled yet. Complete each lot from its individual
+            checkout route (via your collection).
           </AlertDescription>
         </Alert>
       )}

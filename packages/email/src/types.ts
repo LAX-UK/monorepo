@@ -53,6 +53,8 @@ export type TemplateVarsByName = {
     oldEmail: string;
     newEmail: string;
     userName?: string | null;
+    /** Which inbox received this message — copy differs for current vs new address. */
+    recipient: "current" | "new";
   };
   invite: {
     inviteUrl: string;

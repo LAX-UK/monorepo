@@ -64,6 +64,7 @@ export type LegalEntity = {
   stripeConnectChargesEnabled: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue: string[];
+  stripeConnectDisabledReason: string | null;
   xeroContactId: string | null;
   vatNumber: string | null;
   marginSchemeEligible: boolean;

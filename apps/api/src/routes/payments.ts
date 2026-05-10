@@ -57,6 +57,23 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     return c.json({ data });
   });
 
+  /** Buyer relinquishes an unpaid pending invoice (winner-only). */
+  r.post(
+    "/me/:id/cancel-pending",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", paymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const result = await container.paymentService.cancelPendingAsBuyer(userId, id);
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
   r.post(
     "/",
     requireAuth,
@@ -72,7 +89,6 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
             {
               data: {
                 paymentId: data.paymentId,
-                clientSecret: data.clientSecret,
                 checkoutUrl: data.checkoutUrl,
               },
             },

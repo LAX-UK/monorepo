@@ -57,6 +57,7 @@ function mkIndividualEntity(overrides: Partial<LegalEntity> = {}): LegalEntity {
     stripeConnectChargesEnabled: true,
     stripeConnectPayoutsEnabled: true,
     stripeConnectRequirementsCurrentlyDue: [],
+    stripeConnectDisabledReason: null,
     xeroContactId: null,
     vatNumber: null,
     marginSchemeEligible: false,

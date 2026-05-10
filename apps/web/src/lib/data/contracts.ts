@@ -65,6 +65,8 @@ export type SessionUser = {
   kycStatus?: "unverified" | "pending" | "approved" | "rejected";
   /** Persona captured at signup; null for users created before Phase B. */
   signupPersona?: "individual" | "organisation" | null;
+  /** From GET /users/me when a self-serve account deletion has been requested. */
+  deletionRequestedAt?: string | Date | null;
 };
 
 /** Session / “who am I” without exposing auth client (DIP). */

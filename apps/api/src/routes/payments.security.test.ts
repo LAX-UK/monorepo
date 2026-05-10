@@ -1,7 +1,9 @@
 import type { UserRole } from "@auction/types";
 import { Hono } from "hono";
+import { type Result, err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { AuthzError, LotError } from "../lib/errors.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { PaymentRecord } from "../services/interfaces/payment-write.js";
@@ -16,6 +18,10 @@ type MountOptions = {
   sessionUserId?: string;
   /** Override `paymentService.listForBuyer` (used by /payments/me tests). */
   listForBuyer?: (buyerId: string) => Promise<PaymentRecord[]>;
+  cancelPendingAsBuyer?: (
+    buyerId: string,
+    paymentId: string,
+  ) => Promise<Result<void, AuthzError | LotError>>;
 };
 
 function mount(role: string, opts: MountOptions = {}) {
@@ -27,6 +33,7 @@ function mount(role: string, opts: MountOptions = {}) {
     markCapturedByAdmin: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
     refundPayment: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
     listForBuyer: opts.listForBuyer ?? vi.fn(async () => [] as PaymentRecord[]),
+    cancelPendingAsBuyer: opts.cancelPendingAsBuyer ?? vi.fn(async () => ok<void>(undefined)),
   };
   const lotService = {
     getById: vi.fn(async (_id: string) => null),
@@ -211,5 +218,52 @@ describe("GET /payments/me", () => {
     expect(text).not.toContain("pi_secret");
     expect(text).not.toContain("ch_secret");
     expect(text).not.toContain("re_secret");
+  });
+});
+
+describe("POST /payments/me/:id/cancel-pending", () => {
+  it("returns 401 when unauthenticated", async () => {
+    const { app, paymentService } = mount("client", { sessionUserId: "" });
+    const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
+    expect(res.status).toBe(401);
+    expect(paymentService.cancelPendingAsBuyer).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for roles that cannot place bids", async () => {
+    const { app, paymentService } = mount("accountant", { sessionUserId: "u1" });
+    const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
+    expect(res.status).toBe(403);
+    expect(paymentService.cancelPendingAsBuyer).not.toHaveBeenCalled();
+  });
+
+  it("delegates to cancelPendingAsBuyer with the session user id", async () => {
+    const cancelPendingAsBuyer = vi.fn(async () => ok<void>(undefined));
+    const { app, paymentService } = mount("client", {
+      sessionUserId: "alice",
+      cancelPendingAsBuyer,
+    });
+    const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(paymentService.cancelPendingAsBuyer).toHaveBeenCalledWith("alice", paymentId);
+  });
+
+  it("maps service errors to HTTP status", async () => {
+    const cancelPendingAsBuyer = vi.fn(async () =>
+      err(new LotError("Only pending payments can be cancelled", 409)),
+    );
+    const { app } = mount("client", { sessionUserId: "alice", cancelPendingAsBuyer });
+    const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toContain("pending");
+  });
+
+  it("maps authorization errors from the service", async () => {
+    const cancelPendingAsBuyer = vi.fn(async () =>
+      err(new AuthzError("Only the buyer can cancel this payment", 403)),
+    );
+    const { app } = mount("client", { sessionUserId: "alice", cancelPendingAsBuyer });
+    const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
+    expect(res.status).toBe(403);
   });
 });

@@ -43,6 +43,10 @@ dig +short CNAME pm-bounces.mail.lax.bid
 
 - Postmark support with Message ID + server token last-4 reference.
 
+## Stuck dual-confirm email change
+
+Users can cancel an in-flight change from **Dashboard → Settings → Account** (clears `pending_new_email` via `DELETE /auth/change-email`). If UI is unavailable, clear manually: `pending_new_email`, `email_change_old_ok`, `email_change_new_ok`, `email_change_expires_at` on the `user` row.
+
 ## Related
 
 - [Email provider incident](./email-provider-incident.md)

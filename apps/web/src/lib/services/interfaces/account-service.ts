@@ -6,4 +6,8 @@ export interface IAccountService {
     input: RequestEmailChangeInput,
   ): Promise<ServiceResult<Record<string, unknown>>>;
   confirmEmailChange(input: { token: string }): Promise<ServiceResult<Record<string, unknown>>>;
+  cancelEmailChange(): Promise<ServiceResult<Record<string, unknown>>>;
+  requestAccountDeletion(input: {
+    confirmation: "DELETE MY ACCOUNT";
+  }): Promise<ServiceResult<Record<string, unknown>>>;
 }

@@ -28,12 +28,14 @@ import {
   oauthApplication,
   oauthConsent,
   session,
+  twoFactor as twoFactorTable,
   user,
   verification,
 } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
 import { createJwksAdapter } from "./jwks.js";
@@ -130,6 +132,7 @@ export function createAuth(env: AuthEnv): Auth {
         oauthApplication,
         oauthAccessToken,
         oauthConsent,
+        twoFactor: twoFactorTable,
       },
     }),
     socialProviders,
@@ -276,6 +279,7 @@ export function createAuth(env: AuthEnv): Auth {
           role: (sessionUser as { role?: string }).role ?? "client",
         }),
       }),
+      twoFactor({ issuer: "LAX" }),
     ],
     advanced: {
       // Allow cookies over HTTP when explicitly enabled (for testing without HTTPS)

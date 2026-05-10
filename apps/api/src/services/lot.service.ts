@@ -1,7 +1,11 @@
+import type { Database } from "@auction/db";
+import { adminReviewTask } from "@auction/db/schema";
 import { type CreateLotInput, type Lot, type UserRole, roleHasCapability } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
+import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
@@ -18,6 +22,8 @@ import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notific
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
+const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
+
 export class LotService {
   constructor(
     private readonly lotRepo: ILotRepository,
@@ -33,6 +39,8 @@ export class LotService {
      * enforced on publish.
      */
     private readonly enforceIndividualConnectOnPublish: boolean = false,
+    private readonly db: Database | null = null,
+    private readonly domainEventPublisher: DomainEventPublisher | null = null,
   ) {}
 
   async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
@@ -184,5 +192,113 @@ export class LotService {
 
   archiveEndedSummary(filter: ArchiveEndedAggregateFilter) {
     return this.lotRepo.sumEndedHammer(filter);
+  }
+
+  /** Seller requests withdrawal; creates an admin review task (no lot state change). */
+  async requestWithdrawal(
+    sellerUserId: string,
+    lotId: string,
+  ): Promise<Result<{ taskId: string; alreadyPending: boolean }, LotError | AuthzError>> {
+    const db = this.db;
+    const publisher = this.domainEventPublisher;
+    const legalEntityRepository = this.legalEntityRepository;
+    if (!db || !publisher || !legalEntityRepository) {
+      return err(new LotError("Withdrawal requests are not available", 503));
+    }
+    const lotRow = await this.lotRepo.findById(lotId);
+    if (!lotRow) return err(new LotError("Lot not found", 404));
+    if (!lotRow.sellerLegalEntityId) {
+      return err(new LotError("Lot has no seller organisation", 400));
+    }
+    const sellerLegalEntityId = lotRow.sellerLegalEntityId;
+    if (!CANCELLABLE.has(lotRow.status)) {
+      return err(new LotError("This lot cannot be withdrawn in its current state", 409));
+    }
+    const membership = await legalEntityRepository.findActiveMembership(
+      sellerUserId,
+      sellerLegalEntityId,
+    );
+    if (!membership || !SELLER_WITHDRAW_ROLES.has(membership.role)) {
+      return err(new AuthzError("Only seller organisation admins can request withdrawal", 403));
+    }
+
+    const existing = await db
+      .select({ id: adminReviewTask.id })
+      .from(adminReviewTask)
+      .where(
+        and(
+          eq(adminReviewTask.targetLotId, lotId),
+          eq(adminReviewTask.kind, "lot_withdrawal_request"),
+          eq(adminReviewTask.status, "pending"),
+        ),
+      )
+      .limit(1);
+    if (existing[0]) {
+      return ok({ taskId: existing[0].id, alreadyPending: true });
+    }
+
+    const taskId = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(adminReviewTask)
+        .values({
+          kind: "lot_withdrawal_request",
+          status: "pending",
+          targetLotId: lotId,
+          payload: { requestedByUserId: sellerUserId },
+        })
+        .returning({ id: adminReviewTask.id });
+      if (!row) throw new Error("admin_review_task_insert_failed");
+      await publisher.publish(tx, {
+        aggregateType: "lot",
+        aggregateId: lotId,
+        eventType: "lot.withdrawal_requested",
+        payload: { sellerLegalEntityId: sellerLegalEntityId },
+        actorUserId: sellerUserId,
+        actingLegalEntityId: sellerLegalEntityId,
+      });
+      return row.id;
+    });
+
+    return ok({ taskId, alreadyPending: false });
+  }
+
+  /** Admin approves a pending seller withdrawal — cancels the lot and resolves the task. */
+  async approveWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+  ): Promise<Result<Lot, LotError | AuthzError>> {
+    if (!this.db) {
+      return err(new LotError("Withdrawal approvals are not available", 503));
+    }
+    if (!roleHasCapability(adminRole, "auction.manage")) {
+      return err(new AuthzError("Only administrators can approve withdrawals", 403));
+    }
+    const pending = await this.db
+      .select({ id: adminReviewTask.id })
+      .from(adminReviewTask)
+      .where(
+        and(
+          eq(adminReviewTask.targetLotId, lotId),
+          eq(adminReviewTask.kind, "lot_withdrawal_request"),
+          eq(adminReviewTask.status, "pending"),
+        ),
+      )
+      .limit(1);
+    if (!pending[0]) {
+      return err(new LotError("No pending withdrawal request for this lot", 404));
+    }
+    const cancelRes = await this.cancel(adminUserId, adminRole, lotId);
+    if (cancelRes.isErr()) return cancelRes;
+    await this.db
+      .update(adminReviewTask)
+      .set({
+        status: "resolved",
+        resolvedByUserId: adminUserId,
+        resolvedAt: new Date(),
+        resolutionNotes: "Seller withdrawal approved; lot cancelled.",
+      })
+      .where(eq(adminReviewTask.id, pending[0].id));
+    return cancelRes;
   }
 }

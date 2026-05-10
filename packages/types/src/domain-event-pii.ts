@@ -95,6 +95,13 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "currency",
     "reason",
   ]),
+  /** Stripe withdrew funds from the platform balance for an open dispute. */
+  "payment.dispute_funds_withdrawn": new Set([
+    "stripeDisputeId",
+    "stripeChargeId",
+    "amountCents",
+    "currency",
+  ]),
   /** Payment dispute closed via Stripe webhook (won/lost outcome). */
   "payment.dispute_closed": new Set([
     "stripeDisputeId",
@@ -103,6 +110,10 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
   ]),
+  /** Seller requested to withdraw an active lot (admin queue). */
+  "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
+  /** Pending payment cancelled by buyer or expired by cron. */
+  "payment.cancelled": new Set(["lotId", "buyerUserId", "reason"]),
   /** Payment refunded via Stripe webhook or admin action. */
   "payment.refunded": new Set([
     "stripeChargeId",

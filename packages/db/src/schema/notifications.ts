@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, check, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { lot } from "./lots.js";
 
@@ -20,8 +20,24 @@ export const notification = pgTable(
   },
   (table) => [
     index("notification_user_id_idx").on(table.userId),
+    index("notification_user_id_created_at_idx").on(table.userId, table.createdAt),
     index("notification_read_idx").on(table.read),
     index("notification_archived_at_idx").on(table.archivedAt),
+    check(
+      "notification_type_check",
+      sql`${table.type} IN (
+        'outbid',
+        'lot_cancelled',
+        'lot_won',
+        'lot_lost',
+        'lot_ending_soon',
+        'watchlist_starting',
+        'watchlist_ending_soon',
+        'payment_received',
+        'payment_due',
+        'lot_ended_seller'
+      )`,
+    ),
   ],
 );
 

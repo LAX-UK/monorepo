@@ -51,6 +51,12 @@ export function createBidUserRateLimitMiddleware(redis: Redis) {
 }
 
 export function createBidRoutes(container: Container, authenticator: IAuthenticator) {
+  const biddingKillSwitch = createMiddleware(async (c, next) => {
+    if (container.env?.DISABLE_BIDDING) {
+      return c.json({ error: "Bidding temporarily disabled", code: "bidding_disabled" }, 503);
+    }
+    await next();
+  });
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -65,6 +71,7 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
   r.post(
     "/",
     requireAuth,
+    biddingKillSwitch,
     requireBuyerRole,
     kycGate,
     bidUserRateLimit,

@@ -25,7 +25,13 @@ export type PaymentRecord = {
   stripePaymentIntentId: string | null;
   stripeChargeId: string | null;
   stripeRefundId: string | null;
-  status: "pending" | "authorized" | "captured" | "refunded" | "requires_manual_review";
+  status:
+    | "pending"
+    | "authorized"
+    | "captured"
+    | "refunded"
+    | "requires_manual_review"
+    | "cancelled";
   createdAt: Date;
   /** Populated for admin listing when a Xero invoice row exists. */
   xeroInvoiceNumber?: string | null;
@@ -46,6 +52,8 @@ export interface IPaymentWriteRepository {
   listByBuyerId(buyerId: string): Promise<PaymentRecord[]>;
   /** Pending rows created at least `hours` ago (admin SLA). */
   countPendingOlderThanHours(hours: number): Promise<number>;
+  /** Pending payments with `created_at` strictly before `cutoff` (cron expiry). */
+  listStalePendingBefore(cutoff: Date): Promise<{ id: string; lotId: string; buyerId: string }[]>;
   /** Sum captured payment amounts in `[start, end]`. */
   sumCapturedBetween(start: Date, end: Date): Promise<string>;
 

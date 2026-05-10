@@ -2,6 +2,7 @@
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
 import type { SessionUser } from "@/lib/data/contracts";
+import { showLiveBiddingNav } from "@/lib/feature-flags";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -76,6 +77,7 @@ const adminPlatformSections: PaletteSection[] = [
       { id: "a-sales", href: "/admin/sales", label: "Sales" },
       { id: "a-subs", href: "/admin/submissions", label: "Submissions" },
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
       { id: "a-users", href: "/admin/users", label: "Users" },
       { id: "a-analytics", href: "/admin/analytics", label: "Analytics" },
       { id: "a-invitations", href: "/admin/invitations", label: "Invitations" },
@@ -96,6 +98,7 @@ const adminFinanceSections: PaletteSection[] = [
     heading: "Finance admin",
     items: [
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
       { id: "a-xero", href: "/admin/integrations/xero", label: "Xero" },
       { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
     ],
@@ -116,6 +119,14 @@ function isAdminFinanceOnly(sessionUser: SessionUser | null | undefined): boolea
   return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole);
 }
 
+function hideLiveBiddingItems(sections: PaletteSection[]): PaletteSection[] {
+  if (showLiveBiddingNav()) return sections;
+  return sections.map((sec) => ({
+    ...sec,
+    items: sec.items.filter((item) => item.id !== "d-live"),
+  }));
+}
+
 function buildVisibleSections(
   variant: "marketing" | "dashboard" | "admin",
   query: string,
@@ -126,7 +137,7 @@ function buildVisibleSections(
     variant === "dashboard"
       ? clientWorkspaceMode === "selling"
         ? dashboardSellingSections
-        : dashboardBuyingSections
+        : hideLiveBiddingItems(dashboardBuyingSections)
       : variant === "admin"
         ? isAdminFinanceOnly(sessionUser)
           ? adminFinanceSections

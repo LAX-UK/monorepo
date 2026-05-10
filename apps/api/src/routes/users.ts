@@ -1,3 +1,4 @@
+import { legalEntityMember, lot, payment, payout, user as userTable } from "@auction/db/schema";
 import {
   addressIdParamSchema,
   artistWatchlistArtistIdParamSchema,
@@ -17,6 +18,7 @@ import {
   watchlistQuerySchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
@@ -27,6 +29,10 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
 import type { UpdateAddressInput } from "../services/interfaces/profile.js";
 
+const deleteAccountBodySchema = z.object({
+  confirmation: z.literal("DELETE MY ACCOUNT"),
+});
+
 export function createUserRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -34,6 +40,12 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
   r.post("/register", zValidator("json", registerBodySchema), async (c) => {
+    if (container.env?.DISABLE_NEW_USER_REGISTRATION) {
+      return c.json(
+        { error: "New registrations are temporarily disabled", code: "registration_disabled" },
+        503,
+      );
+    }
     const body = c.req.valid("json");
     const result = await container.registrationService.register({
       firstName: body.firstName,
@@ -393,6 +405,90 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
+  r.post("/me/delete", requireAuth, zValidator("json", deleteAccountBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const [u] = await container.db
+      .select({ deletionRequestedAt: userTable.deletionRequestedAt })
+      .from(userTable)
+      .where(eq(userTable.id, userId))
+      .limit(1);
+    if (u?.deletionRequestedAt) {
+      return c.json({ error: "Deletion already requested" }, 409);
+    }
+
+    const [pendingPayment] = await container.db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(and(eq(payment.buyerId, userId), eq(payment.status, "pending")))
+      .limit(1);
+    if (pendingPayment) {
+      return c.json(
+        { error: "You have unpaid pending payments; resolve them before deleting your account." },
+        409,
+      );
+    }
+
+    const [activeSellerLot] = await container.db
+      .select({ id: lot.id })
+      .from(lot)
+      .innerJoin(
+        legalEntityMember,
+        and(
+          eq(legalEntityMember.legalEntityId, lot.sellerLegalEntityId),
+          eq(legalEntityMember.userId, userId),
+          isNull(legalEntityMember.removedAt),
+          isNotNull(legalEntityMember.acceptedAt),
+        ),
+      )
+      .where(
+        and(
+          isNotNull(lot.sellerLegalEntityId),
+          inArray(lot.status, ["draft", "scheduled", "active"]),
+        ),
+      )
+      .limit(1);
+    if (activeSellerLot) {
+      return c.json(
+        {
+          error:
+            "You still have active or scheduled lots as a seller; withdraw or complete them first.",
+        },
+        409,
+      );
+    }
+
+    const memberRows = await container.db
+      .select({ legalEntityId: legalEntityMember.legalEntityId })
+      .from(legalEntityMember)
+      .where(and(eq(legalEntityMember.userId, userId), isNull(legalEntityMember.removedAt)));
+    const entityIds = memberRows.map((r) => r.legalEntityId).filter(Boolean);
+    if (entityIds.length > 0) {
+      const [openPayout] = await container.db
+        .select({ id: payout.id })
+        .from(payout)
+        .where(
+          and(
+            inArray(payout.legalEntityId, entityIds as string[]),
+            inArray(payout.status, ["scheduled", "in_transit", "clawback_pending"]),
+          ),
+        )
+        .limit(1);
+      if (openPayout) {
+        return c.json(
+          { error: "Your organisation has payouts still in flight; resolve them before deletion." },
+          409,
+        );
+      }
+    }
+
+    await container.db
+      .update(userTable)
+      .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
+      .where(eq(userTable.id, userId));
+
+    return c.json({ ok: true });
+  });
+
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     const row = await container.profileService.getProfile(userId);
@@ -410,9 +506,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         emailVerified: row.emailVerified,
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
+        pendingNewEmail: row.pendingNewEmail,
         hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
         kycStatus: row.kycStatus,
         signupPersona: row.signupPersona,
+        deletionRequestedAt: row.deletionRequestedAt,
       },
     });
   });

@@ -18,6 +18,7 @@ import {
   Package,
   ScrollText,
   Settings,
+  ShieldAlert,
   Store,
   TrendingUp,
   Upload,
@@ -214,6 +215,8 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       match: (pathname) => pathname.startsWith("/admin/legal-entities"),
     },
     { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { id: "admin-payments", label: "Payments", href: "/admin/payments", icon: WalletCards },
+    { id: "admin-disputes", label: "Disputes", href: "/admin/disputes", icon: ShieldAlert },
     { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
     { id: "invitations", label: "Invitations", href: "/admin/invitations", icon: Mail },
     { id: "email", label: "Email", href: "/admin/email/outbox", icon: Mail },
@@ -245,6 +248,7 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
 export function getAccountantNavItems(): AppShellNavItem[] {
   return [
     { id: "payments", label: "Payments", href: "/admin/payments", icon: WalletCards },
+    { id: "disputes", label: "Disputes", href: "/admin/disputes", icon: ShieldAlert },
     { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
     { id: "xero", label: "Xero", href: "/admin/integrations/xero", icon: CreditCard },
   ];

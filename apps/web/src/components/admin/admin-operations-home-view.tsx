@@ -254,6 +254,21 @@ export function AdminOperationsHomeView({
                   <ChevronRight className="size-4" aria-hidden />
                 </span>
               </Link>
+              <Link
+                href="/admin/onboarding-issues#stale-lead-orgs"
+                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
+              >
+                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Stale lead organisations
+                </span>
+                <span className="font-headline text-3xl text-on-surface">
+                  {financeIssues.staleLeadOrganisationsCount ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden />
+                </span>
+              </Link>
             </CardContent>
           </Card>
         </div>

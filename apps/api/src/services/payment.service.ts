@@ -50,17 +50,12 @@ export class PaymentService {
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
-   * and returns `checkoutUrl` for redirect to Xero. `clientSecret` remains null until a card gateway exists.
+   * and returns `checkoutUrl` for redirect to Xero.
    */
   async createPendingForWinner(
     buyerId: string,
     lotId: string,
-  ): Promise<
-    Result<
-      { paymentId: string; clientSecret: string | null; checkoutUrl: string | null },
-      AuthzError | LotError
-    >
-  > {
+  ): Promise<Result<{ paymentId: string; checkoutUrl: string | null }, AuthzError | LotError>> {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
       return err(new LotError("Lot not found", 404));
@@ -81,7 +76,7 @@ export class PaymentService {
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
       if (existing.status === "requires_manual_review") {
-        return ok({ paymentId: existing.id, clientSecret: null, checkoutUrl: null });
+        return ok({ paymentId: existing.id, checkoutUrl: null });
       }
       let checkoutUrl: string | null = null;
       if (this.accounting.isConfigured()) {
@@ -101,7 +96,7 @@ export class PaymentService {
           }
         }
       }
-      return ok({ paymentId: existing.id, clientSecret: null, checkoutUrl });
+      return ok({ paymentId: existing.id, checkoutUrl });
     }
 
     const total = this.totalDue(lot);
@@ -159,7 +154,7 @@ export class PaymentService {
       }
     }
 
-    return ok({ paymentId: created.id, clientSecret: null, checkoutUrl });
+    return ok({ paymentId: created.id, checkoutUrl });
   }
 
   async listAllForAdmin(userRole: string): Promise<Result<PaymentRecord[], AuthzError>> {
@@ -436,11 +431,66 @@ export class PaymentService {
    */
   async markCapturedFromProviderSync(paymentId: string): Promise<void> {
     const p = await this.payments.findById(paymentId);
-    if (!p || p.status === "captured" || p.status === "refunded") {
+    if (!p || p.status === "captured" || p.status === "refunded" || p.status === "cancelled") {
       return;
     }
     await this.payments.updateStatus(paymentId, "captured");
     await this.dispatchPaymentReceived(p);
+  }
+
+  /** Buyer abandons an unpaid pending invoice (e.g. relinquishes the win). */
+  async cancelPendingAsBuyer(
+    buyerId: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError | LotError>> {
+    const p = await this.payments.findById(paymentId);
+    if (!p) return err(new LotError("Payment not found", 404));
+    if (p.paidByUserId !== buyerId) {
+      return err(new AuthzError("Only the buyer can cancel this payment", 403));
+    }
+    if (p.status !== "pending") {
+      return err(new LotError("Only pending payments can be cancelled", 409));
+    }
+    await this.payments.updateStatus(paymentId, "cancelled");
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.cancelled",
+        payload: {
+          lotId: p.lotId,
+          buyerUserId: buyerId,
+          reason: "buyer_abandoned",
+        },
+        actorUserId: buyerId,
+        actingLegalEntityId: p.buyerLegalEntityId ?? null,
+      });
+    }
+    return ok(undefined);
+  }
+
+  /** Cron: expire pending payments older than `maxAgeDays` (ops recovery for stuck lots). */
+  async expireStalePendingPayments(maxAgeDays: number): Promise<number> {
+    const cutoff = new Date(Date.now() - maxAgeDays * 86_400_000);
+    const stale = await this.payments.listStalePendingBefore(cutoff);
+    for (const row of stale) {
+      await this.payments.updateStatus(row.id, "cancelled");
+      if (this.db && this.domainEventPublisher) {
+        await this.domainEventPublisher.publish(this.db, {
+          aggregateType: "payment",
+          aggregateId: row.id,
+          eventType: "payment.cancelled",
+          payload: {
+            lotId: row.lotId,
+            buyerUserId: row.buyerId,
+            reason: "stale_pending_expired",
+          },
+          actorUserId: null,
+          actingLegalEntityId: null,
+        });
+      }
+    }
+    return stale.length;
   }
 
   async syncPaymentFromXeroAsAdmin(
