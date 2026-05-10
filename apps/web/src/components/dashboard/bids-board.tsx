@@ -55,7 +55,7 @@ function statusVariant(row: BidBoardRow) {
 }
 
 function lotArtistLabel(row: BidBoardRow): string {
-  return row.lot?.marketingDetails.sellerArtistId ?? row.lot?.sellerId ?? "—";
+  return row.lot?.artistId ?? row.lot?.sellerId ?? "—";
 }
 
 function bidColumns(): ColumnDef<BidBoardRow>[] {

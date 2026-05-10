@@ -114,6 +114,13 @@ export interface IArtistRegistryService {
     suggestions: string[];
   }>;
 
+  /** Reserve a unique `artist_profile.slug` for the given display name (or
+   * raw slug). The optional `ignoreArtistId` lets admin update flows keep
+   * their own slug when no other artist holds it. Centralised here so the
+   * admin facade (`ArtistProfileService`) and inline-create paths
+   * (submission approve) share one collision policy. */
+  resolveUniqueSlug(input: string, ignoreArtistId?: string): Promise<string>;
+
   /** Merge `from` → `into`. Re-points aliases and lots, marks the merged
    * row's status to `merged_into`, and writes an admin review task entry
    * with the reason for audit.

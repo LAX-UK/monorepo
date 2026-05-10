@@ -34,6 +34,7 @@ const createLotBodySchema = z.object({
   dimensions: z.string().max(200).optional(),
   images: z.array(mediaReferenceSchema).max(20).optional(),
   sellerId: z.string().min(1).max(191).optional(),
+  sellerLegalEntityId: z.string().uuid().optional(),
   categoryIds: categoryIdsSchema,
   categoryId: z.string().uuid().optional(),
   auctionType: z.enum(lotAuctionTypes),
@@ -48,6 +49,7 @@ const createLotBodySchema = z.object({
   endTime: z.coerce.date(),
   saleId: z.string().uuid().nullable().optional(),
   lotNumber: z.coerce.number().int().positive().nullable().optional(),
+  artistId: z.string().uuid().nullable().optional(),
 });
 
 export const createLotSchema = z.preprocess(normalizeCategoryIdsInput, createLotBodySchema);
@@ -75,6 +77,7 @@ export const listLotsQuerySchema = z.object({
   sellerId: z.string().optional(),
   winnerId: z.string().optional(),
   saleId: z.string().uuid().optional(),
+  artistId: z.string().uuid().optional(),
   endYear: z.coerce.number().int().min(1970).max(2100).optional(),
   /** Case-insensitive substring on lot title (server-side search). */
   q: z.string().trim().max(200).optional(),
@@ -154,8 +157,9 @@ export const exhibitionEntrySchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+/** Catalog-copy patch on a lot. Artist attribution is `lot.artist_id` only;
+ * marketing PATCH does not accept artist fields. */
 export const updateLotMarketingDetailsSchema = z.object({
-  sellerArtistId: z.string().uuid().nullable().optional(),
   conditionReport: conditionReportSchema.nullable().optional(),
   provenance: z.array(provenanceEntrySchema).max(50).nullable().optional(),
   exhibitions: z.array(exhibitionEntrySchema).max(50).nullable().optional(),

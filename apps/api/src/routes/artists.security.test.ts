@@ -16,10 +16,15 @@ function mountApp(role: string) {
     proposeMatches: vi.fn(),
     proposeMatchesForAdmin: vi.fn(),
     findById: vi.fn(),
+    create: vi.fn(),
+  };
+  const artistProfileService = {
+    listPublic: vi.fn().mockResolvedValue([]),
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     artistRegistryService,
+    artistProfileService,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role }),
@@ -217,5 +222,54 @@ describe("artist admin routes — platform administrator gate", () => {
       "Known As",
       undefined,
     );
+  });
+
+  it("returns 403 for POST /artists when user is client", async () => {
+    const { app, artistRegistryService } = mountApp("client");
+
+    const res = await app.request("/artists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "New Artist", kind: "artist" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(artistRegistryService.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for POST /artists when user is accountant", async () => {
+    const { app, artistRegistryService } = mountApp("accountant");
+
+    const res = await app.request("/artists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "New Artist", kind: "artist" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(artistRegistryService.create).not.toHaveBeenCalled();
+  });
+
+  it("allows POST /artists for administrator (records creator id)", async () => {
+    const { app, artistRegistryService } = mountApp("administrator");
+    artistRegistryService.create.mockResolvedValue({
+      id: artistId,
+      displayName: "New Artist",
+      slug: "new-artist",
+      kind: "artist",
+      status: "pending",
+    });
+
+    const res = await app.request("/artists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "New Artist", kind: "artist" }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(artistRegistryService.create).toHaveBeenCalledWith("u1", {
+      displayName: "New Artist",
+      kind: "artist",
+    });
   });
 });

@@ -27,6 +27,65 @@ function slugify(name: string): string {
     .slice(0, 80);
 }
 
+/** Resolves a unique `artist_profile.slug` by appending `-N` on collision.
+ * Exported so other services (e.g. submission approval) can inline-create an
+ * artist row inside their own transaction without re-implementing the
+ * collision logic.
+ *
+ * `ignoreArtistId` — when provided, treat that artist's existing slug as
+ * "free" so admin update flows keep their slug when no other artist holds it. */
+export async function resolveUniqueArtistSlug(
+  tx: Database,
+  displayName: string,
+  ignoreArtistId?: string,
+): Promise<string> {
+  const baseSlug = slugify(displayName);
+  if (baseSlug.length === 0) throw new Error("artist_slug_invalid");
+  let slug = baseSlug;
+  let attempt = 1;
+  while (slug.length > 0) {
+    const existing = await tx
+      .select({ id: artistProfile.id })
+      .from(artistProfile)
+      .where(eq(artistProfile.slug, slug))
+      .limit(1);
+    if (existing.length === 0) return slug;
+    if (ignoreArtistId && existing[0]?.id === ignoreArtistId) return slug;
+    attempt += 1;
+    slug = `${baseSlug}-${attempt}`;
+  }
+  throw new Error("artist_slug_resolution_failed");
+}
+
+/** Insert a new `artist_profile` row inside the supplied transaction handle.
+ * Used by both `ArtistRegistryService.create` and the submission approve flow
+ * so the slug logic stays in one place. Defaults to `status = 'pending'` for
+ * non-admin paths; admin callers should pass `status: 'approved'`. */
+export async function insertArtistInTx(
+  tx: Database,
+  creatorUserId: string | null,
+  input: CreateArtistInput & { status?: ArtistStatus; ownerUserId?: string | null | undefined },
+): Promise<ArtistRecord> {
+  const slug = await resolveUniqueArtistSlug(tx, input.displayName);
+  const [row] = await tx
+    .insert(artistProfile)
+    .values({
+      displayName: input.displayName,
+      slug,
+      kind: input.kind ?? "artist",
+      status: input.status ?? "pending",
+      shortBio: input.shortBio ?? null,
+      nationality: input.nationality ?? null,
+      birthYear: input.birthYear ?? null,
+      deathYear: input.deathYear ?? null,
+      createdByUserId: creatorUserId,
+      ownerUserId: input.ownerUserId ?? null,
+    })
+    .returning();
+  if (!row) throw new Error("artist_create_failed");
+  return rowToRecord(row);
+}
+
 function rowToRecord(row: typeof artistProfile.$inferSelect): ArtistRecord {
   return {
     id: row.id as string,
@@ -233,38 +292,11 @@ export class ArtistRegistryService implements IArtistRegistryService {
   }
 
   async create(creatorUserId: string | null, input: CreateArtistInput): Promise<ArtistRecord> {
-    return await this.db.transaction(async (tx) => {
-      const baseSlug = slugify(input.displayName);
-      let slug = baseSlug;
-      let attempt = 1;
-      while (slug.length > 0) {
-        const existing = await tx
-          .select({ id: artistProfile.id })
-          .from(artistProfile)
-          .where(eq(artistProfile.slug, slug))
-          .limit(1);
-        if (existing.length === 0) break;
-        attempt += 1;
-        slug = `${baseSlug}-${attempt}`;
-      }
+    return await this.db.transaction((tx) => insertArtistInTx(tx, creatorUserId, input));
+  }
 
-      const [row] = await tx
-        .insert(artistProfile)
-        .values({
-          displayName: input.displayName,
-          slug,
-          kind: input.kind ?? "artist",
-          status: "pending",
-          shortBio: input.shortBio ?? null,
-          nationality: input.nationality ?? null,
-          birthYear: input.birthYear ?? null,
-          deathYear: input.deathYear ?? null,
-          createdByUserId: creatorUserId,
-        })
-        .returning();
-      if (!row) throw new Error("artist_create_failed");
-      return rowToRecord(row);
-    });
+  resolveUniqueSlug(input: string, ignoreArtistId?: string): Promise<string> {
+    return resolveUniqueArtistSlug(this.db, input, ignoreArtistId);
   }
 
   async checkNameAvailability(displayName: string) {

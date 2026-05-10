@@ -51,6 +51,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       sellerLegalEntityId: query.sellerId,
       winnerId: query.winnerId,
       saleId: query.saleId,
+      artistId: query.artistId,
       endYear: query.endYear,
       search: query.q,
       sort: query.sort,

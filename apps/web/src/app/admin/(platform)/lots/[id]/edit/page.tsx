@@ -53,12 +53,14 @@ export default async function AdminEditAuctionPage({
           defaultValues={lotToAdminLotFormValues(auction)}
           categories={categories}
           sellers={users.rows}
+          artists={artists}
         />
       ) : null}
       <AdminLotMarketingForm
         lotId={id}
         marketingDetails={auction.marketingDetails}
         artists={artists}
+        artistId={auction.artistId ?? null}
       />
     </div>
   );

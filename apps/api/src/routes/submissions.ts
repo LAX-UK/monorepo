@@ -246,7 +246,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       for (const id of ids) {
         const result =
           op === "approve"
-            ? await container.itemSubmissionService.approve(adminId, id, reviewNotes)
+            ? await container.itemSubmissionService.approve(adminId, id, { reviewNotes })
             : await container.itemSubmissionService.reject(
                 adminId,
                 id,
@@ -270,8 +270,8 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const { reviewNotes } = c.req.valid("json");
-      const result = await container.itemSubmissionService.approve(adminId, id, reviewNotes);
+      const body = c.req.valid("json");
+      const result = await container.itemSubmissionService.approve(adminId, id, body);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }

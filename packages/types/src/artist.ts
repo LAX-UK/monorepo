@@ -24,9 +24,7 @@ export type ArtistProfile = {
   featured: boolean;
   verified: boolean;
   archived: boolean;
-  /** artist registry taxonomy - defaults to artist */
   kind?: ArtistKind;
-  /** artist registry status - defaults to pending */
   status?: ArtistStatus;
   /** merge target for duplicate resolution */
   mergedIntoArtistId?: string | null;

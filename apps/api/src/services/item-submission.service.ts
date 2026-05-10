@@ -11,9 +11,11 @@ import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
+import { insertArtistInTx } from "./artist-registry.service.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
+  ApproveSubmissionInput,
   IItemSubmissionService,
   UpdateSubmissionActorInput,
 } from "./interfaces/item-submission-service.js";
@@ -227,8 +229,14 @@ export class ItemSubmissionService implements IItemSubmissionService {
   async approve(
     adminId: string,
     id: string,
-    reviewNotes?: string | undefined,
+    input: ApproveSubmissionInput | undefined = undefined,
   ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>> {
+    const reviewNotes = input?.reviewNotes;
+    const requestedArtistId = input?.artistId ?? null;
+    const newArtist = input?.newArtist;
+    if (requestedArtistId && newArtist) {
+      return err(new SubmissionError("Provide either artistId or newArtist, not both", 400));
+    }
     try {
       const { lot, submission, legalEntityId, title } = await this.db.transaction(async (tx) => {
         const subRepo = new DrizzleItemSubmissionRepository(tx);
@@ -243,10 +251,25 @@ export class ItemSubmissionService implements IItemSubmissionService {
         if (!s.legalEntityId) {
           throw new SubmissionError("Legal entity context missing", 400);
         }
+        // Admin-driven artist resolution: pick existing, create inline, or
+        // leave unattributed. Inline creates default to `approved` because the
+        // admin is authoring it directly through their privileged surface.
+        let artistId: string | null = requestedArtistId ?? null;
+        if (newArtist) {
+          const created = await insertArtistInTx(tx, adminId, {
+            displayName: newArtist.displayName,
+            kind: newArtist.kind ?? "artist",
+            shortBio: newArtist.shortBio,
+            ownerUserId: newArtist.ownerUserId ?? null,
+            status: "approved",
+          });
+          artistId = created.id;
+        }
         const lotInput = submissionToCreateLotInput(s);
         const createdLot = await lotRepo.create({
           ...lotInput,
           sellerLegalEntityId: s.legalEntityId,
+          artistId,
         });
         const submission = await subRepo.update(id, {
           status: "converted",

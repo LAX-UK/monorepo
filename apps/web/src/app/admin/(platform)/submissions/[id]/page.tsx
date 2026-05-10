@@ -2,6 +2,7 @@ import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submissio
 import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
+import { getAdminArtistList, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
 import { ReviewSplitPane } from "@auction/ui";
 import { Card, CardContent } from "@auction/ui/components/card";
@@ -14,6 +15,15 @@ export default async function AdminSubmissionDetailPage({
   const { id } = await params;
   const s = await getAdminSubmissionById(id);
   if (!s) notFound();
+
+  const submitterLegalEntityId = s.legalEntityId ?? s.sellerId ?? null;
+  const [submitterEntity, artists] = await Promise.all([
+    submitterLegalEntityId
+      ? getAdminLegalEntityById(submitterLegalEntityId).catch(() => null)
+      : Promise.resolve(null),
+    getAdminArtistList().catch(() => []),
+  ]);
+  const submitterDisplayName = submitterEntity?.displayName;
 
   const record = (
     <div className="space-y-4">
@@ -76,7 +86,14 @@ export default async function AdminSubmissionDetailPage({
     </div>
   );
 
-  const decision = <AdminSubmissionDecisionPanel submissionId={s.id} status={s.status} />;
+  const decision = (
+    <AdminSubmissionDecisionPanel
+      submissionId={s.id}
+      status={s.status}
+      artists={artists}
+      {...(submitterDisplayName ? { submitterDisplayName } : {})}
+    />
+  );
 
   return (
     <div className="screen w-full space-y-6">

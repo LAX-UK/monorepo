@@ -1,10 +1,12 @@
 "use client";
 
+import { UserPicker } from "@/components/admin/user-picker";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
-import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import { ARTIST_KIND_OPTIONS, artistKindMeta } from "@/lib/artists/kind-presenter";
 import { notify } from "@/lib/ui/notify";
+import type { ArtistKind, ArtistStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -20,19 +22,24 @@ import { adminCreateArtistBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 import type { z } from "zod";
+
+const ARTIST_STATUS_OPTIONS: ReadonlyArray<{ value: ArtistStatus; label: string }> = [
+  { value: "approved", label: "Approved (visible to public)" },
+  { value: "pending", label: "Pending review" },
+  { value: "rejected", label: "Rejected (hidden)" },
+];
 
 type ArtistFormValues = z.infer<typeof adminCreateArtistBodySchema>;
 
 type Props = {
   mode: "create" | "edit";
   artistId?: string;
-  users: AdminUserRow[];
   defaultValues: ArtistFormValues;
 };
 
-export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props) {
+export function AdminArtistForm({ mode, artistId, defaultValues }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const form = useForm<ArtistFormValues>({
@@ -103,30 +110,97 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  <LabelCaps>Linked client</LabelCaps>
+                  <LabelCaps>Linked client (optional)</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <select
-                    value={field.value ?? ""}
-                    onChange={(event) => field.onChange(event.target.value || null)}
-                    onBlur={field.onBlur}
-                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-                  >
-                    <option value="">Unclaimed / unlinked</option>
-                    {users
-                      .filter((user) => user.role === "client")
-                      .map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} · {user.email}
-                        </option>
-                      ))}
-                  </select>
+                  <UserPicker
+                    value={field.value ?? null}
+                    onChange={(id) => field.onChange(id)}
+                    disabled={pending}
+                  />
                 </FormControl>
+                <p className="mt-1 text-xs text-on-surface-variant">
+                  Only used in Flow B (the seller is also the maker). The link does not grant the
+                  client edit access — admins remain the sole writer.
+                </p>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="kind"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <LabelCaps>Kind</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Artist kind">
+                    {ARTIST_KIND_OPTIONS.map((opt) => {
+                      const active = (field.value ?? "artist") === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          // biome-ignore lint/a11y/useSemanticElements: pill segmented control; native radios break layout
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => field.onChange(opt.value as ArtistKind)}
+                          className={`rounded-full border px-3 py-1 font-label text-[11px] uppercase tracking-wide transition-colors ${
+                            active
+                              ? "border-primary bg-primary text-on-primary"
+                              : "border-outline-variant/60 bg-surface-container-lowest text-on-surface-variant hover:border-primary/50"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormControl>
+                <p className="mt-1 text-xs text-on-surface-variant">
+                  {artistKindMeta((field.value as ArtistKind | undefined) ?? "artist").description}
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <LabelCaps>Status</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <select
+                    value={field.value ?? "approved"}
+                    onChange={(event) => field.onChange(event.target.value as ArtistStatus)}
+                    onBlur={field.onBlur}
+                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
+                  >
+                    {ARTIST_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <p className="mt-1 text-xs text-on-surface-variant">
+                  Approved artists appear in the public directory. Pending hides them and flags any
+                  attached lots for review.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <div className="grid gap-6 sm:grid-cols-2">
           <TextField name="portraitUrl" label="Portrait URL" form={form} />
           <TextField name="websiteUrl" label="Website URL" form={form} />
@@ -139,24 +213,9 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
         <TextareaField name="longBio" label="Long bio" form={form} rows={6} />
         <TextareaField name="statement" label="Artist statement" form={form} rows={6} />
         <div className="grid gap-3 sm:grid-cols-3">
-          {(["featured", "verified", "archived"] as const).map((name) => (
-            <FormField
-              key={name}
-              control={form.control}
-              name={name}
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value === true}
-                      onCheckedChange={(checked) => field.onChange(checked === true)}
-                    />
-                  </FormControl>
-                  <FormLabel className="capitalize">{name}</FormLabel>
-                </FormItem>
-              )}
-            />
-          ))}
+          <FlagCheckbox name="featured" control={form.control} />
+          <FlagCheckbox name="verified" control={form.control} />
+          <FlagCheckbox name="archived" control={form.control} />
         </div>
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => router.push("/admin/artists")}>
@@ -168,6 +227,31 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
         </div>
       </form>
     </Form>
+  );
+}
+
+/** Boolean flag checkbox bound directly via `useController` so optional
+ * `boolean | undefined` Zod fields don't trip over the FormField inference
+ * helper (it can't always narrow `TFieldValues` from a literal `name` on
+ * optional booleans). */
+function FlagCheckbox({
+  name,
+  control,
+}: {
+  name: "featured" | "verified" | "archived";
+  control: ReturnType<typeof useForm<ArtistFormValues>>["control"];
+}) {
+  const { field } = useController({ name, control });
+  return (
+    <FormItem className="flex items-center gap-2">
+      <FormControl>
+        <Checkbox
+          checked={field.value === true}
+          onCheckedChange={(checked) => field.onChange(checked === true)}
+        />
+      </FormControl>
+      <FormLabel className="capitalize">{name}</FormLabel>
+    </FormItem>
   );
 }
 

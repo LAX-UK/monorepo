@@ -33,8 +33,8 @@ As a client, I need one account that can buy and sell so I can participate fully
 
 **Acceptance Scenarios**:
 
-1. **Given** a client user, **When** submitting artwork and receiving approval, **Then** submitter is default artist/seller association.
-2. **Given** an approved submission, **When** admin assigns a different artist/client, **Then** lot association reflects admin override.
+1. **Given** a client user, **When** submitting artwork and receiving approval, **Then** the submitter becomes the lot's seller (consignor) but the catalogue artist (`lot.artist_id`) is set explicitly by admin to an existing or inline-created `artist_profile`.
+2. **Given** an approved submission, **When** admin changes `lot.artist_id` via the admin lot edit screen, **Then** the lot's catalogue attribution updates while seller (consignor) remains independent.
 3. **Given** a client with active lots, **When** bidding on disallowed own-lot paths, **Then** normal guardrails still apply.
 
 ---
@@ -90,7 +90,7 @@ As a client, I need online and onsite sales to behave differently so interaction
 - Existing users with role values that do not map to new V1 role policy.
 - Historic lots configured with non-English strategy.
 - Invitation accepted after role policy changes.
-- Artist reassignment after bidding has already started.
+- Catalogue artist (`lot.artist_id`) reassignment after bidding has already started.
 - Onsite lots surfaced in mixed views with online lots.
 
 ## Requirements *(mandatory)*
@@ -100,7 +100,10 @@ As a client, I need online and onsite sales to behave differently so interaction
 - **V1-FR-001**: Role model must define administrator, accountant, and client behavior.
 - **V1-FR-002**: Accountant permissions must be constrained to finance domains.
 - **V1-FR-003**: Client identity must support both buying and selling actions from one account.
-- **V1-FR-004**: Approved submission defaults to submitter-as-artist/seller, with admin override.
+- **V1-FR-004**: On submission approval, admin must select an existing
+  `artist_profile` or inline-create a new one; the submitter automatically
+  becomes the lot's seller (consignor). Catalogue artist creation is
+  admin-only (`POST /artists`, capability `artist.review`).
 - **V1-FR-005**: Admin invitation workflows must support staff and client role assignment.
 - **V1-FR-006**: V1 auction interaction policy must be English-only.
 - **V1-FR-007**: Online vs onsite behavior must be consistently enforced in backend and frontend.
@@ -120,7 +123,9 @@ As a client, I need online and onsite sales to behave differently so interaction
 - **V1-SC-001**: Role matrix is documented and test-mapped for protected product areas.
 - **V1-SC-002**: Product-facing V1 flows expose English-only auction strategy.
 - **V1-SC-003**: Onsite bidding denial and onsite non-bid engagement behavior are explicitly defined and testable.
-- **V1-SC-004**: Submission-to-lot default artist assignment and admin override are explicitly defined and testable.
+- **V1-SC-004**: Submission-to-lot conversion has an explicit, admin-driven
+  catalogue-artist assignment step (`{ artistId } | { newArtist }` payload) and
+  later admin override on `lot.artist_id`, both testable end-to-end.
 
 ## Assumptions
 

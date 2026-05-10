@@ -1,10 +1,18 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
 
-export default async function NewAdminArtistPage() {
-  const users = await getAdminUserList({ limit: 100 });
+type Search = { ownerUserId?: string; displayName?: string };
+
+export default async function NewAdminArtistPage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
+  const sp = await searchParams;
+  const ownerFromUrl = sp.ownerUserId?.trim() ?? "";
+  const displayFromUrl = sp.displayName?.trim() ?? "";
+  const ownerUserId = ownerFromUrl.length > 0 ? ownerFromUrl : null;
 
   return (
     <div className="screen w-full space-y-6">
@@ -16,10 +24,11 @@ export default async function NewAdminArtistPage() {
         <CardContent className="pt-6">
           <AdminArtistForm
             mode="create"
-            users={users.rows}
             defaultValues={{
-              displayName: "",
+              displayName: displayFromUrl,
               slug: "",
+              kind: "artist",
+              status: "approved",
               portraitUrl: "",
               heroImageUrl: "",
               shortBio: "",
@@ -30,7 +39,7 @@ export default async function NewAdminArtistPage() {
               birthYear: "",
               deathYear: "",
               websiteUrl: "",
-              ownerUserId: null,
+              ownerUserId,
               featured: false,
               verified: false,
               archived: false,

@@ -30,6 +30,7 @@ export const adminLotFormValuesSchema = zod.object({
   imageAlts: zod.array(zod.string().max(500)).max(20),
   startTime: zod.string().min(1, "Start time required"),
   endTime: zod.string().min(1, "End time required"),
+  artistId: zod.string().uuid().nullable().optional(),
 });
 
 export type AdminLotFormValues = zod.infer<typeof adminLotFormValuesSchema>;
@@ -57,6 +58,7 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
     images: v.images.length > 0 ? v.images : undefined,
     startTime: new Date(v.startTime),
     endTime: new Date(v.endTime),
+    ...(v.artistId !== undefined ? { artistId: v.artistId } : {}),
   } satisfies z.input<typeof createLotSchema>;
 }
 

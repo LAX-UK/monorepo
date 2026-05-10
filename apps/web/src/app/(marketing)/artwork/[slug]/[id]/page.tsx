@@ -88,8 +88,9 @@ export default async function ArtworkPage({ params }: PageProps) {
       auction.saleId
         ? getServerSaleWithLots(auction.saleId).catch(() => null)
         : Promise.resolve(null),
+      // Catalogue artist FK, then seller user id for rows without attribution.
       publicReader
-        .getById(auction.marketingDetails.sellerArtistId ?? sellerLookupId)
+        .getById(auction.artistId ?? sellerLookupId)
         .catch(() => null),
       kycSummaryPromise,
     ]);

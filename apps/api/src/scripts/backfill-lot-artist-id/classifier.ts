@@ -42,7 +42,7 @@ export type ClassifyLotArtistBackfillInput = {
   marketingSellerArtistId: string | null;
   /** Display hint (title prefix, marketing note, …). */
   hintText: string | null;
-  /** Rows returned from DB for `artist_id` / `sellerArtistId` when those are UUIDs. */
+  /** Rows returned from DB for UUID resolution (`artist_id` column or legacy marketing JSON). */
   uuidLookupHits: ArtistCandidate[];
   /** Rows returned from fuzzy/exact name resolution on `hintText`. */
   textLookupHits: ArtistCandidate[];
