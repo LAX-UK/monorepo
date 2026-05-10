@@ -388,6 +388,14 @@ export default function PrivacyPage() {
           cookies are used only where permitted and, where required, with consent.
         </p>
         <p>
+          <strong>Current deployment (pre-production readiness review):</strong> the public
+          marketing site and buyer dashboard do not load third-party advertising or analytics
+          scripts (for example Google Analytics or Meta Pixel). Authentication uses first-party
+          session cookies; error monitoring may use Sentry in accordance with our subprocessors list.
+          If optional marketing cookies are introduced later, we will add an explicit consent
+          control and update this notice.
+        </p>
+        <p>
           You can manage cookie preferences through your browser settings, dashboard preferences, or
           any cookie controls made available on the platform. For more information, please see our
           Cookie Policy.
