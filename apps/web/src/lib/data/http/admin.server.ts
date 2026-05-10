@@ -6,14 +6,22 @@ import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import type {
   AdminCategory,
+  ArtistKind,
   ArtistProfile,
+  ArtistStatus,
   LegalEntity,
   LegalEntityStatus,
   Lot,
   PayoutStatus,
   Sale,
 } from "@auction/types";
-import { legalEntityKinds, legalEntityStatuses, legalEntitySubkinds } from "@auction/types";
+import {
+  artistKinds,
+  artistStatuses,
+  legalEntityKinds,
+  legalEntityStatuses,
+  legalEntitySubkinds,
+} from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
 export type AdminPaymentRow = {
@@ -76,6 +84,16 @@ function parseAdminCategory(raw: unknown): AdminCategory {
 
 function parseArtistProfile(raw: unknown): ArtistProfile {
   const o = raw as Record<string, unknown>;
+  const rawKind = o.kind;
+  const kind =
+    typeof rawKind === "string" && (artistKinds as readonly string[]).includes(rawKind)
+      ? (rawKind as ArtistKind)
+      : undefined;
+  const rawStatus = o.status;
+  const status =
+    typeof rawStatus === "string" && (artistStatuses as readonly string[]).includes(rawStatus)
+      ? (rawStatus as ArtistStatus)
+      : undefined;
   return {
     id: String(o.id ?? ""),
     displayName: String(o.displayName ?? ""),
@@ -97,7 +115,11 @@ function parseArtistProfile(raw: unknown): ArtistProfile {
     featured: Boolean(o.featured),
     verified: Boolean(o.verified),
     archived: Boolean(o.archived),
+    ...(kind !== undefined ? { kind } : {}),
+    ...(status !== undefined ? { status } : {}),
     ownerUserId: o.ownerUserId == null ? null : String(o.ownerUserId),
+    ownerLegalEntityId: o.ownerLegalEntityId == null ? null : String(o.ownerLegalEntityId),
+    mergedIntoArtistId: o.mergedIntoArtistId == null ? null : String(o.mergedIntoArtistId),
     createdAt: new Date(String(o.createdAt ?? "")),
     updatedAt: new Date(String(o.updatedAt ?? "")),
   };
@@ -210,16 +232,27 @@ export async function getAdminArtistList(
   params: {
     includeArchived?: boolean;
     q?: string;
+    kind?: string;
+    status?: string;
+    ownerUserId?: string;
   } = {},
 ): Promise<ArtistProfile[]> {
   const qs = new URLSearchParams();
   if (params.includeArchived) qs.set("includeArchived", "true");
   if (params.q) qs.set("q", params.q);
+  if (params.kind) qs.set("kind", params.kind);
+  if (params.status) qs.set("status", params.status);
+  if (params.ownerUserId) qs.set("ownerUserId", params.ownerUserId);
   const query = qs.toString();
   const res = await authedServerFetch(`/admin/artists${query ? `?${query}` : ""}`);
   if (!res.ok) throw new Error(`Failed to load artists: ${res.status}`);
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseArtistProfile);
+}
+
+/** Artist profiles where `ownerUserId` matches (includes archived). */
+export async function getAdminArtistsByOwnerUserId(ownerUserId: string): Promise<ArtistProfile[]> {
+  return getAdminArtistList({ ownerUserId, includeArchived: true });
 }
 
 export async function getAdminArtistById(id: string): Promise<ArtistProfile | null> {

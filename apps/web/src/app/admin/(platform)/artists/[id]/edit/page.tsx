@@ -1,15 +1,18 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
+import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
-import { getAdminArtistById, getAdminUserList } from "@/lib/data/http/admin.server";
+import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { notFound } from "next/navigation";
 
 export default async function EditAdminArtistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [artist, users] = await Promise.all([
+  const [artist, lots] = await Promise.all([
     getAdminArtistById(id),
-    getAdminUserList({ limit: 100 }),
+    // Best-effort fetch of the lots attached to this artist for the read-only
+    // panel below. If the API is not reachable we still render the form.
+    getAdminLotList({ artistId: id, limit: 25 }).catch(() => []),
   ]);
   if (!artist) notFound();
 
@@ -26,10 +29,11 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
           <AdminArtistForm
             mode="edit"
             artistId={artist.id}
-            users={users.rows}
             defaultValues={{
               displayName: artist.displayName,
               slug: artist.slug,
+              kind: artist.kind ?? "artist",
+              status: artist.status === "merged_into" ? "approved" : (artist.status ?? "approved"),
               portraitUrl: artist.portraitUrl ?? "",
               heroImageUrl: artist.heroImageUrl ?? "",
               shortBio: artist.shortBio ?? "",
@@ -48,6 +52,15 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
           />
         </CardContent>
       </Card>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-xl font-semibold tracking-tight">Lots by this artist</h2>
+        <p className="text-sm text-on-surface-variant">
+          Read-only summary of the lots currently attached via the catalogue FK. To reassign a lot,
+          open it and use the artist picker on the lot edit page.
+        </p>
+        <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
+      </section>
     </div>
   );
 }

@@ -36,11 +36,23 @@ V1 has three user role types:
 - The same client identity can place bids (buyer role in context) and submit/manage artworks (seller role in context).
 - No separate buyer-only or seller-only account type is required in V1.
 
-### Artist/Seller Assignment
+### Catalogue Artist Assignment
 
-- When a client submits artwork and admin approves the submission, the submitter is the default artist/seller association.
-- Admin can override this default and assign another artist/client to the resulting lot.
-- Admin can also assign a lot to an artist/client directly in admin workflows.
+The catalogue identity attached to a lot — artist / maker / brand / marque — is
+an admin-curated entity (`artist_profile`) that is **decoupled from the
+consigning user**. Signing up as a client never creates an artist record.
+
+- The submitter (consignor) becomes the **seller** of the resulting lot, but
+  not automatically its catalogue artist.
+- When admin approves a submission, the approval payload accepts either an
+  existing `artistId` or an inline `newArtist` (admin-driven creation,
+  defaulted to `approved`). The resolved artist id is written to
+  `lot.artist_id` (FK to `artist_profile`).
+- Admin can change a lot's `artistId` later from the admin lot edit screen via
+  the shared `<ArtistPicker />` (search-and-pick or inline create).
+- Catalogue artist creation itself (`POST /artists`) is admin-only, gated by
+  the `artist.review` capability. The legacy
+  Attribution is stored only on `lot.artist_id` (FK to `artist_profile`).
 
 ## Invitations
 
@@ -74,7 +86,9 @@ V1 has three user role types:
 - **V1-FR-001**: System must enforce the V1 role model (`administrator`, `accountant`, `client`) in authz and UI behavior.
 - **V1-FR-002**: Accountant permissions must be restricted to finance domains.
 - **V1-FR-003**: Client accounts must support both buyer and seller actions from a single identity.
-- **V1-FR-004**: Approved submissions default to submitter-as-artist/seller, with admin override capability.
+- **V1-FR-004**: On submission approval, admin must explicitly select or
+  inline-create a catalogue artist (`artist_profile`); the resulting lot's
+  `artist_id` FK and seller (consignor) are tracked independently.
 - **V1-FR-005**: Admin invitation workflows must support role-based onboarding for staff and clients.
 - **V1-FR-006**: V1 auction interactions must expose English strategy only.
 - **V1-FR-007**: Online and onsite behavior must be consistently enforced in backend and frontend.
@@ -84,8 +98,11 @@ V1 has three user role types:
 
 - **V1-AC-001**: Role matrix is implemented and testable for all protected areas.
 - **V1-AC-002**: Accountant cannot perform non-finance admin actions.
-- **V1-AC-003**: A client can submit an artwork, have it approved, and become default artist/seller for that lot.
-- **V1-AC-004**: Admin can reassign artist/seller association after submission approval.
+- **V1-AC-003**: A client can submit an artwork; approval requires admin to
+  pick or inline-create a catalogue artist before the submission converts to
+  a lot.
+- **V1-AC-004**: Admin can change a lot's catalogue artist (`lot.artist_id`)
+  after approval via the admin lot edit screen.
 - **V1-AC-005**: Admin can send invitations with target role selection for accountant/admin/client.
 - **V1-AC-006**: V1 user flows cannot create/use non-English auction strategy paths.
 - **V1-AC-007**: Online sale lots allow bidding; onsite sale lots reject bidding.

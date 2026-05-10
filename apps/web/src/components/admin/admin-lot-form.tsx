@@ -1,5 +1,6 @@
 "use client";
 
+import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { LotImageManager } from "@/components/admin/lot-image-manager";
 import { SellerPicker } from "@/components/admin/seller-picker";
 import { CategoryPicker } from "@/components/forms/category-picker";
@@ -20,7 +21,7 @@ import {
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
 import { notify } from "@/lib/ui/notify";
-import { type CategoryNode, lotAuctionTypes } from "@auction/types";
+import { type ArtistProfile, type CategoryNode, lotAuctionTypes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -43,6 +44,9 @@ type Props = {
   defaultValues: AdminLotFormValues;
   categories: CategoryNode[];
   sellers: AdminUserRow[];
+  /** Pre-fetched canonical artists, used to resolve the selected chip when an
+   * artistId is already attached. The picker still searches over the wire. */
+  artists: ArtistProfile[];
 };
 
 function applyZodErrorsToForm(
@@ -58,7 +62,7 @@ function applyZodErrorsToForm(
   form.setError(key as FieldPath<AdminLotFormValues>, { message });
 }
 
-export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }: Props) {
+export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers, artists }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminLotFormValues>({
@@ -200,6 +204,27 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
               <p className="mt-2 font-body text-xs text-on-surface-variant">
                 The selected client owns the lot and will appear in seller payout workflows.
               </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="artistId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <LabelCaps>Artist / Maker / Brand</LabelCaps>
+              </FormLabel>
+              <FormControl>
+                <ArtistPicker
+                  value={field.value ?? null}
+                  onChange={(id) => field.onChange(id)}
+                  selected={chipFromArtists(artists, field.value ?? null)}
+                  helpText="Catalogue identity for this lot. Required before publish — sellers do not pick this themselves."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -465,4 +490,20 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers }
       </form>
     </Form>
   );
+}
+
+function chipFromArtists(
+  artists: ArtistProfile[],
+  artistId: string | null,
+): ArtistChipModel | null {
+  if (!artistId) return null;
+  const found = artists.find((a) => a.id === artistId);
+  if (!found) return null;
+  return {
+    id: found.id,
+    displayName: found.displayName,
+    slug: found.slug,
+    kind: found.kind ?? "artist",
+    status: found.status ?? "approved",
+  };
 }

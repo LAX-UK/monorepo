@@ -27,7 +27,10 @@ The public lots endpoint caps `limit` at **48** (`listSaleLotsQuerySchema` in `p
 ## Lot cards: bids and artist
 
 - **Bid count** — not included on the public `Lot` type; `bidsCountLabel` in `SaleLotCardVM` remains `null` until the API exposes a reliable count.
-- **Artist** — the mapper uses `medium` on the lot today; `marketingDetails` and seller profile resolution are not hooked up for the grid.
+- **Artist** — the canonical catalogue link is `lot.artist_id` (FK to
+  `artist_profile`). The lot grid mapper still falls back to `medium` for the
+  caption today; resolving display name from `artist_profile` for cards is a
+  separate roll-up.
 
 ## Global header and footer
 

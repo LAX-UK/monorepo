@@ -74,6 +74,26 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data });
   });
 
+  /** GET /artists/public — public directory of approved canonical artists.
+   * Filters out archived rows, orders by `featured DESC, displayName ASC`.
+   * Replaces the legacy `/users/public/artists` endpoint that read from the
+   * user table. */
+  r.get(
+    "/public",
+    zValidator(
+      "query",
+      z.object({
+        limit: z.coerce.number().int().min(1).max(100).optional().default(24),
+        offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+      }),
+    ),
+    async (c) => {
+      const { limit, offset } = c.req.valid("query");
+      const data = await container.artistProfileService.listPublic({ limit, offset });
+      return c.json({ data });
+    },
+  );
+
   /** POST /artists/propose-matches — admin: surfaces exact + alias + fuzzy buckets. */
   r.post(
     "/propose-matches",
@@ -116,15 +136,22 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data: found });
   });
 
-  /** POST /artists — create a pending artist. Authenticated callers only.
-   * caller is recorded as `created_by_user_id`.
+  /** POST /artists — admin-only registry create. Caller is recorded as
+   * `created_by_user_id`. Clients never create catalogue identities; they
+   * submit items via `/submissions` and admins curate the artist registry.
    */
-  r.post("/", requireAuth, zValidator("json", createArtistSchema), async (c) => {
-    const userId = c.get("userId") as string;
-    const body = c.req.valid("json");
-    const created = await container.artistRegistryService.create(userId, body);
-    return c.json({ data: created }, 201);
-  });
+  r.post(
+    "/",
+    requireAuth,
+    requireArtistReview,
+    zValidator("json", createArtistSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const created = await container.artistRegistryService.create(userId, body);
+      return c.json({ data: created }, 201);
+    },
+  );
 
   /** POST /artists/:id/aliases — add an alias to an existing artist. */
   r.post(

@@ -622,12 +622,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.artistProfileService.list({
       includeArchived: q.includeArchived,
       ...(q.q ? { q: q.q } : {}),
+      ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
     });
     return c.json({ data });
   });
 
   platform.post("/artists", zValidator("json", adminCreateArtistBodySchema), async (c) => {
-    const data = await container.artistProfileService.create(c.req.valid("json"));
+    const adminUserId = c.get("userId") as string;
+    const data = await container.artistProfileService.create(adminUserId, c.req.valid("json"));
     return c.json({ data }, 201);
   });
 

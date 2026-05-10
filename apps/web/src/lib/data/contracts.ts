@@ -6,6 +6,9 @@ export type ListLotsParams = {
   sellerId?: string;
   winnerId?: string;
   saleId?: string;
+  /** Filter to a single canonical artist via `lot.artist_id` FK. Used by the
+   * admin "Lots by this artist" panel and the public artist detail rail. */
+  artistId?: string;
   /** Filter lots whose endTime falls in this calendar year (UTC). */
   endYear?: number;
   /** Server-side title search (API `q`). */
