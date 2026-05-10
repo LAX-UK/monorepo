@@ -1,31 +1,52 @@
+import type { UserRole } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { PaymentRecord } from "../services/interfaces/payment-write.js";
 import { createPaymentRoutes } from "./payments.js";
 
 const paymentId = "11111111-1111-4111-8111-111111111111";
 const entityId = "22222222-2222-4222-8222-222222222222";
 
-function mount(role: string, membershipRole?: string) {
+type MountOptions = {
+  membershipRole?: string;
+  /** Authenticator session id; defaults to "u1". */
+  sessionUserId?: string;
+  /** Override `paymentService.listForBuyer` (used by /payments/me tests). */
+  listForBuyer?: (buyerId: string) => Promise<PaymentRecord[]>;
+};
+
+function mount(role: string, opts: MountOptions = {}) {
+  const sessionUserId = opts.sessionUserId ?? "u1";
   const app = new Hono();
   const paymentService = {
     listAllForAdmin: vi.fn(),
     createPendingForWinner: vi.fn(),
     markCapturedByAdmin: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
     refundPayment: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
+    listForBuyer: opts.listForBuyer ?? vi.fn(async () => [] as PaymentRecord[]),
+  };
+  const lotService = {
+    getById: vi.fn(async (_id: string) => null),
+  };
+  const mediaUrlResolver = {
+    resolve: vi.fn(async (v: string | null | undefined) => v ?? null),
+    resolveMany: vi.fn(async (vs: (string | null | undefined)[]) => vs.map((v) => v ?? null)),
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     paymentService,
+    lotService,
+    mediaUrlResolver,
     legalEntityRepository: {
       findActiveMembership: vi.fn().mockImplementation((userId: string, legalEntityId: string) =>
-        membershipRole
+        opts.membershipRole
           ? Promise.resolve({
               userId,
               legalEntityId,
-              role: membershipRole,
+              role: opts.membershipRole,
               isPrimaryAdmin: false,
             })
           : Promise.resolve(null),
@@ -35,10 +56,12 @@ function mount(role: string, membershipRole?: string) {
     impersonationSessionService: { validateForRequest: vi.fn() },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role }),
+    getSessionUser: vi.fn(async () =>
+      sessionUserId ? { id: sessionUserId, role: role as UserRole } : null,
+    ),
   };
   app.route("/payments", createPaymentRoutes(container, authenticator));
-  return { app, paymentService };
+  return { app, paymentService, lotService };
 }
 
 describe("payment finance entity authorization", () => {
@@ -52,7 +75,7 @@ describe("payment finance entity authorization", () => {
   });
 
   it("returns 403 for accountant capture without finance membership", async () => {
-    const { app, paymentService } = mount("accountant", "viewer");
+    const { app, paymentService } = mount("accountant", { membershipRole: "viewer" });
 
     const res = await app.request(`/payments/${paymentId}/capture`, {
       method: "POST",
@@ -64,7 +87,7 @@ describe("payment finance entity authorization", () => {
   });
 
   it("allows finance member refund for their acting entity", async () => {
-    const { app, paymentService } = mount("accountant", "finance");
+    const { app, paymentService } = mount("accountant", { membershipRole: "finance" });
 
     const res = await app.request(`/payments/${paymentId}/refund`, {
       method: "POST",
@@ -92,5 +115,101 @@ describe("payment finance entity authorization", () => {
       paymentId,
       undefined,
     );
+  });
+});
+
+describe("GET /payments/me", () => {
+  function paymentRow(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
+    return {
+      id: "33333333-3333-4333-8333-333333333333",
+      lotId: "44444444-4444-4444-8444-444444444444",
+      paidByUserId: "u1",
+      buyerLegalEntityId: "55555555-5555-4555-8555-555555555555",
+      sellerLegalEntityId: "66666666-6666-4666-8666-666666666666",
+      amount: "1500.00",
+      platformFee: "75.00",
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeRefundId: null,
+      status: "captured",
+      createdAt: new Date("2026-04-01T10:00:00.000Z"),
+      ...overrides,
+    };
+  }
+
+  it("returns 401 for unauthenticated requests", async () => {
+    const { app, paymentService } = mount("client", { sessionUserId: "" });
+    const res = await app.request("/payments/me");
+    expect(res.status).toBe(401);
+    expect(paymentService.listForBuyer).not.toHaveBeenCalled();
+  });
+
+  it("delegates to listForBuyer with the JWT userId only", async () => {
+    const listForBuyer = vi.fn(async () => [paymentRow()]);
+    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const res = await app.request("/payments/me");
+    expect(res.status).toBe(200);
+    expect(listForBuyer).toHaveBeenCalledTimes(1);
+    expect(listForBuyer).toHaveBeenCalledWith("alice");
+  });
+
+  it("does not allow the client to override the buyerId via query parameters", async () => {
+    const listForBuyer = vi.fn(async () => [] as PaymentRecord[]);
+    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const res = await app.request("/payments/me?buyerId=bob&userId=bob&paidByUserId=bob");
+    expect(res.status).toBe(200);
+    expect(listForBuyer).toHaveBeenCalledWith("alice");
+  });
+
+  it("does not include rows that do not belong to the caller (cross-user isolation)", async () => {
+    const aliceRow = paymentRow({ id: "alice-pay", paidByUserId: "alice" });
+    const bobRow = paymentRow({ id: "bob-pay", paidByUserId: "bob" });
+    const listForBuyer = vi.fn(async (id: string) =>
+      id === "alice" ? [aliceRow] : id === "bob" ? [bobRow] : [],
+    );
+    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const res = await app.request("/payments/me");
+    const body = (await res.json()) as { data: { id: string }[] };
+    const ids = body.data.map((r) => r.id);
+    expect(ids).toContain("alice-pay");
+    expect(ids).not.toContain("bob-pay");
+  });
+
+  it("respects the optional ?status filter", async () => {
+    const captured = paymentRow({ id: "c", status: "captured" });
+    const refunded = paymentRow({ id: "r", status: "refunded" });
+    const pending = paymentRow({ id: "p", status: "pending" });
+    const listForBuyer = vi.fn(async () => [captured, refunded, pending]);
+    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+
+    const res = await app.request("/payments/me?status=refunded");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { id: string }[] };
+    expect(body.data.map((r) => r.id)).toEqual(["r"]);
+  });
+
+  it("rejects unknown status values with 400", async () => {
+    const listForBuyer = vi.fn(async () => [] as PaymentRecord[]);
+    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const res = await app.request("/payments/me?status=bogus");
+    expect(res.status).toBe(400);
+    expect(listForBuyer).not.toHaveBeenCalled();
+  });
+
+  it("does not leak Stripe identifiers in the response payload", async () => {
+    const row = paymentRow({
+      stripePaymentIntentId: "pi_secret",
+      stripeChargeId: "ch_secret",
+      stripeRefundId: "re_secret",
+    });
+    const { app } = mount("client", {
+      sessionUserId: "alice",
+      listForBuyer: vi.fn(async () => [row]),
+    });
+    const res = await app.request("/payments/me");
+    const text = await res.text();
+    expect(text).not.toContain("pi_secret");
+    expect(text).not.toContain("ch_secret");
+    expect(text).not.toContain("re_secret");
   });
 });
