@@ -4,13 +4,14 @@ import { eq } from "drizzle-orm";
 import type {
   IProfileReader,
   IProfileWriter,
+  ProfileMeRow,
   ProfileUpdateInput,
 } from "../services/interfaces/profile.js";
 
 export class DrizzleProfileRepository implements IProfileReader, IProfileWriter {
   constructor(private readonly db: Database) {}
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<ProfileMeRow | null> {
     const [row] = await this.db
       .select({
         id: user.id,
@@ -22,11 +23,17 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         emailStatus: user.emailStatus,
         emailStatusChangedAt: user.emailStatusChangedAt,
         hasSeenActingContextTooltip: user.hasSeenActingContextTooltip,
+        kycStatus: user.kycStatus,
+        signupPersona: user.signupPersona,
       })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
     if (!row) return null;
+    const persona =
+      row.signupPersona === "individual" || row.signupPersona === "organisation"
+        ? row.signupPersona
+        : null;
     return {
       id: row.id,
       email: row.email,
@@ -37,6 +44,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       emailStatus: row.emailStatus as "ok" | "bounced" | "complained",
       emailStatusChangedAt: row.emailStatusChangedAt,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
+      kycStatus: row.kycStatus,
+      signupPersona: persona,
     };
   }
 
