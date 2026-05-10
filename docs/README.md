@@ -60,8 +60,6 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 
 - [Design system](./DESIGN_SYSTEM.md) — tokens, primitives, layout recipes, accessibility/SEO checklists
 - [Forms conventions](./FORMS.md) — RHF + Zod + server-actions + `ActionResult` pattern for `apps/web`
-- [Dashboard UX audit](./design/dashboard-ux-audit.md) — gap analysis vs current dashboard implementation
-- [Dashboard UX roadmap](./design/dashboard-ux-roadmap.md) — phased delivery plan derived from the audit
 - [Mockup parity](./design/mockup-parity.md) — deliberate supersets where the live UI ships richer behaviour than the static mockups
 - [SEO structured data](./seo/structured-data.md) — JSON-LD payload catalogue per route
 - [Saleroom data sources](./SALEROOM_DATA_SOURCES.md) — where the saleroom marketing UI text comes from
