@@ -4,6 +4,7 @@ import type {
   WatchlistListParams,
   WatchlistWithLotRow,
 } from "@/lib/data/http/dashboard.server";
+import type { MyPaymentRow, MyPaymentsListParams } from "@/lib/data/http/payments.server";
 import type { Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
 
@@ -26,4 +27,9 @@ export type DashboardArtistFollowReader = {
 
 export type DashboardActiveLotsReader = {
   listActivePreview(limit: number): Promise<Lot[]>;
+};
+
+/** ISP: buyer-only payments view (no admin/seller endpoints leak in). */
+export type DashboardPaymentsReader = {
+  listMine(params?: MyPaymentsListParams): Promise<MyPaymentRow[]>;
 };

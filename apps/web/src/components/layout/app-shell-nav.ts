@@ -81,6 +81,7 @@ export function getClientBuyingNavItems(): AppShellNavItem[] {
     },
     { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
     { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
+    { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
     { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
     { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     {

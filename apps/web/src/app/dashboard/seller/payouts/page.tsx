@@ -2,7 +2,8 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
-import type { Payout, PayoutStatus } from "@auction/types";
+import { getPayoutStatusView } from "@/lib/presenters/payment-status";
+import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -24,38 +25,6 @@ function formatMoney(amount: string, currency: string): string {
     style: "currency",
     currency,
   }).format(value);
-}
-
-function statusLabel(status: PayoutStatus): string {
-  switch (status) {
-    case "scheduled":
-      return "Scheduled";
-    case "in_transit":
-      return "In transit";
-    case "paid":
-      return "Paid";
-    case "failed":
-      return "Failed";
-    case "reversed":
-      return "Reversed";
-    case "clawback_pending":
-      return "Manual reconciliation pending";
-  }
-}
-
-function statusBadgeClass(status: PayoutStatus): string {
-  switch (status) {
-    case "paid":
-      return "bg-success/10 text-success";
-    case "failed":
-    case "reversed":
-    case "clawback_pending":
-      return "bg-error/10 text-error";
-    case "in_transit":
-      return "bg-primary/10 text-primary";
-    default:
-      return "bg-surface-container text-on-surface-variant";
-  }
 }
 
 export default async function SellerPayoutsPage() {
@@ -152,47 +121,48 @@ export default async function SellerPayoutsPage() {
         />
       ) : (
         <ul className="space-y-3">
-          {payouts.map((p) => (
-            <li key={p.id}>
-              <Card>
-                <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
-                  <div>
-                    <p className="font-medium">
-                      {new Date(p.periodStart).toLocaleDateString("en-GB")} →{" "}
-                      {new Date(p.periodEnd).toLocaleDateString("en-GB")}
-                    </p>
-                    <p className="text-xs text-on-surface-variant">
-                      Gross {formatMoney(p.grossAmount, p.currency)} · Fees{" "}
-                      {formatMoney(p.platformFee, p.currency)}
-                      {Number.parseFloat(p.stripeFee) > 0
-                        ? ` + ${formatMoney(p.stripeFee, p.currency)} transfer`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="text-right text-base font-semibold">
-                    {formatMoney(p.netAmount, p.currency)}
-                  </div>
-                  <div className="flex items-center justify-end">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(
-                        p.status,
-                      )}`}
-                    >
-                      {statusLabel(p.status)}
-                    </span>
-                  </div>
-                  <div className="flex justify-end sm:justify-center">
-                    <a
-                      href={`/dashboard/legal-entities/${encodeURIComponent(acting.id)}/payouts/${encodeURIComponent(p.id)}/statement`}
-                      className="text-xs font-semibold text-primary underline underline-offset-2"
-                    >
-                      Statement PDF
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+          {payouts.map((p) => {
+            const statusView = getPayoutStatusView(p.status);
+            return (
+              <li key={p.id}>
+                <Card>
+                  <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
+                    <div>
+                      <p className="font-medium">
+                        {new Date(p.periodStart).toLocaleDateString("en-GB")} →{" "}
+                        {new Date(p.periodEnd).toLocaleDateString("en-GB")}
+                      </p>
+                      <p className="text-xs text-on-surface-variant">
+                        Gross {formatMoney(p.grossAmount, p.currency)} · Fees{" "}
+                        {formatMoney(p.platformFee, p.currency)}
+                        {Number.parseFloat(p.stripeFee) > 0
+                          ? ` + ${formatMoney(p.stripeFee, p.currency)} transfer`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="text-right text-base font-semibold tabular-nums">
+                      {formatMoney(p.netAmount, p.currency)}
+                    </div>
+                    <div className="flex items-center justify-end">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusView.badgeClassName}`}
+                      >
+                        {statusView.label}
+                      </span>
+                    </div>
+                    <div className="flex justify-end sm:justify-center">
+                      <a
+                        href={`/dashboard/legal-entities/${encodeURIComponent(acting.id)}/payouts/${encodeURIComponent(p.id)}/statement`}
+                        className="text-xs font-semibold text-primary underline underline-offset-2"
+                      >
+                        Statement PDF
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
