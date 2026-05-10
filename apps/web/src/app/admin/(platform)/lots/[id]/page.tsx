@@ -1,14 +1,21 @@
+import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function AdminAuctionDetailPage({
   params,
-}: { params: Promise<{ id: string }> }) {
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; error_code?: string }>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const auction = await getAdminLotById(id).catch(() => null);
   if (!auction) notFound();
@@ -45,8 +52,22 @@ export default async function AdminAuctionDetailPage({
         </p>
       </div>
 
+      {sp.error_code === "connect_required" ? (
+        <AdminLotConnectRequiredBanner
+          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+          detail={sp.error ?? null}
+        />
+      ) : sp.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Action failed</AlertTitle>
+          <AlertDescription>{sp.error}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <AdminLotDetailActions
+        key={id}
         lotId={id}
+        sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
         canPublish={canPublish}
         canCancel={canCancel}
         showEditDraft={auction.status === "draft"}

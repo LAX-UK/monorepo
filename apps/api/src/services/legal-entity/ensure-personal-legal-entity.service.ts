@@ -33,10 +33,7 @@ export class EnsurePersonalLegalEntityService implements IEnsurePersonalLegalEnt
         .select({ id: legalEntity.id })
         .from(legalEntity)
         .where(
-          and(
-            eq(legalEntity.createdByUserId, input.userId),
-            eq(legalEntity.kind, "individual"),
-          ),
+          and(eq(legalEntity.createdByUserId, input.userId), eq(legalEntity.kind, "individual")),
         )
         .limit(1);
       const existingRow = existing[0];

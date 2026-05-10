@@ -13,9 +13,7 @@ export function VerifyPendingActions({ email, next }: { email: string; next?: st
     setPending(true);
     setStatus(null);
     const nextQs =
-      next && next.startsWith("/") && !next.startsWith("//")
-        ? `&next=${encodeURIComponent(next)}`
-        : "";
+      next?.startsWith("/") && !next.startsWith("//") ? `&next=${encodeURIComponent(next)}` : "";
     const { error } = await authClient.sendVerificationEmail({
       email,
       callbackURL: `/verify-email?email=${encodeURIComponent(email)}${nextQs}`,
