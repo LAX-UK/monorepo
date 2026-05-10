@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-/** Priority: KYC > Org > Email > Other (Phase C adds KYC). */
+/** Priority: KYC > org onboarding resume > entity status > Email > Other (Phase D). */
 export const DASHBOARD_BANNER_PRIORITIES = {
   kyc: 100,
+  orgOnboardingResume: 90,
   org: 80,
   email: 40,
   other: 10,

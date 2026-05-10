@@ -10,9 +10,11 @@ import {
   isEntityStatusBannerVisible,
 } from "@/components/dashboard/entity-status-banner";
 import { KycVerificationBanner } from "@/components/dashboard/kyc-verification-banner";
+import { OrgOnboardingResumeBanner } from "@/components/dashboard/org-onboarding-resume-banner";
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
 import type { LegalEntitySummary } from "@auction/types";
 
 export { DASHBOARD_BANNER_PRIORITIES, selectTopDashboardBannerCandidates };
@@ -30,10 +32,16 @@ type StackProps = {
   user: SessionUser;
   acting: LegalEntitySummary | null;
   kycSummary: KycStatusSummaryDto | null;
+  orgOnboardingResume: OrgOnboardingResumeVm | null;
 };
 
 /** Renders at most two dashboard alerts by priority; overflow is dropped (Phase A). */
-export function DashboardBannerStack({ user, acting, kycSummary }: StackProps) {
+export function DashboardBannerStack({
+  user,
+  acting,
+  kycSummary,
+  orgOnboardingResume,
+}: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
 
   if (kycSummary?.requiresKyc) {
@@ -41,6 +49,14 @@ export function DashboardBannerStack({ user, acting, kycSummary }: StackProps) {
       id: "kyc",
       priority: DASHBOARD_BANNER_PRIORITIES.kyc,
       node: <KycVerificationBanner summary={kycSummary} />,
+    });
+  }
+
+  if (orgOnboardingResume) {
+    candidates.push({
+      id: "org-onboarding-resume",
+      priority: DASHBOARD_BANNER_PRIORITIES.orgOnboardingResume,
+      node: <OrgOnboardingResumeBanner resume={orgOnboardingResume} />,
     });
   }
 

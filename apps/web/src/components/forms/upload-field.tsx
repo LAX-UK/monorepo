@@ -6,7 +6,12 @@ import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Button } from "@auction/ui/components/button";
 import { useRef, useState } from "react";
 
-export type UploadKind = "avatar" | "submission_image" | "lot_image" | "sale_cover";
+export type UploadKind =
+  | "avatar"
+  | "submission_image"
+  | "lot_image"
+  | "sale_cover"
+  | "legal_entity_document";
 
 type UploadFieldProps = {
   kind: UploadKind;
@@ -55,6 +60,8 @@ function placeholderLabel(kind: UploadKind): string {
       return "Submission image";
     case "lot_image":
       return "Lot artwork";
+    case "legal_entity_document":
+      return "Document";
   }
 }
 
