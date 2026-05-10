@@ -20,6 +20,18 @@ const httpRequests = new Counter({
   registers: [metricsRegistry],
 });
 
+/** Counters for money-path alerting (Prometheus / Grafana). */
+const moneyPathEvents = new Counter({
+  name: "auction_api_money_path_events_total",
+  help: "Money-path events (payouts, Stripe webhooks, clawback signals)",
+  labelNames: ["event"] as const,
+  registers: [metricsRegistry],
+});
+
+export function recordMoneyPathEvent(event: string): void {
+  moneyPathEvents.inc({ event });
+}
+
 function routeLabel(path: string): string {
   if (path.startsWith("/api/auth/")) return "/api/auth/*";
   if (path.startsWith("/webhooks/")) return "/webhooks/*";
