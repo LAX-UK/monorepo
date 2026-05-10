@@ -5,10 +5,11 @@ import { getMySubmissions } from "@/lib/data/http/submissions.server";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { isDashboardV2Enabled } from "@/lib/feature-flags/dashboard-v2";
 import { formatMoney } from "@/lib/format-currency";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
 
-async function DashboardHomeContent() {
+async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean }) {
   const user = await getServerSessionUser();
   const c = await getServerDataContainer();
 
@@ -82,13 +83,31 @@ async function DashboardHomeContent() {
     formatMoney,
   });
 
-  return <DashboardOverviewView vm={vm} featureV2={isDashboardV2Enabled()} />;
+  return (
+    <>
+      {orgSubmitted ? (
+        <Alert className="mb-6 border-lot-orange/40 bg-surface-container-low/80" variant="default">
+          <AlertTitle>Organisation submitted</AlertTitle>
+          <AlertDescription className="text-on-surface">
+            Your organisation is being reviewed. We&apos;ll notify you when approved.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <DashboardOverviewView vm={vm} featureV2={isDashboardV2Enabled()} />
+    </>
+  );
 }
 
-export default function DashboardHomePage() {
+export default async function DashboardHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org_submitted?: string }>;
+}) {
+  const sp = await searchParams;
+  const orgSubmitted = sp.org_submitted === "1";
   return (
     <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-      <DashboardHomeContent />
+      <DashboardHomeContent orgSubmitted={orgSubmitted} />
     </Suspense>
   );
 }
