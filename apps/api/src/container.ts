@@ -136,6 +136,7 @@ import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
+import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
 import { PaymentService } from "./services/payment.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
@@ -226,6 +227,8 @@ export type Container = {
   kycService: IKycService;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
+  /** organisation multi-step onboarding (Phase D). */
+  organizationOnboardingFlowService: OrganizationOnboardingFlowService;
   /** artist registry (search, merge, review). */
   artistRegistryService: IArtistRegistryService;
   /** Stripe Connect Express. */
@@ -308,6 +311,12 @@ export function createContainer(env: Env): Container {
   const domainEventPublisher = new DomainEventPublisher();
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
+  const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
+    db,
+    legalEntityRepository,
+    organizationOnboardingService,
+    domainEventPublisher,
+  );
   const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>("legal-entity-archive", {
     connection: bullConnection,
   });
@@ -719,6 +728,7 @@ export function createContainer(env: Env): Container {
     kycRepository,
     kycService,
     organizationOnboardingService,
+    organizationOnboardingFlowService,
     artistRegistryService,
     stripeConnectService,
     memberManagementService,
