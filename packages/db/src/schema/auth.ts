@@ -36,6 +36,8 @@ export const user = pgTable(
     /** Count of hard verification failures (not `requires_input` retries). */
     kycRetryCount: integer("kyc_retry_count").notNull().default(0),
     kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
+    /** Persona captured at signup ('individual' | 'organisation'); drives post-verify routing. */
+    signupPersona: text("signup_persona"),
     dateOfBirth: date("date_of_birth"),
     /** first-time acting context tooltip dismissed */
     hasSeenActingContextTooltip: boolean("has_seen_acting_context_tooltip")
