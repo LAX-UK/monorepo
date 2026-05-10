@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createOrganizationOnboardingRoutes } from "./organization-onboarding.js";
 
 export function createOrganizationRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -44,6 +45,8 @@ export function createOrganizationRoutes(container: Container, authenticator: IA
     const result = await container.organizationOnboardingService.createOrganization(userId, body);
     return c.json({ data: result }, 201);
   });
+
+  r.route("/:entityId/onboarding", createOrganizationOnboardingRoutes(container, authenticator));
 
   return r;
 }

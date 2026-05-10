@@ -157,6 +157,15 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** proxy ceiling cleared — reason is operational (e.g. entity_archived, member_removed). */
   "bid.proxy_cancelled": new Set(["reason"]),
+  /** Automatic or self-service status progression (Stripe, KYC, org submit, etc.). */
+  "legal_entity.lifecycle_progressed": new Set([
+    "from_status",
+    "to_status",
+    "reason",
+    "trigger",
+    "kind",
+    "stripeAccountId",
+  ]),
 };
 
 function isExceptionPath(eventType: string, path: string): boolean {

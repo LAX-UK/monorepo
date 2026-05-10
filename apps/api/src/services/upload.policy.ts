@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 
-export const uploadKinds = ["avatar", "submission_image", "lot_image", "sale_cover"] as const;
+export const uploadKinds = [
+  "avatar",
+  "submission_image",
+  "lot_image",
+  "sale_cover",
+  "legal_entity_document",
+] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
 type UploadPolicy = {
@@ -32,6 +38,11 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/sales",
   },
+  legal_entity_document: {
+    maxBytes: 15 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/legal-entity-documents",
+  },
 };
 
 export function isUploadKind(value: string): value is UploadKind {
@@ -49,6 +60,10 @@ export function canUploadKind(kind: UploadKind, role: UserRole): boolean {
     case "lot_image":
     case "sale_cover":
       return roleHasCapability(role, "platform.admin.full");
+    case "legal_entity_document":
+      return (
+        roleHasCapability(role, "client.submit") || roleHasCapability(role, "platform.admin.full")
+      );
   }
 }
 
@@ -60,6 +75,8 @@ export function extForContentType(contentType: string): string {
       return ".png";
     case "image/webp":
       return ".webp";
+    case "application/pdf":
+      return ".pdf";
     default:
       return ".bin";
   }
