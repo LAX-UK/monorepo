@@ -48,13 +48,15 @@ function makeRepo(opts: {
     update: vi.fn().mockResolvedValue(updateResult),
     getPendingExposure: vi.fn().mockResolvedValue(opts.exposure ?? { total: 0, currency: "GBP" }),
     setUserKycStatus: vi.fn(),
-    getUserKycWebhookState: vi.fn().mockResolvedValue(
-      opts.getUserKycWebhookState ?? { currentKycSessionId: "vi_1", kycRetryCount: 0 },
-    ),
+    getUserKycWebhookState: vi
+      .fn()
+      .mockResolvedValue(
+        opts.getUserKycWebhookState ?? { currentKycSessionId: "vi_1", kycRetryCount: 0 },
+      ),
     incrementUserKycRetryCount: vi.fn(),
-    getUserKycState: vi.fn().mockResolvedValue(
-      opts.userKycState ?? { kycStatus: "unverified", kycVerifiedAt: null },
-    ),
+    getUserKycState: vi
+      .fn()
+      .mockResolvedValue(opts.userKycState ?? { kycStatus: "unverified", kycVerifiedAt: null }),
   };
 }
 
@@ -226,7 +228,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("requires_input without last_error does not update user kyc_status", async () => {
-    const existing = verification({ id: "kv1", status: "requires_input", stripeVerificationSessionId: "vi_1" });
+    const existing = verification({
+      id: "kv1",
+      status: "requires_input",
+      stripeVerificationSessionId: "vi_1",
+    });
     const repo = makeRepo({
       findByStripeSessionId: existing,
       updateResult: { ...existing, status: "requires_input" },
@@ -252,7 +258,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("hard last_error increments retry and sets rejected", async () => {
-    const existing = verification({ id: "kv1", status: "requires_input", stripeVerificationSessionId: "vi_1" });
+    const existing = verification({
+      id: "kv1",
+      status: "requires_input",
+      stripeVerificationSessionId: "vi_1",
+    });
     const repo = makeRepo({
       findByStripeSessionId: existing,
       updateResult: { ...existing, status: "requires_input" },
@@ -277,7 +287,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("consent_declined maps to rejected without retry increment", async () => {
-    const existing = verification({ id: "kv1", status: "requires_input", stripeVerificationSessionId: "vi_1" });
+    const existing = verification({
+      id: "kv1",
+      status: "requires_input",
+      stripeVerificationSessionId: "vi_1",
+    });
     const repo = makeRepo({
       findByStripeSessionId: existing,
       updateResult: { ...existing, status: "requires_input" },
@@ -302,7 +316,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("verified sets approved and enables individual progression flag", async () => {
-    const existing = verification({ id: "kv1", status: "processing", stripeVerificationSessionId: "vi_1" });
+    const existing = verification({
+      id: "kv1",
+      status: "processing",
+      stripeVerificationSessionId: "vi_1",
+    });
     const updated = { ...existing, status: "verified" as const };
     const repo = makeRepo({
       findByStripeSessionId: existing,
@@ -329,7 +347,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("canceled is a no-op on user columns", async () => {
-    const existing = verification({ id: "kv1", status: "processing", stripeVerificationSessionId: "vi_1" });
+    const existing = verification({
+      id: "kv1",
+      status: "processing",
+      stripeVerificationSessionId: "vi_1",
+    });
     const repo = makeRepo({
       findByStripeSessionId: existing,
       updateResult: { ...existing, status: "canceled" },
@@ -353,7 +375,11 @@ describe("StripeKycService.handleWebhook", () => {
   });
 
   it("ignores user state when webhook session is not current", async () => {
-    const existing = verification({ id: "kv-old", status: "verified", stripeVerificationSessionId: "vi_old" });
+    const existing = verification({
+      id: "kv-old",
+      status: "verified",
+      stripeVerificationSessionId: "vi_old",
+    });
     const repo = makeRepo({
       findByStripeSessionId: existing,
       updateResult: { ...existing, status: "verified" },

@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { boolean, date, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 /** KYC status for Stripe Identity verification */
 export const userKycStatusEnum = pgEnum("user_kyc_status", [
