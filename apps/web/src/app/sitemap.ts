@@ -35,8 +35,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const reader = await getServerLotReader();
   const [active, ended] = await Promise.all([
-    reader.list({ status: "active", limit: 500, offset: 0, sort: "endingAsc" }),
-    reader.list({ status: "ended", limit: 500, offset: 0, sort: "endedDesc" }),
+    reader
+      .list({ status: "active", limit: 500, offset: 0, sort: "endingAsc" })
+      .catch(() => []),
+    reader.list({ status: "ended", limit: 500, offset: 0, sort: "endedDesc" }).catch(() => []),
   ]);
   const seen = new Set<string>();
   const lots: MetadataRoute.Sitemap = [];

@@ -78,20 +78,24 @@ export async function getServerArtistReader(): Promise<ArtistReader> {
   const apiBase = getServerApiBase();
   return {
     async listFeatured() {
-      const res = await fetch(`${apiBase}/artists/public?limit=24&offset=0`, {
-        next: { revalidate: 60 },
-      });
-      if (!res.ok) return [];
-      const body = (await res.json()) as {
-        data: {
-          id: string;
-          displayName: string;
-          shortBio?: string | null;
-          portraitUrl?: string | null;
-          nationality?: string | null;
-        }[];
-      };
-      return body.data.map(mapRegistryRowToArtist);
+      try {
+        const res = await fetch(`${apiBase}/artists/public?limit=24&offset=0`, {
+          next: { revalidate: 60 },
+        });
+        if (!res.ok) return [];
+        const body = (await res.json()) as {
+          data: {
+            id: string;
+            displayName: string;
+            shortBio?: string | null;
+            portraitUrl?: string | null;
+            nationality?: string | null;
+          }[];
+        };
+        return body.data.map(mapRegistryRowToArtist);
+      } catch {
+        return [];
+      }
     },
     async getById(id: string) {
       // Artist detail is served by the registry endpoint that already filters
