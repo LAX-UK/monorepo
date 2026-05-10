@@ -52,12 +52,13 @@ const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
 // so worker_app needs SELECT + UPDATE on these tables. Keep them out of WORKER_FULL_TABLES
 // to deny INSERT/DELETE/TRUNCATE on the append-only event log.
 //
-// email_outbox and newsletter_signup_log are also SELECT+UPDATE: the worker drains rows
-// inserted by apps/auth/apps/api but must not insert new ones (callers do that) and must
-// not delete (the rows are part of the audit trail for delivery and Postmaster review).
+// newsletter_signup_log is SELECT+UPDATE: the worker drains rows inserted by apps/api
+// but must not insert new ones (apps/api does that) and must not delete (audit trail).
+// email_outbox is handled separately below because the worker also enqueues mail from its
+// own projectors (notification-fanout, payout-transfer-failed-notify) via
+// PostmarkEmailService.enqueue(), which performs an INSERT on idempotency miss.
 const WORKER_LOCK_READ_TABLES = [
   "domain_events",
-  "email_outbox",
   "newsletter_signup_log",
   /** Payouts - worker needs SELECT + UPDATE for settlement processing */
   "payout",
@@ -127,7 +128,13 @@ async function grantIfExists(
   client: pg.Client,
   role: RoleName,
   tableName: string,
-  privileges: "SELECT" | "SELECT, UPDATE" | "INSERT" | "INSERT, SELECT" | "ALL PRIVILEGES",
+  privileges:
+    | "SELECT"
+    | "SELECT, UPDATE"
+    | "INSERT"
+    | "INSERT, SELECT"
+    | "INSERT, SELECT, UPDATE"
+    | "ALL PRIVILEGES",
 ): Promise<void> {
   if (!(await tableExists(client, tableName))) return;
   await client.query(
@@ -218,6 +225,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     await grantIfExists(client, "worker_app", "domain_events", "INSERT");
     /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
     await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
+    /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
+     * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
+     * outbox stays an immutable audit trail of attempted delivery. */
+    await grantIfExists(client, "worker_app", "email_outbox", "INSERT, SELECT, UPDATE");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }
