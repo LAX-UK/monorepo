@@ -1,8 +1,17 @@
 import { Hono } from "hono";
 import Stripe from "stripe";
 import type { Container } from "../../container.js";
+import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import { KycNotConfiguredError } from "../../services/interfaces/kyc-service.js";
 import { progressIndividualsAfterIdentityVerification } from "../../services/kyc/kyc-post-verification-progression.js";
+
+function recordStripeWebhookHttpError(
+  surface: "identity" | "connect" | "payments",
+  status: number,
+): void {
+  if (status >= 500) recordMoneyPathEvent(`stripe_webhook_${surface}_5xx`);
+  else if (status >= 400) recordMoneyPathEvent(`stripe_webhook_${surface}_4xx`);
+}
 
 /** Stripe webhook hub. We expose three endpoints — one per webhook secret —
  * because Stripe Identity, Stripe Connect, and Stripe Payments have separate
@@ -30,10 +39,12 @@ export function createStripeWebhookRoutes(container: Container) {
       return c.json({ ok: true, processed: Boolean(updated) });
     } catch (err) {
       if (err instanceof KycNotConfiguredError) {
+        recordStripeWebhookHttpError("identity", 503);
         return c.json({ error: "kyc_not_configured" }, 503);
       }
       const message = err instanceof Error ? err.message : "webhook_error";
       if (message.includes("signature")) {
+        recordStripeWebhookHttpError("identity", 401);
         return c.json({ error: "invalid_signature" }, 401);
       }
       throw err;
@@ -49,9 +60,11 @@ export function createStripeWebhookRoutes(container: Container) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "webhook_error";
       if (message.includes("signature")) {
+        recordStripeWebhookHttpError("connect", 401);
         return c.json({ error: "invalid_signature" }, 401);
       }
       if (message.includes("not_configured")) {
+        recordStripeWebhookHttpError("connect", 503);
         return c.json({ error: "stripe_not_configured" }, 503);
       }
       throw err;
@@ -63,6 +76,7 @@ export function createStripeWebhookRoutes(container: Container) {
    */
   r.post("/payments", async (c) => {
     if (!container.stripePaymentWebhookService) {
+      recordStripeWebhookHttpError("payments", 503);
       return c.json({ error: "stripe_payments_not_configured" }, 503);
     }
 
@@ -71,9 +85,11 @@ export function createStripeWebhookRoutes(container: Container) {
     const webhookSecret = container.env.STRIPE_PAYMENTS_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
+      recordStripeWebhookHttpError("payments", 503);
       return c.json({ error: "stripe_payments_webhook_not_configured" }, 503);
     }
     if (!signature) {
+      recordStripeWebhookHttpError("payments", 401);
       return c.json({ error: "missing_stripe_signature" }, 401);
     }
 
@@ -84,6 +100,7 @@ export function createStripeWebhookRoutes(container: Container) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "webhook_error";
       if (message.includes("signature")) {
+        recordStripeWebhookHttpError("payments", 401);
         return c.json({ error: "invalid_signature" }, 401);
       }
       throw err;
@@ -104,6 +121,7 @@ export function createStripeWebhookRoutes(container: Container) {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "handler_error";
+      recordStripeWebhookHttpError("payments", 500);
       return c.json({ error: message }, 500);
     }
 
