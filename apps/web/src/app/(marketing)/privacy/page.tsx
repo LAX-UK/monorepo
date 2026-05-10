@@ -391,8 +391,8 @@ export default function PrivacyPage() {
           <strong>Current deployment (pre-production readiness review):</strong> the public
           marketing site and buyer dashboard do not load third-party advertising or analytics
           scripts (for example Google Analytics or Meta Pixel). Authentication uses first-party
-          session cookies; error monitoring may use Sentry in accordance with our subprocessors list.
-          If optional marketing cookies are introduced later, we will add an explicit consent
+          session cookies; error monitoring may use Sentry in accordance with our subprocessors
+          list. If optional marketing cookies are introduced later, we will add an explicit consent
           control and update this notice.
         </p>
         <p>

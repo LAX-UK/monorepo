@@ -1,7 +1,7 @@
 import { Hono } from "hono";
+import type { Redis } from "ioredis";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import type { Redis } from "ioredis";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createBidRoutes } from "./bids.js";
