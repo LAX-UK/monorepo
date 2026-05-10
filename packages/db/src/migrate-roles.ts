@@ -216,6 +216,8 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
     await grantIfExists(client, "worker_app", "domain_events", "INSERT");
+    /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
+    await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }
