@@ -6,10 +6,12 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 export function EmailStatusBanner({ user }: { user: SessionUser }) {
+  const pathname = usePathname();
   const [dismissed, setDismissed] = useState(false);
   const dismissKey = useMemo(
     () =>
@@ -54,10 +56,17 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
             size="sm"
             className="min-h-11 shrink-0"
             onClick={() => {
+              const next =
+                pathname?.startsWith("/") &&
+                !pathname.startsWith("//") &&
+                (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
+                  ? pathname
+                  : "/dashboard";
+              const nextQs = `&next=${encodeURIComponent(next)}`;
               void authClient
                 .sendVerificationEmail({
                   email: user.email,
-                  callbackURL: `/verify-email?email=${encodeURIComponent(user.email)}`,
+                  callbackURL: `/verify-email?email=${encodeURIComponent(user.email)}${nextQs}`,
                 })
                 .then(({ error }) => {
                   if (error) {

@@ -1,4 +1,4 @@
-import type { KycVerification } from "@auction/types";
+import type { KycVerification, UserKycStatus } from "@auction/types";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
@@ -8,6 +8,7 @@ import {
   KycNotConfiguredError,
   KycRequiredError,
   type KycStatusSummary,
+  type KycWebhookHandleResult,
 } from "../interfaces/kyc-service.js";
 
 function mapStripeStatus(
@@ -27,19 +28,50 @@ function mapStripeStatus(
   }
 }
 
-function userKycStatusForVerification(
-  s: KycVerification["status"],
-): "unverified" | "pending" | "approved" | "rejected" {
-  switch (s) {
-    case "verified":
-      return "approved";
-    case "canceled":
-    case "requires_input":
-      return "rejected";
-    case "processing":
-    case "created":
-      return "pending";
+/** Stripe Identity `last_error.code` values that count as a hard verification failure (increment retry). */
+const KYC_HARD_FAILURE_CODES = new Set([
+  "document_unverified_other",
+  "document_expired",
+  "document_type_not_supported",
+  "selfie_document_missing_photo_id",
+  "document_unverified_copy",
+  "document_manipulated",
+  "document_invalid",
+  "document_name_mismatch",
+]);
+
+const KYC_USER_ACTION_CODES = new Set(["consent_declined", "under_supported_age"]);
+
+function userKycUpdateFromStripeSession(obj: Stripe.Identity.VerificationSession): {
+  setStatus: UserKycStatus | null;
+  verifiedAt: Date | null;
+  incrementRetry: boolean;
+} {
+  const stripeStatus = obj.status;
+  const errCode = obj.last_error?.code ?? null;
+
+  if (stripeStatus === "verified") {
+    return { setStatus: "approved", verifiedAt: new Date(), incrementRetry: false };
   }
+  if (stripeStatus === "canceled") {
+    return { setStatus: null, verifiedAt: null, incrementRetry: false };
+  }
+  if (stripeStatus === "requires_input") {
+    if (!errCode) {
+      return { setStatus: null, verifiedAt: null, incrementRetry: false };
+    }
+    if (KYC_USER_ACTION_CODES.has(errCode)) {
+      return { setStatus: "rejected", verifiedAt: null, incrementRetry: false };
+    }
+    if (KYC_HARD_FAILURE_CODES.has(errCode)) {
+      return { setStatus: "rejected", verifiedAt: null, incrementRetry: true };
+    }
+    return { setStatus: "rejected", verifiedAt: null, incrementRetry: false };
+  }
+  if (stripeStatus === "processing" || stripeStatus === "created") {
+    return { setStatus: "pending", verifiedAt: null, incrementRetry: false };
+  }
+  return { setStatus: "pending", verifiedAt: null, incrementRetry: false };
 }
 
 export class StripeKycService implements IKycService {
@@ -80,12 +112,11 @@ export class StripeKycService implements IKycService {
         },
       },
     });
-    const verification = await this.repo.create({
+    const verification = await this.repo.createWithCurrentStripeSession({
       userId,
       stripeVerificationSessionId: session.id,
       status: mapStripeStatus(session.status),
     });
-    await this.repo.setUserKycStatus(userId, "pending", null);
     return {
       sessionId: session.id,
       clientSecret: session.client_secret ?? "",
@@ -99,12 +130,11 @@ export class StripeKycService implements IKycService {
   }
 
   async getStatus(userId: string): Promise<KycStatusSummary> {
+    const userState = await this.repo.getUserKycState(userId);
     const latest = await this.repo.findLatestByUserId(userId);
     const exposure = await this.repo.getPendingExposure(userId);
-    const status: KycStatusSummary["status"] = latest
-      ? userKycStatusForVerification(latest.status)
-      : "unverified";
-    const verifiedAt = latest?.status === "verified" ? latest.decisionAt : null;
+    const status: KycStatusSummary["status"] = userState?.kycStatus ?? "unverified";
+    const verifiedAt = status === "approved" ? (userState?.kycVerifiedAt ?? null) : null;
     const requiresKyc = exposure.total >= this.thresholdAmount && status !== "approved";
     return {
       status,
@@ -120,18 +150,22 @@ export class StripeKycService implements IKycService {
   async handleWebhook(
     rawBody: string,
     signature: string | undefined,
-  ): Promise<KycVerification | null> {
+  ): Promise<KycWebhookHandleResult> {
     if (!this.stripe) throw new KycNotConfiguredError();
     if (!this.webhookSecret) throw new KycNotConfiguredError();
     if (!signature) throw new Error("missing_stripe_signature");
 
     const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
 
-    if (!event.type.startsWith("identity.verification_session.")) return null;
+    if (!event.type.startsWith("identity.verification_session.")) {
+      return { verification: null, appliedUserKycUpdate: false, shouldProgressIndividuals: false };
+    }
 
     const obj = event.data.object as Stripe.Identity.VerificationSession;
     const existing = await this.repo.findByStripeSessionId(obj.id);
-    if (!existing) return null;
+    if (!existing) {
+      return { verification: null, appliedUserKycUpdate: false, shouldProgressIndividuals: false };
+    }
 
     const verifiedOutputs = obj.verified_outputs ?? null;
     const status = mapStripeStatus(obj.status);
@@ -154,14 +188,38 @@ export class StripeKycService implements IKycService {
       verifiedIdExpiry: null,
     });
 
-    const next = userKycStatusForVerification(status);
-    await this.repo.setUserKycStatus(
-      existing.userId,
-      next,
-      next === "approved" ? new Date() : null,
-    );
+    const webhookState = await this.repo.getUserKycWebhookState(existing.userId);
+    const isCurrentSession =
+      Boolean(webhookState) &&
+      webhookState?.currentKycSessionId === existing.stripeVerificationSessionId;
 
-    return updated;
+    const decision = userKycUpdateFromStripeSession(obj);
+
+    let appliedUserKycUpdate = false;
+    let shouldProgressIndividuals = false;
+
+    if (isCurrentSession) {
+      if (decision.setStatus !== null) {
+        await this.repo.setUserKycStatus(existing.userId, decision.setStatus, decision.verifiedAt);
+        appliedUserKycUpdate = true;
+      }
+      if (decision.incrementRetry) {
+        await this.repo.incrementUserKycRetryCount(existing.userId);
+        appliedUserKycUpdate = true;
+      }
+      shouldProgressIndividuals = obj.status === "verified";
+    } else {
+      console.warn(
+        JSON.stringify({
+          msg: "kyc_webhook_stale_session",
+          userId: existing.userId,
+          sessionInWebhook: obj.id,
+          userCurrentSessionId: webhookState?.currentKycSessionId ?? null,
+        }),
+      );
+    }
+
+    return { verification: updated, appliedUserKycUpdate, shouldProgressIndividuals };
   }
 
   async enforceThreshold(userId: string): Promise<void> {

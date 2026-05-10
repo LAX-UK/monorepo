@@ -14,6 +14,8 @@ describe("ProfileService", () => {
         emailStatus: "ok" as const,
         emailStatusChangedAt: null,
         hasSeenActingContextTooltip: false,
+        kycStatus: "unverified" as const,
+        signupPersona: null,
       }),
     };
     const writer = { updateProfile: vi.fn().mockResolvedValue(undefined) };

@@ -17,6 +17,7 @@ function minimalContainer(partial: Record<string, unknown>): Container {
   return {
     redis: { get: vi.fn().mockResolvedValue(null), set: vi.fn(), ping: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    kycService: { isConfigured: () => false, enforceThreshold: vi.fn(), getStatus: vi.fn() },
     ...partial,
   } as unknown as Container;
 }
