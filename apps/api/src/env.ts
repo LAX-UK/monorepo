@@ -6,6 +6,15 @@ function emptyToUndefined(val: unknown): unknown {
   return val;
 }
 
+function trimEmptyToUndefined(val: unknown): unknown {
+  if (val === "" || val === null) return undefined;
+  if (typeof val === "string") {
+    const t = val.trim();
+    return t === "" ? undefined : t;
+  }
+  return val;
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -105,9 +114,9 @@ const envSchema = z
     INVITE_EMAIL_WEBHOOK_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     INVITE_EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(3).optional()),
     /** Stripe secret key (sk_test_… / sk_live_…). Optional until KYC enabled. */
-    STRIPE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    STRIPE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Stripe publishable key (pk_test_… / pk_live_…). Public for client SDK. */
-    STRIPE_PUBLISHABLE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    STRIPE_PUBLISHABLE_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Stripe Identity webhook signing secret (whsec_…). */
     STRIPE_IDENTITY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Connect webhook signing secret (whsec_…). */
