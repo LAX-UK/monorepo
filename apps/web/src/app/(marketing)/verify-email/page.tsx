@@ -14,11 +14,15 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; email?: string }>;
+  searchParams: Promise<{ error?: string; email?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   const error = typeof sp.error === "string" ? sp.error : "";
   const email = typeof sp.email === "string" ? sp.email : "";
+  const safeNext =
+    typeof sp.next === "string" && sp.next.startsWith("/") && !sp.next.startsWith("//")
+      ? sp.next
+      : "/dashboard";
 
   if (error) {
     return (
@@ -60,8 +64,8 @@ export default async function VerifyEmailPage({
             Email verified — you&apos;re ready to use London Art Exchange.
           </output>
           <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-            <Link href="/dashboard" prefetch>
-              Go to dashboard
+            <Link href={safeNext} prefetch>
+              Continue
             </Link>
           </Button>
         </div>

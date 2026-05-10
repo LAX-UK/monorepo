@@ -1,9 +1,9 @@
 import { OrganisationOnboardingForm } from "@/components/legal-entity/organization-onboarding-form";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Submit to LAX",
@@ -20,10 +20,10 @@ async function loadSubkinds(): Promise<SubkindOption[]> {
 }
 
 export default async function OrganisationOnboardingPage() {
-  const me = await authedServerFetch("/users/me", { cache: "no-store" });
-  if (me.status === 401) {
-    redirect("/login?next=/onboarding/organisation&auth=required");
-  }
+  await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/onboarding/organisation",
+  });
   const subkinds = await loadSubkinds();
 
   return (

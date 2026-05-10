@@ -18,8 +18,9 @@ export function createStripeWebhookRoutes(container: Container) {
     const raw = await c.req.text();
     const signature = c.req.header("stripe-signature");
     try {
-      const updated = await container.kycService.handleWebhook(raw, signature);
-      if (updated?.status === "verified") {
+      const { verification: updated, shouldProgressIndividuals } =
+        await container.kycService.handleWebhook(raw, signature);
+      if (shouldProgressIndividuals && updated) {
         await progressIndividualsAfterIdentityVerification(
           container.db,
           container.domainEventPublisher,

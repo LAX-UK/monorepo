@@ -1,4 +1,4 @@
-import type { KycVerification } from "@auction/types";
+import type { KycVerification, UserKycStatus } from "@auction/types";
 
 export type CreateKycVerificationInput = {
   userId: string;
@@ -41,4 +41,20 @@ export interface IKycRepository {
     status: "unverified" | "pending" | "approved" | "rejected",
     verifiedAt: Date | null,
   ): Promise<void>;
+
+  /** Insert verification row and set `user.current_kyc_session_id` + pending in one transaction. */
+  createWithCurrentStripeSession(input: CreateKycVerificationInput): Promise<KycVerification>;
+
+  getUserKycWebhookState(userId: string): Promise<{
+    currentKycSessionId: string | null;
+    kycRetryCount: number;
+  } | null>;
+
+  incrementUserKycRetryCount(userId: string): Promise<void>;
+
+  /** User table KYC columns (source of truth for portal status). */
+  getUserKycState(userId: string): Promise<{
+    kycStatus: UserKycStatus;
+    kycVerifiedAt: Date | null;
+  } | null>;
 }

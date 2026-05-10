@@ -13,10 +13,11 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function VerifyPendingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   const email = typeof sp.email === "string" ? sp.email : "";
+  const next = typeof sp.next === "string" ? sp.next : "";
 
   await redirectIfVerifyPendingNotNeeded();
 
@@ -31,7 +32,12 @@ export default async function VerifyPendingPage({
             We sent the verification email to{" "}
             <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
           </p>
-          {email ? <VerifyPendingActions email={email} /> : null}
+          {email ? (
+            <VerifyPendingActions
+              email={email}
+              {...(next ? { next } : {})}
+            />
+          ) : null}
         </div>
       </AuthLayout>
     </main>
