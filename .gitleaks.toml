@@ -1,0 +1,10 @@
+title = "LAX auction monorepo"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe demo strings and seeds"
+paths = [
+  '''packages/db/src/seed.ts''',
+]
