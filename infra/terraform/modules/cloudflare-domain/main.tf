@@ -94,21 +94,64 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
 
   zone_id     = data.cloudflare_zone.this.id
   name        = "lax-${var.environment}-rate-limits"
-  description = "Host-scoped API and auth rate limits."
+  description = "Host-scoped API and auth rate limits (see docs/integrations/cloudflare.md)."
   kind        = "zone"
   phase       = "http_ratelimit"
 
+  # Matches docs/integrations/cloudflare.md — separate buckets per path (do not merge RPMs).
   rules {
     action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
-    description = "Auth sign-up and verification-email reputation guard."
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/sign-up\")"
+    description = "Auth sign-up: 10 req/min/IP (SE-P23 edge parity)."
     enabled     = true
 
     ratelimit {
       characteristics     = ["ip.src", "cf.colo.id"]
-      period              = 10
-      requests_per_period = min(var.signup_rpm, var.send_verification_email_rpm)
-      mitigation_timeout  = 10
+      period                = 60
+      requests_per_period   = var.signup_rpm
+      mitigation_timeout    = 60
+    }
+  }
+
+  rules {
+    action      = "block"
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/send-verification-email\")"
+    description = "Auth send-verification-email: 5 req/min/IP."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src", "cf.colo.id"]
+      period                = 60
+      requests_per_period   = var.send_verification_email_rpm
+      mitigation_timeout    = 60
+    }
+  }
+
+  rules {
+    action      = "block"
+    expression  = "(starts_with(http.request.uri.path, \"/.well-known/\"))"
+    description = "Well-known discovery: 100 req/min/IP."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src", "cf.colo.id"]
+      period                = 60
+      requests_per_period   = 100
+      mitigation_timeout    = 60
+    }
+  }
+
+  rules {
+    action      = "block"
+    expression  = "(http.host in {${local.api_host_expression}} and http.request.uri.path eq \"/webhooks/postmark\")"
+    description = "Postmark webhook ingress: 500 req/min/IP."
+    enabled     = true
+
+    ratelimit {
+      characteristics     = ["ip.src", "cf.colo.id"]
+      period                = 60
+      requests_per_period   = var.postmark_webhook_rpm
+      mitigation_timeout    = 60
     }
   }
 }

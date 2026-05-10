@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createApp } from "../app.js";
 
 describe("integration smoke", () => {
-  it("exports app factory", async () => {
-    const { createApp } = await import("../app.js");
+  it("exports app factory", () => {
     expect(typeof createApp).toBe("function");
-  }, 15_000);
+  });
 });
