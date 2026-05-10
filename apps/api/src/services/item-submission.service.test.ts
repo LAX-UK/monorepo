@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IItemSubmissionRepository, IUserRepository } from "./interfaces/repositories.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 
@@ -80,6 +81,58 @@ describe("ItemSubmissionService", () => {
     expect(submissions.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Work", legalEntityId: "seller-1" }),
     );
+  });
+
+  it("createDraft allows individual entity in lead verification state", async () => {
+    const created = mkSubmission({ id: "sub-1", status: "draft" });
+    const submissions: IItemSubmissionRepository = {
+      create: vi.fn().mockResolvedValue(created),
+    } as unknown as IItemSubmissionRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ kind: "individual", status: "lead" }),
+    } as unknown as ILegalEntityRepository;
+    const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
+    const svc = new ItemSubmissionService(
+      stubDb,
+      submissions,
+      {} as IUserRepository,
+      dispatcher,
+      undefined,
+      null,
+      legalEntityRepository,
+      null,
+    );
+    const r = await svc.createDraft("ent-1", {
+      title: "Work",
+      categoryId: catId,
+    });
+    expect(r.isOk()).toBe(true);
+  });
+
+  it("createDraft still blocks organisation entity before approved or restricted", async () => {
+    const submissions: IItemSubmissionRepository = {
+      create: vi.fn(),
+    } as unknown as IItemSubmissionRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ kind: "organisation", status: "lead" }),
+    } as unknown as ILegalEntityRepository;
+    const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
+    const svc = new ItemSubmissionService(
+      stubDb,
+      submissions,
+      {} as IUserRepository,
+      dispatcher,
+      undefined,
+      null,
+      legalEntityRepository,
+      null,
+    );
+    const r = await svc.createDraft("ent-1", {
+      title: "Work",
+      categoryId: catId,
+    });
+    expect(r.isErr()).toBe(true);
+    expect(submissions.create).not.toHaveBeenCalled();
   });
 
   it("submitForReview notifies admins", async () => {

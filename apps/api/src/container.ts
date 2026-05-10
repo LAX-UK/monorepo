@@ -125,6 +125,7 @@ import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
+import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
@@ -135,7 +136,6 @@ import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
-import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { PaymentService } from "./services/payment.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
@@ -482,6 +482,8 @@ export function createContainer(env: Env): Container {
     lotNotificationCoordinator,
     imageCleanupService,
     legalEntityNotificationRecipients,
+    legalEntityRepository,
+    stripeConnectService.isConfigured(),
   );
 
   const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);

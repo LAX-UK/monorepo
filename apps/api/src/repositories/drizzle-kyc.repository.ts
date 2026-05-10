@@ -51,7 +51,9 @@ export class DrizzleKycRepository implements IKycRepository {
     return rowToKyc(row);
   }
 
-  async createWithCurrentStripeSession(input: CreateKycVerificationInput): Promise<KycVerification> {
+  async createWithCurrentStripeSession(
+    input: CreateKycVerificationInput,
+  ): Promise<KycVerification> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(kycVerification)

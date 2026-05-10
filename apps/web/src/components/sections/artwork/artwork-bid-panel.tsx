@@ -15,6 +15,7 @@ import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -35,6 +36,7 @@ type Props = {
   loginNextPath?: string;
   /** When true, omit estimate/timer stack (e.g. online layout shows it in the queue sidebar). */
   omitPricingHeader?: boolean;
+  kycSummary?: KycStatusSummaryDto | null;
 };
 
 const HISTORY_CAP = 20;
@@ -51,6 +53,7 @@ export function ArtworkBidPanel({
   initialUserMaxAuto,
   loginNextPath,
   omitPricingHeader = false,
+  kycSummary = null,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -288,7 +291,13 @@ export function ArtworkBidPanel({
   const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
   return (
-    <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
+    <BidGate
+      user={sessionUser}
+      lot={auction}
+      lotStatus={lotStatus}
+      loginNextPath={loginNext}
+      kycBidGate={kycSummary?.requiresKyc ? { requiresKyc: true } : null}
+    >
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
           <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
