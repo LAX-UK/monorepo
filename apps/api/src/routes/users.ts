@@ -411,6 +411,8 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
         hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
+        kycStatus: row.kycStatus,
+        signupPersona: row.signupPersona,
       },
     });
   });

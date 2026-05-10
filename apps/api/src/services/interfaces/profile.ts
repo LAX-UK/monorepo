@@ -34,18 +34,22 @@ export type UpdateAddressInput = Partial<CreateAddressInput> & {
   isDefault?: boolean | undefined;
 };
 
+export type ProfileMeRow = {
+  id: string;
+  email: string;
+  name: string;
+  image: string | null;
+  role: string;
+  emailVerified: boolean;
+  emailStatus: "ok" | "bounced" | "complained";
+  emailStatusChangedAt: Date | null;
+  hasSeenActingContextTooltip: boolean;
+  kycStatus: "unverified" | "pending" | "approved" | "rejected";
+  signupPersona: "individual" | "organisation" | null;
+};
+
 export interface IProfileReader {
-  getProfile(userId: string): Promise<{
-    id: string;
-    email: string;
-    name: string;
-    image: string | null;
-    role: string;
-    emailVerified: boolean;
-    emailStatus: "ok" | "bounced" | "complained";
-    emailStatusChangedAt: Date | null;
-    hasSeenActingContextTooltip: boolean;
-  } | null>;
+  getProfile(userId: string): Promise<ProfileMeRow | null>;
 }
 
 export interface IProfileWriter {
