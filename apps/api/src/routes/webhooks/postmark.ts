@@ -1,5 +1,6 @@
 import { emailEvent, emailOutbox, emailSuppression, user } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { emailHash } from "@auction/email";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../../container.js";
 import { applyUnsubscribeToken } from "../email.js";
@@ -9,6 +10,10 @@ type PostmarkPayload = Record<string, unknown> & {
   MessageID?: string;
   MessageId?: string;
   Type?: string;
+  /** Bounce / complaint recipient (Postmark). */
+  Email?: string;
+  OriginalRecipient?: string;
+  To?: string;
 };
 
 let warnedMissingAuth = false;
@@ -36,8 +41,8 @@ export function createPostmarkWebhookRoutes(container: Container) {
       payload,
     });
 
-    if (messageId && (eventType === "bounce" || eventType === "complaint")) {
-      await applySuppression(container, messageId, eventType);
+    if (eventType === "bounce" || eventType === "complaint") {
+      await applySuppressionFromWebhook(container, messageId, eventType, payload);
     }
     if (eventType === "unsubscribe") {
       const token = extractUnsubscribeToken(payload);
@@ -99,43 +104,87 @@ function mapRecordType(recordType: string, payload: PostmarkPayload) {
   }
 }
 
-async function applySuppression(
+function recipientEmailFromPostmarkPayload(payload: PostmarkPayload): string | null {
+  const candidates = [
+    payload.Email,
+    payload.OriginalRecipient,
+    payload.To,
+    (payload as { Recipient?: string }).Recipient,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.includes("@")) {
+      const trimmed = c.trim().toLowerCase();
+      if (trimmed.length > 3) return trimmed;
+    }
+  }
+  return null;
+}
+
+async function applySuppressionFromWebhook(
   container: Container,
   messageId: string,
   eventType: "bounce" | "complaint",
+  payload: PostmarkPayload,
 ) {
-  const [row] = await container.db
-    .select({
-      id: emailOutbox.id,
-      userId: emailOutbox.userId,
-      toEmailHash: emailOutbox.toEmailHash,
-    })
-    .from(emailOutbox)
-    .where(eq(emailOutbox.messageId, messageId))
-    .limit(1);
-  if (!row) return;
+  const reason = eventType === "complaint" ? "complaint" : ("hard_bounce" as const);
 
+  if (messageId) {
+    const [row] = await container.db
+      .select({
+        id: emailOutbox.id,
+        userId: emailOutbox.userId,
+        toEmailHash: emailOutbox.toEmailHash,
+      })
+      .from(emailOutbox)
+      .where(eq(emailOutbox.messageId, messageId))
+      .limit(1);
+    if (row) {
+      await upsertSuppressionAndMaybeUser(container, row.toEmailHash, reason, row.userId);
+      return;
+    }
+  }
+
+  const addr = recipientEmailFromPostmarkPayload(payload);
+  if (!addr) return;
+  const hash = emailHash(addr);
+  await upsertSuppressionAndMaybeUser(container, hash, reason, null);
+
+  await container.db
+    .update(user)
+    .set({
+      emailStatus: eventType === "complaint" ? "complained" : "bounced",
+      emailStatusChangedAt: new Date(),
+    })
+    .where(sql`lower(${user.email}) = ${addr}`);
+}
+
+async function upsertSuppressionAndMaybeUser(
+  container: Container,
+  emailHashValue: string,
+  reason: "complaint" | "hard_bounce",
+  userId: string | null,
+) {
   await container.db
     .insert(emailSuppression)
     .values({
-      emailHash: row.toEmailHash,
-      reason: eventType === "complaint" ? "complaint" : "hard_bounce",
+      emailHash: emailHashValue,
+      reason,
     })
     .onConflictDoUpdate({
       target: emailSuppression.emailHash,
       set: {
-        reason: eventType === "complaint" ? "complaint" : "hard_bounce",
+        reason,
         createdAt: new Date(),
       },
     });
 
-  if (row.userId) {
+  if (userId) {
     await container.db
       .update(user)
       .set({
-        emailStatus: eventType === "complaint" ? "complained" : "bounced",
+        emailStatus: reason === "complaint" ? "complained" : "bounced",
         emailStatusChangedAt: new Date(),
       })
-      .where(eq(user.id, row.userId));
+      .where(eq(user.id, userId));
   }
 }

@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /** KYC status for Stripe Identity verification */
@@ -52,6 +53,19 @@ export const user = pgTable(
     hasSeenActingContextTooltip: boolean("has_seen_acting_context_tooltip")
       .notNull()
       .default(false),
+    /** In-flight email change: new address; cleared after both sides confirm or expiry. */
+    pendingNewEmail: text("pending_new_email"),
+    emailChangeOldOk: boolean("email_change_old_ok").notNull().default(false),
+    emailChangeNewOk: boolean("email_change_new_ok").notNull().default(false),
+    emailChangeExpiresAt: timestamp("email_change_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    deletionRequestedAt: timestamp("deletion_requested_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },
@@ -112,9 +126,28 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }),
 });
 
-export const userRelations = relations(user, ({ many }) => ({
+/** Better Auth `two-factor` plugin backing table (model name `twoFactor`). */
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean("verified").notNull().default(true),
+  },
+  (table) => [uniqueIndex("two_factor_user_id_uidx").on(table.userId)],
+);
+
+export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
+  twoFactor: one(twoFactor, {
+    fields: [user.id],
+    references: [twoFactor.userId],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -127,6 +160,13 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+  user: one(user, {
+    fields: [twoFactor.userId],
     references: [user.id],
   }),
 }));

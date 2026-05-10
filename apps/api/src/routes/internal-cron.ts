@@ -43,6 +43,12 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
 
     try {
+      if (env.DISABLE_PAYOUT_SETTLEMENT) {
+        return c.json(
+          { error: "payout_settlement_disabled", code: "payout_settlement_disabled" },
+          503,
+        );
+      }
       const log = createBaseLogger(env).child({ component: "bulk_payout_settlement" });
       const bulk = await container.payoutService.runBulkSettlementWithTransfers(null, {
         initiateTransfer: (payoutId, opts) =>
@@ -97,6 +103,50 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
     const data = await container.xeroPayoutBillWriter.syncPaidPayout(payoutId);
     return c.json({ data });
+  });
+
+  /** Expire stale `pending` buyer payments (winner never paid). */
+  r.post("/expire-stale-payments", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const n = await container.paymentService.expireStalePendingPayments(
+      env.PAYMENT_PENDING_EXPIRE_DAYS,
+    );
+    return c.json({ data: { expired: n } });
+  });
+
+  /** Replay Xero invoice sync for webhook rows that previously failed (idempotent). */
+  r.post("/retry-xero-webhook-failures", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const rows = await container.xeroWebhookEventRepository.listRecentFailures(25);
+    let recovered = 0;
+    for (const row of rows) {
+      const sync = await container.accountingProvider.syncInvoiceFromProvider(
+        row.tenantId,
+        row.resourceId,
+      );
+      if (sync.ok) {
+        await container.xeroWebhookEventRepository.markProcessed(row.eventKey);
+        recovered += 1;
+      } else {
+        await container.xeroWebhookEventRepository.markFailed(
+          row.eventKey,
+          sync.error ?? "retry_failed",
+        );
+      }
+    }
+    return c.json({ data: { attempted: rows.length, recovered } });
   });
 
   return r;

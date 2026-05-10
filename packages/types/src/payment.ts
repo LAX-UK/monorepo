@@ -6,6 +6,7 @@ export const paymentStatuses = [
   "captured",
   "refunded",
   "requires_manual_review",
+  "cancelled",
 ] as const;
 export type PaymentStatus = (typeof paymentStatuses)[number];
 
@@ -31,7 +32,6 @@ export type Payment = {
 /** Response from `POST /payments` (checkout). */
 export type CreatePaymentResponse = {
   paymentId: string;
-  clientSecret: string | null;
   checkoutUrl: string | null;
 };
 

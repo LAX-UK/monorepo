@@ -11,6 +11,7 @@ import {
   user,
 } from "@auction/db/schema";
 import {
+  type UserRole,
   encodeActingContextCookie,
   normalizeUserRole,
   normalizeUserRoleOrClient,
@@ -25,6 +26,8 @@ import {
   adminCategoryListQuerySchema,
   adminCreateArtistBodySchema,
   adminCreateCategoryBodySchema,
+  adminDomainEventsQuerySchema,
+  adminFinanceDisputeDomainEventsQuerySchema,
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
@@ -37,16 +40,17 @@ import {
   artistIdParamSchema,
   categoryIdParamSchema,
   emailHashParamSchema,
+  lotIdParamSchema,
   paymentIdParamSchema,
   userIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import type { Container } from "../container.js";
-import { AuthzError } from "../lib/errors.js";
+import { AuthzError, LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -89,6 +93,34 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   r.use("*", requireAuth);
+
+  async function listRedactedDomainEvents(input: {
+    limit: number;
+    eventTypePrefix?: string;
+    includePii: boolean;
+  }) {
+    const prefix = input.eventTypePrefix?.trim();
+    let q = container.db
+      .select({
+        id: domainEvent.id,
+        aggregateType: domainEvent.aggregateType,
+        aggregateId: domainEvent.aggregateId,
+        eventType: domainEvent.eventType,
+        payload: domainEvent.payload,
+        actorUserId: domainEvent.actorUserId,
+        actingLegalEntityId: domainEvent.actingLegalEntityId,
+        occurredAt: domainEvent.occurredAt,
+      })
+      .from(domainEvent);
+    if (prefix) {
+      q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
+    }
+    const rows = await q.orderBy(desc(domainEvent.id)).limit(input.limit);
+    return rows.map((r) => ({
+      ...r,
+      payload: redactDomainEventPayload(r.eventType, r.payload, { includePii: input.includePii }),
+    }));
+  }
 
   const platform = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   platform.use("*", requirePlatformAdmin);
@@ -140,6 +172,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.get("/metrics/finance-issues", async (c) => {
     const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
     const staleBlockedPayoutCutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
     const [
       [failedRow],
       [dueRow],
@@ -148,6 +181,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       [artistsPendingRow],
       [staleKycRow],
       [docsPendingRow],
+      [staleLeadRow],
     ] = await Promise.all([
       container.db
         .select({ n: sql<number>`count(*)::int` })
@@ -192,6 +226,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         .select({ n: sql<number>`count(*)::int` })
         .from(legalEntityDocument)
         .where(eq(legalEntityDocument.reviewStatus, "pending")),
+      container.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(legalEntity)
+        .where(
+          and(
+            eq(legalEntity.kind, "organisation"),
+            eq(legalEntity.status, "lead"),
+            lt(legalEntity.createdAt, staleLeadCutoff),
+          ),
+        ),
     ]);
     return c.json({
       data: {
@@ -202,6 +246,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         artistsPendingApprovalCount: Number(artistsPendingRow?.n ?? 0),
         staleIdentitySessionsCount: Number(staleKycRow?.n ?? 0),
         documentsAwaitingReviewCount: Number(docsPendingRow?.n ?? 0),
+        staleLeadOrganisationsCount: Number(staleLeadRow?.n ?? 0),
       },
     });
   });
@@ -209,57 +254,75 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   /** Lists for onboarding / compliance queues (DSE20). */
   platform.get("/onboarding-issues", async (c) => {
     const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
-    const [entities, artists, staleKycSessions, pendingDocuments] = await Promise.all([
-      container.db
-        .select({
-          id: legalEntity.id,
-          displayName: legalEntity.displayName,
-          status: legalEntity.status,
-        })
-        .from(legalEntity)
-        .where(inArray(legalEntity.status, ["docs_received", "under_review"]))
-        .orderBy(asc(legalEntity.displayName))
-        .limit(80),
-      container.db
-        .select({
-          id: artistProfile.id,
-          displayName: artistProfile.displayName,
-          status: artistProfile.status,
-        })
-        .from(artistProfile)
-        .where(eq(artistProfile.status, "pending"))
-        .orderBy(asc(artistProfile.displayName))
-        .limit(80),
-      container.db
-        .select({
-          id: kycVerification.id,
-          userId: kycVerification.userId,
-          status: kycVerification.status,
-          createdAt: kycVerification.createdAt,
-        })
-        .from(kycVerification)
-        .where(
-          and(
-            inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-            lt(kycVerification.createdAt, staleIdentityCutoff),
-          ),
-        )
-        .orderBy(desc(kycVerification.createdAt))
-        .limit(80),
-      container.db
-        .select({
-          id: legalEntityDocument.id,
-          legalEntityId: legalEntityDocument.legalEntityId,
-          entityDisplayName: legalEntity.displayName,
-          uploadObjectId: legalEntityDocument.uploadObjectId,
-          uploadedAt: legalEntityDocument.uploadedAt,
-        })
-        .from(legalEntityDocument)
-        .innerJoin(legalEntity, eq(legalEntityDocument.legalEntityId, legalEntity.id))
-        .where(eq(legalEntityDocument.reviewStatus, "pending"))
-        .orderBy(desc(legalEntityDocument.uploadedAt))
-        .limit(80),
-    ]);
+    const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
+    const [entities, artists, staleKycSessions, pendingDocuments, staleLeadOrganisations] =
+      await Promise.all([
+        container.db
+          .select({
+            id: legalEntity.id,
+            displayName: legalEntity.displayName,
+            status: legalEntity.status,
+          })
+          .from(legalEntity)
+          .where(inArray(legalEntity.status, ["docs_received", "under_review"]))
+          .orderBy(asc(legalEntity.displayName))
+          .limit(80),
+        container.db
+          .select({
+            id: artistProfile.id,
+            displayName: artistProfile.displayName,
+            status: artistProfile.status,
+          })
+          .from(artistProfile)
+          .where(eq(artistProfile.status, "pending"))
+          .orderBy(asc(artistProfile.displayName))
+          .limit(80),
+        container.db
+          .select({
+            id: kycVerification.id,
+            userId: kycVerification.userId,
+            status: kycVerification.status,
+            createdAt: kycVerification.createdAt,
+          })
+          .from(kycVerification)
+          .where(
+            and(
+              inArray(kycVerification.status, ["created", "requires_input", "processing"]),
+              lt(kycVerification.createdAt, staleIdentityCutoff),
+            ),
+          )
+          .orderBy(desc(kycVerification.createdAt))
+          .limit(80),
+        container.db
+          .select({
+            id: legalEntityDocument.id,
+            legalEntityId: legalEntityDocument.legalEntityId,
+            entityDisplayName: legalEntity.displayName,
+            uploadObjectId: legalEntityDocument.uploadObjectId,
+            uploadedAt: legalEntityDocument.uploadedAt,
+          })
+          .from(legalEntityDocument)
+          .innerJoin(legalEntity, eq(legalEntityDocument.legalEntityId, legalEntity.id))
+          .where(eq(legalEntityDocument.reviewStatus, "pending"))
+          .orderBy(desc(legalEntityDocument.uploadedAt))
+          .limit(80),
+        container.db
+          .select({
+            id: legalEntity.id,
+            displayName: legalEntity.displayName,
+            createdAt: legalEntity.createdAt,
+          })
+          .from(legalEntity)
+          .where(
+            and(
+              eq(legalEntity.kind, "organisation"),
+              eq(legalEntity.status, "lead"),
+              lt(legalEntity.createdAt, staleLeadCutoff),
+            ),
+          )
+          .orderBy(asc(legalEntity.createdAt))
+          .limit(80),
+      ]);
 
     return c.json({
       data: {
@@ -267,6 +330,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         artistsPendingApproval: artists,
         staleIdentitySessions: staleKycSessions,
         documentsAwaitingReview: pendingDocuments,
+        staleLeadOrganisations,
       },
     });
   });
@@ -385,6 +449,63 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       .limit(200);
     return c.json({ data: rows });
   });
+
+  /** GET /admin/lots/withdrawal-requests — pending seller withdrawal tasks (B3). */
+  platform.get("/lots/withdrawal-requests", async (c) => {
+    const rows = await container.db
+      .select()
+      .from(adminReviewTask)
+      .where(
+        and(
+          eq(adminReviewTask.kind, "lot_withdrawal_request"),
+          eq(adminReviewTask.status, "pending"),
+        ),
+      )
+      .orderBy(desc(adminReviewTask.createdAt))
+      .limit(200);
+    return c.json({ data: rows });
+  });
+
+  /** POST /admin/lots/:id/approve-withdrawal-request — cancel lot after seller request (B3). */
+  platform.post(
+    "/lots/:id/approve-withdrawal-request",
+    zValidator("param", lotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
+      const { id } = c.req.valid("param");
+      const result = await container.lotService.approveWithdrawalRequest(userId, role, id);
+      if (result.isErr()) {
+        const e = result.error;
+        if (e instanceof LotError && e.code) {
+          return c.json({ error: e.message, code: e.code }, asHttpStatus(e.status));
+        }
+        if (e instanceof AuthzError) {
+          return c.json({ error: e.message }, asHttpStatus(e.status));
+        }
+        return c.json({ error: e.message }, asHttpStatus(e.status));
+      }
+      return c.json({ data: result.value });
+    },
+  );
+
+  /** GET /admin/audit/domain-events — paginated feed (PII redacted by default). */
+  platform.get(
+    "/audit/domain-events",
+    zValidator("query", adminDomainEventsQuerySchema),
+    async (c) => {
+      const { limit, eventTypePrefix } = c.req.valid("query");
+      const role = normalizeUserRoleOrClient(c.get("userRole"));
+      const includePii =
+        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
+      const data = await listRedactedDomainEvents({
+        limit,
+        includePii,
+        ...(eventTypePrefix !== undefined ? { eventTypePrefix } : {}),
+      });
+      return c.json({ data });
+    },
+  );
 
   /** GET /admin/audit/domain-events/export — redacted JSON/CSV export (PII bypass requires audit.read_pii). */
   platform.get("/audit/domain-events/export", async (c) => {
@@ -877,6 +998,24 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   const finance = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   finance.use("*", requireFinanceAccess);
+
+  /** GET /admin/finance/dispute-domain-events — `payment.dispute*` only (accountant-safe). */
+  finance.get(
+    "/finance/dispute-domain-events",
+    zValidator("query", adminFinanceDisputeDomainEventsQuerySchema),
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const role = normalizeUserRoleOrClient(c.get("userRole"));
+      const includePii =
+        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
+      const data = await listRedactedDomainEvents({
+        limit,
+        eventTypePrefix: "payment.dispute",
+        includePii,
+      });
+      return c.json({ data });
+    },
+  );
 
   finance.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";

@@ -122,6 +122,18 @@ const envSchema = z
      * Optional until bulk jobs are enabled in deploy.
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** Days before `pending` buyer payments auto-expire (cron). */
+    PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    /** Emergency: reject new bids with 503. */
+    DISABLE_BIDDING: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
+    /** Block `POST /users/register` (public sign-up). */
+    DISABLE_NEW_USER_REGISTRATION: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
+    /** Skip Stripe transfer initiation inside bulk payout settlement cron. */
+    DISABLE_PAYOUT_SETTLEMENT: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
     /** Support inbox for money-path alerts and ops (required in production). */
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** On-call / escalation inbox (required in production). */

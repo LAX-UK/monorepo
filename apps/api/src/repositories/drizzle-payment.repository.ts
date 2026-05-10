@@ -151,6 +151,20 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row?.n ?? 0;
   }
 
+  async listStalePendingBefore(
+    cutoff: Date,
+  ): Promise<{ id: string; lotId: string; buyerId: string }[]> {
+    const rows = await this.db
+      .select({
+        id: payment.id,
+        lotId: payment.lotId,
+        buyerId: payment.buyerId,
+      })
+      .from(payment)
+      .where(and(eq(payment.status, "pending"), lte(payment.createdAt, cutoff)));
+    return rows;
+  }
+
   async sumCapturedBetween(start: Date, end: Date): Promise<string> {
     const [row] = await this.db
       .select({ s: sql<string>`coalesce(sum(${payment.amount}), 0)::text` })

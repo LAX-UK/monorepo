@@ -131,6 +131,39 @@ export default async function AdminOnboardingIssuesPage() {
             </Card>
           </section>
 
+          <section id="stale-lead-orgs" className="scroll-mt-24 space-y-3">
+            <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              Organisations stuck in lead (&gt; 7 days)
+            </h2>
+            <Card>
+              <CardContent className="p-4">
+                {data.staleLeadOrganisations.length === 0 ? (
+                  <EmptyState title="Clear" description="No stale lead organisations." />
+                ) : (
+                  <ul className="divide-y divide-outline-variant/15">
+                    {data.staleLeadOrganisations.map((o) => (
+                      <li
+                        key={o.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2"
+                      >
+                        <span className="font-medium">{o.displayName}</span>
+                        <span className="text-xs text-on-surface-variant">
+                          Created {new Date(o.createdAt).toLocaleDateString("en-GB")}
+                        </span>
+                        <Link
+                          href={`/admin/legal-entities/${o.id}`}
+                          className="text-sm font-medium text-primary underline"
+                        >
+                          Open entity
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
           <section id="documents-awaiting" className="scroll-mt-24 space-y-3">
             <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
               Legal entity documents awaiting review

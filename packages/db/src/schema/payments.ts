@@ -19,6 +19,7 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "captured",
   "refunded",
   "requires_manual_review",
+  "cancelled",
 ]);
 
 export const payment = pgTable(
@@ -61,6 +62,7 @@ export const payment = pgTable(
       .where(
         sql`${table.status} in ('pending', 'authorized', 'captured', 'requires_manual_review')`,
       ),
+    index("payment_buyer_id_status_idx").on(table.buyerId, table.status),
   ],
 );
 

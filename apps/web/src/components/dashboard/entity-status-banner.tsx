@@ -1,7 +1,7 @@
 import "server-only";
 
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
-import type { LegalEntityStatus, LegalEntitySummary } from "@auction/types";
+import type { LegalEntitySummary } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -14,10 +14,11 @@ function supportMailto(subject: string) {
   return `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`;
 }
 
-function copyForStatus(status: LegalEntityStatus): {
+function copyForStatus(acting: LegalEntitySummary): {
   title: string;
   body: ReactNode;
 } | null {
+  const { status, kind } = acting;
   switch (status) {
     case "approved":
       return null;
@@ -50,7 +51,10 @@ function copyForStatus(status: LegalEntityStatus): {
         body: (
           <>
             Stripe verification in progress.{" "}
-            <Link className="font-medium underline underline-offset-2" href="/dashboard/team">
+            <Link
+              className="font-medium underline underline-offset-2"
+              href={kind === "individual" ? "/dashboard/seller/connect" : "/dashboard/team"}
+            >
               Continue setup
             </Link>
           </>
@@ -110,7 +114,7 @@ function copyForStatus(status: LegalEntityStatus): {
 
 export function isEntityStatusBannerVisible(acting: LegalEntitySummary | null): boolean {
   if (!acting) return false;
-  return copyForStatus(acting.status) !== null;
+  return copyForStatus(acting) !== null;
 }
 
 /**
@@ -118,7 +122,7 @@ export function isEntityStatusBannerVisible(acting: LegalEntitySummary | null): 
  */
 export function EntityStatusBanner({ acting }: Props) {
   if (!acting) return null;
-  const copy = copyForStatus(acting.status);
+  const copy = copyForStatus(acting);
   if (!copy) return null;
 
   return (

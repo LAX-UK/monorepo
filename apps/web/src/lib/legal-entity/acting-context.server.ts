@@ -1,6 +1,7 @@
 import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   type LegalEntitySummary,
   decodeActingContextCookie,
@@ -152,4 +153,18 @@ export async function getActingLegalEntityHeader(
   const { acting } = await resolveActingContext(userRole);
   if (!acting) return {};
   return { [X_LEGAL_ENTITY_ID_HEADER]: acting.id };
+}
+
+/** When the acting cookie references an admin impersonation session,
+ * {@link resolveActingContext} must know the caller is an `administrator`
+ * so it can validate via `GET /legal-entities/:id`. Fetch the role only in
+ * that case to avoid an extra `/users/me` on every SSR request. */
+export async function getUserRoleIfImpersonationActingCookie(): Promise<string | null | undefined> {
+  const jar = await cookies();
+  const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
+  const raw = cookieValue ? decodeURIComponent(cookieValue) : "";
+  const decoded = raw ? decodeActingContextCookie(raw) : null;
+  if (!decoded?.i?.sid) return undefined;
+  const user = await getServerSessionUser();
+  return user?.role ?? null;
 }

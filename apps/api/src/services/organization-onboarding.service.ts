@@ -94,6 +94,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+    stripeConnectDisabledReason: row.stripeConnectDisabledReason ?? null,
     xeroContactId: row.xeroContactId ?? null,
     vatNumber: row.vatNumber ?? null,
     marginSchemeEligible: row.marginSchemeEligible,

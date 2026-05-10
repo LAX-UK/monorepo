@@ -356,6 +356,7 @@ export type AdminFinanceIssuesPayload = {
   artistsPendingApprovalCount: number;
   staleIdentitySessionsCount: number;
   documentsAwaitingReviewCount: number;
+  staleLeadOrganisationsCount: number;
 };
 
 export async function getAdminFinanceIssues(): Promise<AdminFinanceIssuesPayload> {
@@ -376,6 +377,7 @@ export type AdminOnboardingIssuesPayload = {
     uploadObjectId: string;
     uploadedAt: string;
   }[];
+  staleLeadOrganisations: { id: string; displayName: string; createdAt: string }[];
 };
 
 export async function getAdminOnboardingIssues(): Promise<AdminOnboardingIssuesPayload> {
@@ -539,6 +541,8 @@ function parseLegalEntityFromAdminApi(raw: Record<string, unknown>): LegalEntity
     stripeConnectChargesEnabled: Boolean(raw.stripeConnectChargesEnabled ?? false),
     stripeConnectPayoutsEnabled: Boolean(raw.stripeConnectPayoutsEnabled ?? false),
     stripeConnectRequirementsCurrentlyDue,
+    stripeConnectDisabledReason:
+      raw.stripeConnectDisabledReason == null ? null : String(raw.stripeConnectDisabledReason),
     xeroContactId: raw.xeroContactId == null ? null : String(raw.xeroContactId),
     vatNumber: raw.vatNumber == null ? null : String(raw.vatNumber),
     marginSchemeEligible: Boolean(raw.marginSchemeEligible ?? false),
@@ -578,4 +582,57 @@ export async function getLotArtistBackfillReviewTasks(): Promise<LotArtistBackfi
     payload: (row.payload as Record<string, unknown>) ?? {},
     createdAt: new Date(String(row.createdAt ?? "")),
   }));
+}
+
+export type AdminDomainEventRow = {
+  id: string;
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  actorUserId: string | null;
+  actingLegalEntityId: string | null;
+  occurredAt: Date;
+};
+
+function parseAdminDomainEventRows(body: {
+  data: Record<string, unknown>[];
+}): AdminDomainEventRow[] {
+  return body.data.map((row) => ({
+    id: String(row.id ?? ""),
+    aggregateType: String(row.aggregateType ?? ""),
+    aggregateId: String(row.aggregateId ?? ""),
+    eventType: String(row.eventType ?? ""),
+    payload: (row.payload as Record<string, unknown>) ?? {},
+    actorUserId: row.actorUserId == null ? null : String(row.actorUserId),
+    actingLegalEntityId: row.actingLegalEntityId == null ? null : String(row.actingLegalEntityId),
+    occurredAt: new Date(String(row.occurredAt ?? "")),
+  }));
+}
+
+export async function getAdminDomainEvents(params: {
+  limit?: number;
+  eventTypePrefix?: string;
+}): Promise<AdminDomainEventRow[]> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 100));
+  if (params.eventTypePrefix?.trim()) {
+    qs.set("eventTypePrefix", params.eventTypePrefix.trim());
+  }
+  const res = await authedServerFetch(`/admin/audit/domain-events?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load domain events: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return parseAdminDomainEventRows(body);
+}
+
+/** Finance admin + platform admin: Stripe dispute-related domain events only. */
+export async function getAdminFinanceDisputeDomainEvents(params: {
+  limit?: number;
+}): Promise<AdminDomainEventRow[]> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 200));
+  const res = await authedServerFetch(`/admin/finance/dispute-domain-events?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load dispute domain events: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return parseAdminDomainEventRows(body);
 }

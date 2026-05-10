@@ -98,6 +98,7 @@ export const lot = pgTable(
     index("lot_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
+    index("lot_sale_id_status_idx").on(table.saleId, table.status),
     uniqueIndex("lot_sale_id_lot_number_uid")
       .on(table.saleId, table.lotNumber)
       .where(sql`${table.saleId} IS NOT NULL AND ${table.lotNumber} IS NOT NULL`),

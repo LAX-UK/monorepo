@@ -68,6 +68,7 @@ export const legalEntity = pgTable(
       .$type<string[]>()
       .notNull()
       .default([]),
+    stripeConnectDisabledReason: text("stripe_connect_disabled_reason"),
     xeroContactId: text("xero_contact_id"),
     vatNumber: text("vat_number"),
     marginSchemeEligible: boolean("margin_scheme_eligible").notNull().default(false),
