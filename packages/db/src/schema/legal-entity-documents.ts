@@ -15,6 +15,8 @@ export const legalEntityDocument = pgTable(
       .notNull()
       .references(() => uploadObject.id, { onDelete: "restrict" }),
     kind: text("kind").notNull(),
+    /** When `kind` is `other`, stores the human-readable slot label (e.g. estate probate docs). */
+    label: text("label"),
     reviewStatus: text("review_status").notNull().default("pending"),
     reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
       onDelete: "set null",
