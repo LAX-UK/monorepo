@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import { legalEntity, user } from "@auction/db/schema";
-import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { LegalEntity } from "@auction/types";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
+import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
@@ -106,8 +106,13 @@ export class StripeConnectService implements IStripeConnectService {
 
   async ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
     if (!this.stripe) throw new StripeConnectNotConfiguredError();
-    const { entity: row, ownerEmail, ownerFirstName, ownerLastName, ownerDisplayName } =
-      await this.loadLegalEntityWithOwner(legalEntityId);
+    const {
+      entity: row,
+      ownerEmail,
+      ownerFirstName,
+      ownerLastName,
+      ownerDisplayName,
+    } = await this.loadLegalEntityWithOwner(legalEntityId);
     if (row.stripeConnectAccountId) {
       return { stripeAccountId: row.stripeConnectAccountId, legalEntity: rowToEntity(row) };
     }
@@ -127,8 +132,13 @@ export class StripeConnectService implements IStripeConnectService {
         : (() => {
             const display = ownerDisplayName?.trim() || "";
             const parts = display.split(/\s+/).filter(Boolean);
+            const fromDisplay = parts.length > 0 ? parts[0] : undefined;
+            const fromEmail = ownerEmail.split("@")[0];
             const first =
-              ownerFirstName?.trim() || (parts.length > 0 ? parts[0]! : ownerEmail.split("@")[0]!);
+              ownerFirstName?.trim() ||
+              fromDisplay ||
+              (fromEmail !== "" ? fromEmail : undefined) ||
+              "Seller";
             const last =
               ownerLastName?.trim() ||
               (parts.length > 1 ? parts.slice(1).join(" ") : "") ||

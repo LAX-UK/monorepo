@@ -76,7 +76,9 @@ export async function adminPublishLotAction(formData: FormData): Promise<void> {
   const { adminLots } = getWriteContainer();
   const r = await adminLots.publish(id);
   if (!r.ok) {
-    redirect(`/admin/lots/${id}?error=${encodeURIComponent(r.message)}`);
+    const q = new URLSearchParams({ error: r.message });
+    if (r.code) q.set("error_code", r.code);
+    redirect(`/admin/lots/${id}?${q.toString()}`);
   }
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);
@@ -485,7 +487,7 @@ export async function adminPublishLotResultAction(lotId: string): Promise<Action
   const { adminLots } = getWriteContainer();
   const r = await adminLots.publish(id);
   if (!r.ok) {
-    return actionFailure(r.message, undefined, r.status);
+    return actionFailure(r.message, undefined, r.status, r.code);
   }
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);

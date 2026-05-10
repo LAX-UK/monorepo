@@ -701,27 +701,29 @@ async function main() {
   ]);
 
   // ── Credential accounts ────────────────────────────────────────────────────
-  await db.insert(account).values([
-    credentialAccount(ADMIN_ID),
-    credentialAccount(ACCOUNTANT_ID),
-    credentialAccount(USER1_ID),
-    credentialAccount(USER2_ID),
-    credentialAccount(GOOGLE_TEST_ID),
-    credentialAccount(APPLE_TEST_ID),
-    credentialAccount(GALLERY_ADMIN_ID),
-    credentialAccount(GALLERY_FINANCE_ID),
-    credentialAccount(SUSPENDED_ID),
-    credentialAccount(UNVERIFIED_ID),
-    credentialAccount(BOUNCED_ID),
-    credentialAccount(KYC_PENDING_ID),
-    credentialAccount(KYC_REJECTED_ID),
-    credentialAccount(ESTATE_OWNER_ID),
-    credentialAccount(COMPANY_OWNER_ID),
-    credentialAccount(CONSIGNOR_ID),
-    credentialAccount(BUYER_AGENT_ID),
-    credentialAccount(VIEWER_ID),
-    credentialAccount(SPECIALIST_ID),
-  ]);
+  await db
+    .insert(account)
+    .values([
+      credentialAccount(ADMIN_ID),
+      credentialAccount(ACCOUNTANT_ID),
+      credentialAccount(USER1_ID),
+      credentialAccount(USER2_ID),
+      credentialAccount(GOOGLE_TEST_ID),
+      credentialAccount(APPLE_TEST_ID),
+      credentialAccount(GALLERY_ADMIN_ID),
+      credentialAccount(GALLERY_FINANCE_ID),
+      credentialAccount(SUSPENDED_ID),
+      credentialAccount(UNVERIFIED_ID),
+      credentialAccount(BOUNCED_ID),
+      credentialAccount(KYC_PENDING_ID),
+      credentialAccount(KYC_REJECTED_ID),
+      credentialAccount(ESTATE_OWNER_ID),
+      credentialAccount(COMPANY_OWNER_ID),
+      credentialAccount(CONSIGNOR_ID),
+      credentialAccount(BUYER_AGENT_ID),
+      credentialAccount(VIEWER_ID),
+      credentialAccount(SPECIALIST_ID),
+    ]);
 
   // ── OAuth external accounts ────────────────────────────────────────────────
   await db.insert(externalAccount).values([
@@ -1235,12 +1237,48 @@ async function main() {
   // ── Legal entity members ────────────────────────────────────────────────────
   await db.insert(legalEntityMember).values([
     // ── Personal entity owners (original) ─────────────────────────────────────
-    { legalEntityId: LE.admin, userId: ADMIN_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
-    { legalEntityId: LE.accountant, userId: ACCOUNTANT_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
-    { legalEntityId: LE.user1, userId: USER1_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
-    { legalEntityId: LE.user2, userId: USER2_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
-    { legalEntityId: LE.google, userId: GOOGLE_TEST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
-    { legalEntityId: LE.apple, userId: APPLE_TEST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: stamp },
+    {
+      legalEntityId: LE.admin,
+      userId: ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.accountant,
+      userId: ACCOUNTANT_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.user1,
+      userId: USER1_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.user2,
+      userId: USER2_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.google,
+      userId: GOOGLE_TEST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LE.apple,
+      userId: APPLE_TEST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
 
     // ── Northbank Gallery members (original roles + new roles) ────────────────
     {
@@ -1310,19 +1348,97 @@ async function main() {
     },
 
     // ── Extended personal entity owners ──────────────────────────────────────
-    { legalEntityId: LEX.mayaPersonal, userId: GALLERY_ADMIN_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 75 * day) },
-    { legalEntityId: LEX.samirPersonal, userId: GALLERY_FINANCE_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 70 * day) },
-    { legalEntityId: LEX.suspended, userId: SUSPENDED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 60 * day) },
-    { legalEntityId: LEX.unverified, userId: UNVERIFIED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 1 * day) },
-    { legalEntityId: LEX.bounced, userId: BOUNCED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 40 * day) },
-    { legalEntityId: LEX.kycPending, userId: KYC_PENDING_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 7 * day) },
-    { legalEntityId: LEX.kycRejected, userId: KYC_REJECTED_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 14 * day) },
-    { legalEntityId: LEX.estateOwner, userId: ESTATE_OWNER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 50 * day) },
-    { legalEntityId: LEX.companyOwner, userId: COMPANY_OWNER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 55 * day) },
-    { legalEntityId: LEX.consignor, userId: CONSIGNOR_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 40 * day) },
-    { legalEntityId: LEX.buyerAgent, userId: BUYER_AGENT_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 35 * day) },
-    { legalEntityId: LEX.viewer, userId: VIEWER_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 20 * day) },
-    { legalEntityId: LEX.specialist, userId: SPECIALIST_ID, role: "owner", isPrimaryAdmin: true, acceptedAt: new Date(now - 60 * day) },
+    {
+      legalEntityId: LEX.mayaPersonal,
+      userId: GALLERY_ADMIN_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 75 * day),
+    },
+    {
+      legalEntityId: LEX.samirPersonal,
+      userId: GALLERY_FINANCE_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 70 * day),
+    },
+    {
+      legalEntityId: LEX.suspended,
+      userId: SUSPENDED_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 60 * day),
+    },
+    {
+      legalEntityId: LEX.unverified,
+      userId: UNVERIFIED_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 1 * day),
+    },
+    {
+      legalEntityId: LEX.bounced,
+      userId: BOUNCED_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 40 * day),
+    },
+    {
+      legalEntityId: LEX.kycPending,
+      userId: KYC_PENDING_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 7 * day),
+    },
+    {
+      legalEntityId: LEX.kycRejected,
+      userId: KYC_REJECTED_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 14 * day),
+    },
+    {
+      legalEntityId: LEX.estateOwner,
+      userId: ESTATE_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 50 * day),
+    },
+    {
+      legalEntityId: LEX.companyOwner,
+      userId: COMPANY_OWNER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 55 * day),
+    },
+    {
+      legalEntityId: LEX.consignor,
+      userId: CONSIGNOR_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 40 * day),
+    },
+    {
+      legalEntityId: LEX.buyerAgent,
+      userId: BUYER_AGENT_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 35 * day),
+    },
+    {
+      legalEntityId: LEX.viewer,
+      userId: VIEWER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 20 * day),
+    },
+    {
+      legalEntityId: LEX.specialist,
+      userId: SPECIALIST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: new Date(now - 60 * day),
+    },
 
     // ── New org entity owners ─────────────────────────────────────────────────
     {
@@ -1918,7 +2034,13 @@ async function main() {
 
   // ── Notification preferences ───────────────────────────────────────────────
   await db.insert(notificationPreference).values([
-    { userId: ADMIN_ID, paymentEmail: true, endingSoonEmail: false, quietStart: "22:00", quietEnd: "07:00" },
+    {
+      userId: ADMIN_ID,
+      paymentEmail: true,
+      endingSoonEmail: false,
+      quietStart: "22:00",
+      quietEnd: "07:00",
+    },
     { userId: USER1_ID, outbidPush: true, wonEmail: true, paymentEmail: true },
     { userId: USER2_ID, outbidEmail: true, lotEndedSellerEmail: true, paymentEmail: true },
     { userId: GALLERY_ADMIN_ID, paymentEmail: true, watchlistEmail: true },
@@ -2041,7 +2163,12 @@ async function main() {
     { id: CAT.drawings, name: "Drawings", slug: "drawings", parentId: null },
     { id: CAT.finePrints, name: "Fine Prints", slug: "fine-prints", parentId: null },
     { id: CAT.contemporary, name: "Contemporary", slug: "contemporary", parentId: CAT.paintings },
-    { id: CAT.impressionist, name: "Impressionist", slug: "impressionist", parentId: CAT.paintings },
+    {
+      id: CAT.impressionist,
+      name: "Impressionist",
+      slug: "impressionist",
+      parentId: CAT.paintings,
+    },
     { id: CAT.bronze, name: "Bronze", slug: "bronze", parentId: CAT.sculpture },
   ]);
 
@@ -2118,9 +2245,24 @@ async function main() {
   ]);
 
   await db.insert(artistAlias).values([
-    { artistProfileId: ARTIST.carolina, alias: "C. Price", kind: "signature", createdByUserId: ADMIN_ID },
-    { artistProfileId: ARTIST.carolina, alias: "Carolina P.", kind: "synonym", createdByUserId: ADMIN_ID },
-    { artistProfileId: ARTIST.pendingStudio, alias: "Northbank Archive", kind: "proposed", createdByUserId: GALLERY_ADMIN_ID },
+    {
+      artistProfileId: ARTIST.carolina,
+      alias: "C. Price",
+      kind: "signature",
+      createdByUserId: ADMIN_ID,
+    },
+    {
+      artistProfileId: ARTIST.carolina,
+      alias: "Carolina P.",
+      kind: "synonym",
+      createdByUserId: ADMIN_ID,
+    },
+    {
+      artistProfileId: ARTIST.pendingStudio,
+      alias: "Northbank Archive",
+      kind: "proposed",
+      createdByUserId: GALLERY_ADMIN_ID,
+    },
   ]);
 
   // ── Sale + lot dates ────────────────────────────────────────────────────────
@@ -3367,7 +3509,8 @@ async function main() {
       eventType: "legal_entity.archived",
       payload: {
         legalEntityId: LEO.galleryArchived,
-        reason: "Pop-up entity dissolved; all transactions migrated to primary Northbank Gallery entity.",
+        reason:
+          "Pop-up entity dissolved; all transactions migrated to primary Northbank Gallery entity.",
       },
       producer: "seed",
       actorUserId: ADMIN_ID,
@@ -3395,23 +3538,26 @@ async function main() {
   // running, so we delete then upsert as close together as possible to avoid
   // a duplicate-key race with the running test-env service.
   await db.delete(projectorState);
-  await db.insert(projectorState).values([
-    {
-      projectorName: "notification_fanout",
-      lastProcessedEventId: 0,
-      updatedAt: stamp,
-      lastError: "Seed state: projector has not processed seeded events yet.",
-    },
-    {
-      projectorName: "xero_payout_bill_sync",
-      lastProcessedEventId: 0,
-      updatedAt: stamp,
-      lastError: null,
-    },
-  ]).onConflictDoUpdate({
-    target: projectorState.projectorName,
-    set: { lastProcessedEventId: 0, updatedAt: stamp, lastError: null },
-  });
+  await db
+    .insert(projectorState)
+    .values([
+      {
+        projectorName: "notification_fanout",
+        lastProcessedEventId: 0,
+        updatedAt: stamp,
+        lastError: "Seed state: projector has not processed seeded events yet.",
+      },
+      {
+        projectorName: "xero_payout_bill_sync",
+        lastProcessedEventId: 0,
+        updatedAt: stamp,
+        lastError: null,
+      },
+    ])
+    .onConflictDoUpdate({
+      target: projectorState.projectorName,
+      set: { lastProcessedEventId: 0, updatedAt: stamp, lastError: null },
+    });
 
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log("");

@@ -69,10 +69,7 @@ export interface IKycService {
   /** Verify and process an `identity.verification_session.*` event.
    * Returns `{ verification: null }` when the event is unrelated or unmatched.
    */
-  handleWebhook(
-    rawBody: string,
-    signature: string | undefined,
-  ): Promise<KycWebhookHandleResult>;
+  handleWebhook(rawBody: string, signature: string | undefined): Promise<KycWebhookHandleResult>;
 
   /** Pure helper used by middleware: throws KycRequiredError when the user is
    * over threshold and not approved.

@@ -32,12 +32,7 @@ export default async function VerifyPendingPage({
             We sent the verification email to{" "}
             <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
           </p>
-          {email ? (
-            <VerifyPendingActions
-              email={email}
-              {...(next ? { next } : {})}
-            />
-          ) : null}
+          {email ? <VerifyPendingActions email={email} {...(next ? { next } : {})} /> : null}
         </div>
       </AuthLayout>
     </main>
