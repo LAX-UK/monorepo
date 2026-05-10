@@ -5,7 +5,10 @@ import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import { KycNotConfiguredError } from "../../services/interfaces/kyc-service.js";
 import { progressIndividualsAfterIdentityVerification } from "../../services/kyc/kyc-post-verification-progression.js";
 
-function recordStripeWebhookHttpError(surface: "identity" | "connect" | "payments", status: number): void {
+function recordStripeWebhookHttpError(
+  surface: "identity" | "connect" | "payments",
+  status: number,
+): void {
   if (status >= 500) recordMoneyPathEvent(`stripe_webhook_${surface}_5xx`);
   else if (status >= 400) recordMoneyPathEvent(`stripe_webhook_${surface}_4xx`);
 }

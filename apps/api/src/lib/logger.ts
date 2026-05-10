@@ -5,6 +5,27 @@ import { getRequestContext } from "./request-context.js";
 export type LogFields = Record<string, unknown>;
 export type AppLogger = pino.Logger;
 
+/** Shared redaction paths for `createBaseLogger` and tests. */
+export const PINO_REDACT: { paths: string[]; censor: string } = {
+  paths: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "req.body.password",
+    "req.body.email",
+    "stripe_secret_key",
+    "stripeSecretKey",
+    "*.stripe_secret_key",
+    "*.stripeSecretKey",
+    "*.client_secret",
+    "*.clientSecret",
+    "*.access_token",
+    "*.refresh_token",
+    "*.api_key",
+    "*.apiKey",
+  ],
+  censor: "[REDACTED]",
+};
+
 const loggerByLevel = new Map<string, AppLogger>();
 
 export function createBaseLogger(env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">): AppLogger {
@@ -19,6 +40,7 @@ export function createBaseLogger(env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">): AppL
       env: env.NODE_ENV,
     },
     timestamp: pino.stdTimeFunctions.isoTime,
+    redact: PINO_REDACT,
   });
   loggerByLevel.set(key, logger);
   return logger;
