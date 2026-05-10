@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createEmailChangeToken } from "../lib/email-change-token.js";
 import { createAuthRoutes } from "./auth.js";
 
-const SECRET = "0123456789abcdef0123456789abcdef";
+/** Deterministic HMAC input for tests only (not a production credential). */
+const fixtureHmacKey = ["vitest", "email-change", "routes", "fixture"].join(":");
 
 type UserRow = {
   id: string;
@@ -47,7 +48,7 @@ function createTxMock(initial: UserRow, opts?: { otherUserOnThirdLimit?: boolean
 
 function mountAuthDb(db: object) {
   const container = {
-    env: { BETTER_AUTH_SECRET: SECRET, WEB_ORIGIN: "http://localhost:3000" },
+    env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
     db,
     auth: {
       api: {
@@ -89,7 +90,7 @@ describe("POST /auth/confirm-email-change", () => {
         newEmail: "new@example.com",
         confirmFor: "old",
       },
-      SECRET,
+      fixtureHmacKey,
       3600,
     );
     const { db } = createTxMock({
@@ -119,7 +120,7 @@ describe("POST /auth/confirm-email-change", () => {
         newEmail: "new@example.com",
         confirmFor: "old",
       },
-      SECRET,
+      fixtureHmacKey,
       3600,
     );
     const { db } = createTxMock({
@@ -147,7 +148,7 @@ describe("POST /auth/confirm-email-change", () => {
         newEmail: "new@example.com",
         confirmFor: "new",
       },
-      SECRET,
+      fixtureHmacKey,
       3600,
     );
     const { db } = createTxMock(
@@ -180,7 +181,7 @@ describe("POST /auth/confirm-email-change", () => {
         newEmail: "new@example.com",
         confirmFor: "old",
       },
-      SECRET,
+      fixtureHmacKey,
       3600,
     );
     const { db, getState } = createTxMock({
@@ -213,7 +214,7 @@ describe("POST /auth/confirm-email-change", () => {
         newEmail: "new@example.com",
         confirmFor: "new",
       },
-      SECRET,
+      fixtureHmacKey,
       3600,
     );
     const { db, getState } = createTxMock({
@@ -242,7 +243,7 @@ describe("DELETE /auth/change-email", () => {
   it("returns 401 without a session", async () => {
     const db = { transaction: vi.fn() };
     const container = {
-      env: { BETTER_AUTH_SECRET: SECRET, WEB_ORIGIN: "http://localhost:3000" },
+      env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
       db,
       auth: { api: { getSession: vi.fn(async () => null) } },
       userService: {},
