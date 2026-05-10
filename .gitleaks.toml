@@ -4,7 +4,10 @@ title = "LAX auction monorepo"
 useDefault = true
 
 [allowlist]
-description = "Known-safe demo strings and seeds"
+description = "Known-safe demo strings, seeds, and package manager caches"
 paths = [
   '''packages/db/src/seed.ts''',
+  # Never scan pnpm content-store or node_modules (minified code triggers generic-api-key / jwt).
+  '''(^|/)\.pnpm-store/''',
+  '''(^|/)node_modules/''',
 ]
