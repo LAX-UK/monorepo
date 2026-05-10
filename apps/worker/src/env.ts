@@ -7,6 +7,8 @@ function emptyToUndefined(val: unknown): unknown {
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    /** Deployment environment for financial / ops validation — decoupled from NODE_ENV. */
+    APP_ENV: z.enum(["production", "test", "development"]).default("development"),
     PORT: z.coerce.number().default(3004),
     DATABASE_URL: z.string().min(1),
     DATABASE_URL_WORKER: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -63,15 +65,19 @@ const envSchema = z
         });
       }
     }
-    if (e.NODE_ENV === "production") {
+    // CRON secret required for all deployed environments.
+    if (e.APP_ENV !== "development") {
       const cron = e.CRON_INTERNAL_SECRET;
       if (!cron || cron.length < 32) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRON_INTERNAL_SECRET is required in production (min 32 characters)",
+          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
+    }
+    // Admin email required only in production (test stack uses debug channels).
+    if (e.APP_ENV === "production") {
       if (!e.ADMIN_EMAIL_ADDRESS) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
