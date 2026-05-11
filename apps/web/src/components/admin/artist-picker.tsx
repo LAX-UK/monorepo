@@ -37,9 +37,8 @@ type Props = {
   /** Pre-fill the create dialog name when the user hits "Create new". Useful
    * on the submission approve flow where we suggest the submitter's name. */
   createInitialName?: string;
-  /** Pre-fill `ownerUserId` on the create dialog (Flow B: submitter is the
-   * artist). The dialog itself does not surface this field, so it is passed
-   * straight through on submit. */
+  /** Pre-fill `ownerUserId` on the create dialog when the submitter is the
+   * maker. The dialog does not surface this field; it is passed through on submit. */
   createOwnerUserId?: string | null;
   /** Disable the entire picker (e.g. when the lot is published). */
   disabled?: boolean;
