@@ -15,13 +15,17 @@ export function Toolbar({ className, search, filters, views, actions, ...props }
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest/80 p-3 ring-1 ring-outline-variant/10 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest/90 p-4 shadow-sm ring-1 ring-outline-variant/10 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
         className,
       )}
       {...props}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        {search ? <div className="min-w-0 flex-1 sm:max-w-md">{search}</div> : null}
+        {search ? (
+          <search className="min-w-0 flex-1 sm:max-w-md" aria-label="Filter list">
+            {search}
+          </search>
+        ) : null}
         {filters ? <div className="flex flex-wrap items-center gap-2">{filters}</div> : null}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">

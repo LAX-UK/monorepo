@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
@@ -56,7 +57,7 @@ export default async function SellerOverviewPage() {
   ];
 
   return (
-    <div className="screen w-full space-y-8">
+    <DashboardPage className="space-y-8">
       <PageHeader
         title="Seller workspace"
         description="Track consignments from first submission through cataloguing, sale, and settlement."
@@ -183,6 +184,6 @@ export default async function SellerOverviewPage() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </DashboardPage>
   );
 }

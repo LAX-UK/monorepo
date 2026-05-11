@@ -1,4 +1,5 @@
 import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { getAdminArtistsByOwnerUserId, getAdminUserById } from "@/lib/data/http/admin.server";
@@ -26,7 +27,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
   }).toString()}`;
 
   return (
-    <div className="screen w-full space-y-8">
+    <AppScreen className="space-y-8">
       <Link
         href="/admin/users"
         className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -166,6 +167,6 @@ export default async function AdminUserDetailPage({ params }: Props) {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </AppScreen>
   );
 }

@@ -3,6 +3,7 @@ import {
   type AdminAttentionRow,
   AdminOperationsHomeView,
 } from "@/components/admin/admin-operations-home-view";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import {
   getAdminAttentionFeed,
   getAdminFinanceIssues,
@@ -83,13 +84,15 @@ export default async function AdminHomePage() {
   });
 
   return (
-    <AdminOperationsHomeView
-      metrics={metrics}
-      bidsPerMinute={bidsPerMinute}
-      activeLotIds={activeLotIds}
-      attention={attention}
-      activity={activity}
-      financeIssues={financeIssues}
-    />
+    <AppScreen>
+      <AdminOperationsHomeView
+        metrics={metrics}
+        bidsPerMinute={bidsPerMinute}
+        activeLotIds={activeLotIds}
+        attention={attention}
+        activity={activity}
+        financeIssues={financeIssues}
+      />
+    </AppScreen>
   );
 }

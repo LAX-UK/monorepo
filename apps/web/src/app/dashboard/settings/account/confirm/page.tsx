@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -16,7 +17,7 @@ export default async function ConfirmEmailChangePage({
     : { ok: false as const, error: "Missing token" };
 
   return (
-    <div className="space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Confirm email change"
         description="Finish updating your account email."
@@ -36,7 +37,7 @@ export default async function ConfirmEmailChangePage({
           </AlertDescription>
         </Alert>
       ) : (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not confirm</AlertTitle>
           <AlertDescription>{!result.ok ? result.error : "Something went wrong."}</AlertDescription>
         </Alert>
@@ -46,6 +47,6 @@ export default async function ConfirmEmailChangePage({
           Back to account settings
         </Link>
       </Button>
-    </div>
+    </DashboardPage>
   );
 }

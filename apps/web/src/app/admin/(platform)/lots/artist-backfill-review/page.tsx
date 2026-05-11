@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getLotArtistBackfillReviewTasks } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -14,7 +15,7 @@ export default async function LotArtistBackfillReviewPage() {
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Lot artist backfill review"
         description="Lots that need manual resolution after the SE-P23 classification passes (ambiguous text, corrupt IDs, or legacy user ids in artist_id)."
@@ -61,6 +62,6 @@ export default async function LotArtistBackfillReviewPage() {
           ))}
         </ul>
       )}
-    </div>
+    </AppScreen>
   );
 }

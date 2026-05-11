@@ -22,6 +22,49 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
+function LotsLayoutToggle({
+  searchQuery,
+  viewPipeline,
+}: {
+  searchQuery: string;
+  viewPipeline: boolean;
+}) {
+  const pipelineHref = (() => {
+    const qs = new URLSearchParams();
+    qs.set("view", "pipeline");
+    if (searchQuery) qs.set("q", searchQuery);
+    return `/admin/lots?${qs.toString()}`;
+  })();
+  const tableHref =
+    searchQuery.length > 0 ? `/admin/lots?q=${encodeURIComponent(searchQuery)}` : "/admin/lots";
+
+  return (
+    <fieldset className="flex flex-wrap gap-2 border-0 p-0">
+      <legend className="sr-only">Layout</legend>
+      <Link
+        href={tableHref}
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          !viewPipeline
+            ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        Table
+      </Link>
+      <Link
+        href={pipelineHref}
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+          viewPipeline
+            ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
+            : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
+        }`}
+      >
+        Pipeline
+      </Link>
+    </fieldset>
+  );
+}
+
 function lotColumns(): ColumnDef<AdminLotTableRow>[] {
   return [
     {
@@ -102,7 +145,8 @@ type Props = {
   listError: string | null;
   urlError: string | null;
   statusChips: ReactNode;
-  layoutToggle: ReactNode;
+  /** Trimmed search query (?q=) for layout links; rendered only on the client. */
+  searchQuery: string;
 };
 
 export function AdminLotsBoard({
@@ -112,7 +156,7 @@ export function AdminLotsBoard({
   listError,
   urlError,
   statusChips,
-  layoutToggle,
+  searchQuery,
 }: Props) {
   const { density } = useTableDensity();
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
@@ -125,7 +169,7 @@ export function AdminLotsBoard({
     return (
       <div className="space-y-8">
         {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
-        {layoutToggle}
+        <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
         {fullLots.length === 0 && !listError ? (
           <EmptyState
             title="No lots in the pipeline"
@@ -149,11 +193,11 @@ export function AdminLotsBoard({
       <EntityTableShell
         density={density}
         filters={
-          <>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {statusChips}
             <span className="hidden h-6 w-px shrink-0 bg-outline-variant/30 sm:block" aria-hidden />
-            {layoutToggle}
-          </>
+            <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
+          </div>
         }
         responsiveMode="auto"
         table={

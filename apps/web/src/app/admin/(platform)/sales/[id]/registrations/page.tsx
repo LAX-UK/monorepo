@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -8,7 +9,7 @@ export default async function SaleRegistrationsPage({ params }: Props) {
   const { id } = await params;
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Sale registrations"
         description={`Approve paddle requests for sale ${id.slice(0, 8)}… Assign paddles and capture onsite notes.`}
@@ -26,6 +27,6 @@ export default async function SaleRegistrationsPage({ params }: Props) {
           </Link>
         }
       />
-    </div>
+    </AppScreen>
   );
 }

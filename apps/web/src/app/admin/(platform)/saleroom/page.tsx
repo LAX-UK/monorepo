@@ -1,10 +1,11 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default function AdminSaleroomHubPage() {
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Saleroom console"
         description="Pick a sale to run clerk actions: manual bids, hammer / pass / withdraw, broadcast notices, and undo stacks."
@@ -22,6 +23,6 @@ export default function AdminSaleroomHubPage() {
           </Link>
         }
       />
-    </div>
+    </AppScreen>
   );
 }

@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -8,7 +9,7 @@ export default async function AdminSaleroomSalePage({ params }: Props) {
   const { saleId } = await params;
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title={`Saleroom · ${saleId.slice(0, 8)}…`}
         description="Keyboard shortcuts, auctioneer high-contrast skin, and clerk_action persistence will populate this shell."
@@ -26,6 +27,6 @@ export default async function AdminSaleroomSalePage({ params }: Props) {
           </Link>
         }
       />
-    </div>
+    </AppScreen>
   );
 }

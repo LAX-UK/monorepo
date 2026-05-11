@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
@@ -326,7 +327,9 @@ export function NotificationsInboxBoard() {
   );
 
   return (
-    <div className={`mx-auto max-w-5xl px-4 py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}>
+    <DashboardPage
+      className={`mx-auto max-w-5xl py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}
+    >
       <PageHeader
         title="Notifications"
         description="Manage alerts for bids, wins, and saved lots. Updates in real time when you are online."
@@ -342,7 +345,7 @@ export function NotificationsInboxBoard() {
         }
       />
 
-      <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-8 flex flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-surface-container-high/50 p-1">
             <TabsTrigger value="all" className="font-label text-xs uppercase tracking-widest">
@@ -368,7 +371,7 @@ export function NotificationsInboxBoard() {
                     <Input
                       type="search"
                       placeholder="Filter by type (e.g. outbid)"
-                      className="min-h-11 bg-surface-container-lowest text-base md:text-sm"
+                      className="min-h-11 bg-surface-container-low text-base md:text-sm"
                       {...field}
                     />
                   </FormControl>
@@ -439,7 +442,7 @@ export function NotificationsInboxBoard() {
         ) : (
           <>
             {compactView ? (
-              <ul className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest">
+              <ul className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
                 {items.map((n) => (
                   <li
                     key={n.id}
@@ -458,7 +461,7 @@ export function NotificationsInboxBoard() {
                       <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
                         {n.message}
                       </p>
-                      <p className="mt-2 text-xs text-on-surface-variant/80">
+                      <p className="mt-2 text-xs tabular-nums text-on-surface-variant/80">
                         {n.type} · {new Date(n.createdAt).toLocaleString()}
                       </p>
                     </div>
@@ -476,7 +479,7 @@ export function NotificationsInboxBoard() {
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
                     <nav
                       aria-label="Notification threads"
-                      className="max-h-[70vh] overflow-y-auto rounded-sm border border-outline-variant/15 bg-surface-container-lowest/60"
+                      className="max-h-[70vh] overflow-y-auto rounded-xl border border-outline-variant/15 bg-surface-container-lowest/60 shadow-sm"
                     >
                       {items.map((n) => {
                         const isActive = n.id === focusedId;
@@ -520,7 +523,7 @@ export function NotificationsInboxBoard() {
                                     {n.title}
                                   </span>
                                 </span>
-                                <span className="shrink-0 font-body text-[11px] text-on-surface-variant/90">
+                                <span className="shrink-0 font-body text-[11px] tabular-nums text-on-surface-variant/90">
                                   {new Date(n.createdAt).toLocaleString()}
                                 </span>
                               </span>
@@ -541,7 +544,7 @@ export function NotificationsInboxBoard() {
                     </nav>
                     <article
                       aria-live="polite"
-                      className="min-h-[280px] rounded-sm border border-outline-variant/15 bg-surface-container-lowest/40 p-6"
+                      className="min-h-[280px] rounded-xl border border-outline-variant/15 bg-surface-container-lowest/40 p-6 shadow-sm"
                     >
                       {focused ? (
                         <div className="space-y-4">
@@ -552,7 +555,7 @@ export function NotificationsInboxBoard() {
                             <p className="mt-2 font-body text-sm text-on-surface">
                               {focused.message}
                             </p>
-                            <p className="mt-3 font-body text-xs text-on-surface-variant">
+                            <p className="mt-3 font-body text-xs tabular-nums text-on-surface-variant">
                               {focused.type} · {new Date(focused.createdAt).toLocaleString()}
                             </p>
                           </div>
@@ -590,11 +593,13 @@ export function NotificationsInboxBoard() {
                   </div>
                 </div>
                 <div className="lg:hidden">
-                  <DataTable
-                    columns={columns}
-                    data={items}
-                    emptyMessage="No notifications in this view."
-                  />
+                  <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+                    <DataTable
+                      columns={columns}
+                      data={items}
+                      emptyMessage="No notifications in this view."
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -625,6 +630,6 @@ export function NotificationsInboxBoard() {
         </Link>
         .
       </p>
-    </div>
+    </DashboardPage>
   );
 }

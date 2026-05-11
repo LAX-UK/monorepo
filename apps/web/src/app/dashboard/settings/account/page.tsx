@@ -1,4 +1,5 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import type { LegalEntityStatus } from "@auction/types";
@@ -51,7 +52,7 @@ export default async function AccountSettingsPage({
       : [];
 
   return (
-    <div className="space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Account"
         description="Manage your sign-in email and account-level settings."
@@ -135,7 +136,7 @@ export default async function AccountSettingsPage({
           </Link>
         </CardContent>
       </Card>
-    </div>
+    </DashboardPage>
   );
 }
 

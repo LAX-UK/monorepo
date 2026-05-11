@@ -1,4 +1,5 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import {
   getAdminArtistList,
@@ -40,7 +41,7 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <AppScreen className="mx-auto max-w-2xl space-y-8">
       <Link
         href="/admin/lots"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -65,6 +66,6 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
         sellers={users.rows}
         artists={artists}
       />
-    </div>
+    </AppScreen>
   );
 }

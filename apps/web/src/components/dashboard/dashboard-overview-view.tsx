@@ -29,7 +29,12 @@ export function DashboardOverviewView({ vm, featureV2 = true }: Props) {
         slots={{
           header: (
             <PageHeader
-              className="mb-0"
+              className="mb-0 border-0 pb-0"
+              meta={
+                <span className="font-label text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  Your dashboard
+                </span>
+              }
               title={`Welcome back, ${vm.firstName}`}
               description={buildOverviewDescription(vm)}
               actions={

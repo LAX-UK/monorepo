@@ -8,7 +8,8 @@ type KpiGridProps = {
 
 export function KpiGrid({ tiles, columns = 4, className }: KpiGridProps) {
   return (
-    <div
+    <section
+      aria-label="Summary at a glance"
       className={cn(
         "grid grid-cols-1 gap-3 sm:grid-cols-2",
         columns === 6 ? "lg:grid-cols-3 xl:grid-cols-6" : "xl:grid-cols-4",
@@ -18,6 +19,6 @@ export function KpiGrid({ tiles, columns = 4, className }: KpiGridProps) {
       {tiles.map((tile, index) => (
         <KpiTile key={`${String(tile.label)}-${index}`} {...tile} />
       ))}
-    </div>
+    </section>
   );
 }

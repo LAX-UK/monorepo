@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminDomainEvents } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -26,7 +27,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
   const examples = ["payment.", "lot.", "legal_entity.", "payout."];
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Domain events"
         description="Recent audit trail (PII redacted server-side). Narrow by event type prefix; export CSV/JSON from the API for deeper analysis."
@@ -102,6 +103,6 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
           </table>
         </div>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

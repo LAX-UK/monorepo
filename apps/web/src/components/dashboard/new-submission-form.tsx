@@ -69,7 +69,7 @@ export function NewSubmissionForm({ categories }: Props) {
     <div className="mx-auto max-w-2xl space-y-8">
       <Link
         href="/dashboard/submissions"
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        className="inline-flex min-h-10 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
       >
         ← Submissions
       </Link>
