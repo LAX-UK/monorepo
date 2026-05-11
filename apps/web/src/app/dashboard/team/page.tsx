@@ -1,12 +1,12 @@
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { describeMemberFetchFailure } from "@/lib/legal-entity/member-fetch-error-messages";
 import {
-  type ActingLegalEntitySummary,
-  X_LEGAL_ENTITY_ID_HEADER,
-} from "@/lib/legal-entity/client-acting-context";
+  createLegalEntityMemberListGateway,
+  type ILegalEntityMemberListGateway,
+} from "@/lib/legal-entity/member-list.gateway.server";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -17,30 +17,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
-
-type MemberRow = {
-  id: string;
-  legalEntityId: string;
-  userId: string;
-  role: LegalEntityMemberRole;
-  isPrimaryAdmin: boolean;
-  invitedAt: string | null;
-  acceptedAt: string | null;
-  createdAt: string;
-  user: { id: string; email: string; name: string; image: string | null };
-};
-
-async function fetchMembers(
-  acting: ActingLegalEntitySummary,
-): Promise<{ ok: true; data: MemberRow[] } | { ok: false; status: number }> {
-  const res = await authedServerFetch("/legal-entities/members", {
-    headers: { [X_LEGAL_ENTITY_ID_HEADER]: acting.id },
-    cache: "no-store",
-  });
-  if (!res.ok) return { ok: false, status: res.status };
-  const body = (await res.json()) as { data: MemberRow[] };
-  return { ok: true, data: body.data };
-}
 
 export default async function DashboardTeamPage() {
   const user = await requireAuthenticatedUser({
@@ -85,8 +61,11 @@ export default async function DashboardTeamPage() {
     );
   }
 
-  const fetched = await fetchMembers(acting);
+  const memberListGateway: ILegalEntityMemberListGateway =
+    createLegalEntityMemberListGateway();
+  const fetched = await memberListGateway.fetchMemberListForActing(acting);
   if (!fetched.ok) {
+    const description = describeMemberFetchFailure(fetched.status, fetched.errorCode);
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
@@ -96,9 +75,7 @@ export default async function DashboardTeamPage() {
         />
         <Alert variant="destructive">
           <AlertTitle>Could not load members</AlertTitle>
-          <AlertDescription>
-            We couldn't fetch the member list (status {fetched.status}). Refresh to try again.
-          </AlertDescription>
+          <AlertDescription>{description}</AlertDescription>
         </Alert>
       </div>
     );
