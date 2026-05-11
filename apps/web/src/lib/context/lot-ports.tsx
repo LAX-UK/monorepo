@@ -3,8 +3,8 @@
 import type { BidWriter } from "@/lib/data/contracts";
 import { createHttpBidWriter } from "@/lib/data/http/bids";
 import type { LotRealtimePort, RealtimeHealthPort } from "@/lib/realtime/contracts";
-import { createSocketHealthAdapter } from "@/lib/realtime/socket-health-adapter";
 import { createSocketLotRealtime } from "@/lib/realtime/socket-adapter";
+import { createSocketHealthAdapter } from "@/lib/realtime/socket-health-adapter";
 import { type ReactNode, createContext, useContext, useMemo } from "react";
 
 export type LotPortsValue = {
