@@ -21,7 +21,7 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
     <AppScreen className="space-y-6">
       <PageHeader
         title={`Edit ${artist.displayName}`}
-        description="Manage profile copy, public visibility, and client ownership linkage."
+        description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
       />
       <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
 

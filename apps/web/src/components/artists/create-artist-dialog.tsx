@@ -28,8 +28,8 @@ type Props = {
   /** Pre-fill `kind` when the host already knows it (e.g. picker has the
    * "Maker" filter chip selected). */
   defaultKind?: Kind | undefined;
-  /** When set, the new artist is linked to this user (Flow B: submitter is
-   * the artist). The dialog passes it through on submit; not user-editable. */
+  /** When set, the new artist is linked to this user (e.g. submitter is the
+   * maker). The dialog passes it through on submit; not user-editable. */
   ownerUserId?: string | null;
 };
 
