@@ -39,9 +39,9 @@ export function UserLinkSection({ control, disabled = false, emphasize = false }
             {emphasize ? (
               <>
                 <span className="font-semibold text-on-surface">Required for maker–seller.</span>{" "}
-                Search by name or email. Use this when the seller is also the maker of the work. It does{" "}
-                <span className="font-semibold text-on-surface">not</span> grant the client edit
-                access to this catalogue profile—admins remain the sole writers.
+                Search by name or email. Use this when the seller is also the maker of the work. It
+                does <span className="font-semibold text-on-surface">not</span> grant the client
+                edit access to this catalogue profile—admins remain the sole writers.
               </>
             ) : (
               <>
