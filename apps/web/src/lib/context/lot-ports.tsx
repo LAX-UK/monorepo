@@ -2,13 +2,15 @@
 
 import type { BidWriter } from "@/lib/data/contracts";
 import { createHttpBidWriter } from "@/lib/data/http/bids";
-import type { LotRealtimePort } from "@/lib/realtime/contracts";
+import type { LotRealtimePort, RealtimeHealthPort } from "@/lib/realtime/contracts";
+import { createSocketHealthAdapter } from "@/lib/realtime/socket-health-adapter";
 import { createSocketLotRealtime } from "@/lib/realtime/socket-adapter";
 import { type ReactNode, createContext, useContext, useMemo } from "react";
 
 export type LotPortsValue = {
   bidWriter: BidWriter;
   realtime: LotRealtimePort;
+  health: RealtimeHealthPort;
 };
 
 const LotPortsContext = createContext<LotPortsValue | null>(null);
@@ -17,17 +19,20 @@ export function LotPortsProvider({
   children,
   bidWriter,
   realtime,
+  health,
 }: {
   children: ReactNode;
   bidWriter?: BidWriter;
   realtime?: LotRealtimePort;
+  health?: RealtimeHealthPort;
 }) {
   const value = useMemo<LotPortsValue>(
     () => ({
       bidWriter: bidWriter ?? createHttpBidWriter(),
       realtime: realtime ?? createSocketLotRealtime(),
+      health: health ?? createSocketHealthAdapter(),
     }),
-    [bidWriter, realtime],
+    [bidWriter, realtime, health],
   );
   return <LotPortsContext.Provider value={value}>{children}</LotPortsContext.Provider>;
 }

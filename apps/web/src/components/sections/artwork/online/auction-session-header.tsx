@@ -1,13 +1,18 @@
 import type { AuctionSessionHeaderVM } from "@/components/sections/artwork/artwork-view-models";
 import { cn } from "@auction/ui";
+import type { ReactNode } from "react";
 
 type Props = {
   vm: AuctionSessionHeaderVM;
+  /** e.g. live latency badge — aligned end, above paddle when both exist. */
+  rightSlot?: ReactNode;
   className?: string;
 };
 
 /** Sticky session bar: sale + lot; paddle / verified when known. */
-export function AuctionSessionHeader({ vm, className }: Props) {
+export function AuctionSessionHeader({ vm, rightSlot, className }: Props) {
+  const showRightColumn = rightSlot != null || Boolean(vm.paddleNumber);
+
   return (
     <header
       className={cn(
@@ -25,15 +30,20 @@ export function AuctionSessionHeader({ vm, className }: Props) {
           </p>
         </div>
 
-        {vm.paddleNumber ? (
-          <div className="flex shrink-0 flex-col items-end gap-0.5">
-            <span className="font-body text-xs font-medium uppercase tracking-wide text-[#050505] dark:text-on-surface">
-              {vm.paddleNumber}
-            </span>
-            {vm.userVerified ? (
-              <span className="font-body text-[13px] font-medium text-[#1F9A00] dark:text-success">
-                Verified user
-              </span>
+        {showRightColumn ? (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {rightSlot}
+            {vm.paddleNumber ? (
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="font-body text-xs font-medium uppercase tracking-wide text-[#050505] dark:text-on-surface">
+                  {vm.paddleNumber}
+                </span>
+                {vm.userVerified ? (
+                  <span className="font-body text-[13px] font-medium text-[#1F9A00] dark:text-success">
+                    Verified user
+                  </span>
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : null}

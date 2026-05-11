@@ -7,6 +7,7 @@ import type {
 } from "@/components/sections/artwork/artwork-view-models";
 import { AuctionSessionHeader } from "@/components/sections/artwork/online/auction-session-header";
 import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tabs";
+import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
@@ -56,7 +57,10 @@ export function ArtworkOnlineLayout({
       </h1>
       <div className="mx-auto max-w-[1440px] px-4 pb-20 pt-6 sm:px-6 md:px-8">
         <div className="mt-0 lg:mt-2">
-          <AuctionSessionHeader vm={sessionHeader} />
+          <AuctionSessionHeader
+            vm={sessionHeader}
+            rightSlot={<LatencyBadgeContainer lotId={auction.id} />}
+          />
         </div>
 
         <div className="mt-6 flex flex-col gap-8 lg:mt-8 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">

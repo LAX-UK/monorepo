@@ -16,6 +16,8 @@ export type BidUpdateEvent = {
   endTime?: string | undefined;
   /** Present when the previous high bidder was displaced (for outbid toasts). */
   outbidUserId?: string | undefined;
+  /** Server wall-clock ms when the API published the bid event (propagation diagnostics). */
+  emittedAt?: number | undefined;
 };
 
 export type LotEndedEvent = {
