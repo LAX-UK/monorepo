@@ -7,6 +7,7 @@ import { BidService } from "./bid.service.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
@@ -640,5 +641,49 @@ describe("BidService.placeBid", () => {
     expect(lotRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
     expect(cancelLotJobs).toHaveBeenCalledWith("auc-1");
     expect(notifyLotEnded).toHaveBeenCalledOnce();
+  });
+});
+
+describe("BidService.placeBidWithIdempotency", () => {
+  const strategyFactory = new LotStrategyFactory();
+
+  it("replays cached payload when idempotency store returns a hit", async () => {
+    const cachedBid = createBid({ id: "bid-replay" });
+    const idempotencyStore: IIdempotencyStore = {
+      get: vi.fn().mockResolvedValue(JSON.stringify({ data: cachedBid })),
+      setWithExpiry: vi.fn(),
+    };
+    const lotRepo = baseLotRepo();
+    const bidRepo = baseBidRepo();
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifications = new NotificationService(
+      { notifyBidPlaced: vi.fn() },
+      { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
+    );
+    const service = new BidService(
+      createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      idempotencyStore,
+    );
+    const out = await service.placeBidWithIdempotency({
+      placedByUserId: "u1",
+      idempotencyKey: "k1",
+      lotId: "auc-1",
+      amount: 100,
+    });
+    expect(out.type).toBe("replay");
+    if (out.type === "replay") {
+      expect(out.body.data.id).toBe("bid-replay");
+    }
+    expect(idempotencyStore.setWithExpiry).not.toHaveBeenCalled();
   });
 });

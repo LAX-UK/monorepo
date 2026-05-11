@@ -1,20 +1,17 @@
-import type { CreateItemSubmissionInput, UpdateItemSubmissionInput } from "@auction/types";
-import { type UserRole, roleHasCapability } from "@auction/types";
+import type { CreateItemSubmissionInput } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import {
   adminBulkSubmissionsBodySchema,
-  adminSubmissionNotesSchema,
   approveSubmissionBodySchema,
   createItemSubmissionSchema,
   listSubmissionsQuerySchema,
   rejectSubmissionBodySchema,
   submissionIdParamSchema,
-  updateItemSubmissionSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { presentSubmissionImages, presentSubmissionsImages } from "../lib/media-presenters.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireBuyerRole,
@@ -50,13 +47,13 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         ...body,
         legalEntityId: ctx.legalEntityId,
       } as CreateItemSubmissionInput;
-      const result = await container.itemSubmissionService.createDraft(ctx.legalEntityId, input);
+      const result = await container.itemSubmissionService.createDraftForSellerApi(
+        ctx.legalEntityId,
+        input,
+      );
       if (result.isErr())
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      return c.json(
-        { data: await presentSubmissionImages(container.mediaUrlResolver, result.value) },
-        201,
-      );
+      return c.json({ data: result.value }, 201);
     },
   );
 
@@ -68,12 +65,15 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const q = c.req.valid("query");
-      const rows = await container.itemSubmissionService.listForSeller(ctx.legalEntityId, {
-        status: q.status,
-        limit: q.limit,
-        offset: q.offset,
-      });
-      return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
+      const { data } = await container.itemSubmissionService.listSubmissionsForSellerApi(
+        ctx.legalEntityId,
+        {
+          status: q.status,
+          limit: q.limit,
+          offset: q.offset,
+        },
+      );
+      return c.json({ data });
     },
   );
 
@@ -84,14 +84,14 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const rows = await container.itemSubmissionService.listForAdmin({
+      const { data } = await container.itemSubmissionService.listSubmissionsForAdminApi({
         status: q.status,
         legalEntityId: q.sellerId,
         q: q.q,
         limit: q.limit,
         offset: q.offset,
       });
-      return c.json({ data: await presentSubmissionsImages(container.mediaUrlResolver, rows) });
+      return c.json({ data });
     },
   );
 
@@ -103,22 +103,16 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const { id } = c.req.valid("param");
       const role = (c.get("userRole") ?? "client") as UserRole;
-      if (roleHasCapability(role, "platform.admin.full")) {
-        const result = await container.itemSubmissionService.getForAdmin(id);
-        if (result.isErr()) {
-          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-        }
-        return c.json({
-          data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-        });
-      }
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
-      const result = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
-      if (result.isErr())
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
+      const result = await container.itemSubmissionService.getSubmissionForViewerApi({
+        submissionId: id,
+        role,
+        sellerLegalEntityId: ctx.legalEntityId,
       });
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: result.value });
     },
   );
 
@@ -139,40 +133,20 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       } catch {
         raw = {};
       }
-      if (roleHasCapability(role, "platform.admin.full")) {
-        const parsed = adminSubmissionNotesSchema.safeParse(raw);
-        if (!parsed.success) {
-          return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
-        }
-        const result = await container.itemSubmissionService.updateForActor({
-          actorId: userId,
-          role,
-          submissionId: id,
-          adminNotes: parsed.data,
-        });
-        if (result.isErr()) {
-          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-        }
-        return c.json({
-          data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-        });
-      }
-      const parsed = updateItemSubmissionSchema.safeParse(raw);
-      if (!parsed.success) {
-        return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
-      }
-      const result = await container.itemSubmissionService.updateForActor({
-        actorId: ctx.legalEntityId,
-        role,
+      const out = await container.itemSubmissionService.patchSubmissionFromRequestBody({
+        rawBody: raw,
         submissionId: id,
-        sellerPatch: parsed.data as UpdateItemSubmissionInput,
+        role,
+        userId,
+        sellerLegalEntityId: ctx.legalEntityId,
       });
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      if (out.kind === "bad_request") {
+        return c.json({ error: "Invalid body", details: out.details }, 400);
       }
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-      });
+      if (out.kind === "err") {
+        return c.json({ error: out.error.message }, asHttpStatus(out.error.status));
+      }
+      return c.json({ data: out.data });
     },
   );
 
@@ -185,13 +159,14 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.submitForReview(ctx.legalEntityId, id);
+      const result = await container.itemSubmissionService.submitForReviewForSellerApi(
+        ctx.legalEntityId,
+        id,
+      );
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-      });
+      return c.json({ data: result.value });
     },
   );
 
@@ -204,13 +179,14 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.withdraw(ctx.legalEntityId, id);
+      const result = await container.itemSubmissionService.withdrawForSellerApi(
+        ctx.legalEntityId,
+        id,
+      );
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-      });
+      return c.json({ data: result.value });
     },
   );
 
@@ -222,13 +198,11 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.startReview(adminId, id);
+      const result = await container.itemSubmissionService.startReviewForAdminApi(adminId, id);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-      });
+      return c.json({ data: result.value });
     },
   );
 
@@ -240,24 +214,20 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const adminId = c.get("userId") as string;
       const { ids, op, reason, reviewNotes } = c.req.valid("json");
-      if (op === "reject" && !reason?.trim()) {
-        return c.json({ error: "Reason is required to reject submissions" }, 400);
+      const out = await container.itemSubmissionService.bulkApproveOrReject({
+        adminId,
+        ids,
+        op,
+        reason,
+        reviewNotes,
+      });
+      if (out.kind === "bad_request") {
+        return c.json({ error: out.message }, 400);
       }
-      for (const id of ids) {
-        const result =
-          op === "approve"
-            ? await container.itemSubmissionService.approve(adminId, id, { reviewNotes })
-            : await container.itemSubmissionService.reject(
-                adminId,
-                id,
-                reason?.trim() ?? "",
-                reviewNotes,
-              );
-        if (result.isErr()) {
-          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-        }
+      if (out.kind === "err") {
+        return c.json({ error: out.error.message }, asHttpStatus(out.error.status));
       }
-      return c.json({ ok: true, data: { count: ids.length } });
+      return c.json({ ok: true, data: { count: out.count } });
     },
   );
 
@@ -271,19 +241,11 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionService.approve(adminId, id, body);
+      const result = await container.itemSubmissionService.approveForAdminApi(adminId, id, body);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
-      return c.json({
-        data: {
-          submission: await presentSubmissionImages(
-            container.mediaUrlResolver,
-            result.value.submission,
-          ),
-          lot: result.value.lot,
-        },
-      });
+      return c.json({ data: result.value });
     },
   );
 
@@ -297,7 +259,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { rejectionReason, reviewNotes } = c.req.valid("json");
-      const result = await container.itemSubmissionService.reject(
+      const result = await container.itemSubmissionService.rejectForAdminApi(
         adminId,
         id,
         rejectionReason,
@@ -306,9 +268,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
-      return c.json({
-        data: await presentSubmissionImages(container.mediaUrlResolver, result.value),
-      });
+      return c.json({ data: result.value });
     },
   );
 

@@ -19,7 +19,6 @@ import { LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import {
   presentLotImages,
-  presentLotsImages,
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
@@ -36,7 +35,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/", zValidator("query", listSalesQuerySchema), async (c) => {
     const query = c.req.valid("query");
-    const data = await container.saleService.list({
+    const { data } = await container.saleService.listSalesForPublicApi({
       status: query.statuses ? undefined : query.status,
       statuses: query.statuses,
       categoryId: query.categoryId,
@@ -45,22 +44,15 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       offset: query.offset,
       sort: query.sort,
     });
-    return c.json({ data: await presentSalesWithLotsImages(container.mediaUrlResolver, data) });
+    return c.json({ data });
   });
 
   r.get("/:id", optionalAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const bundle = await container.saleService.getByIdWithLots(id);
-    if (!bundle) return c.json({ error: "Not found" }, 404);
     const userId = c.get("userId");
-    const viewer = userId
-      ? { isFollowing: await container.saleFollowService.isFollowing(userId, id) }
-      : { isFollowing: false };
-    const [sale, lots] = await Promise.all([
-      presentSaleImages(container.mediaUrlResolver, bundle.sale),
-      presentLotsImages(container.mediaUrlResolver, bundle.lots),
-    ]);
-    return c.json({ data: { sale, lots, viewer } });
+    const detail = await container.saleService.getSaleDetailForPublicApi(id, userId);
+    if (!detail) return c.json({ error: "Not found" }, 404);
+    return c.json(detail);
   });
 
   r.get(
@@ -70,21 +62,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     async (c) => {
       const { id } = c.req.valid("param");
       const q = c.req.valid("query");
-      const page = await container.saleService.listLotsPage(id, {
+      const page = await container.saleService.listSaleLotsPageForPublicApi(id, {
         limit: q.limit,
         offset: q.offset,
         sort: q.sort,
       });
       if (!page) return c.json({ error: "Not found" }, 404);
-      return c.json({
-        data: {
-          items: await presentLotsImages(container.mediaUrlResolver, page.items),
-          total: page.total,
-          limit: q.limit,
-          offset: q.offset,
-          sort: q.sort,
-        },
-      });
+      return c.json(page);
     },
   );
 

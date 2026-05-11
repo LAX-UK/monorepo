@@ -4,6 +4,7 @@ import type {
   ItemSubmission,
   Lot,
   UpdateItemSubmissionInput,
+  UserRole,
 } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
@@ -59,6 +60,68 @@ export interface IItemSubmissionService {
     input?: ApproveSubmissionInput | undefined,
   ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>>;
   reject(
+    adminId: string,
+    id: string,
+    rejectionReason: string,
+    reviewNotes?: string | undefined,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+
+  /** Public catalogue: list + image URL resolution. */
+  listSubmissionsForSellerApi(
+    legalEntityId: string,
+    f: ListSubmissionsFilter,
+  ): Promise<{ data: ItemSubmission[] }>;
+  listSubmissionsForAdminApi(f: ListSubmissionsFilter): Promise<{ data: ItemSubmission[] }>;
+  getSubmissionForViewerApi(input: {
+    submissionId: string;
+    role: UserRole;
+    sellerLegalEntityId: string;
+  }): Promise<Result<ItemSubmission, SubmissionError>>;
+  patchSubmissionFromRequestBody(input: {
+    rawBody: unknown;
+    submissionId: string;
+    role: UserRole;
+    userId: string;
+    sellerLegalEntityId: string;
+  }): Promise<
+    | { kind: "ok"; data: ItemSubmission }
+    | { kind: "bad_request"; details: unknown }
+    | { kind: "err"; error: SubmissionError }
+  >;
+  bulkApproveOrReject(input: {
+    adminId: string;
+    ids: string[];
+    op: "approve" | "reject";
+    reason?: string | undefined;
+    reviewNotes?: string | undefined;
+  }): Promise<
+    | { kind: "ok"; count: number }
+    | { kind: "bad_request"; message: string }
+    | { kind: "err"; error: SubmissionError }
+  >;
+
+  createDraftForSellerApi(
+    legalEntityId: string,
+    input: CreateItemSubmissionInput,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  submitForReviewForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  withdrawForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  startReviewForAdminApi(
+    adminId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  approveForAdminApi(
+    adminId: string,
+    id: string,
+    body: ApproveSubmissionInput,
+  ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>>;
+  rejectForAdminApi(
     adminId: string,
     id: string,
     rejectionReason: string,

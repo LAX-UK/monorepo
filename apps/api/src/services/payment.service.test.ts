@@ -538,4 +538,41 @@ describe("PaymentService", () => {
       }),
     );
   });
+
+  it("listMyPaymentsForBuyerApi filters by status and includes presented rows", async () => {
+    const pendingP: PaymentRecord = { ...payment, id: "pay-p", status: "pending" };
+    const capturedP: PaymentRecord = { ...payment, id: "pay-c", status: "captured" };
+    const payments: IPaymentWriteRepository = {
+      listByBuyerId: vi.fn().mockResolvedValue([pendingP, capturedP]),
+    } as unknown as IPaymentWriteRepository;
+    const lots: ILotRepository = {
+      findById: vi.fn().mockImplementation((id: string) => (id === lot.id ? lot : null)),
+    } as unknown as ILotRepository;
+    const accounting: IPaymentAccountingProvider = {
+      isConfigured: vi.fn().mockReturnValue(false),
+      getCheckoutUrlIfAny: vi.fn(),
+      createCheckoutForWinner: vi.fn(),
+      syncPaymentFromProvider: vi.fn(),
+      syncInvoiceFromProvider: vi.fn(),
+    };
+    const service = new PaymentService(
+      lots,
+      payments,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      accounting,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+    );
+    const out = await service.listMyPaymentsForBuyerApi("buyer-1", { status: "pending" });
+    expect(out.data).toHaveLength(1);
+    expect(out.data[0]?.id).toBe("pay-p");
+    expect(out.data[0]?.lotTitle).toBe("Blue Study");
+    expect(payments.listByBuyerId).toHaveBeenCalledWith("buyer-1");
+  });
 });

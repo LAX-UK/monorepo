@@ -14,9 +14,20 @@ import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import { AuthzError, LotError } from "../lib/errors.js";
+import {
+  presentLotsImages,
+  presentSaleImages,
+  presentSalesWithLotsImages,
+} from "../lib/media-presenters.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
+
+/** Optional follow state for public sale detail responses. */
+export type SaleFollowReader = {
+  isFollowing(userId: string, saleId: string): Promise<boolean>;
+};
 
 type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
 
@@ -28,6 +39,8 @@ export class SaleService {
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
     private readonly imageCleanup?: ImageCleanupService,
+    private readonly saleFollowReader: SaleFollowReader | null = null,
+    private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
   ) {}
 
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
@@ -59,6 +72,58 @@ export class SaleService {
     if (!sale) return null;
     const lots = await this.lotRepo.findBySaleId(id);
     return { sale, lots };
+  }
+
+  /** Public sale detail: bundle, follow flag, resolved media URLs. */
+  async getSaleDetailForPublicApi(
+    saleId: string,
+    viewerUserId: string | undefined,
+  ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+    const bundle = await this.getByIdWithLots(saleId);
+    if (!bundle) return null;
+    const isFollowing =
+      viewerUserId && this.saleFollowReader
+        ? await this.saleFollowReader.isFollowing(viewerUserId, saleId)
+        : false;
+    const [sale, lots] = await Promise.all([
+      presentSaleImages(this.mediaUrlResolver, bundle.sale),
+      presentLotsImages(this.mediaUrlResolver, bundle.lots),
+    ]);
+    return { data: { sale, lots, viewer: { isFollowing } } };
+  }
+
+  async listSalesForPublicApi(
+    filter: Parameters<ISaleRepository["list"]>[0],
+  ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }> {
+    const rows = await this.list(filter);
+    const data = await presentSalesWithLotsImages(this.mediaUrlResolver, rows);
+    return { data };
+  }
+
+  async listSaleLotsPageForPublicApi(
+    saleId: string,
+    opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
+  ): Promise<{
+    data: {
+      items: Lot[];
+      total: number;
+      limit: number;
+      offset: number;
+      sort: typeof opts.sort;
+    };
+  } | null> {
+    const page = await this.listLotsPage(saleId, opts);
+    if (!page) return null;
+    const items = await presentLotsImages(this.mediaUrlResolver, page.items);
+    return {
+      data: {
+        items,
+        total: page.total,
+        limit: opts.limit,
+        offset: opts.offset,
+        sort: opts.sort,
+      },
+    };
   }
 
   /** Paginated lots for a sale; used by the saleroom catalog (server-side pagination). */

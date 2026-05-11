@@ -7,8 +7,10 @@ import type {
   UpdateItemSubmissionInput,
 } from "@auction/types";
 import { type UserRole, roleHasCapability } from "@auction/types";
+import { adminSubmissionNotesSchema, updateItemSubmissionSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
+import { presentSubmissionImages, presentSubmissionsImages } from "../lib/media-presenters.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { insertArtistInTx } from "./artist-registry.service.js";
@@ -28,6 +30,7 @@ import type {
   ListSubmissionsFilter,
 } from "./interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";
 
@@ -45,6 +48,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
   ) {}
 
   private async assertSellerEntityAllowsSubmissions(
@@ -340,6 +344,168 @@ export class ItemSubmissionService implements IItemSubmissionService {
       });
     }
     return ok(updated);
+  }
+
+  async listSubmissionsForSellerApi(
+    legalEntityId: string,
+    f: ListSubmissionsFilter,
+  ): Promise<{ data: ItemSubmission[] }> {
+    const rows = await this.listForSeller(legalEntityId, f);
+    const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
+    return { data };
+  }
+
+  async listSubmissionsForAdminApi(f: ListSubmissionsFilter): Promise<{ data: ItemSubmission[] }> {
+    const rows = await this.listForAdmin(f);
+    const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
+    return { data };
+  }
+
+  async getSubmissionForViewerApi(input: {
+    submissionId: string;
+    role: UserRole;
+    sellerLegalEntityId: string;
+  }): Promise<Result<ItemSubmission, SubmissionError>> {
+    const { submissionId, role, sellerLegalEntityId } = input;
+    const result = roleHasCapability(role, "platform.admin.full")
+      ? await this.getForAdmin(submissionId)
+      : await this.getForSeller(sellerLegalEntityId, submissionId);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async patchSubmissionFromRequestBody(input: {
+    rawBody: unknown;
+    submissionId: string;
+    role: UserRole;
+    userId: string;
+    sellerLegalEntityId: string;
+  }): Promise<
+    | { kind: "ok"; data: ItemSubmission }
+    | { kind: "bad_request"; details: unknown }
+    | { kind: "err"; error: SubmissionError }
+  > {
+    const { rawBody, submissionId, role, userId, sellerLegalEntityId } = input;
+    if (roleHasCapability(role, "platform.admin.full")) {
+      const parsed = adminSubmissionNotesSchema.safeParse(rawBody);
+      if (!parsed.success) {
+        return { kind: "bad_request", details: parsed.error.flatten() };
+      }
+      const result = await this.updateForActor({
+        actorId: userId,
+        role,
+        submissionId,
+        adminNotes: parsed.data,
+      });
+      if (result.isErr()) return { kind: "err", error: result.error };
+      return {
+        kind: "ok",
+        data: await presentSubmissionImages(this.mediaUrlResolver, result.value),
+      };
+    }
+    const parsed = updateItemSubmissionSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return { kind: "bad_request", details: parsed.error.flatten() };
+    }
+    const result = await this.updateForActor({
+      actorId: sellerLegalEntityId,
+      role,
+      submissionId,
+      sellerPatch: parsed.data as UpdateItemSubmissionInput,
+    });
+    if (result.isErr()) return { kind: "err", error: result.error };
+    return {
+      kind: "ok",
+      data: await presentSubmissionImages(this.mediaUrlResolver, result.value),
+    };
+  }
+
+  async bulkApproveOrReject(input: {
+    adminId: string;
+    ids: string[];
+    op: "approve" | "reject";
+    reason?: string | undefined;
+    reviewNotes?: string | undefined;
+  }): Promise<
+    | { kind: "ok"; count: number }
+    | { kind: "bad_request"; message: string }
+    | { kind: "err"; error: SubmissionError }
+  > {
+    const { adminId, ids, op, reason, reviewNotes } = input;
+    if (op === "reject" && !reason?.trim()) {
+      return { kind: "bad_request", message: "Reason is required to reject submissions" };
+    }
+    for (const id of ids) {
+      const result =
+        op === "approve"
+          ? await this.approve(adminId, id, { reviewNotes })
+          : await this.reject(adminId, id, reason?.trim() ?? "", reviewNotes);
+      if (result.isErr()) {
+        return { kind: "err", error: result.error };
+      }
+    }
+    return { kind: "ok", count: ids.length };
+  }
+
+  async createDraftForSellerApi(
+    legalEntityId: string,
+    input: CreateItemSubmissionInput,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.createDraft(legalEntityId, input);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async submitForReviewForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.submitForReview(legalEntityId, id);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async withdrawForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.withdraw(legalEntityId, id);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async startReviewForAdminApi(
+    adminId: string,
+    id: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.startReview(adminId, id);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async approveForAdminApi(
+    adminId: string,
+    id: string,
+    body: ApproveSubmissionInput,
+  ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>> {
+    const result = await this.approve(adminId, id, body);
+    if (result.isErr()) return result;
+    const submission = await presentSubmissionImages(
+      this.mediaUrlResolver,
+      result.value.submission,
+    );
+    return ok({ submission, lot: result.value.lot });
+  }
+
+  async rejectForAdminApi(
+    adminId: string,
+    id: string,
+    rejectionReason: string,
+    reviewNotes?: string | undefined,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.reject(adminId, id, rejectionReason, reviewNotes);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
   }
 }
 

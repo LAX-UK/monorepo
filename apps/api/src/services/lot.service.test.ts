@@ -1,6 +1,7 @@
-import type { LegalEntity, Lot } from "@auction/types";
+import type { Bid, LegalEntity, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
+import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
@@ -288,5 +289,127 @@ describe("LotService.publish", () => {
     );
     const result = await svc.publish("admin", "administrator", lotId);
     expect(result.isOk()).toBe(true);
+  });
+});
+
+describe("LotService.listBidsForPublicApi", () => {
+  const bidRow: Bid = {
+    id: "bid-1",
+    lotId,
+    placedByUserId: "bidder-user",
+    buyerLegalEntityId: "00000000-0000-4000-8000-0000000000be",
+    amount: "10",
+    isWinning: true,
+    isAutoBid: false,
+    maxAutoBidAmount: null,
+    createdAt: new Date(),
+  };
+
+  it("returns not_found when lot is missing", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(null),
+    } as unknown as ILotRepository;
+    const bids: IBidRepository = { listForLot: vi.fn() } as unknown as IBidRepository;
+    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const r = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "client",
+      viewerId: undefined,
+      limitQuery: undefined,
+    });
+    expect(r).toEqual({ kind: "not_found" });
+    expect(bids.listForLot).not.toHaveBeenCalled();
+  });
+
+  it("returns empty bids for sealed active lots when viewer cannot manage auction", async () => {
+    const sealedActive: Lot = { ...baseLot, auctionType: "sealed", status: "active" };
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(sealedActive),
+    } as unknown as ILotRepository;
+    const listForLot = vi.fn();
+    const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
+    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const r = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "client",
+      viewerId: undefined,
+      limitQuery: undefined,
+    });
+    expect(r).toEqual({ kind: "ok", data: [] });
+    expect(listForLot).not.toHaveBeenCalled();
+  });
+
+  it("lists bids for sealed active when viewer is administrator", async () => {
+    const sealedActive: Lot = { ...baseLot, auctionType: "sealed", status: "active" };
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(sealedActive),
+    } as unknown as ILotRepository;
+    const listForLot = vi.fn().mockResolvedValue([bidRow]);
+    const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
+    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const r = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "administrator",
+      viewerId: "admin-1",
+      limitQuery: "10",
+    });
+    expect(r.kind).toBe("ok");
+    if (r.kind !== "ok") return;
+    expect(listForLot).toHaveBeenCalledWith(lotId, 10);
+    expect(r.data[0]?.placedByUserId).toBe("bidder-user");
+    expect(r.data[0]?.bidderRef).toBe(lotBidderRef(lotId, "bidder-user"));
+  });
+
+  it("redacts placedByUserId for non-admin non-owner viewers", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(baseLot),
+    } as unknown as ILotRepository;
+    const listForLot = vi.fn().mockResolvedValue([bidRow]);
+    const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
+    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const r = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "client",
+      viewerId: "someone-else",
+      limitQuery: undefined,
+    });
+    expect(r.kind).toBe("ok");
+    if (r.kind !== "ok") return;
+    expect(r.data[0]?.placedByUserId).toBeNull();
+    expect(r.data[0]?.bidderRef).toBe(lotBidderRef(lotId, "bidder-user"));
+  });
+});
+
+describe("LotService.listLotsForPublicApi", () => {
+  it("lists, presents images, and masks for viewer role", async () => {
+    const list = vi.fn().mockResolvedValue([baseLot]);
+    const lotRepo: ILotRepository = { list } as unknown as ILotRepository;
+    const svc = new LotService(
+      lotRepo,
+      {} as IBidRepository,
+      {} as IWatchlistRepository,
+      null,
+      null,
+    );
+    const { data } = await svc.listLotsForPublicApi({ limit: 10, offset: 0 }, "client");
+    expect(list).toHaveBeenCalledWith({ limit: 10, offset: 0 });
+    expect(data).toHaveLength(1);
+    expect(data[0]?.id).toBe(lotId);
+  });
+});
+
+describe("LotService.bulkPublishOrCancel", () => {
+  it("returns AuthzError when role cannot manage auction", async () => {
+    const lotRepo: ILotRepository = {} as unknown as ILotRepository;
+    const svc = new LotService(
+      lotRepo,
+      {} as IBidRepository,
+      {} as IWatchlistRepository,
+      null,
+      null,
+    );
+    const r = await svc.bulkPublishOrCancel("u1", "client", [lotId], "publish");
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) expect(r.error).toBeInstanceOf(AuthzError);
   });
 });

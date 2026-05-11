@@ -3,6 +3,9 @@ import { impersonationSession } from "@auction/db/schema";
 import { IMPERSONATION_TTL_MS } from "@auction/types";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 
+/** Root pool or Drizzle transaction client (same insert/update surface). */
+type DbClient = Database;
+
 export type ImpersonationSessionRow = typeof impersonationSession.$inferSelect;
 export type ImpersonationEndReason =
   | "manual"
@@ -33,10 +36,14 @@ export type ImpersonationSessionValidation =
 export class ImpersonationSessionService {
   constructor(private readonly db: Database) {}
 
-  async start(actorUserId: string, targetLegalEntityId: string): Promise<ImpersonationSessionRow> {
+  async start(
+    actorUserId: string,
+    targetLegalEntityId: string,
+    client: DbClient = this.db,
+  ): Promise<ImpersonationSessionRow> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + IMPERSONATION_TTL_MS);
-    const [row] = await this.db
+    const [row] = await client
       .insert(impersonationSession)
       .values({
         actorUserId,
@@ -49,8 +56,12 @@ export class ImpersonationSessionService {
     return row;
   }
 
-  async end(sessionId: string, endReason: ImpersonationEndReason): Promise<void> {
-    await this.db
+  async end(
+    sessionId: string,
+    endReason: ImpersonationEndReason,
+    client: DbClient = this.db,
+  ): Promise<void> {
+    await client
       .update(impersonationSession)
       .set({ endedAt: new Date(), endReason })
       .where(and(eq(impersonationSession.id, sessionId), isNull(impersonationSession.endedAt)));

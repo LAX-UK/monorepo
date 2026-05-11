@@ -1,21 +1,7 @@
 import {
-  adminReviewTask,
-  artistProfile,
-  domainEvent,
-  kycVerification,
-  legalEntity,
-  legalEntityDocument,
-  lot,
-  payment,
-  payout,
-  user,
-} from "@auction/db/schema";
-import {
   type UserRole,
-  encodeActingContextCookie,
   normalizeUserRole,
   normalizeUserRoleOrClient,
-  redactDomainEventPayload,
   roleHasCapability,
 } from "@auction/types";
 import {
@@ -45,25 +31,18 @@ import {
   userIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import type { Container } from "../container.js";
-import {
-  type AdminLegalEntityBrowseParams,
-  searchLegalEntitiesForAdminBrowse,
-} from "../lib/admin-legal-entity-browse.js";
-import { AuthzError, LotError } from "../lib/errors.js";
+import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   createRequireCapability,
   requireFinanceAccess,
   requirePlatformAdmin,
 } from "../middleware/require-capability.js";
-import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "../services/impersonation-audit.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
@@ -98,39 +77,11 @@ const adminPaymentIdParamSchema = z.object({
 
 export function createAdminRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
-    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+    isSuspended: (id) => container.admin.requestLifecycle.isSuspended(id),
   });
 
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   r.use("*", requireAuth);
-
-  async function listRedactedDomainEvents(input: {
-    limit: number;
-    eventTypePrefix?: string;
-    includePii: boolean;
-  }) {
-    const prefix = input.eventTypePrefix?.trim();
-    let q = container.db
-      .select({
-        id: domainEvent.id,
-        aggregateType: domainEvent.aggregateType,
-        aggregateId: domainEvent.aggregateId,
-        eventType: domainEvent.eventType,
-        payload: domainEvent.payload,
-        actorUserId: domainEvent.actorUserId,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-        occurredAt: domainEvent.occurredAt,
-      })
-      .from(domainEvent);
-    if (prefix) {
-      q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
-    }
-    const rows = await q.orderBy(desc(domainEvent.id)).limit(input.limit);
-    return rows.map((r) => ({
-      ...r,
-      payload: redactDomainEventPayload(r.eventType, r.payload, { includePii: input.includePii }),
-    }));
-  }
 
   const platform = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   platform.use("*", requirePlatformAdmin);
@@ -139,7 +90,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "*",
     createMiddleware<{ Variables: { userId?: string; userRole?: string } }>(async (c, next) => {
       if (normalizeUserRole(c.get("userRole")) === "administrator") {
-        await container.impersonationAuditService.reconcileFromAdminRequestCookie({
+        await container.admin.requestLifecycle.reconcileAdminRequestCookie({
           actorUserId: c.get("userId") as string,
           cookieHeader: c.req.header("Cookie"),
         });
@@ -153,7 +104,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminSubmissionCountQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const count = await container.itemSubmissionService.countPendingForAdmin({
+      const count = await container.admin.ops.countPendingSubmissions({
         status: q.status,
       });
       return c.json({ data: { count } });
@@ -165,197 +116,33 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const end = new Date();
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - days);
-    const data = await container.analyticsService.getDashboard({ start, end });
+    const data = await container.admin.ops.getAnalyticsDashboard({ start, end });
     return c.json({ data });
   });
 
   platform.get("/metrics/today", async (c) => {
-    const data = await container.adminMetricsService.getTodaySnapshot();
+    const data = await container.admin.ops.getTodayMetrics();
     return c.json({ data });
   });
 
   platform.get("/metrics/live", async (c) => {
-    const bidsPerMinute = await container.adminMetricsService.getBidsPerMinute();
+    const bidsPerMinute = await container.admin.ops.getBidsPerMinute();
     return c.json({ data: { bidsPerMinute } });
   });
 
   platform.get("/metrics/finance-issues", async (c) => {
-    const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
-    const staleBlockedPayoutCutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
-    const [
-      [failedRow],
-      [dueRow],
-      [staleBlockedPayoutRow],
-      [entitiesPendingRow],
-      [artistsPendingRow],
-      [staleKycRow],
-      [docsPendingRow],
-      [staleLeadRow],
-    ] = await Promise.all([
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(payout)
-        .where(eq(payout.status, "failed")),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(legalEntity)
-        .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(payout)
-        .innerJoin(legalEntity, eq(payout.legalEntityId, legalEntity.id))
-        .where(
-          and(
-            eq(payout.status, "scheduled"),
-            lt(payout.createdAt, staleBlockedPayoutCutoff),
-            sql`(
-                ${legalEntity.stripeConnectPayoutsEnabled} = false
-                OR jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0
-              )`,
-          ),
-        ),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(legalEntity)
-        .where(inArray(legalEntity.status, ["docs_received", "under_review"])),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(artistProfile)
-        .where(eq(artistProfile.status, "pending")),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(kycVerification)
-        .where(
-          and(
-            inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-            lt(kycVerification.createdAt, staleIdentityCutoff),
-          ),
-        ),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(legalEntityDocument)
-        .where(eq(legalEntityDocument.reviewStatus, "pending")),
-      container.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(legalEntity)
-        .where(
-          and(
-            eq(legalEntity.kind, "organisation"),
-            eq(legalEntity.status, "lead"),
-            lt(legalEntity.createdAt, staleLeadCutoff),
-          ),
-        ),
-    ]);
-    return c.json({
-      data: {
-        failedPayoutCount: Number(failedRow?.n ?? 0),
-        legalEntitiesWithStripeConnectRequirementsCount: Number(dueRow?.n ?? 0),
-        staleBlockedScheduledPayoutCount: Number(staleBlockedPayoutRow?.n ?? 0),
-        entitiesPendingReviewCount: Number(entitiesPendingRow?.n ?? 0),
-        artistsPendingApprovalCount: Number(artistsPendingRow?.n ?? 0),
-        staleIdentitySessionsCount: Number(staleKycRow?.n ?? 0),
-        documentsAwaitingReviewCount: Number(docsPendingRow?.n ?? 0),
-        staleLeadOrganisationsCount: Number(staleLeadRow?.n ?? 0),
-      },
-    });
+    const data = await container.admin.dashboard.getFinanceIssueSnapshot();
+    return c.json({ data });
   });
 
   /** Lists for onboarding / compliance queues (DSE20). */
   platform.get("/onboarding-issues", async (c) => {
-    const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
-    const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
-    const [entities, artists, staleKycSessions, pendingDocuments, staleLeadOrganisations] =
-      await Promise.all([
-        container.db
-          .select({
-            id: legalEntity.id,
-            displayName: legalEntity.displayName,
-            status: legalEntity.status,
-          })
-          .from(legalEntity)
-          .where(inArray(legalEntity.status, ["docs_received", "under_review"]))
-          .orderBy(asc(legalEntity.displayName))
-          .limit(80),
-        container.db
-          .select({
-            id: artistProfile.id,
-            displayName: artistProfile.displayName,
-            status: artistProfile.status,
-          })
-          .from(artistProfile)
-          .where(eq(artistProfile.status, "pending"))
-          .orderBy(asc(artistProfile.displayName))
-          .limit(80),
-        container.db
-          .select({
-            id: kycVerification.id,
-            userId: kycVerification.userId,
-            status: kycVerification.status,
-            createdAt: kycVerification.createdAt,
-          })
-          .from(kycVerification)
-          .where(
-            and(
-              inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-              lt(kycVerification.createdAt, staleIdentityCutoff),
-            ),
-          )
-          .orderBy(desc(kycVerification.createdAt))
-          .limit(80),
-        container.db
-          .select({
-            id: legalEntityDocument.id,
-            legalEntityId: legalEntityDocument.legalEntityId,
-            entityDisplayName: legalEntity.displayName,
-            uploadObjectId: legalEntityDocument.uploadObjectId,
-            uploadedAt: legalEntityDocument.uploadedAt,
-          })
-          .from(legalEntityDocument)
-          .innerJoin(legalEntity, eq(legalEntityDocument.legalEntityId, legalEntity.id))
-          .where(eq(legalEntityDocument.reviewStatus, "pending"))
-          .orderBy(desc(legalEntityDocument.uploadedAt))
-          .limit(80),
-        container.db
-          .select({
-            id: legalEntity.id,
-            displayName: legalEntity.displayName,
-            createdAt: legalEntity.createdAt,
-          })
-          .from(legalEntity)
-          .where(
-            and(
-              eq(legalEntity.kind, "organisation"),
-              eq(legalEntity.status, "lead"),
-              lt(legalEntity.createdAt, staleLeadCutoff),
-            ),
-          )
-          .orderBy(asc(legalEntity.createdAt))
-          .limit(80),
-      ]);
-
-    return c.json({
-      data: {
-        entitiesPendingReview: entities,
-        artistsPendingApproval: artists,
-        staleIdentitySessions: staleKycSessions,
-        documentsAwaitingReview: pendingDocuments,
-        staleLeadOrganisations,
-      },
-    });
+    const data = await container.admin.dashboard.getOnboardingIssues();
+    return c.json({ data });
   });
 
   platform.get("/legal-entities/stripe-connect-requirements", requireLegalEntityRead, async (c) => {
-    const rows = await container.db
-      .select({
-        id: legalEntity.id,
-        displayName: legalEntity.displayName,
-        status: legalEntity.status,
-      })
-      .from(legalEntity)
-      .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`)
-      .orderBy(asc(legalEntity.displayName))
-      .limit(200);
+    const rows = await container.admin.dashboard.listStripeConnectRequirementEntities();
     return c.json({ data: rows });
   });
 
@@ -371,59 +158,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       };
       const trimmed = query.q?.trim();
       if (trimmed) input.q = trimmed;
-      const data = await searchLegalEntitiesForAdminBrowse(container.db, input);
+      const data = await container.admin.dashboard.searchLegalEntitiesBrowse(input);
       return c.json({ data });
     },
   );
 
   platform.get("/payments/manual-review", requireFinanceAccess, async (c) => {
-    const rows = await container.db
-      .select({
-        paymentId: payment.id,
-        lotId: payment.lotId,
-        lotTitle: lot.title,
-        lotNumber: lot.lotNumber,
-        winnerUserId: payment.buyerId,
-        winnerEmail: user.email,
-        sellerLegalEntityId: payment.sellerLegalEntityId,
-        sellerDisplayName: legalEntity.displayName,
-        sellerStatus: legalEntity.status,
-        sellerArchivedAt: legalEntity.statusChangedAt,
-        amount: payment.amount,
-        createdAt: payment.createdAt,
-      })
-      .from(payment)
-      .innerJoin(lot, eq(payment.lotId, lot.id))
-      .innerJoin(legalEntity, eq(payment.sellerLegalEntityId, legalEntity.id))
-      .innerJoin(user, eq(payment.buyerId, user.id))
-      .where(sql`${payment.status} = 'requires_manual_review'`)
-      .orderBy(desc(payment.createdAt))
-      .limit(100);
-
-    const data = [];
-    for (const row of rows) {
-      const [archiveEvent] = await container.db
-        .select({ payload: domainEvent.payload, occurredAt: domainEvent.occurredAt })
-        .from(domainEvent)
-        .where(
-          and(
-            eq(domainEvent.aggregateType, "legal_entity"),
-            eq(domainEvent.aggregateId, row.sellerLegalEntityId),
-            eq(domainEvent.eventType, "legal_entity.archived"),
-          ),
-        )
-        .orderBy(desc(domainEvent.id))
-        .limit(1);
-      const payload = archiveEvent?.payload as { reason?: unknown } | undefined;
-      data.push({
-        ...row,
-        amount: String(row.amount),
-        currency: "GBP",
-        archiveReason: typeof payload?.reason === "string" ? payload.reason : null,
-        archiveTimestamp: row.sellerArchivedAt ?? archiveEvent?.occurredAt ?? null,
-      });
-    }
-
+    const data = await container.admin.dashboard.listManualReviewPayments();
     return c.json({ data });
   });
 
@@ -435,7 +176,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
       const { id } = c.req.valid("param");
-      const result = await container.paymentService.releaseManualReviewForCapture(userId, role, id);
+      const result = await container.admin.payments.releaseManualReviewForCapture(userId, role, id);
       return result.match(
         () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -451,7 +192,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
       const { id } = c.req.valid("param");
-      const result = await container.paymentService.refundManualReviewPayment(userId, role, id);
+      const result = await container.admin.payments.refundManualReviewPayment(userId, role, id);
       return result.match(
         () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -460,36 +201,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   );
 
   platform.get("/attention", async (c) => {
-    const data = await container.attentionFeedReader.list();
+    const data = await container.admin.ops.listAttentionFeed();
     return c.json({ data });
   });
 
   /** GET /admin/lots/artist-backfill-review — pending `lot_artist_backfill` tasks (SE-P23). */
   platform.get("/lots/artist-backfill-review", async (c) => {
-    const rows = await container.db
-      .select()
-      .from(adminReviewTask)
-      .where(
-        and(eq(adminReviewTask.kind, "lot_artist_backfill"), eq(adminReviewTask.status, "pending")),
-      )
-      .orderBy(desc(adminReviewTask.createdAt))
-      .limit(200);
+    const rows = await container.admin.dashboard.listPendingAdminReviewTasks("lot_artist_backfill");
     return c.json({ data: rows });
   });
 
   /** GET /admin/lots/withdrawal-requests — pending seller withdrawal tasks (B3). */
   platform.get("/lots/withdrawal-requests", async (c) => {
-    const rows = await container.db
-      .select()
-      .from(adminReviewTask)
-      .where(
-        and(
-          eq(adminReviewTask.kind, "lot_withdrawal_request"),
-          eq(adminReviewTask.status, "pending"),
-        ),
-      )
-      .orderBy(desc(adminReviewTask.createdAt))
-      .limit(200);
+    const rows =
+      await container.admin.dashboard.listPendingAdminReviewTasks("lot_withdrawal_request");
     return c.json({ data: rows });
   });
 
@@ -501,18 +226,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const userId = c.get("userId") as string;
       const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
       const { id } = c.req.valid("param");
-      const result = await container.lotService.approveWithdrawalRequest(userId, role, id);
-      if (result.isErr()) {
-        const e = result.error;
-        if (e instanceof LotError && e.code) {
-          return c.json({ error: e.message, code: e.code }, asHttpStatus(e.status));
-        }
-        if (e instanceof AuthzError) {
-          return c.json({ error: e.message }, asHttpStatus(e.status));
-        }
-        return c.json({ error: e.message }, asHttpStatus(e.status));
+      const out = await container.admin.lots.approveWithdrawalRequest(userId, role, id);
+      if (!out.ok) {
+        return c.json(
+          out.code !== undefined ? { error: out.error, code: out.code } : { error: out.error },
+          asHttpStatus(out.status),
+        );
       }
-      return c.json({ data: result.value });
+      return c.json({ data: out.data });
     },
   );
 
@@ -525,7 +246,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
-      const data = await listRedactedDomainEvents({
+      const data = await container.admin.domainEvents.listRedacted({
         limit,
         includePii,
         ...(eventTypePrefix !== undefined ? { eventTypePrefix } : {}),
@@ -541,51 +262,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
     const format = c.req.query("format") === "csv" ? "csv" : "json";
 
-    const rows = await container.db
-      .select({
-        id: domainEvent.id,
-        aggregateType: domainEvent.aggregateType,
-        aggregateId: domainEvent.aggregateId,
-        eventType: domainEvent.eventType,
-        payload: domainEvent.payload,
-        actorUserId: domainEvent.actorUserId,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-        occurredAt: domainEvent.occurredAt,
-      })
-      .from(domainEvent)
-      .orderBy(desc(domainEvent.id))
-      .limit(5000);
-
-    const redacted = rows.map((r) => ({
-      ...r,
-      payload: redactDomainEventPayload(r.eventType, r.payload, { includePii }),
-    }));
+    const redacted = await container.admin.domainEvents.listForExport({ includePii });
 
     if (format === "json") {
       return c.json({ data: redacted });
     }
 
-    const esc = (v: string) => {
-      if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-      return v;
-    };
-    const header =
-      "id,aggregate_type,aggregate_id,event_type,actor_user_id,acting_legal_entity_id,occurred_at,payload_json\n";
-    const body = redacted
-      .map((r) =>
-        [
-          String(r.id),
-          esc(r.aggregateType),
-          esc(r.aggregateId),
-          esc(r.eventType),
-          esc(r.actorUserId ?? ""),
-          esc(r.actingLegalEntityId ?? ""),
-          esc(r.occurredAt.toISOString()),
-          esc(JSON.stringify(r.payload)),
-        ].join(","),
-      )
-      .join("\n");
-    return c.text(header + body, 200, {
+    const csv = container.admin.domainEvents.formatExportCsv(redacted);
+    return c.text(csv, 200, {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="domain-events.csv"',
     });
@@ -593,7 +277,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get("/categories", zValidator("query", adminCategoryListQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.categoryService.listForAdmin({
+    const data = await container.admin.catalog.listCategoriesForAdmin({
       includeArchived: q.includeArchived,
     });
     return c.json({ data });
@@ -601,13 +285,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post("/categories", zValidator("json", adminCreateCategoryBodySchema), async (c) => {
     const body = c.req.valid("json");
-    const data = await container.categoryService.create(body);
+    const data = await container.admin.catalog.createCategory(body);
     return c.json({ data }, 201);
   });
 
   platform.get("/categories/:categoryId", zValidator("param", categoryIdParamSchema), async (c) => {
     const { categoryId } = c.req.valid("param");
-    const data = await container.categoryService.getForAdmin(categoryId);
+    const data = await container.admin.catalog.getCategory(categoryId);
     if (!data) return c.json({ error: "Not found" }, 404);
     return c.json({ data });
   });
@@ -619,7 +303,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { categoryId } = c.req.valid("param");
       const body = c.req.valid("json");
-      const data = await container.categoryService.update(categoryId, body);
+      const data = await container.admin.catalog.updateCategory(categoryId, body);
       return c.json({ data });
     },
   );
@@ -629,7 +313,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
-      const data = await container.categoryService.archive(categoryId);
+      const data = await container.admin.catalog.archiveCategory(categoryId);
       return c.json({ data });
     },
   );
@@ -639,14 +323,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
-      await container.categoryService.delete(categoryId);
+      await container.admin.catalog.deleteCategory(categoryId);
       return c.json({ ok: true });
     },
   );
 
   platform.get("/artists", zValidator("query", adminArtistListQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.artistProfileService.list({
+    const data = await container.admin.catalog.listArtists({
       includeArchived: q.includeArchived,
       ...(q.q ? { q: q.q } : {}),
       ...(q.kind ? { kind: q.kind } : {}),
@@ -658,13 +342,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post("/artists", zValidator("json", adminCreateArtistBodySchema), async (c) => {
     const adminUserId = c.get("userId") as string;
-    const data = await container.artistProfileService.create(adminUserId, c.req.valid("json"));
+    const data = await container.admin.catalog.createArtist(adminUserId, c.req.valid("json"));
     return c.json({ data }, 201);
   });
 
   platform.get("/artists/:artistId", zValidator("param", artistIdParamSchema), async (c) => {
     const { artistId } = c.req.valid("param");
-    const data = await container.artistProfileService.getById(artistId);
+    const data = await container.admin.catalog.getArtist(artistId);
     if (!data) return c.json({ error: "Not found" }, 404);
     return c.json({ data });
   });
@@ -675,14 +359,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminUpdateArtistBodySchema),
     async (c) => {
       const { artistId } = c.req.valid("param");
-      const data = await container.artistProfileService.update(artistId, c.req.valid("json"));
+      const data = await container.admin.catalog.updateArtist(artistId, c.req.valid("json"));
       return c.json({ data });
     },
   );
 
   platform.get("/email/outbox", zValidator("query", adminListOutboxQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.emailObservabilityRepository.listOutbox({
+    const data = await container.admin.email.listOutbox({
       ...(q.status ? { status: q.status } : {}),
       limit: q.limit,
       offset: q.offset,
@@ -692,7 +376,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get("/email/events", zValidator("query", adminListEventsQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.emailObservabilityRepository.listEvents(q);
+    const data = await container.admin.email.listEvents(q);
     return c.json({ data });
   });
 
@@ -701,7 +385,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminListSuppressionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.emailObservabilityRepository.listSuppressions(q);
+      const data = await container.admin.email.listSuppressions(q);
       return c.json({ data });
     },
   );
@@ -711,7 +395,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", emailHashParamSchema),
     async (c) => {
       const { emailHash } = c.req.valid("param");
-      await container.emailObservabilityRepository.deleteSuppression({ emailHash });
+      await container.admin.email.deleteSuppression({ emailHash });
       return c.json({ ok: true });
     },
   );
@@ -721,16 +405,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminBulkEmailSuppressionsBodySchema),
     async (c) => {
       const { emailHashes } = c.req.valid("json");
-      for (const emailHash of emailHashes) {
-        await container.emailObservabilityRepository.deleteSuppression({ emailHash });
-      }
-      return c.json({ ok: true, data: { count: emailHashes.length } });
+      const count = await container.admin.email.deleteSuppressionsBulk(emailHashes);
+      return c.json({ ok: true, data: { count } });
     },
   );
 
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.adminUserService.list({
+    const data = await container.admin.users.list({
       q: q.q,
       limit: q.limit,
       offset: q.offset,
@@ -741,19 +423,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.post("/users/bulk", zValidator("json", adminBulkUsersBodySchema), async (c) => {
     const { ids, op, reason } = c.req.valid("json");
     const role = c.get("userRole") ?? "client";
-    for (const userId of ids) {
-      if (op === "suspend") {
-        await container.adminUserService.suspend(role, userId, reason ?? null);
-      } else {
-        await container.adminUserService.unsuspend(role, userId);
-      }
-    }
-    return c.json({ ok: true, data: { count: ids.length } });
+    const data = await container.admin.users.bulkSuspendOrUnsuspend({
+      actorRole: role,
+      ids,
+      op,
+      reason,
+    });
+    return c.json({ ok: true, data });
   });
 
   platform.get("/users/:userId", zValidator("param", userIdParamSchema), async (c) => {
     const { userId } = c.req.valid("param");
-    const row = await container.adminUserService.getById(userId);
+    const row = await container.admin.users.getById(userId);
     if (!row) return c.json({ error: "Not found" }, 404);
     return c.json({ data: row });
   });
@@ -767,14 +448,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { role } = c.req.valid("json");
       const actorRole = c.get("userRole") ?? "client";
       const actorId = c.get("userId") as string;
-      try {
-        await container.adminUserService.setRole(actorRole, actorId, userId, role);
-      } catch (e) {
-        if (e instanceof AuthzError) {
-          return c.json({ error: e.message }, e.status as 403);
-        }
-        const msg = e instanceof Error ? e.message : "Failed";
-        return c.json({ error: msg }, 400);
+      const setOut = await container.admin.users.setRole(actorRole, actorId, userId, role);
+      if (!setOut.ok) {
+        return c.json({ error: setOut.message }, asHttpStatus(setOut.status));
       }
       return c.json({ ok: true });
     },
@@ -788,7 +464,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { userId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const role = c.get("userRole") ?? "client";
-      await container.adminUserService.suspend(role, userId, reason ?? null);
+      await container.admin.users.suspend(role, userId, reason ?? null);
       return c.json({ ok: true });
     },
   );
@@ -796,7 +472,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.post("/users/:userId/unsuspend", zValidator("param", userIdParamSchema), async (c) => {
     const { userId } = c.req.valid("param");
     const role = c.get("userRole") ?? "client";
-    await container.adminUserService.unsuspend(role, userId);
+    await container.admin.users.unsuspend(role, userId);
     return c.json({ ok: true });
   });
 
@@ -807,7 +483,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { userId } = c.req.valid("param");
       const { limit } = c.req.valid("query");
-      const data = await container.adminUserService.activityFor(userId, limit);
+      const data = await container.admin.users.activityFor(userId, limit);
       return c.json({ data });
     },
   );
@@ -820,13 +496,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         return c.json({ error: "Forbidden" }, 403);
       }
       const { legalEntityId } = c.req.valid("query");
-      const entity = await container.legalEntityRepository.findById(legalEntityId);
-      if (!entity) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.json({
-        data: { id: entity.id, displayName: entity.displayName, status: entity.status },
-      });
+      const out = await container.admin.impersonation.lookupForImpersonation(legalEntityId);
+      if (!out.ok) return c.json({ error: "Not found" }, 404);
+      return c.json({ data: out.data });
     },
   );
 
@@ -839,65 +511,15 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         return c.json({ error: "Forbidden" }, 403);
       }
       const { sessionId, legalEntityId } = c.req.valid("json");
-
-      const [started] = await container.db
-        .select({
-          id: domainEvent.id,
-          actingLegalEntityId: domainEvent.actingLegalEntityId,
-        })
-        .from(domainEvent)
-        .where(
-          and(
-            eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-            eq(domainEvent.aggregateId, sessionId),
-            eq(domainEvent.eventType, "admin.impersonation_started"),
-            eq(domainEvent.actorUserId, userId),
-          ),
-        )
-        .limit(1);
-
-      if (!started) {
-        return c.json({ error: "session_not_found" }, 404);
-      }
-      if (started.actingLegalEntityId !== legalEntityId) {
-        return c.json({ error: "legal_entity_mismatch" }, 400);
-      }
-
-      const [ended] = await container.db
-        .select({ id: domainEvent.id })
-        .from(domainEvent)
-        .where(
-          and(
-            eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-            eq(domainEvent.aggregateId, sessionId),
-            eq(domainEvent.eventType, "admin.impersonation_ended"),
-          ),
-        )
-        .limit(1);
-
-      if (ended) {
-        return c.json({ ok: true, alreadyEnded: true });
-      }
-
-      await container.db.transaction(async (tx) => {
-        await container.impersonationSessionService.end(
-          sessionId,
-          "cookie_cleared_after_failed_end",
-        );
-        await container.domainEventPublisher.publish(tx, {
-          aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-          aggregateId: sessionId,
-          eventType: "admin.impersonation_ended",
-          payload: {
-            session_id: sessionId,
-            end_reason: "cookie_cleared_after_failed_end",
-          },
-          actorUserId: userId,
-          actingLegalEntityId: legalEntityId,
-          schemaVersion: 1,
-        });
+      const out = await container.admin.impersonation.recordFailedEnd({
+        actorUserId: userId,
+        sessionId,
+        legalEntityId,
       });
-
+      if (!out.ok) {
+        return c.json({ error: out.error }, out.status);
+      }
+      if (out.alreadyEnded) return c.json({ ok: true, alreadyEnded: true });
       return c.json({ ok: true });
     },
   );
@@ -911,84 +533,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         return c.json({ error: "Forbidden" }, 403);
       }
       const { legalEntityId } = c.req.valid("json");
-
-      const existingMembership = await container.legalEntityRepository.findActiveMembership(
-        userId,
+      const out = await container.admin.impersonation.startImpersonation({
+        actorUserId: userId,
         legalEntityId,
-      );
-      if (existingMembership) {
+        cookieHeader: c.req.header("Cookie"),
+      });
+      if (!out.ok) {
         return c.json(
-          {
-            error: "not_impersonation",
-            message:
-              "You are already a member of this entity; use the standard acting context switcher.",
-          },
-          400,
+          out.error === "not_impersonation"
+            ? { error: out.error, message: out.message }
+            : { error: out.error },
+          out.status,
         );
       }
-
-      const entity = await container.legalEntityRepository.findById(legalEntityId);
-      if (!entity) {
-        return c.json({ error: "Not found" }, 404);
-      }
-
-      const prev = parseActingLegalEntityCookieFromHeader(c.req.header("Cookie"));
-      const prevSessionId = prev?.i?.sid;
-      const prevEntityId = prev?.e;
-
-      const session = await container.impersonationSessionService.start(userId, entity.id);
-      const sessionId = session.id;
-      const expiresAt = session.expiresAt;
-
-      await container.db.transaction(async (tx) => {
-        if (prevSessionId && prevEntityId) {
-          await container.impersonationSessionService.end(prevSessionId, "session_replaced");
-          await container.domainEventPublisher.publish(tx, {
-            aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-            aggregateId: prevSessionId,
-            eventType: "admin.impersonation_ended",
-            payload: {
-              session_id: prevSessionId,
-              end_reason: "session_replaced",
-            },
-            actorUserId: userId,
-            actingLegalEntityId: prevEntityId,
-            schemaVersion: 1,
-          });
-        }
-
-        await container.domainEventPublisher.publish(tx, {
-          aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-          aggregateId: sessionId,
-          eventType: "admin.impersonation_started",
-          payload: {
-            impersonating_user_id: userId,
-            target_legal_entity_id: entity.id,
-            target_legal_entity_display_name: entity.displayName,
-            session_id: sessionId,
-            expires_at: expiresAt.toISOString(),
-          },
-          actorUserId: userId,
-          actingLegalEntityId: entity.id,
-          schemaVersion: 1,
-        });
-      });
-
-      const actingCookie = encodeActingContextCookie({
-        v: 1,
-        e: entity.id,
-        n: entity.displayName,
-        i: { sid: sessionId },
-      });
-
-      return c.json({
-        data: {
-          actingCookie,
-          sessionId,
-          expiresAt: expiresAt.toISOString(),
-          displayName: entity.displayName,
-        },
-      });
+      return c.json({ data: out.data });
     },
   );
 
@@ -997,35 +555,19 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     if (normalizeUserRole(c.get("userRole")) !== "administrator") {
       return c.json({ error: "Forbidden" }, 403);
     }
-
-    const cookiePayload = parseActingLegalEntityCookieFromHeader(c.req.header("Cookie"));
-    const imp = cookiePayload?.i;
-    if (!imp?.sid || !cookiePayload?.e) {
+    const out = await container.admin.impersonation.endImpersonation({
+      actorUserId: userId,
+      cookieHeader: c.req.header("Cookie"),
+    });
+    if (!out.ok) {
       return c.json({ error: "no_active_impersonation" }, 400);
     }
-
-    await container.db.transaction(async (tx) => {
-      await container.impersonationSessionService.end(imp.sid, "manual");
-      await container.domainEventPublisher.publish(tx, {
-        aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-        aggregateId: imp.sid,
-        eventType: "admin.impersonation_ended",
-        payload: {
-          session_id: imp.sid,
-          end_reason: "manual",
-        },
-        actorUserId: userId,
-        actingLegalEntityId: cookiePayload.e,
-        schemaVersion: 1,
-      });
-    });
-
     return c.json({ ok: true });
   });
 
-  attachAdminLegalEntityLifecycleRoutes(platform, container);
+  attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 
-  attachAdminInvitationRoutes(platform, container);
+  attachAdminInvitationRoutes(platform, container.admin.invitations);
 
   const finance = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
   finance.use("*", requireFinanceAccess);
@@ -1039,7 +581,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
-      const data = await listRedactedDomainEvents({
+      const data = await container.admin.domainEvents.listRedacted({
         limit,
         eventTypePrefix: "payment.dispute",
         includePii,
@@ -1051,14 +593,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   finance.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";
     const { id } = c.req.valid("param");
-    const result = await container.paymentService.syncPaymentFromXeroAsAdmin(role, id);
+    const result = await container.admin.payments.syncPaymentFromXeroAsAdmin(role, id);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });
 
-  attachXeroAdminRoutes(finance, container);
+  attachXeroAdminRoutes(finance, container.admin);
 
   r.route("/", platform);
   r.route("/", finance);
