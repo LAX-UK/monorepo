@@ -1,0 +1,280 @@
+import type { EmailOutboxStatus } from "@auction/db/schema";
+import type {
+  AdminCategory,
+  ArtistProfile,
+  Category,
+  LegalEntity,
+  LegalEntityStatus,
+  Lot,
+  UserRole,
+} from "@auction/types";
+import type { Result } from "neverthrow";
+import type {
+  AdminArtistListOptions,
+  AdminCatalogCreateArtistBody,
+  AdminCatalogUpdateArtistBody,
+  AdminManualReviewPaymentRow,
+  AdminOnboardingIssues,
+  AdminReviewTaskRow,
+} from "../../admin/admin-route-dtos.js";
+import type {
+  AdminLegalEntityBrowseParams,
+  AdminLegalEntityBrowseRow,
+} from "../../lib/admin-legal-entity-browse.js";
+import type { AuthzError } from "../../lib/errors.js";
+import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";
+import type { AdminTodayMetrics } from "../admin-metrics.service.js";
+import type { CreateInvitationInput, InvitationError } from "../invitation.service.js";
+import type { LegalEntityLifecycleFailure } from "../legal-entity-lifecycle-admin.service.js";
+import type {
+  AdminActivityEntry,
+  AdminUserDetail,
+  AdminUserListFilter,
+  AdminUserListResult,
+} from "./admin-user.js";
+import type { AdminAnalyticsDashboard, DateRange } from "./analytics.js";
+import type { AttentionItem } from "./attention-feed.js";
+import type { CreateCategoryInput, UpdateCategoryInput } from "./category.js";
+import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
+import type { InvitationSummary } from "./invitation.js";
+import type { ListSubmissionsFilter } from "./repositories.js";
+
+export type AdminImpersonationLookupResult =
+  | { ok: true; data: { id: string; displayName: string; status: string } }
+  | { ok: false; notFound: true };
+
+export type AdminImpersonationStartResult =
+  | {
+      ok: true;
+      data: {
+        actingCookie: string;
+        sessionId: string;
+        expiresAt: string;
+        displayName: string;
+      };
+    }
+  | { ok: false; status: 400; error: "not_impersonation"; message: string }
+  | { ok: false; status: 404; error: "not_found" };
+
+export type AdminImpersonationRecordFailedEndResult =
+  | { ok: true; alreadyEnded?: boolean }
+  | { ok: false; status: 404 | 400; error: string };
+
+export interface IAdminImpersonationService {
+  lookupForImpersonation(legalEntityId: string): Promise<AdminImpersonationLookupResult>;
+  startImpersonation(input: {
+    actorUserId: string;
+    legalEntityId: string;
+    cookieHeader: string | undefined;
+  }): Promise<AdminImpersonationStartResult>;
+  endImpersonation(input: { actorUserId: string; cookieHeader: string | undefined }): Promise<
+    { ok: true } | { ok: false; error: "no_active_impersonation" }
+  >;
+  recordFailedEnd(input: {
+    actorUserId: string;
+    sessionId: string;
+    legalEntityId: string;
+  }): Promise<AdminImpersonationRecordFailedEndResult>;
+}
+
+export type RedactedDomainEventRow = {
+  id: number;
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  payload: unknown;
+  actorUserId: string | null;
+  actingLegalEntityId: string | null;
+  occurredAt: Date;
+};
+
+export interface IAdminDomainEventQueryService {
+  listRedacted(input: {
+    limit: number;
+    eventTypePrefix?: string;
+    includePii: boolean;
+  }): Promise<RedactedDomainEventRow[]>;
+  listForExport(input: { includePii: boolean }): Promise<RedactedDomainEventRow[]>;
+  formatExportCsv(rows: RedactedDomainEventRow[]): string;
+}
+
+export type FinanceIssueSnapshot = {
+  failedPayoutCount: number;
+  legalEntitiesWithStripeConnectRequirementsCount: number;
+  staleBlockedScheduledPayoutCount: number;
+  entitiesPendingReviewCount: number;
+  artistsPendingApprovalCount: number;
+  staleIdentitySessionsCount: number;
+  documentsAwaitingReviewCount: number;
+  staleLeadOrganisationsCount: number;
+};
+
+export type { AdminLegalEntityBrowseParams, AdminLegalEntityBrowseRow };
+
+export interface IAdminDashboardQueryService {
+  searchLegalEntitiesBrowse(
+    params: AdminLegalEntityBrowseParams,
+  ): Promise<AdminLegalEntityBrowseRow[]>;
+  getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;
+  getOnboardingIssues(): Promise<AdminOnboardingIssues>;
+  listStripeConnectRequirementEntities(): Promise<
+    { id: string; displayName: string; status: string }[]
+  >;
+  listManualReviewPayments(): Promise<AdminManualReviewPaymentRow[]>;
+  listPendingAdminReviewTasks(
+    kind: "lot_artist_backfill" | "lot_withdrawal_request",
+  ): Promise<AdminReviewTaskRow[]>;
+}
+
+export interface IAdminCatalogApplicationService {
+  listCategoriesForAdmin(input: { includeArchived: boolean }): Promise<AdminCategory[]>;
+  createCategory(body: CreateCategoryInput): Promise<Category>;
+  getCategory(categoryId: string): Promise<AdminCategory | null>;
+  updateCategory(categoryId: string, body: UpdateCategoryInput): Promise<Category>;
+  archiveCategory(categoryId: string): Promise<Category>;
+  deleteCategory(categoryId: string): Promise<void>;
+  listArtists(input: AdminArtistListOptions): Promise<ArtistProfile[]>;
+  createArtist(adminUserId: string, body: AdminCatalogCreateArtistBody): Promise<ArtistProfile>;
+  getArtist(artistId: string): Promise<ArtistProfile | null>;
+  updateArtist(artistId: string, body: AdminCatalogUpdateArtistBody): Promise<ArtistProfile>;
+}
+
+export interface IAdminEmailApplicationService {
+  listOutbox(input: {
+    status?: EmailOutboxStatus;
+    limit: number;
+    offset: number;
+  }): Promise<EmailOutboxRow[]>;
+  listEvents(input: { messageId: string }): Promise<EmailEventRow[]>;
+  listSuppressions(input: { limit: number; offset: number }): Promise<EmailSuppressionRow[]>;
+  deleteSuppression(input: { emailHash: string }): Promise<void>;
+  deleteSuppressionsBulk(emailHashes: string[]): Promise<number>;
+}
+
+export interface IAdminOpsReadService {
+  getAnalyticsDashboard(range: DateRange): Promise<AdminAnalyticsDashboard>;
+  getTodayMetrics(): Promise<AdminTodayMetrics>;
+  getBidsPerMinute(): Promise<number>;
+  listAttentionFeed(): Promise<AttentionItem[]>;
+  countPendingSubmissions(filter: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
+}
+
+export interface IAdminRequestLifecycleService {
+  reconcileAdminRequestCookie(input: {
+    actorUserId: string;
+    cookieHeader: string | undefined;
+  }): Promise<void>;
+  isSuspended(userId: string): Promise<boolean>;
+}
+
+export interface IAdminUserApplicationService {
+  list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
+  getById(id: string): Promise<AdminUserDetail | null>;
+  setRole(
+    actorRole: string,
+    actorUserId: string,
+    targetUserId: string,
+    role: string,
+  ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
+  suspend(actorRole: string, userId: string, reason: string | null): Promise<void>;
+  unsuspend(actorRole: string, userId: string): Promise<void>;
+  activityFor(userId: string, limit: number): Promise<AdminActivityEntry[]>;
+  bulkSuspendOrUnsuspend(input: {
+    actorRole: string;
+    ids: string[];
+    op: "suspend" | "unsuspend";
+    reason: string | null | undefined;
+  }): Promise<{ count: number }>;
+}
+
+export interface IAdminPaymentsApplicationService {
+  releaseManualReviewForCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError>>;
+  refundManualReviewPayment(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<void, AuthzError>>;
+  syncPaymentFromXeroAsAdmin(
+    userRole: string,
+    paymentId: string,
+  ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>>;
+}
+
+export interface IAdminLotsApplicationService {
+  approveWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+  ): Promise<
+    | { ok: true; data: Lot }
+    | { ok: false; status: number; error: string; code?: string | undefined }
+  >;
+}
+
+export interface IAdminInvitationApplicationService {
+  create(
+    input: CreateInvitationInput,
+  ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>>;
+  listPendingForActor(actorUserId: string): Promise<InvitationSummary[]>;
+  revoke(input: { actorUserId: string; invitationId: string }): Promise<
+    Result<void, InvitationError>
+  >;
+  resend(input: {
+    actorUserId: string;
+    invitationId: string;
+  }): Promise<Result<{ expiresAt: Date }, InvitationError>>;
+  preview(
+    token: string,
+  ): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>>;
+}
+
+export interface IAdminLegalEntityLifecycleApplicationService {
+  findLegalEntityById(id: string): Promise<LegalEntity | null>;
+  runTransition(
+    userId: string,
+    entityId: string,
+    op: LifecycleAdminOp,
+    reason?: string | null,
+  ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>>;
+}
+
+export type XeroStatusPayload = {
+  connected: boolean;
+  tenantId: string | null;
+  tenantName: string | null;
+  expiresAt: string | null;
+  oauthConfigured: boolean;
+};
+
+export interface IXeroAdminApplicationService {
+  getStatusPayload(): Promise<XeroStatusPayload>;
+  buildConsentUrl(
+    userId: string,
+  ): Promise<{ ok: true; url: string } | { ok: false; error: string }>;
+  completeOAuth(input: {
+    userId: string;
+    state: string;
+    callbackFullUrl: string;
+  }): Promise<{ ok: true } | { ok: false; message: string }>;
+  disconnect(): Promise<{ ok: true } | { ok: false; error: string }>;
+}
+
+export type AdminRouteServices = {
+  requestLifecycle: IAdminRequestLifecycleService;
+  ops: IAdminOpsReadService;
+  impersonation: IAdminImpersonationService;
+  domainEvents: IAdminDomainEventQueryService;
+  dashboard: IAdminDashboardQueryService;
+  catalog: IAdminCatalogApplicationService;
+  email: IAdminEmailApplicationService;
+  users: IAdminUserApplicationService;
+  payments: IAdminPaymentsApplicationService;
+  lots: IAdminLotsApplicationService;
+  invitations: IAdminInvitationApplicationService;
+  legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService;
+  xero: IXeroAdminApplicationService;
+};

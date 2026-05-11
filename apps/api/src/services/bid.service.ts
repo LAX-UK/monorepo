@@ -8,6 +8,7 @@ import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
@@ -30,6 +31,11 @@ export type LotJobSchedulerPort = {
   cancelLotJobs(lotId: string): Promise<void>;
 };
 
+export type PlaceBidWithIdempotencyOutcome =
+  | { type: "replay"; body: { data: Bid } }
+  | { type: "err"; error: BidError }
+  | { type: "ok"; body: { data: Bid } };
+
 export class BidService {
   constructor(
     private readonly repos: IRepositoryFactory,
@@ -43,6 +49,7 @@ export class BidService {
     private readonly antiShillingGuard: IAntiShillingGuard | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
+    private readonly idempotencyStore: IIdempotencyStore | null = null,
   ) {}
 
   async placeBid(
@@ -388,5 +395,50 @@ export class BidService {
   /** Public bid history for a lot (newest first). */
   async listForLot(lotId: string, limit: number): Promise<Bid[]> {
     return this.repos.root.bid.listForLot(lotId, limit);
+  }
+
+  /**
+   * Buyer bid placement with optional idempotency replay (Redis) and personal
+   * buyer entity resolution.
+   */
+  async placeBidWithIdempotency(input: {
+    placedByUserId: string;
+    idempotencyKey: string | undefined;
+    lotId: string;
+    amount: number;
+    maxAutoBidAmount?: number;
+  }): Promise<PlaceBidWithIdempotencyOutcome> {
+    const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
+    if (idempotencyKey && this.idempotencyStore) {
+      const key = `idempotency:bid:${placedByUserId}:${idempotencyKey}`;
+      const cached = await this.idempotencyStore.get(key);
+      if (cached) {
+        return { type: "replay", body: JSON.parse(cached) as { data: Bid } };
+      }
+    }
+    if (!this.legalEntityRepository) {
+      return { type: "err", error: new BidError("Bid placement is not configured", 503) };
+    }
+    const buyerEntity = await this.legalEntityRepository.ensurePersonalEntity(placedByUserId);
+    const result = await this.placeBid(
+      placedByUserId,
+      buyerEntity.id,
+      lotId,
+      amount,
+      maxAutoBidAmount,
+    );
+    if (result.isErr()) {
+      return { type: "err", error: result.error };
+    }
+    const bid = result.value;
+    const body = { data: bid };
+    if (idempotencyKey && this.idempotencyStore) {
+      await this.idempotencyStore.setWithExpiry(
+        `idempotency:bid:${placedByUserId}:${idempotencyKey}`,
+        JSON.stringify(body),
+        86_400,
+      );
+    }
+    return { type: "ok", body };
   }
 }

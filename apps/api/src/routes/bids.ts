@@ -79,39 +79,25 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
     async (c) => {
       const userId = c.get("userId") as string;
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
-      if (idem) {
-        const cached = await container.redis.get(`idempotency:bid:${userId}:${idem}`);
-        if (cached) {
-          return c.json(JSON.parse(cached) as { data: unknown }, 201);
-        }
-      }
       const body = c.req.valid("json");
-      const buyerEntity = await container.legalEntityRepository.ensurePersonalEntity(userId);
-      const result = await container.bidService.placeBid(
-        userId,
-        buyerEntity.id,
-        body.lotId,
-        body.amount,
-        body.maxAutoBidAmount,
-      );
-      if (result.isErr()) {
-        const e = result.error;
+      const out = await container.bidService.placeBidWithIdempotency({
+        placedByUserId: userId,
+        idempotencyKey: idem,
+        lotId: body.lotId,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+      });
+      if (out.type === "replay") {
+        return c.json(out.body, 201);
+      }
+      if (out.type === "err") {
+        const e = out.error;
         return c.json(
           e.code ? { error: e.message, code: e.code } : { error: e.message },
           asHttpStatus(e.status),
         );
       }
-      const bid = result.value;
-      const payload = { data: bid };
-      if (idem) {
-        await container.redis.set(
-          `idempotency:bid:${userId}:${idem}`,
-          JSON.stringify(payload),
-          "EX",
-          86_400,
-        );
-      }
-      return c.json(payload, 201);
+      return c.json(out.body, 201);
     },
   );
 

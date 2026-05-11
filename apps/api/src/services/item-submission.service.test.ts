@@ -419,4 +419,40 @@ describe("ItemSubmissionService", () => {
     expect(ok.isOk()).toBe(true);
     expect(bad.isErr()).toBe(true);
   });
+
+  it("bulkApproveOrReject rejects when reject op missing reason", async () => {
+    const svc = new ItemSubmissionService(
+      stubDb,
+      {} as unknown as IItemSubmissionRepository,
+      {} as unknown as IUserRepository,
+      {} as NotificationDispatcher,
+    );
+    const r = await svc.bulkApproveOrReject({
+      adminId: "a1",
+      ids: ["s1"],
+      op: "reject",
+      reason: "   ",
+      reviewNotes: undefined,
+    });
+    expect(r.kind).toBe("bad_request");
+  });
+
+  it("getSubmissionForViewerApi uses admin path when role is platform admin", async () => {
+    const row = mkSubmission({ id: "s1", status: "draft", legalEntityId: "ent-1" });
+    const submissions: IItemSubmissionRepository = {
+      findById: vi.fn().mockResolvedValue(row),
+    } as unknown as IItemSubmissionRepository;
+    const svc = new ItemSubmissionService(
+      stubDb,
+      submissions,
+      {} as unknown as IUserRepository,
+      {} as NotificationDispatcher,
+    );
+    const r = await svc.getSubmissionForViewerApi({
+      submissionId: "s1",
+      role: "administrator",
+      sellerLegalEntityId: "wrong-entity",
+    });
+    expect(r.isOk()).toBe(true);
+  });
 });

@@ -1,4 +1,3 @@
-import { normalizeUserRole } from "@auction/types";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -32,68 +31,13 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     const userId = c.get("userId") as string;
     const userRole = c.get("userRole");
     const { id } = c.req.valid("param");
-    const membership = await container.legalEntityRepository.findActiveMembership(userId, id);
-    if (membership) {
-      const entity = await container.legalEntityRepository.findById(id);
-      if (!entity) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.json({
-        data: {
-          ...entity,
-          membership: {
-            role: membership.role,
-            isPrimaryAdmin: membership.isPrimaryAdmin,
-          },
-        },
-      });
-    }
-
-    if (normalizeUserRole(userRole) === "administrator") {
-      const cookiePayload = parseActingLegalEntityCookieFromHeader(c.req.header("Cookie"));
-      if (cookiePayload?.e === id && cookiePayload.i?.sid) {
-        const validation = await container.impersonationSessionService.validateForRequest({
-          sessionId: cookiePayload.i.sid,
-          actorUserId: userId,
-          targetLegalEntityId: id,
-        });
-        if (!validation.ok) {
-          if (validation.reason === "expired") {
-            await container.impersonationAuditService.recordSessionTimedOut({
-              sessionId: cookiePayload.i.sid,
-              actorUserId: userId,
-              actingLegalEntityId: cookiePayload.e,
-            });
-            return c.json(
-              { error: "impersonation_session_expired", code: "impersonation_session_expired" },
-              403,
-            );
-          }
-          return c.json(
-            { error: "invalid_impersonation_session", code: "invalid_impersonation_session" },
-            403,
-          );
-        }
-        const entity = await container.legalEntityRepository.findById(id);
-        if (!entity) {
-          return c.json({ error: "Not found" }, 404);
-        }
-        return c.json({
-          data: {
-            ...entity,
-            membership: {
-              role: "admin",
-              isPrimaryAdmin: true,
-              isImpersonation: true,
-              impersonationSessionId: cookiePayload.i.sid,
-              impersonationExpiresAt: validation.session.expiresAt.toISOString(),
-            },
-          },
-        });
-      }
-    }
-
-    return c.json({ error: "not_a_member_of_legal_entity" }, 403);
+    const result = await container.legalEntityAccessService.getLegalEntityDetailForUser({
+      userId,
+      userRole,
+      legalEntityId: id,
+      actingLegalEntityCookie: parseActingLegalEntityCookieFromHeader(c.req.header("Cookie")),
+    });
+    return c.json(result.body, result.status);
   });
 
   return r;

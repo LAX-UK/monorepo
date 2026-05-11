@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { IBidRepository, ILotRepository } from "../services/interfaces/repositories.js";
+import type { IWatchlistRepository } from "../services/interfaces/watchlist.js";
+import { LotService } from "../services/lot.service.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "11111111-1111-4111-8111-111111111111";
@@ -10,27 +13,31 @@ const bidderId = "bidder-1";
 function mount(user: { id: string; role: string } | null) {
   const app = new Hono();
   const lotServiceCreate = vi.fn();
+  const lotRepo: ILotRepository = {
+    findById: vi.fn().mockResolvedValue({ id: lotId, auctionType: "english", status: "active" }),
+    list: vi.fn().mockResolvedValue([]),
+  } as unknown as ILotRepository;
+  const bids: IBidRepository = {
+    listForLot: vi.fn().mockResolvedValue([
+      {
+        id: "bid-1",
+        lotId,
+        placedByUserId: bidderId,
+        buyerLegalEntityId: "22222222-2222-4222-8222-222222222222",
+        amount: "100.00",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: new Date(),
+      },
+    ]),
+  } as unknown as IBidRepository;
+  const watchlist = {} as unknown as IWatchlistRepository;
+  const lotCore = new LotService(lotRepo, bids, watchlist, null, null);
+  const lotService = Object.assign(lotCore, { create: lotServiceCreate });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    lotService: {
-      getById: vi.fn().mockResolvedValue({ id: lotId, auctionType: "english", status: "active" }),
-      create: lotServiceCreate,
-    },
-    bidService: {
-      listForLot: vi.fn().mockResolvedValue([
-        {
-          id: "bid-1",
-          lotId,
-          placedByUserId: bidderId,
-          buyerLegalEntityId: "22222222-2222-4222-8222-222222222222",
-          amount: "100.00",
-          isWinning: true,
-          isAutoBid: false,
-          maxAutoBidAmount: null,
-          createdAt: new Date(),
-        },
-      ]),
-    },
+    lotService,
     mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
   } as unknown as Container;
   const authenticator: IAuthenticator = {

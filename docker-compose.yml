@@ -29,6 +29,20 @@ services:
       timeout: 3s
       retries: 5
 
+  # Applies packages/db/drizzle migrations to the compose Postgres volume (same DATABASE_URL as api).
+  # Runs automatically before api starts; re-run manually with: pnpm db:migrate:docker
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auction
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "packages/db/dist/migrate.js"]
+    restart: "no"
+
   api:
     build:
       context: .
@@ -48,6 +62,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   ws:
     build:

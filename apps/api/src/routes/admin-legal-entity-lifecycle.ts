@@ -1,10 +1,10 @@
 import { zValidator } from "@hono/zod-validator";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
+import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
 
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -31,19 +31,14 @@ type AdminCtx = Context<{ Variables: { userId?: string; userRole?: string } }>;
 
 async function runLifecycle(
   c: AdminCtx,
-  container: Container,
+  legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService,
   entityId: string,
   op: LifecycleAdminOp,
   reason?: string | null,
 ) {
   const userId = c.get("userId");
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
-  const result = await container.legalEntityLifecycleAdminService.runTransition(
-    userId,
-    entityId,
-    op,
-    reason,
-  );
+  const result = await legalEntityLifecycle.runTransition(userId, entityId, op, reason);
   return result.match(
     (data) => c.json({ data }),
     (e) => c.json({ error: e.code, message: e.message }, asHttpStatus(e.status)),
@@ -55,7 +50,7 @@ async function runLifecycle(
  */
 export function attachAdminLegalEntityLifecycleRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
-  container: Container,
+  legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService,
 ) {
   platform.get(
     "/legal-entities/:id",
@@ -63,7 +58,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const entity = await container.legalEntityRepository.findById(id);
+      const entity = await legalEntityLifecycle.findLegalEntityById(id);
       if (!entity) {
         return c.json({ error: "Not found" }, 404);
       }
@@ -77,7 +72,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      return runLifecycle(c, container, id, "request_docs");
+      return runLifecycle(c, legalEntityLifecycle, id, "request_docs");
     },
   );
 
@@ -87,7 +82,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      return runLifecycle(c, container, id, "start_review");
+      return runLifecycle(c, legalEntityLifecycle, id, "start_review");
     },
   );
 
@@ -97,7 +92,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      return runLifecycle(c, container, id, "approve");
+      return runLifecycle(c, legalEntityLifecycle, id, "approve");
     },
   );
 
@@ -107,7 +102,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      return runLifecycle(c, container, id, "restrict");
+      return runLifecycle(c, legalEntityLifecycle, id, "restrict");
     },
   );
 
@@ -119,7 +114,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      return runLifecycle(c, container, id, "reject", reason);
+      return runLifecycle(c, legalEntityLifecycle, id, "reject", reason);
     },
   );
 
@@ -131,7 +126,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       const { reason, confirmationPhrase } = c.req.valid("json");
-      const entity = await container.legalEntityRepository.findById(id);
+      const entity = await legalEntityLifecycle.findLegalEntityById(id);
       if (!entity) {
         return c.json({ error: "not_found", message: "Legal entity not found" }, 404);
       }
@@ -145,7 +140,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
           400,
         );
       }
-      return runLifecycle(c, container, id, "archive", reason);
+      return runLifecycle(c, legalEntityLifecycle, id, "archive", reason);
     },
   );
 }

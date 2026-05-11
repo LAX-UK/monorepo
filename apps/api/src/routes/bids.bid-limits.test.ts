@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import type { Redis } from "ioredis";
-import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -42,19 +41,26 @@ class MemoryRedis {
 function mount() {
   const redis = new MemoryRedis() as unknown as Redis;
   const bidService = {
-    placeBid: vi
-      .fn()
-      .mockResolvedValue(
-        ok({ id: "bid-1", lotId, amount: "100", createdAt: new Date() } as Record<string, unknown>),
-      ),
+    placeBidWithIdempotency: vi.fn().mockResolvedValue({
+      type: "ok",
+      body: {
+        data: {
+          id: "bid-1",
+          lotId,
+          amount: "100",
+          isWinning: true,
+          isAutoBid: false,
+          maxAutoBidAmount: null,
+          createdAt: new Date(),
+        },
+      },
+    }),
   };
   const container = {
+    env: {},
     redis,
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     kycService: { isConfigured: () => false },
-    legalEntityRepository: {
-      ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "le-1" }),
-    },
     bidService,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
@@ -91,6 +97,49 @@ describe("bid user rate limits", () => {
     expect(Number(ra)).toBeGreaterThanOrEqual(1);
     const json = (await blocked.json()) as { code?: string };
     expect(json.code).toBe("bid_rate_limited_minute");
-    expect(bidService.placeBid).toHaveBeenCalledTimes(30);
+    expect(bidService.placeBidWithIdempotency).toHaveBeenCalledTimes(30);
+  });
+});
+
+describe("POST /bids success contract", () => {
+  it("returns top-level data key with bid id", async () => {
+    const redis = new MemoryRedis() as unknown as Redis;
+    const bidService = {
+      placeBidWithIdempotency: vi.fn().mockResolvedValue({
+        type: "ok",
+        body: {
+          data: {
+            id: "bid-contract",
+            lotId,
+            amount: "10.00",
+            isWinning: true,
+            isAutoBid: false,
+            maxAutoBidAmount: null,
+            createdAt: new Date(),
+          },
+        },
+      }),
+    };
+    const container = {
+      env: {},
+      redis,
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      kycService: { isConfigured: () => false },
+      bidService,
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({ id: "u-contract", role: "client" }),
+    };
+    const app = new Hono();
+    app.route("/bids", createBidRoutes(container, authenticator));
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lotId, amount: 10 }),
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { data: { id: string } };
+    expect(Object.keys(body).sort()).toEqual(["data"]);
+    expect(body.data.id).toBe("bid-contract");
   });
 });

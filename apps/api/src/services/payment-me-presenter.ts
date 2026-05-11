@@ -1,6 +1,6 @@
 import type { Lot, PaymentStatus } from "@auction/types";
-import type { PaymentRecord } from "../services/interfaces/payment-write.js";
-import type { MediaUrlResolver } from "../services/media-url-resolver.js";
+import type { PaymentRecord } from "./interfaces/payment-write.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
 
 /** Buyer-facing payment row returned by `GET /payments/me`.
  *

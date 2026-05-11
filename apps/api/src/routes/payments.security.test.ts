@@ -7,6 +7,7 @@ import { AuthzError, LotError } from "../lib/errors.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { PaymentRecord } from "../services/interfaces/payment-write.js";
+import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
 import { createPaymentRoutes } from "./payments.js";
 
 const paymentId = "11111111-1111-4111-8111-111111111111";
@@ -16,13 +17,32 @@ type MountOptions = {
   membershipRole?: string;
   /** Authenticator session id; defaults to "u1". */
   sessionUserId?: string;
-  /** Override `paymentService.listForBuyer` (used by /payments/me tests). */
-  listForBuyer?: (buyerId: string) => Promise<PaymentRecord[]>;
+  /** Override `paymentService.listMyPaymentsForBuyerApi` (used by /payments/me tests). */
+  listMyPaymentsForBuyerApi?: (
+    userId: string,
+    options: { status?: PaymentRecord["status"] },
+  ) => Promise<{ data: MyPaymentRowDTO[] }>;
   cancelPendingAsBuyer?: (
     buyerId: string,
     paymentId: string,
   ) => Promise<Result<void, AuthzError | LotError>>;
 };
+
+function dtoFromPaymentRecord(row: PaymentRecord): MyPaymentRowDTO {
+  return {
+    id: row.id,
+    lotId: row.lotId,
+    lotTitle: "Removed lot",
+    lotImageUrl: null,
+    amount: row.amount,
+    platformFee: row.platformFee,
+    currency: "GBP",
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    invoiceUrl: row.xeroOnlineInvoiceUrl ?? null,
+    invoiceNumber: row.xeroInvoiceNumber ?? null,
+  };
+}
 
 function mount(role: string, opts: MountOptions = {}) {
   const sessionUserId = opts.sessionUserId ?? "u1";
@@ -32,7 +52,8 @@ function mount(role: string, opts: MountOptions = {}) {
     createPendingForWinner: vi.fn(),
     markCapturedByAdmin: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
     refundPayment: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
-    listForBuyer: opts.listForBuyer ?? vi.fn(async () => [] as PaymentRecord[]),
+    listMyPaymentsForBuyerApi:
+      opts.listMyPaymentsForBuyerApi ?? vi.fn(async () => ({ data: [] as MyPaymentRowDTO[] })),
     cancelPendingAsBuyer: opts.cancelPendingAsBuyer ?? vi.fn(async () => ok<void>(undefined)),
   };
   const lotService = {
@@ -148,33 +169,40 @@ describe("GET /payments/me", () => {
     const { app, paymentService } = mount("client", { sessionUserId: "" });
     const res = await app.request("/payments/me");
     expect(res.status).toBe(401);
-    expect(paymentService.listForBuyer).not.toHaveBeenCalled();
+    expect(paymentService.listMyPaymentsForBuyerApi).not.toHaveBeenCalled();
   });
 
-  it("delegates to listForBuyer with the JWT userId only", async () => {
-    const listForBuyer = vi.fn(async () => [paymentRow()]);
-    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+  it("delegates to listMyPaymentsForBuyerApi with the JWT userId only", async () => {
+    const listMyPaymentsForBuyerApi = vi.fn(async () => ({
+      data: [dtoFromPaymentRecord(paymentRow())],
+    }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
     const res = await app.request("/payments/me");
     expect(res.status).toBe(200);
-    expect(listForBuyer).toHaveBeenCalledTimes(1);
-    expect(listForBuyer).toHaveBeenCalledWith("alice");
+    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledTimes(1);
+    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledWith("alice", {});
   });
 
   it("does not allow the client to override the buyerId via query parameters", async () => {
-    const listForBuyer = vi.fn(async () => [] as PaymentRecord[]);
-    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const listMyPaymentsForBuyerApi = vi.fn(async () => ({ data: [] }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
     const res = await app.request("/payments/me?buyerId=bob&userId=bob&paidByUserId=bob");
     expect(res.status).toBe(200);
-    expect(listForBuyer).toHaveBeenCalledWith("alice");
+    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledWith("alice", {});
   });
 
   it("does not include rows that do not belong to the caller (cross-user isolation)", async () => {
     const aliceRow = paymentRow({ id: "alice-pay", paidByUserId: "alice" });
     const bobRow = paymentRow({ id: "bob-pay", paidByUserId: "bob" });
-    const listForBuyer = vi.fn(async (id: string) =>
-      id === "alice" ? [aliceRow] : id === "bob" ? [bobRow] : [],
-    );
-    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const listMyPaymentsForBuyerApi = vi.fn(async (id: string) => ({
+      data:
+        id === "alice"
+          ? [dtoFromPaymentRecord(aliceRow)]
+          : id === "bob"
+            ? [dtoFromPaymentRecord(bobRow)]
+            : [],
+    }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
     const res = await app.request("/payments/me");
     const body = (await res.json()) as { data: { id: string }[] };
     const ids = body.data.map((r) => r.id);
@@ -186,8 +214,12 @@ describe("GET /payments/me", () => {
     const captured = paymentRow({ id: "c", status: "captured" });
     const refunded = paymentRow({ id: "r", status: "refunded" });
     const pending = paymentRow({ id: "p", status: "pending" });
-    const listForBuyer = vi.fn(async () => [captured, refunded, pending]);
-    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const listMyPaymentsForBuyerApi = vi.fn(async (_userId, options) => {
+      const rows = [captured, refunded, pending];
+      const filtered = options.status ? rows.filter((r) => r.status === options.status) : rows;
+      return { data: filtered.map(dtoFromPaymentRecord) };
+    });
+    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
 
     const res = await app.request("/payments/me?status=refunded");
     expect(res.status).toBe(200);
@@ -196,11 +228,11 @@ describe("GET /payments/me", () => {
   });
 
   it("rejects unknown status values with 400", async () => {
-    const listForBuyer = vi.fn(async () => [] as PaymentRecord[]);
-    const { app } = mount("client", { sessionUserId: "alice", listForBuyer });
+    const listMyPaymentsForBuyerApi = vi.fn(async () => ({ data: [] }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
     const res = await app.request("/payments/me?status=bogus");
     expect(res.status).toBe(400);
-    expect(listForBuyer).not.toHaveBeenCalled();
+    expect(listMyPaymentsForBuyerApi).not.toHaveBeenCalled();
   });
 
   it("does not leak Stripe identifiers in the response payload", async () => {
@@ -211,13 +243,43 @@ describe("GET /payments/me", () => {
     });
     const { app } = mount("client", {
       sessionUserId: "alice",
-      listForBuyer: vi.fn(async () => [row]),
+      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [dtoFromPaymentRecord(row)] })),
     });
     const res = await app.request("/payments/me");
     const text = await res.text();
     expect(text).not.toContain("pi_secret");
     expect(text).not.toContain("ch_secret");
     expect(text).not.toContain("re_secret");
+  });
+
+  it("returns a stable buyer-facing JSON contract for each row", async () => {
+    const row = paymentRow();
+    const { app } = mount("client", {
+      sessionUserId: "alice",
+      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [dtoFromPaymentRecord(row)] })),
+    });
+    const res = await app.request("/payments/me");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: MyPaymentRowDTO[] };
+    expect(body.data).toHaveLength(1);
+    const first = body.data[0];
+    if (!first) throw new Error("expected row");
+    const keys = Object.keys(first).sort();
+    expect(keys).toEqual(
+      [
+        "amount",
+        "createdAt",
+        "currency",
+        "id",
+        "invoiceNumber",
+        "invoiceUrl",
+        "lotId",
+        "lotImageUrl",
+        "lotTitle",
+        "platformFee",
+        "status",
+      ].sort(),
+    );
   });
 });
 
