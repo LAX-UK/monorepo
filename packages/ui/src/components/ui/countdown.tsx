@@ -63,24 +63,28 @@ export function Countdown({
   onUrgencyChange,
   variant = "default",
 }: CountdownProps) {
-  const [now, setNow] = React.useState(() => Date.now());
+  /** `null` until after mount so SSR + first client paint match (avoids hydration clock skew). */
+  const [now, setNow] = React.useState<number | null>(null);
   const endMs = end.getTime();
 
   React.useEffect(() => {
+    setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  const secondsRemaining = clampMs(Math.floor((endMs - now) / 1000));
-  const display = formatDisplay(secondsRemaining);
-  const bucket = formatAnnounceBucket(secondsRemaining);
+  const secondsRemaining = now == null ? null : clampMs(Math.floor((endMs - now) / 1000));
+  const display = secondsRemaining == null ? "…" : formatDisplay(secondsRemaining);
+  const bucket = secondsRemaining == null ? "" : formatAnnounceBucket(secondsRemaining);
 
   const urgency: CountdownUrgency =
-    secondsRemaining <= imminentThresholdSec
-      ? "imminent"
-      : secondsRemaining <= soonThresholdSec
-        ? "soon"
-        : "normal";
+    secondsRemaining == null
+      ? "normal"
+      : secondsRemaining <= imminentThresholdSec
+        ? "imminent"
+        : secondsRemaining <= soonThresholdSec
+          ? "soon"
+          : "normal";
 
   const lastUrgencyRef = React.useRef<CountdownUrgency>(urgency);
   React.useEffect(() => {
@@ -93,6 +97,7 @@ export function Countdown({
   const [liveMessage, setLiveMessage] = React.useState("");
   React.useEffect(() => {
     if (!announce) return;
+    if (secondsRemaining == null) return;
     const msg = secondsRemaining <= 0 ? "Auction ended" : `Time remaining: ${bucket}`;
     setLiveMessage((prev) => (prev === msg ? prev : msg));
   }, [announce, bucket, secondsRemaining]);

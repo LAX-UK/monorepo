@@ -6,6 +6,8 @@ import { verifySocketToken } from "../services/jwt-verifier.js";
 export type HandlerContext = {
   io: Server;
   env: WsEnv;
+  /** Optional: record server-side latency probe ack duration (seconds). */
+  recordLatencyProbeAckSeconds?: (seconds: number) => void;
 };
 
 function roomForLot(lotId: string): string {
@@ -105,6 +107,13 @@ async function handleLeaveUser(socket: Socket, ctx: HandlerContext, _payload: un
   ack?.({ ok: true });
 }
 
+function handleLatencyProbe(_socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
+  const t0 = process.hrtime.bigint();
+  ack?.({ ok: true, serverNow: Date.now() });
+  const elapsedSec = Number(process.hrtime.bigint() - t0) / 1e9;
+  ctx.recordLatencyProbeAckSeconds?.(elapsedSec);
+}
+
 /** OCP: register new handlers here without editing connection boilerplate. */
 const handlers: Record<
   string,
@@ -116,6 +125,7 @@ const handlers: Record<
     handleLeaveLot(socket, ctx, payload as { lotId?: string }, ack),
   joinUser: (socket, ctx, payload, ack) => void handleJoinUser(socket, ctx, payload, ack),
   leaveUser: (socket, ctx, payload, ack) => void handleLeaveUser(socket, ctx, payload, ack),
+  latencyProbe: (socket, ctx, payload, ack) => handleLatencyProbe(socket, ctx, payload, ack),
 };
 
 export function registerSocketHandlers(socket: Socket, ctx: HandlerContext): void {

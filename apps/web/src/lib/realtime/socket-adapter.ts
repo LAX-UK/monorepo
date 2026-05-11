@@ -25,6 +25,8 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
       currentPrice: o.currentPrice,
       endTime: typeof o.endTime === "string" ? o.endTime : undefined,
       outbidUserId: typeof o.outbidUserId === "string" ? o.outbidUserId : undefined,
+      emittedAt:
+        typeof o.emittedAt === "number" && Number.isFinite(o.emittedAt) ? o.emittedAt : undefined,
     };
   }
   return null;
