@@ -100,7 +100,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Hammer
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.hammerLabel}
                       </p>
                     </div>
@@ -108,7 +108,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Premium
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.premiumLabel}
                       </p>
                     </div>
@@ -116,7 +116,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         {row.dueLabel}
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.totalLabel}
                       </p>
                     </div>

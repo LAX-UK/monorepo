@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { parseUserNotification } from "@/lib/data/http/parse";
@@ -98,7 +99,7 @@ export function NotificationsFeedView() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <DashboardPage className="mx-auto max-w-3xl py-10">
       <PageHeader
         title="Notifications"
         description="Latest activity in chronological order."
@@ -118,7 +119,7 @@ export function NotificationsFeedView() {
             description="You're all caught up. We'll let you know when something needs your attention."
           />
         ) : (
-          <ul className="divide-y divide-divider-soft border-y border-divider-soft">
+          <ul className="divide-y divide-outline-variant/10 overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
             {items.map((n) => (
               <li key={n.id} className="flex gap-3 py-4">
                 <span
@@ -143,7 +144,7 @@ export function NotificationsFeedView() {
                   <p className="mt-1 text-sm text-on-surface-variant">{n.message}</p>
                 </div>
                 <time
-                  className="shrink-0 font-label text-[11px] uppercase tracking-wider text-on-surface-variant"
+                  className="shrink-0 font-label text-[11px] uppercase tracking-wider tabular-nums text-on-surface-variant"
                   dateTime={n.createdAt.toISOString()}
                 >
                   {relativeTime(n.createdAt)}
@@ -165,6 +166,6 @@ export function NotificationsFeedView() {
           </Button>
         </div>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }

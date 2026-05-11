@@ -86,7 +86,10 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   return (
     <>
       {orgSubmitted ? (
-        <Alert className="mb-6 border-lot-orange/40 bg-surface-container-low/80" variant="default">
+        <Alert
+          className="mb-6 rounded-xl border-lot-orange/40 bg-surface-container-low/80 shadow-sm"
+          variant="default"
+        >
           <AlertTitle>Organisation submitted</AlertTitle>
           <AlertDescription className="text-on-surface">
             Your organisation is being reviewed. We&apos;ll notify you when approved.

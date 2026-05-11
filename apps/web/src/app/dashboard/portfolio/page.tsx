@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
 import { PortfolioSearchBar } from "@/components/dashboard/portfolio-search";
 import { Button } from "@/components/ui/button";
@@ -34,15 +35,15 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const portfolioCards = toPortfolioLotCards(filtered);
 
   return (
-    <div className="screen w-full">
+    <DashboardPage className="space-y-8">
       <PageHeader
         title="Private Collection"
         description="Lots where you are the winning bidder after the hammer fell."
-        className="mb-6 border-0 pb-0"
+        className="mb-0 border-0 pb-0"
       />
 
       {fetchError ? (
-        <Alert variant="destructive" className="mb-8">
+        <Alert variant="destructive" className="mb-8 rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load portfolio</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
@@ -81,6 +82,6 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
       ) : (
         <PortfolioLotGrid items={portfolioCards} variant="stacked" />
       )}
-    </div>
+    </DashboardPage>
   );
 }

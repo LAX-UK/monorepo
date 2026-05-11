@@ -88,7 +88,7 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
       header: "Updated",
       accessorFn: (r) => new Date(r.updatedAt).getTime(),
       cell: ({ row }) => (
-        <span className="font-body text-xs text-on-surface-variant">
+        <span className="font-body text-xs tabular-nums text-on-surface-variant">
           {new Date(row.original.updatedAt).toLocaleString()}
         </span>
       ),
@@ -178,7 +178,7 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
       />
 
       <Toolbar
-        className="flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
+        className="flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
         filters={
           <Form {...form}>
             <form
@@ -201,6 +201,7 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
                         {...field}
                         id="submissions-q"
                         placeholder="Filter loaded rows by title…"
+                        className="bg-surface-container-low"
                       />
                     </FormControl>
                     <FormMessage />
@@ -248,12 +249,14 @@ export function SubmissionsBoard({ rows, initialStatus, initialQ, fetchedCount }
           />
         )
       ) : (
-        <DataTable
-          columns={columns}
-          data={rows}
-          emptyMessage="No submissions match this filter."
-          density="compact"
-        />
+        <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+          <DataTable
+            columns={columns}
+            data={rows}
+            emptyMessage="No submissions match this filter."
+            density="compact"
+          />
+        </div>
       )}
     </div>
   );

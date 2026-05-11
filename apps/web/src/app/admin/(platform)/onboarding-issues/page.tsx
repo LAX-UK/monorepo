@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminOnboardingIssues } from "@/lib/data/http/admin.server";
 import {
   Card,
@@ -20,7 +21,7 @@ export default async function AdminOnboardingIssuesPage() {
   }
 
   return (
-    <div className="screen w-full space-y-10">
+    <AppScreen className="space-y-10">
       <PageHeader
         title="Onboarding & verification queues"
         description="Operational queues surfaced on the admin home dashboard (DSE20)."
@@ -198,6 +199,6 @@ export default async function AdminOnboardingIssuesPage() {
           </section>
         </>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

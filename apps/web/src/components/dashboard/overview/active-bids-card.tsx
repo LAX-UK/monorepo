@@ -25,10 +25,12 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
   const activeBidLots = vm.activeLots.filter((lot) => vm.activeLotBidHints[lot.id] !== "none");
 
   return (
-    <Card className="border-outline-variant/15 shadow-sm">
+    <Card className="border-outline-variant/15 shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
         <div>
-          <CardTitle className="font-headline text-xl">Active bids</CardTitle>
+          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+            Active bids
+          </CardTitle>
           <CardDescription>Lots where your latest bid is still in play.</CardDescription>
         </div>
         <Button variant="chevron" asChild>

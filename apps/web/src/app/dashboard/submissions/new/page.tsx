@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NewSubmissionForm } from "@/components/dashboard/new-submission-form";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -13,16 +14,14 @@ export default async function NewSubmissionPage({
   const categories = await catReader.tree();
 
   return (
-    <>
+    <DashboardPage className="mx-auto max-w-2xl space-y-6">
       {error ? (
-        <div className="mx-auto mb-6 max-w-2xl">
-          <Alert variant="destructive">
-            <AlertTitle>Could not save</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
+          <AlertTitle>Could not save</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
       <NewSubmissionForm categories={categories} />
-    </>
+    </DashboardPage>
   );
 }

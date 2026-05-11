@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import {
   captureManualReviewPaymentAction,
   refundManualReviewPaymentAction,
@@ -45,7 +46,7 @@ export default async function ManualReviewPaymentsPage({
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Manual Payment Review"
         description="Winning payments paused because the seller entity was archived before capture."
@@ -147,6 +148,6 @@ export default async function ManualReviewPaymentsPage({
           );
         })}
       </ul>
-    </div>
+    </AppScreen>
   );
 }

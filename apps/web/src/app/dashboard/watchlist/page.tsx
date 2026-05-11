@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
@@ -5,10 +6,13 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
 import type { Category } from "@auction/types";
+import { LabelCaps } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { Separator } from "@auction/ui/components/separator";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -104,8 +108,14 @@ export default async function DashboardWatchlistPage({
 
   const tableRows = toWatchlistRows(rows);
 
+  const chipBase =
+    "inline-flex min-h-10 items-center justify-center rounded-full border px-4 font-label text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const chipActive = "border-primary/35 bg-primary-container/45 text-primary shadow-sm";
+  const chipIdle =
+    "border-outline-variant/20 bg-surface-container-low text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface";
+
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Watchlist"
         description="Track lots and artists you are following from the saleroom."
@@ -121,64 +131,70 @@ export default async function DashboardWatchlistPage({
         ]}
       />
 
-      <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4">
-        <div className="flex flex-wrap gap-2">
-          {sortOptions.map((option) => (
-            <Link
-              key={option.value}
-              href={linkWithParams(filters, { sort: option.value })}
-              className={`rounded-full border px-3 py-1 font-body text-xs ${
-                filters.sort === option.value
-                  ? "border-primary bg-primary text-on-primary"
-                  : "border-outline-variant/30 text-on-surface-variant"
-              }`}
-            >
-              {option.label}
-            </Link>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(["active", "scheduled", "ended"] as StatusFilter[]).map((status) => (
-            <Link
-              key={status}
-              href={linkWithParams(filters, {
-                status: filters.status === status ? null : status,
-              })}
-              className={`rounded-full border px-3 py-1 font-body text-xs capitalize ${
-                filters.status === status
-                  ? "border-primary bg-primary text-on-primary"
-                  : "border-outline-variant/30 text-on-surface-variant"
-              }`}
-            >
-              {status}
-            </Link>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => {
-            const active = filters.categoryIds.includes(category.id);
-            const nextCategoryIds = active
-              ? filters.categoryIds.filter((id) => id !== category.id)
-              : [...filters.categoryIds, category.id];
-            return (
+      <div className="space-y-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
+        <div className="space-y-2">
+          <LabelCaps className="text-on-surface-variant">Sort</LabelCaps>
+          <div className="flex flex-wrap gap-2">
+            {sortOptions.map((option) => (
               <Link
-                key={category.id}
-                href={linkWithParams(filters, { categoryIds: nextCategoryIds })}
-                className={`rounded-full border px-3 py-1 font-body text-xs ${
-                  active
-                    ? "border-primary bg-primary text-on-primary"
-                    : "border-outline-variant/30 text-on-surface-variant"
-                }`}
+                key={option.value}
+                href={linkWithParams(filters, { sort: option.value })}
+                className={`${chipBase} ${filters.sort === option.value ? chipActive : chipIdle}`}
               >
-                {category.name}
+                {option.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </div>
+
+        <Separator className="bg-outline-variant/15" />
+
+        <div className="space-y-2">
+          <LabelCaps className="text-on-surface-variant">Status</LabelCaps>
+          <div className="flex flex-wrap gap-2">
+            {(["active", "scheduled", "ended"] as StatusFilter[]).map((status) => (
+              <Link
+                key={status}
+                href={linkWithParams(filters, {
+                  status: filters.status === status ? null : status,
+                })}
+                className={`${chipBase} capitalize ${filters.status === status ? chipActive : chipIdle}`}
+              >
+                {status}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {categories.length > 0 ? (
+          <>
+            <Separator className="bg-outline-variant/15" />
+            <div className="space-y-2">
+              <LabelCaps className="text-on-surface-variant">Category</LabelCaps>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => {
+                  const active = filters.categoryIds.includes(category.id);
+                  const nextCategoryIds = active
+                    ? filters.categoryIds.filter((id) => id !== category.id)
+                    : [...filters.categoryIds, category.id];
+                  return (
+                    <Link
+                      key={category.id}
+                      href={linkWithParams(filters, { categoryIds: nextCategoryIds })}
+                      className={`${chipBase} ${active ? chipActive : chipIdle}`}
+                    >
+                      {category.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
 
       {err ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load watchlist</AlertTitle>
           <AlertDescription>{err}</AlertDescription>
         </Alert>
@@ -189,21 +205,20 @@ export default async function DashboardWatchlistPage({
           title="No watched lots yet"
           description="Save lots from artwork pages to monitor their status and closing time here."
           action={
-            <Link
-              href="/"
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-semibold uppercase tracking-widest text-on-primary"
-            >
-              Browse auctions
-            </Link>
+            <Button variant="default" asChild>
+              <Link href="/">Browse auctions</Link>
+            </Button>
           }
         />
       ) : null}
 
       {!err && tableRows.length > 0 ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
-          <WatchlistBoard rows={tableRows} />
+          <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+            <WatchlistBoard rows={tableRows} />
+          </div>
         </Suspense>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }

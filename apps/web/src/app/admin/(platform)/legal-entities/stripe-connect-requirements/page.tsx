@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntitiesWithStripeConnectRequirements } from "@/lib/data/http/admin.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
@@ -32,17 +33,25 @@ export default async function AdminStripeConnectRequirementsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Stripe Connect requirements"
         description="Legal entities where Stripe Connect currently-due requirements are non-empty (database jsonb array length greater than zero)."
         actions={
-          <Button variant="ctaLink" asChild>
-            <Link href="/admin/legal-entities" className="inline-flex items-center gap-1">
-              UUID lookup
-              <ChevronRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ctaLink" asChild>
+              <Link href="/admin/legal-entities" className="inline-flex items-center gap-1">
+                Legal entities
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+            <Button variant="ctaLink" asChild>
+              <Link href="/admin/impersonation" className="inline-flex items-center gap-1">
+                Impersonation
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -92,6 +101,6 @@ export default async function AdminStripeConnectRequirementsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </AppScreen>
   );
 }

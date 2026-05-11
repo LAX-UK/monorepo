@@ -1,4 +1,5 @@
 import { VerifyIdentityClient } from "@/app/dashboard/verify-identity/verify-identity-client";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { PageHeader } from "@auction/ui/components/page-header";
 import type { Metadata } from "next";
 
@@ -8,13 +9,13 @@ export const metadata: Metadata = {
 
 export default function VerifyIdentityPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <DashboardPage className="mx-auto max-w-3xl py-8">
       <PageHeader
-        className="mb-6"
+        className="mb-2 border-0 pb-0"
         title="Verify your identity"
         description="We use Stripe Identity to confirm who you are when your bidding exposure reaches our threshold."
       />
       <VerifyIdentityClient />
-    </div>
+    </DashboardPage>
   );
 }

@@ -201,7 +201,16 @@ export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[
   );
   const res = await authedServerFetch(`/lots?${qs.toString()}`);
   if (!res.ok) {
-    throw new Error(`Failed to load lots: ${res.status}`);
+    let detail = "";
+    if (res.status === 400) {
+      try {
+        const j = (await res.clone().json()) as { message?: string };
+        detail = j.message ? ` — ${String(j.message).slice(0, 280)}` : "";
+      } catch {
+        // ignore
+      }
+    }
+    throw new Error(`Failed to load lots: ${res.status}${detail}`);
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseLot);
@@ -435,6 +444,40 @@ export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Prom
   }
   const body = (await res.json()) as { data: AdminStripeConnectRequirementRow[] };
   return body.data;
+}
+
+/** Narrow row for admin picker UIs (matches GET /admin/legal-entities/browse). */
+export type AdminLegalEntityPickerRow = {
+  id: string;
+  displayName: string;
+  status: LegalEntityStatus;
+};
+
+export async function searchAdminLegalEntitiesForPicker(params: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AdminLegalEntityPickerRow[]> {
+  const qs = new URLSearchParams();
+  if (params.q?.trim()) qs.set("q", params.q.trim());
+  qs.set("limit", String(params.limit ?? 25));
+  qs.set("offset", String(params.offset ?? 0));
+  const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to search legal entities: ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    data: { id: string; displayName: string; status: string }[];
+  };
+  return body.data.map((row) => ({
+    id: row.id,
+    displayName: row.displayName,
+    status:
+      typeof row.status === "string" &&
+      legalEntityStatuses.includes(row.status as LegalEntityStatus)
+        ? (row.status as LegalEntityStatus)
+        : "lead",
+  }));
 }
 
 export type AdminManualReviewPaymentRow = {

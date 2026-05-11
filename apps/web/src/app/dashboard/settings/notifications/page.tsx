@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { parseNotificationPreference } from "@/lib/data/http/parse";
@@ -29,7 +30,7 @@ export default async function NotificationSettingsPage({
 
   if (!prefs) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <DashboardPage className="mx-auto max-w-3xl space-y-6">
         <Link
           href="/dashboard/notifications"
           className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -44,12 +45,12 @@ export default async function NotificationSettingsPage({
         <p className="mt-2 font-body text-sm text-on-surface-variant">
           Could not load notification preferences. Try again in a moment.
         </p>
-      </div>
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <DashboardPage className="mx-auto max-w-3xl space-y-6">
       <Link
         href="/dashboard/notifications"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -69,13 +70,13 @@ export default async function NotificationSettingsPage({
         </Alert>
       ) : null}
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not save</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
       <NotificationPreferencesForm initial={prefs} />
-    </div>
+    </DashboardPage>
   );
 }

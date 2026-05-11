@@ -1,5 +1,6 @@
 import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
@@ -32,7 +33,7 @@ export default async function AdminAuctionDetailPage({
     auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
 
   return (
-    <div className="max-w-4xl space-y-10">
+    <AppScreen className="max-w-4xl space-y-10">
       <Link
         href="/admin/lots"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -88,7 +89,7 @@ export default async function AdminAuctionDetailPage({
           <ul className="space-y-2 rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4">
             {bids.map((b) => (
               <li key={b.id} className="flex justify-between font-body text-sm">
-                <span>{b.amount}</span>
+                <span className="tabular-nums">{b.amount}</span>
                 <span className="text-on-surface-variant">
                   {(b.bidderId ?? b.placedByUserId ?? "").slice(0, 8)}…
                 </span>
@@ -97,6 +98,6 @@ export default async function AdminAuctionDetailPage({
           </ul>
         )}
       </section>
-    </div>
+    </AppScreen>
   );
 }

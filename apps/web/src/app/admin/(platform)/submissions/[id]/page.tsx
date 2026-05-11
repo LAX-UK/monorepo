@@ -1,4 +1,5 @@
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
@@ -96,7 +97,7 @@ export default async function AdminSubmissionDetailPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <Link
         href="/admin/submissions"
         className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -151,6 +152,6 @@ export default async function AdminSubmissionDetailPage({
         }
         decision={decision}
       />
-    </div>
+    </AppScreen>
   );
 }

@@ -1,4 +1,5 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
 
@@ -15,7 +16,7 @@ export default async function NewAdminArtistPage({
   const ownerUserId = ownerFromUrl.length > 0 ? ownerFromUrl : null;
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="New artist"
         description="Create a canonical artist profile that can be linked to a client and assigned to lots."
@@ -47,6 +48,6 @@ export default async function NewAdminArtistPage({
           />
         </CardContent>
       </Card>
-    </div>
+    </AppScreen>
   );
 }

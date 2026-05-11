@@ -1,5 +1,6 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import {
   getAdminArtistList,
@@ -29,7 +30,7 @@ export default async function AdminEditAuctionPage({
   const isDraft = auction.status === "draft";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <AppScreen className="mx-auto max-w-2xl space-y-8">
       <Link
         href={`/admin/lots/${id}`}
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -62,6 +63,6 @@ export default async function AdminEditAuctionPage({
         artists={artists}
         artistId={auction.artistId ?? null}
       />
-    </div>
+    </AppScreen>
   );
 }

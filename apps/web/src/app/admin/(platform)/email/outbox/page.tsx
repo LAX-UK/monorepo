@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -35,7 +36,7 @@ export default async function AdminEmailOutboxPage({
   const rows = res.ok ? ((await res.json()) as { data: EmailOutboxRow[] }).data : [];
 
   return (
-    <div className="space-y-6">
+    <AppScreen>
       <PageHeader title="Email outbox" description="Recent transactional email sends." />
       <div className="flex flex-wrap gap-2">
         {["all", "pending", "sent", "failed", "suppressed"].map((item) => (
@@ -86,7 +87,7 @@ export default async function AdminEmailOutboxPage({
           </Table>
         </div>
       )}
-    </div>
+    </AppScreen>
   );
 }
 

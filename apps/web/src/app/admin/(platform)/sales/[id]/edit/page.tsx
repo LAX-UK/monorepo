@@ -1,4 +1,5 @@
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
@@ -16,17 +17,17 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   const { sale } = bundle;
   if (sale.status !== "draft") {
     return (
-      <div className="max-w-xl space-y-4">
+      <AppScreen className="max-w-xl space-y-4">
         <p className="text-on-surface-variant">Only draft sales can be edited.</p>
         <Link href={`/admin/sales/${id}`} className="text-primary underline">
           Back to sale
         </Link>
-      </div>
+      </AppScreen>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <AppScreen className="mx-auto max-w-2xl space-y-8">
       <Link
         href={`/admin/sales/${id}`}
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -43,6 +44,6 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         defaultValues={saleToAdminSaleFormValues(sale)}
         categories={categories}
       />
-    </div>
+    </AppScreen>
   );
 }

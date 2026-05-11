@@ -99,7 +99,7 @@ export function DataTable<TData, TValue>({
   return (
     <div
       className={cn(
-        "w-full overflow-x-auto rounded-md border border-outline-variant/15",
+        "w-full overflow-x-auto rounded-2xl border border-outline-variant/15",
         className,
       )}
     >
@@ -107,35 +107,50 @@ export function DataTable<TData, TValue>({
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className={density === "compact" ? "h-9" : undefined}>
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={cn("text-on-surface-variant", density === "compact" && "px-2 py-2")}
-                >
-                  {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className={cn(
-                        "-ml-3 font-medium text-on-surface hover:bg-surface-container-high",
-                        density === "compact" ? "h-9 px-2" : "h-8 px-3",
-                      )}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getIsSorted() === "desc" ? (
-                        <ArrowDown className="ml-1 inline size-4" aria-hidden />
-                      ) : header.column.getIsSorted() === "asc" ? (
-                        <ArrowUp className="ml-1 inline size-4" aria-hidden />
-                      ) : (
-                        <ChevronsUpDown className="ml-1 inline size-4 opacity-50" aria-hidden />
-                      )}
-                    </Button>
-                  ) : (
-                    flexRender(header.column.columnDef.header, header.getContext())
-                  )}
-                </TableHead>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const canSort = header.column.getCanSort();
+                const sorted = canSort ? header.column.getIsSorted() : false;
+                const ariaSort = canSort
+                  ? sorted === "asc"
+                    ? "ascending"
+                    : sorted === "desc"
+                      ? "descending"
+                      : "none"
+                  : undefined;
+                const sortButtonLabel = `Sort by ${header.column.id.replace(/_/g, " ")}`;
+                return (
+                  <TableHead
+                    key={header.id}
+                    scope="col"
+                    aria-sort={ariaSort}
+                    className={cn("text-on-surface-variant", density === "compact" && "px-2 py-2")}
+                  >
+                    {header.isPlaceholder ? null : canSort ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-label={sortButtonLabel}
+                        className={cn(
+                          "-ml-3 font-medium text-on-surface hover:bg-surface-container-high",
+                          density === "compact" ? "h-9 px-2" : "h-8 px-3",
+                        )}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getIsSorted() === "desc" ? (
+                          <ArrowDown className="ml-1 inline size-4" aria-hidden />
+                        ) : header.column.getIsSorted() === "asc" ? (
+                          <ArrowUp className="ml-1 inline size-4" aria-hidden />
+                        ) : (
+                          <ChevronsUpDown className="ml-1 inline size-4 opacity-50" aria-hidden />
+                        )}
+                      </Button>
+                    ) : (
+                      flexRender(header.column.columnDef.header, header.getContext())
+                    )}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           ))}
         </TableHeader>

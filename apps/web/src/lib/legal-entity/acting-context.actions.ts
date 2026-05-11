@@ -1,6 +1,7 @@
 "use server";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { decodeActingContextCookie } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -10,6 +11,28 @@ import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 const IMPERSONATION_COOKIE_MAX_AGE = 60 * 60 * 5;
+
+/** Single read of error responses for debugging (status + JSON or text snippet). */
+async function readApiFailure(res: Response): Promise<{ summary: string; error?: string }> {
+  const status = res.status;
+  const raw = await res.text();
+  if (!raw.trim()) {
+    return { summary: `HTTP ${status} (empty body)` };
+  }
+  try {
+    const j = JSON.parse(raw) as { error?: string; message?: string };
+    const err = typeof j.error === "string" ? j.error : undefined;
+    const msg = typeof j.message === "string" ? j.message : undefined;
+    const human = [msg, err].filter(Boolean).join(" — ");
+    const out: { summary: string; error?: string } = {
+      summary: human ? `HTTP ${status} — ${human}` : `HTTP ${status}`,
+    };
+    if (err) out.error = err;
+    return out;
+  } catch {
+    return { summary: `HTTP ${status} — ${raw.slice(0, 240)}` };
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -135,23 +158,47 @@ export async function endAdminImpersonationAction(): Promise<void> {
 
 export async function startAdminImpersonation(
   legalEntityId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const res = await authedServerFetch("/admin/impersonation/start", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ legalEntityId }),
-  });
+): Promise<{ ok: true } | { ok: false; error: string; message?: string }> {
+  let res: Response;
+  try {
+    res = await authedServerFetch("/admin/impersonation/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ legalEntityId }),
+    });
+  } catch (e) {
+    const hint = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      error: "network",
+      message: `Could not reach API at ${getServerApiBase()}: ${hint}`,
+    };
+  }
   if (res.status === 400) {
-    const j = (await res.json().catch(() => ({}))) as { error?: string };
-    return { ok: false, error: j.error ?? "bad_request" };
+    const p = await readApiFailure(res);
+    return { ok: false, error: p.error ?? "bad_request", message: p.summary };
   }
   if (!res.ok) {
-    return { ok: false, error: res.status === 404 ? "not_found" : "unknown" };
+    const p = await readApiFailure(res);
+    const err =
+      res.status === 401
+        ? "unauthorized"
+        : res.status === 403
+          ? "forbidden"
+          : res.status === 404
+            ? "not_found"
+            : "unknown";
+    return { ok: false, error: err, message: p.summary };
   }
   const body = (await res.json()) as { data?: { actingCookie?: string } };
   const actingCookie = body.data?.actingCookie;
   if (!actingCookie) {
-    return { ok: false, error: "unknown" };
+    return {
+      ok: false,
+      error: "missing_acting_cookie",
+      message:
+        "POST /admin/impersonation/start returned 200 but no data.actingCookie (check API response shape).",
+    };
   }
 
   const jar = await cookies();
@@ -170,25 +217,49 @@ export async function startAdminImpersonation(
 /** Validates UUID + entity existence (GET lookup), then starts impersonation. */
 export async function startAdminImpersonationAfterLookup(
   legalEntityId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string; message?: string }> {
   const trimmed = legalEntityId.trim();
   const parsed = z.string().uuid().safeParse(trimmed);
   if (!parsed.success) {
     return { ok: false, error: "bad_request" };
   }
 
-  const lookup = await authedServerFetch(
-    `/admin/impersonation/lookup?legalEntityId=${encodeURIComponent(trimmed)}`,
-    { cache: "no-store" },
-  );
+  let lookup: Response;
+  try {
+    lookup = await authedServerFetch(
+      `/admin/impersonation/lookup?legalEntityId=${encodeURIComponent(trimmed)}`,
+      { cache: "no-store" },
+    );
+  } catch (e) {
+    const hint = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      error: "network",
+      message: `Could not reach API at ${getServerApiBase()}: ${hint}`,
+    };
+  }
+
   if (lookup.status === 404) {
     return { ok: false, error: "not_found" };
   }
   if (!lookup.ok) {
-    return { ok: false, error: "unknown" };
+    const p = await readApiFailure(lookup);
+    const err =
+      lookup.status === 401 ? "unauthorized" : lookup.status === 403 ? "forbidden" : "unknown";
+    return { ok: false, error: err, message: p.summary };
   }
 
-  const started = await startAdminImpersonation(trimmed);
+  let started: Awaited<ReturnType<typeof startAdminImpersonation>>;
+  try {
+    started = await startAdminImpersonation(trimmed);
+  } catch (e) {
+    const hint = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      error: "network",
+      message: `POST /admin/impersonation/start failed before response: ${hint}`,
+    };
+  }
   if (!started.ok) {
     return started;
   }

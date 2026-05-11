@@ -1,9 +1,10 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 
 export default function DashboardSubmissionsLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] py-6">
+    <DashboardPage>
       <PageSkeleton variant="table" />
-    </div>
+    </DashboardPage>
   );
 }

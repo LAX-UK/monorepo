@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -34,11 +35,11 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const img = auction.images[0];
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-(--container-inner,1376px)">
-      <div className="mb-10">
+    <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
+      <div className="mb-8 px-4 sm:px-0 lg:mb-10">
         <Link
           href="/dashboard/portfolio"
-          className="inline-flex items-center gap-2 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary"
+          className="inline-flex min-h-10 items-center gap-2 rounded-md font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <span className="material-symbols-outlined text-sm" aria-hidden>
             arrow_back
@@ -59,39 +60,39 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           />
         </div>
 
-        <div className="w-full flex-1 px-0 pb-28 pt-10 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
+        <div className="w-full flex-1 px-4 pb-28 pt-8 sm:px-6 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
           <div className="mx-auto max-w-xl lg:mx-0">
-            <h1 className="mb-3 font-headline text-4xl tracking-tight text-on-surface lg:text-5xl">
+            <h1 className="mb-3 font-headline text-3xl tracking-tight text-on-surface sm:text-4xl lg:text-5xl">
               {auction.title}
             </h1>
-            <p className="mb-10 font-body text-sm text-on-surface-variant">
+            <p className="mb-8 font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10">
               Lot settled in your favor. You will be redirected to Xero-hosted checkout when an
               invoice is ready; until then you can refresh this page or return from your collection.
             </p>
 
             <section
               aria-labelledby="checkout-flow-heading"
-              className="rounded-sm border border-outline-variant/15 bg-surface-container-low/40 p-6 sm:p-8"
+              className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8"
             >
               <h2 id="checkout-flow-heading" className="sr-only">
                 Invoice and payment
               </h2>
               <nav
                 aria-label="Checkout steps"
-                className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant"
+                className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest"
               >
-                <span className="rounded-full bg-primary px-3 py-1 text-on-primary">
+                <span className="rounded-full border border-primary/35 bg-primary-container/45 px-4 py-1.5 text-primary shadow-sm">
                   1 · Invoice
                 </span>
                 <span className="text-on-surface-variant/50" aria-hidden>
                   →
                 </span>
-                <span className="rounded-full bg-surface-container-high px-3 py-1 ring-1 ring-outline-variant/20">
+                <span className="rounded-full border border-outline-variant/25 bg-surface-container-low px-4 py-1.5 text-on-surface-variant">
                   2 · Confirm
                 </span>
               </nav>
-              <div className="mb-10 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
+              <div className="mb-8 flex items-center gap-2 lg:mb-10">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
                 <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
                   Awaiting payment
                 </span>
@@ -108,10 +109,10 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               />
             </section>
 
-            <p className="mt-10 font-body text-xs text-on-surface-variant">
+            <p className="mt-8 font-body text-xs text-on-surface-variant lg:mt-10">
               <Link
                 href={lotPath(auction)}
-                className="border-b border-outline-variant/40 hover:border-primary"
+                className="rounded font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 View full lot details
               </Link>
@@ -120,7 +121,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
         <div>
           <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
             Total due
@@ -132,11 +133,11 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
         <Button
           variant="cta"
           asChild
-          className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest"
+          className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <Link href="#checkout-complete-purchase">Pay</Link>
         </Button>
       </div>
-    </div>
+    </DashboardPage>
   );
 }

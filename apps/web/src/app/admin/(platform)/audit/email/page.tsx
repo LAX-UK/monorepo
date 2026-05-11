@@ -1,10 +1,11 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default function AdminAuditEmailPage() {
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Email audit"
         description="Correlate campaign sends with email_event rows for compliance review."
@@ -22,6 +23,6 @@ export default function AdminAuditEmailPage() {
           </Link>
         }
       />
-    </div>
+    </AppScreen>
   );
 }

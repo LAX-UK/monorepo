@@ -50,6 +50,10 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import {
+  type AdminLegalEntityBrowseParams,
+  searchLegalEntitiesForAdminBrowse,
+} from "../lib/admin-legal-entity-browse.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
@@ -75,6 +79,12 @@ const impersonationStartBodySchema = z.object({
 
 const impersonationLookupQuerySchema = z.object({
   legalEntityId: z.string().uuid(),
+});
+
+const adminLegalEntityBrowseQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(25),
+  offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
 });
 
 const impersonationRecordFailedEndBodySchema = z.object({
@@ -348,6 +358,23 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       .limit(200);
     return c.json({ data: rows });
   });
+
+  platform.get(
+    "/legal-entities/browse",
+    requireLegalEntityRead,
+    zValidator("query", adminLegalEntityBrowseQuerySchema),
+    async (c) => {
+      const query = c.req.valid("query");
+      const input: AdminLegalEntityBrowseParams = {
+        limit: query.limit,
+        offset: query.offset,
+      };
+      const trimmed = query.q?.trim();
+      if (trimmed) input.q = trimmed;
+      const data = await searchLegalEntitiesForAdminBrowse(container.db, input);
+      return c.json({ data });
+    },
+  );
 
   platform.get("/payments/manual-review", requireFinanceAccess, async (c) => {
     const rows = await container.db

@@ -39,7 +39,7 @@ export function KpiTile({
   return (
     <div
       className={cn(
-        "flex flex-col justify-between rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm ring-1 ring-outline-variant/10",
+        "flex flex-col justify-between rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-md",
         className,
       )}
     >

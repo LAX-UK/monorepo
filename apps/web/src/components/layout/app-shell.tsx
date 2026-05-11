@@ -171,7 +171,7 @@ function AppShellFrame({
         </SheetContent>
       </Sheet>
 
-      <div className="flex h-[100dvh] min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-[100dvh] flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-4 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
@@ -220,13 +220,13 @@ function AppShellFrame({
         <main
           id="main-content"
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
+            "min-h-0 flex-1 scroll-mt-[52px] overflow-y-auto overflow-x-hidden",
             shellRole === "client" && "pb-20 lg:pb-0",
           )}
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-[1200px] px-4 py-6 md:px-8 md:py-8",
+              "mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8 md:py-8",
               "data-[density=compact]:md:px-6 data-[density=compact]:md:py-6",
             )}
             data-density={density}

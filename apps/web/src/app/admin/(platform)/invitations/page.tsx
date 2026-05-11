@@ -1,5 +1,6 @@
 import { AdminInvitationsBoard } from "@/components/admin/admin-invitations-board";
 import { AdminInviteForm } from "@/components/admin/admin-invite-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -21,7 +22,7 @@ export default async function AdminInvitationsPage({
   }
 
   return (
-    <div className="screen w-full max-w-[640px] space-y-6">
+    <AppScreen className="max-w-[640px] space-y-6">
       <PageHeader
         title="Invitations"
         description="Invite staff or clients by email. They complete signup with the link we send (or log in the server console in development)."
@@ -52,6 +53,6 @@ export default async function AdminInvitationsPage({
           </div>
         )}
       </section>
-    </div>
+    </AppScreen>
   );
 }
