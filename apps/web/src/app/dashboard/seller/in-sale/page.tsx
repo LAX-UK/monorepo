@@ -162,7 +162,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   let lots: Lot[] = [];
   let fetchError: string | null = null;
   try {
-    lots = await lotReader.list({ sellerId: acting.id, limit: 200 });
+    lots = await lotReader.list({ sellerId: acting.id, limit: 100 });
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Could not load your lots.";
   }
