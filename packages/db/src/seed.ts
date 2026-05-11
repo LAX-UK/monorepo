@@ -2197,7 +2197,7 @@ async function main() {
       reviewedByUserId: ADMIN_ID,
       reviewedAt: new Date(now - 60 * day),
       reviewNotes:
-        "Seeded approved profile: Eleanor (admin) created the catalogue row; optional owner_user_id links Carolina the client for Flow B demos; legal entity remains consignment/settlement identity.",
+        "Seeded approved profile: Eleanor (admin) created the catalogue row; optional owner_user_id links Carolina the client for seller-is-maker demos; legal entity remains consignment/settlement identity.",
       ownerUserId: USER2_ID,
       ownerLegalEntityId: LE.user2,
       createdAt: new Date(now - 90 * day),
@@ -2223,7 +2223,7 @@ async function main() {
       reviewedByUserId: ADMIN_ID,
       reviewedAt: new Date(now - 50 * day),
       reviewNotes:
-        "Seeded secondary approved profile: created by platform admin; owner_user_id links the consigning client user1 for optional Flow B metadata.",
+        "Seeded secondary approved profile: created by platform admin; owner_user_id links the consigning client user1 for optional linked-maker metadata.",
       ownerUserId: USER1_ID,
       ownerLegalEntityId: LE.user1,
       createdAt: new Date(now - 70 * day),
