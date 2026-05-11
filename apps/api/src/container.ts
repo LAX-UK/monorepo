@@ -22,6 +22,7 @@ import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
 import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js";
 import { PushNotificationChannel } from "./infrastructure/push-notification.channel.js";
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
+import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
@@ -82,6 +83,7 @@ import { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.wri
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
+import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistRegistryService } from "./services/artist-registry.service.js";
@@ -96,6 +98,7 @@ import { ErrorHandlerService } from "./services/error-handler.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
 import { ImpersonationSessionService } from "./services/impersonation-session.service.js";
+import type { AdminRouteServices } from "./services/interfaces/admin-routes.js";
 import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js";
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
@@ -125,6 +128,7 @@ import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
 import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
+import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
@@ -211,6 +215,7 @@ export type Container = {
   /** timeout audit + shared legal-entity middleware (impersonation cookie). */
   impersonationAuditService: ImpersonationAuditService;
   impersonationSessionService: ImpersonationSessionService;
+  legalEntityAccessService: LegalEntityAccessService;
   requireLegalEntityContext: ReturnType<typeof createRequireLegalEntityContext>;
   requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   adminUserService: AdminUserService;
@@ -251,6 +256,8 @@ export type Container = {
   legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
   /** Service for handling Stripe payment webhooks (disputes, refunds). */
   stripePaymentWebhookService: StripePaymentWebhookService | null;
+  /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
+  admin: AdminRouteServices;
 };
 
 export function createContainer(env: Env): Container {
@@ -336,6 +343,11 @@ export function createContainer(env: Env): Container {
   );
   const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
   const impersonationSessionService = new ImpersonationSessionService(db);
+  const legalEntityAccessService = new LegalEntityAccessService(
+    legalEntityRepository,
+    impersonationSessionService,
+    impersonationAuditService,
+  );
   const requireLegalEntityContext = createRequireLegalEntityContext(legalEntityRepository, {
     impersonationSessions: impersonationSessionService,
     onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
@@ -496,18 +508,26 @@ export function createContainer(env: Env): Container {
     stripeConnectService.isConfigured(),
     db,
     domainEventPublisher,
+    mediaUrlResolver,
   );
 
-  const saleService = new SaleService(saleRepo, lotRepo, lotJobScheduler, imageCleanupService);
+  const saleFollowRepo = new DrizzleSaleFollowRepository(db);
+  const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
+  const saleService = new SaleService(
+    saleRepo,
+    lotRepo,
+    lotJobScheduler,
+    imageCleanupService,
+    saleFollowService,
+    mediaUrlResolver,
+  );
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
     lotJobScheduler,
   );
 
-  const saleFollowRepo = new DrizzleSaleFollowRepository(db);
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
-  const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
   const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
   const itemSubmissionService = new ItemSubmissionService(
     db,
@@ -518,6 +538,7 @@ export function createContainer(env: Env): Container {
     legalEntityNotificationRecipients,
     legalEntityRepository,
     domainEventPublisher,
+    mediaUrlResolver,
   );
 
   const categoryService = new CategoryService(categoryRepo);
@@ -595,6 +616,7 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
     stripePaymentGateway,
+    mediaUrlResolver,
   );
   paymentServiceRef.current = paymentService;
 
@@ -609,6 +631,7 @@ export function createContainer(env: Env): Container {
 
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
+  const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const bidService = new BidService(
     repoFactory,
     strategyFactory,
@@ -621,6 +644,7 @@ export function createContainer(env: Env): Container {
     antiShillingGuard,
     domainEventPublisher,
     legalEntityRepository,
+    bidIdempotencyStore,
   );
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
@@ -683,6 +707,29 @@ export function createContainer(env: Env): Container {
     new JsonErrorResponseBuilder(),
   );
 
+  const admin = createAdminRouteServices({
+    db,
+    domainEventPublisher,
+    impersonationSessionService,
+    impersonationAuditService,
+    userSuspensionChecker,
+    legalEntityRepository,
+    legalEntityLifecycleAdminService,
+    categoryService,
+    artistProfileService,
+    emailObservabilityRepository,
+    adminUserService,
+    analyticsService,
+    adminMetricsService,
+    attentionFeedReader,
+    itemSubmissionService,
+    paymentService,
+    lotService,
+    invitationService,
+    xeroOAuthService,
+    env,
+  });
+
   return {
     env,
     db,
@@ -732,6 +779,7 @@ export function createContainer(env: Env): Container {
     legalEntityLifecycleAdminService,
     impersonationAuditService,
     impersonationSessionService,
+    legalEntityAccessService,
     requireLegalEntityContext,
     requireSubmissionsLegalEntityContext,
     adminUserService,
@@ -760,5 +808,6 @@ export function createContainer(env: Env): Container {
     payoutStatementQueue,
     legalEntityArchiveQueue,
     stripePaymentWebhookService,
+    admin,
   };
 }

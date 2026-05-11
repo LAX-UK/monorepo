@@ -4,6 +4,7 @@ import { err } from "neverthrow";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
+import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 
@@ -14,6 +15,7 @@ function minimalContainer(partial: Record<string, unknown>): Container {
   return {
     redis: { get: vi.fn().mockResolvedValue(null), set: vi.fn(), ping: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    legalEntityRepository: { findById: vi.fn().mockResolvedValue(null) },
     ...partial,
   } as unknown as Container;
 }
@@ -27,7 +29,11 @@ function lifecycleApp(container: Container, userId: string, role: string) {
     await next();
   });
   app.use("*", requirePlatformAdmin);
-  attachAdminLegalEntityLifecycleRoutes(app, container);
+  const legalEntityLifecycle = new AdminLegalEntityLifecycleApplicationService(
+    container.legalEntityRepository,
+    container.legalEntityLifecycleAdminService,
+  );
+  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle);
   return app;
 }
 

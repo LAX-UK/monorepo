@@ -118,3 +118,57 @@ describe("SaleService.create", () => {
     );
   });
 });
+
+describe("SaleService.getSaleDetailForPublicApi", () => {
+  it("returns null when sale missing", async () => {
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(null),
+    } as unknown as ISaleRepository;
+    const lotRepo = {} as unknown as ILotRepository;
+    const svc = new SaleService(saleRepo, lotRepo, null, undefined, null, undefined);
+    const r = await svc.getSaleDetailForPublicApi("missing", undefined);
+    expect(r).toBeNull();
+  });
+
+  it("includes viewer follow flag when user id provided", async () => {
+    const sale: Sale = {
+      id: "s1",
+      title: "T",
+      description: null,
+      coverImages: [],
+      categoryId: null,
+      deliveryMode: "onsite",
+      streamUrl: null,
+      locationName: null,
+      locationAddress: null,
+      locationMapUrl: null,
+      locationAddressLine1: null,
+      locationAddressLine2: null,
+      locationCity: null,
+      locationCounty: null,
+      locationPostcode: null,
+      locationCountry: null,
+      status: "active",
+      startTime: new Date(),
+      endTime: new Date(),
+      previewStartTime: null,
+      buyerPremiumRate: "0.25",
+      terms: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([]),
+    } as unknown as ILotRepository;
+    const follow = { isFollowing: vi.fn().mockResolvedValue(true) };
+    const svc = new SaleService(saleRepo, lotRepo, null, undefined, follow, undefined);
+    const r = await svc.getSaleDetailForPublicApi("s1", "user-1");
+    expect(r).not.toBeNull();
+    if (!r) return;
+    expect(r.data.viewer.isFollowing).toBe(true);
+    expect(follow.isFollowing).toHaveBeenCalledWith("user-1", "s1");
+  });
+});

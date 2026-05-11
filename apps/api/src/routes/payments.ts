@@ -5,17 +5,15 @@ import {
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Container } from "../container.js";
-import { AuthzError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
 import { createOptionalLegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import { presentMyPayments } from "./payment-me-presenter.js";
 
 export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -45,15 +43,9 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
   r.get("/me", requireAuth, zValidator("query", myPaymentsQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const { status } = c.req.valid("query");
-    const all = await container.paymentService.listForBuyer(userId);
-    const filtered = status ? all.filter((p) => p.status === status) : all;
-    const lotIds = Array.from(new Set(filtered.map((p) => p.lotId)));
-    const lots = await Promise.all(lotIds.map((id) => container.lotService.getById(id)));
-    const lotById = new Map<string, NonNullable<(typeof lots)[number]>>();
-    for (const lot of lots) {
-      if (lot) lotById.set(lot.id, lot);
-    }
-    const data = await presentMyPayments(filtered, lotById, container.mediaUrlResolver);
+    const { data } = await container.paymentService.listMyPaymentsForBuyerApi(userId, {
+      ...(status !== undefined ? { status } : {}),
+    });
     return c.json({ data });
   });
 
@@ -118,17 +110,9 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       );
       return result.match(
         () => c.json({ ok: true }),
-        (error: AuthzError | PaymentProviderError) => {
-          if (error instanceof PaymentProviderError) {
-            return c.json(
-              { error: error.message, stripe_code: error.stripeCode ?? null },
-              error.status as ContentfulStatusCode,
-            );
-          }
-          if (error instanceof AuthzError) {
-            return c.json({ error: error.message }, asHttpStatus(error.status));
-          }
-          throw error;
+        (error) => {
+          const mapped = paymentCommandErrorToHttp(error);
+          return c.json(mapped.body, mapped.status);
         },
       );
     },
@@ -153,17 +137,9 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       );
       return result.match(
         () => c.json({ ok: true }),
-        (error: AuthzError | PaymentProviderError) => {
-          if (error instanceof PaymentProviderError) {
-            return c.json(
-              { error: error.message, stripe_code: error.stripeCode ?? null },
-              error.status as ContentfulStatusCode,
-            );
-          }
-          if (error instanceof AuthzError) {
-            return c.json({ error: error.message }, asHttpStatus(error.status));
-          }
-          throw error;
+        (error) => {
+          const mapped = paymentCommandErrorToHttp(error);
+          return c.json(mapped.body, mapped.status);
         },
       );
     },

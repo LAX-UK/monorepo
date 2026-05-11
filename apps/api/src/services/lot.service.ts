@@ -1,10 +1,19 @@
 import type { Database } from "@auction/db";
 import { adminReviewTask } from "@auction/db/schema";
-import { type CreateLotInput, type Lot, type UserRole, roleHasCapability } from "@auction/types";
+import {
+  type Bid,
+  type CreateLotInput,
+  type Lot,
+  type UserRole,
+  roleHasCapability,
+} from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import { lotBidderRef } from "../lib/lot-bidder-ref.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
+import { presentLotsImages } from "../lib/media-presenters.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -19,10 +28,25 @@ import type {
 } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
 const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
+
+export type LotBidPublicApiRow = Omit<Bid, "placedByUserId"> & {
+  bidderRef: string;
+  placedByUserId: string | null;
+};
+
+export type ListBidsForPublicApiResult =
+  | { kind: "not_found" }
+  | { kind: "ok"; data: LotBidPublicApiRow[] };
+
+function clampLotBidsLimitQuery(raw: string | undefined): number {
+  const parsed = Number.parseInt(raw ?? "50", 10);
+  return Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
+}
 
 export class LotService {
   constructor(
@@ -41,6 +65,7 @@ export class LotService {
     private readonly enforceIndividualConnectOnPublish: boolean = false,
     private readonly db: Database | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
   ) {}
 
   async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
@@ -184,6 +209,73 @@ export class LotService {
 
   async list(filter: ListLotsFilter): Promise<Lot[]> {
     return this.lotRepo.list(filter);
+  }
+
+  /** Public lot listing: list, resolve media URLs, apply role-based field masking. */
+  async listLotsForPublicApi(
+    filter: ListLotsFilter,
+    viewerRole: string | undefined,
+  ): Promise<{ data: Lot[] }> {
+    const rows = await this.lotRepo.list(filter);
+    const presented = await presentLotsImages(this.mediaUrlResolver, rows);
+    return { data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole)) };
+  }
+
+  async bulkPublishOrCancel(
+    userId: string,
+    userRole: string,
+    ids: string[],
+    op: "publish" | "cancel",
+  ): Promise<Result<{ attempted: number; failed: number; errors: string[] }, AuthzError>> {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+      return err(new AuthzError("Forbidden", 403));
+    }
+    const errors: string[] = [];
+    for (const id of ids) {
+      if (op === "publish") {
+        const res = await this.publish(userId, userRole, id);
+        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+      } else {
+        const res = await this.cancel(userId, userRole, id);
+        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+      }
+    }
+    return ok({ attempted: ids.length, failed: errors.length, errors });
+  }
+
+  /**
+   * Buyer-facing bid history for a lot: sealed-lot privacy gate, stable bidder refs,
+   * and placedByUserId visibility rules.
+   */
+  async listBidsForPublicApi(input: {
+    lotId: string;
+    viewerRole: UserRole;
+    viewerId: string | undefined;
+    limitQuery: string | undefined;
+  }): Promise<ListBidsForPublicApiResult> {
+    const { lotId, viewerRole, viewerId, limitQuery } = input;
+    const lot = await this.lotRepo.findById(lotId);
+    if (!lot) {
+      return { kind: "not_found" };
+    }
+    if (lot.auctionType === "sealed" && lot.status === "active") {
+      if (!roleHasCapability(viewerRole, "auction.manage")) {
+        return { kind: "ok", data: [] };
+      }
+    }
+    const limit = clampLotBidsLimitQuery(limitQuery);
+    const bids = await this.bids.listForLot(lotId, limit);
+    const canSeeBidderIds = roleHasCapability(viewerRole, "auction.manage");
+    const data: LotBidPublicApiRow[] = bids.map((bid) => {
+      const isOwnBid = Boolean(viewerId && bid.placedByUserId === viewerId);
+      const placedByUserIdForRef = bid.placedByUserId ?? "unknown";
+      return {
+        ...bid,
+        bidderRef: lotBidderRef(lotId, placedByUserIdForRef),
+        placedByUserId: canSeeBidderIds || isOwnBid ? (bid.placedByUserId ?? null) : null,
+      };
+    });
+    return { kind: "ok", data };
   }
 
   countMatching(filter: Omit<ListLotsFilter, "limit" | "offset" | "sort">): Promise<number> {

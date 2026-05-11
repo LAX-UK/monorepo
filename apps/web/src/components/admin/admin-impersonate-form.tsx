@@ -23,6 +23,8 @@ function errorMessage(code: string): string {
       return "The browser could not complete the server request to the API (network or DNS).";
     case "missing_acting_cookie":
       return "The API responded but did not include an acting cookie payload.";
+    case "schema_incomplete":
+      return "The API database is missing required tables (migrations not applied). Run database migrations for the API, then retry.";
     default:
       return "Could not start impersonation. Try again.";
   }

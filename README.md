@@ -15,12 +15,12 @@ Shared workspaces: `packages/db` (Drizzle schema + migrations + role grants), `p
 ## Local setup (Node on host)
 
 1. **Infra only:** `docker compose up -d postgres redis`
-   **Or full stack:** `docker compose up -d` (builds API + WS images — run DB migrations before traffic).
+   **Or full stack:** `docker compose up -d` (builds images; the `migrate` service runs SQL migrations against the compose Postgres **before** `api` starts).
 2. `cp .env.example .env` and set `BETTER_AUTH_SECRET` (≥16 characters).
 3. `pnpm install`
 4. Put `DATABASE_URL` in the repo root `.env` (see `.env.example`). Migrate and seed **do not** read `.env` by themselves — export it first, e.g. `set -a && source .env && set +a`, then `pnpm db:migrate`. For Drizzle Kit's CLI instead, use `pnpm --filter @auction/db db:migrate:kit`.
 
-   **On a server with Docker**, prefer migrations inside the API container so `DATABASE_URL` matches Compose (`postgres:5432`): `docker compose up -d postgres redis api`, then `pnpm db:migrate:docker` (runs `packages/db/dist/migrate.js`). Seed the same way: `docker compose exec -T api node packages/db/dist/seed.js`.
+   **On a server with Docker**, `DATABASE_URL` for the API is `postgres:5432` inside the network. Starting `api` already waits on a successful `migrate` run. To apply migrations again by hand (e.g. after `git pull`): `pnpm db:migrate:docker` (`docker compose run --rm migrate`). Seed: `docker compose exec -T api node packages/db/dist/seed.js`.
 5. `pnpm turbo run dev --parallel`
 
 See `docs/development.md` for OAuth callback testing with ngrok, least-privilege DB role checks, and social-provider test users.

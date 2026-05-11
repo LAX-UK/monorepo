@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { type Lot, type UserRole, roleHasCapability } from "@auction/types";
+import { type Lot, type PaymentStatus, type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
@@ -10,9 +10,11 @@ import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { ILotRepository, IUserRepository } from "./interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
+import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 /** Seller entity must not be in these states for refund. */
@@ -47,6 +49,7 @@ export class PaymentService {
     private readonly db?: Database,
     private readonly domainEventPublisher?: DomainEventPublisher,
     private readonly stripePayments: IStripePaymentGateway | null = null,
+    private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -167,6 +170,23 @@ export class PaymentService {
 
   async listForBuyer(buyerId: string): Promise<PaymentRecord[]> {
     return this.payments.listByBuyerId(buyerId);
+  }
+
+  /** Buyer dashboard: list, optional status filter, lot hydration, presentation. */
+  async listMyPaymentsForBuyerApi(
+    userId: string,
+    options: { status?: PaymentStatus },
+  ): Promise<{ data: MyPaymentRowDTO[] }> {
+    const all = await this.listForBuyer(userId);
+    const filtered = options.status ? all.filter((p) => p.status === options.status) : all;
+    const lotIds = Array.from(new Set(filtered.map((p) => p.lotId)));
+    const lots = await Promise.all(lotIds.map((id) => this.lots.findById(id)));
+    const lotById = new Map<string, NonNullable<(typeof lots)[number]>>();
+    for (const lot of lots) {
+      if (lot) lotById.set(lot.id, lot);
+    }
+    const data = await presentMyPayments(filtered, lotById, this.mediaUrlResolver);
+    return { data };
   }
 
   countPendingOlderThanHours(hours: number): Promise<number> {

@@ -19,7 +19,8 @@
     "start": "node dist/index.js",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:admin-dip": "node scripts/check-admin-routes-dip.mjs"
   },
   "dependencies": {
     "@auction/auth": "workspace:*",

@@ -130,7 +130,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))
-    .route("/invitations", createPublicInvitationRoutes(container))
+    .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))

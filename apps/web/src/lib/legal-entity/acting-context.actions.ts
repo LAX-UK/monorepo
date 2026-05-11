@@ -12,22 +12,26 @@ import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 const IMPERSONATION_COOKIE_MAX_AGE = 60 * 60 * 5;
 
+type ApiFailureRead = { summary: string; error?: string; code?: string };
+
 /** Single read of error responses for debugging (status + JSON or text snippet). */
-async function readApiFailure(res: Response): Promise<{ summary: string; error?: string }> {
+async function readApiFailure(res: Response): Promise<ApiFailureRead> {
   const status = res.status;
   const raw = await res.text();
   if (!raw.trim()) {
     return { summary: `HTTP ${status} (empty body)` };
   }
   try {
-    const j = JSON.parse(raw) as { error?: string; message?: string };
+    const j = JSON.parse(raw) as { error?: string; message?: string; code?: string };
     const err = typeof j.error === "string" ? j.error : undefined;
     const msg = typeof j.message === "string" ? j.message : undefined;
-    const human = [msg, err].filter(Boolean).join(" — ");
-    const out: { summary: string; error?: string } = {
+    const code = typeof j.code === "string" ? j.code : undefined;
+    const human = [msg, err, code].filter(Boolean).join(" — ");
+    const out: ApiFailureRead = {
       summary: human ? `HTTP ${status} — ${human}` : `HTTP ${status}`,
     };
     if (err) out.error = err;
+    if (code) out.code = code;
     return out;
   } catch {
     return { summary: `HTTP ${status} — ${raw.slice(0, 240)}` };
@@ -180,6 +184,9 @@ export async function startAdminImpersonation(
   }
   if (!res.ok) {
     const p = await readApiFailure(res);
+    if (res.status === 503 && p.code === "database_schema_incomplete") {
+      return { ok: false, error: "schema_incomplete", message: p.summary };
+    }
     const err =
       res.status === 401
         ? "unauthorized"
@@ -244,6 +251,9 @@ export async function startAdminImpersonationAfterLookup(
   }
   if (!lookup.ok) {
     const p = await readApiFailure(lookup);
+    if (lookup.status === 503 && p.code === "database_schema_incomplete") {
+      return { ok: false, error: "schema_incomplete", message: p.summary };
+    }
     const err =
       lookup.status === 401 ? "unauthorized" : lookup.status === 403 ? "forbidden" : "unknown";
     return { ok: false, error: err, message: p.summary };
