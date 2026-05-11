@@ -12,8 +12,7 @@ const ERROR_CODE_MESSAGES = {
 
 const ERROR_CODE_MESSAGES_LOOKUP: Readonly<Record<string, string>> = ERROR_CODE_MESSAGES;
 
-const SESSION_EXPIRED_MESSAGE =
-  "Your session expired. Sign in again to load the member list.";
+const SESSION_EXPIRED_MESSAGE = "Your session expired. Sign in again to load the member list.";
 
 /**
  * Maps HTTP status and optional API error code to stable dashboard copy.

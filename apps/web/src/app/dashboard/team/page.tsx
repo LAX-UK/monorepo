@@ -4,8 +4,8 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { describeMemberFetchFailure } from "@/lib/legal-entity/member-fetch-error-messages";
 import {
-  createLegalEntityMemberListGateway,
   type ILegalEntityMemberListGateway,
+  createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -61,8 +61,7 @@ export default async function DashboardTeamPage() {
     );
   }
 
-  const memberListGateway: ILegalEntityMemberListGateway =
-    createLegalEntityMemberListGateway();
+  const memberListGateway: ILegalEntityMemberListGateway = createLegalEntityMemberListGateway();
   const fetched = await memberListGateway.fetchMemberListForActing(acting);
   if (!fetched.ok) {
     const description = describeMemberFetchFailure(fetched.status, fetched.errorCode);
