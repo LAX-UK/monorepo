@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -36,7 +37,7 @@ export default async function SellerStripeConnectPage() {
   }
 
   return (
-    <div className="screen mx-auto max-w-2xl space-y-8">
+    <DashboardPage className="mx-auto max-w-2xl space-y-8">
       <PageHeader
         title="Stripe Connect"
         description="Complete payout verification so approved lots can be scheduled once finance enables Connect in production."
@@ -97,6 +98,6 @@ export default async function SellerStripeConnectPage() {
           Back to seller workspace
         </Link>
       </p>
-    </div>
+    </DashboardPage>
   );
 }

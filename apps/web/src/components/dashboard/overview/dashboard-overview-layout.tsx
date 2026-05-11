@@ -23,7 +23,7 @@ type Props = {
 export function DashboardOverviewLayout({ layout = "twoCol", slots }: Props) {
   if (layout === "stack") {
     return (
-      <div className="screen flex w-full flex-col gap-7">
+      <div className="screen flex w-full flex-col gap-10">
         {slots.header}
         {slots.kpis}
         {slots.activity}
@@ -35,7 +35,7 @@ export function DashboardOverviewLayout({ layout = "twoCol", slots }: Props) {
   }
 
   return (
-    <div className="screen flex w-full flex-col gap-7">
+    <div className="screen flex w-full flex-col gap-10">
       {slots.header}
       {slots.kpis}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">

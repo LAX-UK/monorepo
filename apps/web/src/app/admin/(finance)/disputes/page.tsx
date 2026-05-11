@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminFinanceDisputeDomainEvents } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -13,7 +14,7 @@ export default async function AdminDisputesPage() {
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Payment disputes"
         description="Stripe dispute-related domain events (opened, funds withdrawn, closed). Payloads are redacted per audit policy."
@@ -73,6 +74,6 @@ export default async function AdminDisputesPage() {
           </table>
         </div>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

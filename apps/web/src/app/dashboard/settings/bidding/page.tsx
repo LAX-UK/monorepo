@@ -1,4 +1,5 @@
 import { BiddingPreferencesForm } from "@/components/dashboard/bidding-preferences-form";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -31,7 +32,7 @@ export default async function BiddingSettingsPage({
   const prefs = await loadPrefs();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <DashboardPage className="mx-auto max-w-2xl space-y-8">
       <PageHeader
         title="Bidding preferences"
         description="Outbid alerts and optional default ceiling (stored in-app; syncs notification preferences)."
@@ -44,13 +45,13 @@ export default async function BiddingSettingsPage({
         </Alert>
       ) : null}
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not save</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
       <BiddingPreferencesForm initial={prefs} />
-    </div>
+    </DashboardPage>
   );
 }

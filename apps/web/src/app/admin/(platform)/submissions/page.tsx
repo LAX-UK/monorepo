@@ -4,6 +4,7 @@ import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submis
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
 import { ShareFiltersButton } from "@/components/admin/share-filters-button";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -95,7 +96,7 @@ export default async function AdminSubmissionsPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Submissions"
         description="Review seller intake. Start review on submitted items, then approve (creates a draft lot) or reject with a clear reason."
@@ -136,6 +137,6 @@ export default async function AdminSubmissionsPage({
       {!loadError && submissionRows.length > 0 ? (
         <AdminSubmissionsBoard rows={submissionRows} filterForm={filterForm} />
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

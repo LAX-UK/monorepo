@@ -1,6 +1,7 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -17,7 +18,7 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
   if (!artist) notFound();
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title={`Edit ${artist.displayName}`}
         description="Manage profile copy, public visibility, and client ownership linkage."
@@ -61,6 +62,6 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
         </p>
         <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
       </section>
-    </div>
+    </AppScreen>
   );
 }

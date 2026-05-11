@@ -1,5 +1,6 @@
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
 import type { PaymentStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -32,7 +33,7 @@ export default async function AdminPaymentsPage({
   try {
     const [p, a] = await Promise.all([
       getAdminPaymentList(),
-      getAdminLotList({ limit: 200, offset: 0 }),
+      getAdminLotList({ limit: 100, offset: 0 }),
     ]);
     payments = p;
     auctions = a;
@@ -84,7 +85,7 @@ export default async function AdminPaymentsPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Payments"
         description="Filter by status, search loaded rows, and use the drawer for capture/refund on touch devices."
@@ -108,6 +109,6 @@ export default async function AdminPaymentsPage({
           />
         </Suspense>
       )}
-    </div>
+    </AppScreen>
   );
 }

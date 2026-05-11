@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
@@ -15,7 +16,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
     : [];
 
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Multi-lot checkout"
         description="Combine hammer settlements when finance enables basket invoicing."
@@ -45,6 +46,6 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           </AlertDescription>
         </Alert>
       )}
-    </div>
+    </DashboardPage>
   );
 }

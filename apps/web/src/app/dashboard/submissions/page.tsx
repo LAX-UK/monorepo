@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
@@ -52,7 +53,7 @@ export default async function DashboardSubmissionsPage({
     initialQ.length === 0 ? mapped : mapped.filter((r) => r.title.toLowerCase().includes(qLower));
 
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Your submissions"
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
@@ -67,7 +68,7 @@ export default async function DashboardSubmissionsPage({
         }
       />
       {error || loadError ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>{loadError ?? error}</p>
@@ -86,6 +87,6 @@ export default async function DashboardSubmissionsPage({
           />
         </Suspense>
       )}
-    </div>
+    </DashboardPage>
   );
 }

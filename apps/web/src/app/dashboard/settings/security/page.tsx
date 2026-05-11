@@ -1,4 +1,5 @@
 import { SecurityPasswordForm } from "@/components/auth/security-password-form";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -31,7 +32,7 @@ export default async function SecuritySettingsPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-md space-y-8">
+    <DashboardPage className="mx-auto max-w-md space-y-8">
       <PageHeader
         title="Security"
         description="Update your password and review account access settings."
@@ -80,6 +81,6 @@ export default async function SecuritySettingsPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </DashboardPage>
   );
 }

@@ -2,6 +2,7 @@ import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
 import { ShareFiltersButton } from "@/components/admin/share-filters-button";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
@@ -63,7 +64,7 @@ export default async function AdminSalesPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Sales"
         description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
@@ -119,6 +120,6 @@ export default async function AdminSalesPage({
           />
         </Suspense>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

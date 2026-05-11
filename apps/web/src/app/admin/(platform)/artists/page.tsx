@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -26,7 +27,7 @@ export default async function AdminArtistsPage({
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Artists"
         description="Manage canonical public artist profiles, client ownership links, featured state, and attribution targets."
@@ -99,6 +100,6 @@ export default async function AdminArtistsPage({
           ))}
         </div>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

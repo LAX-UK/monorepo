@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 
@@ -10,7 +11,7 @@ import { PageHeader } from "@auction/ui/components/page-header";
  * 404 and to communicate the policy clearly. */
 export default function SellerArtistProfilePage() {
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Artist profile"
         description="Your catalogue artist profile is managed by the admin team."
@@ -25,6 +26,6 @@ export default function SellerArtistProfilePage() {
           update through the catalogue team.
         </AlertDescription>
       </Alert>
-    </div>
+    </DashboardPage>
   );
 }

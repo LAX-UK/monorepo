@@ -245,14 +245,14 @@ const envSchema = z
       if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `STRIPE_SECRET_KEY in test must use a test key (sk_test_…). got prefix=${JSON.stringify(e.STRIPE_SECRET_KEY.slice(0, 8))} length=${e.STRIPE_SECRET_KEY.length}`,
+          message: "STRIPE_SECRET_KEY in test must use a test key (sk_test_…)",
           path: ["STRIPE_SECRET_KEY"],
         });
       }
       if (e.STRIPE_PUBLISHABLE_KEY && !e.STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…). got prefix=${JSON.stringify(e.STRIPE_PUBLISHABLE_KEY.slice(0, 8))} length=${e.STRIPE_PUBLISHABLE_KEY.length}`,
+          message: "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
           path: ["STRIPE_PUBLISHABLE_KEY"],
         });
       }

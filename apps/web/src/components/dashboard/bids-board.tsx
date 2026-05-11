@@ -164,7 +164,11 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
 function BoardTable({ rows }: { rows: BidBoardRow[] }) {
   const columns = useMemo(() => bidColumns(), []);
   if (rows.length === 0) return null;
-  return <DataTable columns={columns} data={rows} density="compact" />;
+  return (
+    <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+      <DataTable columns={columns} data={rows} density="compact" />
+    </div>
+  );
 }
 
 export function BidsBoard({
@@ -243,15 +247,15 @@ export function BidsBoard({
   );
 
   return (
-    <div className="w-full">
+    <div className="min-w-0 max-w-[var(--container-inner,1376px)]">
       <PageHeader
         title="My Bids"
         description="Track active, won, and lost lots with your latest bid values."
-        className="mb-6 border-b border-outline-variant/20 pb-5"
+        className="border-0 pb-0"
       />
 
       {fetchError ? (
-        <Alert variant="destructive" className="mb-8">
+        <Alert variant="destructive" className="mb-8 rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load bids</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
@@ -283,7 +287,7 @@ export function BidsBoard({
       />
 
       <Toolbar
-        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4"
+        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm"
         search={
           <Form {...searchForm}>
             <form
@@ -304,7 +308,12 @@ export function BidsBoard({
                       Filter by lot title
                     </FormLabel>
                     <FormControl>
-                      <Input id="bids-q" placeholder="e.g. oil on canvas" {...field} />
+                      <Input
+                        id="bids-q"
+                        placeholder="e.g. oil on canvas"
+                        className="max-w-md bg-surface-container-low"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -26,10 +26,12 @@ export function SecondaryActionStack({
   const firstArtist = vm.artistFollowPreview[0];
 
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+    <section className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-xl">Settlement path</CardTitle>
+          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+            Settlement path
+          </CardTitle>
           <CardDescription>Track payment, invoice, and delivery readiness.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -57,9 +59,11 @@ export function SecondaryActionStack({
         </CardContent>
       </Card>
 
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-xl">Account essentials</CardTitle>
+          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+            Account essentials
+          </CardTitle>
           <CardDescription>Profile, alerts, bidding, and followed artists.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -79,9 +83,11 @@ export function SecondaryActionStack({
         </CardContent>
       </Card>
 
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-xl">Sell with LAX</CardTitle>
+          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+            Sell with LAX
+          </CardTitle>
           <CardDescription>Submit items for specialist review and cataloguing.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

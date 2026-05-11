@@ -1,4 +1,5 @@
 import { AdminPayoutReverseButton } from "@/components/admin/admin-payout-reverse-button";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import {
   addPayoutAdjustmentAction,
   markPayoutPaidAction,
@@ -85,7 +86,7 @@ export default async function AdminPayoutsPage({
   const totalNet = payouts.reduce((sum, p) => sum + Number.parseFloat(p.netAmount || "0"), 0);
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Payouts"
         description="Run seller settlements, review payout totals, add finance adjustments, and mark Stripe transfers as paid."
@@ -359,7 +360,7 @@ export default async function AdminPayoutsPage({
           </li>
         ))}
       </ul>
-    </div>
+    </AppScreen>
   );
 }
 

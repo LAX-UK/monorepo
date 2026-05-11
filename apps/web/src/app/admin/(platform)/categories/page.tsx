@@ -1,4 +1,5 @@
 import { AdminCategoriesBoard } from "@/components/admin/admin-categories-board";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -25,7 +26,7 @@ export default async function AdminCategoriesPage({
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Categories"
         description="Manage the taxonomy used by sales, lots, and submissions. Archive used categories instead of deleting them."
@@ -87,6 +88,6 @@ export default async function AdminCategoriesPage({
       {!listError && categories.length > 0 ? (
         <AdminCategoriesBoard categories={categories} />
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

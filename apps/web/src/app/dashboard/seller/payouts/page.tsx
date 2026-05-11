@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -57,7 +58,7 @@ export default async function SellerPayoutsPage() {
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Sold & payouts"
         description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
@@ -65,14 +66,14 @@ export default async function SellerPayoutsPage() {
       />
 
       {listError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load</AlertTitle>
           <AlertDescription>{listError}</AlertDescription>
         </Alert>
       )}
 
       {preview && (
-        <Card>
+        <Card className="border-outline-variant/15 shadow-sm">
           <CardContent className="space-y-2 p-4">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
               Next payout (preview)
@@ -85,19 +86,19 @@ export default async function SellerPayoutsPage() {
               <dl className="grid gap-3 text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-on-surface-variant">Gross</dt>
-                  <dd className="font-medium">
+                  <dd className="font-medium tabular-nums text-on-surface">
                     {formatMoney(preview.pendingGross, preview.currency)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-on-surface-variant">Platform fees</dt>
-                  <dd className="font-medium">
+                  <dd className="font-medium tabular-nums text-on-surface">
                     {formatMoney(preview.pendingPlatformFee, preview.currency)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-on-surface-variant">Net</dt>
-                  <dd className="font-semibold">
+                  <dd className="font-semibold tabular-nums text-on-surface">
                     {formatMoney(preview.pendingNet, preview.currency)}
                   </dd>
                 </div>
@@ -125,14 +126,14 @@ export default async function SellerPayoutsPage() {
             const statusView = getPayoutStatusView(p.status);
             return (
               <li key={p.id}>
-                <Card>
+                <Card className="border-outline-variant/15 shadow-sm transition-colors hover:border-primary/20">
                   <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
                     <div>
                       <p className="font-medium">
                         {new Date(p.periodStart).toLocaleDateString("en-GB")} →{" "}
                         {new Date(p.periodEnd).toLocaleDateString("en-GB")}
                       </p>
-                      <p className="text-xs text-on-surface-variant">
+                      <p className="text-xs tabular-nums text-on-surface-variant">
                         Gross {formatMoney(p.grossAmount, p.currency)} · Fees{" "}
                         {formatMoney(p.platformFee, p.currency)}
                         {Number.parseFloat(p.stripeFee) > 0
@@ -140,7 +141,7 @@ export default async function SellerPayoutsPage() {
                           : ""}
                       </p>
                     </div>
-                    <div className="text-right text-base font-semibold tabular-nums">
+                    <div className="text-right text-base font-semibold tabular-nums text-on-surface">
                       {formatMoney(p.netAmount, p.currency)}
                     </div>
                     <div className="flex items-center justify-end">
@@ -165,6 +166,6 @@ export default async function SellerPayoutsPage() {
           })}
         </ul>
       )}
-    </div>
+    </DashboardPage>
   );
 }

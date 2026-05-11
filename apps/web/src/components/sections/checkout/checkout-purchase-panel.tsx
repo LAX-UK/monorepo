@@ -89,7 +89,7 @@ export function CheckoutPurchasePanel({
 
   if (submitted) {
     return (
-      <output className="block rounded-xl bg-primary-container/15 px-8 py-10 text-center ring-1 ring-primary/25">
+      <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-8 py-10 text-center shadow-sm">
         <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
           Request received
         </p>
@@ -105,7 +105,7 @@ export function CheckoutPurchasePanel({
 
   return (
     <div className="space-y-10">
-      <Card className="bg-surface-container-low shadow-sm ring-1 ring-outline-variant/10 max-lg:sticky max-lg:top-4 max-lg:z-10 max-lg:shadow-md">
+      <Card className="max-lg:sticky max-lg:top-4 max-lg:z-10 border border-outline-variant/15 bg-surface-container-low shadow-md max-lg:shadow-lg">
         <CardContent className="p-8 pt-8">
           <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
             Order summary
@@ -137,7 +137,7 @@ export function CheckoutPurchasePanel({
         </CardContent>
       </Card>
 
-      <Card className="bg-surface-container-high/40 ring-1 ring-outline-variant/10">
+      <Card className="border border-outline-variant/15 bg-surface-container-high/40 shadow-sm">
         <CardContent className="p-8 pt-8">
           <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
             Payment

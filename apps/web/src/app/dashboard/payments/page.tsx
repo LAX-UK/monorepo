@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -41,8 +42,16 @@ function statusVariant(tone: PaymentDisplayRow["statusTone"]) {
 }
 
 function FilterChips({ active }: { active: PaymentsStatusFilter }) {
+  const chipBase =
+    "inline-flex min-h-10 items-center justify-center rounded-full border px-4 font-label text-xs font-medium uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const chipActive = "border-primary/35 bg-primary-container/45 text-primary shadow-sm";
+  const chipIdle =
+    "border-outline-variant/20 bg-surface-container-low text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface";
   return (
-    <nav aria-label="Filter payments by status" className="flex flex-wrap gap-2">
+    <nav
+      aria-label="Filter payments by status"
+      className="flex flex-wrap gap-2 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-3 shadow-sm"
+    >
       {PAYMENTS_STATUS_FILTER_OPTIONS.map((opt) => {
         const isActive = opt.value === active;
         return (
@@ -51,11 +60,7 @@ function FilterChips({ active }: { active: PaymentsStatusFilter }) {
             href={paymentsFilterHref(PAGE_PATH, opt.value)}
             scroll={false}
             aria-current={isActive ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center rounded-full px-4 text-xs font-semibold uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-              isActive
-                ? "bg-primary text-on-primary"
-                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-            }`}
+            className={`${chipBase} ${isActive ? chipActive : chipIdle}`}
           >
             {opt.label}
           </Link>
@@ -93,7 +98,7 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
 function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
   return (
     <li>
-      <Card>
+      <Card className="border-outline-variant/15 shadow-sm transition-colors hover:border-primary/20">
         <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
           <Link
             href={lotPath({ id: row.lotId, title: row.lotTitle })}
@@ -114,7 +119,7 @@ function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
               {row.invoiceNumber ? <> · Invoice {row.invoiceNumber}</> : null}
             </p>
           </div>
-          <div className="text-right text-base font-semibold tabular-nums sm:text-base">
+          <div className="text-right text-base font-semibold tabular-nums text-on-surface sm:text-base">
             {row.amountLabel}
           </div>
           <div className="flex items-center justify-end">
@@ -152,7 +157,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
   }
 
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="My payments"
         description="Invoices and receipts for lots you have won. Each row links to the lot and, when issued, the hosted invoice."
@@ -162,7 +167,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
       <FilterChips active={filter} />
 
       {fetchError ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load payments</AlertTitle>
           <AlertDescription>
             {fetchError} Refresh the page or try again in a few minutes.
@@ -203,6 +208,6 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
           </ul>
         ) : null}
       </section>
-    </div>
+    </DashboardPage>
   );
 }

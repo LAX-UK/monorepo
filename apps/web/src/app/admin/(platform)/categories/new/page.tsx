@@ -1,4 +1,5 @@
 import { AdminCategoryForm } from "@/components/admin/admin-category-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -7,7 +8,7 @@ export default async function NewAdminCategoryPage() {
   const categories = await getAdminCategoryList({ includeArchived: true });
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="New category"
         description="Create a category that staff can assign to sales, lots, and seller submissions."
@@ -27,6 +28,6 @@ export default async function NewAdminCategoryPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    </AppScreen>
   );
 }
