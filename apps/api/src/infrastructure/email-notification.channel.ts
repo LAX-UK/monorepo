@@ -1,4 +1,5 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
+import type { BillToContext } from "@auction/types";
 import { createUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
 import { notificationTypeToTemplate } from "../lib/notification-preference-keys.js";
 import type { IEmailService } from "../services/interfaces/email.js";
@@ -76,6 +77,28 @@ export class EmailNotificationChannel implements INotificationChannel {
           lotTitle: payload.title,
           amount: payload.message,
         };
+      case "payment-invoice": {
+        const m = payload.meta;
+        const amount = m?.amount ?? payload.message;
+        const invoiceNumber = m?.invoiceNumber ?? "Invoice";
+        const base = this.apiBaseUrl.replace(/\/$/, "");
+        const invoiceUrl =
+          m?.invoiceUrl && /^https?:\/\//i.test(m.invoiceUrl) ? m.invoiceUrl : `${base}/dashboard`;
+        const billTo: BillToContext = {
+          kind: "individual",
+          billToName: userName,
+          addressLines: [],
+          vatLine: null,
+          addressIncomplete: true,
+        };
+        return {
+          userName,
+          invoiceNumber,
+          amount,
+          invoiceUrl,
+          billTo,
+        };
+      }
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }

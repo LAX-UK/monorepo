@@ -1,6 +1,6 @@
 import { emailEvent, emailOutbox, emailSuppression, user } from "@auction/db/schema";
 import { emailHash } from "@auction/email";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../../container.js";
 import { applyUnsubscribeToken } from "../email.js";
@@ -43,6 +43,9 @@ export function createPostmarkWebhookRoutes(container: Container) {
 
     if (eventType === "bounce" || eventType === "complaint") {
       await applySuppressionFromWebhook(container, messageId, eventType, payload);
+    }
+    if (eventType === "soft_bounce") {
+      await maybeSuppressAfterSoftBounceThreshold(container, payload);
     }
     if (eventType === "unsubscribe") {
       const token = extractUnsubscribeToken(payload);
@@ -156,6 +159,44 @@ async function applySuppressionFromWebhook(
       emailStatusChangedAt: new Date(),
     })
     .where(sql`lower(${user.email}) = ${addr}`);
+}
+
+async function maybeSuppressAfterSoftBounceThreshold(
+  container: Container,
+  payload: PostmarkPayload,
+) {
+  const addr = recipientEmailFromPostmarkPayload(payload);
+  if (!addr) return;
+  const addrLower = addr.toLowerCase();
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [row] = await container.db
+    .select({
+      n: sql<number>`count(*)::int`,
+    })
+    .from(emailEvent)
+    .where(
+      and(
+        eq(emailEvent.type, "soft_bounce"),
+        gt(emailEvent.receivedAt, since),
+        sql`(lower(coalesce(${emailEvent.payload}->>'Email','')) = ${addrLower} OR lower(coalesce(${emailEvent.payload}->>'OriginalRecipient','')) = ${addrLower})`,
+      ),
+    );
+  const count = row?.n ?? 0;
+  if (count < 3) return;
+  const hash = emailHash(addr);
+  await container.db
+    .insert(emailSuppression)
+    .values({
+      emailHash: hash,
+      reason: "soft_bounce_threshold",
+    })
+    .onConflictDoUpdate({
+      target: emailSuppression.emailHash,
+      set: {
+        reason: "soft_bounce_threshold",
+        createdAt: new Date(),
+      },
+    });
 }
 
 async function upsertSuppressionAndMaybeUser(

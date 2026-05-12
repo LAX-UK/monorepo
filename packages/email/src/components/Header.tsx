@@ -3,6 +3,7 @@ import {
   EMAIL_LOGO_ALT,
   EMAIL_LOGO_DISPLAY_WIDTH,
   EMAIL_LOGO_URL,
+  EMAIL_LOGO_URL_2X,
   EMAIL_SITE_URL,
 } from "@auction/branding";
 import { Img, Link, Section } from "@react-email/components";
@@ -17,6 +18,7 @@ export function Header() {
           alt={EMAIL_LOGO_ALT}
           height={displayHeight}
           src={EMAIL_LOGO_URL}
+          srcSet={`${EMAIL_LOGO_URL} 1x, ${EMAIL_LOGO_URL_2X} 2x`}
           style={img}
           width={EMAIL_LOGO_DISPLAY_WIDTH}
         />

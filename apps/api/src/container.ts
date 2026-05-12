@@ -722,7 +722,7 @@ export function createContainer(env: Env): Container {
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
-    new BetterAuthEmailSignupPersister(auth),
+    new BetterAuthEmailSignupPersister(auth, env.WEB_ORIGIN),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
     invitationService,

@@ -1,3 +1,4 @@
+import { EMAIL_DASHBOARD_URL } from "@auction/branding";
 import { Button } from "../components/Button.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
@@ -17,7 +18,7 @@ export default function WelcomeEmail({ userName }: TemplateVarsByName["welcome"]
       <TextBlock>
         Your email is verified and your London Art Exchange account is ready to use.
       </TextBlock>
-      <Button href="https://lax.bid/dashboard">Go to your dashboard</Button>
+      <Button href={EMAIL_DASHBOARD_URL}>Go to your dashboard</Button>
     </Layout>
   );
 }

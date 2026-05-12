@@ -2,6 +2,7 @@ import { domainEvent, lot, projectorState } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
+import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
 
 const PROJECTOR_NAME = "lot_voided_anti_shilling_admin_notify";
 
@@ -17,7 +18,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
   log: pino.Logger;
   emailService: IEmailService;
   supportContactEmail: string;
-  adminEmailAddress: string;
+  adminEmailAddress?: string | undefined;
   webOrigin: string;
 }): Promise<void> {
   const { db, log, emailService, supportContactEmail, adminEmailAddress, webOrigin } = options;
@@ -68,18 +69,38 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
         .limit(1);
       const lotTitle = lotRow?.title ?? "Lot";
 
-      await emailService.enqueue({
-        template: "lot-voided-anti-shilling-admin",
-        to: adminEmailAddress,
-        vars: {
-          lotTitle,
-          lotId,
-          adminLotUrl: `${base}/admin/lots/${lotId}`,
-          supportContactEmail,
-        },
-        category: "transactional",
-        idempotencyKey: `lot-voided-anti-shilling-admin:${lotId}`,
-      });
+      const staffOps = await listStaffOpsRecipients(db);
+      if (staffOps.length > 0) {
+        for (const s of staffOps) {
+          await emailService.enqueue({
+            template: "lot-voided-anti-shilling-admin",
+            to: s.email,
+            userId: s.id,
+            vars: {
+              lotTitle,
+              lotId,
+              adminLotUrl: `${base}/admin/lots/${lotId}`,
+              supportContactEmail,
+            },
+            category: "transactional",
+            idempotencyKey: `lot-voided-anti-shilling-admin:${lotId}:ops:${s.id}`,
+          });
+        }
+      } else if (adminEmailAddress) {
+        await emailService.enqueue({
+          template: "lot-voided-anti-shilling-admin",
+          to: adminEmailAddress,
+          recipientResolution: "snapshot",
+          vars: {
+            lotTitle,
+            lotId,
+            adminLotUrl: `${base}/admin/lots/${lotId}`,
+            supportContactEmail,
+          },
+          category: "transactional",
+          idempotencyKey: `lot-voided-anti-shilling-admin:${lotId}:admin`,
+        });
+      }
       maxId = row.id;
     } catch (err) {
       log.error({ err, eventId: row.id, lotId }, "lot_voided_anti_shilling_admin_notify_failed");

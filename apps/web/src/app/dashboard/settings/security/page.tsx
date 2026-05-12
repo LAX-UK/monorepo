@@ -1,4 +1,5 @@
 import { SecurityPasswordForm } from "@/components/auth/security-password-form";
+import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
@@ -25,11 +26,12 @@ export default async function SecuritySettingsPage() {
   if (!meRes.ok) redirect("/dashboard?error=security");
 
   const meBody = (await meRes.json()) as {
-    data: { deletionRequestedAt?: string | null };
+    data: { deletionRequestedAt?: string | null; twoFactorEnabled?: boolean };
   };
   const deletionRequestedAt = meBody.data.deletionRequestedAt
     ? new Date(meBody.data.deletionRequestedAt)
     : null;
+  const twoFactorEnabled = meBody.data.twoFactorEnabled === true;
 
   return (
     <DashboardPage className="mx-auto max-w-md space-y-8">
@@ -57,19 +59,7 @@ export default async function SecuritySettingsPage() {
         </Alert>
       ) : null}
       <SecurityPasswordForm />
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="text-base">Two-factor authentication</CardTitle>
-          <CardDescription>
-            Authenticator (TOTP) is available on your account. Use your authenticator app when
-            prompted after sign-in; staff roles may require it once enabled organisation-wide.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="font-body text-sm text-on-surface-variant">
-          Enrolment and verification flows are handled through the sign-in experience; contact
-          support if you lose access to your authenticator.
-        </CardContent>
-      </Card>
+      <TwoFactorStatusCard twoFactorEnabled={twoFactorEnabled} />
       {deletionRequestedAt ? null : (
         <Card className="border-destructive/30">
           <CardHeader>

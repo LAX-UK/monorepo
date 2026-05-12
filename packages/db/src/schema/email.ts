@@ -24,7 +24,12 @@ export type EmailEventType =
   | "open"
   | "click"
   | "unsubscribe";
-export type EmailSuppressionReason = "hard_bounce" | "complaint" | "manual" | "unsubscribe";
+export type EmailSuppressionReason =
+  | "hard_bounce"
+  | "complaint"
+  | "manual"
+  | "unsubscribe"
+  | "soft_bounce_threshold";
 export type NewsletterSignupStatus = "queued" | "pushed" | "rejected" | "failed";
 
 export const emailOutbox = pgTable(

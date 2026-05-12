@@ -1,0 +1,79 @@
+"use client";
+
+import { TwoFactorDisableDialog } from "@/components/auth/two-factor-disable-dialog";
+import { TwoFactorRegenerateCodesDialog } from "@/components/auth/two-factor-regenerate-codes-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@auction/ui/components/card";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+export type TwoFactorStatusCardProps = {
+  twoFactorEnabled: boolean;
+};
+
+export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardProps) {
+  const router = useRouter();
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+
+  return (
+    <>
+      <Card className="border-outline-variant/15">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="text-base">Two-factor authentication</CardTitle>
+            <CardDescription>
+              Add a second step at sign-in with an authenticator app (TOTP). Recommended for staff
+              and anyone bidding regularly.
+            </CardDescription>
+          </div>
+          <StatusBadge variant={twoFactorEnabled ? "success" : "warning"}>
+            {twoFactorEnabled ? "On" : "Off"}
+          </StatusBadge>
+        </CardHeader>
+        <CardContent className="space-y-4 font-body text-sm text-on-surface-variant">
+          {twoFactorEnabled ? (
+            <>
+              <p>
+                You&apos;ll be asked for a 6-digit code when you sign in on a new device or browser.
+                Keep backup codes somewhere safe offline.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => setRegenOpen(true)}>
+                  Regenerate backup codes
+                </Button>
+                <Button type="button" variant="destructive" onClick={() => setDisableOpen(true)}>
+                  Turn off 2FA
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>Protect your account with a code from an authenticator app after your password.</p>
+              <Button type="button" variant="primary" asChild>
+                <Link href="/dashboard/settings/security/two-factor">Set up two-factor</Link>
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <TwoFactorDisableDialog
+        open={disableOpen}
+        onOpenChange={setDisableOpen}
+        onDisabled={() => {
+          router.refresh();
+        }}
+      />
+      <TwoFactorRegenerateCodesDialog open={regenOpen} onOpenChange={setRegenOpen} />
+    </>
+  );
+}

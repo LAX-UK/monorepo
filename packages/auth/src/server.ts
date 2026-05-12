@@ -74,7 +74,9 @@ export type Auth = {
     getSession(input: { headers: Headers }): Promise<{
       user?: { id?: string; role?: string | null; staffRole?: string | null } | null;
     } | null>;
-    signUpEmail(input: { body: { name: string; email: string; password: string } }): Promise<{
+    signUpEmail(input: {
+      body: { name: string; email: string; password: string; callbackURL?: string };
+    }): Promise<{
       user?: { id?: string } | null;
     } | null>;
     requestPasswordReset(input: {

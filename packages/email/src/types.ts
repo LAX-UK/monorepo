@@ -12,7 +12,6 @@ export const templateNames = [
   "lot-won",
   "lot-ended-seller",
   "payment-receipt",
-  "invoice-issued",
   "payment-invoice",
   "admin-impersonation-notice",
   "payout-transfer-failed-notice",
@@ -93,12 +92,6 @@ export type TemplateVarsByName = {
     lotTitle: string;
     amount: string;
     receiptUrl?: string | null;
-  };
-  "invoice-issued": {
-    userName?: string | null;
-    invoiceNumber: string;
-    amount: string;
-    invoiceUrl: string;
   };
   "payment-invoice": {
     userName?: string | null;
@@ -238,7 +231,6 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "lot-won": "live",
   "lot-ended-seller": "live",
   "payment-receipt": "live",
-  "invoice-issued": "live",
   "payment-invoice": "live",
   "admin-impersonation-notice": "live",
   "payout-transfer-failed-notice": "live",

@@ -23,7 +23,7 @@ import Link from "next/link";
 
 type Props = {
   vm: DashboardOverviewVm;
-  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus">;
+  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
   kyc?: KycStatusSummaryDto | null;
   orgOnboarding?: OrgOnboardingResumeVm | null;
   addressesCount?: number;

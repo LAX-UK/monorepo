@@ -1,4 +1,5 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { VerifyEmailSuccessRedirect } from "@/components/auth/verify-email-success-redirect";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
 import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -70,6 +71,7 @@ export default async function VerifyEmailPage({
           >
             Email verified — you&apos;re ready to use London Art Exchange.
           </output>
+          <VerifyEmailSuccessRedirect href={destination.href} />
           <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
             <Link href={destination.href} prefetch>
               {destination.label}

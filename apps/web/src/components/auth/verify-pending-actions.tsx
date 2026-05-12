@@ -1,6 +1,8 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
+import { buildVerifyEmailCallbackUrl } from "@/lib/auth/verify-email-callback-url";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useState } from "react";
@@ -8,30 +10,42 @@ import { useState } from "react";
 export function VerifyPendingActions({ email, next }: { email: string; next?: string }) {
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const { remaining: cooldown, start: startCooldown } = useResendCooldown(45);
 
   async function resend() {
+    if (cooldown > 0 || pending) return;
     setPending(true);
     setStatus(null);
-    const nextQs =
-      next?.startsWith("/") && !next.startsWith("//") ? `&next=${encodeURIComponent(next)}` : "";
+    const callbackURL = buildVerifyEmailCallbackUrl(email, next);
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: `/verify-email?email=${encodeURIComponent(email)}${nextQs}`,
+      callbackURL,
     });
     setPending(false);
     setStatus(error ? "Could not resend right now. Please try again." : "Verification email sent.");
+    if (!error) startCooldown(45);
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <Button type="button" onClick={resend} disabled={pending}>
-        {pending ? "Sending..." : "Didn't get it? Send again"}
+      <Button type="button" onClick={() => void resend()} disabled={pending || cooldown > 0}>
+        {pending
+          ? "Sending..."
+          : cooldown > 0
+            ? `Resend available in ${cooldown}s`
+            : "Didn't get it? Send again"}
       </Button>
       {status ? (
-        <p className="font-body text-sm text-on-surface-variant" aria-live="polite">
+        <output className="font-body text-sm text-on-surface-variant" aria-live="polite">
           {status}
-        </p>
+        </output>
       ) : null}
+      <Link
+        href="/login"
+        className="font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
+      >
+        Try a different email (return to sign in)
+      </Link>
       <Link
         href="/register"
         className="font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
