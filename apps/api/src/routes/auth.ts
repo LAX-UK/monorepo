@@ -275,7 +275,11 @@ export function createAuthRoutes(container: Container) {
     try {
       const payload = verifyEmailChangeToken(body.token, container.env.BETTER_AUTH_SECRET);
 
-      const completed = await container.db.transaction(async (tx) => {
+      // Use authDb (auth_app role): the final commit step writes `email` and
+      // `email_verified`, which `api_app` is intentionally NOT granted UPDATE on
+      // (see packages/db/src/migrate-roles.ts). Running the whole transaction
+      // on authDb keeps the validate-then-commit atomic.
+      const completed = await container.authDb.transaction(async (tx) => {
         const [row] = await tx.select().from(user).where(eq(user.id, payload.userId)).limit(1);
         if (!row) throw new Error("user_not_found");
         if (!row.pendingNewEmail || row.pendingNewEmail !== payload.newEmail) {
