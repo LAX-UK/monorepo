@@ -42,9 +42,12 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
       </CardHeader>
       <CardContent>
         {activeBidLots.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">
-            No active bid positions right now. Browse live lots to place your next bid.
-          </p>
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
+            <span>No active bid positions right now. Browse live lots to place your next bid.</span>
+            <Button size="sm" variant="outline" asChild className="shrink-0">
+              <Link href="/search?status=active">Browse live lots</Link>
+            </Button>
+          </div>
         ) : (
           <ul className="divide-y divide-outline-variant/10">
             {activeBidLots.slice(0, 5).map((lot) => {

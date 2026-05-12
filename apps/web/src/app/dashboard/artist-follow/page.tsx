@@ -1,15 +1,15 @@
+import { ArtistFollowCard } from "@/components/dashboard/artist-follow-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { artistPath } from "@/lib/seo/url";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
-function artistDisplayName(artistId: string): string {
+function fallbackArtistName(artistId: string): string {
   return artistId
     .split(/[-_]/)
     .filter(Boolean)
@@ -26,6 +26,8 @@ export default async function ArtistFollowPage() {
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load followed artists.";
   }
+
+  const artistNameById = await resolveArtistNames(rows.map((r) => r.artistId));
 
   return (
     <DashboardPage>
@@ -65,26 +67,14 @@ export default async function ArtistFollowPage() {
 
       {!err && rows.length > 0 ? (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((row) => (
-            <li key={row.watchlistId}>
-              <Card className="border-outline-variant/15 shadow-sm transition-colors hover:border-primary/25 hover:shadow-md">
-                <CardContent className="p-0">
-                  <Link
-                    href={artistPath({ id: row.artistId, name: artistDisplayName(row.artistId) })}
-                    title={artistDisplayName(row.artistId)}
-                    className="flex min-h-[3.25rem] items-center justify-between gap-3 px-4 py-3 text-on-surface"
-                  >
-                    <span className="min-w-0 flex-1 truncate font-headline text-sm font-semibold">
-                      {artistDisplayName(row.artistId)}
-                    </span>
-                    <span className="shrink-0 font-label text-[10px] uppercase tracking-widest text-primary">
-                      Open
-                    </span>
-                  </Link>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+          {rows.map((row) => {
+            const displayName = artistNameById[row.artistId] ?? fallbackArtistName(row.artistId);
+            return (
+              <li key={row.watchlistId}>
+                <ArtistFollowCard artistId={row.artistId} displayName={displayName} />
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </DashboardPage>

@@ -4,6 +4,7 @@ import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-cont
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
+import { apiBaseUrl } from "@/lib/auth/api-base";
 import { lotPath } from "@/lib/seo/url";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -12,10 +13,6 @@ import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
 const MENU_ID = "notification-menu";
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 export function NotificationBell() {
   const { blendWithHero } = useSiteHeaderChrome();
@@ -33,17 +30,17 @@ export function NotificationBell() {
   useClickOutside(open, wrapRef, closeMenu);
 
   const markRead = async (id: string) => {
-    const res = await fetch(`${apiBase()}/users/me/notifications/${encodeURIComponent(id)}/read`, {
-      method: "PATCH",
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${apiBaseUrl()}/users/me/notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH", credentials: "include" },
+    );
     if (res.ok) {
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     }
   };
 
   const markAllRead = async () => {
-    const res = await fetch(`${apiBase()}/users/me/notifications/read-all`, {
+    const res = await fetch(`${apiBaseUrl()}/users/me/notifications/read-all`, {
       method: "PATCH",
       credentials: "include",
     });

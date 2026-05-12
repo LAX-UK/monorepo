@@ -8,7 +8,85 @@ export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string)
   return rows.filter((row) => row.lot.title.toLowerCase().includes(qLower));
 }
 
-export function toPortfolioLotCards(rows: PortfolioRow[]): PortfolioLotCardVm[] {
+export type PortfolioPaymentFilter = "all" | "due" | "paid" | "authorized" | "refunded";
+
+/** Apply payment-state and year filters in addition to title search. */
+export function filterPortfolioRows(
+  rows: PortfolioRow[],
+  filters: {
+    qLower: string;
+    payment: PortfolioPaymentFilter;
+    year: number | null;
+  },
+): PortfolioRow[] {
+  const titled = filterPortfolioRowsByTitle(rows, filters.qLower);
+  return titled.filter((row) => {
+    if (filters.year != null && row.lot.endTime.getUTCFullYear() !== filters.year) {
+      return false;
+    }
+    if (filters.payment === "all") return true;
+    const status = row.payment?.status ?? null;
+    if (filters.payment === "due") {
+      return status !== "captured" && status !== "refunded";
+    }
+    if (filters.payment === "paid") return status === "captured";
+    if (filters.payment === "authorized") return status === "authorized";
+    if (filters.payment === "refunded") return status === "refunded";
+    return true;
+  });
+}
+
+export type PortfolioAnalyticsVm = {
+  totalRows: number;
+  totalSpentFormatted: string;
+  outstandingFormatted: string;
+  wonThisYear: number;
+  /** Sorted years available in the portfolio. Used for the year filter. */
+  years: number[];
+  /** Map of category id -> count (for high-level summary). */
+  categoryCounts: { id: string; count: number }[];
+};
+
+export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): PortfolioAnalyticsVm {
+  let totalSpent = 0;
+  let outstanding = 0;
+  const yearsSet = new Set<number>();
+  const yearUtc = new Date().getUTCFullYear();
+  let wonThisYear = 0;
+  const categoryCount = new Map<string, number>();
+  for (const row of rows) {
+    const hammer = Number.parseFloat(row.lot.currentPrice);
+    const premiumRate = Number.parseFloat(row.lot.buyerPremiumRate);
+    const premium =
+      Number.isFinite(hammer) && Number.isFinite(premiumRate) ? hammer * premiumRate : 0;
+    const total = Number.isFinite(hammer) ? hammer + premium : 0;
+    totalSpent += total;
+    if (row.payment?.status !== "captured" && row.payment?.status !== "refunded") {
+      outstanding += total;
+    }
+    const year = row.lot.endTime.getUTCFullYear();
+    yearsSet.add(year);
+    if (year === yearUtc) wonThisYear += 1;
+    const cat = row.lot.categoryId;
+    if (cat) categoryCount.set(cat, (categoryCount.get(cat) ?? 0) + 1);
+  }
+  return {
+    totalRows: rows.length,
+    totalSpentFormatted: formatMoney(totalSpent.toFixed(2)),
+    outstandingFormatted: formatMoney(outstanding.toFixed(2)),
+    wonThisYear,
+    years: Array.from(yearsSet).sort((a, b) => b - a),
+    categoryCounts: Array.from(categoryCount.entries())
+      .map(([id, count]) => ({ id, count }))
+      .sort((a, b) => b.count - a.count),
+  };
+}
+
+export function toPortfolioLotCards(
+  rows: PortfolioRow[],
+  options: { artistNameById?: Record<string, string> } = {},
+): PortfolioLotCardVm[] {
+  const { artistNameById = {} } = options;
   return rows.map((row) => {
     const a = row.lot;
     const img = a.images[0];
@@ -24,9 +102,15 @@ export function toPortfolioLotCards(rows: PortfolioRow[]): PortfolioLotCardVm[] 
         : settlementLabel.includes("Refund")
           ? 0
           : 1;
+    const artistName = a.artistId ? (artistNameById[a.artistId] ?? null) : null;
+    const conditionReportUrl =
+      typeof a.marketingDetails?.conditionReport?.downloadUrl === "string"
+        ? a.marketingDetails.conditionReport.downloadUrl
+        : null;
     return {
       id: a.id,
       title: a.title,
+      artistName,
       image: img ?? null,
       hammerLabel: formatMoney(a.currentPrice),
       premiumLabel: formatMoney(premium.toFixed(2)),
@@ -38,6 +122,8 @@ export function toPortfolioLotCards(rows: PortfolioRow[]): PortfolioLotCardVm[] 
       dimensions: a.dimensions,
       paymentStatus: row.payment?.status ?? null,
       checkoutHref: `/dashboard/checkout/${a.id}`,
+      conditionReportUrl,
+      endYear: a.endTime.getUTCFullYear(),
     };
   });
 }

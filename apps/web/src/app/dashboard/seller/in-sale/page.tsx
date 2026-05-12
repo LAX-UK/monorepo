@@ -25,7 +25,7 @@ import {
 const PAGE_PATH = "/dashboard/seller/in-sale";
 
 type PageProps = {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 };
 
 function badgeVariant(tone: InSaleDisplayRow["statusTone"]) {
@@ -157,6 +157,8 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
 
   const sp = await searchParams;
   const filter = parseSellerLotStatusFilter(sp.status);
+  const rawQ = typeof sp.q === "string" ? sp.q.trim().slice(0, 200) : "";
+  const qLower = rawQ.toLowerCase();
 
   const lotReader = await getServerLotReader();
   let lots: Lot[] = [];
@@ -172,7 +174,15 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   );
   const saleLookup = await loadSaleLookup(saleIds).catch(() => new Map());
   const allDisplay = sortInSaleRows(toInSaleDisplayRows(lots, saleLookup));
-  const filtered = filterInSaleRows(allDisplay, filter);
+  const statusFiltered = filterInSaleRows(allDisplay, filter);
+  const filtered =
+    qLower.length === 0
+      ? statusFiltered
+      : statusFiltered.filter(
+          (row) =>
+            row.title.toLowerCase().includes(qLower) ||
+            (row.saleTitle?.toLowerCase().includes(qLower) ?? false),
+        );
 
   return (
     <div className="screen w-full space-y-6">
@@ -182,7 +192,28 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         className="border-0 pb-0"
       />
 
-      <FilterChips active={filter} />
+      <div className="flex flex-wrap items-center gap-3">
+        <FilterChips active={filter} />
+        <form
+          action={PAGE_PATH}
+          method="get"
+          aria-label="Filter lots by title"
+          className="flex flex-1 items-center gap-2 sm:max-w-sm"
+        >
+          {filter !== "live" ? <input type="hidden" name="status" value={filter} /> : null}
+          <label htmlFor="in-sale-q" className="sr-only">
+            Filter by lot or sale title
+          </label>
+          <input
+            id="in-sale-q"
+            name="q"
+            type="search"
+            defaultValue={rawQ}
+            placeholder="Search by lot or sale title"
+            className="h-10 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          />
+        </form>
+      </div>
 
       {fetchError ? (
         <Alert variant="destructive">
@@ -208,8 +239,12 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
 
         {!fetchError && allDisplay.length > 0 && filtered.length === 0 ? (
           <EmptyState
-            title="No lots match this filter"
-            description="Your approved submissions will appear here once we schedule them into a sale."
+            title={rawQ ? "No lots match this search" : "No lots match this filter"}
+            description={
+              rawQ
+                ? "Try a different keyword or clear the search to see every lot."
+                : "Your approved submissions will appear here once we schedule them into a sale."
+            }
             action={
               <Button variant="secondary" asChild>
                 <Link href={PAGE_PATH}>Show live & scheduled</Link>

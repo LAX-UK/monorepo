@@ -2,6 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
+import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
@@ -26,7 +27,9 @@ function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
         watchlistId: row.watchlistId,
         lotId: lot.id,
         title: lot.title,
-        artistLabel: lot.artistId ?? lot.sellerId ?? lot.sellerLegalEntityId ?? "",
+        // Stored as the artist ID; resolved to display name by the board via
+        // the `artistNameById` lookup map.
+        artistLabel: lot.artistId ?? "",
         image: lot.images[0] ?? null,
         medium: lot.medium,
         lotNumber: lot.lotNumber,
@@ -107,6 +110,8 @@ export default async function DashboardWatchlistPage({
   }
 
   const tableRows = toWatchlistRows(rows);
+  const artistIds = rows.map((r) => r.lot?.artistId ?? null);
+  const artistNameById = await resolveArtistNames(artistIds);
 
   const chipBase =
     "inline-flex min-h-10 items-center justify-center rounded-full border px-4 font-label text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -214,9 +219,7 @@ export default async function DashboardWatchlistPage({
 
       {!err && tableRows.length > 0 ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
-          <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
-            <WatchlistBoard rows={tableRows} />
-          </div>
+          <WatchlistBoard rows={tableRows} artistNameById={artistNameById} />
         </Suspense>
       ) : null}
     </DashboardPage>

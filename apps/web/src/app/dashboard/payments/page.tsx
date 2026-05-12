@@ -1,11 +1,15 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { PaymentsToolbar } from "@/components/dashboard/payments-toolbar";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
   type PaymentDisplayRow,
-  sortPaymentsNewestFirst,
+  filterPaymentRows,
+  parsePaymentsSort,
+  paymentYears,
+  sortPaymentDisplayRows,
   toPaymentDisplayRows,
 } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
@@ -25,7 +29,7 @@ import {
 const PAGE_PATH = "/dashboard/payments";
 
 type PageProps = {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; sort?: string; year?: string }>;
 };
 
 function statusVariant(tone: PaymentDisplayRow["statusTone"]) {
@@ -143,18 +147,26 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
   });
   const sp = await searchParams;
   const filter = parsePaymentsStatusFilter(sp.status);
+  const qLower = (sp.q ?? "").trim().toLowerCase();
+  const sort = parsePaymentsSort(sp.sort);
+  const yearRaw = sp.year;
+  const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number.parseInt(yearRaw, 10) : null;
 
   const container = await getServerDataContainer();
+  let allRows: PaymentDisplayRow[] = [];
   let displayRows: PaymentDisplayRow[] = [];
   let fetchError: string | null = null;
   try {
     const apiRows = await container.payments.listMine(
       filter === "all" ? undefined : { status: filter },
     );
-    displayRows = sortPaymentsNewestFirst(toPaymentDisplayRows(apiRows));
+    allRows = toPaymentDisplayRows(apiRows);
+    displayRows = sortPaymentDisplayRows(filterPaymentRows(allRows, { qLower, year }), sort);
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Could not load your payments.";
   }
+
+  const years = paymentYears(allRows);
 
   return (
     <DashboardPage>
@@ -165,6 +177,10 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
       />
 
       <FilterChips active={filter} />
+
+      {!fetchError ? (
+        <PaymentsToolbar initialQ={sp.q ?? ""} sort={sort} year={year} years={years} />
+      ) : null}
 
       {fetchError ? (
         <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
@@ -177,7 +193,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
 
       <section aria-live="polite" aria-busy="false">
         {!fetchError && displayRows.length === 0 ? (
-          filter === "all" ? (
+          filter === "all" && !qLower && year == null ? (
             <EmptyState
               title="No payments yet"
               description="Your purchases will appear here once you win a lot and an invoice is issued."

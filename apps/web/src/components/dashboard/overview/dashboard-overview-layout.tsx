@@ -5,7 +5,13 @@ export type DashboardOverviewSlots = {
   kpis: ReactNode;
   activity: ReactNode;
   watchlist: ReactNode;
+  /** Persistent account-readiness strip; renders just under the header. */
+  compliance?: ReactNode;
+  /** Aggregated "needs attention" surface; renders just below KPIs. */
+  attention?: ReactNode;
   banner?: ReactNode;
+  /** Unified activity feed (notifications + derived events). */
+  activityFeed?: ReactNode;
   secondary?: ReactNode;
 };
 
@@ -23,11 +29,14 @@ type Props = {
 export function DashboardOverviewLayout({ layout = "twoCol", slots }: Props) {
   if (layout === "stack") {
     return (
-      <div className="screen flex w-full flex-col gap-10">
+      <div className="screen flex w-full flex-col gap-8">
         {slots.header}
+        {slots.compliance}
+        {slots.banner}
+        {slots.attention}
         {slots.kpis}
         {slots.activity}
-        {slots.banner}
+        {slots.activityFeed}
         {slots.watchlist}
         {slots.secondary}
       </div>
@@ -35,14 +44,17 @@ export function DashboardOverviewLayout({ layout = "twoCol", slots }: Props) {
   }
 
   return (
-    <div className="screen flex w-full flex-col gap-10">
+    <div className="screen flex w-full flex-col gap-8">
       {slots.header}
+      {slots.compliance}
+      {slots.banner}
+      {slots.attention}
       {slots.kpis}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         {slots.activity}
         {slots.watchlist}
       </div>
-      {slots.banner}
+      {slots.activityFeed}
       {slots.secondary}
     </div>
   );

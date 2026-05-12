@@ -1,6 +1,7 @@
 import { parseBidTab } from "@/components/dashboard/bid-board-rows";
 import { BidsBoard } from "@/components/dashboard/bids-board";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildDashboardBidsBoardVm } from "@/lib/data/view-models/dashboard-bids.vm";
@@ -29,6 +30,9 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
 
   const { active, won, lost } = buildDashboardBidsBoardVm(rows, user?.id, now);
 
+  const artistIds = rows.map((r) => r.lot?.artistId ?? null);
+  const artistNameById = await resolveArtistNames(artistIds);
+
   return (
     <DashboardPage>
       <Suspense
@@ -43,6 +47,7 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
           lost={lost}
           initialTab={initialTab}
           initialQ={initialQ}
+          artistNameById={artistNameById}
         />
       </Suspense>
     </DashboardPage>

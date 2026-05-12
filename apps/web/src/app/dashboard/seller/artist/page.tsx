@@ -1,4 +1,6 @@
+import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-request-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 
@@ -7,8 +9,9 @@ import { PageHeader } from "@auction/ui/components/page-header";
  * In this auction model the catalogue identity (artist / maker / brand) is
  * an admin-curated entity, decoupled from the consigning user. Sellers do
  * not edit their own artist profile here — the admin team owns the registry
- * end-to-end. This page exists so the link in the seller dashboard does not
- * 404 and to communicate the policy clearly. */
+ * end-to-end. We surface a structured "Request changes" form that drafts a
+ * curated email to the catalogue team so the seller knows exactly what
+ * information we need to action the change. */
 export default function SellerArtistProfilePage() {
   return (
     <DashboardPage>
@@ -21,11 +24,19 @@ export default function SellerArtistProfilePage() {
         <AlertTitle>Managed by admin</AlertTitle>
         <AlertDescription className="font-body text-sm">
           The artist, maker, or brand attached to your lots is part of the platform&apos;s curated
-          catalogue and can only be edited by an administrator. To request a change to portrait,
-          biography, statement, or attribution on your sales, contact us and we&apos;ll route the
-          update through the catalogue team.
+          catalogue and can only be edited by an administrator. Use the form below to request a
+          change — submissions route to the catalogue team at{" "}
+          <a
+            href={`mailto:${SITE_CONSIGNMENT_EMAIL}`}
+            className="underline underline-offset-2 hover:text-on-surface"
+          >
+            {SITE_CONSIGNMENT_EMAIL}
+          </a>
+          .
         </AlertDescription>
       </Alert>
+
+      <ArtistChangeRequestForm recipient={SITE_CONSIGNMENT_EMAIL} />
     </DashboardPage>
   );
 }

@@ -1,4 +1,8 @@
+"use client";
+
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
+import { Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function headlineForFulfilment(f: LotFulfilmentSnapshot | null): {
   label: string;
@@ -8,7 +12,7 @@ function headlineForFulfilment(f: LotFulfilmentSnapshot | null): {
     return {
       label: "Payment & fulfilment",
       detail:
-        "When you pay, we will show collection or shipping progress here. Refresh after checkout if this does not update.",
+        "When you pay, this strip updates automatically with collection or shipping progress.",
     };
   }
   switch (f.status) {
@@ -66,17 +70,73 @@ function headlineForFulfilment(f: LotFulfilmentSnapshot | null): {
 
 type Props = {
   fulfilment: LotFulfilmentSnapshot | null;
+  /** Lot id to poll; when omitted, the strip is static. */
+  lotId?: string;
 };
 
-export function LotCheckoutFulfilmentStrip({ fulfilment }: Props) {
-  const { label, detail } = headlineForFulfilment(fulfilment);
+const TERMINAL_STATUSES = new Set(["delivered", "cancelled"]);
+
+const POLL_INTERVAL_MS = 8000;
+/** Stop polling after this many minutes of foreground time to avoid runaway loops. */
+const POLL_TIMEOUT_MS = 30 * 60 * 1000;
+
+function apiBase(): string {
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+}
+
+async function fetchFulfilment(lotId: string): Promise<LotFulfilmentSnapshot | null> {
+  const res = await fetch(`${apiBase()}/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { data: LotFulfilmentSnapshot | null };
+  return body.data ?? null;
+}
+
+export function LotCheckoutFulfilmentStrip({ fulfilment, lotId }: Props) {
+  const [snapshot, setSnapshot] = useState<LotFulfilmentSnapshot | null>(fulfilment);
+  const [polling, setPolling] = useState(false);
+  const startedAtRef = useRef<number>(Date.now());
+
+  const tick = useCallback(async () => {
+    if (!lotId) return;
+    setPolling(true);
+    try {
+      const next = await fetchFulfilment(lotId);
+      setSnapshot(next);
+    } catch {
+      /* swallow — the strip falls back to the last known snapshot. */
+    } finally {
+      setPolling(false);
+    }
+  }, [lotId]);
+
+  useEffect(() => {
+    if (!lotId) return;
+    if (snapshot?.status && TERMINAL_STATUSES.has(snapshot.status)) return;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      if (Date.now() - startedAtRef.current > POLL_TIMEOUT_MS) {
+        window.clearInterval(id);
+        return;
+      }
+      void tick();
+    }, POLL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [lotId, snapshot?.status, tick]);
+
+  const { label, detail } = headlineForFulfilment(snapshot);
   return (
-    <div className="mb-8 flex flex-col gap-1 lg:mb-10">
+    <div className="mb-8 flex flex-col gap-1 lg:mb-10" aria-live="polite">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
         <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
           {label}
         </span>
+        {polling ? (
+          <Loader2 className="size-3 animate-spin text-on-surface-variant" aria-hidden />
+        ) : null}
       </div>
       {detail ? (
         <p className="pl-4 font-body text-xs leading-relaxed text-on-surface-variant">{detail}</p>

@@ -229,15 +229,16 @@ export function CheckoutPurchasePanel({
                         </Button>
                       </div>
                     ) : (
-                      <div className="grid gap-3">
+                      <div className="grid gap-3" aria-label="Select shipping or invoice address">
                         {checkoutAddresses.map((address) => {
                           const selected = field.value === address.id;
                           return (
                             <button
                               key={address.id}
                               type="button"
+                              aria-pressed={selected}
                               onClick={() => field.onChange(address.id)}
-                              className={`rounded-lg border p-4 text-left transition-colors ${
+                              className={`rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                                 selected
                                   ? "border-primary bg-primary-container/10"
                                   : "border-outline-variant/20 bg-surface-container-low/30 hover:border-primary/50"

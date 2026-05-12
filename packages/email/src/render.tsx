@@ -26,6 +26,9 @@ import LotVoidedNoticeEmail, {
   subject as lotVoidedNoticeSubject,
 } from "./templates/lot-voided-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
+import OAuthAccountResetAttemptEmail, {
+  subject as oauthAccountResetAttemptSubject,
+} from "./templates/oauth-account-reset-attempt.js";
 import PasswordChanged, {
   subject as passwordChangedSubject,
 } from "./templates/password-changed.js";
@@ -75,6 +78,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "reset-password": {
     subject: resetPasswordSubject,
     component: (vars) => <ResetPassword {...vars} />,
+  },
+  "oauth-account-reset-attempt": {
+    subject: oauthAccountResetAttemptSubject,
+    component: (vars) => <OAuthAccountResetAttemptEmail {...vars} />,
   },
   "password-changed": {
     subject: passwordChangedSubject,
