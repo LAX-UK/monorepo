@@ -1,3 +1,5 @@
+import { FactCard } from "../components/FactCard.js";
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -7,16 +9,18 @@ export const subject = (vars: TemplateVarsByName["lot-voided-notice"]) =>
 
 export default function LotVoidedNoticeEmail(vars: TemplateVarsByName["lot-voided-notice"]) {
   return (
-    <Layout preview={`Lot voided: ${vars.lotTitle}`} title="Lot Voided">
+    <Layout
+      category="alert"
+      eyebrow="Lot voided"
+      preview={`Lot voided: ${vars.lotTitle}`}
+      title="Lot voided"
+    >
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         <strong>{vars.lotTitle}</strong> has been voided.
       </TextBlock>
-      <TextBlock>Reason: {vars.reason.replaceAll("_", " ")}</TextBlock>
-      <TextBlock>
-        If you have questions, contact{" "}
-        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
-      </TextBlock>
+      <FactCard rows={[{ label: "Reason", value: vars.reason.replaceAll("_", " ") }]} />
+      <HelpBlock email={vars.supportContactEmail} />
     </Layout>
   );
 }

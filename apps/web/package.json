@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@auction/branding": "workspace:*",
     "@auction/api": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/ui": "workspace:*",

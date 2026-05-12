@@ -12,7 +12,12 @@ export default function ResetPassword({
   expirationMinutes,
 }: TemplateVarsByName["reset-password"]) {
   return (
-    <Layout preview="Use this link to reset your password." title="Reset your password">
+    <Layout
+      category="account"
+      eyebrow="Password reset"
+      preview="Use this link to reset your password."
+      title="Reset your password"
+    >
       <TextBlock>Hi {userName || userEmail},</TextBlock>
       <TextBlock>
         We received a request to reset the password for your London Art Exchange account.

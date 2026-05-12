@@ -7,7 +7,12 @@ export const subject = "Welcome to London Art Exchange";
 
 export default function WelcomeEmail({ userName }: TemplateVarsByName["welcome"]) {
   return (
-    <Layout preview="Your London Art Exchange account is ready." title="Welcome to LAX">
+    <Layout
+      category="account"
+      eyebrow="Welcome"
+      preview="Your London Art Exchange account is ready."
+      title="Welcome to LAX"
+    >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
         Your email is verified and your London Art Exchange account is ready to use.
