@@ -11,6 +11,8 @@ async function main() {
   const pool = new pg.Pool(buildPgConnectionConfig(url));
   try {
     await runMigrationsPerTransaction(pool);
+    // Re-applies `api_app` / `auth_app` / `worker_app` table + column grants (see migrate-roles.ts).
+    // DigitalOcean App Platform PRE_DEPLOY runs this script on each release (infra/terraform/modules/digitalocean-app).
     await applyApplicationRoleGrants(url);
   } finally {
     await pool.end();

@@ -42,10 +42,41 @@ const WORKER_READ_TABLES = [
   "artist_alias",
   "admin_review_task",
 ];
-// API profile endpoints may update only these Better Auth user columns. Keep this
-// narrower than table-level UPDATE so api_app cannot mutate auth/security fields.
-const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
-  user: ["name", "image", "updated_at"],
+/** Columns `api_app` may UPDATE on `public.user` — must cover every `apps/api` write path
+ * that uses `container.db`. Anything missing here surfaces as `permission denied for table user`.
+ *
+ * Intentionally denied to api_app (writes routed through `container.authDb` / `auth_app`):
+ *   - `email`, `email_verified` — identity rewrite; only the dual-confirm email-change flow
+ *     in `routes/auth.ts:confirm-email-change` may flip these, and it goes through authDb.
+ *   - `two_factor_enabled` — managed by the Better Auth two-factor plugin.
+ *   - `id`, `created_at` — never updatable from app code.
+ */
+export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
+  user: [
+    "name",
+    "first_name",
+    "last_name",
+    "mobile",
+    "image",
+    "email_status",
+    "email_status_changed_at",
+    "role",
+    "staff_role",
+    "suspended_at",
+    "suspended_reason",
+    "kyc_status",
+    "current_kyc_session_id",
+    "kyc_retry_count",
+    "kyc_verified_at",
+    "signup_persona",
+    "has_seen_acting_context_tooltip",
+    "pending_new_email",
+    "email_change_old_ok",
+    "email_change_new_ok",
+    "email_change_expires_at",
+    "deletion_requested_at",
+    "updated_at",
+  ],
 };
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

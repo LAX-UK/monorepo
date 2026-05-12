@@ -172,6 +172,15 @@ import { LotStrategyFactory } from "./strategies/strategy.factory.js";
 export type Container = {
   env: Env;
   db: ReturnType<typeof createDb>;
+  /** Drizzle client bound to the `auth_app` Postgres role.
+   *
+   * Use ONLY for writes that must touch Better Auth identity columns the
+   * `api_app` role is intentionally denied (currently `user.email` and
+   * `user.email_verified`). All routine reads + writes continue through `db`.
+   * Keeping this separate enforces the per-role least-privilege boundary set up
+   * in `packages/db/src/migrate-roles.ts`.
+   */
+  authDb: ReturnType<typeof createDb>;
   redis: Redis;
   /** Exposed for web push subscription (public key only). */
   vapidPublicKey: string | null;
@@ -787,6 +796,7 @@ export function createContainer(env: Env): Container {
   return {
     env,
     db,
+    authDb,
     redis,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
     auth,

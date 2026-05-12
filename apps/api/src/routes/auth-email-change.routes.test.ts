@@ -46,10 +46,15 @@ function createTxMock(initial: UserRow, opts?: { otherUserOnThirdLimit?: boolean
   return { db, getState: () => state, getLimitCalls: () => limitCalls };
 }
 
-function mountAuthDb(db: object) {
+function mountAuthDb(db: object, authDb: object = db) {
   const container = {
     env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
     db,
+    /** POST /auth/confirm-email-change writes `user.email` + `user.email_verified`,
+     * which `api_app` is intentionally denied. The route runs that transaction
+     * through `container.authDb` (auth_app role). Tests default `authDb` to the
+     * same mock as `db` so existing scenarios don't have to be rewritten. */
+    authDb,
     auth: {
       api: {
         getSession: vi.fn(async () => ({ user: { id: "u1" } })),
@@ -245,6 +250,7 @@ describe("DELETE /auth/change-email", () => {
     const container = {
       env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
       db,
+      authDb: db,
       auth: { api: { getSession: vi.fn(async () => null) } },
       userService: {},
       emailService: { enqueue: vi.fn() },
