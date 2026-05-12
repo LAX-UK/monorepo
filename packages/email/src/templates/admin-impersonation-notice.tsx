@@ -1,3 +1,5 @@
+import { COLORS } from "@auction/branding";
+import { Link } from "@react-email/components";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -17,6 +19,8 @@ export default function AdminImpersonationNoticeEmail(
   } = vars;
   return (
     <Layout
+      category="admin"
+      eyebrow="Account review"
       preview={`London Art Exchange support is reviewing ${entityName}.`}
       title="Account review"
     >
@@ -31,7 +35,13 @@ export default function AdminImpersonationNoticeEmail(
       </TextBlock>
       <TextBlock>
         If you have questions, please contact{" "}
-        <a href={`mailto:${supportContactEmail}`}>{supportContactEmail}</a>.
+        <Link
+          href={`mailto:${supportContactEmail}`}
+          style={{ color: COLORS.link, textDecoration: "underline" }}
+        >
+          {supportContactEmail}
+        </Link>
+        .
       </TextBlock>
     </Layout>
   );

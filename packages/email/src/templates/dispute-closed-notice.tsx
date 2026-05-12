@@ -1,3 +1,4 @@
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -9,7 +10,12 @@ export default function DisputeClosedNoticeEmail(
   vars: TemplateVarsByName["dispute-closed-notice"],
 ) {
   return (
-    <Layout preview={`Payment dispute ${vars.outcome}`} title="Payment Dispute Closed">
+    <Layout
+      category="alert"
+      eyebrow="Dispute closed"
+      preview={`Payment dispute ${vars.outcome}`}
+      title="Payment dispute closed"
+    >
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         A payment dispute for <strong>{vars.entityName}</strong> has closed with outcome{" "}
@@ -18,10 +24,7 @@ export default function DisputeClosedNoticeEmail(
       <TextBlock>
         Amount: {vars.currency} {vars.amount}
       </TextBlock>
-      <TextBlock>
-        If you have questions, contact{" "}
-        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
-      </TextBlock>
+      <HelpBlock email={vars.supportContactEmail} />
     </Layout>
   );
 }

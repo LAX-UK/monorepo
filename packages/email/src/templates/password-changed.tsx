@@ -6,7 +6,12 @@ export const subject = "Your password was changed";
 
 export default function PasswordChanged({ userName }: TemplateVarsByName["password-changed"]) {
   return (
-    <Layout preview="Your London Art Exchange password was changed." title="Password changed">
+    <Layout
+      category="account"
+      eyebrow="Security"
+      preview="Your London Art Exchange password was changed."
+      title="Password changed"
+    >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>Your London Art Exchange password was changed successfully.</TextBlock>
       <TextBlock>

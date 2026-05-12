@@ -20,7 +20,12 @@ export default function InviteEmail({
         ? ` as ${role}`
         : "";
   return (
-    <Layout preview="Accept your London Art Exchange invitation." title="You're invited">
+    <Layout
+      category="account"
+      eyebrow="Invitation"
+      preview="Accept your London Art Exchange invitation."
+      title="You're invited"
+    >
       <TextBlock>Hi {inviteeEmail},</TextBlock>
       <TextBlock>
         {inviterName || "The London Art Exchange team"} invited you to join London Art Exchange

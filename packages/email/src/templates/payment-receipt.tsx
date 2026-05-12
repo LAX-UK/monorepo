@@ -12,7 +12,12 @@ export default function PaymentReceiptEmail({
   receiptUrl,
 }: TemplateVarsByName["payment-receipt"]) {
   return (
-    <Layout preview={`Payment received for ${lotTitle}.`} title="Payment received">
+    <Layout
+      category="finance"
+      eyebrow="Payment received"
+      preview={`Payment received for ${lotTitle}.`}
+      title="Payment received"
+    >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
         We received your payment of {amount} for {lotTitle}.

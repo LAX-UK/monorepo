@@ -1,3 +1,5 @@
+import { FactCard } from "../components/FactCard.js";
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -9,16 +11,18 @@ export default function ProxyCancelledNoticeEmail(
   vars: TemplateVarsByName["proxy-cancelled-notice"],
 ) {
   return (
-    <Layout preview={`Proxy bid cancelled for ${vars.lotTitle}`} title="Proxy Bid Cancelled">
+    <Layout
+      category="auction"
+      eyebrow="Proxy bid cancelled"
+      preview={`Proxy bid cancelled for ${vars.lotTitle}`}
+      title="Proxy bid cancelled"
+    >
       <TextBlock>Hi {vars.userName || "there"},</TextBlock>
       <TextBlock>
         Your proxy bid for <strong>{vars.lotTitle}</strong> has been cancelled.
       </TextBlock>
-      <TextBlock>Reason: {vars.reason.replaceAll("_", " ")}</TextBlock>
-      <TextBlock>
-        If you have questions, contact{" "}
-        <a href={`mailto:${vars.supportContactEmail}`}>{vars.supportContactEmail}</a>.
-      </TextBlock>
+      <FactCard rows={[{ label: "Reason", value: vars.reason.replaceAll("_", " ") }]} />
+      <HelpBlock email={vars.supportContactEmail} />
     </Layout>
   );
 }

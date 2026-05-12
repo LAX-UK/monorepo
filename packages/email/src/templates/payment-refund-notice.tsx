@@ -1,3 +1,5 @@
+import { FactCard, type FactCardRow } from "../components/FactCard.js";
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -29,36 +31,31 @@ export default function PaymentRefundNoticeEmail(
     ? "The buyer's bank ruled in their favour and the disputed amount has been deducted from your account."
     : "A refund has been issued to the buyer for this transaction.";
 
+  const rows: FactCardRow[] = [
+    { label: "Lot", value: lotTitle },
+    ...(lotReference ? [{ label: "Reference", value: lotReference, mono: true as const }] : []),
+    { label: "Amount", value: `${refundCurrency} ${refundAmount}` },
+    ...(reason ? [{ label: "Reason", value: reason }] : []),
+  ];
+
   return (
-    <Layout preview={`${headline} for ${lotTitle}`} title={headline}>
+    <Layout
+      category="alert"
+      eyebrow={isDisputeLost ? "Chargeback" : "Refund"}
+      preview={`${headline} for ${lotTitle}`}
+      title={headline}
+    >
       <TextBlock>Hi {recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         {headline} for a sale by <strong>{entityName}</strong>.
       </TextBlock>
-      <TextBlock>
-        <strong>Transaction Details:</strong>
-        <br />• Lot: {lotTitle}
-        {lotReference && (
-          <>
-            <br />• Reference: {lotReference}
-          </>
-        )}
-        <br />• Amount: {refundCurrency} {refundAmount}
-        {reason && (
-          <>
-            <br />• Reason: {reason}
-          </>
-        )}
-      </TextBlock>
+      <FactCard rows={rows} />
       <TextBlock>{explanation}</TextBlock>
       <TextBlock>
         <strong>Impact on your next payout:</strong> A negative adjustment line will appear on your
         next payout statement to offset this {isDisputeLost ? "chargeback" : "refund"}.
       </TextBlock>
-      <TextBlock>
-        If you have questions or believe this was processed in error, please contact{" "}
-        <a href={`mailto:${supportContactEmail}`}>{supportContactEmail}</a>.
-      </TextBlock>
+      <HelpBlock email={supportContactEmail} />
     </Layout>
   );
 }

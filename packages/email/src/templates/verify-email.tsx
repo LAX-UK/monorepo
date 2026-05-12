@@ -11,6 +11,8 @@ export default function VerifyEmail({
 }: TemplateVarsByName["verify-email"]) {
   return (
     <Layout
+      category="account"
+      eyebrow="Verification"
       preview="Verify your email to finish setting up your account."
       title="Verify your email"
     >

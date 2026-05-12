@@ -2,18 +2,19 @@ import { COLORS, FONT_STACK_BODY } from "@auction/branding";
 import { Text } from "@react-email/components";
 import type { ReactNode } from "react";
 
-type TextBlockProps = {
+type LedeProps = {
   children: ReactNode;
 };
 
-export function TextBlock({ children }: TextBlockProps) {
-  return <Text style={paragraph}>{children}</Text>;
+export function Lede({ children }: LedeProps) {
+  return <Text style={lede}>{children}</Text>;
 }
 
-const paragraph = {
+const lede = {
   color: COLORS.textPrimary,
   fontFamily: FONT_STACK_BODY,
-  fontSize: "15px",
-  lineHeight: "24px",
+  fontSize: "17px",
+  fontWeight: 500,
+  lineHeight: "26px",
   margin: "0 0 14px",
 };
