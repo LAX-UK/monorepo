@@ -1,4 +1,4 @@
-import { type UserRole, roleHasCapability } from "@auction/types";
+import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -61,14 +61,17 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const optionalAuth = createOptionalAuth(authenticator);
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
 
   /** GET /artists/search?q=…&limit=… — public 3-pass search. */
   r.get("/search", optionalAuth, zValidator("query", searchQuerySchema), async (c) => {
     const { q, limit } = c.req.valid("query");
     const role = (c.get("userRole") ?? "client") as UserRole;
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const hits = await container.artistRegistryService.search(q, limit);
-    const data = roleHasCapability(role, "artist.read")
+    const data = roleHasCapability(role, "artist.read", staff)
       ? hits
       : hits.filter((hit) => hit.status === "approved");
     return c.json({ data });
@@ -111,9 +114,10 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
   r.get("/by-slug/:slug", optionalAuth, zValidator("param", slugParam), async (c) => {
     const { slug } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const found = await container.artistRegistryService.findBySlug(slug);
     if (!found) return c.json({ error: "Not found" }, 404);
-    if (!roleHasCapability(role, "artist.read") && found.status !== "approved") {
+    if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({ data: found });
@@ -128,9 +132,10 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
   r.get("/:id", optionalAuth, zValidator("param", idParam), async (c) => {
     const { id } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const found = await container.artistRegistryService.findById(id);
     if (!found) return c.json({ error: "Not found" }, 404);
-    if (!roleHasCapability(role, "artist.read") && found.status !== "approved") {
+    if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({ data: found });

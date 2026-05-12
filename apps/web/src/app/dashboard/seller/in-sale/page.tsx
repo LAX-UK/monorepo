@@ -152,7 +152,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
     shell: "client",
     loginNext: PAGE_PATH,
   });
-  const { acting } = await resolveActingContext(user.role);
+  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
   if (!acting) redirect("/dashboard");
 
   const sp = await searchParams;

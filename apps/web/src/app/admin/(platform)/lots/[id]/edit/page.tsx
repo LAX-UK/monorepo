@@ -8,6 +8,7 @@ import {
   getAdminUserList,
 } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -28,6 +29,7 @@ export default async function AdminEditAuctionPage({
   }
 
   const isDraft = auction.status === "draft";
+  const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   return (
     <AppScreen className="mx-auto max-w-2xl space-y-8">
@@ -43,7 +45,7 @@ export default async function AdminEditAuctionPage({
       {isDraft ? null : (
         <p className="font-body text-sm text-on-surface-variant">
           Core auction fields (price, times) are locked after publish. You can still update
-          condition, provenance, exhibitions, and the artist note below.
+          estimate, condition, provenance, exhibitions, and the artist note below.
         </p>
       )}
 
@@ -55,6 +57,7 @@ export default async function AdminEditAuctionPage({
           categories={categories}
           sellers={users.rows}
           artists={artists}
+          englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         />
       ) : null}
       <AdminLotMarketingForm

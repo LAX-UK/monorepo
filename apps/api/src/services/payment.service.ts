@@ -1,11 +1,18 @@
 import type { Database } from "@auction/db";
-import { type Lot, type PaymentStatus, type UserRole, roleHasCapability } from "@auction/types";
+import {
+  type Lot,
+  type PaymentStatus,
+  type UserRole,
+  normalizeUserStaffRole,
+  roleHasCapability,
+} from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { ILotRepository, IUserRepository } from "./interfaces/repositories.js";
@@ -50,6 +57,7 @@ export class PaymentService {
     private readonly domainEventPublisher?: DomainEventPublisher,
     private readonly stripePayments: IStripePaymentGateway | null = null,
     private readonly mediaUrlResolver?: MediaUrlResolver,
+    private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -78,6 +86,7 @@ export class PaymentService {
 
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
+      await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, existing.id);
       if (existing.status === "requires_manual_review") {
         return ok({ paymentId: existing.id, checkoutUrl: null });
       }
@@ -157,11 +166,21 @@ export class PaymentService {
       }
     }
 
+    await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id);
     return ok({ paymentId: created.id, checkoutUrl });
   }
 
-  async listAllForAdmin(userRole: string): Promise<Result<PaymentRecord[], AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "finance.read")) {
+  async listAllForAdmin(
+    userRole: string,
+    userStaffRole?: string | null,
+  ): Promise<Result<PaymentRecord[], AuthzError>> {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "finance.read",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
       return err(new AuthzError("Forbidden", 403));
     }
     const rows = await this.payments.listAll();
@@ -202,10 +221,12 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     const isPlatformFinanceWrite = roleHasCapability(
       userRole as UserRole,
       "finance.platform.write",
+      normalizeUserStaffRole(userStaffRole ?? undefined),
     );
     if (!isPlatformFinanceWrite && !actingLegalEntityId) {
       return err(new AuthzError("Forbidden", 403));
@@ -285,10 +306,12 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     const isPlatformFinanceWrite = roleHasCapability(
       userRole as UserRole,
       "finance.platform.write",
+      normalizeUserStaffRole(userStaffRole ?? undefined),
     );
     if (!isPlatformFinanceWrite && !actingLegalEntityId) {
       return err(new AuthzError("Forbidden", 403));
@@ -381,8 +404,15 @@ export class PaymentService {
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "finance.platform.write")) {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "finance.platform.write",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
       return err(new AuthzError("Forbidden", 403));
     }
     const p = await this.payments.findById(paymentId);
@@ -415,8 +445,15 @@ export class PaymentService {
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "finance.platform.write")) {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "finance.platform.write",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
       return err(new AuthzError("Forbidden", 403));
     }
     const p = await this.payments.findById(paymentId);
@@ -516,8 +553,15 @@ export class PaymentService {
   async syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "finance.platform.write")) {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "finance.platform.write",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
       return err(new AuthzError("Forbidden", 403));
     }
     const r = await this.accounting.syncPaymentFromProvider(paymentId);
@@ -528,6 +572,7 @@ export class PaymentService {
   }
 
   private async dispatchPaymentReceived(p: PaymentRecord): Promise<void> {
+    await this.lotFulfilmentHooks?.onPaymentCaptured(p.lotId, p.id);
     const lot = await this.lots.findById(p.lotId);
     if (lot && this.notificationDispatcher) {
       const paidByUserId = p.paidByUserId ?? p.buyerId;

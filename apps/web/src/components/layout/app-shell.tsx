@@ -186,6 +186,7 @@ function AppShellFrame({
             </Button>
             <AppShellBreadcrumbs
               role={shellRole}
+              sessionUser={user}
               {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
             />
             {shellRole === "client" ? (

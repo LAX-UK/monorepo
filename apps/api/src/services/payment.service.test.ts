@@ -115,9 +115,10 @@ describe("PaymentService", () => {
 
     const result = await service.markCapturedByAdmin(
       "admin-1",
-      "accountant",
+      "staff",
       payment.id,
       lot.sellerLegalEntityId,
+      "finance_ops",
     );
 
     expect(result.isOk()).toBe(true);
@@ -202,7 +203,13 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.markCapturedByAdmin("admin-1", "administrator", pay.id, undefined);
+    const result = await service.markCapturedByAdmin(
+      "admin-1",
+      "staff",
+      pay.id,
+      undefined,
+      "super_admin",
+    );
 
     expect(result.isOk()).toBe(true);
     expect(stripe.capturePaymentIntent).toHaveBeenCalledWith("pi_test_capture");
@@ -253,7 +260,13 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.markCapturedByAdmin("admin-1", "administrator", pay.id, undefined);
+    const result = await service.markCapturedByAdmin(
+      "admin-1",
+      "staff",
+      pay.id,
+      undefined,
+      "super_admin",
+    );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -310,7 +323,13 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.refundPayment("admin-1", "administrator", pay.id, undefined);
+    const result = await service.refundPayment(
+      "admin-1",
+      "staff",
+      pay.id,
+      undefined,
+      "super_admin",
+    );
     expect(result.isOk()).toBe(true);
     expect(stripe.createRefund).toHaveBeenCalledWith({
       chargeId: "ch_refund_me",
@@ -365,7 +384,13 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.refundPayment("admin-1", "administrator", pay.id, undefined);
+    const result = await service.refundPayment(
+      "admin-1",
+      "staff",
+      pay.id,
+      undefined,
+      "super_admin",
+    );
     expect(result.isErr()).toBe(true);
     expect(db.transaction).not.toHaveBeenCalled();
     expect(payments.applyRefundedInTransaction).not.toHaveBeenCalled();
@@ -408,7 +433,13 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.refundPayment("admin-1", "administrator", pay.id, undefined);
+    const result = await service.refundPayment(
+      "admin-1",
+      "staff",
+      pay.id,
+      undefined,
+      "super_admin",
+    );
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
@@ -440,9 +471,10 @@ describe("PaymentService", () => {
 
     const result = await service.refundPayment(
       "finance-1",
-      "accountant",
+      "staff",
       payment.id,
       "00000000-0000-4000-8000-000000000099",
+      "finance_ops",
     );
 
     expect(result.isErr()).toBe(true);
@@ -526,7 +558,12 @@ describe("PaymentService", () => {
       publisher as never,
     );
 
-    const result = await service.refundManualReviewPayment("admin-1", "administrator", payment.id);
+    const result = await service.refundManualReviewPayment(
+      "admin-1",
+      "staff",
+      payment.id,
+      "super_admin",
+    );
 
     expect(result.isOk()).toBe(true);
     expect(payments.updateStatus).toHaveBeenCalledWith(payment.id, "refunded");

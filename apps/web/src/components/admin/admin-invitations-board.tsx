@@ -12,8 +12,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 function roleLabel(r: UserRole): string {
-  if (r === "administrator") return "Administrator";
-  if (r === "accountant") return "Accountant";
+  if (r === "staff") return "Staff";
   return "Client";
 }
 

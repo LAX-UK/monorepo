@@ -1,4 +1,4 @@
-import type { Bid, LegalEntity, Lot } from "@auction/types";
+import type { Bid, CreateLotInput, LegalEntity, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
@@ -83,7 +83,13 @@ function createSut(overrides: { lot?: Partial<Lot> } = {}) {
   } as unknown as ILotRepository;
   const bids = {} as unknown as IBidRepository;
   const watchlist = {} as unknown as IWatchlistRepository;
-  const svc = new LotService(lotRepo, bids, watchlist, null, null);
+  const svc = new LotService({
+    lotRepo,
+    bids,
+    watchlist,
+    jobScheduler: null,
+    lotNotifications: null,
+  });
   return { svc, findById, updateMarketingDetails };
 }
 
@@ -100,7 +106,7 @@ describe("LotService.updateMarketingDetails", () => {
   it("returns 404 when lot missing", async () => {
     const { svc, findById } = createSut({});
     findById.mockResolvedValueOnce(null);
-    const r = await svc.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
+    const r = await svc.updateMarketingDetails("staff", lotId, { artistNote: "z" }, "super_admin");
     expect(r.isErr()).toBe(true);
     if (r.isErr() && r.error instanceof LotError) {
       expect(r.error.status).toBe(404);
@@ -109,17 +115,22 @@ describe("LotService.updateMarketingDetails", () => {
 
   it("returns 400 for ended or cancelled", async () => {
     const { svc: s1 } = createSut({ lot: { status: "ended" } });
-    const r1 = await s1.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
+    const r1 = await s1.updateMarketingDetails("staff", lotId, { artistNote: "z" }, "super_admin");
     expect(r1.isErr()).toBe(true);
 
     const { svc: s2 } = createSut({ lot: { status: "cancelled" } });
-    const r2 = await s2.updateMarketingDetails("administrator", lotId, { artistNote: "z" });
+    const r2 = await s2.updateMarketingDetails("staff", lotId, { artistNote: "z" }, "super_admin");
     expect(r2.isErr()).toBe(true);
   });
 
   it("updates via repo for admin and allowed status", async () => {
     const { svc, updateMarketingDetails } = createSut({});
-    const r = await svc.updateMarketingDetails("administrator", lotId, { artistNote: "new" });
+    const r = await svc.updateMarketingDetails(
+      "staff",
+      lotId,
+      { artistNote: "new" },
+      "super_admin",
+    );
     expect(r.isOk()).toBe(true);
     expect(updateMarketingDetails).toHaveBeenCalledWith(lotId, { artistNote: "new" });
   });
@@ -148,21 +159,20 @@ describe("LotService.cancel", () => {
     const legalEntityRecipients: ILegalEntityNotificationRecipientReader = {
       listUserIdsForAudience: vi.fn().mockResolvedValue(["owner-1", "consignor-1"]),
     };
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
       bids,
       watchlist,
-      {
+      jobScheduler: {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn().mockResolvedValue(undefined),
       },
       lotNotifications,
-      undefined,
-      legalEntityRecipients,
-    );
+      legalEntityNotificationRecipients: legalEntityRecipients,
+    });
 
-    const result = await svc.cancel("admin-1", "administrator", lotId);
+    const result = await svc.cancel("admin-1", "staff", lotId, "super_admin");
 
     expect(result.isOk()).toBe(true);
     expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
@@ -202,22 +212,20 @@ describe("LotService.publish", () => {
         }),
       ),
     } as unknown as ILegalEntityRepository;
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
-      {} as IBidRepository,
-      {} as IWatchlistRepository,
-      {
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
       },
-      null,
-      undefined,
-      null,
+      lotNotifications: null,
       legalEntityRepository,
-      true,
-    );
-    const result = await svc.publish("admin", "administrator", lotId);
+      enforceIndividualConnectOnPublish: true,
+    });
+    const result = await svc.publish("admin", "staff", lotId, "super_admin");
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("connect_required");
@@ -240,18 +248,16 @@ describe("LotService.publish", () => {
       rescheduleEnd: vi.fn(),
       cancelLotJobs: vi.fn(),
     };
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
-      {} as IBidRepository,
-      {} as IWatchlistRepository,
-      scheduler,
-      null,
-      undefined,
-      null,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: scheduler,
+      lotNotifications: null,
       legalEntityRepository,
-      true,
-    );
-    const result = await svc.publish("admin", "administrator", lotId);
+      enforceIndividualConnectOnPublish: true,
+    });
+    const result = await svc.publish("admin", "staff", lotId, "super_admin");
     expect(result.isOk()).toBe(true);
     expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "scheduled");
     expect(scheduler.scheduleLot).toHaveBeenCalled();
@@ -276,18 +282,16 @@ describe("LotService.publish", () => {
       rescheduleEnd: vi.fn(),
       cancelLotJobs: vi.fn(),
     };
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
-      {} as IBidRepository,
-      {} as IWatchlistRepository,
-      scheduler,
-      null,
-      undefined,
-      null,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: scheduler,
+      lotNotifications: null,
       legalEntityRepository,
-      false,
-    );
-    const result = await svc.publish("admin", "administrator", lotId);
+      enforceIndividualConnectOnPublish: false,
+    });
+    const result = await svc.publish("admin", "staff", lotId, "super_admin");
     expect(result.isOk()).toBe(true);
   });
 });
@@ -310,7 +314,13 @@ describe("LotService.listBidsForPublicApi", () => {
       findById: vi.fn().mockResolvedValue(null),
     } as unknown as ILotRepository;
     const bids: IBidRepository = { listForLot: vi.fn() } as unknown as IBidRepository;
-    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const svc = new LotService({
+      lotRepo,
+      bids,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const r = await svc.listBidsForPublicApi({
       lotId,
       viewerRole: "client",
@@ -328,7 +338,13 @@ describe("LotService.listBidsForPublicApi", () => {
     } as unknown as ILotRepository;
     const listForLot = vi.fn();
     const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
-    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const svc = new LotService({
+      lotRepo,
+      bids,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const r = await svc.listBidsForPublicApi({
       lotId,
       viewerRole: "client",
@@ -339,17 +355,24 @@ describe("LotService.listBidsForPublicApi", () => {
     expect(listForLot).not.toHaveBeenCalled();
   });
 
-  it("lists bids for sealed active when viewer is administrator", async () => {
+  it("lists bids for sealed active when viewer is staff with auction.manage", async () => {
     const sealedActive: Lot = { ...baseLot, auctionType: "sealed", status: "active" };
     const lotRepo: ILotRepository = {
       findById: vi.fn().mockResolvedValue(sealedActive),
     } as unknown as ILotRepository;
     const listForLot = vi.fn().mockResolvedValue([bidRow]);
     const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
-    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const svc = new LotService({
+      lotRepo,
+      bids,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const r = await svc.listBidsForPublicApi({
       lotId,
-      viewerRole: "administrator",
+      viewerRole: "staff",
+      viewerStaffRole: "super_admin",
       viewerId: "admin-1",
       limitQuery: "10",
     });
@@ -366,7 +389,13 @@ describe("LotService.listBidsForPublicApi", () => {
     } as unknown as ILotRepository;
     const listForLot = vi.fn().mockResolvedValue([bidRow]);
     const bids: IBidRepository = { listForLot } as unknown as IBidRepository;
-    const svc = new LotService(lotRepo, bids, {} as IWatchlistRepository, null, null);
+    const svc = new LotService({
+      lotRepo,
+      bids,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const r = await svc.listBidsForPublicApi({
       lotId,
       viewerRole: "client",
@@ -384,13 +413,13 @@ describe("LotService.listLotsForPublicApi", () => {
   it("lists, presents images, and masks for viewer role", async () => {
     const list = vi.fn().mockResolvedValue([baseLot]);
     const lotRepo: ILotRepository = { list } as unknown as ILotRepository;
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
-      {} as IBidRepository,
-      {} as IWatchlistRepository,
-      null,
-      null,
-    );
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const { data } = await svc.listLotsForPublicApi({ limit: 10, offset: 0 }, "client");
     expect(list).toHaveBeenCalledWith({ limit: 10, offset: 0 });
     expect(data).toHaveLength(1);
@@ -401,15 +430,68 @@ describe("LotService.listLotsForPublicApi", () => {
 describe("LotService.bulkPublishOrCancel", () => {
   it("returns AuthzError when role cannot manage auction", async () => {
     const lotRepo: ILotRepository = {} as unknown as ILotRepository;
-    const svc = new LotService(
+    const svc = new LotService({
       lotRepo,
-      {} as IBidRepository,
-      {} as IWatchlistRepository,
-      null,
-      null,
-    );
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
     const r = await svc.bulkPublishOrCancel("u1", "client", [lotId], "publish");
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error).toBeInstanceOf(AuthzError);
+  });
+});
+
+describe("LotService English-only policy", () => {
+  const start = new Date(Date.now() + 86_400_000);
+  const end = new Date(Date.now() + 172_800_000);
+  const baseCreate: CreateLotInput = {
+    title: "T",
+    categoryId: categoryId,
+    auctionType: "english",
+    startingPrice: "1",
+    startTime: start,
+    endTime: end,
+  };
+
+  it("create rejects non-english auction type when flag is on", async () => {
+    const lotRepo: ILotRepository = { create: vi.fn() } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      englishOnlyAuctions: true,
+    });
+    const r = await svc.create("seller-1", { ...baseCreate, auctionType: "dutch" });
+    expect(r.isErr()).toBe(true);
+    expect(lotRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("update rejects lateral change away from english when flag is on and lot was english", async () => {
+    const englishDraft: Lot = {
+      ...baseLot,
+      status: "draft",
+      auctionType: "english",
+      startTime: start,
+      endTime: end,
+    };
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(englishDraft),
+      update: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      englishOnlyAuctions: true,
+    });
+    const r = await svc.update("staff", lotId, { auctionType: "dutch" }, "super_admin");
+    expect(r.isErr()).toBe(true);
+    expect(lotRepo.update).not.toHaveBeenCalled();
   });
 });

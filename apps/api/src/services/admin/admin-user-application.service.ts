@@ -24,9 +24,37 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     actorUserId: string,
     targetUserId: string,
     role: string,
+    actorStaffRole?: string | null,
+    targetStaffRole?: import("@auction/types").UserStaffRole | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
     try {
-      await this.adminUsers.setRole(actorRole, actorUserId, targetUserId, role);
+      await this.adminUsers.setRole(
+        actorRole,
+        actorUserId,
+        targetUserId,
+        role,
+        actorStaffRole,
+        targetStaffRole ?? null,
+      );
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof AuthzError) {
+        return { ok: false, status: e.status, message: e.message };
+      }
+      const msg = e instanceof Error ? e.message : "Failed";
+      return { ok: false, status: 400, message: msg };
+    }
+  }
+
+  async setStaffRole(
+    actorRole: string,
+    _actorUserId: string,
+    targetUserId: string,
+    staffRole: import("@auction/types").UserStaffRole | null,
+    actorStaffRole?: string | null,
+  ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+    try {
+      await this.adminUsers.setStaffRole(actorRole, targetUserId, staffRole, actorStaffRole);
       return { ok: true };
     } catch (e) {
       if (e instanceof AuthzError) {

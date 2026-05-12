@@ -7,6 +7,7 @@ import type {
 } from "@/lib/data/contracts";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
+import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
 import type { Bid, Lot } from "@auction/types";
 import { cache } from "react";
 
@@ -105,3 +106,26 @@ export const getServerLotById = cache(async function getServerLotById(
   const reader = await getServerLotReader();
   return reader.getById(id);
 });
+
+export type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+
+function parseLotDocumentPublicRow(raw: unknown): LotDocumentPublicRow {
+  const o = raw as Record<string, unknown>;
+  return {
+    id: String(o.id ?? ""),
+    kind: String(o.kind ?? ""),
+    label: o.label == null ? null : String(o.label),
+    downloadUrl: String(o.downloadUrl ?? ""),
+  };
+}
+
+/** Public lot attachments; returns empty on error or non-catalogue lots. */
+export async function getServerLotDocuments(lotId: string): Promise<LotDocumentPublicRow[]> {
+  const base = getServerApiBase();
+  const res = await fetch(`${base}/lots/${encodeURIComponent(lotId)}/documents`, {
+    next: { revalidate: 120 },
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseLotDocumentPublicRow);
+}

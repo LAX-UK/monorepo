@@ -139,6 +139,15 @@ export const createNestedLotForSaleSchema = z.preprocess(
 
 export type CreateNestedLotForSaleInput = z.infer<typeof createNestedLotForSaleSchema>;
 
+/** Pre-sale estimate (subset of `LotMarketingDetails.estimate`). */
+export const lotEstimateSchema = z.object({
+  low: z.string().min(1).max(32),
+  high: z.string().min(1).max(32),
+  currency: z.string().min(1).max(8),
+});
+
+export type LotEstimateInput = z.infer<typeof lotEstimateSchema>;
+
 /** Marketing / catalog copy (subset of `LotMarketingDetails`). */
 export const conditionReportSchema = z.object({
   summary: z.string().max(5000).optional(),
@@ -160,6 +169,7 @@ export const exhibitionEntrySchema = z.object({
 /** Catalog-copy patch on a lot. Artist attribution is `lot.artist_id` only;
  * marketing PATCH does not accept artist fields. */
 export const updateLotMarketingDetailsSchema = z.object({
+  estimate: lotEstimateSchema.nullable().optional(),
   conditionReport: conditionReportSchema.nullable().optional(),
   provenance: z.array(provenanceEntrySchema).max(50).nullable().optional(),
   exhibitions: z.array(exhibitionEntrySchema).max(50).nullable().optional(),
@@ -168,3 +178,65 @@ export const updateLotMarketingDetailsSchema = z.object({
 });
 
 export type UpdateLotMarketingDetailsInput = z.infer<typeof updateLotMarketingDetailsSchema>;
+
+export const scheduleAbsenteeBidBodySchema = z.object({
+  buyerLegalEntityId: z.string().uuid(),
+  maxAmount: z.coerce.number().finite().positive().max(1e12),
+});
+
+export type ScheduleAbsenteeBidBody = z.infer<typeof scheduleAbsenteeBidBodySchema>;
+
+export const adminTelephonePlaceBidBodySchema = z.object({
+  lotId: z.string().uuid(),
+  buyerUserId: z.string().min(1).max(191),
+  buyerLegalEntityId: z.string().uuid(),
+  amount: z.coerce.number().finite().positive().max(1e12),
+  maxAutoBidAmount: z.coerce.number().finite().positive().max(1e12).optional(),
+  telephoneBookingId: z.string().uuid().optional(),
+});
+
+export type AdminTelephonePlaceBidBody = z.infer<typeof adminTelephonePlaceBidBodySchema>;
+
+export const createConditionReportRequestBodySchema = z.object({
+  requestNote: z.string().max(2000).optional(),
+  requestingLegalEntityId: z.string().uuid().optional(),
+});
+
+export type CreateConditionReportRequestBody = z.infer<
+  typeof createConditionReportRequestBodySchema
+>;
+
+export const fulfillConditionReportRequestBodySchema = z.object({
+  conditionReport: conditionReportSchema.refine(
+    (c) =>
+      Boolean(
+        (c.summary && c.summary.trim().length > 0) ||
+          (c.details && c.details.trim().length > 0) ||
+          c.downloadUrl,
+      ),
+    { message: "Provide summary, details, or a download URL" },
+  ),
+  responseNote: z.string().max(2000).optional(),
+  responseAttachmentUploadId: z.string().uuid().optional(),
+});
+
+export type FulfillConditionReportRequestBody = z.infer<
+  typeof fulfillConditionReportRequestBodySchema
+>;
+
+export const declineConditionReportRequestBodySchema = z.object({
+  responseNote: z.string().max(2000).optional(),
+});
+
+export const conditionReportRequestIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const adminConditionReportListQuerySchema = z.object({
+  status: z.enum(["pending", "in_progress", "fulfilled", "declined"]).optional(),
+  lotId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+export type AdminConditionReportListQuery = z.infer<typeof adminConditionReportListQuerySchema>;

@@ -21,7 +21,7 @@ export default async function SellerStripeConnectPage() {
     shell: "client",
     loginNext: "/dashboard/seller/connect",
   });
-  const { acting } = await resolveActingContext(user.role);
+  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
   if (!acting || acting.kind !== "individual") {
     redirect("/dashboard/seller");
   }

@@ -120,6 +120,8 @@ export type CreateBidRow = {
   isWinning: boolean;
   isAutoBid: boolean;
   maxAutoBidAmount: string | null;
+  placedVia?: string | null;
+  telephoneBookingId?: string | null;
 };
 
 export interface IBidRepository {
@@ -172,6 +174,7 @@ export type UserProfileRow = {
   email: string;
   name: string;
   role: string;
+  staffRole: string | null;
   /** Public avatar URL (OAuth / profile); safe to expose on public user endpoints */
   image: string | null;
   hasSeenActingContextTooltip: boolean;
@@ -180,6 +183,8 @@ export type UserProfileRow = {
 export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
   listIdsByRole(role: string): Promise<string[]>;
+  /** Staff user ids that should receive new-item-submission notifications (appraisal / catalogue / auction). */
+  listStaffIdsForSubmissionNotifications(): Promise<string[]>;
   /** Public directory rows (no email) for marketing / mega-menu. */
   listPublicProfiles(params: {
     limit: number;

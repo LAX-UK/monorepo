@@ -323,6 +323,69 @@
       "when": 1780200000000,
       "tag": "0046_artist_consolidation",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1780300000000,
+      "tag": "0047_internal_staff_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1780400000000,
+      "tag": "0048_sale_registration",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0049_condition_report_request",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1780600000000,
+      "tag": "0050_absentee_and_telephone_bids",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1780700000000,
+      "tag": "0051_saleroom_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1780800000000,
+      "tag": "0052_lot_fulfilment",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1780900000000,
+      "tag": "0053_absentee_executing_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1781000000000,
+      "tag": "0054_role_staff_client",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1781100000000,
+      "tag": "0055_buyer_agent_unique_and_placed_via_check",
+      "breakpoints": true
     }
   ]
 }

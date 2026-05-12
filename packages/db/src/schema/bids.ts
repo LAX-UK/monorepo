@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   numeric,
   pgTable,
@@ -12,6 +13,7 @@ import {
 import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
+import { telephoneBidBooking } from "./telephone-bid-booking.js";
 
 export const bid = pgTable(
   "bid",
@@ -31,6 +33,11 @@ export const bid = pgTable(
     isWinning: boolean("is_winning").notNull().default(false),
     isAutoBid: boolean("is_auto_bid").notNull().default(false),
     maxAutoBidAmount: numeric("max_auto_bid_amount", { precision: 18, scale: 2 }),
+    /** e.g. web, absentee, telephone, saleroom */
+    placedVia: text("placed_via"),
+    telephoneBookingId: uuid("telephone_booking_id").references(() => telephoneBidBooking.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -42,6 +49,10 @@ export const bid = pgTable(
     uniqueIndex("bid_one_winner_per_lot_uniq")
       .on(table.lotId)
       .where(sql`${table.isWinning} = true`),
+    check(
+      "bid_placed_via_check",
+      sql`${table.placedVia} IS NULL OR ${table.placedVia} IN ('web', 'absentee', 'telephone', 'saleroom')`,
+    ),
   ],
 );
 

@@ -6,7 +6,7 @@ import { createAdminPayoutRoutes } from "./payouts.js";
 
 const payoutId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-function mountApp(role: string) {
+function mountApp(role: string, staffRole?: string) {
   const app = new Hono();
   const payoutService = {
     adminManualReverse: vi.fn(),
@@ -20,15 +20,17 @@ function mountApp(role: string) {
     payoutRepository,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "u1", role, ...(staffRole ? { staffRole } : {}) }),
   };
   app.route("/admin/payouts", createAdminPayoutRoutes(container, authenticator));
   return { app, payoutService };
 }
 
 describe("admin payout routes — reverse", () => {
-  it("returns 403 for POST reverse when user is accountant", async () => {
-    const { app, payoutService } = mountApp("accountant");
+  it("returns 403 for POST reverse when user is finance staff (finance_ops)", async () => {
+    const { app, payoutService } = mountApp("staff", "finance_ops");
 
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
@@ -44,7 +46,7 @@ describe("admin payout routes — reverse", () => {
   });
 
   it("returns 400 when confirmation phrase does not match payout id", async () => {
-    const { app, payoutService } = mountApp("administrator");
+    const { app, payoutService } = mountApp("staff", "super_admin");
 
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
@@ -60,7 +62,7 @@ describe("admin payout routes — reverse", () => {
   });
 
   it("calls adminManualReverse for administrator with matching phrase", async () => {
-    const { app, payoutService } = mountApp("administrator");
+    const { app, payoutService } = mountApp("staff", "super_admin");
     payoutService.adminManualReverse.mockResolvedValue({
       id: payoutId,
       legalEntityId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",

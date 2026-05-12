@@ -1,4 +1,4 @@
-import type { UserRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { IAdminInvitationApplicationService } from "../interfaces/admin-routes.js";
 import type { InvitationSummary } from "../interfaces/invitation.js";
@@ -34,9 +34,17 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
     return this.invitations.resend(input);
   }
 
-  preview(
-    token: string,
-  ): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>> {
+  preview(token: string): Promise<
+    Result<
+      {
+        email: string;
+        targetRole: UserRole;
+        targetStaffRole: UserStaffRole | null;
+        expiresAt: Date;
+      },
+      InvitationError
+    >
+  > {
     return this.invitations.preview(token);
   }
 }

@@ -150,6 +150,7 @@ locals {
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
@@ -187,6 +188,7 @@ locals {
         { key = "EMAIL_UNSUBSCRIBE_SECRET", value = local.effective_email_unsubscribe_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" },
         { key = "ENABLE_WHATSAPP_CHANNEL", value = var.enable_whatsapp_channel, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_TIME" },
         { key = "STRIPE_SECRET_KEY", value = var.stripe_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_PUBLISHABLE_KEY", value = var.stripe_publishable_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_IDENTITY_WEBHOOK_SECRET", value = var.stripe_identity_webhook_secret, type = "SECRET", scope = "RUN_TIME" },

@@ -502,6 +502,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         email: row.email,
         name: row.name,
         role: row.role,
+        staffRole: row.staffRole,
         image,
         emailVerified: row.emailVerified,
         emailStatus: row.emailStatus,

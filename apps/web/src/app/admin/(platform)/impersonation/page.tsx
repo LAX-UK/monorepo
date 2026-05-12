@@ -20,7 +20,7 @@ export default async function AdminImpersonationPage() {
     shell: "staff",
     loginNext: "/admin/impersonation",
   });
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin");
   }
 

@@ -1,5 +1,5 @@
 import type { Auth } from "@auction/auth/server";
-import { normalizeUserRoleOrClient } from "@auction/types";
+import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
 import type { AuthenticatedUser, IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export class BetterAuthAuthenticator implements IAuthenticator {
@@ -9,11 +9,12 @@ export class BetterAuthAuthenticator implements IAuthenticator {
     const session = await this.auth.api.getSession({ headers });
     const id = session?.user?.id;
     if (!id) return null;
+    const u = session?.user as { role?: string; staffRole?: string | null } | null | undefined;
     const rawRole =
-      typeof session?.user === "object" && session.user && "role" in session.user
-        ? String((session.user as { role?: string }).role ?? "client")
-        : "client";
+      typeof u === "object" && u && "role" in u ? String(u.role ?? "client") : "client";
     const role = normalizeUserRoleOrClient(rawRole);
-    return { id, role };
+    const staffRole =
+      typeof u === "object" && u && "staffRole" in u ? normalizeUserStaffRole(u.staffRole) : null;
+    return { id, role, staffRole };
   }
 }

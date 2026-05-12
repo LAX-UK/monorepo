@@ -11,11 +11,17 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
+    adminStaffRole?: import("@auction/types").UserStaffRole | null,
   ): Promise<
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
   > {
-    const result = await this.lots.approveWithdrawalRequest(adminUserId, adminRole, lotId);
+    const result = await this.lots.approveWithdrawalRequest(
+      adminUserId,
+      adminRole,
+      lotId,
+      adminStaffRole,
+    );
     if (result.isOk()) {
       return { ok: true, data: result.value };
     }

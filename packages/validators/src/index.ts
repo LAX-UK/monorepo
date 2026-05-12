@@ -1,5 +1,6 @@
 export * from "./address.js";
 export * from "./lot.js";
+export * from "./english-auction-policy.js";
 export * from "./media.js";
 export * from "./onsite-location.js";
 export * from "./sale.js";
@@ -26,6 +27,9 @@ export * from "./checkout.js";
 export * from "./xero.js";
 export * from "./admin-email.js";
 export * from "./admin-audit.js";
+export * from "./admin-ops.js";
 /** Legal Entity Model validators */
 export * from "./legal-entity.js";
 export * from "./payout.js";
+export * from "./saleroom.js";
+export * from "./fulfilment.js";

@@ -7,7 +7,7 @@ import { createArtistRoutes } from "./artists.js";
 const artistId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const intoId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
 
-function mountApp(role: string) {
+function mountApp(role: string, staffRole?: string) {
   const app = new Hono();
   const artistRegistryService = {
     review: vi.fn(),
@@ -27,7 +27,9 @@ function mountApp(role: string) {
     artistProfileService,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "u1", role, ...(staffRole ? { staffRole } : {}) }),
   };
   app.route("/artists", createArtistRoutes(container, authenticator));
   return { app, artistRegistryService };
@@ -49,8 +51,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.review).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/:id/merge when user is accountant", async () => {
-    const { app, artistRegistryService } = mountApp("accountant");
+  it("returns 403 for POST /artists/:id/merge when user is finance staff (finance_ops)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "finance_ops");
 
     const res = await app.request(`/artists/${artistId}/merge`, {
       method: "POST",
@@ -65,8 +67,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.merge).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/:id/review for administrator", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+  it("allows POST /artists/:id/review for staff (super_admin)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.review.mockResolvedValue({ id: artistId, status: "approved" });
 
     const res = await app.request(`/artists/${artistId}/review`, {
@@ -81,8 +83,8 @@ describe("artist admin routes — platform administrator gate", () => {
     });
   });
 
-  it("allows POST /artists/:id/merge for administrator", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+  it("allows POST /artists/:id/merge for staff (super_admin)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.findById.mockResolvedValue({
       id: intoId,
       displayName: "Canonical Name",
@@ -111,7 +113,7 @@ describe("artist admin routes — platform administrator gate", () => {
   });
 
   it("returns 400 when merge confirmation phrase is wrong", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.findById.mockResolvedValue({
       id: intoId,
       displayName: "Canonical Name",
@@ -146,8 +148,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.proposeMatchesForAdmin).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/propose-matches when user is accountant", async () => {
-    const { app, artistRegistryService } = mountApp("accountant");
+  it("returns 403 for POST /artists/propose-matches when user is finance staff (finance_ops)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "finance_ops");
 
     const res = await app.request("/artists/propose-matches", {
       method: "POST",
@@ -159,8 +161,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.proposeMatchesForAdmin).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/propose-matches for administrator", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+  it("allows POST /artists/propose-matches for staff (super_admin)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.proposeMatchesForAdmin.mockResolvedValue({
       exact: [],
       alias: [],
@@ -192,8 +194,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.addAlias).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/:id/aliases when user is accountant", async () => {
-    const { app, artistRegistryService } = mountApp("accountant");
+  it("returns 403 for POST /artists/:id/aliases when user is finance staff (finance_ops)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "finance_ops");
 
     const res = await app.request(`/artists/${artistId}/aliases`, {
       method: "POST",
@@ -205,8 +207,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.addAlias).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/:id/aliases for administrator", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+  it("allows POST /artists/:id/aliases for staff (super_admin)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.addAlias.mockResolvedValue({ id: "alias-1", alias: "Known As" });
 
     const res = await app.request(`/artists/${artistId}/aliases`, {
@@ -237,8 +239,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.create).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists when user is accountant", async () => {
-    const { app, artistRegistryService } = mountApp("accountant");
+  it("returns 403 for POST /artists when user is finance staff (finance_ops)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "finance_ops");
 
     const res = await app.request("/artists", {
       method: "POST",
@@ -250,8 +252,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistRegistryService.create).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists for administrator (records creator id)", async () => {
-    const { app, artistRegistryService } = mountApp("administrator");
+  it("allows POST /artists for staff super_admin (records creator id)", async () => {
+    const { app, artistRegistryService } = mountApp("staff", "super_admin");
     artistRegistryService.create.mockResolvedValue({
       id: artistId,
       displayName: "New Artist",

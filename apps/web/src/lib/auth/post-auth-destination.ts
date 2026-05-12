@@ -1,11 +1,10 @@
 import type { SessionUser } from "@/lib/data/contracts";
-import type { UserRole } from "@auction/types";
-import { canAccessPlatformAdminRoutes, canAccessStaffAdminShell } from "@auction/types";
+import { type UserRole, staffRoleDefaultDestination } from "@auction/types";
 
 export type PostAuthContext = "sign-in" | "sign-up" | "redirect-if-authed" | "verify-email-success";
 
 export type ResolvePostAuthDestinationInput = {
-  user: Pick<SessionUser, "role" | "suspended" | "emailVerified" | "email">;
+  user: Pick<SessionUser, "role" | "staffRole" | "suspended" | "emailVerified" | "email">;
   requestedNext?: string | null | undefined;
   context: PostAuthContext;
   /** When true, unverified users are sent to verify-pending for sign-up / redirect-if-authed contexts. */
@@ -26,12 +25,6 @@ export function isSafeNextPath(next: string | null | undefined): boolean {
   if (pathOnly.startsWith("/api")) return false;
   if (pathOnly.startsWith("/admin/api")) return false;
   return true;
-}
-
-export function roleDefaultDestination(role: UserRole): string {
-  if (canAccessPlatformAdminRoutes(role)) return "/admin";
-  if (canAccessStaffAdminShell(role)) return "/admin/payments";
-  return "/dashboard";
 }
 
 function appendWelcomeBack(path: string, withWelcomeBack: boolean): string {
@@ -70,5 +63,8 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
   }
 
   const role = user.role as UserRole;
-  return appendWelcomeBack(roleDefaultDestination(role), withWelcomeBack);
+  return appendWelcomeBack(
+    staffRoleDefaultDestination(role, user.staffRole ?? null),
+    withWelcomeBack,
+  );
 }

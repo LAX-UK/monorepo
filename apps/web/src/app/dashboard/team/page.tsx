@@ -23,7 +23,7 @@ export default async function DashboardTeamPage() {
     shell: "client",
     loginNext: "/dashboard/team",
   });
-  const { acting, memberships } = await resolveActingContext(user.role);
+  const { acting, memberships } = await resolveActingContext(user.role, user.staffRole ?? null);
   if (!acting) {
     redirect("/dashboard");
   }

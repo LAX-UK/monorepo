@@ -150,6 +150,10 @@ const envSchema = z
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((v) => v === "true" || v === true, z.boolean())
       .default(false),
+    /** When true, admin lot/sale inventory APIs reject new non-English `auction_type` values (DB enum unchanged). */
+    ENGLISH_ONLY_AUCTIONS: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(true),
     /** Support inbox for money-path alerts and ops (required in production). */
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** On-call / escalation inbox (required in production). */

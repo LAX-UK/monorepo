@@ -13,6 +13,7 @@ type Props = {
   hasSeenTooltip?: boolean;
   /** Session role — required for impersonation cookie resolution. */
   userRole?: string;
+  userStaffRole?: string | null;
   className?: string;
   /** When set (e.g. dashboard layout), avoids a duplicate `/legal-entities/me` fetch. */
   prefetchedActingContext?: ResolvedActingContext;
@@ -27,10 +28,12 @@ type Props = {
 export async function ActingAsBanner({
   hasSeenTooltip = true,
   userRole,
+  userStaffRole,
   className,
   prefetchedActingContext,
 }: Props) {
-  const { acting, memberships } = prefetchedActingContext ?? (await resolveActingContext(userRole));
+  const { acting, memberships } =
+    prefetchedActingContext ?? (await resolveActingContext(userRole, userStaffRole ?? null));
   if (!acting) return null;
 
   const showTooltip = !hasSeenTooltip && memberships.some((m) => m.kind === "organisation");

@@ -68,7 +68,8 @@ const adminUser = {
   id: "admin-1",
   email: "admin@example.com",
   name: "Admin User",
-  role: "administrator" as const,
+  role: "staff" as const,
+  staffRole: "super_admin" as const,
   image: null,
   emailVerified: true,
   emailStatus: "ok" as const,
@@ -94,7 +95,7 @@ describe("AppShell", () => {
 
   it("does not render public-site affordances for staff shells", () => {
     render(
-      <AppShell user={adminUser} shellRole="admin">
+      <AppShell user={adminUser} shellRole="platform">
         <p>Admin content</p>
       </AppShell>,
     );

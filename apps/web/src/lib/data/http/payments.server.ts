@@ -40,3 +40,48 @@ export async function getServerMyPayments(
   const body = (await res.json()) as { data: MyPaymentRow[] };
   return body.data;
 }
+
+/** Row from `GET /payments/me/lot/:lotId/fulfilment` (winner only). */
+export type LotFulfilmentSnapshot = {
+  id: string;
+  lotId: string;
+  status: string;
+  paymentId: string | null;
+  fulfilmentMethod: "collection" | "shipping" | null;
+  shippingCarrier: string | null;
+  trackingNumber: string | null;
+  collectedBy: string | null;
+  collectedAt: string | null;
+};
+
+function parseLotFulfilmentSnapshot(raw: unknown): LotFulfilmentSnapshot {
+  const o = raw as Record<string, unknown>;
+  const method = o.fulfilmentMethod;
+  return {
+    id: String(o.id ?? ""),
+    lotId: String(o.lotId ?? ""),
+    status: String(o.status ?? ""),
+    paymentId: o.paymentId == null ? null : String(o.paymentId),
+    fulfilmentMethod: method === "collection" || method === "shipping" ? method : null,
+    shippingCarrier: o.shippingCarrier == null ? null : String(o.shippingCarrier),
+    trackingNumber: o.trackingNumber == null ? null : String(o.trackingNumber),
+    collectedBy: o.collectedBy == null ? null : String(o.collectedBy),
+    collectedAt: o.collectedAt == null ? null : String(o.collectedAt),
+  };
+}
+
+/** Winner checkout: current fulfilment / logistics state for the lot. */
+export async function getServerLotFulfilmentForWinner(
+  lotId: string,
+): Promise<LotFulfilmentSnapshot | null> {
+  const res = await authedServerFetch(`/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    if (res.status === 403 || res.status === 404) return null;
+    throw new Error(`Failed to load fulfilment: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: unknown };
+  if (body.data == null) return null;
+  return parseLotFulfilmentSnapshot(body.data);
+}

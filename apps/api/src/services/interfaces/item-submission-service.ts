@@ -13,6 +13,8 @@ import type { ListSubmissionsFilter } from "./repositories.js";
 export type UpdateSubmissionActorInput = {
   actorId: string;
   role: string;
+  /** Actor LAX staff role when `role` is administrator. */
+  staffRole?: string | null;
   submissionId: string;
   /** Seller draft edits (validated with updateItemSubmissionSchema). */
   sellerPatch?: UpdateItemSubmissionInput | undefined;
@@ -75,12 +77,14 @@ export interface IItemSubmissionService {
   getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;
+    staffRole?: string | null;
     sellerLegalEntityId: string;
   }): Promise<Result<ItemSubmission, SubmissionError>>;
   patchSubmissionFromRequestBody(input: {
     rawBody: unknown;
     submissionId: string;
     role: UserRole;
+    staffRole?: string | null;
     userId: string;
     sellerLegalEntityId: string;
   }): Promise<

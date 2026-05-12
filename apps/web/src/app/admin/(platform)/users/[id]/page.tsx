@@ -1,4 +1,8 @@
-import { UserRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
+import {
+  UserRoleAction,
+  UserStaffRoleAction,
+  UserSuspendAction,
+} from "@/components/admin/admin-user-actions";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
@@ -90,6 +94,18 @@ export default async function AdminUserDetailPage({ params }: Props) {
             <p className="font-label text-xs uppercase tracking-widest text-secondary">Role</p>
             <UserRoleAction userId={user.id} defaultRole={user.role as UserRole} layout="block" />
           </div>
+          {user.role === "staff" && (
+            <div className="space-y-4 border-t border-outline-variant/15 pt-6">
+              <p className="font-label text-xs uppercase tracking-widest text-secondary">
+                Internal staff role
+              </p>
+              <p className="font-body text-xs text-on-surface-variant">
+                Default (legacy full) keeps pre–18 June behaviour. Narrow roles limit capabilities
+                in admin and finance tools.
+              </p>
+              <UserStaffRoleAction userId={user.id} defaultStaffRole={user.staffRole ?? null} />
+            </div>
+          )}
           <div className="border-t border-outline-variant/15 pt-6">
             <UserSuspendAction userId={user.id} suspendedAt={user.suspendedAt} fullWidthButton />
           </div>
@@ -105,7 +121,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
           value="commerce"
           className="mt-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
         >
-          Payments, invoices, and addresses surface once accountant endpoints expose cross-links.
+          Payments, invoices, and addresses surface once finance endpoints expose cross-links.
         </TabsContent>
         <TabsContent
           value="notes"

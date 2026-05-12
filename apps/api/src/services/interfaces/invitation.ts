@@ -1,9 +1,10 @@
-import type { UserRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 
 export type InvitationRow = {
   id: string;
   email: string;
   targetRole: UserRole;
+  targetStaffRole: UserStaffRole | null;
   tokenHash: string;
   status: "pending" | "accepted" | "revoked" | "expired";
   expiresAt: Date;
@@ -18,6 +19,7 @@ export type InvitationInsert = {
   id: string;
   email: string;
   targetRole: UserRole;
+  targetStaffRole: UserStaffRole | null;
   tokenHash: string;
   status: InvitationRow["status"];
   expiresAt: Date;

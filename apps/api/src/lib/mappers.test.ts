@@ -62,6 +62,8 @@ function bidRow(
     isWinning: true,
     isAutoBid: false,
     maxAutoBidAmount: null,
+    placedVia: null,
+    telephoneBookingId: null,
     createdAt: now,
     ...overrides,
   };
@@ -94,6 +96,7 @@ function itemSubmissionRow(
     reviewNotes: null,
     rejectionReason: null,
     convertedLotId: null,
+    assignedToUserId: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

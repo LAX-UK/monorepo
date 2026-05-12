@@ -1,6 +1,7 @@
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
 import { AppShell } from "@/components/layout/app-shell";
+import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
@@ -10,16 +11,19 @@ import {
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
+import { type UserRole, canAccessPlatformAdminRoutes, roleHasCapability } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 export async function generateMetadata(): Promise<Metadata> {
   const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
-  const { impersonation } = await resolveActingContext(user.role);
+  const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
   const base = metadataForPrivate("Admin");
-  if (!impersonation || !canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (
+    !impersonation ||
+    !roleHasCapability(user.role as UserRole, "platform.admin.full", user.staffRole ?? null)
+  ) {
     return {
       ...base,
       title: { default: "Admin", template: "%s · Admin · LAX" },
@@ -37,10 +41,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
-  const { impersonation } = await resolveActingContext(user.role);
+  const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
 
   let pendingSubmissionCount = 0;
-  if (canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     try {
       pendingSubmissionCount = await getAdminSubmissionPendingCount();
     } catch {
@@ -48,13 +52,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
-  const role = canAccessPlatformAdminRoutes(user.role as UserRole) ? "admin" : "accountant";
+  const role = sessionUserToShellRole(user);
 
   const jar = await cookies();
   const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
   const showImpersonationBanner =
-    Boolean(impersonation) && canAccessPlatformAdminRoutes(user.role as UserRole);
+    Boolean(impersonation) &&
+    roleHasCapability(user.role as UserRole, "platform.admin.full", user.staffRole ?? null);
 
   return (
     <div className={showImpersonationBanner ? "pt-14" : undefined}>

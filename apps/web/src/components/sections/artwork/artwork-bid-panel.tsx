@@ -16,6 +16,7 @@ import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -124,8 +125,8 @@ export function ArtworkBidPanel({
     onLotEnded: (p) => {
       setLotStatus("ended");
       setCurrentPrice(p.currentPrice);
-      setLeadingBidderId(p.winnerId);
-      setEndedBanner("This lot has ended.");
+      setLeadingBidderId(p.winnerId ?? null);
+      setEndedBanner(p.noSale ? "This lot has ended (no sale)." : "This lot has ended.");
     },
   });
 
@@ -290,6 +291,11 @@ export function ArtworkBidPanel({
   const live = lotStatus === "active";
   const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
+  const englishOnlySurfaceLock =
+    isEnglishOnlyAuctionsLocked() &&
+    auction.auctionType !== "english" &&
+    auction.auctionType !== "buy_it_now";
+
   return (
     <BidGate
       user={sessionUser}
@@ -320,7 +326,15 @@ export function ArtworkBidPanel({
               <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
             </div>
 
-            {auction.auctionType === "english" || auction.auctionType === "buy_it_now" ? (
+            {englishOnlySurfaceLock ? (
+              <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
+                Self-service bidding is only offered for English and buy-now lots while this
+                catalogue mode is enabled. For this listing, please contact the saleroom team.
+              </p>
+            ) : null}
+
+            {!englishOnlySurfaceLock &&
+            (auction.auctionType === "english" || auction.auctionType === "buy_it_now") ? (
               <>
                 <TooltipProvider delayDuration={200}>
                   <details
@@ -370,85 +384,91 @@ export function ArtworkBidPanel({
               </>
             ) : null}
 
-            <div
-              id="bid-interactive-anchor"
-              tabIndex={-1}
-              className={cn(
-                "scroll-mt-28 outline-none focus:outline-none",
-                auction.auctionType === "english" || auction.auctionType === "buy_it_now"
-                  ? "mt-4"
-                  : "mt-6",
-              )}
-            >
-              {bidSuccess ? (
-                <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
-                  Bid placed successfully.
-                </output>
-              ) : null}
+            {!englishOnlySurfaceLock ? (
+              <>
+                <div
+                  id="bid-interactive-anchor"
+                  tabIndex={-1}
+                  className={cn(
+                    "scroll-mt-28 outline-none focus:outline-none",
+                    auction.auctionType === "english" || auction.auctionType === "buy_it_now"
+                      ? "mt-4"
+                      : "mt-6",
+                  )}
+                >
+                  {bidSuccess ? (
+                    <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+                      Bid placed successfully.
+                    </output>
+                  ) : null}
 
-              {decision.kind === "block" ? (
-                decision.render()
-              ) : step === 1 ? (
-                <BidForm
-                  auctionType={auction.auctionType}
-                  minNumeric={minNumeric}
-                  amount={amount}
-                  maxAuto={maxAuto}
-                  onAmountChange={setAmount}
-                  onMaxAutoChange={setMaxAuto}
-                  onReview={onReview}
-                  onUseMinimum={onUseMinimum}
-                  error={error}
-                  showMaxAutoField={false}
-                  reviewButtonClassName={FIGMA_PRIMARY}
-                  amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
-                  stepNumeric={bidStepNumeric}
-                  step1ButtonLabel={useOnlineBidStepper ? "Place bid" : "Review bid"}
-                />
-              ) : (
-                <BidConfirmation
-                  amount={amount}
-                  maxAuto={maxAuto.trim() === "" ? null : maxAuto}
-                  error={error}
-                  submitting={submitting}
-                  onCancel={() => setStep(1)}
-                  onConfirm={onConfirm}
-                />
-              )}
-            </div>
+                  {decision.kind === "block" ? (
+                    decision.render()
+                  ) : step === 1 ? (
+                    <BidForm
+                      auctionType={auction.auctionType}
+                      minNumeric={minNumeric}
+                      amount={amount}
+                      maxAuto={maxAuto}
+                      onAmountChange={setAmount}
+                      onMaxAutoChange={setMaxAuto}
+                      onReview={onReview}
+                      onUseMinimum={onUseMinimum}
+                      error={error}
+                      showMaxAutoField={false}
+                      reviewButtonClassName={FIGMA_PRIMARY}
+                      amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
+                      stepNumeric={bidStepNumeric}
+                      step1ButtonLabel={useOnlineBidStepper ? "Place bid" : "Review bid"}
+                    />
+                  ) : (
+                    <BidConfirmation
+                      amount={amount}
+                      maxAuto={maxAuto.trim() === "" ? null : maxAuto}
+                      error={error}
+                      submitting={submitting}
+                      onCancel={() => setStep(1)}
+                      onConfirm={onConfirm}
+                    />
+                  )}
+                </div>
 
-            <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
-              Minimum next bid{" "}
-              <span className="font-medium text-on-surface">
-                {formatMoney(minNumeric.toFixed(2))}
-              </span>
-              {live ? (
-                <>
-                  {" "}
-                  · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price plus
-                  buyer&apos;s premium; see{" "}
-                  <a href="/shipping" className="text-primary underline">
-                    shipping
-                  </a>
-                  .
-                </>
-              ) : null}
-            </p>
+                <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
+                  Minimum next bid{" "}
+                  <span className="font-medium text-on-surface">
+                    {formatMoney(minNumeric.toFixed(2))}
+                  </span>
+                  {live ? (
+                    <>
+                      {" "}
+                      · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price
+                      plus buyer&apos;s premium; see{" "}
+                      <a href="/shipping" className="text-primary underline">
+                        shipping
+                      </a>
+                      .
+                    </>
+                  ) : null}
+                </p>
+              </>
+            ) : null}
           </div>
 
-          <BidStickyMobileBar
-            live={live}
-            decision={decision}
-            loginNextPath={loginNext}
-            step={step}
-            currentPriceLabel={formatMoney(currentPrice)}
-            priceFlash={priceFlash}
-            onScrollToBid={scrollToBid}
-            remainingLabel={remainingLabel}
-            msRemaining={endTime - now}
-            timerState={timerState}
-            countdownClock={countdownClock}
-          />
+          {!englishOnlySurfaceLock ? (
+            <BidStickyMobileBar
+              live={live}
+              decision={decision}
+              loginNextPath={loginNext}
+              step={step}
+              currentPriceLabel={formatMoney(currentPrice)}
+              priceFlash={priceFlash}
+              onScrollToBid={scrollToBid}
+              remainingLabel={remainingLabel}
+              msRemaining={endTime - now}
+              timerState={timerState}
+              countdownClock={countdownClock}
+            />
+          ) : null}
         </div>
       )}
     </BidGate>

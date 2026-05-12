@@ -52,7 +52,7 @@ export default async function AdminLegalEntityDetailPage({
     shell: "staff",
     loginNext: "/admin/legal-entities",
   });
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin");
   }
 

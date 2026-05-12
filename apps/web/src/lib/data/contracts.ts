@@ -1,4 +1,12 @@
-import type { Bid, Category, CategoryNode, Lot, LotStatus, UserRole } from "@auction/types";
+import type {
+  Bid,
+  Category,
+  CategoryNode,
+  Lot,
+  LotStatus,
+  UserRole,
+  UserStaffRole,
+} from "@auction/types";
 
 export type ListLotsParams = {
   status?: LotStatus;
@@ -55,6 +63,7 @@ export type SessionUser = {
   email: string;
   name: string;
   role: UserRole;
+  staffRole?: UserStaffRole | null;
   /** Profile / OAuth avatar when present. */
   image?: string | null;
   /** When true (if API exposes it), bidding UI is blocked client-side. */

@@ -2,17 +2,17 @@ import type { UserRole } from "@auction/types";
 
 export const permissions = {
   auction: {
-    create: ["administrator"] as const,
-    updateOwn: ["administrator"] as const,
-    cancelOwn: ["administrator"] as const,
-    manageAny: ["administrator"] as const,
+    create: ["staff"] as const,
+    updateOwn: ["staff"] as const,
+    cancelOwn: ["staff"] as const,
+    manageAny: ["staff"] as const,
   },
   bid: {
     place: ["client"] as const,
   },
   user: {
-    readProfile: ["administrator", "accountant", "client"] as const,
-    setRole: ["administrator"] as const,
+    readProfile: ["staff", "client"] as const,
+    setRole: ["staff"] as const,
   },
 } as const;
 

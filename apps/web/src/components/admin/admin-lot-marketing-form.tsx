@@ -55,8 +55,9 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists, artist
         <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
         <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Lot story</h2>
         <p className="mt-1 font-body text-sm text-on-surface-variant">
-          These fields feed the public artwork page (condition, provenance, exhibitions, about the
-          artist). Changes apply immediately for lots that can still be edited in the catalogue.
+          These fields feed the public artwork page (estimate, condition, provenance, exhibitions,
+          about the artist, plus fees and documents where configured). Changes apply immediately for
+          lots that can still be edited in the catalogue.
         </p>
       </div>
       <ArtistAttributionPanel
@@ -88,6 +89,7 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists, artist
             });
           })}
         >
+          <EstimateFields form={form} />
           <ConditionReportFields form={form} />
           <ProvenanceListField form={form} />
           <ExhibitionsListField form={form} />
@@ -170,6 +172,63 @@ function chipFromArtists(
     kind: found.kind ?? "artist",
     status: found.status ?? "approved",
   };
+}
+
+function EstimateFields({
+  form,
+}: {
+  form: UseFormReturn<AdminLotMarketingFormValues>;
+}) {
+  return (
+    <section className="space-y-4">
+      <h3 className="font-label text-sm font-semibold text-on-surface">Pre-sale estimate</h3>
+      <p className="font-body text-xs text-on-surface-variant">
+        Shown in the catalogue accordion when low, high, and currency are all set. Use plain amounts
+        (e.g. 8000.00); leave empty to hide the estimate block.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <FormField
+          control={form.control}
+          name="estimate.low"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">Low</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="8000.00" inputMode="decimal" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="estimate.high"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">High</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="12000.00" inputMode="decimal" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="estimate.currency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">Currency</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="GBP" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </section>
+  );
 }
 
 function ConditionReportFields({

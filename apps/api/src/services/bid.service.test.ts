@@ -8,6 +8,7 @@ import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
+import type { PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
@@ -49,6 +50,21 @@ function lot(overrides: Partial<Lot> = {}): Lot {
     updatedAt: now,
     marketingDetails: {},
     ...overrides,
+  };
+}
+
+function personalBid(
+  placedByUserId: string,
+  lotId: string,
+  amount: number,
+  maxAutoBidAmount?: number,
+): PlaceBidInput {
+  return {
+    placedByUserId,
+    buyerLegalEntityId: placedByUserId,
+    lotId,
+    amount,
+    ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
   };
 }
 
@@ -152,16 +168,16 @@ describe("BidService.placeBid", () => {
       notifyLotEnded: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-    );
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(BidError);
@@ -182,16 +198,16 @@ describe("BidService.placeBid", () => {
       notifyLotEnded: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-    );
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.message).toBe("Lot is not accepting bids");
   });
@@ -208,16 +224,16 @@ describe("BidService.placeBid", () => {
       notifyLotEnded: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-    );
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 100);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 100));
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.message).toContain("Bid must be at least");
   });
@@ -242,16 +258,16 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced },
       { notifyLotExtended, notifyLotEnded },
     );
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-    );
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value).toEqual(created);
 
@@ -280,19 +296,17 @@ describe("BidService.placeBid", () => {
       bidderSharesSellerLegalEntity: vi.fn(),
       violatesAntiShilling: vi.fn().mockResolvedValue(true),
     };
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       antiShillingGuard,
-    );
+    });
 
-    const result = await service.placeBid("org-member", "auc-1", 150);
+    const result = await service.placeBid(personalBid("org-member", "auc-1", 150));
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -330,19 +344,17 @@ describe("BidService.placeBid", () => {
       bidderSharesSellerLegalEntity: vi.fn(),
       violatesAntiShilling: vi.fn().mockResolvedValue(false),
     };
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       antiShillingGuard,
-    );
+    });
 
-    const result = await service.placeBid("buyer-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("buyer-1", "auc-1", 150));
 
     expect(result.isOk()).toBe(true);
     expect(antiShillingGuard.violatesAntiShilling).toHaveBeenCalledWith({
@@ -405,20 +417,18 @@ describe("BidService.placeBid", () => {
         .fn()
         .mockImplementation((ctx) => Promise.resolve(ctx.bidderUserId === "seller-member")),
     };
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       antiShillingGuard,
-      { publish: domainPublish } as unknown as DomainEventPublisher,
-    );
+      domainEventPublisher: { publish: domainPublish } as unknown as DomainEventPublisher,
+    });
 
-    const result = await service.placeBid("buyer-1", "auc-1", 150, 200);
+    const result = await service.placeBid(personalBid("buyer-1", "auc-1", 150, 200));
 
     expect(result.isOk()).toBe(true);
     expect(bidRepo.create).toHaveBeenCalledTimes(1);
@@ -460,16 +470,16 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
     );
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-    );
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
 
-    const result = await service.placeBid("bidder-new", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-new", "auc-1", 150));
 
     expect(result.isOk()).toBe(true);
     expect(bidRepo.create).toHaveBeenCalledWith(
@@ -508,21 +518,59 @@ describe("BidService.placeBid", () => {
       { notifyLotExtended: vi.fn(), notifyLotEnded },
     );
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      { rescheduleEnd: vi.fn(), cancelLotJobs },
-    );
+      notificationDispatcher: null,
+      lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs },
+    });
 
-    const result = await service.placeBid("buyer-1", "auc-1", 50);
+    const result = await service.placeBid(personalBid("buyer-1", "auc-1", 50));
     expect(result.isOk()).toBe(true);
     expect(lotRepo.setWinner).toHaveBeenCalledWith("auc-1", "buyer-1", "buyer-1");
     expect(lotRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
     expect(cancelLotJobs).toHaveBeenCalledWith("auc-1");
     expect(notifyLotEnded).toHaveBeenCalledOnce();
+  });
+
+  it("rejects Dutch bid when English-only catalogue mode is on", async () => {
+    const now = new Date();
+    const active = lot({
+      auctionType: "dutch",
+      currentPrice: "50.00",
+      endTime: new Date(now.getTime() + 60 * 60_000),
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo();
+    const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+    const notifications = new NotificationService(
+      { notifyBidPlaced: vi.fn() },
+      { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
+    );
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache,
+      notifications,
+      notificationDispatcher: null,
+      lotJobs: {
+        rescheduleEnd: vi.fn(),
+        cancelLotJobs: vi.fn().mockResolvedValue(undefined),
+      },
+      englishOnlyAuctions: true,
+    });
+
+    const result = await service.placeBid(personalBid("buyer-1", "auc-1", 50));
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(BidError);
+      expect(result.error.code).toBe("english_only_catalogue");
+    }
+    expect(bidRepo.create).not.toHaveBeenCalled();
   });
 
   it("rejects bid when parent sale is onsite (read-only)", async () => {
@@ -541,18 +589,17 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
     };
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       saleModeLookup,
-    );
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(BidError);
@@ -583,18 +630,17 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("online"),
     };
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       saleModeLookup,
-    );
+    });
 
-    const result = await service.placeBid("bidder-1", "auc-1", 150);
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
     expect(saleModeLookup.findSaleModeForLot).toHaveBeenCalledWith("auc-1");
     expect(lotRepo.findByIdForUpdate).toHaveBeenCalled();
@@ -626,16 +672,16 @@ describe("BidService.placeBid", () => {
       { notifyLotExtended: vi.fn(), notifyLotEnded },
     );
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      { rescheduleEnd: vi.fn(), cancelLotJobs },
-    );
+      notificationDispatcher: null,
+      lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs },
+    });
 
-    const result = await service.placeBid("buyer-1", "auc-1", 500);
+    const result = await service.placeBid(personalBid("buyer-1", "auc-1", 500));
     expect(result.isOk()).toBe(true);
     expect(lotRepo.setWinner).toHaveBeenCalledWith("auc-1", "buyer-1", "buyer-1");
     expect(lotRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
@@ -660,20 +706,15 @@ describe("BidService.placeBidWithIdempotency", () => {
       { notifyBidPlaced: vi.fn() },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn() },
     );
-    const service = new BidService(
-      createMockFactory(lotRepo, bidRepo),
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
+      notificationDispatcher: null,
+      lotJobs: null,
       idempotencyStore,
-    );
+    });
     const out = await service.placeBidWithIdempotency({
       placedByUserId: "u1",
       idempotencyKey: "k1",

@@ -23,11 +23,18 @@ export type AdminPaymentTableRow = {
   amount: string;
   platformFee: string;
   status: PaymentStatus;
+  /** Lot fulfilment pipeline status when the finance user can read the ops queue; otherwise null. */
+  fulfilmentStatus: string | null;
   xeroInvoiceNumber: string | null;
   xeroOnlineInvoiceUrl: string | null;
   xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
   xeroLastError: string | null;
 };
+
+function fulfilmentStatusLabel(status: string | null): string {
+  if (!status) return "—";
+  return status.replaceAll("_", " ");
+}
 
 type PaymentActionsProps = { id: string; status: PaymentStatus; fullWidth?: boolean };
 
@@ -131,6 +138,16 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
       accessorKey: "amount",
       header: "Amount",
       cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
+    },
+    {
+      accessorKey: "fulfilmentStatus",
+      header: "Fulfilment",
+      cell: ({ row }) => (
+        <span className="max-w-[10rem] font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          {fulfilmentStatusLabel(row.original.fulfilmentStatus)}
+        </span>
+      ),
+      enableSorting: false,
     },
     {
       id: "xero",

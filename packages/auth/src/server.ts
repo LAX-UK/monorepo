@@ -72,7 +72,7 @@ export type Auth = {
   handler: (request: Request) => Promise<Response>;
   api: {
     getSession(input: { headers: Headers }): Promise<{
-      user?: { id?: string; role?: string | null } | null;
+      user?: { id?: string; role?: string | null; staffRole?: string | null } | null;
     } | null>;
     signUpEmail(input: { body: { name: string; email: string; password: string } }): Promise<{
       user?: { id?: string } | null;
@@ -148,6 +148,11 @@ export function createAuth(env: AuthEnv): Auth {
           type: "string",
           required: false,
           defaultValue: "client",
+          input: false,
+        },
+        staffRole: {
+          type: "string",
+          required: false,
           input: false,
         },
       },
@@ -255,6 +260,7 @@ export function createAuth(env: AuthEnv): Auth {
             name: sessionUser.name,
             image: sessionUser.image,
             role: (sessionUser as { role?: string }).role ?? "client",
+            staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
           }),
         },
         adapter: {
@@ -277,6 +283,7 @@ export function createAuth(env: AuthEnv): Auth {
         getAdditionalUserInfoClaim: (sessionUser) => ({
           email_verified: sessionUser.emailVerified,
           role: (sessionUser as { role?: string }).role ?? "client",
+          staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
         }),
       }),
       twoFactor({ issuer: "LAX" }),

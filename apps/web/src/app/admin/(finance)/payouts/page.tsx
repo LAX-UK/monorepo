@@ -1,5 +1,6 @@
 import { AdminPayoutReverseButton } from "@/components/admin/admin-payout-reverse-button";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { summarizeSettlementReadiness } from "@/lib/admin/payout-settlement-readiness.vm";
 import {
   addPayoutAdjustmentAction,
   markPayoutPaidAction,
@@ -84,6 +85,8 @@ export default async function AdminPayoutsPage({
   const clawbackPending = payouts.filter((p) => p.status === "clawback_pending").length;
   const paid = payouts.filter((p) => p.status === "paid").length;
   const totalNet = payouts.reduce((sum, p) => sum + Number.parseFloat(p.netAmount || "0"), 0);
+  const readiness = summarizeSettlementReadiness(payouts);
+  const showSettlementReadiness = status === undefined && !loadError && payouts.length > 0;
 
   return (
     <AppScreen className="space-y-6">
@@ -112,6 +115,58 @@ export default async function AdminPayoutsPage({
         <MetricCard label="Paid" value={String(paid)} />
         <MetricCard label="Visible net" value={formatMoney(totalNet.toFixed(2), "GBP")} />
       </section>
+
+      {showSettlementReadiness ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div>
+              <h2 className="font-heading text-lg">Settlement readiness</h2>
+              <p className="mt-1 text-sm text-on-surface-variant">
+                Snapshot for the payouts currently shown (all statuses, optional legal entity
+                filter, up to 100 rows). Hidden while a status filter is on so counts stay
+                meaningful. Use it to spot transfers, statements, and reconciliation work before
+                closing the period.
+              </p>
+            </div>
+            <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">In flight (scheduled + in transit)</span>
+                <p className="text-lg font-semibold">{readiness.inFlightCount}</p>
+              </li>
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">Missing Stripe transfer ID</span>
+                <p className="text-lg font-semibold">{readiness.missingTransferRefCount}</p>
+              </li>
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">Payouts with blockers</span>
+                <p className="text-lg font-semibold">{readiness.blockerPayoutCount}</p>
+              </li>
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">Stripe failure reason</span>
+                <p className="text-lg font-semibold">{readiness.withFailureReasonCount}</p>
+              </li>
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">Statement PDF errors</span>
+                <p className="text-lg font-semibold">{readiness.withStatementErrorCount}</p>
+              </li>
+              <li className="rounded-md bg-surface-container-low px-3 py-2">
+                <span className="text-on-surface-variant">Failed / reversed / clawback</span>
+                <p className="text-lg font-semibold">
+                  {readiness.failedCount} / {readiness.reversedCount} / {readiness.clawbackCount}
+                </p>
+              </li>
+            </ul>
+            {readiness.blockerPayoutCount === 0 &&
+            readiness.missingTransferRefCount === 0 &&
+            payouts.length > 0 ? (
+              <p className="text-sm text-on-surface-variant">
+                No statement errors, Stripe failures, or clawback-style statuses in this list, and
+                every in-flight payout already has a transfer reference recorded.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card>
