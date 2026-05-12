@@ -12,7 +12,12 @@ export default function InvoiceIssuedEmail({
   invoiceUrl,
 }: TemplateVarsByName["invoice-issued"]) {
   return (
-    <Layout preview={`Invoice ${invoiceNumber} is ready.`} title="Invoice issued">
+    <Layout
+      category="finance"
+      eyebrow="Invoice"
+      preview={`Invoice ${invoiceNumber} is ready.`}
+      title="Invoice issued"
+    >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
         Invoice {invoiceNumber} for {amount} is now available in your account.

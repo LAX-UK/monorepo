@@ -15,6 +15,8 @@ export default function ChangeEmail({
   const isNewInbox = recipient === "new";
   return (
     <Layout
+      category="account"
+      eyebrow="Email change"
       preview={
         isNewInbox
           ? "Confirm you control this address for your LAX account."

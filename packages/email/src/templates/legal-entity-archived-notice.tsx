@@ -1,3 +1,5 @@
+import { Button } from "../components/Button.js";
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -10,20 +12,22 @@ export default function LegalEntityArchivedNoticeEmail(
 ) {
   const { recipientFirstName, entityName, dashboardUrl, supportContactEmail } = vars;
   return (
-    <Layout preview={`${entityName} archived`} title="Organisation archived">
+    <Layout
+      category="alert"
+      eyebrow="Organisation archived"
+      preview={`${entityName} archived`}
+      title="Organisation archived"
+    >
       <TextBlock>Hi {recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         <strong>{entityName}</strong> has been archived by platform administrators. Active bidding
         on behalf of this organisation may have been adjusted, and draft listings linked to this
         entity have been flagged for admin review.
       </TextBlock>
-      <TextBlock>
-        If you believe this was a mistake, contact{" "}
-        <a href={`mailto:${supportContactEmail}`}>{supportContactEmail}</a>.
-      </TextBlock>
-      <TextBlock>
-        <a href={dashboardUrl}>Open your dashboard</a>
-      </TextBlock>
+      <HelpBlock email={supportContactEmail} />
+      <Button href={dashboardUrl} tone="subtle">
+        Open your dashboard
+      </Button>
     </Layout>
   );
 }

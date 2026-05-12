@@ -1,3 +1,7 @@
+import { COLORS } from "@auction/branding";
+import { Link } from "@react-email/components";
+import { FactCard } from "../components/FactCard.js";
+import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -20,27 +24,33 @@ export default function PayoutTransferBlockedNoticeEmail(
   } = vars;
 
   return (
-    <Layout preview={`Payout blocked for ${entityName}`} title="Payout Blocked">
+    <Layout
+      category="alert"
+      eyebrow="Payout blocked"
+      preview={`Payout blocked for ${entityName}`}
+      title="Payout blocked"
+    >
       <TextBlock>Hi {recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         A payout for <strong>{entityName}</strong> is ready, but Stripe Connect is not currently
         payout-ready for this organisation.
       </TextBlock>
-      <TextBlock>
-        <strong>Payout Details:</strong>
-        <br />• Amount: {payoutCurrency} {payoutAmount}
-        <br />• Payout ID: {payoutId}
-        <br />• Reason: {blockReason}
-      </TextBlock>
+      <FactCard
+        rows={[
+          { label: "Amount", value: `${payoutCurrency} ${payoutAmount}` },
+          { label: "Payout ID", value: payoutId, mono: true },
+          { label: "Reason", value: blockReason },
+        ]}
+      />
       <TextBlock>
         The payout will stay scheduled until the Connect account can receive payouts. Please review
-        the <a href={adminPayoutsUrl}>admin payouts dashboard</a> and complete any outstanding
-        Stripe Connect requirements.
+        the{" "}
+        <Link href={adminPayoutsUrl} style={{ color: COLORS.link, textDecoration: "underline" }}>
+          admin payouts dashboard
+        </Link>{" "}
+        and complete any outstanding Stripe Connect requirements.
       </TextBlock>
-      <TextBlock>
-        If you have questions, please contact{" "}
-        <a href={`mailto:${supportContactEmail}`}>{supportContactEmail}</a>.
-      </TextBlock>
+      <HelpBlock email={supportContactEmail} />
     </Layout>
   );
 }
