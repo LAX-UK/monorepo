@@ -324,6 +324,8 @@ export type AdminSaleRegistrationRow = {
   userEmail: string | null;
   userName: string | null;
   buyerLegalEntityDisplayName: string | null;
+  /** Active membership role for the bidder on the buying entity (if any). */
+  memberRole: string | null;
 };
 
 const adminSaleRegistrationStatuses = ["pending", "approved", "rejected", "withdrawn"] as const;
@@ -351,6 +353,7 @@ function parseAdminSaleRegistrationRow(raw: unknown): AdminSaleRegistrationRow {
     userName: o.userName == null ? null : String(o.userName),
     buyerLegalEntityDisplayName:
       o.buyerLegalEntityDisplayName == null ? null : String(o.buyerLegalEntityDisplayName),
+    memberRole: o.memberRole == null || o.memberRole === "" ? null : String(o.memberRole),
   };
 }
 

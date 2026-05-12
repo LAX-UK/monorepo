@@ -1,11 +1,12 @@
 "use client";
 
+import type { LegalEntityMemberRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-type Entity = { id: string; displayName: string };
+type Entity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
 
 type Props = {
   saleId: string;
@@ -45,6 +46,11 @@ export function SaleroomRegisterToBid({
     return m;
   }, [myRegistrations]);
 
+  const agentEntities = useMemo(
+    () => buyerEntities.filter((e) => e.memberRole === "buyer_agent"),
+    [buyerEntities],
+  );
+
   if (!show) return null;
 
   if (!isAuthenticated) {
@@ -71,6 +77,10 @@ export function SaleroomRegisterToBid({
         <Link href="/onboarding/organisation">Set up a buyer profile</Link>
       </Button>
     );
+  }
+
+  if (agentEntities.length === 0) {
+    return null;
   }
 
   const selectedStatus = entityId ? statusByLe.get(entityId) : undefined;
@@ -131,7 +141,7 @@ export function SaleroomRegisterToBid({
           required
         >
           <option value="">Select legal entity…</option>
-          {buyerEntities.map((e) => (
+          {agentEntities.map((e) => (
             <option key={e.id} value={e.id}>
               {e.displayName}
             </option>
