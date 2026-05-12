@@ -18,8 +18,9 @@ export function ForgotPasswordForm() {
           className="block font-footer-links text-sm leading-relaxed text-on-surface"
           aria-live="polite"
         >
-          If an account exists for <span className="font-medium">{submittedEmail}</span>, we&apos;ve
-          sent reset instructions.
+          If we find an account for <span className="font-medium">{submittedEmail}</span>,
+          we&apos;ll email next steps. Accounts created with Google or Apple receive sign-in
+          instructions instead of a reset link.
         </output>
         <Button
           type="button"

@@ -39,10 +39,10 @@ export default async function SecuritySettingsPage() {
         className="border-0 pb-0"
         actions={
           <Link
-            href="/dashboard/settings/profile"
+            href="/dashboard/settings?tab=security"
             className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
           >
-            Back to profile
+            Back to settings
           </Link>
         }
       />

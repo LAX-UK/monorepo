@@ -1,18 +1,116 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
-import type { ItemSubmissionStatus } from "@auction/types";
+import { formatMoney } from "@/lib/format-currency";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import type { ItemSubmissionStatus, Lot } from "@auction/types";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { ArrowRight, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
+import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 function countByStatus(rows: { status: ItemSubmissionStatus }[], status: ItemSubmissionStatus) {
   return rows.filter((r) => r.status === status).length;
 }
 
+const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+type UpcomingSaleRow = {
+  saleId: string;
+  saleTitle: string;
+  /** ISO of earliest end time among the seller's lots in this sale (used as the schedule anchor). */
+  scheduleIso: string;
+  scheduleLabel: string;
+  lotsInSale: number;
+};
+
+type PayoutForecast = {
+  /** Sum of reserve prices for active/scheduled lots that have a reserve set. */
+  reservedFloor: string;
+  /** Sum of current prices for lots above reserve (best-case if hammer holds now). */
+  bestCaseHammer: string;
+  lotsWithReserve: number;
+  liveLots: number;
+};
+
+function safeNumber(value: string | null | undefined): number {
+  if (value == null || value === "") return 0;
+  const n = Number.parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function buildUpcomingSales(
+  lots: Lot[],
+  saleLookup: Map<string, { id: string; title: string }>,
+): UpcomingSaleRow[] {
+  const now = Date.now();
+  const grouped = new Map<string, { earliest: number; count: number }>();
+  for (const lot of lots) {
+    if (!lot.saleId) continue;
+    if (lot.status !== "active" && lot.status !== "scheduled") continue;
+    const endMs = lot.endTime.getTime();
+    if (!Number.isFinite(endMs) || endMs < now) continue;
+    const existing = grouped.get(lot.saleId);
+    if (existing) {
+      existing.count += 1;
+      if (endMs < existing.earliest) existing.earliest = endMs;
+    } else {
+      grouped.set(lot.saleId, { earliest: endMs, count: 1 });
+    }
+  }
+  return Array.from(grouped.entries())
+    .map(([saleId, info]) => {
+      const summary = saleLookup.get(saleId);
+      return {
+        saleId,
+        saleTitle: summary?.title ?? "Untitled sale",
+        scheduleIso: new Date(info.earliest).toISOString(),
+        scheduleLabel: DATE_FMT.format(new Date(info.earliest)),
+        lotsInSale: info.count,
+      } satisfies UpcomingSaleRow;
+    })
+    .sort((a, b) => Date.parse(a.scheduleIso) - Date.parse(b.scheduleIso))
+    .slice(0, 3);
+}
+
+function buildPayoutForecast(lots: Lot[]): PayoutForecast {
+  let reservedFloor = 0;
+  let bestCaseHammer = 0;
+  let lotsWithReserve = 0;
+  let liveLots = 0;
+  for (const lot of lots) {
+    if (lot.status !== "active" && lot.status !== "scheduled") continue;
+    liveLots += 1;
+    const reserve = safeNumber(lot.reservePrice);
+    const current = safeNumber(lot.currentPrice);
+    if (reserve > 0) {
+      lotsWithReserve += 1;
+      reservedFloor += reserve;
+      bestCaseHammer += Math.max(current, reserve);
+    } else {
+      bestCaseHammer += current;
+    }
+  }
+  return {
+    reservedFloor: reservedFloor.toFixed(2),
+    bestCaseHammer: bestCaseHammer.toFixed(2),
+    lotsWithReserve,
+    liveLots,
+  };
+}
+
 export default async function SellerOverviewPage() {
+  const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard/seller" });
+  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
+
   let rows: Awaited<ReturnType<typeof getMySubmissions>> = [];
   let err: string | null = null;
   try {
@@ -20,6 +118,41 @@ export default async function SellerOverviewPage() {
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load submissions.";
   }
+
+  let sellerLots: Lot[] = [];
+  if (acting) {
+    try {
+      const lotReader = await getServerLotReader();
+      sellerLots = await lotReader.list({ sellerId: acting.id, limit: 100 });
+    } catch {
+      sellerLots = [];
+    }
+  }
+
+  const upcomingSaleIds = Array.from(
+    new Set(
+      sellerLots
+        .filter((lot) => lot.status === "active" || lot.status === "scheduled")
+        .map((lot) => lot.saleId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const saleLookup = new Map<string, { id: string; title: string }>();
+  if (upcomingSaleIds.length > 0) {
+    const results = await Promise.allSettled(
+      upcomingSaleIds.map((id) => getServerSaleWithLots(id)),
+    );
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        saleLookup.set(result.value.sale.id, {
+          id: result.value.sale.id,
+          title: result.value.sale.title,
+        });
+      }
+    }
+  }
+  const upcomingSales = buildUpcomingSales(sellerLots, saleLookup);
+  const forecast = buildPayoutForecast(sellerLots);
 
   const drafts = countByStatus(rows, "draft");
   const inReview =
@@ -106,6 +239,101 @@ export default async function SellerOverviewPage() {
         </div>
       ) : null}
 
+      {!err && (upcomingSales.length > 0 || forecast.liveLots > 0) ? (
+        <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <Card className="border-outline-variant/15 bg-surface-container-lowest/80">
+            <CardContent className="space-y-4 p-5">
+              <header className="flex items-center gap-3">
+                <CalendarDays className="size-5 text-primary" aria-hidden />
+                <h2 className="font-headline text-lg font-semibold text-on-surface">
+                  Upcoming sales
+                </h2>
+              </header>
+              {upcomingSales.length === 0 ? (
+                <p className="font-body text-sm text-on-surface-variant">
+                  No live or scheduled lots yet — once specialists assign your work to a sale, it
+                  will appear here.
+                </p>
+              ) : (
+                <ul className="divide-y divide-outline-variant/15">
+                  {upcomingSales.map((row) => (
+                    <li key={row.saleId} className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <Link
+                          href="/dashboard/seller/in-sale"
+                          className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        >
+                          {row.saleTitle}
+                        </Link>
+                        <p className="text-xs text-on-surface-variant">
+                          {row.lotsInSale} of your lot
+                          {row.lotsInSale === 1 ? "" : "s"} · first close{" "}
+                          <time dateTime={row.scheduleIso}>{row.scheduleLabel}</time>
+                        </p>
+                      </div>
+                      <ArrowRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="border-outline-variant/15 bg-surface-container-lowest/80">
+            <CardContent className="space-y-4 p-5">
+              <header className="flex items-center gap-3">
+                <WalletCards className="size-5 text-primary" aria-hidden />
+                <h2 className="font-headline text-lg font-semibold text-on-surface">
+                  Payout forecast
+                </h2>
+              </header>
+              {forecast.liveLots === 0 ? (
+                <p className="font-body text-sm text-on-surface-variant">
+                  No live lots right now. The forecast updates once your submissions are scheduled
+                  into a sale.
+                </p>
+              ) : (
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                      Reserved floor
+                    </dt>
+                    <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                      {formatMoney(forecast.reservedFloor)}
+                    </dd>
+                    <p className="mt-1 text-xs text-on-surface-variant">
+                      Hammer floor if every reserved lot just meets reserve.
+                    </p>
+                  </div>
+                  <div>
+                    <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                      Current best case
+                    </dt>
+                    <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                      {formatMoney(forecast.bestCaseHammer)}
+                    </dd>
+                    <p className="mt-1 text-xs text-on-surface-variant">
+                      Sum of current prices across {forecast.liveLots} live/scheduled lot
+                      {forecast.liveLots === 1 ? "" : "s"} · {forecast.lotsWithReserve} reserved.
+                    </p>
+                  </div>
+                </dl>
+              )}
+              <p className="font-body text-xs text-on-surface-variant">
+                Indicative only. Final payouts subtract platform fees, VAT, and Stripe transfer
+                charges — see{" "}
+                <Link
+                  href="/dashboard/seller/payouts"
+                  className="underline underline-offset-2 hover:text-on-surface"
+                >
+                  Sold &amp; payouts
+                </Link>
+                .
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="border-outline-variant/15 bg-surface-container-low/40">
           <CardContent className="flex gap-4 p-5">
@@ -180,7 +408,7 @@ export default async function SellerOverviewPage() {
             </p>
           </div>
           <Button variant="secondary" asChild>
-            <Link href="/dashboard/seller/artist">Edit artist profile</Link>
+            <Link href="/dashboard/seller/artist">Artist profile (request changes)</Link>
           </Button>
         </CardContent>
       </Card>

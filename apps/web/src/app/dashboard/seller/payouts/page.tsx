@@ -1,4 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { PayoutsExportButton } from "@/components/dashboard/payouts-export-button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -63,6 +64,23 @@ export default async function SellerPayoutsPage() {
         title="Sold & payouts"
         description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
         className="border-0 pb-0"
+        actions={
+          payouts.length > 0 ? (
+            <PayoutsExportButton
+              rows={payouts.map((p) => ({
+                id: p.id,
+                periodStart: p.periodStart.toISOString(),
+                periodEnd: p.periodEnd.toISOString(),
+                grossAmount: p.grossAmount,
+                platformFee: p.platformFee,
+                stripeFee: p.stripeFee,
+                netAmount: p.netAmount,
+                currency: p.currency,
+                status: p.status,
+              }))}
+            />
+          ) : null
+        }
       />
 
       {listError && (

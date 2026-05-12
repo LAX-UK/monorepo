@@ -1,25 +1,54 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { PortfolioAnalyticsCard } from "@/components/dashboard/portfolio-analytics-card";
+import {
+  type PortfolioFilterValue,
+  PortfolioFilters,
+} from "@/components/dashboard/portfolio-filters";
 import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
-import { PortfolioSearchBar } from "@/components/dashboard/portfolio-search";
 import { Button } from "@/components/ui/button";
+import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
-  filterPortfolioRowsByTitle,
+  buildPortfolioAnalytics,
+  filterPortfolioRows,
   toPortfolioLotCards,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
-import { Suspense } from "react";
+
+const PAYMENT_VALUES: ReadonlyArray<PortfolioFilterValue> = [
+  "all",
+  "due",
+  "paid",
+  "authorized",
+  "refunded",
+];
+
+function parsePaymentFilter(raw: string | undefined): PortfolioFilterValue {
+  if (raw && (PAYMENT_VALUES as readonly string[]).includes(raw)) {
+    return raw as PortfolioFilterValue;
+  }
+  return "all";
+}
+
+function parseYearFilter(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1900 || n > 3000) return null;
+  return n;
+}
 
 type PageProps = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; payment?: string; year?: string }>;
 };
 
 export default async function DashboardPortfolioPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const qRaw = (sp.q ?? "").trim().toLowerCase();
+  const payment = parsePaymentFilter(sp.payment);
+  const year = parseYearFilter(sp.year);
 
   const container = await getServerDataContainer();
   let won: Awaited<ReturnType<typeof container.portfolio.listMine>> = [];
@@ -31,8 +60,11 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
     fetchError = e instanceof Error ? e.message : "Could not load portfolio.";
   }
 
-  const filtered = filterPortfolioRowsByTitle(won, qRaw);
-  const portfolioCards = toPortfolioLotCards(filtered);
+  const analytics = buildPortfolioAnalytics(won);
+  const filtered = filterPortfolioRows(won, { qLower: qRaw, payment, year });
+  const artistIds = filtered.map((row) => row.lot.artistId ?? null);
+  const artistNameById = await resolveArtistNames(artistIds);
+  const portfolioCards = toPortfolioLotCards(filtered, { artistNameById });
 
   return (
     <DashboardPage className="space-y-8">
@@ -49,30 +81,29 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
         </Alert>
       ) : null}
 
+      {!fetchError && analytics.totalRows > 0 ? (
+        <PortfolioAnalyticsCard analytics={analytics} />
+      ) : null}
+
       {!fetchError ? (
-        <Suspense
-          fallback={
-            <div
-              className="mb-8 h-24 animate-pulse rounded-xl border border-outline-variant/15 bg-surface-container-lowest/60"
-              aria-busy="true"
-              aria-label="Loading search"
-            />
-          }
-        >
-          <PortfolioSearchBar initialQ={sp.q ?? ""} />
-        </Suspense>
+        <PortfolioFilters
+          initialQ={sp.q ?? ""}
+          payment={payment}
+          year={year}
+          years={analytics.years}
+        />
       ) : null}
 
       {filtered.length === 0 && !fetchError ? (
         <EmptyState
-          title={qRaw ? "No matches" : "No acquired works yet"}
+          title={qRaw || payment !== "all" || year != null ? "No matches" : "No acquired works yet"}
           description={
-            qRaw
-              ? "Try a different search term."
+            qRaw || payment !== "all" || year != null
+              ? "Try a different search term or clear the filters."
               : "You haven't won any lots yet. Browse live auctions and place your best bid."
           }
           action={
-            !qRaw ? (
+            !qRaw && payment === "all" && year == null ? (
               <Button variant="primary" asChild>
                 <Link href="/">Browse auctions</Link>
               </Button>

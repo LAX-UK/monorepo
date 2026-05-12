@@ -21,7 +21,15 @@ export default async function ProfileSettingsPage({
   if (!meRes.ok) redirect("/dashboard?error=profile");
 
   const meBody = (await meRes.json()) as {
-    data: { id: string; email: string; name: string; role: string; image: string | null };
+    data: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      image: string | null;
+      emailVerified?: boolean;
+      emailStatus?: string;
+    };
   };
   const me = meBody.data;
 
@@ -43,7 +51,14 @@ export default async function ProfileSettingsPage({
           <AlertDescription>{err}</AlertDescription>
         </Alert>
       ) : null}
-      <ProfileSettingsBoard initialName={me.name} initialImage={me.image} addresses={addresses} />
+      <ProfileSettingsBoard
+        initialName={me.name}
+        initialImage={me.image}
+        addresses={addresses}
+        email={me.email}
+        {...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {})}
+        {...(me.emailStatus !== undefined ? { emailStatus: me.emailStatus } : {})}
+      />
     </DashboardPage>
   );
 }

@@ -97,3 +97,67 @@ export function sortPaymentsNewestFirst(rows: PaymentDisplayRow[]): PaymentDispl
     })
     .map(({ row }) => row);
 }
+
+export type PaymentsSort = "date-desc" | "date-asc" | "amount-desc" | "amount-asc";
+
+export function parsePaymentsSort(raw: string | undefined): PaymentsSort {
+  if (raw === "date-asc" || raw === "amount-desc" || raw === "amount-asc") {
+    return raw;
+  }
+  return "date-desc";
+}
+
+/** Sort display rows by the requested order. Stable on ties. */
+export function sortPaymentDisplayRows(
+  rows: PaymentDisplayRow[],
+  sort: PaymentsSort,
+): PaymentDisplayRow[] {
+  const withIndex = rows.map((row, index) => ({ row, index }));
+  withIndex.sort((a, b) => {
+    if (sort === "amount-asc" || sort === "amount-desc") {
+      const pa = Number.parseFloat(a.row.amountLabel.replace(/[^0-9.\-]/g, "")) || 0;
+      const pb = Number.parseFloat(b.row.amountLabel.replace(/[^0-9.\-]/g, "")) || 0;
+      const delta = sort === "amount-asc" ? pa - pb : pb - pa;
+      if (delta !== 0) return delta;
+      return a.index - b.index;
+    }
+    const ta = Date.parse(a.row.createdAtIso);
+    const tb = Date.parse(b.row.createdAtIso);
+    const valid = !Number.isNaN(ta) && !Number.isNaN(tb);
+    if (!valid) {
+      if (Number.isNaN(ta) && !Number.isNaN(tb)) return 1;
+      if (Number.isNaN(tb) && !Number.isNaN(ta)) return -1;
+      return a.index - b.index;
+    }
+    const delta = sort === "date-asc" ? ta - tb : tb - ta;
+    if (delta !== 0) return delta;
+    return a.index - b.index;
+  });
+  return withIndex.map(({ row }) => row);
+}
+
+export function filterPaymentRows(
+  rows: PaymentDisplayRow[],
+  filters: { qLower: string; year: number | null },
+): PaymentDisplayRow[] {
+  return rows.filter((row) => {
+    if (filters.qLower.length > 0 && !row.lotTitle.toLowerCase().includes(filters.qLower)) {
+      return false;
+    }
+    if (filters.year != null) {
+      const d = new Date(row.createdAtIso);
+      if (Number.isNaN(d.getTime())) return false;
+      if (d.getUTCFullYear() !== filters.year) return false;
+    }
+    return true;
+  });
+}
+
+export function paymentYears(rows: PaymentDisplayRow[]): number[] {
+  const years = new Set<number>();
+  for (const row of rows) {
+    const d = new Date(row.createdAtIso);
+    if (!Number.isNaN(d.getTime())) years.add(d.getUTCFullYear());
+  }
+  return Array.from(years).sort((a, b) => b - a);
+}

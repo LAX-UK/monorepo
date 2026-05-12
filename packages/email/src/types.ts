@@ -4,6 +4,7 @@ export const templateNames = [
   "welcome",
   "verify-email",
   "reset-password",
+  "oauth-account-reset-attempt",
   "password-changed",
   "change-email",
   "invite",
@@ -44,6 +45,18 @@ export type TemplateVarsByName = {
     userEmail: string;
     userName?: string | null;
     expirationMinutes: number;
+  };
+  /** Sent when a forgot-password is requested for an account that exists
+   * but has no credential row (i.e. was created via Google/Apple). The
+   * privacy contract requires the public response to be identical to other
+   * branches; tailored guidance is delivered only to the inbox owner.
+   */
+  "oauth-account-reset-attempt": {
+    provider: "google" | "apple";
+    signInUrl: string;
+    settingsUrl: string;
+    userEmail: string;
+    userName?: string | null;
   };
   "password-changed": {
     userName?: string | null;
@@ -217,6 +230,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   welcome: "live",
   "verify-email": "live",
   "reset-password": "live",
+  "oauth-account-reset-attempt": "live",
   "password-changed": "live",
   "change-email": "snapshot",
   invite: "live",

@@ -44,9 +44,12 @@ export function WatchlistPreviewCard({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">
-            Save lots from artwork pages to build a personal watchlist.
-          </p>
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
+            <span>Save lots from artwork pages to build a personal watchlist.</span>
+            <Button size="sm" variant="outline" asChild className="shrink-0">
+              <Link href="/search">Browse auctions</Link>
+            </Button>
+          </div>
         ) : variant === "tile-grid" ? (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map((row) => {
