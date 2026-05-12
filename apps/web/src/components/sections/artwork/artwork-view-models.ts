@@ -10,6 +10,8 @@ import { lotMarketingSection } from "./lot-marketing-sections";
 export const ARTWORK_PAGE_ACCORDION_IDS = {
   lotDetails: "lot-details",
   bidHistory: "bid-history",
+  fees: "fees",
+  documents: "lot-documents",
 } as const;
 
 export type LotHeroVM = {
@@ -184,6 +186,11 @@ export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): st
  */
 export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): AccordionBlock[] {
   const md = lot.marketingDetails;
+  const est = md.estimate;
+  const estimateText =
+    est?.low != null && est?.high != null
+      ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}`.trim()
+      : "";
   const cr = md.conditionReport;
   const crText = [cr?.summary, cr?.details, cr?.downloadUrl ? `Download: ${cr.downloadUrl}` : ""]
     .filter(Boolean)
@@ -194,6 +201,12 @@ export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): Ac
   const aboutText = aboutArtistBlockContent(lot, artist);
 
   return [
+    {
+      id: lotMarketingSection.estimate.id,
+      title: lotMarketingSection.estimate.title,
+      content: estimateText,
+      hidden: estimateText.trim() === "",
+    },
     {
       id: lotMarketingSection.condition.id,
       title: lotMarketingSection.condition.title,

@@ -6,7 +6,12 @@ import type {
   Lot,
   UpdateItemSubmissionInput,
 } from "@auction/types";
-import { type UserRole, roleHasCapability } from "@auction/types";
+import {
+  type UserRole,
+  canAccessAdminSubmissionNotesWrite,
+  canAccessAdminSubmissionsRead,
+  normalizeUserStaffRole,
+} from "@auction/types";
 import { adminSubmissionNotesSchema, updateItemSubmissionSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
@@ -112,11 +117,12 @@ export class ItemSubmissionService implements IItemSubmissionService {
   async updateForActor(
     input: UpdateSubmissionActorInput,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
-    const { actorId, role, submissionId, sellerPatch, adminNotes } = input;
+    const { actorId, role, staffRole, submissionId, sellerPatch, adminNotes } = input;
     const s = await this.submissions.findById(submissionId);
     if (!s) return err(new SubmissionError("Not found", 404));
 
-    if (roleHasCapability(role as UserRole, "platform.admin.full")) {
+    const staff = normalizeUserStaffRole(staffRole);
+    if (canAccessAdminSubmissionNotesWrite(role as UserRole, staff)) {
       if (!adminNotes) {
         return err(new SubmissionError("Invalid update body", 400));
       }
@@ -164,7 +170,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     }
     const updated = await this.submissions.update(id, { status: "submitted" });
     await this.maybeLogRestrictedSellerWrite(legalEntityId, id, "submit_for_review");
-    const admins = await this.users.listIdsByRole("administrator");
+    const admins = await this.users.listStaffIdsForSubmissionNotifications();
     for (const aid of admins) {
       await this.dispatcher.dispatch(aid, {
         type: "submission_received_for_review",
@@ -364,10 +370,12 @@ export class ItemSubmissionService implements IItemSubmissionService {
   async getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;
+    staffRole?: string | null;
     sellerLegalEntityId: string;
   }): Promise<Result<ItemSubmission, SubmissionError>> {
-    const { submissionId, role, sellerLegalEntityId } = input;
-    const result = roleHasCapability(role, "platform.admin.full")
+    const { submissionId, role, staffRole, sellerLegalEntityId } = input;
+    const staff = normalizeUserStaffRole(staffRole);
+    const result = canAccessAdminSubmissionsRead(role, staff)
       ? await this.getForAdmin(submissionId)
       : await this.getForSeller(sellerLegalEntityId, submissionId);
     if (result.isErr()) return result;
@@ -378,6 +386,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     rawBody: unknown;
     submissionId: string;
     role: UserRole;
+    staffRole?: string | null;
     userId: string;
     sellerLegalEntityId: string;
   }): Promise<
@@ -385,8 +394,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
     | { kind: "bad_request"; details: unknown }
     | { kind: "err"; error: SubmissionError }
   > {
-    const { rawBody, submissionId, role, userId, sellerLegalEntityId } = input;
-    if (roleHasCapability(role, "platform.admin.full")) {
+    const { rawBody, submissionId, role, staffRole, userId, sellerLegalEntityId } = input;
+    const staff = normalizeUserStaffRole(staffRole);
+    if (canAccessAdminSubmissionNotesWrite(role, staff)) {
       const parsed = adminSubmissionNotesSchema.safeParse(rawBody);
       if (!parsed.success) {
         return { kind: "bad_request", details: parsed.error.flatten() };
@@ -394,6 +404,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       const result = await this.updateForActor({
         actorId: userId,
         role,
+        staffRole: staffRole ?? null,
         submissionId,
         adminNotes: parsed.data,
       });
@@ -410,6 +421,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     const result = await this.updateForActor({
       actorId: sellerLegalEntityId,
       role,
+      staffRole: staffRole ?? null,
       submissionId,
       sellerPatch: parsed.data as UpdateItemSubmissionInput,
     });

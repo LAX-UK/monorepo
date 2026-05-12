@@ -20,6 +20,7 @@ export function attachAdminInvitationRoutes(
       actorUserId: actorId,
       email: body.email,
       targetRole: body.targetRole,
+      ...(body.targetStaffRole != null ? { targetStaffRole: body.targetStaffRole } : {}),
     });
     return result.match(
       (data) => c.json({ data }, 201),

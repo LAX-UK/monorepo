@@ -14,7 +14,9 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
 
   /** GET /legal-entities/me — list every active membership for the user. */
   r.get("/me", requireAuth, async (c) => {
@@ -30,10 +32,12 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
   r.get("/:id", requireAuth, zValidator("param", legalEntityIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const userRole = c.get("userRole");
+    const userStaffRole = c.get("userStaffRole");
     const { id } = c.req.valid("param");
     const result = await container.legalEntityAccessService.getLegalEntityDetailForUser({
       userId,
       userRole,
+      userStaffRole,
       legalEntityId: id,
       actingLegalEntityCookie: parseActingLegalEntityCookieFromHeader(c.req.header("Cookie")),
     });

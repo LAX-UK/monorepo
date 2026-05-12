@@ -106,6 +106,7 @@ describe("LotLifecycleService", () => {
       new NotificationFactory(),
       null,
       null,
+      null,
     );
     await svc.runTransitions(new Date());
 
@@ -147,6 +148,7 @@ describe("LotLifecycleService", () => {
       null,
       null,
       new NotificationFactory(),
+      null,
       null,
       null,
     );
@@ -200,6 +202,7 @@ describe("LotLifecycleService", () => {
       new NotificationFactory(),
       guard,
       publisher,
+      null,
     );
     await svc.runTransitions(new Date());
 
@@ -266,6 +269,7 @@ describe("LotLifecycleService", () => {
       null,
       new NotificationFactory(),
       guard,
+      null,
       null,
     );
     await svc.runTransitions(new Date());

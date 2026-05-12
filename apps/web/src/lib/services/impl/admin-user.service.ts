@@ -2,6 +2,7 @@ import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
 import type {
   AdminSetRoleBody,
+  AdminSetStaffRoleBody,
   AdminSuspendBody,
   IAdminUserService,
 } from "../interfaces/admin-user-service";
@@ -15,6 +16,20 @@ export class AdminUserService implements IAdminUserService {
   ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/admin/users/${encodeURIComponent(userId)}/role`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async setStaffRole(
+    userId: string,
+    body: AdminSetStaffRoleBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/admin/users/${encodeURIComponent(userId)}/staff-role`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

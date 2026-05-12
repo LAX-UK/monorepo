@@ -1,9 +1,26 @@
+import type { SessionUser } from "@/lib/data/contracts";
+import {
+  AUDIT_ACCESS,
+  CMS_ACCESS,
+  CONDITION_REPORTS_ACCESS,
+  EMAIL_OUTBOX_ACCESS,
+  STAFF_OVERVIEW_ACCESS,
+  SUBMISSIONS_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import type {
+  AppShellLayout,
+  CapabilityRequirement,
+  UserRole,
+  UserStaffRole,
+} from "@auction/types";
+import { staffRoleToShellLayout, userHasAccessTo } from "@auction/types";
 import {
   BarChart3,
   Bell,
   Brush,
   Building2,
+  ClipboardList,
   CreditCard,
   FileText,
   Gauge,
@@ -16,18 +33,29 @@ import {
   MonitorPlay,
   MonitorSmartphone,
   Package,
+  Plug,
   ScrollText,
   Settings,
   ShieldAlert,
   Store,
   TrendingUp,
+  Truck,
   Upload,
   Users,
   WalletCards,
+  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type AppShellRole = "client" | "admin" | "accountant";
+/** Visual shell segment for the dashboard chrome. */
+export type AppShellRole = AppShellLayout;
+
+/** Maps session user to shell layout (client vs platform admin vs finance). */
+export function sessionUserToShellRole(
+  user: Pick<SessionUser, "role" | "staffRole">,
+): AppShellRole {
+  return staffRoleToShellLayout(user.role as UserRole, user.staffRole ?? null);
+}
 
 export type AppShellNavItem = {
   id: string;
@@ -52,15 +80,15 @@ export const appShellRoleMeta: Record<AppShellRole, AppShellRoleMeta> = {
     dotClassName: "bg-[#e8c77c]",
     pillClassName: "border-[#e8c77c]/40 bg-[#e8c77c]/15 text-[#775a19] dark:text-[#e8c77c]",
   },
-  admin: {
-    label: "Administrator",
+  platform: {
+    label: "Staff",
     workspaceLabel: "Admin",
     dotClassName: "bg-blue-500",
     pillClassName: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
   },
-  accountant: {
-    label: "Accountant",
-    workspaceLabel: "Accountant",
+  finance: {
+    label: "Finance",
+    workspaceLabel: "Finance",
     dotClassName: "bg-emerald-500",
     pillClassName: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   },
@@ -180,7 +208,9 @@ export function getClientMobileBottomTabs(
   ].filter((item): item is AppShellNavItem => item != null);
 }
 
-export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] {
+type StaffNavSpec = AppShellNavItem & { requirement: CapabilityRequirement };
+
+function buildStaffNavSpecs(pendingSubmissionCount: number): StaffNavSpec[] {
   return [
     {
       id: "overview",
@@ -188,24 +218,72 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       href: "/admin",
       icon: Gauge,
       match: (pathname) => pathname === "/admin",
+      requirement: STAFF_OVERVIEW_ACCESS,
     },
-    { id: "lots", label: "Lots", href: "/admin/lots", icon: Package },
-    { id: "sales", label: "Sales", href: "/admin/sales", icon: ScrollText },
-    { id: "categories", label: "Categories", href: "/admin/categories", icon: ListTree },
-    { id: "artists", label: "Artists", href: "/admin/artists", icon: Brush },
+    {
+      id: "lots",
+      label: "Lots",
+      href: "/admin/lots",
+      icon: Package,
+      requirement: "catalogue.write",
+    },
+    {
+      id: "sales",
+      label: "Sales",
+      href: "/admin/sales",
+      icon: ScrollText,
+      requirement: "auction.manage",
+    },
+    {
+      id: "categories",
+      label: "Categories",
+      href: "/admin/categories",
+      icon: ListTree,
+      requirement: "catalogue.write",
+    },
+    {
+      id: "artists",
+      label: "Artists",
+      href: "/admin/artists",
+      icon: Brush,
+      requirement: "artist.read",
+    },
     {
       id: "submissions",
       label: "Submissions",
       href: "/admin/submissions",
       icon: Upload,
       ...(pendingSubmissionCount > 0 ? { badge: pendingSubmissionCount } : {}),
+      requirement: SUBMISSIONS_ACCESS,
     },
-    { id: "users", label: "Users", href: "/admin/users", icon: Users },
+    {
+      id: "condition-reports",
+      label: "Condition reports",
+      href: "/admin/condition-reports",
+      icon: ClipboardList,
+      requirement: CONDITION_REPORTS_ACCESS,
+    },
+    {
+      id: "conveyor",
+      label: "Conveyor",
+      href: "/admin/conveyor",
+      icon: Workflow,
+      match: (pathname) => pathname.startsWith("/admin/conveyor"),
+      requirement: "operations.fulfilment",
+    },
+    {
+      id: "users",
+      label: "Users",
+      href: "/admin/users",
+      icon: Users,
+      requirement: "platform.admin.full",
+    },
     {
       id: "impersonation",
       label: "Impersonate",
       href: "/admin/impersonation",
       icon: MonitorSmartphone,
+      requirement: "platform.admin.full",
     },
     {
       id: "legal-entities",
@@ -213,20 +291,72 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       href: "/admin/legal-entities",
       icon: Building2,
       match: (pathname) => pathname.startsWith("/admin/legal-entities"),
+      requirement: "legal_entity.read",
     },
-    { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-    { id: "admin-payments", label: "Payments", href: "/admin/payments", icon: WalletCards },
-    { id: "admin-disputes", label: "Disputes", href: "/admin/disputes", icon: ShieldAlert },
-    { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
-    { id: "invitations", label: "Invitations", href: "/admin/invitations", icon: Mail },
-    { id: "email", label: "Email", href: "/admin/email/outbox", icon: Mail },
-    { id: "saleroom", label: "Saleroom", href: "/admin/saleroom", icon: MonitorPlay },
+    {
+      id: "analytics",
+      label: "Analytics",
+      href: "/admin/analytics",
+      icon: BarChart3,
+      requirement: "platform.admin.full",
+    },
+    {
+      id: "admin-payments",
+      label: "Payments",
+      href: "/admin/payments",
+      icon: WalletCards,
+      requirement: "finance.read",
+    },
+    {
+      id: "admin-disputes",
+      label: "Disputes",
+      href: "/admin/disputes",
+      icon: ShieldAlert,
+      requirement: "finance.read",
+    },
+    {
+      id: "payouts",
+      label: "Payouts",
+      href: "/admin/payouts",
+      icon: WalletCards,
+      requirement: "finance.read",
+    },
+    {
+      id: "invitations",
+      label: "Invitations",
+      href: "/admin/invitations",
+      icon: Mail,
+      requirement: "platform.admin.full",
+    },
+    {
+      id: "email",
+      label: "Email",
+      href: "/admin/email/outbox",
+      icon: Mail,
+      requirement: EMAIL_OUTBOX_ACCESS,
+    },
+    {
+      id: "saleroom",
+      label: "Saleroom",
+      href: "/admin/saleroom",
+      icon: MonitorPlay,
+      requirement: "auction.manage",
+    },
+    {
+      id: "lot-fulfilment",
+      label: "Fulfilment",
+      href: "/admin/lot-fulfilment",
+      icon: Truck,
+      match: (pathname) => pathname.startsWith("/admin/lot-fulfilment"),
+      requirement: "operations.fulfilment",
+    },
     {
       id: "audit",
       label: "Audit",
       href: "/admin/audit/events",
       icon: FileText,
       match: (pathname) => pathname.startsWith("/admin/audit"),
+      requirement: AUDIT_ACCESS,
     },
     {
       id: "system",
@@ -234,6 +364,7 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       href: "/admin/settings/platform",
       icon: Settings,
       match: (pathname) => pathname.startsWith("/admin/settings"),
+      requirement: "platform.admin.full",
     },
     {
       id: "cms",
@@ -241,35 +372,54 @@ export function getAdminNavItems(pendingSubmissionCount = 0): AppShellNavItem[] 
       href: "/admin/cms",
       icon: LayoutGrid,
       match: (pathname) => pathname.startsWith("/admin/cms"),
+      requirement: CMS_ACCESS,
+    },
+    {
+      id: "xero",
+      label: "Xero",
+      href: "/admin/integrations/xero",
+      icon: Plug,
+      requirement: "finance.read",
     },
   ];
 }
 
-export function getAccountantNavItems(): AppShellNavItem[] {
-  return [
-    { id: "payments", label: "Payments", href: "/admin/payments", icon: WalletCards },
-    { id: "disputes", label: "Disputes", href: "/admin/disputes", icon: ShieldAlert },
-    { id: "payouts", label: "Payouts", href: "/admin/payouts", icon: WalletCards },
-    { id: "xero", label: "Xero", href: "/admin/integrations/xero", icon: CreditCard },
-  ];
+/** Staff sidebar items filtered by the signed-in user's capabilities. */
+export function getStaffNavItems(
+  role: UserRole,
+  staffRole: UserStaffRole | null | undefined,
+  pendingSubmissionCount = 0,
+): AppShellNavItem[] {
+  return buildStaffNavSpecs(pendingSubmissionCount)
+    .filter((spec) => userHasAccessTo(role, staffRole ?? null, spec.requirement))
+    .map(({ requirement: _r, ...item }) => item);
 }
 
 export function getAppShellNavItems(
-  role: AppShellRole,
+  shell: AppShellRole,
+  sessionUser: Pick<SessionUser, "role" | "staffRole">,
   pendingSubmissionCount = 0,
   clientWorkspace: ClientWorkspaceMode = "buying",
-) {
-  if (role === "client") return getClientNavItems(clientWorkspace);
-  if (role === "accountant") return getAccountantNavItems();
-  return getAdminNavItems(pendingSubmissionCount);
+): AppShellNavItem[] {
+  if (shell === "client") return getClientNavItems(clientWorkspace);
+  return getStaffNavItems(
+    sessionUser.role as UserRole,
+    sessionUser.staffRole ?? null,
+    pendingSubmissionCount,
+  );
 }
 
 export function getRouteLabel(
   pathname: string,
-  role: AppShellRole,
+  shell: AppShellRole,
   clientWorkspace: ClientWorkspaceMode = "buying",
+  sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
 ): string {
-  const items = getAppShellNavItems(role, 0, clientWorkspace);
+  const navUser: Pick<SessionUser, "role" | "staffRole"> =
+    shell === "client"
+      ? { role: "client", staffRole: null }
+      : (sessionUser ?? { role: "staff", staffRole: "super_admin" });
+  const items = getAppShellNavItems(shell, navUser, 0, clientWorkspace);
   const active = items.find((item) =>
     item.match ? item.match(pathname) : exactOrNested(item.href)(pathname),
   );
@@ -277,33 +427,33 @@ export function getRouteLabel(
   if (pathname.includes("/new")) return "New";
   if (pathname.includes("/edit")) return "Edit";
   if (pathname.includes("/checkout")) return "Checkout";
-  if (role === "client" && pathname.startsWith("/dashboard/live")) return "Live sale";
+  if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live sale";
   return "Detail";
 }
 
 export function getRouteParentLabel(
   pathname: string,
-  role: AppShellRole,
+  shell: AppShellRole,
   clientWorkspace: ClientWorkspaceMode = "buying",
 ): string | null {
-  if (role === "client" && pathname.startsWith("/dashboard/settings")) return "Settings";
-  if (role === "client" && pathname.startsWith("/dashboard/checkout")) return "Collection";
-  if (role === "client" && pathname.startsWith("/dashboard/seller"))
+  if (shell === "client" && pathname.startsWith("/dashboard/settings")) return "Settings";
+  if (shell === "client" && pathname.startsWith("/dashboard/checkout")) return "Collection";
+  if (shell === "client" && pathname.startsWith("/dashboard/seller"))
     return clientWorkspace === "selling" ? "Selling" : null;
-  if (role === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
-  if (role === "client" && pathname.startsWith("/dashboard/team")) return "Team";
-  if (role === "admin" && pathname.startsWith("/admin/lots/")) return "Lots";
-  if (role === "admin" && pathname.startsWith("/admin/sales/")) return "Sales";
-  if (role === "admin" && pathname.startsWith("/admin/categories/")) return "Categories";
-  if (role === "admin" && pathname.startsWith("/admin/artists/")) return "Artists";
-  if (role === "admin" && pathname.startsWith("/admin/submissions/")) return "Submissions";
-  if (role === "admin" && pathname.startsWith("/admin/users/")) return "Users";
-  if (role === "admin" && pathname.startsWith("/admin/saleroom")) return "Saleroom";
-  if (role === "admin" && pathname.startsWith("/admin/audit")) return "Audit";
-  if (role === "admin" && pathname.startsWith("/admin/settings")) return "System";
-  if (role === "admin" && pathname.startsWith("/admin/cms")) return "CMS";
-  if (role === "admin" && pathname.startsWith("/admin/payouts")) return "Finance";
-  if (role === "accountant" && pathname.startsWith("/admin/payouts")) return "Finance";
-  if (role === "accountant" && pathname.startsWith("/admin/integrations")) return "Xero";
+  if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
+  if (shell === "client" && pathname.startsWith("/dashboard/team")) return "Team";
+  if (shell !== "client" && pathname.startsWith("/admin/lots/")) return "Lots";
+  if (shell !== "client" && pathname.startsWith("/admin/sales/")) return "Sales";
+  if (shell !== "client" && pathname.startsWith("/admin/categories/")) return "Categories";
+  if (shell !== "client" && pathname.startsWith("/admin/artists/")) return "Artists";
+  if (shell !== "client" && pathname.startsWith("/admin/submissions/")) return "Submissions";
+  if (shell !== "client" && pathname.startsWith("/admin/conveyor")) return "Operations";
+  if (shell !== "client" && pathname.startsWith("/admin/users/")) return "Users";
+  if (shell !== "client" && pathname.startsWith("/admin/saleroom")) return "Saleroom";
+  if (shell !== "client" && pathname.startsWith("/admin/audit")) return "Audit";
+  if (shell !== "client" && pathname.startsWith("/admin/settings")) return "System";
+  if (shell !== "client" && pathname.startsWith("/admin/cms")) return "CMS";
+  if (shell !== "client" && pathname.startsWith("/admin/payouts")) return "Finance";
+  if (shell !== "client" && pathname.startsWith("/admin/integrations")) return "Xero";
   return null;
 }

@@ -1,4 +1,5 @@
 import type { UserRole } from "@auction/types";
+import type { UserStaffRole } from "@auction/types";
 import { Hono } from "hono";
 import { type Result, err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
@@ -15,6 +16,7 @@ const entityId = "22222222-2222-4222-8222-222222222222";
 
 type MountOptions = {
   membershipRole?: string;
+  staffRole?: string;
   /** Authenticator session id; defaults to "u1". */
   sessionUserId?: string;
   /** Override `paymentService.listMyPaymentsForBuyerApi` (used by /payments/me tests). */
@@ -66,6 +68,9 @@ function mount(role: string, opts: MountOptions = {}) {
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     paymentService,
+    lotFulfilmentService: {
+      getForWinner: vi.fn().mockResolvedValue(ok(null)),
+    },
     lotService,
     mediaUrlResolver,
     legalEntityRepository: {
@@ -85,16 +90,22 @@ function mount(role: string, opts: MountOptions = {}) {
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn(async () =>
-      sessionUserId ? { id: sessionUserId, role: role as UserRole } : null,
+      sessionUserId
+        ? {
+            id: sessionUserId,
+            role: role as UserRole,
+            staffRole: (opts.staffRole ?? null) as UserStaffRole | null,
+          }
+        : null,
     ),
   };
   app.route("/payments", createPaymentRoutes(container, authenticator));
-  return { app, paymentService, lotService };
+  return { app, paymentService, lotService, lotFulfilmentService: container.lotFulfilmentService };
 }
 
 describe("payment finance entity authorization", () => {
-  it("returns 403 for accountant refund without acting entity context", async () => {
-    const { app, paymentService } = mount("accountant");
+  it("returns 403 for finance staff (finance_ops) refund without acting entity context", async () => {
+    const { app, paymentService } = mount("staff", { staffRole: "finance_ops" });
 
     const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
 
@@ -102,8 +113,11 @@ describe("payment finance entity authorization", () => {
     expect(paymentService.refundPayment).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for accountant capture without finance membership", async () => {
-    const { app, paymentService } = mount("accountant", { membershipRole: "viewer" });
+  it("returns 403 for finance staff capture without finance membership", async () => {
+    const { app, paymentService } = mount("staff", {
+      membershipRole: "viewer",
+      staffRole: "finance_ops",
+    });
 
     const res = await app.request(`/payments/${paymentId}/capture`, {
       method: "POST",
@@ -115,7 +129,10 @@ describe("payment finance entity authorization", () => {
   });
 
   it("allows finance member refund for their acting entity", async () => {
-    const { app, paymentService } = mount("accountant", { membershipRole: "finance" });
+    const { app, paymentService } = mount("staff", {
+      membershipRole: "finance",
+      staffRole: "finance_ops",
+    });
 
     const res = await app.request(`/payments/${paymentId}/refund`, {
       method: "POST",
@@ -125,23 +142,25 @@ describe("payment finance entity authorization", () => {
     expect(res.status).toBe(200);
     expect(paymentService.refundPayment).toHaveBeenCalledWith(
       "u1",
-      "accountant",
+      "staff",
       paymentId,
       entityId,
+      "finance_ops",
     );
   });
 
-  it("allows administrator capture without entity context", async () => {
-    const { app, paymentService } = mount("administrator");
+  it("allows staff (super_admin) capture without entity context", async () => {
+    const { app, paymentService } = mount("staff", { staffRole: "super_admin" });
 
     const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
 
     expect(res.status).toBe(200);
     expect(paymentService.markCapturedByAdmin).toHaveBeenCalledWith(
       "u1",
-      "administrator",
+      "staff",
       paymentId,
       undefined,
+      "super_admin",
     );
   });
 });
@@ -283,6 +302,89 @@ describe("GET /payments/me", () => {
   });
 });
 
+describe("GET /payments/me/lot/:lotId/fulfilment", () => {
+  const lotUuid = "44444444-4444-4444-8444-444444444444";
+
+  it("returns 401 when unauthenticated", async () => {
+    const { app, lotFulfilmentService } = mount("client", { sessionUserId: "" });
+    const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
+    expect(res.status).toBe(401);
+    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for roles that are not buyers", async () => {
+    const { app, lotFulfilmentService } = mount("staff", {
+      sessionUserId: "u1",
+      staffRole: "finance_ops",
+    });
+    const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
+    expect(res.status).toBe(403);
+    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid lot id with 400", async () => {
+    const { app, lotFulfilmentService } = mount("client", { sessionUserId: "alice" });
+    const res = await app.request("/payments/me/lot/not-a-uuid/fulfilment");
+    expect(res.status).toBe(400);
+    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+  });
+
+  it("delegates to getForWinner with session user and lot id", async () => {
+    const getForWinner = vi.fn().mockResolvedValue(
+      ok({
+        id: "ff",
+        lotId: lotUuid,
+        paymentId: null,
+        status: "awaiting_payment",
+        releaseApprovedByUserId: null,
+        releaseApprovedAt: null,
+        fulfilmentMethod: null,
+        shippingCarrier: null,
+        trackingNumber: null,
+        collectedBy: null,
+        collectedAt: null,
+        addressSnapshot: null,
+        notes: null,
+        updatedAt: new Date(),
+        createdAt: new Date(),
+      }),
+    );
+    const lotFulfilmentService = { getForWinner };
+    const app = new Hono();
+    const paymentService = {
+      listAllForAdmin: vi.fn(),
+      createPendingForWinner: vi.fn(),
+      markCapturedByAdmin: vi.fn().mockReturnValue({ match: (fn: () => Response) => fn() }),
+      refundPayment: vi.fn().mockReturnValue({ match: (fn: () => Response) => fn() }),
+      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [] as MyPaymentRowDTO[] })),
+      cancelPendingAsBuyer: vi.fn(async () => ok<void>(undefined)),
+    };
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      paymentService,
+      lotFulfilmentService,
+      lotService: { getById: vi.fn(async () => null) },
+      mediaUrlResolver: {
+        resolve: vi.fn(async (v: string | null | undefined) => v ?? null),
+        resolveMany: vi.fn(async (vs: (string | null | undefined)[]) => vs.map((v) => v ?? null)),
+      },
+      legalEntityRepository: { findActiveMembership: vi.fn().mockResolvedValue(null) },
+      impersonationAuditService: { recordSessionTimedOut: vi.fn() },
+      impersonationSessionService: { validateForRequest: vi.fn() },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn(async () => ({ id: "alice", role: "client" as UserRole })),
+    };
+    app.route("/payments", createPaymentRoutes(container, authenticator));
+
+    const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
+    expect(res.status).toBe(200);
+    expect(getForWinner).toHaveBeenCalledWith("alice", lotUuid);
+    const body = (await res.json()) as { data: { status: string } };
+    expect(body.data.status).toBe("awaiting_payment");
+  });
+});
+
 describe("POST /payments/me/:id/cancel-pending", () => {
   it("returns 401 when unauthenticated", async () => {
     const { app, paymentService } = mount("client", { sessionUserId: "" });
@@ -292,7 +394,10 @@ describe("POST /payments/me/:id/cancel-pending", () => {
   });
 
   it("returns 403 for roles that cannot place bids", async () => {
-    const { app, paymentService } = mount("accountant", { sessionUserId: "u1" });
+    const { app, paymentService } = mount("staff", {
+      sessionUserId: "u1",
+      staffRole: "finance_ops",
+    });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(403);
     expect(paymentService.cancelPendingAsBuyer).not.toHaveBeenCalled();

@@ -10,7 +10,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { type AppShellRole, appShellRoleMeta } from "./app-shell-nav";
+import { type AppShellRole, appShellRoleMeta, sessionUserToShellRole } from "./app-shell-nav";
 import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
 import { useSiteHeaderChrome } from "./site-header-chrome-context";
@@ -99,7 +99,7 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
 
   const links = accountNavLinks(user);
   const displayName = user.name.trim() || user.email;
-  const shellRole: AppShellRole = user.role === "administrator" ? "admin" : user.role;
+  const shellRole: AppShellRole = sessionUserToShellRole(user);
   const roleMeta = appShellRoleMeta[shellRole];
 
   return (

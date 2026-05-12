@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { session, user } from "@auction/db/schema";
+import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import { count, desc, eq, ilike, or } from "drizzle-orm";
 import type {
   AdminActivityEntry,
@@ -29,6 +29,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: user.email,
         name: user.name,
         role: user.role,
+        staffRole: user.staffRole,
         createdAt: user.createdAt,
         suspendedAt: user.suspendedAt,
       })
@@ -46,6 +47,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: r.email,
         name: r.name,
         role: r.role,
+        staffRole: r.staffRole ?? null,
         createdAt: r.createdAt,
         suspendedAt: r.suspendedAt ?? null,
       })),
@@ -59,6 +61,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: user.email,
         name: user.name,
         role: user.role,
+        staffRole: user.staffRole,
         createdAt: user.createdAt,
         suspendedAt: user.suspendedAt,
         suspendedReason: user.suspendedReason,
@@ -72,6 +75,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       email: row.email,
       name: row.name,
       role: row.role,
+      staffRole: row.staffRole ?? null,
       createdAt: row.createdAt,
       suspendedAt: row.suspendedAt ?? null,
       suspendedReason: row.suspendedReason ?? null,
@@ -82,8 +86,26 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
   constructor(private readonly db: Database) {}
 
-  async setRole(_actorRole: string, userId: string, role: string): Promise<void> {
-    await this.db.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, userId));
+  async setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void> {
+    if (role === "client") {
+      await this.db
+        .update(user)
+        .set({ role: "client", staffRole: null, updatedAt: new Date() })
+        .where(eq(user.id, userId));
+      return;
+    }
+    const value =
+      staffRole === null || staffRole === ""
+        ? null
+        : (staffRole as (typeof userStaffRoleEnum.enumValues)[number]);
+    await this.db
+      .update(user)
+      .set({
+        role: "staff",
+        staffRole: value,
+        updatedAt: new Date(),
+      })
+      .where(eq(user.id, userId));
   }
 }
 

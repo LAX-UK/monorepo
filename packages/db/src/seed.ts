@@ -1,4 +1,4 @@
-/** Comprehensive demo seed: covers every platform role, legal-entity subkind,
+/** Comprehensive demo seed: covers staff roles + client, legal-entity subkind,
  * entity status, entity-member role, KYC state, email state, invitation status,
  * user-address variant, and KYB document. Wipes auth + app tables, then loads
  * all demo data.
@@ -52,6 +52,15 @@ const VIEWER_ID = "user-seed-viewer";
 /** Platform role: client | LAX specialist invited into Northbank Gallery (opt-in by gallery). */
 const SPECIALIST_ID = "user-seed-specialist";
 
+/** Platform staff — one login per remaining `user_staff_role` (super_admin + finance_ops seeded above). */
+const STAFF_AUCTION_MGR_ID = "staff-seed-auction-mgr";
+const STAFF_CATALOGUE_MGR_ID = "staff-seed-catalogue-mgr";
+const STAFF_PLATFORM_SPECIALIST_ID = "staff-seed-platform-specialist";
+const STAFF_OPS_FULFILMENT_ID = "staff-seed-ops-fulfilment";
+const STAFF_CONTENT_MARKETING_ID = "staff-seed-content-marketing";
+const STAFF_SUPPORT_CONCIERGE_ID = "staff-seed-support-concierge";
+const STAFF_VIEWER_PLATFORM_ID = "staff-seed-staff-viewer";
+
 // ─── Original personal legal-entity IDs ──────────────────────────────────────
 const LE = {
   admin: "10000000-0000-4000-8000-000000000001",
@@ -86,6 +95,13 @@ const LEX = {
   buyerAgent: "10000000-0000-4000-8000-000000000019",
   viewer: "10000000-0000-4000-8000-000000000020",
   specialist: "10000000-0000-4000-8000-000000000021",
+  staffAuctionMgr: "10000000-0000-4000-8000-000000000022",
+  staffCatalogueMgr: "10000000-0000-4000-8000-000000000023",
+  staffPlatformSpecialist: "10000000-0000-4000-8000-000000000024",
+  staffOpsFulfilment: "10000000-0000-4000-8000-000000000025",
+  staffContentMarketing: "10000000-0000-4000-8000-000000000026",
+  staffSupportConcierge: "10000000-0000-4000-8000-000000000027",
+  staffStaffViewer: "10000000-0000-4000-8000-000000000028",
 } as const;
 
 // ─── Organisation legal-entity IDs — all subkinds × all statuses ─────────────
@@ -232,6 +248,20 @@ const legalEntityIdForUser = (userId: string): string => {
       return LEX.viewer;
     case SPECIALIST_ID:
       return LEX.specialist;
+    case STAFF_AUCTION_MGR_ID:
+      return LEX.staffAuctionMgr;
+    case STAFF_CATALOGUE_MGR_ID:
+      return LEX.staffCatalogueMgr;
+    case STAFF_PLATFORM_SPECIALIST_ID:
+      return LEX.staffPlatformSpecialist;
+    case STAFF_OPS_FULFILMENT_ID:
+      return LEX.staffOpsFulfilment;
+    case STAFF_CONTENT_MARKETING_ID:
+      return LEX.staffContentMarketing;
+    case STAFF_SUPPORT_CONCIERGE_ID:
+      return LEX.staffSupportConcierge;
+    case STAFF_VIEWER_PLATFORM_ID:
+      return LEX.staffStaffViewer;
     default:
       throw new Error(`Missing seeded legal entity for user ${userId}`);
   }
@@ -249,6 +279,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     domainEvent,
     jwksKey,
     kycVerification,
+    impersonationSession,
     legalEntityAddress,
     legalEntityDocument,
     legalEntityPayoutMethod,
@@ -319,6 +350,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(artistProfile);
   await db.delete(legalEntityDocument);
   await db.delete(legalEntityAddress);
+  await db.delete(impersonationSession);
   await db.delete(legalEntityMember);
   await db.delete(legalEntity);
   await db.delete(uploadObject);
@@ -415,7 +447,8 @@ async function main() {
       email: "admin@lax.bid",
       emailVerified: true,
       image: null,
-      role: "administrator",
+      role: "staff",
+      staffRole: "super_admin",
       kycStatus: "unverified",
       createdAt: new Date(now - 180 * day),
       updatedAt: stamp,
@@ -428,9 +461,110 @@ async function main() {
       email: "accountant@lax.bid",
       emailVerified: true,
       image: null,
-      role: "accountant",
+      role: "staff",
+      staffRole: "finance_ops",
       kycStatus: "unverified",
       createdAt: new Date(now - 150 * day),
+      updatedAt: stamp,
+    },
+
+    // ── Platform staff — capability matrix (one login per staff_role flavour) ─
+    {
+      id: STAFF_AUCTION_MGR_ID,
+      name: "Alex Mercer",
+      firstName: "Alex",
+      lastName: "Mercer",
+      email: "staff-auction-mgr@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "auction_manager",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 140 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_CATALOGUE_MGR_ID,
+      name: "Blair Chen",
+      firstName: "Blair",
+      lastName: "Chen",
+      email: "staff-catalogue@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "catalogue_manager",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 138 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_PLATFORM_SPECIALIST_ID,
+      name: "Cameron Webb",
+      firstName: "Cameron",
+      lastName: "Webb",
+      email: "platform-specialist@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "specialist",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 136 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_OPS_FULFILMENT_ID,
+      name: "Dana Ortiz",
+      firstName: "Dana",
+      lastName: "Ortiz",
+      email: "staff-ops@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "operations_fulfilment",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 134 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_CONTENT_MARKETING_ID,
+      name: "Elliot Rhodes",
+      firstName: "Elliot",
+      lastName: "Rhodes",
+      email: "staff-content@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "content_marketing",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 132 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_SUPPORT_CONCIERGE_ID,
+      name: "Fiona Nguyen",
+      firstName: "Fiona",
+      lastName: "Nguyen",
+      email: "staff-support@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "support_concierge",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 130 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_VIEWER_PLATFORM_ID,
+      name: "Graham Holt",
+      firstName: "Graham",
+      lastName: "Holt",
+      email: "staff-readonly@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "staff_viewer",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 128 * day),
       updatedAt: stamp,
     },
 
@@ -445,6 +579,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 89 * day),
       dateOfBirth: "1982-04-11",
@@ -461,6 +596,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 89 * day),
       dateOfBirth: "1990-09-03",
@@ -476,6 +612,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       createdAt: new Date(now - 30 * day),
       updatedAt: stamp,
@@ -487,6 +624,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       createdAt: new Date(now - 30 * day),
       updatedAt: stamp,
@@ -502,6 +640,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       /** KYC session is in requires_input → maps to platform kycStatus pending. */
       kycStatus: "pending",
       createdAt: new Date(now - 75 * day),
@@ -517,6 +656,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       createdAt: new Date(now - 70 * day),
       updatedAt: stamp,
@@ -532,6 +672,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 20 * day),
       dateOfBirth: "1985-07-22",
@@ -551,6 +692,7 @@ async function main() {
       emailVerified: false,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       createdAt: new Date(now - 1 * day),
       updatedAt: stamp,
@@ -566,6 +708,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       emailStatus: "bounced",
       emailStatusChangedAt: new Date(now - 5 * day),
@@ -583,6 +726,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "pending",
       createdAt: new Date(now - 7 * day),
       updatedAt: stamp,
@@ -598,6 +742,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "rejected",
       createdAt: new Date(now - 14 * day),
       updatedAt: stamp,
@@ -614,6 +759,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 30 * day),
       dateOfBirth: "1968-03-14",
@@ -630,6 +776,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 35 * day),
       dateOfBirth: "1975-11-30",
@@ -647,6 +794,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 25 * day),
       dateOfBirth: "1992-06-08",
@@ -663,6 +811,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 22 * day),
       dateOfBirth: "1988-02-19",
@@ -678,6 +827,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "unverified",
       createdAt: new Date(now - 20 * day),
       updatedAt: stamp,
@@ -692,6 +842,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: "client",
+      staffRole: null,
       kycStatus: "approved",
       kycVerifiedAt: new Date(now - 40 * day),
       dateOfBirth: "1983-09-25",
@@ -706,6 +857,13 @@ async function main() {
     .values([
       credentialAccount(ADMIN_ID),
       credentialAccount(ACCOUNTANT_ID),
+      credentialAccount(STAFF_AUCTION_MGR_ID),
+      credentialAccount(STAFF_CATALOGUE_MGR_ID),
+      credentialAccount(STAFF_PLATFORM_SPECIALIST_ID),
+      credentialAccount(STAFF_OPS_FULFILMENT_ID),
+      credentialAccount(STAFF_CONTENT_MARKETING_ID),
+      credentialAccount(STAFF_SUPPORT_CONCIERGE_ID),
+      credentialAccount(STAFF_VIEWER_PLATFORM_ID),
       credentialAccount(USER1_ID),
       credentialAccount(USER2_ID),
       credentialAccount(GOOGLE_TEST_ID),
@@ -1088,6 +1246,106 @@ async function main() {
       createdAt: new Date(now - 60 * day),
       updatedAt: stamp,
     },
+
+    // ── Personal entities — platform staff (capability matrix logins) ─────────
+    {
+      id: LEX.staffAuctionMgr,
+      displayName: "Alex Mercer",
+      legalName: "Alex Mercer",
+      slug: "alex-mercer-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_AUCTION_MGR_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffCatalogueMgr,
+      displayName: "Blair Chen",
+      legalName: "Blair Chen",
+      slug: "blair-chen-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_CATALOGUE_MGR_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffPlatformSpecialist,
+      displayName: "Cameron Webb",
+      legalName: "Cameron Webb",
+      slug: "cameron-webb-platform-specialist",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_PLATFORM_SPECIALIST_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffOpsFulfilment,
+      displayName: "Dana Ortiz",
+      legalName: "Dana Ortiz",
+      slug: "dana-ortiz-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_OPS_FULFILMENT_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffContentMarketing,
+      displayName: "Elliot Rhodes",
+      legalName: "Elliot Rhodes",
+      slug: "elliot-rhodes-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_CONTENT_MARKETING_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffSupportConcierge,
+      displayName: "Fiona Nguyen",
+      legalName: "Fiona Nguyen",
+      slug: "fiona-nguyen-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_SUPPORT_CONCIERGE_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffStaffViewer,
+      displayName: "Graham Holt",
+      legalName: "Graham Holt",
+      slug: "graham-holt-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_VIEWER_PLATFORM_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
   ]);
 
   // ── Legal entities — organisations (all subkinds + all remaining statuses) ──
@@ -1247,6 +1505,55 @@ async function main() {
     {
       legalEntityId: LE.accountant,
       userId: ACCOUNTANT_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffAuctionMgr,
+      userId: STAFF_AUCTION_MGR_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffCatalogueMgr,
+      userId: STAFF_CATALOGUE_MGR_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffPlatformSpecialist,
+      userId: STAFF_PLATFORM_SPECIALIST_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffOpsFulfilment,
+      userId: STAFF_OPS_FULFILMENT_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffContentMarketing,
+      userId: STAFF_CONTENT_MARKETING_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffSupportConcierge,
+      userId: STAFF_SUPPORT_CONCIERGE_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffStaffViewer,
+      userId: STAFF_VIEWER_PLATFORM_ID,
       role: "owner",
       isPrimaryAdmin: true,
       acceptedAt: stamp,
@@ -2055,19 +2362,21 @@ async function main() {
   // tokenHash values are deterministic fakes; real tokens are 32 random bytes → SHA-256.
   await db.insert(userInvitation).values([
     // ── Platform invitations ─────────────────────────────────────────────────
-    /** pending — admin has invited a prospective second accountant. */
+    /** pending — admin has invited a prospective second finance ops user. */
     {
       email: "new-accountant@example.com",
-      targetRole: "accountant",
+      targetRole: "staff",
+      targetStaffRole: "finance_ops",
       tokenHash: "seed_hash_platform_pending_accountant_0000000000000001",
       status: "pending",
       expiresAt: new Date(now + 7 * day),
       createdByUserId: ADMIN_ID,
     },
-    /** accepted — the accountant invitation that created ACCOUNTANT_ID. */
+    /** accepted — the finance_ops invitation that created ACCOUNTANT_ID. */
     {
       email: "accountant@lax.bid",
-      targetRole: "accountant",
+      targetRole: "staff",
+      targetStaffRole: "finance_ops",
       tokenHash: "seed_hash_platform_accepted_accountant_000000000000002",
       status: "accepted",
       expiresAt: new Date(now + 7 * day),
@@ -2077,10 +2386,11 @@ async function main() {
       createdAt: new Date(now - 151 * day),
       updatedAt: new Date(now - 149 * day),
     },
-    /** revoked — admin retracted a pending administrator invite. */
+    /** revoked — admin retracted a pending super_admin invite. */
     {
       email: "revoked-admin@example.com",
-      targetRole: "administrator",
+      targetRole: "staff",
+      targetStaffRole: "super_admin",
       tokenHash: "seed_hash_platform_revoked_admin_0000000000000000003",
       status: "revoked",
       expiresAt: new Date(now + 3 * day),
@@ -3154,7 +3464,7 @@ async function main() {
     {
       id: notifId(),
       userId: USER2_ID,
-      type: "ending_soon",
+      type: "lot_ending_soon",
       title: "Auction ending soon",
       message: "Paper Thin Horizon closes in under 72 hours.",
       lotId: L.paperThin,
@@ -3164,7 +3474,7 @@ async function main() {
     {
       id: notifId(),
       userId: USER2_ID,
-      type: "sale",
+      type: "payment_received",
       title: "Lot sold",
       message: "The Amber Hours has settled and payment has been captured.",
       lotId: L.amber,
@@ -3174,7 +3484,7 @@ async function main() {
     {
       id: notifId(),
       userId: USER1_ID,
-      type: "won",
+      type: "lot_won",
       title: "You won an auction",
       message: "Congratulations — you won The Amber Hours for $420,000.",
       lotId: L.amber,
@@ -3184,22 +3494,12 @@ async function main() {
     {
       id: notifId(),
       userId: USER2_ID,
-      type: "watchlist",
-      title: "Lot update",
-      message: "Silent Architecture has new bidding activity.",
+      type: "watchlist_starting",
+      title: "Watched lot is starting",
+      message: "Silent Architecture opens for bidding in under 30 minutes.",
       lotId: L.silent,
       read: false,
       createdAt: new Date(now - 1_800_000),
-    },
-    {
-      id: notifId(),
-      userId: ADMIN_ID,
-      type: "submission_received_for_review",
-      title: "New submission awaiting review",
-      message: "Robert Thorne submitted Bronze Maquette — field cast, 2024 for review.",
-      lotId: null,
-      read: false,
-      createdAt: new Date(now - 1 * day),
     },
     {
       id: notifId(),
@@ -3213,23 +3513,13 @@ async function main() {
     },
     {
       id: notifId(),
-      userId: USER1_ID,
-      type: "submission_approved",
-      title: "Submission approved",
-      message: "Recursive Dreams has been approved and converted into a catalogued draft lot.",
-      lotId: L.recursive,
+      userId: USER2_ID,
+      type: "lot_ended_seller",
+      title: "Your lot has ended",
+      message: "The Amber Hours sold for $420,000. Settlement is in progress.",
+      lotId: L.amber,
       read: true,
-      createdAt: new Date(now - 5 * day + hour),
-    },
-    {
-      id: notifId(),
-      userId: ADMIN_ID,
-      type: "system",
-      title: "Seed data loaded",
-      message: "Comprehensive demo catalog is ready for QA.",
-      lotId: null,
-      read: true,
-      createdAt: stamp,
+      createdAt: new Date(now - 30 * day + hour),
     },
   ]);
 
@@ -3580,8 +3870,25 @@ async function main() {
   console.log("  ├──────────────────────────────┬──────────────────────┬───────────────────┤");
   console.log("  │  Email                        │  Name                │  Notes            │");
   console.log("  ├──────────────────────────────┼──────────────────────┼───────────────────┤");
-  console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  administrator    │");
-  console.log("  │  accountant@lax.bid          │  Erin Ledger         │  accountant       │");
+  console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  staff · super_admin │");
+  console.log("  │  accountant@lax.bid          │  Erin Ledger         │  staff · finance_ops │");
+  console.log(
+    "  │  staff-auction-mgr@lax.bid   │  Alex Mercer         │  staff · auction_manager │",
+  );
+  console.log(
+    "  │  staff-catalogue@lax.bid     │  Blair Chen          │  staff · catalogue_manager │",
+  );
+  console.log("  │  platform-specialist@lax.bid │  Cameron Webb        │  staff · specialist │");
+  console.log(
+    "  │  staff-ops@lax.bid           │  Dana Ortiz          │  staff · operations_fulfilment │",
+  );
+  console.log(
+    "  │  staff-content@lax.bid       │  Elliot Rhodes       │  staff · content_marketing │",
+  );
+  console.log(
+    "  │  staff-support@lax.bid       │  Fiona Nguyen        │  staff · support_concierge │",
+  );
+  console.log("  │  staff-readonly@lax.bid      │  Graham Holt         │  staff · staff_viewer │");
   console.log(
     "  │  user1@lax.bid               │  Robert Thorne       │  client, KYC ✓, demo owner_user_id │",
   );
@@ -3615,7 +3922,7 @@ async function main() {
   console.log("                   viewer · specialist · staff  (+ 1 soft-deleted row)");
   console.log("");
   console.log("  User / auth coverage:");
-  console.log("    Platform roles   : administrator · accountant · client");
+  console.log("    Platform roles   : staff (+ required staff_role) · client (staff_role null)");
   console.log("    KYC states       : unverified · pending · approved · rejected");
   console.log("    Email statuses   : ok · bounced");
   console.log("    Suspended        : yes (Isabelle Laurent)");

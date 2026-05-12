@@ -1,4 +1,5 @@
 import {
+  adminLotFulfilmentLotIdParamSchema,
   createPaymentBodySchema,
   myPaymentsQuerySchema,
   paymentIdParamSchema,
@@ -25,12 +26,18 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     container.impersonationSessionService,
   );
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; legalEntityContext?: LegalEntityContext };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: LegalEntityContext;
+    };
   }>();
 
   r.get("/", requireAuth, async (c) => {
     const role = c.get("userRole") ?? "client";
-    const result = await container.paymentService.listAllForAdmin(role);
+    const staffRole = c.get("userStaffRole") ?? null;
+    const result = await container.paymentService.listAllForAdmin(role, staffRole);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -48,6 +55,24 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     });
     return c.json({ data });
   });
+
+  /** Winning bidder: fulfilment row for checkout / collection tracking. */
+  r.get(
+    "/me/lot/:lotId/fulfilment",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { lotId } = c.req.valid("param");
+      const result = await container.lotFulfilmentService.getForWinner(userId, lotId);
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
 
   /** Buyer relinquishes an unpaid pending invoice (winner-only). */
   r.post(
@@ -100,6 +125,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
       const result = await container.paymentService.markCapturedByAdmin(
@@ -107,6 +133,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
         role,
         id,
         ctx?.legalEntityId,
+        staffRole,
       );
       return result.match(
         () => c.json({ ok: true }),
@@ -127,6 +154,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
       const result = await container.paymentService.refundPayment(
@@ -134,6 +162,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
         role,
         id,
         ctx?.legalEntityId,
+        staffRole,
       );
       return result.match(
         () => c.json({ ok: true }),

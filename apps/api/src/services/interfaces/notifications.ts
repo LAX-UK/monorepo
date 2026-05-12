@@ -13,5 +13,6 @@ export interface IBidNotificationSender {
 /** ISP: lot lifecycle notifications (extensions, etc.). */
 export interface ILotNotificationSender {
   notifyLotExtended(lot: Lot, newEndTime: Date): Promise<void>;
-  notifyLotEnded(lot: Lot, bid: Bid): Promise<void>;
+  /** Pass `null` when the lot ends with no winning bid (e.g. clerk no-sale). */
+  notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void>;
 }

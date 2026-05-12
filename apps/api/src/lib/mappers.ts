@@ -83,6 +83,8 @@ export function mapBidRow(row: BidRow): Bid {
     isWinning: row.isWinning,
     isAutoBid: row.isAutoBid,
     maxAutoBidAmount: row.maxAutoBidAmount !== null ? String(row.maxAutoBidAmount) : null,
+    placedVia: row.placedVia ?? null,
+    telephoneBookingId: row.telephoneBookingId ?? null,
     createdAt: row.createdAt,
   };
 }

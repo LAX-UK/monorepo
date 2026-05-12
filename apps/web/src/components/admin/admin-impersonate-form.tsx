@@ -18,7 +18,7 @@ function errorMessage(code: string): string {
     case "unauthorized":
       return "Your session is not accepted by the API (401). Sign out and sign in again, or check that the web app can reach the API with your cookies.";
     case "forbidden":
-      return "The API refused this request (403). Impersonation is limited to users with the administrator role.";
+      return "The API refused this request (403). Impersonation is limited to staff with full platform admin access.";
     case "network":
       return "The browser could not complete the server request to the API (network or DNS).";
     case "missing_acting_cookie":

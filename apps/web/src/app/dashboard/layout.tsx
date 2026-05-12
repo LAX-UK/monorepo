@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
-  const actingContext = await resolveActingContext(user.role);
+  const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const kycSummary = await getServerKycStatusSummary().catch(() => null);
   const orgOnboardingResume = await getServerOrgOnboardingResume().catch(() => null);
 
@@ -45,6 +45,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <ActingAsBanner
           hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
           userRole={user.role}
+          userStaffRole={user.staffRole ?? null}
           prefetchedActingContext={actingContext}
         />
       }

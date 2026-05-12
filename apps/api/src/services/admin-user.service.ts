@@ -1,4 +1,10 @@
-import { type UserRole, roleHasCapability } from "@auction/types";
+import {
+  type UserRole,
+  type UserStaffRole,
+  normalizeUserRole,
+  normalizeUserStaffRole,
+  roleHasCapability,
+} from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
 import type {
   AdminUserListFilter,
@@ -24,14 +30,59 @@ export class AdminUserService {
     return this.reader.getById(id);
   }
 
-  async setRole(actorRole: string, actorUserId: string, targetUserId: string, role: string) {
-    if (targetUserId === actorUserId && role !== "administrator") {
+  async setRole(
+    actorRole: string,
+    actorUserId: string,
+    targetUserId: string,
+    role: string,
+    actorStaffRole: string | null | undefined,
+    targetStaffRole: UserStaffRole | null | undefined,
+  ) {
+    const normalizedRole = normalizeUserRole(role);
+    if (!normalizedRole) throw new AuthzError("Invalid role", 400);
+    const targetStaff = normalizeUserStaffRole(targetStaffRole ?? undefined);
+
+    if (targetUserId === actorUserId && normalizedRole !== "staff") {
       throw new AuthzError("Cannot demote yourself");
     }
-    if (!roleHasCapability(actorRole as UserRole, "user.invite")) {
+    const actorStaff = normalizeUserStaffRole(actorStaffRole);
+    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
       throw new AuthzError("Forbidden");
     }
-    await this.roles.setRole(actorRole, targetUserId, role);
+
+    if (normalizedRole === "staff") {
+      if (targetStaff == null) {
+        throw new AuthzError("staffRole is required when role is staff", 400);
+      }
+      await this.roles.setRoleAndStaff(targetUserId, "staff", targetStaff);
+      return;
+    }
+
+    if (targetStaff != null) {
+      throw new AuthzError("staffRole must be omitted when role is client", 400);
+    }
+    await this.roles.setRoleAndStaff(targetUserId, "client", null);
+  }
+
+  async setStaffRole(
+    actorRole: string,
+    targetUserId: string,
+    staffRole: UserStaffRole | null,
+    actorStaffRole?: string | null,
+  ) {
+    const actorStaff = normalizeUserStaffRole(actorStaffRole);
+    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
+      throw new AuthzError("Forbidden");
+    }
+    const target = await this.reader.getById(targetUserId);
+    if (!target) throw new AuthzError("Not found", 404);
+    if (normalizeUserRole(target.role) !== "staff") {
+      throw new AuthzError("Staff role applies only to staff accounts", 400);
+    }
+    if (staffRole == null) {
+      throw new AuthzError("staffRole is required for staff accounts", 400);
+    }
+    await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole);
   }
 
   suspend(_actorRole: string, userId: string, reason: string | null) {

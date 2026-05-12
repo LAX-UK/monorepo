@@ -49,6 +49,7 @@ import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shill
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
+import { DrizzleConveyorPipelineReader } from "./repositories/drizzle-conveyor-pipeline.reader.js";
 import { DrizzleEmailObservabilityRepository } from "./repositories/drizzle-email-observability.repository.js";
 import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
@@ -76,6 +77,7 @@ import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
+import { AbsenteeBidService } from "./services/absentee-bid.service.js";
 import { AccountLinkingService } from "./services/account-linking.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
@@ -89,8 +91,10 @@ import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistRegistryService } from "./services/artist-registry.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
+import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
+import { ConditionReportService } from "./services/condition-report.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
@@ -103,6 +107,7 @@ import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js"
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+import type { IConditionReportService } from "./services/interfaces/condition-report.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
@@ -131,6 +136,7 @@ import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
 import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
+import { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
@@ -150,8 +156,10 @@ import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
+import { SaleRegistrationService } from "./services/sale-registration.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
+import { SaleroomService } from "./services/saleroom.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
@@ -172,10 +180,15 @@ export type Container = {
   authenticator: IAuthenticator;
   repoFactory: IRepositoryFactory;
   lotService: LotService;
+  conditionReportService: IConditionReportService;
   saleService: SaleService;
   saleFollowService: SaleFollowService;
   saleBiddersService: SaleBiddersService;
+  saleRegistrationService: SaleRegistrationService;
   lotLifecycleService: LotLifecycleService;
+  absenteeBidService: AbsenteeBidService;
+  saleroomService: SaleroomService;
+  lotFulfilmentService: LotFulfilmentService;
   saleLifecycleService: SaleLifecycleService;
   lotJobScheduler: ILotJobScheduler;
   saleStatusTransitionService: SaleStatusTransitionService;
@@ -454,6 +467,9 @@ export function createContainer(env: Env): Container {
         })
       : new LocalDiskObjectStorage(join(process.cwd(), env.STORAGE_LOCAL_ROOT), publicUploadBase);
 
+  const lotLifecycleHooks: { onLotActivated: ((lotId: string) => Promise<void>) | null } = {
+    onLotActivated: null,
+  };
   const lotLifecycleService = new LotLifecycleService(
     repoFactory,
     watchlistRepo,
@@ -462,6 +478,9 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     antiShillingGuard,
     domainEventPublisher,
+    async (lotId) => {
+      await lotLifecycleHooks.onLotActivated?.(lotId);
+    },
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -496,31 +515,40 @@ export function createContainer(env: Env): Container {
     userNotificationPublisher,
   );
 
-  const lotService = new LotService(
+  const lotService = new LotService({
     lotRepo,
-    repoFactory.root.bid,
-    watchlistRepo,
-    lotJobScheduler,
-    lotNotificationCoordinator,
-    imageCleanupService,
+    bids: repoFactory.root.bid,
+    watchlist: watchlistRepo,
+    jobScheduler: lotJobScheduler,
+    lotNotifications: lotNotificationCoordinator,
+    imageCleanup: imageCleanupService,
     legalEntityNotificationRecipients,
     legalEntityRepository,
-    stripeConnectService.isConfigured(),
+    enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     db,
     domainEventPublisher,
     mediaUrlResolver,
+    englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+  });
+
+  const conditionReportService = new ConditionReportService(
+    db,
+    lotRepo,
+    legalEntityRepository,
+    domainEventPublisher,
   );
 
   const saleFollowRepo = new DrizzleSaleFollowRepository(db);
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
-  const saleService = new SaleService(
+  const saleService = new SaleService({
     saleRepo,
     lotRepo,
-    lotJobScheduler,
-    imageCleanupService,
-    saleFollowService,
+    jobScheduler: lotJobScheduler,
+    imageCleanup: imageCleanupService,
+    saleFollowReader: saleFollowService,
     mediaUrlResolver,
-  );
+    englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+  });
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
@@ -604,6 +632,7 @@ export function createContainer(env: Env): Container {
 
   const stripePaymentGateway = new StripePaymentGateway(env);
 
+  const lotFulfilmentService = new LotFulfilmentService(db);
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -617,6 +646,12 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     stripePaymentGateway,
     mediaUrlResolver,
+    {
+      ensureAwaitingPayment: (lotId, paymentId) =>
+        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId),
+      onPaymentCaptured: (lotId, paymentId) =>
+        lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
+    },
   );
   paymentServiceRef.current = paymentService;
 
@@ -631,21 +666,38 @@ export function createContainer(env: Env): Container {
 
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
+  const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
+  const bidEligibilityService = new BidEligibilityService(db);
+
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
-  const bidService = new BidService(
-    repoFactory,
+  const bidService = new BidService({
+    repos: repoFactory,
     strategyFactory,
     cache,
-    notificationService,
+    notifications: notificationService,
     notificationDispatcher,
-    lotJobScheduler,
-    adminMetricsService,
+    lotJobs: lotJobScheduler,
+    adminMetrics: adminMetricsService,
     saleModeLookup,
     antiShillingGuard,
     domainEventPublisher,
     legalEntityRepository,
-    bidIdempotencyStore,
-  );
+    idempotencyStore: bidIdempotencyStore,
+    bidEligibility: bidEligibilityService,
+    englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+  });
+  const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
+  lotLifecycleHooks.onLotActivated = (lotId) => absenteeBidService.replayScheduledForLot(lotId);
+  const saleroomService = new SaleroomService({
+    db,
+    redis,
+    lotLifecycle: lotLifecycleService,
+    saleRepo,
+    lotRepo,
+    repos: repoFactory,
+    lotJobs: lotJobScheduler,
+    notifications: notificationService,
+  });
   const userService = new UserService(userRepo);
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
   // Watchlist now references `artist_profile.id` (post-0046 migration), so the
@@ -699,6 +751,7 @@ export function createContainer(env: Env): Container {
     adminActivityReader,
   );
   const attentionFeedReader = new DrizzleAttentionFeedReader(db);
+  const conveyorPipelineReader = new DrizzleConveyorPipelineReader(db);
 
   const httpErrorHandler = new ErrorHandlerService(
     new DefaultErrorClassifier(),
@@ -722,6 +775,7 @@ export function createContainer(env: Env): Container {
     analyticsService,
     adminMetricsService,
     attentionFeedReader,
+    conveyorPipelineReader,
     itemSubmissionService,
     paymentService,
     lotService,
@@ -740,10 +794,15 @@ export function createContainer(env: Env): Container {
     authenticator,
     repoFactory,
     lotService,
+    conditionReportService,
     saleService,
     saleFollowService,
     saleBiddersService,
+    saleRegistrationService,
     lotLifecycleService,
+    absenteeBidService,
+    saleroomService,
+    lotFulfilmentService,
     saleLifecycleService,
     lotJobScheduler,
     saleStatusTransitionService,

@@ -1,7 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
-import { user, userInvitation } from "@auction/db/schema";
-import { type UserRole, roleHasCapability } from "@auction/types";
+import { user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
+import {
+  type UserRole,
+  type UserStaffRole,
+  normalizeUserStaffRole,
+  roleHasCapability,
+} from "@auction/types";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import type { IEmailService } from "./interfaces/email.js";
@@ -28,6 +33,7 @@ export type CreateInvitationInput = {
   actorUserId: string;
   email: string;
   targetRole: UserRole;
+  targetStaffRole?: UserStaffRole | null;
 };
 
 function hashToken(token: string): string {
@@ -59,7 +65,8 @@ export class InvitationService {
   ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>> {
     const actor = await this.users.findById(input.actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
-    if (!roleHasCapability(actorRole, "user.invite")) {
+    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
+    if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
       return err({ message: "Forbidden", status: 403 });
     }
 
@@ -68,10 +75,19 @@ export class InvitationService {
     const tokenHash = hashToken(token);
     const expiresAt = addDays(new Date(), 7);
 
+    const targetStaff =
+      input.targetRole === "staff"
+        ? (input.targetStaffRole ?? null)
+        : (null as UserStaffRole | null);
+    if (input.targetRole === "staff" && targetStaff == null) {
+      return err({ message: "targetStaffRole is required for staff invitations", status: 400 });
+    }
+
     await this.invites.insert({
       id,
       email: input.email.trim().toLowerCase(),
       targetRole: input.targetRole,
+      targetStaffRole: targetStaff,
       tokenHash,
       status: "pending",
       expiresAt,
@@ -89,6 +105,7 @@ export class InvitationService {
         inviterName: actor?.name ?? null,
         inviteeEmail: input.email.trim(),
         role: input.targetRole,
+        staffRole: input.targetStaffRole ?? null,
         expiresAt: expiresAt.toISOString(),
       },
     });
@@ -96,16 +113,29 @@ export class InvitationService {
     return ok({ id, expiresAt });
   }
 
-  async preview(
-    token: string,
-  ): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>> {
+  async preview(token: string): Promise<
+    Result<
+      {
+        email: string;
+        targetRole: UserRole;
+        targetStaffRole: UserStaffRole | null;
+        expiresAt: Date;
+      },
+      InvitationError
+    >
+  > {
     const row = await this.invites.findPendingByTokenHash(hashToken(token));
     if (!row) return err({ message: "Invalid invitation", status: 404 });
     if (row.expiresAt.getTime() <= Date.now()) {
       await this.invites.updateStatus(row.id, { status: "expired" });
       return err({ message: "Invitation expired", status: 400 });
     }
-    return ok({ email: row.email, targetRole: row.targetRole, expiresAt: row.expiresAt });
+    return ok({
+      email: row.email,
+      targetRole: row.targetRole,
+      targetStaffRole: row.targetStaffRole,
+      expiresAt: row.expiresAt,
+    });
   }
 
   /** Validates an invite for a registration attempt and returns the invitation row snapshot.
@@ -154,6 +184,10 @@ export class InvitationService {
         }
 
         const nextRole = row.targetRole as UserRole;
+        const nextStaff =
+          nextRole === "staff"
+            ? (row.targetStaffRole as (typeof userStaffRoleEnum.enumValues)[number])
+            : null;
 
         await tx
           .update(userInvitation)
@@ -167,7 +201,7 @@ export class InvitationService {
 
         await tx
           .update(user)
-          .set({ role: nextRole, updatedAt: new Date() })
+          .set({ role: nextRole, staffRole: nextStaff, updatedAt: new Date() })
           .where(eq(user.id, newUserId));
         return nextRole;
       });
@@ -189,7 +223,8 @@ export class InvitationService {
   > {
     const actor = await this.users.findById(input.actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
-    if (!roleHasCapability(actorRole, "user.invite")) {
+    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
+    if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
       return err({ message: "Forbidden", status: 403 });
     }
     const row = await this.invites.findById(input.invitationId);
@@ -209,7 +244,8 @@ export class InvitationService {
   }): Promise<Result<{ expiresAt: Date }, InvitationError>> {
     const actor = await this.users.findById(input.actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
-    if (!roleHasCapability(actorRole, "user.invite")) {
+    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
+    if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
       return err({ message: "Forbidden", status: 403 });
     }
     const row = await this.invites.findById(input.invitationId);
@@ -234,6 +270,7 @@ export class InvitationService {
         inviterName: actor?.name ?? null,
         inviteeEmail: row.email,
         role: row.targetRole,
+        staffRole: row.targetStaffRole ?? null,
         expiresAt: expiresAt.toISOString(),
       },
     });

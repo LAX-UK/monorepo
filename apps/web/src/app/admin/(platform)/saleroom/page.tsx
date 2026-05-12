@@ -8,12 +8,12 @@ export default function AdminSaleroomHubPage() {
     <AppScreen className="space-y-6">
       <PageHeader
         title="Saleroom console"
-        description="Pick a sale to run clerk actions: manual bids, hammer / pass / withdraw, broadcast notices, and undo stacks."
+        description="Pick a sale, then use the clerk console for go live, advance lot, hammer, and no sale. Sale-room events broadcast over websockets to joined clients."
         className="border-0 pb-0"
       />
       <EmptyState
         title="Select a sale"
-        description="Deep links use /admin/saleroom/[saleId]. Hook this picker to scheduled onsite sales when Phase 3 ships."
+        description="From Sales, copy an active sale’s id into the URL as /admin/saleroom/{saleId} to open the clerk console."
         action={
           <Link
             href="/admin/sales"

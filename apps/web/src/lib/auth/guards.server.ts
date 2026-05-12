@@ -6,8 +6,8 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   type UserRole,
-  canAccessPlatformAdminRoutes,
   canAccessStaffAdminShell,
+  staffRoleDefaultDestination,
 } from "@auction/types";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -45,9 +45,10 @@ export async function requireAuthenticatedUser(opts: {
   }
 
   const role = user.role as UserRole;
+  const staff = user.staffRole ?? null;
 
   if (opts.shell === "client" && canAccessStaffAdminShell(role)) {
-    redirect(canAccessPlatformAdminRoutes(role) ? "/admin" : "/admin/payments");
+    redirect(staffRoleDefaultDestination(role, staff));
   }
 
   if (opts.shell === "staff" && !canAccessStaffAdminShell(role)) {

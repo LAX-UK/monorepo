@@ -61,6 +61,8 @@ export type TemplateVarsByName = {
     inviterName?: string | null;
     inviteeEmail: string;
     role?: string | null;
+    /** When inviting platform staff, internal specialization label for copy. */
+    staffRole?: string | null;
     expiresAt?: string | null;
   };
   "bid-outbid": OptOutableLotVars & {

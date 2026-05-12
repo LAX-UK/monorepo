@@ -9,18 +9,22 @@ import type {
   ArtistKind,
   ArtistProfile,
   ArtistStatus,
+  ItemSubmissionStatus,
   LegalEntity,
   LegalEntityStatus,
   Lot,
+  LotStatus,
   PayoutStatus,
   Sale,
 } from "@auction/types";
 import {
   artistKinds,
   artistStatuses,
+  itemSubmissionStatuses,
   legalEntityKinds,
   legalEntityStatuses,
   legalEntitySubkinds,
+  lotStatuses,
 } from "@auction/types";
 import type { PaymentStatus } from "@auction/types";
 
@@ -305,6 +309,142 @@ export async function getAdminSaleById(id: string): Promise<AdminSaleListRow | n
   };
 }
 
+export type AdminSaleRegistrationRow = {
+  id: string;
+  saleId: string;
+  userId: string;
+  buyerLegalEntityId: string;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  requestedAt: string;
+  decidedAt: string | null;
+  decidedByUserId: string | null;
+  bidLimit: string | null;
+  laxNotes: string | null;
+  rejectionReason: string | null;
+  userEmail: string | null;
+  userName: string | null;
+  buyerLegalEntityDisplayName: string | null;
+};
+
+const adminSaleRegistrationStatuses = ["pending", "approved", "rejected", "withdrawn"] as const;
+
+function parseAdminSaleRegistrationRow(raw: unknown): AdminSaleRegistrationRow {
+  const o = raw as Record<string, unknown>;
+  const st = o.status;
+  const status =
+    typeof st === "string" && (adminSaleRegistrationStatuses as readonly string[]).includes(st)
+      ? (st as AdminSaleRegistrationRow["status"])
+      : "pending";
+  return {
+    id: String(o.id ?? ""),
+    saleId: String(o.saleId ?? ""),
+    userId: String(o.userId ?? ""),
+    buyerLegalEntityId: String(o.buyerLegalEntityId ?? ""),
+    status,
+    requestedAt: typeof o.requestedAt === "string" ? o.requestedAt : "",
+    decidedAt: o.decidedAt == null || o.decidedAt === "" ? null : String(o.decidedAt),
+    decidedByUserId: o.decidedByUserId == null ? null : String(o.decidedByUserId),
+    bidLimit: o.bidLimit == null ? null : String(o.bidLimit),
+    laxNotes: o.laxNotes == null ? null : String(o.laxNotes),
+    rejectionReason: o.rejectionReason == null ? null : String(o.rejectionReason),
+    userEmail: o.userEmail == null ? null : String(o.userEmail),
+    userName: o.userName == null ? null : String(o.userName),
+    buyerLegalEntityDisplayName:
+      o.buyerLegalEntityDisplayName == null ? null : String(o.buyerLegalEntityDisplayName),
+  };
+}
+
+export async function getAdminSaleRegistrations(
+  saleId: string,
+  params?: { status?: AdminSaleRegistrationRow["status"] },
+): Promise<AdminSaleRegistrationRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/registrations${suffix}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Failed to load sale registrations: ${res.status}`);
+  const body = (await res.json()) as { data: { items: unknown[] } };
+  return body.data.items.map(parseAdminSaleRegistrationRow);
+}
+
+export type AdminConditionReportRequestRow = {
+  id: string;
+  lotId: string;
+  requestedByUserId: string;
+  requestingLegalEntityId: string | null;
+  status: "pending" | "in_progress" | "fulfilled" | "declined";
+  requestNote: string | null;
+  responseNote: string | null;
+  responseAttachmentUploadId: string | null;
+  fulfilledByUserId: string | null;
+  fulfilledAt: string | null;
+  createdAt: string;
+  lotTitle: string | null;
+  requesterEmail: string | null;
+};
+
+const crStatuses = ["pending", "in_progress", "fulfilled", "declined"] as const;
+
+function parseAdminConditionReportRequestRow(raw: unknown): AdminConditionReportRequestRow {
+  const o = raw as Record<string, unknown>;
+  const st = o.status;
+  const status =
+    typeof st === "string" && (crStatuses as readonly string[]).includes(st)
+      ? (st as AdminConditionReportRequestRow["status"])
+      : "pending";
+  return {
+    id: String(o.id ?? ""),
+    lotId: String(o.lotId ?? ""),
+    requestedByUserId: String(o.requestedByUserId ?? ""),
+    requestingLegalEntityId:
+      o.requestingLegalEntityId == null ? null : String(o.requestingLegalEntityId),
+    status,
+    requestNote: o.requestNote == null ? null : String(o.requestNote),
+    responseNote: o.responseNote == null ? null : String(o.responseNote),
+    responseAttachmentUploadId:
+      o.responseAttachmentUploadId == null ? null : String(o.responseAttachmentUploadId),
+    fulfilledByUserId: o.fulfilledByUserId == null ? null : String(o.fulfilledByUserId),
+    fulfilledAt: o.fulfilledAt == null ? null : String(o.fulfilledAt),
+    createdAt: typeof o.createdAt === "string" ? o.createdAt : "",
+    lotTitle: o.lotTitle == null ? null : String(o.lotTitle),
+    requesterEmail: o.requesterEmail == null ? null : String(o.requesterEmail),
+  };
+}
+
+export async function getAdminConditionReportRequests(params?: {
+  status?: AdminConditionReportRequestRow["status"];
+  lotId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  items: AdminConditionReportRequestRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.lotId) qs.set("lotId", params.lotId);
+  qs.set("limit", String(params?.limit ?? 50));
+  qs.set("offset", String(params?.offset ?? 0));
+  const res = await authedServerFetch(`/admin/condition-report-requests?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load condition report requests: ${res.status}`);
+  const body = (await res.json()) as {
+    data: { items: unknown[]; total: number; limit: number; offset: number };
+  };
+  return {
+    items: body.data.items.map(parseAdminConditionReportRequestRow),
+    total: body.data.total,
+    limit: body.data.limit,
+    offset: body.data.offset,
+  };
+}
+
 export async function getAdminLotById(id: string): Promise<Lot | null> {
   const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}`);
   if (res.status === 404) return null;
@@ -322,6 +462,130 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAdminPaymentRow);
+}
+
+export type AdminLotFulfilmentListRow = {
+  id: string;
+  lotId: string;
+  lotTitle: string | null;
+  status: string;
+  paymentId: string | null;
+  fulfilmentMethod: string | null;
+  shippingCarrier: string | null;
+  trackingNumber: string | null;
+};
+
+function parseAdminLotFulfilmentListRow(raw: unknown): AdminLotFulfilmentListRow {
+  const o = raw as Record<string, unknown>;
+  return {
+    id: String(o.id ?? ""),
+    lotId: String(o.lotId ?? ""),
+    lotTitle: o.lotTitle == null ? null : String(o.lotTitle),
+    status: String(o.status ?? ""),
+    paymentId: o.paymentId == null ? null : String(o.paymentId),
+    fulfilmentMethod: o.fulfilmentMethod == null ? null : String(o.fulfilmentMethod),
+    shippingCarrier: o.shippingCarrier == null ? null : String(o.shippingCarrier),
+    trackingNumber: o.trackingNumber == null ? null : String(o.trackingNumber),
+  };
+}
+
+async function fetchAdminLotFulfilmentListResponse(params?: { status?: string }): Promise<
+  | { kind: "ok"; rows: AdminLotFulfilmentListRow[] }
+  | { kind: "authz" }
+  | { kind: "error"; message: string }
+> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(`/admin/lot-fulfilment${suffix}`, { cache: "no-store" });
+  if (res.status === 403 || res.status === 401) return { kind: "authz" };
+  if (!res.ok) {
+    return { kind: "error", message: `Failed to load lot fulfilment: ${res.status}` };
+  }
+  const body = (await res.json()) as { data: unknown[] };
+  return { kind: "ok", rows: body.data.map(parseAdminLotFulfilmentListRow) };
+}
+
+/** Operations fulfilment capability; returns empty when the user cannot access the queue. */
+export async function getAdminLotFulfilmentList(params?: {
+  status?: string;
+}): Promise<AdminLotFulfilmentListRow[]> {
+  const r = await fetchAdminLotFulfilmentListResponse(params);
+  if (r.kind === "authz") return [];
+  if (r.kind === "error") throw new Error(r.message);
+  return r.rows;
+}
+
+export type LotFulfilmentQueueLoadResult =
+  | { access: "ok"; rows: AdminLotFulfilmentListRow[] }
+  | { access: "forbidden" }
+  | { access: "error"; message: string };
+
+/** Same list as {@link getAdminLotFulfilmentList}, but distinguishes 403 from an empty queue. */
+export async function loadAdminLotFulfilmentQueue(params?: {
+  status?: string;
+}): Promise<LotFulfilmentQueueLoadResult> {
+  const r = await fetchAdminLotFulfilmentListResponse(params);
+  if (r.kind === "authz") return { access: "forbidden" };
+  if (r.kind === "error") return { access: "error", message: r.message };
+  return { access: "ok", rows: r.rows };
+}
+
+export type AdminConveyorPipelineRow = {
+  submissionId: string;
+  title: string;
+  submissionStatus: ItemSubmissionStatus;
+  convertedLotId: string | null;
+  lotId: string | null;
+  lotStatus: LotStatus | null;
+  lotTitle: string | null;
+  artistReviewRequired: boolean | null;
+  archivedSeller: boolean | null;
+  assignedToUserId: string | null;
+  updatedAt: string;
+};
+
+function parseAdminConveyorPipelineRow(raw: unknown): AdminConveyorPipelineRow {
+  const o = raw as Record<string, unknown>;
+  const subSt = String(o.submissionStatus ?? "");
+  const submissionStatus: ItemSubmissionStatus = (
+    itemSubmissionStatuses as readonly string[]
+  ).includes(subSt)
+    ? (subSt as ItemSubmissionStatus)
+    : "draft";
+  const rawLotSt = o.lotStatus == null ? null : String(o.lotStatus);
+  const lotStatus: LotStatus | null =
+    rawLotSt === null
+      ? null
+      : (lotStatuses as readonly string[]).includes(rawLotSt)
+        ? (rawLotSt as LotStatus)
+        : null;
+  return {
+    submissionId: String(o.submissionId ?? ""),
+    title: String(o.title ?? ""),
+    submissionStatus,
+    convertedLotId: o.convertedLotId == null ? null : String(o.convertedLotId),
+    lotId: o.lotId == null ? null : String(o.lotId),
+    lotStatus,
+    lotTitle: o.lotTitle == null ? null : String(o.lotTitle),
+    artistReviewRequired:
+      typeof o.artistReviewRequired === "boolean" ? o.artistReviewRequired : null,
+    archivedSeller: typeof o.archivedSeller === "boolean" ? o.archivedSeller : null,
+    assignedToUserId: o.assignedToUserId == null ? null : String(o.assignedToUserId),
+    updatedAt: String(o.updatedAt ?? ""),
+  };
+}
+
+export async function getAdminConveyorPipeline(params?: {
+  limit?: number;
+}): Promise<AdminConveyorPipelineRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.limit != null) qs.set("limit", String(params.limit));
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(`/admin/conveyor-pipeline${suffix}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load conveyor pipeline: ${res.status}`);
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseAdminConveyorPipelineRow);
 }
 
 export async function getAdminPayoutList(
@@ -550,6 +814,7 @@ export type AdminUserRow = {
   email: string;
   name: string;
   role: string;
+  staffRole: string | null;
   createdAt: string;
   suspendedAt: string | null;
 };
@@ -689,11 +954,19 @@ function parseAdminDomainEventRows(body: {
 export async function getAdminDomainEvents(params: {
   limit?: number;
   eventTypePrefix?: string;
+  aggregateType?: string;
+  aggregateId?: string;
 }): Promise<AdminDomainEventRow[]> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 100));
   if (params.eventTypePrefix?.trim()) {
     qs.set("eventTypePrefix", params.eventTypePrefix.trim());
+  }
+  const aggT = params.aggregateType?.trim();
+  const aggI = params.aggregateId?.trim();
+  if (aggT && aggI) {
+    qs.set("aggregateType", aggT);
+    qs.set("aggregateId", aggI);
   }
   const res = await authedServerFetch(`/admin/audit/domain-events?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load domain events: ${res.status}`);
@@ -711,4 +984,83 @@ export async function getAdminFinanceDisputeDomainEvents(params: {
   if (!res.ok) throw new Error(`Failed to load dispute domain events: ${res.status}`);
   const body = (await res.json()) as { data: Record<string, unknown>[] };
   return parseAdminDomainEventRows(body);
+}
+
+export type AdminSaleroomSessionRow = {
+  id: string;
+  saleId: string;
+  status: string;
+  currentLotId: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  clerkUserId: string | null;
+  auctioneerUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminSaleroomEventRow = {
+  id: string;
+  sessionId: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  actorUserId: string | null;
+  occurredAt: string;
+};
+
+export type AdminSaleroomSessionSnapshot = {
+  session: AdminSaleroomSessionRow | null;
+  events: AdminSaleroomEventRow[];
+};
+
+function parseIsoOrNull(v: unknown): string | null {
+  if (v == null) return null;
+  if (v instanceof Date) return v.toISOString();
+  const s = String(v);
+  return s.length > 0 ? s : null;
+}
+
+function parseAdminSaleroomSessionSnapshot(raw: unknown): AdminSaleroomSessionSnapshot {
+  const o = raw as Record<string, unknown>;
+  const sessionRaw = o.session as Record<string, unknown> | null | undefined;
+  const session: AdminSaleroomSessionRow | null = sessionRaw
+    ? {
+        id: String(sessionRaw.id ?? ""),
+        saleId: String(sessionRaw.saleId ?? ""),
+        status: String(sessionRaw.status ?? ""),
+        currentLotId: sessionRaw.currentLotId == null ? null : String(sessionRaw.currentLotId),
+        startedAt: parseIsoOrNull(sessionRaw.startedAt),
+        endedAt: parseIsoOrNull(sessionRaw.endedAt),
+        clerkUserId: sessionRaw.clerkUserId == null ? null : String(sessionRaw.clerkUserId),
+        auctioneerUserId:
+          sessionRaw.auctioneerUserId == null ? null : String(sessionRaw.auctioneerUserId),
+        createdAt: parseIsoOrNull(sessionRaw.createdAt) ?? "",
+        updatedAt: parseIsoOrNull(sessionRaw.updatedAt) ?? "",
+      }
+    : null;
+  const eventsRaw = Array.isArray(o.events) ? o.events : [];
+  const events: AdminSaleroomEventRow[] = eventsRaw.map((e) => {
+    const row = e as Record<string, unknown>;
+    return {
+      id: String(row.id ?? ""),
+      sessionId: String(row.sessionId ?? ""),
+      kind: String(row.kind ?? ""),
+      payload: (row.payload as Record<string, unknown>) ?? {},
+      actorUserId: row.actorUserId == null ? null : String(row.actorUserId),
+      occurredAt: parseIsoOrNull(row.occurredAt) ?? "",
+    };
+  });
+  return { session, events };
+}
+
+export async function getAdminSaleroomSession(
+  saleId: string,
+): Promise<AdminSaleroomSessionSnapshot> {
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/session`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Failed to load saleroom session: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseAdminSaleroomSessionSnapshot(body.data);
 }

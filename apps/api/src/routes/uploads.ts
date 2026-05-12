@@ -1,4 +1,5 @@
 import type { UserRole } from "@auction/types";
+import { normalizeUserStaffRole } from "@auction/types";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -8,7 +9,9 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
 
   r.put("/local/:token", async (c) => {
     if (container.env.STORAGE_DRIVER !== "local") {
@@ -35,9 +38,11 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
       return c.json({ error: "Invalid JSON body" }, 400);
     }
     const input = body as { kind?: unknown; contentType?: unknown; byteSize?: unknown };
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const result = await container.uploadService.createPresignedUpload({
       userId,
       userRole,
+      userStaffRole: staff,
       kind: typeof input.kind === "string" ? input.kind : "",
       contentType: typeof input.contentType === "string" ? input.contentType : "",
       byteSize: Number(input.byteSize),
@@ -63,7 +68,13 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
         ? (body as { uploadId: string }).uploadId
         : "";
     if (!uploadId) return c.json({ error: "uploadId is required" }, 400);
-    const result = await container.uploadService.confirmUpload({ uploadId, userId, userRole });
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    const result = await container.uploadService.confirmUpload({
+      uploadId,
+      userId,
+      userRole,
+      userStaffRole: staff,
+    });
     if (!result.ok) {
       return c.json({ error: result.error }, result.status as 400 | 404 | 409 | 503);
     }
@@ -74,10 +85,12 @@ export function createUploadRoutes(container: Container, authenticator: IAuthent
     const userId = c.get("userId");
     const userRole = c.get("userRole") as UserRole | undefined;
     if (!userId || !userRole) return c.json({ error: "Unauthorized" }, 401);
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const result = await container.uploadService.getUploadStatus({
       uploadId: c.req.param("uploadId"),
       userId,
       userRole,
+      userStaffRole: staff,
     });
     if (!result.ok) {
       return c.json({ error: result.error }, result.status as 404 | 503);

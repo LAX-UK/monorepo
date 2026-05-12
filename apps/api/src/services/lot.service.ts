@@ -5,9 +5,12 @@ import {
   type CreateLotInput,
   type Lot,
   type UserRole,
+  normalizeUserRoleOrClient,
+  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
+import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
@@ -48,29 +51,64 @@ function clampLotBidsLimitQuery(raw: string | undefined): number {
   return Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
 }
 
+export type LotServiceOptions = {
+  lotRepo: ILotRepository;
+  bids: IBidRepository;
+  watchlist: IWatchlistRepository;
+  jobScheduler: ILotJobScheduler | null;
+  lotNotifications: ILotNotificationCoordinator | null;
+  imageCleanup?: ImageCleanupService;
+  legalEntityNotificationRecipients?: ILegalEntityNotificationRecipientReader | null;
+  legalEntityRepository?: ILegalEntityRepository | null;
+  /** When false (e.g. Stripe Connect not configured), individual Connect readiness is not enforced on publish. */
+  enforceIndividualConnectOnPublish?: boolean;
+  db?: Database | null;
+  domainEventPublisher?: DomainEventPublisher | null;
+  mediaUrlResolver?: MediaUrlResolver;
+  englishOnlyAuctions?: boolean;
+};
+
 export class LotService {
-  constructor(
-    private readonly lotRepo: ILotRepository,
-    private readonly bids: IBidRepository,
-    private readonly watchlist: IWatchlistRepository,
-    private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly lotNotifications: ILotNotificationCoordinator | null,
-    private readonly imageCleanup?: ImageCleanupService,
-    private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
-    private readonly legalEntityRepository: ILegalEntityRepository | null = null,
-    /**
-     * When false (e.g. Stripe Connect not configured), individual Connect readiness is not
-     * enforced on publish.
-     */
-    private readonly enforceIndividualConnectOnPublish: boolean = false,
-    private readonly db: Database | null = null,
-    private readonly domainEventPublisher: DomainEventPublisher | null = null,
-    private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
-  ) {}
+  private readonly lotRepo: ILotRepository;
+  private readonly bids: IBidRepository;
+  private readonly watchlist: IWatchlistRepository;
+  private readonly jobScheduler: ILotJobScheduler | null;
+  private readonly lotNotifications: ILotNotificationCoordinator | null;
+  private readonly imageCleanup: ImageCleanupService | undefined;
+  private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
+  private readonly legalEntityRepository: ILegalEntityRepository | null;
+  private readonly enforceIndividualConnectOnPublish: boolean;
+  private readonly db: Database | null;
+  private readonly domainEventPublisher: DomainEventPublisher | null;
+  private readonly mediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly englishOnlyAuctions: boolean;
+
+  constructor(opts: LotServiceOptions) {
+    this.lotRepo = opts.lotRepo;
+    this.bids = opts.bids;
+    this.watchlist = opts.watchlist;
+    this.jobScheduler = opts.jobScheduler;
+    this.lotNotifications = opts.lotNotifications;
+    this.imageCleanup = opts.imageCleanup;
+    this.legalEntityNotificationRecipients = opts.legalEntityNotificationRecipients ?? null;
+    this.legalEntityRepository = opts.legalEntityRepository ?? null;
+    this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
+    this.db = opts.db ?? null;
+    this.domainEventPublisher = opts.domainEventPublisher ?? null;
+    this.mediaUrlResolver = opts.mediaUrlResolver;
+    this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+  }
 
   async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
     if (input.endTime <= input.startTime) {
       return err(new LotError("endTime must be after startTime"));
+    }
+    const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
+      enabled: this.englishOnlyAuctions,
+      requested: input.auctionType,
+    });
+    if (lockMsg) {
+      return err(new LotError(lockMsg));
     }
     const created = await this.lotRepo.create(input);
     return ok(created);
@@ -80,9 +118,12 @@ export class LotService {
     _userId: string,
     userRole: string,
     lotId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can publish lots", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
+      return err(new AuthzError("Only staff with auction.manage can publish lots", 403));
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -125,11 +166,14 @@ export class LotService {
     _userId: string,
     userRole: string,
     lotId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can cancel lots", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
+      return err(new AuthzError("Only staff with auction.manage can cancel lots", 403));
     }
     if (!CANCELLABLE.has(a.status)) {
       return err(new LotError("This lot cannot be cancelled"));
@@ -165,9 +209,12 @@ export class LotService {
     userRole: string,
     lotId: string,
     input: Partial<CreateLotInput>,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can edit lots", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
+      return err(new AuthzError("Only staff with auction.manage can edit lots", 403));
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -178,6 +225,14 @@ export class LotService {
     const nextEnd = input.endTime ?? a.endTime;
     if (nextEnd <= nextStart) {
       return err(new LotError("endTime must be after startTime"));
+    }
+    const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
+      enabled: this.englishOnlyAuctions,
+      existing: a.auctionType,
+      ...(input.auctionType !== undefined ? { requested: input.auctionType } : {}),
+    });
+    if (lockMsg) {
+      return err(new LotError(lockMsg));
     }
     const updated = await this.lotRepo.update(lotId, input);
     if (input.images !== undefined) {
@@ -190,9 +245,14 @@ export class LotService {
     userRole: string,
     lotId: string,
     patch: UpdateLotMarketingDetailsInput,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can update marketing details", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
+      return err(
+        new AuthzError("Only staff with auction.manage can update marketing details", 403),
+      );
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -215,10 +275,13 @@ export class LotService {
   async listLotsForPublicApi(
     filter: ListLotsFilter,
     viewerRole: string | undefined,
+    viewerStaffRole?: string | null,
   ): Promise<{ data: Lot[] }> {
     const rows = await this.lotRepo.list(filter);
     const presented = await presentLotsImages(this.mediaUrlResolver, rows);
-    return { data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole)) };
+    return {
+      data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),
+    };
   }
 
   async bulkPublishOrCancel(
@@ -226,17 +289,20 @@ export class LotService {
     userRole: string,
     ids: string[],
     op: "publish" | "cancel",
+    userStaffRole?: string | null,
   ): Promise<Result<{ attempted: number; failed: number; errors: string[] }, AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
       return err(new AuthzError("Forbidden", 403));
     }
     const errors: string[] = [];
     for (const id of ids) {
       if (op === "publish") {
-        const res = await this.publish(userId, userRole, id);
+        const res = await this.publish(userId, userRole, id, userStaffRole);
         if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
       } else {
-        const res = await this.cancel(userId, userRole, id);
+        const res = await this.cancel(userId, userRole, id, userStaffRole);
         if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
       }
     }
@@ -250,22 +316,24 @@ export class LotService {
   async listBidsForPublicApi(input: {
     lotId: string;
     viewerRole: UserRole;
+    viewerStaffRole?: string | null;
     viewerId: string | undefined;
     limitQuery: string | undefined;
   }): Promise<ListBidsForPublicApiResult> {
-    const { lotId, viewerRole, viewerId, limitQuery } = input;
+    const { lotId, viewerRole, viewerStaffRole, viewerId, limitQuery } = input;
+    const vStaff = normalizeUserStaffRole(viewerStaffRole ?? undefined);
     const lot = await this.lotRepo.findById(lotId);
     if (!lot) {
       return { kind: "not_found" };
     }
     if (lot.auctionType === "sealed" && lot.status === "active") {
-      if (!roleHasCapability(viewerRole, "auction.manage")) {
+      if (!roleHasCapability(viewerRole, "auction.manage", vStaff)) {
         return { kind: "ok", data: [] };
       }
     }
     const limit = clampLotBidsLimitQuery(limitQuery);
     const bids = await this.bids.listForLot(lotId, limit);
-    const canSeeBidderIds = roleHasCapability(viewerRole, "auction.manage");
+    const canSeeBidderIds = roleHasCapability(viewerRole, "auction.manage", vStaff);
     const data: LotBidPublicApiRow[] = bids.map((bid) => {
       const isOwnBid = Boolean(viewerId && bid.placedByUserId === viewerId);
       const placedByUserIdForRef = bid.placedByUserId ?? "unknown";
@@ -359,12 +427,15 @@ export class LotService {
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
+    adminStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
     if (!this.db) {
       return err(new LotError("Withdrawal approvals are not available", 503));
     }
-    if (!roleHasCapability(adminRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can approve withdrawals", 403));
+    const role = normalizeUserRoleOrClient(adminRole);
+    const staff = normalizeUserStaffRole(adminStaffRole ?? undefined);
+    if (!roleHasCapability(role, "auction.manage", staff)) {
+      return err(new AuthzError("Only staff with auction.manage can approve withdrawals", 403));
     }
     const pending = await this.db
       .select({ id: adminReviewTask.id })
@@ -380,7 +451,7 @@ export class LotService {
     if (!pending[0]) {
       return err(new LotError("No pending withdrawal request for this lot", 404));
     }
-    const cancelRes = await this.cancel(adminUserId, adminRole, lotId);
+    const cancelRes = await this.cancel(adminUserId, adminRole, lotId, adminStaffRole);
     if (cancelRes.isErr()) return cancelRes;
     await this.db
       .update(adminReviewTask)

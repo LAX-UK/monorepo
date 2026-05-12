@@ -18,6 +18,7 @@ import {
   adminCreateCategoryBodySchema,
   adminCreateInvitationBodySchema,
   adminSetRoleBodySchema,
+  adminSetStaffRoleBodySchema,
   adminSuspendBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
@@ -25,6 +26,9 @@ import {
   cancelLotBodySchema,
   createLotSchema,
   invitationIdUuidParamSchema,
+  lotFulfilmentCollectBodySchema,
+  lotFulfilmentReleaseBodySchema,
+  lotFulfilmentShipBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
@@ -648,6 +652,28 @@ export async function adminPaymentXeroSyncResultAction(
   return actionSuccess();
 }
 
+export async function adminSetUserStaffRoleResultAction(
+  userId: string,
+  body: z.infer<typeof adminSetStaffRoleBodySchema>,
+): Promise<ActionResult<void>> {
+  const id = userId.trim();
+  if (!id) {
+    return actionFailure("Missing user");
+  }
+  const p = adminSetStaffRoleBodySchema.safeParse(body);
+  if (!p.success) {
+    return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
+  }
+  const { adminUsers } = getWriteContainer();
+  const r = await adminUsers.setStaffRole(id, p.data);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${id}`);
+  return actionSuccess();
+}
+
 export async function adminSetUserRoleResultAction(
   userId: string,
   body: z.infer<typeof adminSetRoleBodySchema>,
@@ -785,4 +811,458 @@ export async function adminResendInvitationAction(formData: FormData): Promise<v
   }
   revalidatePath("/admin/invitations");
   redirect("/admin/invitations");
+}
+
+const saleRegistrationActionParams = z.object({
+  saleId: z.string().uuid(),
+  registrationId: z.string().uuid(),
+});
+
+export async function adminApproveSaleRegistrationAction(formData: FormData): Promise<void> {
+  const parsed = saleRegistrationActionParams.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+    registrationId: String(formData.get("registrationId") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/sales?error=${encodeURIComponent("Invalid registration")}`);
+  }
+  const { saleId, registrationId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/approve`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(payload.error ?? "Approve failed")}`,
+    );
+  }
+  revalidatePath(`/admin/sales/${saleId}/registrations`);
+  redirect(`/admin/sales/${encodeURIComponent(saleId)}/registrations`);
+}
+
+export async function adminRejectSaleRegistrationAction(formData: FormData): Promise<void> {
+  const parsed = saleRegistrationActionParams.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+    registrationId: String(formData.get("registrationId") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/sales?error=${encodeURIComponent("Invalid registration")}`);
+  }
+  const { saleId, registrationId } = parsed.data;
+  const reasonRaw = String(formData.get("reason") ?? "").trim();
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reasonRaw ? { reason: reasonRaw } : {}),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(payload.error ?? "Reject failed")}`,
+    );
+  }
+  revalidatePath(`/admin/sales/${saleId}/registrations`);
+  redirect(`/admin/sales/${encodeURIComponent(saleId)}/registrations`);
+}
+
+const conditionReportRequestIdActionSchema = z.object({
+  requestId: z.string().uuid(),
+});
+
+export async function adminFulfillConditionReportAction(formData: FormData): Promise<void> {
+  const parsed = conditionReportRequestIdActionSchema.safeParse({
+    requestId: String(formData.get("requestId") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/condition-reports?error=${encodeURIComponent("Invalid request")}`);
+  }
+  const summary = String(formData.get("summary") ?? "").trim();
+  const details = String(formData.get("details") ?? "").trim();
+  const downloadUrl = String(formData.get("downloadUrl") ?? "").trim();
+  const responseNote = String(formData.get("responseNote") ?? "").trim();
+  if (!summary && !details && !downloadUrl) {
+    redirect(
+      `/admin/condition-reports?error=${encodeURIComponent("Add summary, details, or PDF URL")}`,
+    );
+  }
+  const conditionReport: {
+    summary?: string;
+    details?: string;
+    downloadUrl?: string;
+  } = {};
+  if (summary) conditionReport.summary = summary;
+  if (details) conditionReport.details = details;
+  if (downloadUrl) conditionReport.downloadUrl = downloadUrl;
+
+  const res = await authedServerFetch(
+    `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/fulfill`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conditionReport,
+        ...(responseNote ? { responseNote } : {}),
+      }),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Fulfil failed")}`,
+    );
+  }
+  revalidatePath("/admin/condition-reports");
+  redirect("/admin/condition-reports");
+}
+
+export async function adminDeclineConditionReportAction(formData: FormData): Promise<void> {
+  const parsed = conditionReportRequestIdActionSchema.safeParse({
+    requestId: String(formData.get("requestId") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/condition-reports?error=${encodeURIComponent("Invalid request")}`);
+  }
+  const responseNote = String(formData.get("responseNote") ?? "").trim();
+  const res = await authedServerFetch(
+    `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/decline`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(responseNote ? { responseNote } : {}),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Decline failed")}`,
+    );
+  }
+  revalidatePath("/admin/condition-reports");
+  redirect("/admin/condition-reports");
+}
+
+const lotFulfilmentLotIdFormSchema = z.object({
+  lotId: z.string().uuid(),
+});
+
+function adminLotFulfilmentQueuePath(returnStatus: string | undefined): string {
+  const s = returnStatus?.trim();
+  if (s) return `/admin/lot-fulfilment?status=${encodeURIComponent(s)}`;
+  return "/admin/lot-fulfilment";
+}
+
+function lotFulfilmentQueueErrorUrl(returnStatus: string | undefined, message: string): string {
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const joiner = base.includes("?") ? "&" : "?";
+  return `${base}${joiner}error=${encodeURIComponent(message)}`;
+}
+
+function readLotFulfilmentReturnStatus(formData: FormData): string | undefined {
+  const v = String(formData.get("returnStatus") ?? "").trim();
+  return v || undefined;
+}
+
+export async function adminLotFulfilmentReleaseAction(formData: FormData): Promise<void> {
+  const returnStatus = readLotFulfilmentReturnStatus(formData);
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!lotParsed.success) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
+  }
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+  const bodyParsed = lotFulfilmentReleaseBodySchema.safeParse(notesRaw ? { notes: notesRaw } : {});
+  if (!bodyParsed.success) {
+    redirect(
+      lotFulfilmentQueueErrorUrl(
+        returnStatus,
+        firstZodErrorMessage(bodyParsed.error) ?? "Invalid notes",
+      ),
+    );
+  }
+  const res = await authedServerFetch(
+    `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/release`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyParsed.data),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Release failed"));
+  }
+  revalidatePath("/admin/lot-fulfilment");
+  revalidatePath("/admin/payments");
+  redirect(base);
+}
+
+export async function adminLotFulfilmentShipAction(formData: FormData): Promise<void> {
+  const returnStatus = readLotFulfilmentReturnStatus(formData);
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!lotParsed.success) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
+  }
+  const bodyParsed = lotFulfilmentShipBodySchema.safeParse({
+    carrier: String(formData.get("carrier") ?? "").trim(),
+    trackingNumber: String(formData.get("trackingNumber") ?? "").trim(),
+  });
+  if (!bodyParsed.success) {
+    redirect(
+      lotFulfilmentQueueErrorUrl(
+        returnStatus,
+        firstZodErrorMessage(bodyParsed.error) ?? "Invalid ship form",
+      ),
+    );
+  }
+  const res = await authedServerFetch(
+    `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/ship`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyParsed.data),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Ship update failed"));
+  }
+  revalidatePath("/admin/lot-fulfilment");
+  revalidatePath("/admin/payments");
+  redirect(base);
+}
+
+export async function adminLotFulfilmentReadyForCollectionAction(
+  formData: FormData,
+): Promise<void> {
+  const returnStatus = readLotFulfilmentReturnStatus(formData);
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!lotParsed.success) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
+  }
+  const res = await authedServerFetch(
+    `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/ready-for-collection`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+  }
+  revalidatePath("/admin/lot-fulfilment");
+  revalidatePath("/admin/payments");
+  redirect(base);
+}
+
+export async function adminLotFulfilmentDeliveredAction(formData: FormData): Promise<void> {
+  const returnStatus = readLotFulfilmentReturnStatus(formData);
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!lotParsed.success) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
+  }
+  const res = await authedServerFetch(
+    `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/delivered`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+  }
+  revalidatePath("/admin/lot-fulfilment");
+  revalidatePath("/admin/payments");
+  redirect(base);
+}
+
+export async function adminLotFulfilmentCollectedAction(formData: FormData): Promise<void> {
+  const returnStatus = readLotFulfilmentReturnStatus(formData);
+  const base = adminLotFulfilmentQueuePath(returnStatus);
+  const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!lotParsed.success) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
+  }
+  const bodyParsed = lotFulfilmentCollectBodySchema.safeParse({
+    collectedBy: String(formData.get("collectedBy") ?? "").trim(),
+  });
+  if (!bodyParsed.success) {
+    redirect(
+      lotFulfilmentQueueErrorUrl(
+        returnStatus,
+        firstZodErrorMessage(bodyParsed.error) ?? "Invalid form",
+      ),
+    );
+  }
+  const res = await authedServerFetch(
+    `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/collected`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyParsed.data),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+  }
+  revalidatePath("/admin/lot-fulfilment");
+  revalidatePath("/admin/payments");
+  redirect(base);
+}
+
+const saleroomSaleIdForm = z.object({
+  saleId: z.string().uuid(),
+});
+
+const saleroomAdvanceForm = z.object({
+  saleId: z.string().uuid(),
+  lotId: z.string().uuid(),
+});
+
+function redirectSaleroomError(saleId: string, message: string): never {
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}?error=${encodeURIComponent(message)}`);
+}
+
+export async function adminSaleroomGoLiveAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  }
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/go-live`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Go live failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomPauseAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(`/admin/sales/${encodeURIComponent(saleId)}/saleroom/pause`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Pause failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomResumeAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/resume`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Resume failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomAdvanceAction(formData: FormData): Promise<void> {
+  const parsed = saleroomAdvanceForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+    lotId: String(formData.get("lotId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid advance")}`);
+  const { saleId, lotId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/advance`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId }),
+    },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Advance failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomHammerAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/hammer`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Hammer failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomNoSaleAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/saleroom/no-sale`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "No sale failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
+}
+
+export async function adminSaleroomCloseAction(formData: FormData): Promise<void> {
+  const parsed = saleroomSaleIdForm.safeParse({
+    saleId: String(formData.get("saleId") ?? "").trim(),
+  });
+  if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+  const { saleId } = parsed.data;
+  const res = await authedServerFetch(`/admin/sales/${encodeURIComponent(saleId)}/saleroom/close`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    redirectSaleroomError(saleId, payload.error ?? "Close failed");
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
 }

@@ -31,6 +31,8 @@ type Props = {
   shareUrl: string;
   followSlot: ReactNode;
   bidPanel: ReactNode;
+  /** Optional strip above the bid panel (e.g. condition report request). */
+  bidPanelTop?: ReactNode;
 };
 
 export function ArtworkOnlineLayout({
@@ -47,6 +49,7 @@ export function ArtworkOnlineLayout({
   shareUrl,
   followSlot,
   bidPanel,
+  bidPanelTop,
 }: Props) {
   const isLive = auction.status === "active";
 
@@ -77,6 +80,7 @@ export function ArtworkOnlineLayout({
             </div>
           </div>
           <div className="w-full min-w-0 pb-6 lg:max-w-[440px] lg:shrink-0 lg:pb-24 xl:pl-2">
+            {bidPanelTop ? <div className="mb-4">{bidPanelTop}</div> : null}
             <BidPanelTabs bidPanel={bidPanel} videoPanel={<OnlineVideoStreamPanel />} />
             <div className="mt-6">
               <LotActionsRow

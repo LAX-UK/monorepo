@@ -20,12 +20,21 @@ function minimalContainer(partial: Record<string, unknown>): Container {
   } as unknown as Container;
 }
 
-function lifecycleApp(container: Container, userId: string, role: string) {
+function lifecycleApp(
+  container: Container,
+  userId: string,
+  role: string,
+  staffRole?: string | null,
+) {
   const requirePlatformAdmin = createRequireCapability("platform.admin.full");
-  const app = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const app = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
+  const resolvedStaff = role === "client" ? null : (staffRole ?? "super_admin");
   app.use("*", async (c, next) => {
     c.set("userId", userId);
     c.set("userRole", role);
+    c.set("userStaffRole", resolvedStaff);
     await next();
   });
   app.use("*", requirePlatformAdmin);
@@ -37,10 +46,10 @@ function lifecycleApp(container: Container, userId: string, role: string) {
   return app;
 }
 
-function denyCapabilityForAdministrator(deny: AuctionTypes.RoleCapability) {
-  vi.spyOn(AuctionTypes, "roleHasCapability").mockImplementation((role, capability) => {
-    if (role !== "administrator") {
-      return AuctionTypes.roleHasCapability(role, capability);
+function denyCapabilityForSuperAdmin(deny: AuctionTypes.RoleCapability) {
+  vi.spyOn(AuctionTypes, "roleHasCapability").mockImplementation((role, capability, staff) => {
+    if (role !== "staff" || staff !== "super_admin") {
+      return AuctionTypes.roleHasCapability(role, capability, staff);
     }
     if (capability === "platform.admin.full") return true;
     if (capability === deny) return false;
@@ -92,7 +101,7 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
   const app = lifecycleApp(
     minimalContainer({ legalEntityLifecycleAdminService: service, legalEntityRepository }),
     ADMIN_ID,
-    "administrator",
+    "staff",
   );
   return { app, publish };
 }
@@ -116,12 +125,13 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
     expect(runTransition).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for accountant (non-platform-admin)", async () => {
+  it("returns 403 for finance_ops (non-platform-admin shell)", async () => {
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "accountant",
+      "staff",
+      "finance_ops",
     );
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(403);
@@ -129,12 +139,12 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
   });
 
   it("returns 403 when administrator lacks legal_entity.write", async () => {
-    denyCapabilityForAdministrator("legal_entity.write");
+    denyCapabilityForSuperAdmin("legal_entity.write");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(403);
@@ -176,7 +186,7 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(422);
@@ -200,12 +210,12 @@ describe("POST /admin/legal-entities/:id/start-review (legal_entity.write)", () 
   });
 
   it("returns 403 when administrator lacks legal_entity.write", async () => {
-    denyCapabilityForAdministrator("legal_entity.write");
+    denyCapabilityForSuperAdmin("legal_entity.write");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     expect((await app.request(`http://test${path}`, { method: "POST" })).status).toBe(403);
     expect(runTransition).not.toHaveBeenCalled();
@@ -234,12 +244,12 @@ describe("POST /admin/legal-entities/:id/approve (legal_entity.approve)", () => 
   });
 
   it("returns 403 when administrator lacks legal_entity.approve", async () => {
-    denyCapabilityForAdministrator("legal_entity.approve");
+    denyCapabilityForSuperAdmin("legal_entity.approve");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     expect((await app.request(`http://test${path}`, { method: "POST" })).status).toBe(403);
     expect(runTransition).not.toHaveBeenCalled();
@@ -268,12 +278,12 @@ describe("POST /admin/legal-entities/:id/restrict (legal_entity.write)", () => {
   });
 
   it("returns 403 when administrator lacks legal_entity.write", async () => {
-    denyCapabilityForAdministrator("legal_entity.write");
+    denyCapabilityForSuperAdmin("legal_entity.write");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     expect((await app.request(`http://test${path}`, { method: "POST" })).status).toBe(403);
     expect(runTransition).not.toHaveBeenCalled();
@@ -310,12 +320,12 @@ describe("POST /admin/legal-entities/:id/reject (legal_entity.approve)", () => {
   });
 
   it("returns 403 when administrator lacks legal_entity.approve", async () => {
-    denyCapabilityForAdministrator("legal_entity.approve");
+    denyCapabilityForSuperAdmin("legal_entity.approve");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",
@@ -347,7 +357,7 @@ describe("POST /admin/legal-entities/:id/reject (legal_entity.approve)", () => {
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",
@@ -363,7 +373,7 @@ describe("POST /admin/legal-entities/:id/reject (legal_entity.approve)", () => {
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",
@@ -394,12 +404,12 @@ describe("POST /admin/legal-entities/:id/archive (legal_entity.archive)", () => 
   });
 
   it("returns 403 when administrator lacks legal_entity.archive", async () => {
-    denyCapabilityForAdministrator("legal_entity.archive");
+    denyCapabilityForSuperAdmin("legal_entity.archive");
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",
@@ -430,7 +440,7 @@ describe("POST /admin/legal-entities/:id/archive (legal_entity.archive)", () => 
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",
@@ -446,7 +456,7 @@ describe("POST /admin/legal-entities/:id/archive (legal_entity.archive)", () => 
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
-      "administrator",
+      "staff",
     );
     const res = await app.request(`http://test${path}`, {
       method: "POST",

@@ -1,9 +1,7 @@
 import "server-only";
 
-import {
-  getActingLegalEntityHeader,
-  getUserRoleIfImpersonationActingCookie,
-} from "@/lib/legal-entity/acting-context.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
 import { cookies } from "next/headers";
 import { getServerApiBase } from "./hc-server";
 
@@ -23,8 +21,7 @@ export type AuthedServerFetchInit = RequestInit & {
  * {@link import("./authed-fetch.server").authedServerFetch} with an explicit
  * header, or pass {@link AuthedServerFetchInit.skipActingLegalEntityHeader} here.
  *
- * When the acting cookie carries an admin impersonation session, resolves the
- * session role so impersonation validation matches platform administrators.
+ * Forwards session role + staff role so impersonation validation matches API rules.
  */
 export async function authedServerFetch(
   path: string,
@@ -39,8 +36,8 @@ export async function authedServerFetch(
   const headers = new Headers(fetchInit.headers);
   if (cookie) headers.set("Cookie", cookie);
   if (!skipActingLegalEntityHeader) {
-    const userRole = await getUserRoleIfImpersonationActingCookie();
-    const acting = await getActingLegalEntityHeader(userRole);
+    const user = await getServerSessionUser();
+    const acting = await getActingLegalEntityHeader(user?.role ?? null, user?.staffRole ?? null);
     for (const [k, v] of Object.entries(acting)) {
       if (!headers.has(k)) headers.set(k, v);
     }

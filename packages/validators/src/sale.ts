@@ -239,3 +239,29 @@ export const listSaleBiddersQuerySchema = z.object({
 });
 
 export type ListSaleBiddersQuery = z.infer<typeof listSaleBiddersQuerySchema>;
+
+/** Buyer requests approval to bid on a sale using a chosen buyer legal entity. */
+export const registerForSaleBodySchema = z.object({
+  buyerLegalEntityId: z.string().uuid(),
+  /** Optional paddle / per-sale bid ceiling (major currency units). */
+  bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
+});
+
+export type RegisterForSaleBody = z.infer<typeof registerForSaleBodySchema>;
+
+export const adminSaleRegistrationListQuerySchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "withdrawn"]).optional(),
+});
+
+export type AdminSaleRegistrationListQuery = z.infer<typeof adminSaleRegistrationListQuerySchema>;
+
+export const adminSaleRegistrationParamsSchema = z.object({
+  saleId: z.string().uuid(),
+  registrationId: z.string().uuid(),
+});
+
+export type AdminSaleRegistrationParams = z.infer<typeof adminSaleRegistrationParamsSchema>;
+
+export const adminRejectSaleRegistrationBodySchema = z.object({
+  reason: z.string().max(2000).optional(),
+});

@@ -60,11 +60,13 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const kycGate = container.kycService.isConfigured()
-    ? createRequireKyc(container.kycService)
-    : createMiddleware(async (_c, next) => {
-        await next();
-      });
+  const kyc = container.kycService;
+  const kycGate =
+    kyc?.isConfigured() === true
+      ? createRequireKyc(kyc)
+      : createMiddleware(async (_c, next) => {
+          await next();
+        });
   const bidUserRateLimit = createBidUserRateLimitMiddleware(container.redis);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 

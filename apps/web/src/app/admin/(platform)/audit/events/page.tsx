@@ -45,6 +45,12 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
           </Link>
         ))}
         <Link
+          href="/admin/audit/timeline"
+          className="rounded-full bg-surface-container-low px-3 py-1 font-label text-xs uppercase tracking-widest ring-1 ring-outline-variant/20 hover:bg-surface-container-high/80"
+        >
+          Aggregate timeline
+        </Link>
+        <Link
           href="/admin/audit/events"
           className="text-primary underline decoration-primary/40 underline-offset-4"
         >
@@ -75,12 +81,13 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
 
       {rows.length > 0 ? (
         <div className="overflow-x-auto rounded-md border border-outline-variant/20">
-          <table className="w-full min-w-[800px] border-collapse text-left font-body text-sm">
+          <table className="w-full min-w-[920px] border-collapse text-left font-body text-sm">
             <thead className="bg-surface-container-low/80 font-label text-xs uppercase tracking-widest text-on-surface-variant">
               <tr>
                 <th className="px-3 py-2">When</th>
                 <th className="px-3 py-2">Event</th>
                 <th className="px-3 py-2">Aggregate</th>
+                <th className="px-3 py-2">Timeline</th>
                 <th className="px-3 py-2">Actor</th>
                 <th className="px-3 py-2">Entity</th>
               </tr>
@@ -94,6 +101,14 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
                   <td className="px-3 py-2 font-mono text-xs">{r.eventType}</td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {r.aggregateType}:{r.aggregateId.slice(0, 8)}…
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link
+                      href={`/admin/audit/timeline?aggregateType=${encodeURIComponent(r.aggregateType)}&aggregateId=${encodeURIComponent(r.aggregateId)}`}
+                      className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+                    >
+                      Open
+                    </Link>
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{r.actorUserId ?? "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{r.actingLegalEntityId ?? "—"}</td>

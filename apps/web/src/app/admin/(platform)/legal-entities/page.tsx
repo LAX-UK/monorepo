@@ -25,7 +25,7 @@ export default async function AdminLegalEntitiesLookupPage({
     shell: "staff",
     loginNext: "/admin/legal-entities",
   });
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin");
   }
 

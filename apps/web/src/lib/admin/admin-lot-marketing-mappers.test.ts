@@ -11,6 +11,7 @@ describe("admin lot marketing mappers", () => {
       artistNote: "A",
     };
     const v = marketingDetailsToFormValues(md);
+    expect(v.estimate).toEqual({ low: "", high: "", currency: "GBP" });
     expect(v.conditionReport).toEqual({
       summary: "S",
       details: "D",
@@ -23,12 +24,14 @@ describe("admin lot marketing mappers", () => {
 
   it("produces null sections when empty (clear on save)", () => {
     const patch = formValuesToApiPatch({
+      estimate: { low: "", high: "", currency: "GBP" },
       conditionReport: { summary: "", details: "", downloadUrl: "" },
       provenance: [],
       exhibitions: [],
       artistNote: "",
     });
     expect(patch).toEqual({
+      estimate: null,
       conditionReport: null,
       provenance: null,
       exhibitions: null,
@@ -38,6 +41,7 @@ describe("admin lot marketing mappers", () => {
 
   it("maps list entries and drops empty provenance notes", () => {
     const patch = formValuesToApiPatch({
+      estimate: { low: "", high: "", currency: "" },
       conditionReport: { summary: "x", details: "", downloadUrl: "" },
       provenance: [
         { period: "", note: "  " },
@@ -50,5 +54,16 @@ describe("admin lot marketing mappers", () => {
     expect(patch.provenance).toEqual([{ period: "p", note: "real" }]);
     expect(patch.exhibitions).toEqual([{ venue: "Museum" }]);
     expect(patch.artistNote).toBe("note");
+  });
+
+  it("maps estimate when low, high, and currency are set", () => {
+    const patch = formValuesToApiPatch({
+      estimate: { low: "1000.00", high: "2000.00", currency: "GBP" },
+      conditionReport: { summary: "", details: "", downloadUrl: "" },
+      provenance: [],
+      exhibitions: [],
+      artistNote: "",
+    });
+    expect(patch.estimate).toEqual({ low: "1000.00", high: "2000.00", currency: "GBP" });
   });
 });

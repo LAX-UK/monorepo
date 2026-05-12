@@ -10,6 +10,7 @@ import type { ImpersonationSessionService } from "../impersonation-session.servi
 import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
+import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
 import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
@@ -48,6 +49,7 @@ export type CreateAdminRouteServicesInput = {
   analyticsService: IAnalyticsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
+  conveyorPipelineReader: IConveyorPipelineReader;
   itemSubmissionService: IItemSubmissionService;
   paymentService: PaymentService;
   lotService: LotService;
@@ -67,6 +69,7 @@ export function createAdminRouteServices(input: CreateAdminRouteServicesInput): 
       input.adminMetricsService,
       input.attentionFeedReader,
       input.itemSubmissionService,
+      input.conveyorPipelineReader,
     ),
     impersonation: new AdminImpersonationService(
       input.db,

@@ -54,13 +54,13 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
         draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
       />
 
-      {isOnsite ? (
+      {sale.status === "scheduled" || sale.status === "active" ? (
         <p className="font-body text-sm">
           <Link
             href={`/admin/sales/${id}/registrations`}
             className="text-primary underline-offset-4 hover:underline"
           >
-            Paddle registrations & approvals
+            {isOnsite ? "Paddle registrations & approvals" : "Bidder registrations & approvals"}
           </Link>
         </p>
       ) : null}

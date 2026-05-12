@@ -21,7 +21,12 @@ import {
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
 import { notify } from "@/lib/ui/notify";
-import { type ArtistProfile, type CategoryNode, lotAuctionTypes } from "@auction/types";
+import {
+  type ArtistProfile,
+  type CategoryNode,
+  type LotAuctionType,
+  lotAuctionTypes,
+} from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -35,8 +40,9 @@ import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
+import { z as zod } from "zod";
 
 type Props = {
   mode: "create" | "edit";
@@ -47,6 +53,8 @@ type Props = {
   /** Pre-fetched canonical artists, used to resolve the selected chip when an
    * artistId is already attached. The picker still searches over the wire. */
   artists: ArtistProfile[];
+  /** When true, only `english` is selectable unless the draft already uses a legacy type. */
+  englishOnlyAuctionsLocked?: boolean;
 };
 
 function applyZodErrorsToForm(
@@ -62,13 +70,52 @@ function applyZodErrorsToForm(
   form.setError(key as FieldPath<AdminLotFormValues>, { message });
 }
 
-export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers, artists }: Props) {
+export function AdminLotForm({
+  mode,
+  lotId,
+  defaultValues,
+  categories,
+  sellers,
+  artists,
+  englishOnlyAuctionsLocked = false,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const formSchema = useMemo(() => {
+    if (!englishOnlyAuctionsLocked) return adminLotFormValuesSchema;
+    return adminLotFormValuesSchema.superRefine((data, ctx) => {
+      if (mode === "create" && data.auctionType !== "english") {
+        ctx.addIssue({
+          code: zod.ZodIssueCode.custom,
+          message: "Only the English auction type is available while English-only mode is on.",
+          path: ["auctionType"],
+        });
+      }
+      if (
+        mode === "edit" &&
+        defaultValues.auctionType === "english" &&
+        data.auctionType !== "english"
+      ) {
+        ctx.addIssue({
+          code: zod.ZodIssueCode.custom,
+          message: "This draft is English-only; you cannot switch it to another auction type.",
+          path: ["auctionType"],
+        });
+      }
+    });
+  }, [englishOnlyAuctionsLocked, mode, defaultValues.auctionType]);
+
   const form = useForm<AdminLotFormValues>({
-    resolver: zodResolver(adminLotFormValuesSchema),
+    resolver: zodResolver(formSchema),
     defaultValues,
   });
+
+  const auctionTypeOptions = useMemo((): readonly LotAuctionType[] => {
+    if (!englishOnlyAuctionsLocked) return lotAuctionTypes;
+    if (mode === "create") return ["english"];
+    if (defaultValues.auctionType !== "english") return lotAuctionTypes;
+    return ["english"];
+  }, [englishOnlyAuctionsLocked, mode, defaultValues.auctionType]);
 
   return (
     <Form {...form}>
@@ -182,9 +229,15 @@ export function AdminLotForm({ mode, lotId, defaultValues, categories, sellers, 
                 value={field.value}
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
-                options={lotAuctionTypes.map((t) => ({ value: t, label: t }))}
+                options={auctionTypeOptions.map((t) => ({ value: t, label: t }))}
                 triggerClassName="w-full font-body text-sm"
               />
+              {englishOnlyAuctionsLocked ? (
+                <p className="mt-2 font-body text-xs text-on-surface-variant">
+                  English-only mode is on: new drafts use the English auction type. Legacy
+                  non-English lots still appear here until migrated.
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}

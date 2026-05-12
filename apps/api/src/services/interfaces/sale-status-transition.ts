@@ -17,6 +17,7 @@ export interface ISaleStatusTransitionService {
     userRole: string,
     saleId: string,
     reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
   /** Cancel a single lot within a draft or scheduled sale. Useful when an admin
@@ -27,6 +28,7 @@ export interface ISaleStatusTransitionService {
     saleId: string,
     lotId: string,
     reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   /** Force a lot status change (admin override). Validates that the requested
@@ -39,5 +41,6 @@ export interface ISaleStatusTransitionService {
     lotId: string,
     status: LotStatus,
     reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 }

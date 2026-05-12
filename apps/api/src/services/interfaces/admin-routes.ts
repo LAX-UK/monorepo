@@ -3,10 +3,13 @@ import type {
   AdminCategory,
   ArtistProfile,
   Category,
+  ItemSubmissionStatus,
   LegalEntity,
   LegalEntityStatus,
   Lot,
+  LotStatus,
   UserRole,
+  UserStaffRole,
 } from "@auction/types";
 import type { Result } from "neverthrow";
 import type {
@@ -92,9 +95,16 @@ export interface IAdminDomainEventQueryService {
   listRedacted(input: {
     limit: number;
     eventTypePrefix?: string;
+    aggregateType?: string;
+    aggregateId?: string;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]>;
-  listForExport(input: { includePii: boolean }): Promise<RedactedDomainEventRow[]>;
+  listForExport(input: {
+    includePii: boolean;
+    aggregateType?: string;
+    aggregateId?: string;
+    limit?: number;
+  }): Promise<RedactedDomainEventRow[]>;
   formatExportCsv(rows: RedactedDomainEventRow[]): string;
 }
 
@@ -151,12 +161,28 @@ export interface IAdminEmailApplicationService {
   deleteSuppressionsBulk(emailHashes: string[]): Promise<number>;
 }
 
+export type ConveyorPipelineRowDto = {
+  submissionId: string;
+  title: string;
+  submissionStatus: ItemSubmissionStatus;
+  convertedLotId: string | null;
+  lotId: string | null;
+  lotStatus: LotStatus | null;
+  lotTitle: string | null;
+  artistReviewRequired: boolean | null;
+  archivedSeller: boolean | null;
+  assignedToUserId: string | null;
+  updatedAt: string;
+};
+
 export interface IAdminOpsReadService {
   getAnalyticsDashboard(range: DateRange): Promise<AdminAnalyticsDashboard>;
   getTodayMetrics(): Promise<AdminTodayMetrics>;
   getBidsPerMinute(): Promise<number>;
   listAttentionFeed(): Promise<AttentionItem[]>;
   countPendingSubmissions(filter: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
+  /** Submissions + converted lots for Arman-style conveyor (limit default 200). */
+  listConveyorPipeline(limit?: number): Promise<ConveyorPipelineRowDto[]>;
 }
 
 export interface IAdminRequestLifecycleService {
@@ -175,6 +201,15 @@ export interface IAdminUserApplicationService {
     actorUserId: string,
     targetUserId: string,
     role: string,
+    actorStaffRole?: string | null,
+    targetStaffRole?: import("@auction/types").UserStaffRole | null,
+  ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
+  setStaffRole(
+    actorRole: string,
+    actorUserId: string,
+    targetUserId: string,
+    staffRole: import("@auction/types").UserStaffRole | null,
+    actorStaffRole?: string | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
   suspend(actorRole: string, userId: string, reason: string | null): Promise<void>;
   unsuspend(actorRole: string, userId: string): Promise<void>;
@@ -192,15 +227,18 @@ export interface IAdminPaymentsApplicationService {
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>>;
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>>;
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>>;
 }
 
@@ -209,6 +247,7 @@ export interface IAdminLotsApplicationService {
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
+    adminStaffRole?: UserStaffRole | null,
   ): Promise<
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
@@ -227,9 +266,17 @@ export interface IAdminInvitationApplicationService {
     actorUserId: string;
     invitationId: string;
   }): Promise<Result<{ expiresAt: Date }, InvitationError>>;
-  preview(
-    token: string,
-  ): Promise<Result<{ email: string; targetRole: UserRole; expiresAt: Date }, InvitationError>>;
+  preview(token: string): Promise<
+    Result<
+      {
+        email: string;
+        targetRole: UserRole;
+        targetStaffRole: UserStaffRole | null;
+        expiresAt: Date;
+      },
+      InvitationError
+    >
+  >;
 }
 
 export interface IAdminLegalEntityLifecycleApplicationService {

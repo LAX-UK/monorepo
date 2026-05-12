@@ -76,6 +76,13 @@ const adminPlatformSections: PaletteSection[] = [
       { id: "a-new-lot", href: "/admin/lots/new", label: "New lot" },
       { id: "a-sales", href: "/admin/sales", label: "Sales" },
       { id: "a-subs", href: "/admin/submissions", label: "Submissions" },
+      {
+        id: "a-cr",
+        href: "/admin/condition-reports",
+        label: "Condition report requests",
+      },
+      { id: "a-fulfil", href: "/admin/lot-fulfilment", label: "Lot fulfilment queue" },
+      { id: "a-conveyor", href: "/admin/conveyor", label: "Conveyor pipeline" },
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
       { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
       { id: "a-users", href: "/admin/users", label: "Users" },
@@ -83,6 +90,7 @@ const adminPlatformSections: PaletteSection[] = [
       { id: "a-invitations", href: "/admin/invitations", label: "Invitations" },
       { id: "a-email-templates", href: "/admin/email/templates", label: "Email templates" },
       { id: "a-audit", href: "/admin/audit/events", label: "Audit log" },
+      { id: "a-audit-timeline", href: "/admin/audit/timeline", label: "Audit aggregate timeline" },
       { id: "a-settings", href: "/admin/settings/platform", label: "System settings" },
       { id: "a-cms", href: "/admin/cms", label: "CMS & pages" },
       { id: "a-saleroom", href: "/admin/saleroom", label: "Saleroom console" },
@@ -116,7 +124,7 @@ function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
 
 function isAdminFinanceOnly(sessionUser: SessionUser | null | undefined): boolean {
   if (!sessionUser) return false;
-  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole);
+  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null);
 }
 
 function hideLiveBiddingItems(sections: PaletteSection[]): PaletteSection[] {

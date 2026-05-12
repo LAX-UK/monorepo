@@ -19,6 +19,19 @@ export const userKycStatusEnum = pgEnum("user_kyc_status", [
   "rejected",
 ]);
 
+/** LAX internal staff role when `user.role` is `staff` (required; null only before backfill). */
+export const userStaffRoleEnum = pgEnum("user_staff_role", [
+  "super_admin",
+  "auction_manager",
+  "catalogue_manager",
+  "specialist",
+  "finance_ops",
+  "operations_fulfilment",
+  "content_marketing",
+  "support_concierge",
+  "staff_viewer",
+]);
+
 /** Better Auth core tables — extended with `role` on `user`. */
 export const user = pgTable(
   "user",
@@ -32,6 +45,8 @@ export const user = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: text("role").notNull().default("client"),
+    /** Internal LAX staff specialization; required when `role` is `staff`. */
+    staffRole: userStaffRoleEnum("staff_role"),
     emailStatus: text("email_status").notNull().default("ok"),
     emailStatusChangedAt: timestamp("email_status_changed_at", {
       mode: "date",

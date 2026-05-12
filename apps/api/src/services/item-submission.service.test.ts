@@ -143,7 +143,8 @@ describe("ItemSubmissionService", () => {
       update: vi.fn().mockResolvedValue(submitted),
     } as unknown as IItemSubmissionRepository;
     const users: IUserRepository = {
-      listIdsByRole: vi.fn().mockResolvedValue(["admin-a", "admin-b"]),
+      listIdsByRole: vi.fn(),
+      listStaffIdsForSubmissionNotifications: vi.fn().mockResolvedValue(["admin-a", "admin-b"]),
     } as unknown as IUserRepository;
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
@@ -450,7 +451,8 @@ describe("ItemSubmissionService", () => {
     );
     const r = await svc.getSubmissionForViewerApi({
       submissionId: "s1",
-      role: "administrator",
+      role: "staff",
+      staffRole: "super_admin",
       sellerLegalEntityId: "wrong-entity",
     });
     expect(r.isOk()).toBe(true);
