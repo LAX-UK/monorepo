@@ -14,6 +14,7 @@ const PUSH_TYPES = new Set([
   "lot_ending_soon",
   "watchlist_ending_soon",
   "payment_received",
+  "payment_due",
   "lot_cancelled",
 ]);
 

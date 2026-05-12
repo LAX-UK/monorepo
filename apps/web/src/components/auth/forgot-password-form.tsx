@@ -22,6 +22,11 @@ export function ForgotPasswordForm() {
           we&apos;ll email next steps. Accounts created with Google or Apple receive sign-in
           instructions instead of a reset link.
         </output>
+        <p className="font-body text-xs leading-relaxed text-on-surface-variant">
+          Check spam and promotions folders. If you still don&apos;t see anything, wait for the
+          resend timer and try again, or sign in with Google or Apple if you used those to create
+          your account.
+        </p>
         <Button
           type="button"
           variant="outline"

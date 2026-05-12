@@ -167,6 +167,20 @@ export class PaymentService {
     }
 
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id);
+
+    if (this.notificationDispatcher && !requiresManualReview) {
+      await this.notificationDispatcher.dispatch(
+        buyerId,
+        notificationRowToPayload(
+          this.notificationFactory.createPaymentDue(lot, buyerId, {
+            paymentId: created.id,
+            amount: created.amount,
+            checkoutUrl,
+          }),
+        ),
+      );
+    }
+
     return ok({ paymentId: created.id, checkoutUrl });
   }
 

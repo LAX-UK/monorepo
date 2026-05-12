@@ -30,6 +30,10 @@ import { createProjectorRunner } from "./projectors/runner.js";
 import { syncXeroPayoutBillViaApi } from "./projectors/xero-payout-bill-sync.js";
 
 const env = loadWorkerEnv();
+if (env.EMAIL_PROVIDER === "postmark" && !env.POSTMARK_SERVER_TOKEN?.trim()) {
+  console.error("FATAL: EMAIL_PROVIDER=postmark but POSTMARK_SERVER_TOKEN is empty");
+  process.exit(1);
+}
 if (env.SENTRY_DSN_WORKER) {
   Sentry.init({
     dsn: env.SENTRY_DSN_WORKER,

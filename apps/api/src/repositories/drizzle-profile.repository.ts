@@ -28,6 +28,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         kycStatus: user.kycStatus,
         signupPersona: user.signupPersona,
         deletionRequestedAt: user.deletionRequestedAt,
+        twoFactorEnabled: user.twoFactorEnabled,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -52,6 +53,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       kycStatus: row.kycStatus,
       signupPersona: persona,
       deletionRequestedAt: row.deletionRequestedAt ?? null,
+      twoFactorEnabled: row.twoFactorEnabled ?? false,
     };
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { buildVerifyEmailCallbackUrl } from "@/lib/auth/verify-email-callback-url";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -62,11 +63,11 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
                 (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
                   ? pathname
                   : "/dashboard";
-              const nextQs = `&next=${encodeURIComponent(next)}`;
+              const callbackURL = buildVerifyEmailCallbackUrl(user.email, next);
               void authClient
                 .sendVerificationEmail({
                   email: user.email,
-                  callbackURL: `/verify-email?email=${encodeURIComponent(user.email)}${nextQs}`,
+                  callbackURL,
                 })
                 .then(({ error }) => {
                   if (error) {

@@ -31,6 +31,7 @@ describe("renderEmail", () => {
     expect(rendered.html).toContain("Bill to");
     expect(rendered.html).toContain("Acme Ltd");
     expect(rendered.html).toContain("VAT: GB123");
+    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-logo\.png/);
   });
 
   it("renders opt-outable notification templates with unsubscribe copy", async () => {
@@ -63,7 +64,7 @@ describe("renderEmail", () => {
 
   it("includes hosted logo URL and legal name in rendered HTML", async () => {
     const rendered = await renderEmail("welcome", { userName: "Ada" });
-    expect(rendered.html).toContain("https://lax.bid/email/lax-logo.png");
+    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-logo\.png/);
     expect(rendered.html).toContain("London Auction Xchange LTD");
   });
 

@@ -22,6 +22,12 @@ export function useSignInController(nextHref: string) {
   const onSubmit = form.handleSubmit(async (data) => {
     const result = await run(data);
     if (result.ok) {
+      if (result.requiresTwoFactor) {
+        const safeNext = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
+        router.push(`/login/two-factor?next=${encodeURIComponent(safeNext)}`);
+        router.refresh();
+        return;
+      }
       const me = await fetchSessionUserAfterAuth();
       if (me) {
         router.push(

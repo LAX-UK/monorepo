@@ -60,6 +60,7 @@ export default async function SettingsIndexPage({
       emailVerified?: boolean;
       pendingNewEmail?: string | null;
       deletionRequestedAt?: string | null;
+      twoFactorEnabled?: boolean;
     };
   };
   const me = meBody.data;
@@ -106,6 +107,7 @@ export default async function SettingsIndexPage({
             email: me.email,
             ...(me.emailStatus !== undefined ? { emailStatus: me.emailStatus } : {}),
             ...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {}),
+            ...(me.twoFactorEnabled !== undefined ? { twoFactorEnabled: me.twoFactorEnabled } : {}),
           }}
           hasPendingEmailChange={Boolean(me.pendingNewEmail)}
           deletionRequestedAt={deletionRequestedAt}

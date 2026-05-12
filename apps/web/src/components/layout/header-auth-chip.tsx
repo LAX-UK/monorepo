@@ -24,6 +24,7 @@ type AuthUserLike = {
   image?: string | null;
   role?: string | null;
   suspended?: boolean | null;
+  twoFactorEnabled?: boolean | null;
 };
 
 const loginPillClassSolid =
@@ -41,6 +42,7 @@ function mapAuthUser(user: AuthUserLike): SessionUser {
     image: user.image ?? null,
   };
   if (typeof user.suspended === "boolean") out.suspended = user.suspended;
+  if (typeof user.twoFactorEnabled === "boolean") out.twoFactorEnabled = user.twoFactorEnabled;
   return out;
 }
 

@@ -10,6 +10,7 @@ import {
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
+import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
 
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
 
@@ -314,10 +315,30 @@ async function fanoutDisputeOpened(options: {
       idempotencyKey: `dispute-opened-notice:${options.eventId}:${recipient.userId}`,
     });
   }
-  if (options.adminEmailAddress) {
+  const staffOps = await listStaffOpsRecipients(options.db);
+  if (staffOps.length > 0) {
+    for (const s of staffOps) {
+      await options.emailService.enqueue({
+        template: "dispute-opened-notice",
+        to: s.email,
+        userId: s.id,
+        vars: {
+          recipientFirstName: s.firstName ?? "Team",
+          entityName: name,
+          amount,
+          currency: options.payload.currency,
+          reason: options.payload.reason ?? null,
+          supportContactEmail: options.supportContactEmail,
+        },
+        category: "transactional",
+        idempotencyKey: `dispute-opened-notice:${options.eventId}:ops:${s.id}`,
+      });
+    }
+  } else if (options.adminEmailAddress) {
     await options.emailService.enqueue({
       template: "dispute-opened-notice",
       to: options.adminEmailAddress,
+      recipientResolution: "snapshot",
       vars: {
         recipientFirstName: "Ops Team",
         entityName: name,
@@ -420,11 +441,32 @@ async function fanoutPaymentManualReview(options: {
     });
   }
 
-  if (adminEmailAddress) {
-    const base = webOrigin?.replace(/\/$/, "") ?? "";
+  const staffOps = await listStaffOpsRecipients(db);
+  const base = webOrigin?.replace(/\/$/, "") ?? "";
+  if (staffOps.length > 0) {
+    for (const s of staffOps) {
+      await emailService.enqueue({
+        template: "payment-manual-review-admin-notice",
+        to: s.email,
+        userId: s.id,
+        vars: {
+          paymentId,
+          lotTitle,
+          lotReference,
+          sellerEntityName,
+          amount: payload.amount,
+          currency: payload.currency,
+          adminReviewUrl: `${base}/admin/payments/manual-review`,
+        },
+        category: "transactional",
+        idempotencyKey: `payment-manual-review-admin-notice:${eventId}:ops:${s.id}`,
+      });
+    }
+  } else if (adminEmailAddress) {
     await emailService.enqueue({
       template: "payment-manual-review-admin-notice",
       to: adminEmailAddress,
+      recipientResolution: "snapshot",
       vars: {
         paymentId,
         lotTitle,
@@ -566,10 +608,30 @@ async function fanoutPayoutClawbackRequired(options: {
       idempotencyKey: `payout-clawback-required-notice:${options.eventId}:${recipient.userId}`,
     });
   }
-  if (options.adminEmailAddress) {
+  const staffOps = await listStaffOpsRecipients(options.db);
+  if (staffOps.length > 0) {
+    for (const s of staffOps) {
+      await options.emailService.enqueue({
+        template: "payout-clawback-required-notice",
+        to: s.email,
+        userId: s.id,
+        vars: {
+          recipientFirstName: s.firstName ?? "Team",
+          entityName: name,
+          payoutId: options.payoutId,
+          netAmount: options.payload.netAmount ?? "0.00",
+          currency: options.payload.currency,
+          adminPayoutsUrl: options.adminPayoutsUrl,
+        },
+        category: "transactional",
+        idempotencyKey: `payout-clawback-required-notice:${options.eventId}:ops:${s.id}`,
+      });
+    }
+  } else if (options.adminEmailAddress) {
     await options.emailService.enqueue({
       template: "payout-clawback-required-notice",
       to: options.adminEmailAddress,
+      recipientResolution: "snapshot",
       vars: {
         recipientFirstName: "Ops Team",
         entityName: name,

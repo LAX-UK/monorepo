@@ -156,7 +156,7 @@ export function createProjectorRunner(options: {
   }
 
   async function processPaymentRefundEmails() {
-    if (!options.emailService || !options.supportContactEmail || !options.adminEmailAddress) {
+    if (!options.emailService || !options.supportContactEmail) {
       return;
     }
     await ensureCursor("payment_refund_notify");
@@ -170,12 +170,7 @@ export function createProjectorRunner(options: {
   }
 
   async function processLotVoidedAntiShillingEmails() {
-    if (
-      !options.emailService ||
-      !options.supportContactEmail ||
-      !options.adminEmailAddress ||
-      !options.webOrigin
-    ) {
+    if (!options.emailService || !options.supportContactEmail || !options.webOrigin) {
       return;
     }
     await ensureCursor("lot_voided_anti_shilling_admin_notify");

@@ -55,7 +55,8 @@ export class PostmarkEmailService implements IEmailService {
     const suppressed = Boolean(suppression);
     const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
     const flaggedAddress = suppressed && input.category === "auth";
-    const shouldSnapshot = RECIPIENT_RESOLUTION[input.template] === "snapshot";
+    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
+    const shouldSnapshot = resolution === "snapshot";
     const now = new Date();
 
     const [inserted] = await this.db

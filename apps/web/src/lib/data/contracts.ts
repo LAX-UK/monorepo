@@ -79,6 +79,8 @@ export type SessionUser = {
   signupPersona?: "individual" | "organisation" | null;
   /** From GET /users/me when a self-serve account deletion has been requested. */
   deletionRequestedAt?: string | Date | null;
+  /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
+  twoFactorEnabled?: boolean;
 };
 
 /** Session / “who am I” without exposing auth client (DIP). */
