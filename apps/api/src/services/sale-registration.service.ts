@@ -1,7 +1,9 @@
 import type { Database } from "@auction/db";
-import { legalEntity, sale, saleRegistration, user } from "@auction/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { legalEntity, legalEntityMember, sale, saleRegistration, user } from "@auction/db/schema";
+import type { LegalEntityMemberRole } from "@auction/types";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 
 export type SaleRegistrationRow = {
@@ -22,6 +24,8 @@ export type SaleRegistrationAdminRow = SaleRegistrationRow & {
   userEmail: string | null;
   userName: string | null;
   buyerLegalEntityDisplayName: string | null;
+  /** Current membership role for (buyerLegalEntityId, userId); null if no active row. */
+  memberRole: LegalEntityMemberRole | null;
 };
 
 export type SaleRegistrationServiceError = {
@@ -80,6 +84,14 @@ export class SaleRegistrationService {
     );
     if (!membership) {
       return err({ message: "Not a member of the selected legal entity", status: 403 });
+    }
+
+    if (!memberRequiresSaleRegistration(membership.role)) {
+      return err({
+        message: "Sale registration is not required for this membership",
+        status: 400,
+        code: "no_registration_required",
+      });
     }
 
     const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
@@ -171,10 +183,19 @@ export class SaleRegistrationService {
         userEmail: user.email,
         userName: user.name,
         buyerLegalEntityDisplayName: legalEntity.displayName,
+        memberRole: legalEntityMember.role,
       })
       .from(saleRegistration)
       .leftJoin(user, eq(user.id, saleRegistration.userId))
       .leftJoin(legalEntity, eq(legalEntity.id, saleRegistration.buyerLegalEntityId))
+      .leftJoin(
+        legalEntityMember,
+        and(
+          eq(legalEntityMember.legalEntityId, saleRegistration.buyerLegalEntityId),
+          eq(legalEntityMember.userId, saleRegistration.userId),
+          isNull(legalEntityMember.removedAt),
+        ),
+      )
       .where(and(...conditions))
       .orderBy(desc(saleRegistration.requestedAt));
 
@@ -195,6 +216,7 @@ export class SaleRegistrationService {
       userEmail: r.userEmail,
       userName: r.userName,
       buyerLegalEntityDisplayName: r.buyerLegalEntityDisplayName,
+      memberRole: (r.memberRole ?? null) as LegalEntityMemberRole | null,
     }));
   }
 

@@ -219,14 +219,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const isAuthenticated = Boolean(session);
 
-  const registerToBidShow =
-    bundle.sale.deliveryMode === "online" &&
-    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
-
   const buyerEntities =
     actingCtx?.memberships
       .filter((m) => m.status === "approved" || m.status === "restricted")
-      .map((m) => ({ id: m.id, displayName: m.displayName })) ?? [];
+      .map((m) => ({
+        id: m.id,
+        displayName: m.displayName,
+        memberRole: m.role,
+      })) ?? [];
+
+  const registerToBidShow =
+    bundle.sale.deliveryMode === "online" &&
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
+    buyerEntities.some((e) => e.memberRole === "buyer_agent");
 
   const myRegistrations = mySaleRegs.map((r) => ({
     buyerLegalEntityId: r.buyerLegalEntityId,

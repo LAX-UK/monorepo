@@ -9,6 +9,7 @@ import {
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
+import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./interfaces/bid-eligibility.js";
 
 function parseMoneyCap(raw: string | null | undefined): number | null {
@@ -53,7 +54,24 @@ export class BidEligibilityService implements IBidEligibility {
     }
 
     const saleId = lotRow.saleId;
-    if (saleId) {
+
+    const [mem] = await this.db
+      .select({ role: legalEntityMember.role })
+      .from(legalEntityMember)
+      .where(
+        and(
+          eq(legalEntityMember.legalEntityId, buyerLegalEntityId),
+          eq(legalEntityMember.userId, placedByUserId),
+          isNull(legalEntityMember.removedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!mem) {
+      return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
+    }
+
+    if (saleId && memberRequiresSaleRegistration(mem.role)) {
       const [reg] = await this.db
         .select({
           status: saleRegistration.status,
@@ -87,19 +105,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    const [mem] = await this.db
-      .select({ role: legalEntityMember.role })
-      .from(legalEntityMember)
-      .where(
-        and(
-          eq(legalEntityMember.legalEntityId, buyerLegalEntityId),
-          eq(legalEntityMember.userId, placedByUserId),
-          isNull(legalEntityMember.removedAt),
-        ),
-      )
-      .limit(1);
-
-    if (mem?.role === "buyer_agent") {
+    if (memberRequiresSaleRegistration(mem.role)) {
       const now = new Date();
       const rows = await this.db
         .select({
