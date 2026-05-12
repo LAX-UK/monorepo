@@ -10,6 +10,7 @@ import {
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
+import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
 
 const PROJECTOR_NAME = "payment_refund_notify";
 
@@ -28,7 +29,7 @@ export async function processPaymentRefundNotify(options: {
   log: pino.Logger;
   emailService: IEmailService;
   supportContactEmail: string;
-  adminEmailAddress: string;
+  adminEmailAddress?: string | undefined;
 }): Promise<void> {
   const { db, log, emailService, supportContactEmail, adminEmailAddress } = options;
 
@@ -153,23 +154,48 @@ export async function processPaymentRefundNotify(options: {
         });
       }
 
-      await emailService.enqueue({
-        template: "payment-refund-notice",
-        to: adminEmailAddress,
-        vars: {
-          recipientFirstName: "Ops Team",
-          entityName,
-          lotTitle,
-          lotReference,
-          refundAmount,
-          refundCurrency,
-          eventKind,
-          reason,
-          supportContactEmail,
-        },
-        category: "transactional",
-        idempotencyKey: `payment-refund-notice:${row.id}:admin`,
-      });
+      const staffOps = await listStaffOpsRecipients(db);
+      if (staffOps.length > 0) {
+        for (const s of staffOps) {
+          await emailService.enqueue({
+            template: "payment-refund-notice",
+            to: s.email,
+            userId: s.id,
+            vars: {
+              recipientFirstName: s.firstName ?? "Team",
+              entityName,
+              lotTitle,
+              lotReference,
+              refundAmount,
+              refundCurrency,
+              eventKind,
+              reason,
+              supportContactEmail,
+            },
+            category: "transactional",
+            idempotencyKey: `payment-refund-notice:${row.id}:ops:${s.id}`,
+          });
+        }
+      } else if (adminEmailAddress) {
+        await emailService.enqueue({
+          template: "payment-refund-notice",
+          to: adminEmailAddress,
+          recipientResolution: "snapshot",
+          vars: {
+            recipientFirstName: "Ops Team",
+            entityName,
+            lotTitle,
+            lotReference,
+            refundAmount,
+            refundCurrency,
+            eventKind,
+            reason,
+            supportContactEmail,
+          },
+          category: "transactional",
+          idempotencyKey: `payment-refund-notice:${row.id}:admin`,
+        });
+      }
 
       maxId = row.id;
     } catch (err) {

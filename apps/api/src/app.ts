@@ -51,6 +51,12 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   /** Process is listening; no DB/Redis (used by container health checks during boot). */
   app.get("/health/live", (c) => c.json({ status: "ok" }));
 
+  app.get("/health/email", (c) =>
+    c.json({
+      provider: env.EMAIL_PROVIDER === "postmark" ? "postmark" : "console",
+    }),
+  );
+
   app.use("*", createRequestIdMiddleware());
   app.use("*", createMetricsMiddleware());
   app.use(

@@ -103,6 +103,19 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     expect(requestPasswordReset).not.toHaveBeenCalled();
   });
 
+  it("still triggers Better Auth reset for an unverified credential user", async () => {
+    const db = buildFakeDb({
+      userResult: [{ id: "u-unv", email: "new@example.com", name: "N" }],
+      accountResult: [{ providerId: "credential" }],
+    });
+    const { app, requestPasswordReset } = mountAuth({ db });
+
+    const res = await callForgotPassword(app, "new@example.com");
+    expect(res.status).toBe(200);
+    await flushSideEffects();
+    expect(requestPasswordReset).toHaveBeenCalledTimes(1);
+  });
+
   it("returns {ok:true} for a credential user and triggers Better Auth reset exactly once", async () => {
     const db = buildFakeDb({
       userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],

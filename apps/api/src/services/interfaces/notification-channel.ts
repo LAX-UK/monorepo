@@ -3,6 +3,13 @@ export type NotificationPayload = {
   title: string;
   message: string;
   lotId?: string | undefined;
+  /** Structured extras for email/push rendering (not persisted on in-app rows). */
+  meta?: {
+    paymentId?: string;
+    amount?: string;
+    invoiceUrl?: string | null;
+    invoiceNumber?: string;
+  };
 };
 
 export type NotificationChannelKind = "in_app" | "push" | "email" | "whatsapp";

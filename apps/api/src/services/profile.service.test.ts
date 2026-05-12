@@ -10,6 +10,7 @@ describe("ProfileService", () => {
         name: "User",
         image: "uploads/pending/avatar/u1/old.webp",
         role: "client",
+        staffRole: null,
         emailVerified: true,
         emailStatus: "ok" as const,
         emailStatusChangedAt: null,
@@ -18,6 +19,7 @@ describe("ProfileService", () => {
         kycStatus: "unverified" as const,
         signupPersona: null,
         deletionRequestedAt: null,
+        twoFactorEnabled: false,
       }),
     };
     const writer = { updateProfile: vi.fn().mockResolvedValue(undefined) };

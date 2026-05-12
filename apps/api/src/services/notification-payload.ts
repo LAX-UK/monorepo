@@ -7,5 +7,6 @@ export function notificationRowToPayload(row: CreateNotificationRow): Notificati
     title: row.title,
     message: row.message,
     lotId: row.lotId,
+    ...(row.meta != null ? { meta: row.meta } : {}),
   };
 }

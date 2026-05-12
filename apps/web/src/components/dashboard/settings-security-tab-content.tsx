@@ -1,5 +1,6 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
 import { SecurityPasswordForm } from "@/components/auth/security-password-form";
+import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { AutoClearQueryParams } from "@/components/dashboard/auto-clear-query-params";
 import { SettingsConnectedAccounts } from "@/components/dashboard/settings-connected-accounts";
 import { SettingsSection } from "@/components/dashboard/settings-section";
@@ -22,6 +23,7 @@ export type SettingsSecurityTabProps = {
     email: string;
     emailStatus?: string;
     emailVerified?: boolean;
+    twoFactorEnabled?: boolean;
   };
   hasPendingEmailChange: boolean;
   deletionRequestedAt: Date | null;
@@ -178,21 +180,7 @@ export function SettingsSecurityTabContent({
 
       <SettingsConnectedAccounts userEmail={user.email} />
 
-      <Card className="rounded-xl border border-outline-variant/20 shadow-sm">
-        <CardHeader>
-          <CardTitle className="font-headline text-base font-semibold">
-            Two-factor authentication
-          </CardTitle>
-          <CardDescription>
-            Authenticator (TOTP) is available on your account. Use your authenticator app when
-            prompted after sign-in; staff roles may require it once enabled organisation-wide.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="font-body text-sm text-on-surface-variant">
-          Enrolment and verification flows are handled through the sign-in experience; contact
-          support if you lose access to your authenticator.
-        </CardContent>
-      </Card>
+      <TwoFactorStatusCard twoFactorEnabled={user.twoFactorEnabled === true} />
 
       <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Organisations" titleAs="h3" eyebrow bordered={false}>

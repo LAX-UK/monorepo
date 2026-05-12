@@ -6,6 +6,13 @@ export type CreateNotificationRow = {
   title: string;
   message: string;
   lotId?: string | undefined;
+  /** Ephemeral fields for email/push channels (not stored on `notification` rows). */
+  meta?: {
+    paymentId?: string;
+    amount?: string;
+    invoiceUrl?: string | null;
+    invoiceNumber?: string;
+  };
 };
 
 export interface INotificationWriteRepository {

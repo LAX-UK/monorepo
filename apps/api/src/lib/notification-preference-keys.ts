@@ -92,6 +92,8 @@ export function notificationTypeToTemplate(type: string): string | null {
       return "lot-ended-seller";
     case "payment_received":
       return "payment-receipt";
+    case "payment_due":
+      return "payment-invoice";
     default:
       return null;
   }

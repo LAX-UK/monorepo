@@ -12,7 +12,6 @@ import DisputeOpenedNoticeEmail, {
   subject as disputeOpenedNoticeSubject,
 } from "./templates/dispute-opened-notice.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
-import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued.js";
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
@@ -101,10 +100,6 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-receipt": {
     subject: paymentReceiptSubject,
     component: (vars) => <PaymentReceiptEmail {...vars} />,
-  },
-  "invoice-issued": {
-    subject: invoiceIssuedSubject,
-    component: (vars) => <InvoiceIssuedEmail {...vars} />,
   },
   "payment-invoice": {
     subject: paymentInvoiceSubject,

@@ -51,6 +51,8 @@ export type ProfileMeRow = {
   signupPersona: "individual" | "organisation" | null;
   /** When set, a self-serve deletion has been requested (GDPR). */
   deletionRequestedAt: Date | null;
+  /** TOTP / backup-code 2FA enabled for this account (Better Auth). */
+  twoFactorEnabled: boolean;
 };
 
 export interface IProfileReader {

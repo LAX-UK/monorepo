@@ -512,6 +512,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         kycStatus: row.kycStatus,
         signupPersona: row.signupPersona,
         deletionRequestedAt: row.deletionRequestedAt,
+        twoFactorEnabled: row.twoFactorEnabled,
       },
     });
   });

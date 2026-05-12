@@ -41,7 +41,7 @@ const TONE_DOT: Record<PillTone, string> = {
 };
 
 type ComplianceStatusStripProps = {
-  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus">;
+  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
   kyc: KycStatusSummaryDto | null;
   /** Number of saved addresses; 0 means none on file. */
   addressesCount: number;
@@ -162,15 +162,17 @@ export function ComplianceStatusStrip({
     tone: addressesCount > 0 ? "ok" : "warn",
   });
 
-  // 2FA — currently the platform exposes no read endpoint for enrolment state.
-  // Link to security settings so users can manage it; tone is neutral.
+  const twoFaOn = user.twoFactorEnabled === true;
   pills.push({
     id: "2fa",
     icon: CheckCircle2,
     label: "2FA",
-    value: "Manage",
-    href: "/dashboard/settings/security",
-    tone: "info",
+    value: twoFaOn ? "On" : "Off",
+    href: "/dashboard/settings/security/two-factor",
+    tone: twoFaOn ? "ok" : "warn",
+    hint: twoFaOn
+      ? "Authenticator sign-in is enabled"
+      : "Add an authenticator for stronger protection",
   });
 
   return (

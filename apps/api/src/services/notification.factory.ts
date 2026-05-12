@@ -86,4 +86,24 @@ export class NotificationFactory {
       lotId: lot.id,
     };
   }
+
+  createPaymentDue(
+    lot: Lot,
+    buyerId: string,
+    input: { paymentId: string; amount: string; checkoutUrl: string | null },
+  ): CreateNotificationRow {
+    return {
+      userId: buyerId,
+      type: "payment_due",
+      title: `Payment due — ${lot.title}`,
+      message: `Complete payment of ${input.amount} GBP for this lot.`,
+      lotId: lot.id,
+      meta: {
+        paymentId: input.paymentId,
+        amount: input.amount,
+        invoiceUrl: input.checkoutUrl,
+        invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
+      },
+    };
+  }
 }

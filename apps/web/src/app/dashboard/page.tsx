@@ -116,7 +116,13 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
       ) : null}
       <DashboardOverviewView
         vm={vm}
-        user={user ?? { emailVerified: false, emailStatus: "ok" }}
+        user={
+          user ?? {
+            emailVerified: false,
+            emailStatus: "ok",
+            twoFactorEnabled: false,
+          }
+        }
         kyc={kyc}
         orgOnboarding={orgOnboarding}
         addressesCount={addresses.length}
