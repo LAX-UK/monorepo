@@ -67,6 +67,16 @@ function paymentColumns(
       cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
     },
     {
+      accessorKey: "fulfilmentStatus",
+      header: "Fulfilment",
+      cell: ({ row }) => (
+        <span className="max-w-[9rem] font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          {row.original.fulfilmentStatus ? row.original.fulfilmentStatus.replaceAll("_", " ") : "—"}
+        </span>
+      ),
+      enableSorting: false,
+    },
+    {
       id: "xero",
       header: "Xero",
       cell: ({ row }) =>
@@ -156,6 +166,12 @@ function PaymentDrawerContent({ p, onClose }: { p: AdminPaymentTableRow; onClose
             <StatusBadge variant={paymentStatusToBadgeVariant(p.status)}>{p.status}</StatusBadge>
           </dd>
         </div>
+        <div>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Fulfilment</dt>
+          <dd className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
+            {p.fulfilmentStatus ? p.fulfilmentStatus.replaceAll("_", " ") : "—"}
+          </dd>
+        </div>
       </dl>
 
       <AdminPaymentXeroPanel
@@ -197,7 +213,8 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
       (r) =>
         r.lotTitle.toLowerCase().includes(needle) ||
         r.buyerId.toLowerCase().includes(needle) ||
-        r.id.toLowerCase().includes(needle),
+        r.id.toLowerCase().includes(needle) ||
+        (r.fulfilmentStatus?.toLowerCase().includes(needle) ?? false),
     );
   }, [rows, q]);
 
@@ -223,6 +240,11 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
           </div>
           <p className="mt-2 font-mono text-[10px] text-on-surface-variant">{p.buyerId}</p>
           <p className="mt-1 tabular-nums text-sm">{p.amount}</p>
+          {p.fulfilmentStatus ? (
+            <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+              Fulfilment: {p.fulfilmentStatus.replaceAll("_", " ")}
+            </p>
+          ) : null}
           <Button
             type="button"
             variant="secondary"

@@ -49,7 +49,7 @@ export default async function AdminUsersPage({
 
   const kpis: AdminUsersKpiStrip = {
     totalMatches: total,
-    adminsOnPage: rawRows.filter((r) => r.role === "administrator").length,
+    adminsOnPage: rawRows.filter((r) => r.role === "staff").length,
     suspendedOnPage: rawRows.filter((r) => r.suspendedAt).length,
     pageCount: rawRows.length,
   };
@@ -76,12 +76,7 @@ export default async function AdminUsersPage({
         },
         ...userRoles.map((role) => ({
           id: role,
-          label:
-            role === "administrator"
-              ? "Administrators"
-              : role === "accountant"
-                ? "Accountants"
-                : "Clients",
+          label: role === "staff" ? "Staff" : "Clients",
           href: chipCommon({ role, suspended: suspendedOnly }),
           active: roleFilter === role,
         })),

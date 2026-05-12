@@ -11,6 +11,9 @@ export type Bid = {
   isWinning: boolean;
   isAutoBid: boolean;
   maxAutoBidAmount: string | null;
+  /** Origin of bid: web, absentee, telephone, saleroom, … */
+  placedVia?: string | null;
+  telephoneBookingId?: string | null;
   createdAt: Date;
 };
 

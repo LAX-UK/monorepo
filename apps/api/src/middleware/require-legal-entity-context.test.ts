@@ -35,18 +35,20 @@ function repo(
 
 function appWithMiddleware(
   mw: ReturnType<typeof createRequireLegalEntityContext>,
-  opts: { setUserId?: string | undefined; setUserRole?: string } = {},
+  opts: { setUserId?: string | undefined; setUserRole?: string; setUserStaffRole?: string } = {},
 ) {
   const app = new Hono<{
     Variables: {
       userId?: string;
       userRole?: string;
+      userStaffRole?: string | null;
       legalEntityContext?: ActiveMembership;
     };
   }>();
   app.use("*", async (c, next) => {
     if (opts.setUserId !== undefined) c.set("userId", opts.setUserId);
     if (opts.setUserRole !== undefined) c.set("userRole", opts.setUserRole);
+    if (opts.setUserStaffRole !== undefined) c.set("userStaffRole", opts.setUserStaffRole);
     await next();
   });
   app.use("*", mw);
@@ -144,7 +146,11 @@ describe("createRequireLegalEntityContext (required)", () => {
         }),
       },
     });
-    const app = appWithMiddleware(mw, { setUserId: USER_ID, setUserRole: "administrator" });
+    const app = appWithMiddleware(mw, {
+      setUserId: USER_ID,
+      setUserRole: "staff",
+      setUserStaffRole: "super_admin",
+    });
 
     const res = await app.request("/", {
       headers: {
@@ -182,7 +188,11 @@ describe("createRequireLegalEntityContext (required)", () => {
         validateForRequest: vi.fn().mockResolvedValue({ ok: false, reason: "expired" }),
       },
     });
-    const app = appWithMiddleware(mw, { setUserId: USER_ID, setUserRole: "administrator" });
+    const app = appWithMiddleware(mw, {
+      setUserId: USER_ID,
+      setUserRole: "staff",
+      setUserStaffRole: "super_admin",
+    });
 
     const res = await app.request("/", {
       headers: {
@@ -216,7 +226,11 @@ describe("createRequireLegalEntityContext (required)", () => {
         validateForRequest: vi.fn().mockResolvedValue({ ok: false, reason: "not_found" }),
       },
     });
-    const app = appWithMiddleware(mw, { setUserId: USER_ID, setUserRole: "administrator" });
+    const app = appWithMiddleware(mw, {
+      setUserId: USER_ID,
+      setUserRole: "staff",
+      setUserStaffRole: "super_admin",
+    });
 
     const res = await app.request("/", {
       headers: {

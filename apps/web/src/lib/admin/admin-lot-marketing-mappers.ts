@@ -8,6 +8,11 @@ import { z } from "zod";
  * {@link AdminLotMarketingForm}'s ArtistAttributionPanel (lot PATCH), not in
  * this marketing-details form. */
 export const adminLotMarketingFormValuesSchema = z.object({
+  estimate: z.object({
+    low: z.string().max(32),
+    high: z.string().max(32),
+    currency: z.string().max(8),
+  }),
   conditionReport: z.object({
     summary: z.string().max(5000),
     details: z.string().max(10_000),
@@ -26,7 +31,13 @@ export const adminLotMarketingFormValuesSchema = z.object({
 export type AdminLotMarketingFormValues = z.infer<typeof adminLotMarketingFormValuesSchema>;
 
 export function marketingDetailsToFormValues(md: LotMarketingDetails): AdminLotMarketingFormValues {
+  const est = md.estimate;
   return {
+    estimate: {
+      low: est?.low ?? "",
+      high: est?.high ?? "",
+      currency: est?.currency ?? "GBP",
+    },
     conditionReport: {
       summary: md.conditionReport?.summary ?? "",
       details: md.conditionReport?.details ?? "",
@@ -50,6 +61,8 @@ export function marketingDetailsToFormValues(md: LotMarketingDetails): AdminLotM
 export function formValuesToApiPatch(
   values: AdminLotMarketingFormValues,
 ): UpdateLotMarketingDetailsInput {
+  const e = values.estimate;
+  const estimateHas = Boolean(e.low.trim() && e.high.trim() && e.currency.trim());
   const c = values.conditionReport;
   const condHas = Boolean(c.summary.trim() || c.details.trim() || c.downloadUrl.trim());
   const provenance = values.provenance
@@ -66,6 +79,13 @@ export function formValuesToApiPatch(
     }))
     .filter((e) => e.venue.length > 0);
   return {
+    estimate: estimateHas
+      ? {
+          low: e.low.trim(),
+          high: e.high.trim(),
+          currency: e.currency.trim(),
+        }
+      : null,
     conditionReport: condHas
       ? {
           summary: c.summary.trim() || undefined,

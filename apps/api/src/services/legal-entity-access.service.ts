@@ -1,6 +1,10 @@
 import type { ActingContextCookieV1 } from "@auction/types";
 import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
-import { normalizeUserRole } from "@auction/types";
+import {
+  canAccessPlatformAdminRoutes,
+  normalizeUserRoleOrClient,
+  normalizeUserStaffRole,
+} from "@auction/types";
 import type { ImpersonationAuditService } from "./impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "./impersonation-session.service.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
@@ -40,10 +44,11 @@ export class LegalEntityAccessService {
   async getLegalEntityDetailForUser(input: {
     userId: string;
     userRole: string | undefined;
+    userStaffRole?: string | null | undefined;
     legalEntityId: string;
     actingLegalEntityCookie: ActingContextCookieV1 | null;
   }): Promise<GetLegalEntityDetailResult> {
-    const { userId, userRole, legalEntityId, actingLegalEntityCookie } = input;
+    const { userId, userRole, userStaffRole, legalEntityId, actingLegalEntityCookie } = input;
     const membership = await this.legalEntityRepository.findActiveMembership(userId, legalEntityId);
     if (membership) {
       const entity = await this.legalEntityRepository.findById(legalEntityId);
@@ -64,7 +69,9 @@ export class LegalEntityAccessService {
       };
     }
 
-    if (normalizeUserRole(userRole) === "administrator") {
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (canAccessPlatformAdminRoutes(role, staff)) {
       const cookiePayload = actingLegalEntityCookie;
       if (cookiePayload?.e === legalEntityId && cookiePayload.i?.sid) {
         const validation = await this.impersonationSessionService.validateForRequest({

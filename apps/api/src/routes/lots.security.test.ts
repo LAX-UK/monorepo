@@ -10,7 +10,7 @@ import { createLotRoutes } from "./lots.js";
 const lotId = "11111111-1111-4111-8111-111111111111";
 const bidderId = "bidder-1";
 
-function mount(user: { id: string; role: string } | null) {
+function mount(user: { id: string; role: string; staffRole?: string } | null) {
   const app = new Hono();
   const lotServiceCreate = vi.fn();
   const lotRepo: ILotRepository = {
@@ -33,7 +33,13 @@ function mount(user: { id: string; role: string } | null) {
     ]),
   } as unknown as IBidRepository;
   const watchlist = {} as unknown as IWatchlistRepository;
-  const lotCore = new LotService(lotRepo, bids, watchlist, null, null);
+  const lotCore = new LotService({
+    lotRepo,
+    bids,
+    watchlist,
+    jobScheduler: null,
+    lotNotifications: null,
+  });
   const lotService = Object.assign(lotCore, { create: lotServiceCreate });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
@@ -68,7 +74,7 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to administrators", async () => {
-    const res = await mount({ id: "admin-1", role: "administrator" }).app.request(
+    const res = await mount({ id: "admin-1", role: "staff", staffRole: "super_admin" }).app.request(
       `/lots/${lotId}/bids`,
     );
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
@@ -102,7 +108,11 @@ describe("POST /lots persists artistId from request body", () => {
   }
 
   it("forwards artistId straight through to the lot service", async () => {
-    const { app, lotServiceCreate } = mount({ id: "admin-1", role: "administrator" });
+    const { app, lotServiceCreate } = mount({
+      id: "admin-1",
+      role: "staff",
+      staffRole: "super_admin",
+    });
     lotServiceCreate.mockResolvedValue({
       isOk: () => true,
       isErr: () => false,

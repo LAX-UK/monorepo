@@ -1,4 +1,5 @@
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
+import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import {
   findUserLatestBidMeta,
   mapAuctionSessionHeaderVM,
@@ -18,6 +19,7 @@ import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
   getServerLotBids,
   getServerLotById,
+  getServerLotDocuments,
   getServerLotReader,
 } from "@/lib/data/http/lots.server";
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
@@ -70,30 +72,37 @@ export default async function ArtworkPage({ params }: PageProps) {
     : Promise.resolve(null);
 
   const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
-  const [initialBids, seller, relatedRaw, watchlist, saleBundle, artistForAccordion, kycSummary] =
-    await Promise.all([
-      getServerLotBids(id, 30).catch(() => []),
-      sellerLookupId
-        ? publicReader.getById(sellerLookupId).catch(() => null)
-        : Promise.resolve(null),
-      reader
-        .list({
-          ...(sellerLookupId ? { sellerId: sellerLookupId } : {}),
-          limit: 12,
-          status: "active",
-          sort: "endingAsc",
-        })
-        .catch(() => []),
-      watchlistPromise,
-      auction.saleId
-        ? getServerSaleWithLots(auction.saleId).catch(() => null)
-        : Promise.resolve(null),
-      // Catalogue artist FK, then seller user id for rows without attribution.
-      publicReader
-        .getById(auction.artistId ?? sellerLookupId)
-        .catch(() => null),
-      kycSummaryPromise,
-    ]);
+  const [
+    initialBids,
+    seller,
+    relatedRaw,
+    watchlist,
+    saleBundle,
+    artistForAccordion,
+    kycSummary,
+    lotDocuments,
+  ] = await Promise.all([
+    getServerLotBids(id, 30).catch(() => []),
+    sellerLookupId ? publicReader.getById(sellerLookupId).catch(() => null) : Promise.resolve(null),
+    reader
+      .list({
+        ...(sellerLookupId ? { sellerId: sellerLookupId } : {}),
+        limit: 12,
+        status: "active",
+        sort: "endingAsc",
+      })
+      .catch(() => []),
+    watchlistPromise,
+    auction.saleId
+      ? getServerSaleWithLots(auction.saleId).catch(() => null)
+      : Promise.resolve(null),
+    // Catalogue artist FK, then seller user id for rows without attribution.
+    publicReader
+      .getById(auction.artistId ?? sellerLookupId)
+      .catch(() => null),
+    kycSummaryPromise,
+    getServerLotDocuments(id).catch(() => []),
+  ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
     id: b.id,
@@ -119,6 +128,7 @@ export default async function ArtworkPage({ params }: PageProps) {
     lot: auction,
     artist: artistForAccordion,
     initialHistory,
+    documents: lotDocuments,
   });
   const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
     l.sellerId === auction.sellerId ? sellerName : "Seller",
@@ -147,6 +157,10 @@ export default async function ArtworkPage({ params }: PageProps) {
   );
 
   const isOnsiteSale = saleBundle?.sale.deliveryMode === "onsite";
+
+  const conditionReportCtaShow =
+    !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
+  const kycApprovedForCr = session?.kycStatus === "approved";
 
   const queueVMs = mapSaleLotsToQueueVMs(auction, saleLots, (l) =>
     l.sellerId === auction.sellerId ? sellerName : "Seller",
@@ -230,6 +244,15 @@ export default async function ArtworkPage({ params }: PageProps) {
             shareUrl={shareUrl}
             followSlot={followSlot}
             bidPanel={onlineBidPanel}
+            bidPanelTop={
+              <ArtworkConditionReportCta
+                lotId={auction.id}
+                loginNextPath={lotPath(auction)}
+                isAuthenticated={Boolean(session)}
+                show={conditionReportCtaShow}
+                kycApproved={kycApprovedForCr}
+              />
+            }
           />
         )}
       </LotPortsProvider>

@@ -3,6 +3,7 @@ import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { saleToAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,6 +16,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   ]);
   if (!bundle) notFound();
   const { sale } = bundle;
+  const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
   if (sale.status !== "draft") {
     return (
       <AppScreen className="max-w-xl space-y-4">
@@ -43,6 +45,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         saleId={id}
         defaultValues={saleToAdminSaleFormValues(sale)}
         categories={categories}
+        englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
       />
     </AppScreen>
   );

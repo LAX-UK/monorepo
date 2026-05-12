@@ -1,9 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
+import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerLotFulfilmentForWinner } from "@/lib/data/http/payments.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -31,6 +33,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   );
   const addressRes = await authedServerFetch("/users/me/addresses");
   const addresses = addressRes.ok ? ((await addressRes.json()) as { data: unknown[] }).data : [];
+
+  const fulfilment = await getServerLotFulfilmentForWinner(lotId).catch(() => null);
 
   const img = auction.images[0];
 
@@ -91,12 +95,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                   2 · Confirm
                 </span>
               </nav>
-              <div className="mb-8 flex items-center gap-2 lg:mb-10">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-                <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
-                  Awaiting payment
-                </span>
-              </div>
+              <LotCheckoutFulfilmentStrip fulfilment={fulfilment} />
 
               <CheckoutPurchasePanel
                 sessionUser={user}

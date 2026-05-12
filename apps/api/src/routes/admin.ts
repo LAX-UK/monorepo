@@ -1,7 +1,10 @@
+import type { lotFulfilment } from "@auction/db/schema";
+
+type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
 import {
   type UserRole,
-  normalizeUserRole,
   normalizeUserRoleOrClient,
+  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import {
@@ -10,24 +13,42 @@ import {
   adminBulkEmailSuppressionsBodySchema,
   adminBulkUsersBodySchema,
   adminCategoryListQuerySchema,
+  adminConditionReportListQuerySchema,
+  adminConveyorPipelineQuerySchema,
   adminCreateArtistBodySchema,
   adminCreateCategoryBodySchema,
+  adminDomainEventsExportQuerySchema,
   adminDomainEventsQuerySchema,
   adminFinanceDisputeDomainEventsQuerySchema,
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
+  adminLotFulfilmentListQuerySchema,
+  adminLotFulfilmentLotIdParamSchema,
+  adminRejectSaleRegistrationBodySchema,
+  adminSaleRegistrationListQuerySchema,
+  adminSaleRegistrationParamsSchema,
+  adminSaleroomSaleIdParamSchema,
   adminSetRoleBodySchema,
+  adminSetStaffRoleBodySchema,
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
+  adminTelephonePlaceBidBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
   adminUserListQuerySchema,
   artistIdParamSchema,
   categoryIdParamSchema,
+  conditionReportRequestIdParamSchema,
+  declineConditionReportRequestBodySchema,
   emailHashParamSchema,
+  fulfillConditionReportRequestBodySchema,
+  lotFulfilmentCollectBodySchema,
+  lotFulfilmentReleaseBodySchema,
+  lotFulfilmentShipBodySchema,
   lotIdParamSchema,
   paymentIdParamSchema,
+  saleroomAdvanceLotBodySchema,
   userIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -37,11 +58,15 @@ import { z } from "zod";
 import type { Container } from "../container.js";
 import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { presentLotImages } from "../lib/media-presenters.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   createRequireCapability,
+  requireAuctionManage,
   requireFinanceAccess,
+  requireOperationsFulfilment,
   requirePlatformAdmin,
+  requireSpecialistCatalogueOrAuctionManage,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
@@ -80,21 +105,25 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     isSuspended: (id) => container.admin.requestLifecycle.isSuspended(id),
   });
 
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
   r.use("*", requireAuth);
 
-  const platform = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const platform = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
   platform.use("*", requirePlatformAdmin);
   const requireLegalEntityRead = createRequireCapability("legal_entity.read");
   platform.use(
     "*",
-    createMiddleware<{ Variables: { userId?: string; userRole?: string } }>(async (c, next) => {
-      if (normalizeUserRole(c.get("userRole")) === "administrator") {
-        await container.admin.requestLifecycle.reconcileAdminRequestCookie({
-          actorUserId: c.get("userId") as string,
-          cookieHeader: c.req.header("Cookie"),
-        });
-      }
+    createMiddleware<{
+      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    }>(async (c, next) => {
+      await container.admin.requestLifecycle.reconcileAdminRequestCookie({
+        actorUserId: c.get("userId") as string,
+        cookieHeader: c.req.header("Cookie"),
+      });
       await next();
     }),
   );
@@ -108,6 +137,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         status: q.status,
       });
       return c.json({ data: { count } });
+    },
+  );
+
+  /** Seller intake → catalogue → live: submissions joined to converted lots (recent first). */
+  platform.get(
+    "/conveyor-pipeline",
+    zValidator("query", adminConveyorPipelineQuerySchema),
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const data = await container.admin.ops.listConveyorPipeline(limit);
+      return c.json({ data });
     },
   );
 
@@ -147,6 +187,423 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   });
 
   platform.get(
+    "/condition-report-requests",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("query", adminConditionReportListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const { items, total } = await container.conditionReportService.listForAdmin({
+        status: q.status,
+        lotId: q.lotId,
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return c.json({ data: { items, total, limit: q.limit, offset: q.offset } });
+    },
+  );
+
+  platform.post(
+    "/condition-report-requests/:id/fulfill",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("param", conditionReportRequestIdParamSchema),
+    zValidator("json", fulfillConditionReportRequestBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.conditionReportService.fulfill({
+        id,
+        fulfilledByUserId: userId,
+        conditionReport: body.conditionReport,
+        ...(body.responseNote !== undefined ? { responseNote: body.responseNote } : {}),
+        ...(body.responseAttachmentUploadId !== undefined
+          ? { responseAttachmentUploadId: body.responseAttachmentUploadId }
+          : {}),
+      });
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json(
+          { error: e.message, ...(e.code ? { code: e.code } : {}) },
+          asHttpStatus(e.status),
+        );
+      }
+      const data = await presentLotImages(container.mediaUrlResolver, result.value);
+      return c.json({ data });
+    },
+  );
+
+  platform.post(
+    "/condition-report-requests/:id/decline",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("param", conditionReportRequestIdParamSchema),
+    zValidator("json", declineConditionReportRequestBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.conditionReportService.decline({
+        id,
+        fulfilledByUserId: userId,
+        ...(body.responseNote !== undefined ? { responseNote: body.responseNote } : {}),
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/registrations",
+    requireAuctionManage,
+    zValidator("param", z.object({ saleId: z.string().uuid() })),
+    zValidator("query", adminSaleRegistrationListQuerySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const query = c.req.valid("query");
+      const items = await container.saleRegistrationService.listForSaleAdmin({
+        saleId,
+        status: query.status,
+      });
+      return c.json({ data: { items } });
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/registrations/:registrationId/approve",
+    requireAuctionManage,
+    zValidator("param", adminSaleRegistrationParamsSchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleRegistrationService.approve({
+        saleId,
+        registrationId,
+        decidedByUserId: userId,
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/registrations/:registrationId/reject",
+    requireAuctionManage,
+    zValidator("param", adminSaleRegistrationParamsSchema),
+    zValidator("json", adminRejectSaleRegistrationBodySchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.saleRegistrationService.reject({
+        saleId,
+        registrationId,
+        decidedByUserId: userId,
+        ...(reason !== undefined ? { reason } : {}),
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/saleroom/telephone-bids",
+    requireAuctionManage,
+    zValidator("json", adminTelephonePlaceBidBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const placement = {
+        placedVia: "telephone" as const,
+        ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
+      };
+      const result = await container.bidService.placeBid({
+        placedByUserId: body.buyerUserId,
+        buyerLegalEntityId: body.buyerLegalEntityId,
+        lotId: body.lotId,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+        placement,
+      });
+      return result.match(
+        (bid) => c.json({ data: bid }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/saleroom/session",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const data = await container.saleroomService.getSessionWithRecentEvents(saleId);
+      return c.json({ data });
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/go-live",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.goLive({ saleId, actorUserId: userId });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/pause",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.pause({ saleId, actorUserId: userId });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/resume",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.resume({ saleId, actorUserId: userId });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/advance",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", saleroomAdvanceLotBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { lotId } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.advanceToLot({
+        saleId,
+        lotId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/hammer",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.hammerCurrentLot({
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/no-sale",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.noSaleCurrentLot({
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/close",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.saleroomService.closeSession({ saleId, actorUserId: userId });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/lot-fulfilment",
+    requireOperationsFulfilment,
+    zValidator("query", adminLotFulfilmentListQuerySchema),
+    async (c) => {
+      const query = adminLotFulfilmentListQuerySchema.parse(c.req.valid("query"));
+      const data = await container.lotFulfilmentService.listForAdmin(
+        query.status === undefined ? {} : { status: query.status as LotFulfilmentStatusCol },
+      );
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/lot-fulfilment/:lotId",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const data = await container.lotFulfilmentService.getByLotIdForAdmin(lotId);
+      return c.json({ data });
+    },
+  );
+
+  platform.post(
+    "/lot-fulfilment/:lotId/release",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    zValidator("json", lotFulfilmentReleaseBodySchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.lotFulfilmentService.approveRelease({
+        lotId,
+        actorUserId: userId,
+        ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      });
+      return result.match(
+        (row) => c.json({ data: row }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/lot-fulfilment/:lotId/ship",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    zValidator("json", lotFulfilmentShipBodySchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.lotFulfilmentService.markShipped({
+        lotId,
+        actorUserId: userId,
+        carrier: body.carrier,
+        trackingNumber: body.trackingNumber,
+      });
+      return result.match(
+        (row) => c.json({ data: row }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/lot-fulfilment/:lotId/ready-for-collection",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.lotFulfilmentService.markReadyForCollection({
+        lotId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (row) => c.json({ data: row }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/lot-fulfilment/:lotId/delivered",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.lotFulfilmentService.markDelivered({
+        lotId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (row) => c.json({ data: row }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/lot-fulfilment/:lotId/collected",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    zValidator("json", lotFulfilmentCollectBodySchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.lotFulfilmentService.markCollected({
+        lotId,
+        actorUserId: userId,
+        collectedBy: body.collectedBy,
+      });
+      return result.match(
+        (row) => c.json({ data: row }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
     "/legal-entities/browse",
     requireLegalEntityRead,
     zValidator("query", adminLegalEntityBrowseQuerySchema),
@@ -175,8 +632,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
-      const result = await container.admin.payments.releaseManualReviewForCapture(userId, role, id);
+      const result = await container.admin.payments.releaseManualReviewForCapture(
+        userId,
+        role,
+        id,
+        staffRole,
+      );
       return result.match(
         () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -191,8 +654,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
-      const result = await container.admin.payments.refundManualReviewPayment(userId, role, id);
+      const result = await container.admin.payments.refundManualReviewPayment(
+        userId,
+        role,
+        id,
+        staffRole,
+      );
       return result.match(
         () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -226,7 +695,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const userId = c.get("userId") as string;
       const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
       const { id } = c.req.valid("param");
-      const out = await container.admin.lots.approveWithdrawalRequest(userId, role, id);
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const out = await container.admin.lots.approveWithdrawalRequest(userId, role, id, staff);
       if (!out.ok) {
         return c.json(
           out.code !== undefined ? { error: out.error, code: out.code } : { error: out.error },
@@ -242,38 +712,54 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/audit/domain-events",
     zValidator("query", adminDomainEventsQuerySchema),
     async (c) => {
-      const { limit, eventTypePrefix } = c.req.valid("query");
+      const { limit, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
-        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
+        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
         includePii,
         ...(eventTypePrefix !== undefined ? { eventTypePrefix } : {}),
+        ...(aggregateType !== undefined && aggregateId !== undefined
+          ? { aggregateType, aggregateId }
+          : {}),
       });
       return c.json({ data });
     },
   );
 
   /** GET /admin/audit/domain-events/export — redacted JSON/CSV export (PII bypass requires audit.read_pii). */
-  platform.get("/audit/domain-events/export", async (c) => {
-    const role = normalizeUserRoleOrClient(c.get("userRole"));
-    const includePii =
-      c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
-    const format = c.req.query("format") === "csv" ? "csv" : "json";
+  platform.get(
+    "/audit/domain-events/export",
+    zValidator("query", adminDomainEventsExportQuerySchema),
+    async (c) => {
+      const role = normalizeUserRoleOrClient(c.get("userRole"));
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const includePii =
+        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
+      const q = c.req.valid("query");
+      const format = q.format;
 
-    const redacted = await container.admin.domainEvents.listForExport({ includePii });
+      const redacted = await container.admin.domainEvents.listForExport({
+        includePii,
+        limit: q.limit,
+        ...(q.aggregateType !== undefined && q.aggregateId !== undefined
+          ? { aggregateType: q.aggregateType, aggregateId: q.aggregateId }
+          : {}),
+      });
 
-    if (format === "json") {
-      return c.json({ data: redacted });
-    }
+      if (format === "json") {
+        return c.json({ data: redacted });
+      }
 
-    const csv = container.admin.domainEvents.formatExportCsv(redacted);
-    return c.text(csv, 200, {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="domain-events.csv"',
-    });
-  });
+      const csv = container.admin.domainEvents.formatExportCsv(redacted);
+      return c.text(csv, 200, {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="domain-events.csv"',
+      });
+    },
+  );
 
   platform.get("/categories", zValidator("query", adminCategoryListQuerySchema), async (c) => {
     const q = c.req.valid("query");
@@ -445,10 +931,41 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminSetRoleBodySchema),
     async (c) => {
       const { userId } = c.req.valid("param");
-      const { role } = c.req.valid("json");
+      const { role, staffRole: targetStaffRole } = c.req.valid("json");
       const actorRole = c.get("userRole") ?? "client";
       const actorId = c.get("userId") as string;
-      const setOut = await container.admin.users.setRole(actorRole, actorId, userId, role);
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const setOut = await container.admin.users.setRole(
+        actorRole,
+        actorId,
+        userId,
+        role,
+        actorStaff,
+        targetStaffRole ?? null,
+      );
+      if (!setOut.ok) {
+        return c.json({ error: setOut.message }, asHttpStatus(setOut.status));
+      }
+      return c.json({ ok: true });
+    },
+  );
+
+  platform.patch(
+    "/users/:userId/staff-role",
+    zValidator("param", userIdParamSchema),
+    zValidator("json", adminSetStaffRoleBodySchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const { staffRole } = c.req.valid("json");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const setOut = await container.admin.users.setStaffRole(
+        actorRole,
+        c.get("userId") as string,
+        userId,
+        staffRole,
+        actorStaff,
+      );
       if (!setOut.ok) {
         return c.json({ error: setOut.message }, asHttpStatus(setOut.status));
       }
@@ -492,7 +1009,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/impersonation/lookup",
     zValidator("query", impersonationLookupQuerySchema),
     async (c) => {
-      if (normalizeUserRole(c.get("userRole")) !== "administrator") {
+      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
+      const actorStaff = normalizeUserStaffRole(
+        c.get("userStaffRole") as string | null | undefined,
+      );
+      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
         return c.json({ error: "Forbidden" }, 403);
       }
       const { legalEntityId } = c.req.valid("query");
@@ -507,7 +1028,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", impersonationRecordFailedEndBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      if (normalizeUserRole(c.get("userRole")) !== "administrator") {
+      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
+      const actorStaff = normalizeUserStaffRole(
+        c.get("userStaffRole") as string | null | undefined,
+      );
+      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
         return c.json({ error: "Forbidden" }, 403);
       }
       const { sessionId, legalEntityId } = c.req.valid("json");
@@ -529,7 +1054,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", impersonationStartBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      if (normalizeUserRole(c.get("userRole")) !== "administrator") {
+      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
+      const actorStaff = normalizeUserStaffRole(
+        c.get("userStaffRole") as string | null | undefined,
+      );
+      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
         return c.json({ error: "Forbidden" }, 403);
       }
       const { legalEntityId } = c.req.valid("json");
@@ -552,7 +1081,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post("/impersonation/end", async (c) => {
     const userId = c.get("userId") as string;
-    if (normalizeUserRole(c.get("userRole")) !== "administrator") {
+    const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
+    const actorStaff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
       return c.json({ error: "Forbidden" }, 403);
     }
     const out = await container.admin.impersonation.endImpersonation({
@@ -569,18 +1100,21 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   attachAdminInvitationRoutes(platform, container.admin.invitations);
 
-  const finance = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const finance = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
   finance.use("*", requireFinanceAccess);
 
-  /** GET /admin/finance/dispute-domain-events — `payment.dispute*` only (accountant-safe). */
+  /** GET /admin/finance/dispute-domain-events — `payment.dispute*` only (finance-shell-safe). */
   finance.get(
     "/finance/dispute-domain-events",
     zValidator("query", adminFinanceDisputeDomainEventsQuerySchema),
     async (c) => {
       const { limit } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
-        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii");
+        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
         eventTypePrefix: "payment.dispute",
@@ -592,8 +1126,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   finance.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";
+    const staffRole = c.get("userStaffRole") ?? null;
     const { id } = c.req.valid("param");
-    const result = await container.admin.payments.syncPaymentFromXeroAsAdmin(role, id);
+    const result = await container.admin.payments.syncPaymentFromXeroAsAdmin(role, id, staffRole);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),

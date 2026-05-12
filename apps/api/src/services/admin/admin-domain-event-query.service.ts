@@ -1,11 +1,42 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import { redactDomainEventPayload } from "@auction/types";
-import { desc, like } from "drizzle-orm";
+import { and, asc, desc, eq, like } from "drizzle-orm";
+import { formatDomainEventsExportCsv } from "../../lib/domain-event-export-csv.js";
 import type {
   IAdminDomainEventQueryService,
   RedactedDomainEventRow,
 } from "../interfaces/admin-routes.js";
+
+const DOMAIN_EVENT_LIST_COLUMNS = {
+  id: domainEvent.id,
+  aggregateType: domainEvent.aggregateType,
+  aggregateId: domainEvent.aggregateId,
+  eventType: domainEvent.eventType,
+  payload: domainEvent.payload,
+  actorUserId: domainEvent.actorUserId,
+  actingLegalEntityId: domainEvent.actingLegalEntityId,
+  occurredAt: domainEvent.occurredAt,
+};
+
+function redactRows(
+  rows: Array<{
+    id: number;
+    aggregateType: string;
+    aggregateId: string;
+    eventType: string;
+    payload: unknown;
+    actorUserId: string | null;
+    actingLegalEntityId: string | null;
+    occurredAt: Date;
+  }>,
+  includePii: boolean,
+): RedactedDomainEventRow[] {
+  return rows.map((r) => ({
+    ...r,
+    payload: redactDomainEventPayload(r.eventType, r.payload, { includePii }),
+  }));
+}
 
 export class AdminDomainEventQueryService implements IAdminDomainEventQueryService {
   constructor(private readonly db: Database) {}
@@ -13,73 +44,57 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
   async listRedacted(input: {
     limit: number;
     eventTypePrefix?: string;
+    aggregateType?: string;
+    aggregateId?: string;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]> {
     const prefix = input.eventTypePrefix?.trim();
-    let q = this.db
-      .select({
-        id: domainEvent.id,
-        aggregateType: domainEvent.aggregateType,
-        aggregateId: domainEvent.aggregateId,
-        eventType: domainEvent.eventType,
-        payload: domainEvent.payload,
-        actorUserId: domainEvent.actorUserId,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-        occurredAt: domainEvent.occurredAt,
-      })
-      .from(domainEvent);
+    const aggType = input.aggregateType?.trim();
+    const aggId = input.aggregateId?.trim();
+    if (aggType && aggId) {
+      const rows = await this.db
+        .select(DOMAIN_EVENT_LIST_COLUMNS)
+        .from(domainEvent)
+        .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)))
+        .orderBy(asc(domainEvent.occurredAt), asc(domainEvent.id))
+        .limit(input.limit);
+      return redactRows(rows, input.includePii);
+    }
+    let q = this.db.select(DOMAIN_EVENT_LIST_COLUMNS).from(domainEvent);
     if (prefix) {
       q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
     }
     const rows = await q.orderBy(desc(domainEvent.id)).limit(input.limit);
-    return rows.map((r) => ({
-      ...r,
-      payload: redactDomainEventPayload(r.eventType, r.payload, { includePii: input.includePii }),
-    }));
+    return redactRows(rows, input.includePii);
   }
 
-  async listForExport(input: { includePii: boolean }): Promise<RedactedDomainEventRow[]> {
+  async listForExport(input: {
+    includePii: boolean;
+    aggregateType?: string;
+    aggregateId?: string;
+    limit?: number;
+  }): Promise<RedactedDomainEventRow[]> {
+    const aggType = input.aggregateType?.trim();
+    const aggId = input.aggregateId?.trim();
+    const cap = Math.min(5000, Math.max(1, input.limit ?? 5000));
+    if (aggType && aggId) {
+      const rows = await this.db
+        .select(DOMAIN_EVENT_LIST_COLUMNS)
+        .from(domainEvent)
+        .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)))
+        .orderBy(asc(domainEvent.occurredAt), asc(domainEvent.id))
+        .limit(cap);
+      return redactRows(rows, input.includePii);
+    }
     const rows = await this.db
-      .select({
-        id: domainEvent.id,
-        aggregateType: domainEvent.aggregateType,
-        aggregateId: domainEvent.aggregateId,
-        eventType: domainEvent.eventType,
-        payload: domainEvent.payload,
-        actorUserId: domainEvent.actorUserId,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-        occurredAt: domainEvent.occurredAt,
-      })
+      .select(DOMAIN_EVENT_LIST_COLUMNS)
       .from(domainEvent)
       .orderBy(desc(domainEvent.id))
-      .limit(5000);
-    return rows.map((r) => ({
-      ...r,
-      payload: redactDomainEventPayload(r.eventType, r.payload, { includePii: input.includePii }),
-    }));
+      .limit(cap);
+    return redactRows(rows, input.includePii);
   }
 
   formatExportCsv(rows: RedactedDomainEventRow[]): string {
-    const esc = (v: string) => {
-      if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-      return v;
-    };
-    const header =
-      "id,aggregate_type,aggregate_id,event_type,actor_user_id,acting_legal_entity_id,occurred_at,payload_json\n";
-    const body = rows
-      .map((r) =>
-        [
-          String(r.id),
-          esc(r.aggregateType),
-          esc(r.aggregateId),
-          esc(r.eventType),
-          esc(r.actorUserId ?? ""),
-          esc(r.actingLegalEntityId ?? ""),
-          esc(r.occurredAt.toISOString()),
-          esc(JSON.stringify(r.payload)),
-        ].join(","),
-      )
-      .join("\n");
-    return header + body;
+    return formatDomainEventsExportCsv(rows);
   }
 }

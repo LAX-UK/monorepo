@@ -33,7 +33,7 @@ export default async function SellerPayoutsPage() {
     shell: "client",
     loginNext: "/dashboard/seller/payouts",
   });
-  const { acting } = await resolveActingContext(user.role);
+  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
   if (!acting) redirect("/dashboard");
 
   const headers = { [X_LEGAL_ENTITY_ID_HEADER]: acting.id };

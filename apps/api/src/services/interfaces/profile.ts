@@ -40,6 +40,7 @@ export type ProfileMeRow = {
   name: string;
   image: string | null;
   role: string;
+  staffRole: string | null;
   emailVerified: boolean;
   emailStatus: "ok" | "bounced" | "complained";
   emailStatusChangedAt: Date | null;

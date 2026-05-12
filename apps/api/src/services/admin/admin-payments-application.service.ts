@@ -10,22 +10,30 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>> {
-    return this.payments.releaseManualReviewForCapture(adminUserId, userRole, paymentId);
+    return this.payments.releaseManualReviewForCapture(
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRole,
+    );
   }
 
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>> {
-    return this.payments.refundManualReviewPayment(adminUserId, userRole, paymentId);
+    return this.payments.refundManualReviewPayment(adminUserId, userRole, paymentId, userStaffRole);
   }
 
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    return this.payments.syncPaymentFromXeroAsAdmin(userRole, paymentId);
+    return this.payments.syncPaymentFromXeroAsAdmin(userRole, paymentId, userStaffRole);
   }
 }

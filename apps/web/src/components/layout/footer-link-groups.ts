@@ -11,7 +11,7 @@ export const aboutLinks: FooterLink[] = [
 ];
 
 export const serviceLinks: FooterLink[] = [
-  { href: "/dashboard/submissions/new", label: "Sell to Us" },
+  { href: "/dashboard/submissions/new", label: "Sell with Us" },
   { href: "/contact", label: "Client services" },
   { href: "/archive", label: "Past auctions" },
 ];

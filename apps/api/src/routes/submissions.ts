@@ -28,7 +28,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
 
   const requireSubmissionEntityContext = container.requireSubmissionsLegalEntityContext;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; legalEntityContext?: LegalEntityContext };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: LegalEntityContext;
+    };
   }>();
 
   r.post(
@@ -104,9 +109,11 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       const { id } = c.req.valid("param");
       const role = (c.get("userRole") ?? "client") as UserRole;
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const staff = (c.get("userStaffRole") as string | null | undefined) ?? null;
       const result = await container.itemSubmissionService.getSubmissionForViewerApi({
         submissionId: id,
         role,
+        staffRole: staff,
         sellerLegalEntityId: ctx.legalEntityId,
       });
       if (result.isErr()) {
@@ -133,10 +140,12 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
       } catch {
         raw = {};
       }
+      const staff = (c.get("userStaffRole") as string | null | undefined) ?? null;
       const out = await container.itemSubmissionService.patchSubmissionFromRequestBody({
         rawBody: raw,
         submissionId: id,
         role,
+        staffRole: staff,
         userId,
         sellerLegalEntityId: ctx.legalEntityId,
       });

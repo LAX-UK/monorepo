@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
+import { user, userStaffRoleEnum } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 
 export const invitationStatusEnum = pgEnum("invitation_status", [
@@ -16,6 +16,8 @@ export const userInvitation = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
     targetRole: text("target_role").notNull(),
+    /** Required when `targetRole` is `staff`. */
+    targetStaffRole: userStaffRoleEnum("target_staff_role"),
     tokenHash: text("token_hash").notNull().unique(),
     status: invitationStatusEnum("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),

@@ -20,7 +20,7 @@ export default async function AdminStripeConnectRequirementsPage() {
     shell: "staff",
     loginNext: "/admin/legal-entities/stripe-connect-requirements",
   });
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin");
   }
 

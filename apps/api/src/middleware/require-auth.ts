@@ -7,7 +7,7 @@ export type RequireAuthOptions = {
 
 export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireAuthOptions) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string };
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>(async (c, next) => {
     const user = await authenticator.getSessionUser(c.req.raw.headers);
     if (!user) {
@@ -18,6 +18,7 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
     }
     c.set("userId", user.id);
     c.set("userRole", user.role);
+    c.set("userStaffRole", user.staffRole ?? null);
     await next();
   });
 }

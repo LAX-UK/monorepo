@@ -1,4 +1,8 @@
-import { normalizeUserRole } from "@auction/types";
+import {
+  canAccessPlatformAdminRoutes,
+  normalizeUserRoleOrClient,
+  normalizeUserStaffRole,
+} from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import type { ImpersonationSessionService } from "../services/impersonation-session.service.js";
@@ -21,6 +25,7 @@ export async function resolveLegalEntityContextFromHeader(
   input: {
     userId: string;
     userRole: string | undefined;
+    userStaffRole?: string | null | undefined;
     legalEntityId: string;
     cookieHeader: string | null | undefined;
   },
@@ -28,8 +33,9 @@ export async function resolveLegalEntityContextFromHeader(
   const membership = await repo.findActiveMembership(input.userId, input.legalEntityId);
   if (membership) return { kind: "ok", membership };
 
-  const role = normalizeUserRole(input.userRole);
-  if (role === "administrator") {
+  const role = normalizeUserRoleOrClient(input.userRole);
+  const staff = normalizeUserStaffRole(input.userStaffRole ?? undefined);
+  if (canAccessPlatformAdminRoutes(role, staff)) {
     const cookiePayload = parseActingLegalEntityCookieFromHeader(input.cookieHeader);
     if (cookiePayload && cookiePayload.e === input.legalEntityId && cookiePayload.i?.sid) {
       const validation = await opts.impersonationSessions?.validateForRequest({
@@ -99,7 +105,7 @@ export type RequireLegalEntityContextOptions = {
  * active member of that entity, and sets `legalEntityContext` on the Hono
  * variables. Must run *after* the auth middleware that sets `userId` and
  * `userRole`.
- * * platform `administrator` users may present a structured acting
+ * * platform staff (non–finance-shell-only) may present a structured acting
  * cookie with a valid (non-expired) impersonation session for the same entity
  * id as the header when they are **not** members.
  */
@@ -108,7 +114,12 @@ export function createRequireLegalEntityContext(
   opts: RequireLegalEntityContextOptions = {},
 ) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; legalEntityContext?: LegalEntityContext };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: LegalEntityContext;
+    };
   }>(async (c, next) => {
     const userId = c.get("userId");
     if (!userId) {
@@ -131,6 +142,7 @@ export function createRequireLegalEntityContext(
     const resolved = await resolveLegalEntityContextFromHeader(repo, opts, {
       userId,
       userRole: c.get("userRole"),
+      userStaffRole: c.get("userStaffRole"),
       legalEntityId: headerVal,
       cookieHeader: c.req.header("Cookie"),
     });
@@ -156,7 +168,12 @@ export function createSubmissionsLegalEntityContext(
   > = {},
 ) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; legalEntityContext?: LegalEntityContext };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: LegalEntityContext;
+    };
   }>(async (c, next) => {
     const userId = c.get("userId");
     if (!userId) {
@@ -168,6 +185,7 @@ export function createSubmissionsLegalEntityContext(
       const resolved = await resolveLegalEntityContextFromHeader(repo, opts, {
         userId,
         userRole: c.get("userRole"),
+        userStaffRole: c.get("userStaffRole"),
         legalEntityId: headerVal,
         cookieHeader: c.req.header("Cookie"),
       });

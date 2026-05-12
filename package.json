@@ -17,7 +17,7 @@
     "db:migrate": "pnpm --filter @auction/db db:migrate",
     "db:migrate:prod": "pnpm --filter @auction/db db:migrate:prod",
     "db:migrate:docker": "docker compose run --rm migrate",
-    "db:seed:docker": "docker compose exec -T api node packages/db/dist/seed.js",
+    "db:seed:docker": "docker compose run --rm migrate node packages/db/dist/seed.js",
     "db:seed:docker:prod": "docker compose -f docker-compose.prod.yml exec -T api node packages/db/dist/seed.js",
     "db:studio": "pnpm --filter @auction/db db:studio",
     "db:seed": "pnpm --filter @auction/db db:seed",

@@ -7,9 +7,11 @@ import type { AdminMetricsService } from "./admin-metrics.service.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
@@ -36,38 +38,66 @@ export type PlaceBidWithIdempotencyOutcome =
   | { type: "err"; error: BidError }
   | { type: "ok"; body: { data: Bid } };
 
-export class BidService {
-  constructor(
-    private readonly repos: IRepositoryFactory,
-    private readonly strategyFactory: ILotStrategyFactory,
-    private readonly cache: ICacheProvider,
-    private readonly notifications: NotificationService,
-    private readonly notificationDispatcher: NotificationDispatcher | null,
-    private readonly lotJobs: LotJobSchedulerPort | null,
-    private readonly adminMetrics: AdminMetricsService | null = null,
-    private readonly saleModeLookup: ISaleModeLookup | null = null,
-    private readonly antiShillingGuard: IAntiShillingGuard | null = null,
-    private readonly domainEventPublisher: DomainEventPublisher | null = null,
-    private readonly legalEntityRepository: ILegalEntityRepository | null = null,
-    private readonly idempotencyStore: IIdempotencyStore | null = null,
-  ) {}
+export type BidServiceOptions = {
+  repos: IRepositoryFactory;
+  strategyFactory: ILotStrategyFactory;
+  cache: ICacheProvider;
+  notifications: NotificationService;
+  notificationDispatcher: NotificationDispatcher | null;
+  lotJobs: LotJobSchedulerPort | null;
+  adminMetrics?: AdminMetricsService | null;
+  saleModeLookup?: ISaleModeLookup | null;
+  antiShillingGuard?: IAntiShillingGuard | null;
+  domainEventPublisher?: DomainEventPublisher | null;
+  legalEntityRepository?: ILegalEntityRepository | null;
+  idempotencyStore?: IIdempotencyStore | null;
+  bidEligibility?: IBidEligibility | null;
+  englishOnlyAuctions?: boolean;
+};
 
-  async placeBid(
-    placedByUserId: string,
-    buyerLegalEntityIdOrLotId: string,
-    lotIdOrAmount: string | number,
-    amountOrMaxAutoBidAmount?: number,
-    maybeMaxAutoBidAmount?: number,
-  ): Promise<Result<Bid, BidError>> {
+export class BidService implements IBidPlacer {
+  private readonly repos: IRepositoryFactory;
+  private readonly strategyFactory: ILotStrategyFactory;
+  private readonly cache: ICacheProvider;
+  private readonly notifications: NotificationService;
+  private readonly notificationDispatcher: NotificationDispatcher | null;
+  private readonly lotJobs: LotJobSchedulerPort | null;
+  private readonly adminMetrics: AdminMetricsService | null;
+  private readonly saleModeLookup: ISaleModeLookup | null;
+  private readonly antiShillingGuard: IAntiShillingGuard | null;
+  private readonly domainEventPublisher: DomainEventPublisher | null;
+  private readonly legalEntityRepository: ILegalEntityRepository | null;
+  private readonly idempotencyStore: IIdempotencyStore | null;
+  private readonly bidEligibility: IBidEligibility | null;
+  private readonly englishOnlyAuctions: boolean;
+
+  constructor(opts: BidServiceOptions) {
+    this.repos = opts.repos;
+    this.strategyFactory = opts.strategyFactory;
+    this.cache = opts.cache;
+    this.notifications = opts.notifications;
+    this.notificationDispatcher = opts.notificationDispatcher;
+    this.lotJobs = opts.lotJobs;
+    this.adminMetrics = opts.adminMetrics ?? null;
+    this.saleModeLookup = opts.saleModeLookup ?? null;
+    this.antiShillingGuard = opts.antiShillingGuard ?? null;
+    this.domainEventPublisher = opts.domainEventPublisher ?? null;
+    this.legalEntityRepository = opts.legalEntityRepository ?? null;
+    this.idempotencyStore = opts.idempotencyStore ?? null;
+    this.bidEligibility = opts.bidEligibility ?? null;
+    this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+  }
+
+  async placeBid(input: PlaceBidInput): Promise<Result<Bid, BidError>> {
+    const {
+      placedByUserId,
+      buyerLegalEntityId,
+      lotId,
+      amount,
+      maxAutoBidAmount,
+      placement: bidPlacement,
+    } = input;
     try {
-      const legacyCall = typeof lotIdOrAmount === "number";
-      const buyerLegalEntityId = legacyCall ? placedByUserId : buyerLegalEntityIdOrLotId;
-      const lotId = legacyCall ? buyerLegalEntityIdOrLotId : lotIdOrAmount;
-      const amount = legacyCall ? lotIdOrAmount : amountOrMaxAutoBidAmount;
-      const maxAutoBidAmount = legacyCall ? amountOrMaxAutoBidAmount : maybeMaxAutoBidAmount;
-      if (typeof lotId !== "string" || typeof amount !== "number") {
-        return err(new BidError("Invalid bid input", 400));
-      }
       // Read-only mode gate: reject bids targeting lots whose parent sale is
       // marketing-only (onsite). Done outside the bid transaction so it stays
       // a fast deny-path that does not contend with `findByIdForUpdate`.
@@ -92,6 +122,17 @@ export class BidService {
           );
         }
       }
+      if (this.bidEligibility) {
+        const elig = await this.bidEligibility.assertCanPlaceBid({
+          placedByUserId,
+          buyerLegalEntityId,
+          lotId,
+          amount,
+        });
+        if (elig.isErr()) {
+          return err(elig.error);
+        }
+      }
       let prevWinnerId: string | null = null;
       const { created, lot, nextEnd, endedEarly } = await this.repos.runInTransaction(
         async ({ lot: lots, bid: bids }, tx) => {
@@ -104,6 +145,17 @@ export class BidService {
           }
           if (Date.now() > lotRow.endTime.getTime()) {
             throw new BidError("Lot has ended", 400);
+          }
+          if (
+            this.englishOnlyAuctions &&
+            lotRow.auctionType !== "english" &&
+            lotRow.auctionType !== "buy_it_now"
+          ) {
+            throw new BidError(
+              "Self-service bidding is only available for English and buy-now lots while English-only mode is enabled.",
+              400,
+              "english_only_catalogue",
+            );
           }
           if (
             this.antiShillingGuard &&
@@ -146,6 +198,10 @@ export class BidService {
             isWinning: false,
             isAutoBid: hasMax,
             maxAutoBidAmount: maxStr,
+            ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
+            ...(bidPlacement?.telephoneBookingId != null
+              ? { telephoneBookingId: bidPlacement.telephoneBookingId }
+              : {}),
           });
 
           if (this.antiShillingGuard) {
@@ -384,6 +440,8 @@ export class BidService {
         isWinning: false,
         isAutoBid: true,
         maxAutoBidAmount: challenger.ceiling.toFixed(2),
+        placedVia: null,
+        telephoneBookingId: null,
       });
       currentPrice = nextAmt;
       winnerId = challenger.bidderId;
@@ -407,6 +465,8 @@ export class BidService {
     lotId: string;
     amount: number;
     maxAutoBidAmount?: number;
+    placedVia?: string;
+    telephoneBookingId?: string;
   }): Promise<PlaceBidWithIdempotencyOutcome> {
     const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
     if (idempotencyKey && this.idempotencyStore) {
@@ -420,13 +480,23 @@ export class BidService {
       return { type: "err", error: new BidError("Bid placement is not configured", 503) };
     }
     const buyerEntity = await this.legalEntityRepository.ensurePersonalEntity(placedByUserId);
-    const result = await this.placeBid(
+    const placement =
+      input.placedVia != null || input.telephoneBookingId != null
+        ? {
+            ...(input.placedVia != null ? { placedVia: input.placedVia } : {}),
+            ...(input.telephoneBookingId != null
+              ? { telephoneBookingId: input.telephoneBookingId }
+              : {}),
+          }
+        : undefined;
+    const result = await this.placeBid({
       placedByUserId,
-      buyerEntity.id,
+      buyerLegalEntityId: buyerEntity.id,
       lotId,
       amount,
-      maxAutoBidAmount,
-    );
+      ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
+      ...(placement !== undefined ? { placement } : {}),
+    });
     if (result.isErr()) {
       return { type: "err", error: result.error };
     }

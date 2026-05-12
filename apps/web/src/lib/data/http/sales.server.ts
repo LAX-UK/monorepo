@@ -1,5 +1,6 @@
 import "server-only";
 
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import type { Lot, Sale } from "@auction/types";
@@ -113,6 +114,51 @@ export async function getServerSaleLotsPage(
     offset: body.data.offset,
     sort: (body.data.sort as SaleLotsPage["sort"]) ?? "lot",
   };
+}
+
+export type SaleRegistrationMineRow = {
+  id: string;
+  saleId: string;
+  userId: string;
+  buyerLegalEntityId: string;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  requestedAt: string;
+  bidLimit: string | null;
+  rejectionReason: string | null;
+};
+
+const saleRegistrationStatuses = ["pending", "approved", "rejected", "withdrawn"] as const;
+
+function parseSaleRegistrationMine(raw: unknown): SaleRegistrationMineRow {
+  const o = raw as Record<string, unknown>;
+  const st = o.status;
+  const status =
+    typeof st === "string" && (saleRegistrationStatuses as readonly string[]).includes(st)
+      ? (st as SaleRegistrationMineRow["status"])
+      : "pending";
+  return {
+    id: String(o.id ?? ""),
+    saleId: String(o.saleId ?? ""),
+    userId: String(o.userId ?? ""),
+    buyerLegalEntityId: String(o.buyerLegalEntityId ?? ""),
+    status,
+    requestedAt: typeof o.requestedAt === "string" ? o.requestedAt : "",
+    bidLimit: o.bidLimit == null ? null : String(o.bidLimit),
+    rejectionReason: o.rejectionReason == null ? null : String(o.rejectionReason),
+  };
+}
+
+/** Current user's paddle rows for a sale (empty when logged out). */
+export async function getServerSaleMyRegistrations(
+  saleId: string,
+): Promise<SaleRegistrationMineRow[]> {
+  const res = await authedServerFetch(`/sales/${encodeURIComponent(saleId)}/my-registrations`, {
+    cache: "no-store",
+  });
+  if (res.status === 401) return [];
+  if (!res.ok) return [];
+  const body = (await res.json()) as { data: { items: unknown[] } };
+  return body.data.items.map(parseSaleRegistrationMine);
 }
 
 export type SitemapSale = { id: string; title: string };

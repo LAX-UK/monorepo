@@ -14,6 +14,8 @@ import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import type { UserRole } from "@auction/types";
+import { staffRoleDefaultDestination } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
@@ -75,7 +77,7 @@ export function AppShellSidebar({
 }: Props) {
   const pathname = usePathname();
   const meta = appShellRoleMeta[role];
-  const items = getAppShellNavItems(role, pendingSubmissionCount, clientWorkspaceMode);
+  const items = getAppShellNavItems(role, user, pendingSubmissionCount, clientWorkspaceMode);
   const { collapsed, peeking } = useSidebarState();
   const labelsHidden = collapsible && collapsed && !peeking;
 
@@ -83,7 +85,11 @@ export function AppShellSidebar({
     <div className="flex h-full min-h-0 flex-col bg-surface-container-lowest">
       <div className={cn("border-b border-outline-variant/30 px-3 py-5", !labelsHidden && "px-5")}>
         <Link
-          href={role === "client" ? "/dashboard" : "/admin"}
+          href={
+            role === "client"
+              ? "/dashboard"
+              : staffRoleDefaultDestination(user.role as UserRole, user.staffRole ?? null)
+          }
           className={cn(
             "inline-flex w-full items-center justify-center gap-2",
             !labelsHidden && "justify-start",

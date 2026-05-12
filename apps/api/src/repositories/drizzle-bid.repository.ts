@@ -27,6 +27,8 @@ export class DrizzleBidRepository implements IBidRepository {
         isWinning: row.isWinning,
         isAutoBid: row.isAutoBid,
         maxAutoBidAmount: row.maxAutoBidAmount,
+        placedVia: row.placedVia ?? null,
+        telephoneBookingId: row.telephoneBookingId ?? null,
       })
       .returning();
     if (!created) throw new Error("Failed to create bid");

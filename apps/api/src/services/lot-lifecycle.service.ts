@@ -21,6 +21,8 @@ export class LotLifecycleService {
     private readonly notificationFactory: NotificationFactory,
     private readonly antiShillingGuard: IAntiShillingGuard | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    /** Optional hook after a lot transitions to `active` (e.g. absentee replay). */
+    private readonly onLotActivated: ((lotId: string) => Promise<void>) | null = null,
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
@@ -62,6 +64,7 @@ export class LotLifecycleService {
         await lots.setDutchLastDecrementAt(a.id, now);
       }
       await this.notifyWatchlistStarting(a);
+      await this.onLotActivated?.(a.id);
     }
 
     await this.runDutchDecrements(now);
@@ -110,10 +113,46 @@ export class LotLifecycleService {
     }
   }
 
-  private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
-    const outcome = await this.repos.runInTransaction(async ({ lot, bid }, tx) => {
+  /** Same settlement rules as timed close, but ignores the auction clock (clerk hammer). */
+  async finalizeActiveLotFromClerkHammer(
+    lotId: string,
+  ): Promise<{ winnerId: string | null; voided: boolean } | null> {
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
+    if (!a || a.status !== "active") return null;
+    const outcome = await this.runFinalizeLotTransaction(a, new Date(), true);
+    if (!outcome) return null;
+    await this.notifyBiddersAfterLotClose(a, outcome);
+    return { winnerId: outcome.winnerId, voided: outcome.voided };
+  }
+
+  /** Clerk declares no sale: end the active lot without a winner (reserve not met / passed). */
+  async noSaleEndActiveLotFromClerk(lotId: string): Promise<boolean> {
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
+    if (!a || a.status !== "active") return false;
+    const ok = await this.repos.runInTransaction(async ({ lot }) => {
+      const row = await lot.findByIdForUpdate(lotId);
+      if (!row || row.status !== "active") return false;
+      await lot.updateStatus(lotId, "ended");
+      return true;
+    });
+    if (!ok) return false;
+    await this.notifyBiddersAfterLotClose(a, { lotId, winnerId: null, voided: false });
+    return true;
+  }
+
+  private async runFinalizeLotTransaction(
+    a: Lot,
+    now: Date,
+    ignoreEndTime: boolean,
+  ): Promise<{ lotId: string; winnerId: string | null; voided: boolean } | null> {
+    return this.repos.runInTransaction(async ({ lot, bid }, tx) => {
       const row = await lot.findByIdForUpdate(a.id);
-      if (!row || row.status !== "active" || row.endTime > now) {
+      if (!row || row.status !== "active") {
+        return null;
+      }
+      if (!ignoreEndTime && row.endTime > now) {
         return null;
       }
       const bidsList = await bid.listForLotSettlement(row.id, 10_000);
@@ -171,9 +210,12 @@ export class LotLifecycleService {
       }
       return { lotId: row.id, winnerId, voided };
     });
+  }
 
-    if (!outcome) return;
-
+  private async notifyBiddersAfterLotClose(
+    a: Lot,
+    outcome: { lotId: string; winnerId: string | null; voided: boolean },
+  ): Promise<void> {
     if (!this.notificationDispatcher || outcome.voided) return;
     const bids = this.repos.root.bid;
     const bidderIds = await bids.listDistinctBidderIds(outcome.lotId);
@@ -192,6 +234,12 @@ export class LotLifecycleService {
     }
   }
 
+  private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
+    const outcome = await this.runFinalizeLotTransaction(a, now, false);
+    if (!outcome) return;
+    await this.notifyBiddersAfterLotClose(a, outcome);
+  }
+
   /** Idempotent activation for delayed jobs. */
   async processActivateJob(lotId: string, now: Date = new Date()): Promise<void> {
     const lots = this.repos.root.lot;
@@ -202,6 +250,7 @@ export class LotLifecycleService {
       await lots.setDutchLastDecrementAt(a.id, now);
     }
     await this.notifyWatchlistStarting(a);
+    await this.onLotActivated?.(lotId);
   }
 
   /** Idempotent end for delayed jobs. */

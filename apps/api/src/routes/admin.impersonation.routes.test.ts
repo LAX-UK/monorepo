@@ -38,7 +38,9 @@ describe("admin impersonation routes", () => {
     } as unknown as Container;
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: adminUserId, role: "administrator" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: adminUserId, role: "staff", staffRole: "super_admin" }),
     };
 
     const app = new Hono();
