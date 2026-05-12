@@ -2,421 +2,341 @@
 
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
-import { useUserNotifications } from "@/hooks/use-user-notifications";
-import { parseUserNotification } from "@/lib/data/http/parse";
-import { notificationTypeFilterFormSchema } from "@/lib/forms/schemas/url-search";
-import { lotPath } from "@/lib/seo/url";
+import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
-import { BulkActionBar, DataTable } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle, BulkActionBar, cn } from "@auction/ui";
 import { Button as ShadButton } from "@auction/ui/components/button";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@auction/ui/components/dropdown-menu";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { Tabs, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
-import { zodResolver } from "@hookform/resolvers/zod";
-import type { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
+import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  countByType,
+  groupByDateBand,
+  notificationTypePresenter,
+} from "./notifications/notification-presenters";
+import { NotificationRow } from "./notifications/notification-row";
+import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
+import { type InboxTab, useNotificationsInbox } from "./notifications/use-notifications-inbox";
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+const TYPE_CHIPS: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "", label: "All types" },
+  { key: "outbid", label: "Outbid" },
+  { key: "lot_won", label: "Won" },
+  { key: "lot_lost", label: "Lost" },
+  { key: "payment_due", label: "Payment" },
+  { key: "ending_soon", label: "Ending soon" },
+  { key: "watchlist", label: "Watchlist" },
+];
+
+function parseTab(raw: string | null): InboxTab {
+  if (raw === "unread" || raw === "archived") return raw;
+  return "all";
 }
 
-type Tab = "all" | "unread" | "archived";
-
-const PAGE = 25;
+function tabHref(pathname: string, params: URLSearchParams, tab: InboxTab): string {
+  const next = new URLSearchParams(params.toString());
+  if (tab === "all") next.delete("tab");
+  else next.set("tab", tab);
+  next.delete("view");
+  const qs = next.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
 
 export function NotificationsInboxBoard() {
-  const [tab, setTab] = useState<Tab>("all");
-  const typeForm = useForm({
-    resolver: zodResolver(notificationTypeFilterFormSchema),
-    defaultValues: { type: "" },
-  });
-  const typeFilter = typeForm.watch("type") ?? "";
-  const [items, setItems] = useState<UserNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [compactView, setCompactView] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = parseTab(searchParams.get("tab"));
+  const typeFilter = (searchParams.get("type") ?? "").trim();
 
-  const fetchNotifications = useCallback(
-    async (offset: number, append: boolean) => {
-      const params = new URLSearchParams({
-        tab,
-        limit: String(PAGE),
-        offset: String(offset),
-      });
-      if (typeFilter.trim()) params.set("type", typeFilter.trim());
-      const res = await fetch(`${apiBase()}/users/me/notifications?${params}`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        if (!append) setItems([]);
-        setHasMore(false);
-        return;
-      }
-      const body = (await res.json()) as { data: unknown[] };
-      const page = body.data.map(parseUserNotification);
-      setItems((prev) => (append ? [...prev, ...page] : page));
-      setHasMore(page.length === PAGE);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [liveMessage, setLiveMessage] = useState<string>("");
+  const liveTimeoutRef = useRef<number | null>(null);
+
+  const announceArrival = useCallback((n: UserNotification) => {
+    setLiveMessage(`New notification: ${n.title}`);
+    notify.info(n.title, { description: n.message, id: `inbox-${n.id}` });
+    if (liveTimeoutRef.current !== null) window.clearTimeout(liveTimeoutRef.current);
+    liveTimeoutRef.current = window.setTimeout(() => setLiveMessage(""), 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (liveTimeoutRef.current !== null) window.clearTimeout(liveTimeoutRef.current);
+    };
+  }, []);
+
+  const {
+    items,
+    loading,
+    loadingMore,
+    hasMore,
+    error,
+    loadMore,
+    retry,
+    markRead,
+    markReadMany,
+    markAllRead,
+    archive,
+    archiveMany,
+  } = useNotificationsInbox({
+    tab,
+    type: typeFilter,
+    onRealtimeArrival: announceArrival,
+  });
+
+  useEffect(() => {
+    if (selected.size === 0) return;
+    setSelected((current) => {
+      const ids = new Set(items.map((i) => i.id));
+      const next = new Set<string>();
+      for (const id of current) if (ids.has(id)) next.add(id);
+      return next.size === current.size ? current : next;
+    });
+  }, [items, selected.size]);
+
+  const writeParam = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const next = new URLSearchParams(searchParams.toString());
+      mutate(next);
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [tab, typeFilter],
+    [pathname, router, searchParams],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setSelected(new Set());
-    void (async () => {
-      await fetchNotifications(0, false);
-      if (!cancelled) setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchNotifications]);
-
-  useEffect(() => {
-    if (loading) return;
-    if (items.length === 0) {
-      setFocusedId(null);
-      return;
-    }
-    setFocusedId((prev) => {
-      if (prev && items.some((x) => x.id === prev)) return prev;
-      return items[0]?.id ?? null;
-    });
-  }, [items, loading]);
-
-  useUserNotifications({
-    enabled: !loading,
-    onNotification: useCallback((n: UserNotification) => {
-      setItems((prev) => {
-        const idx = prev.findIndex((x) => x.id === n.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = n;
-          return next;
-        }
-        return [n, ...prev];
+  const setTypeFilter = useCallback(
+    (next: string) => {
+      writeParam((p) => {
+        if (next) p.set("type", next);
+        else p.delete("type");
       });
-      notify.info(n.title, { description: n.message, id: `inbox-${n.id}` });
-    }, []),
-  });
+    },
+    [writeParam],
+  );
 
-  const loadMore = async () => {
-    if (!hasMore || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      await fetchNotifications(items.length, true);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  const groups = useMemo(() => groupByDateBand(items), [items]);
+  const typeCounts = useMemo(() => countByType(items), [items]);
+  const unreadCount = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
-  const toggle = useCallback((id: string) => {
+  const toggleSelect = useCallback((id: string) => {
     setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }, []);
 
-  const markReadMany = async () => {
-    if (selected.size === 0) return;
-    const res = await fetch(`${apiBase()}/users/me/notifications/read-bulk`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [...selected] }),
-    });
-    if (res.ok) {
-      setItems((prev) => prev.map((n) => (selected.has(n.id) ? { ...n, read: true } : n)));
+  const handleMarkRead = useCallback(
+    (id: string) => {
+      void markRead(id);
+    },
+    [markRead],
+  );
+
+  const handleArchive = useCallback(
+    async (id: string) => {
+      const ok = await archive(id);
+      if (ok) {
+        setSelected((s) => {
+          if (!s.has(id)) return s;
+          const next = new Set(s);
+          next.delete(id);
+          return next;
+        });
+        notify.success("Archived");
+      }
+    },
+    [archive],
+  );
+
+  const handleMarkAllRead = useCallback(async () => {
+    const ok = await markAllRead();
+    if (ok) notify.success("All notifications marked as read");
+  }, [markAllRead]);
+
+  const handleBulkMarkRead = useCallback(async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const result = await markReadMany(ids);
+    if (result.fulfilled > 0) {
+      notify.success(ids.length === 1 ? "Marked as read" : `${result.fulfilled} marked as read`);
       setSelected(new Set());
-      notify.success("Marked as read");
     }
-  };
+  }, [markReadMany, selected]);
 
-  const archiveMany = async () => {
-    if (selected.size === 0) return;
-    for (const id of selected) {
-      await fetch(`${apiBase()}/users/me/notifications/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        credentials: "include",
+  const handleBulkArchive = useCallback(async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    const { fulfilled, rejected } = await archiveMany(ids);
+    if (rejected > 0 && fulfilled > 0) {
+      notify.warning(`Archived ${fulfilled} of ${ids.length}`, {
+        description: `Could not archive ${rejected}. Try again on those rows.`,
       });
-    }
-    setItems((prev) => prev.filter((n) => !selected.has(n.id)));
-    setSelected(new Set());
-    notify.success("Archived selected");
-  };
-
-  const markReadOne = useCallback(async (id: string) => {
-    const res = await fetch(`${apiBase()}/users/me/notifications/${encodeURIComponent(id)}/read`, {
-      method: "PATCH",
-      credentials: "include",
-    });
-    if (res.ok) {
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      notify.success("Marked as read");
-    } else {
-      notify.error("Could not mark as read");
-    }
-  }, []);
-
-  const archiveOne = useCallback(async (id: string) => {
-    const res = await fetch(`${apiBase()}/users/me/notifications/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (res.ok || res.status === 204) {
-      setItems((prev) => prev.filter((n) => n.id !== id));
-      setSelected((s) => {
-        const n = new Set(s);
-        n.delete(id);
-        return n;
+    } else if (rejected > 0) {
+      notify.error("Could not archive selected", {
+        description: "Please try again.",
       });
-      notify.success("Archived");
-    } else {
-      notify.error("Could not archive");
+    } else if (fulfilled > 0) {
+      notify.success(ids.length === 1 ? "Archived" : `Archived ${fulfilled}`);
     }
-  }, []);
+    setSelected((current) => {
+      if (current.size === 0) return current;
+      const next = new Set(current);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, [archiveMany, selected]);
 
-  const columns = useMemo<ColumnDef<UserNotification>[]>(
+  const tabs = useMemo<ReadonlyArray<UnderlineTab<InboxTab>>>(
     () => [
       {
-        id: "select",
-        header: "",
-        cell: ({ row }) => (
-          <Checkbox
-            checked={selected.has(row.original.id)}
-            onCheckedChange={() => toggle(row.original.id)}
-            aria-label={`Select ${row.original.title}`}
-            className="mt-1"
-          />
-        ),
-        enableSorting: false,
+        id: "all",
+        label: "All",
+        href: tabHref(pathname, searchParams, "all"),
       },
       {
-        accessorKey: "title",
-        header: "Title",
-        cell: ({ row }) => (
-          <span className="flex min-w-[180px] items-center gap-2">
-            <span
-              className={`size-2 rounded-full ${
-                row.original.read ? "bg-outline-variant/60" : "bg-primary"
-              }`}
-              aria-hidden
-            />
-            <span
-              className={`font-label text-xs font-bold uppercase tracking-widest text-primary ${
-                row.original.read ? "opacity-60" : ""
-              }`}
-            >
-              {row.original.title}
-            </span>
-          </span>
-        ),
+        id: "unread",
+        label: "Unread",
+        href: tabHref(pathname, searchParams, "unread"),
+        ...(unreadCount > 0 && tab === "unread"
+          ? {
+              badge: (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-label text-[10px] font-semibold tracking-normal text-on-primary">
+                  {unreadCount}
+                </span>
+              ),
+            }
+          : {}),
       },
       {
-        accessorKey: "message",
-        header: "Message",
-        cell: ({ row }) => (
-          <p
-            className={`max-w-md font-body text-sm text-on-surface-variant line-clamp-2 ${
-              row.original.read ? "opacity-70" : ""
-            }`}
-          >
-            {row.original.message}
-          </p>
-        ),
-      },
-      {
-        id: "meta",
-        header: "When",
-        accessorFn: (r) => r.createdAt.getTime(),
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap font-body text-xs text-on-surface-variant/90">
-            {row.original.type} · {new Date(row.original.createdAt).toLocaleString()}
-          </span>
-        ),
-      },
-      {
-        id: "lot",
-        header: "Lot",
-        cell: ({ row }) =>
-          row.original.lotId ? (
-            <Link
-              href={lotPath({ id: row.original.lotId, title: row.original.title })}
-              className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
-            >
-              View
-            </Link>
-          ) : (
-            <span className="text-on-surface-variant">—</span>
-          ),
-        enableSorting: false,
-      },
-      {
-        id: "actions",
-        header: "",
-        cell: ({ row }) => {
-          const n = row.original;
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <ShadButton
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-9 rounded-md text-on-surface hover:bg-surface-container-high"
-                  aria-label="Row actions"
-                >
-                  <MoreHorizontal className="size-4" />
-                </ShadButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  disabled={n.read}
-                  onSelect={() => {
-                    void markReadOne(n.id);
-                  }}
-                >
-                  Mark as read
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    void archiveOne(n.id);
-                  }}
-                >
-                  Archive
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-        enableSorting: false,
+        id: "archived",
+        label: "Archived",
+        href: tabHref(pathname, searchParams, "archived"),
       },
     ],
-    [archiveOne, markReadOne, selected, toggle],
+    [pathname, searchParams, tab, unreadCount],
   );
 
-  const focused = useMemo(
-    () => (focusedId ? (items.find((n) => n.id === focusedId) ?? null) : null),
-    [focusedId, items],
-  );
+  const counterLine = useMemo(() => {
+    if (loading) return "Loading notifications…";
+    if (items.length === 0) return "No notifications loaded";
+    if (unreadCount === 0) return `${items.length} loaded - all caught up`;
+    return `${unreadCount} unread - ${items.length} loaded`;
+  }, [items.length, loading, unreadCount]);
 
   return (
     <DashboardPage
-      className={`mx-auto max-w-5xl py-10 ${selected.size > 0 ? "pb-28 md:pb-10" : ""}`}
+      className={cn("mx-auto max-w-5xl py-10", selected.size > 0 ? "pb-28 md:pb-10" : undefined)}
     >
       <PageHeader
         title="Notifications"
-        description="Manage alerts for bids, wins, and saved lots. Updates in real time when you are online."
+        description="Bids, wins, payments, and saved-lot updates. Live when you are online."
         className="border-0 pb-0"
         actions={
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setCompactView((value) => !value)}
-          >
-            {compactView ? "Rich view" : "Compact list"}
+          <Button type="button" variant="tertiary" asChild>
+            <Link href="/dashboard/settings/notifications">Alert settings</Link>
           </Button>
         }
       />
 
-      <div className="mt-8 flex flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-surface-container-high/50 p-1">
-            <TabsTrigger value="all" className="font-label text-xs uppercase tracking-widest">
-              All
-            </TabsTrigger>
-            <TabsTrigger value="unread" className="font-label text-xs uppercase tracking-widest">
-              Unread
-            </TabsTrigger>
-            <TabsTrigger value="archived" className="font-label text-xs uppercase tracking-widest">
-              Archived
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Form {...typeForm}>
-          <form className="max-w-xs" onSubmit={(e) => e.preventDefault()}>
-            <FormField
-              control={typeForm.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="sr-only">Filter by type</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="search"
-                      placeholder="Filter by type (e.g. outbid)"
-                      className="min-h-11 bg-surface-container-low text-base md:text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </form>
-        </Form>
+      <output className="sr-only" aria-live="polite" aria-atomic="true">
+        {liveMessage}
+      </output>
+
+      <div className="mt-8">
+        <UnderlineTabs<InboxTab> ariaLabel="Notification filters" active={tab} tabs={tabs} />
       </div>
 
       <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-        {(
-          [
-            { key: "", label: "All types" },
-            { key: "outbid", label: "Outbid" },
-            { key: "lot_won", label: "Won" },
-            { key: "lot_lost", label: "Lost" },
-            { key: "payment_due", label: "Payment" },
-          ] as const
-        ).map((chip) => (
-          <ShadButton
-            key={chip.label}
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => typeForm.setValue("type", chip.key)}
-            className={`h-auto shrink-0 snap-start rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 ${
-              typeFilter === chip.key
-                ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
-                : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-            }`}
-          >
-            {chip.label}
-          </ShadButton>
-        ))}
+        {TYPE_CHIPS.map((chip) => {
+          const isActive = typeFilter === chip.key;
+          const count = chip.key ? (typeCounts[chip.key] ?? 0) : items.length;
+          return (
+            <ShadButton
+              key={chip.label}
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setTypeFilter(chip.key)}
+              aria-pressed={isActive}
+              className={cn(
+                "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors",
+                isActive
+                  ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
+                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
+              )}
+            >
+              <span>{chip.label}</span>
+              {!loading && count > 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] tabular-nums",
+                    isActive
+                      ? "bg-on-primary/15 text-on-primary"
+                      : "bg-on-surface/10 text-on-surface",
+                  )}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </ShadButton>
+          );
+        })}
       </div>
 
-      <div className="mt-4">
+      {error ? (
+        <Alert
+          role="alert"
+          variant="destructive"
+          className="mt-6 rounded-xl border-error/40 shadow-sm"
+        >
+          <AlertTitle>Could not load notifications</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{error}</span>
+            <ShadButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void retry()}
+              className="gap-2"
+            >
+              <RefreshCcw className="size-3.5" aria-hidden />
+              Try again
+            </ShadButton>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-body text-xs uppercase tracking-widest text-on-surface-variant">
+          {counterLine}
+        </p>
+        <ShadButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={loading || unreadCount === 0}
+          onClick={() => void handleMarkAllRead()}
+          className="gap-2 font-label text-xs uppercase tracking-widest text-primary hover:bg-primary/10"
+        >
+          <CheckCheck className="size-3.5" aria-hidden />
+          Mark all read
+        </ShadButton>
+      </div>
+
+      <div className="mt-3">
         <BulkActionBar count={selected.size}>
           <Button
             type="button"
             variant="primary"
             className="min-h-11"
-            onClick={() => void markReadMany()}
+            onClick={() => void handleBulkMarkRead()}
           >
             Mark read
           </Button>
@@ -424,190 +344,61 @@ export function NotificationsInboxBoard() {
             type="button"
             variant="secondary"
             className="min-h-11"
-            onClick={() => void archiveMany()}
+            onClick={() => void handleBulkArchive()}
           >
             Archive
+          </Button>
+          <Button
+            type="button"
+            variant="tertiary"
+            className="min-h-11"
+            onClick={() => setSelected(new Set())}
+          >
+            Clear
           </Button>
         </BulkActionBar>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         {loading ? (
-          <p className="font-body text-sm text-on-surface-variant">Loading…</p>
+          <NotificationsSkeleton rows={6} />
         ) : items.length === 0 ? (
-          <EmptyState
-            title="No notifications"
-            description="Nothing in this view yet. Try another tab or clear the type filter."
+          <InboxEmptyState
+            tab={tab}
+            typeFilter={typeFilter}
+            onClearType={() => setTypeFilter("")}
           />
         ) : (
-          <>
-            {compactView ? (
-              <ul className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
-                {items.map((n) => (
-                  <li
-                    key={n.id}
-                    className={`flex items-start gap-3 border-b border-outline-variant/10 px-4 py-3 last:border-b-0 ${
-                      n.read ? "" : "bg-primary-container/10"
-                    }`}
-                  >
-                    <span
-                      className={`mt-2 size-2 rounded-full ${n.read ? "bg-outline-variant/60" : "bg-primary"}`}
-                      aria-hidden
+          <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+            {groups.map((group) => (
+              <section key={group.band} aria-labelledby={`band-${group.band}`}>
+                <h2
+                  id={`band-${group.band}`}
+                  className="sticky top-0 z-10 border-b border-outline-variant/15 bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant backdrop-blur"
+                >
+                  {group.band}
+                </h2>
+                <ul className="divide-y divide-outline-variant/10">
+                  {group.items.map((item) => (
+                    <NotificationRow
+                      key={item.id}
+                      item={item}
+                      presentation={notificationTypePresenter(item.type)}
+                      selected={selected.has(item.id)}
+                      selectionActive={selected.size > 0}
+                      onToggleSelect={toggleSelect}
+                      onMarkRead={handleMarkRead}
+                      onArchive={(id) => void handleArchive(id)}
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-label text-xs font-bold uppercase tracking-widest text-primary">
-                        {n.title}
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
-                        {n.message}
-                      </p>
-                      <p className="mt-2 text-xs tabular-nums text-on-surface-variant/80">
-                        {n.type} · {new Date(n.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    {n.lotId ? (
-                      <Button variant="ctaLink" asChild>
-                        <Link href={lotPath({ id: n.lotId, title: n.title })}>View</Link>
-                      </Button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <>
-                <div className="hidden lg:block">
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
-                    <nav
-                      aria-label="Notification threads"
-                      className="max-h-[70vh] overflow-y-auto rounded-xl border border-outline-variant/15 bg-surface-container-lowest/60 shadow-sm"
-                    >
-                      {items.map((n) => {
-                        const isActive = n.id === focusedId;
-                        return (
-                          <div
-                            key={n.id}
-                            className={`flex gap-3 border-b border-outline-variant/10 p-3 transition-colors last:border-b-0 ${
-                              isActive
-                                ? "bg-surface-container-high/80"
-                                : n.read
-                                  ? "bg-transparent"
-                                  : "bg-primary-container/10"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={selected.has(n.id)}
-                              onCheckedChange={() => toggle(n.id)}
-                              aria-label={`Select ${n.title}`}
-                              className="mt-1 shrink-0"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <ShadButton
-                              type="button"
-                              variant="ghost"
-                              onClick={() => setFocusedId(n.id)}
-                              className="h-auto min-w-0 flex-1 flex-col items-start justify-start rounded-md px-2 py-2 text-left hover:bg-surface-container-high/40"
-                            >
-                              <span className="flex w-full items-center justify-between gap-3">
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <span
-                                    className={`size-2 rounded-full ${
-                                      n.read ? "bg-outline-variant/60" : "bg-primary"
-                                    }`}
-                                    aria-hidden
-                                  />
-                                  <span
-                                    className={`truncate font-label text-xs font-bold uppercase tracking-widest text-primary ${
-                                      n.read ? "opacity-60" : ""
-                                    }`}
-                                  >
-                                    {n.title}
-                                  </span>
-                                </span>
-                                <span className="shrink-0 font-body text-[11px] tabular-nums text-on-surface-variant/90">
-                                  {new Date(n.createdAt).toLocaleString()}
-                                </span>
-                              </span>
-                              <p
-                                className={`mt-1 line-clamp-2 font-body text-sm text-on-surface-variant ${
-                                  n.read ? "opacity-70" : ""
-                                }`}
-                              >
-                                {n.message}
-                              </p>
-                              <p className="mt-2 font-body text-xs text-on-surface-variant/90">
-                                {n.type}
-                              </p>
-                            </ShadButton>
-                          </div>
-                        );
-                      })}
-                    </nav>
-                    <article
-                      aria-live="polite"
-                      className="min-h-[280px] rounded-xl border border-outline-variant/15 bg-surface-container-lowest/40 p-6 shadow-sm"
-                    >
-                      {focused ? (
-                        <div className="space-y-4">
-                          <div>
-                            <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
-                              {focused.title}
-                            </p>
-                            <p className="mt-2 font-body text-sm text-on-surface">
-                              {focused.message}
-                            </p>
-                            <p className="mt-3 font-body text-xs tabular-nums text-on-surface-variant">
-                              {focused.type} · {new Date(focused.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              variant="primary"
-                              disabled={focused.read}
-                              onClick={() => void markReadOne(focused.id)}
-                            >
-                              Mark as read
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              onClick={() => void archiveOne(focused.id)}
-                            >
-                              Archive
-                            </Button>
-                            {focused.lotId ? (
-                              <Button type="button" variant="secondary" asChild>
-                                <Link href={lotPath({ id: focused.lotId, title: focused.title })}>
-                                  View lot
-                                </Link>
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="font-body text-sm text-on-surface-variant">
-                          Select a notification.
-                        </p>
-                      )}
-                    </article>
-                  </div>
-                </div>
-                <div className="lg:hidden">
-                  <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
-                    <DataTable
-                      columns={columns}
-                      data={items}
-                      emptyMessage="No notifications in this view."
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
       </div>
 
-      {hasMore && !loading ? (
+      {!loading && !error && hasMore ? (
         <div className="mt-8 flex justify-center">
           <Button
             type="button"
@@ -631,5 +422,64 @@ export function NotificationsInboxBoard() {
         .
       </p>
     </DashboardPage>
+  );
+}
+
+type InboxEmptyStateProps = {
+  tab: InboxTab;
+  typeFilter: string;
+  onClearType: () => void;
+};
+
+function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps) {
+  if (typeFilter) {
+    return (
+      <EmptyState
+        title="Nothing matches that type"
+        description="Try clearing the type filter to see all notifications in this tab."
+        action={
+          <Button type="button" variant="secondary" onClick={onClearType}>
+            Show all types
+          </Button>
+        }
+      />
+    );
+  }
+  if (tab === "unread") {
+    return (
+      <EmptyState
+        title="No unread notifications"
+        description="You're up to date. Switch to All to see your full history."
+        action={
+          <Button type="button" variant="secondary" asChild>
+            <Link href="/dashboard/notifications">View all</Link>
+          </Button>
+        }
+      />
+    );
+  }
+  if (tab === "archived") {
+    return (
+      <EmptyState
+        title="Nothing archived"
+        description="Archived notifications appear here. Archive a row to move it out of the active inbox."
+        action={
+          <Button type="button" variant="secondary" asChild>
+            <Link href="/dashboard/notifications">Back to All</Link>
+          </Button>
+        }
+      />
+    );
+  }
+  return (
+    <EmptyState
+      title="You're all caught up"
+      description="We'll surface bids, wins, payments, and saved-lot updates here as they happen."
+      action={
+        <Button type="button" variant="secondary" asChild>
+          <Link href="/sales">Browse auctions</Link>
+        </Button>
+      }
+    />
   );
 }

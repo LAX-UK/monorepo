@@ -137,6 +137,11 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         </output>
       ) : null}
       <FormBanner message={bannerError ?? socialError} />
+      {bannerError || socialError ? (
+        <p className="-mt-6 font-footer-links text-xs text-on-surface-variant">
+          Signed up with Google or Apple? Use the button above.
+        </p>
+      ) : null}
       <div className="flex flex-col gap-6">
         <SocialSignInButtons next={next} />
         <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>

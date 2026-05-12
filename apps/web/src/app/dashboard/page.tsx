@@ -1,9 +1,13 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import { getServerMyNotifications } from "@/lib/data/http/notifications.server";
+import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { isDashboardV2Enabled } from "@/lib/feature-flags/dashboard-v2";
 import { formatMoney } from "@/lib/format-currency";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
@@ -71,6 +75,13 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     errors.submissions = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
+  const [kyc, orgOnboarding, addresses, notifications] = await Promise.all([
+    getServerKycStatusSummary().catch(() => null),
+    getServerOrgOnboardingResume().catch(() => null),
+    getServerMyAddresses().catch(() => []),
+    getServerMyNotifications({ limit: 12 }).catch(() => []),
+  ]);
+
   const vm = buildDashboardOverviewVm({
     user,
     activeLots: active,
@@ -81,6 +92,13 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     bidRows,
     errors,
     formatMoney,
+  });
+
+  const activity = buildDashboardActivityVm({
+    notifications,
+    portfolio,
+    bidRows,
+    limit: 8,
   });
 
   return (
@@ -96,7 +114,14 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
           </AlertDescription>
         </Alert>
       ) : null}
-      <DashboardOverviewView vm={vm} featureV2={isDashboardV2Enabled()} />
+      <DashboardOverviewView
+        vm={vm}
+        user={user ?? { emailVerified: false, emailStatus: "ok" }}
+        kyc={kyc}
+        orgOnboarding={orgOnboarding}
+        addressesCount={addresses.length}
+        activity={activity}
+      />
     </>
   );
 }

@@ -71,7 +71,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             </h1>
             <p className="mb-8 font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10">
               Lot settled in your favor. You will be redirected to Xero-hosted checkout when an
-              invoice is ready; until then you can refresh this page or return from your collection.
+              invoice is ready — this page updates the fulfilment status automatically.
             </p>
 
             <section
@@ -95,7 +95,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                   2 · Confirm
                 </span>
               </nav>
-              <LotCheckoutFulfilmentStrip fulfilment={fulfilment} />
+              <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
 
               <CheckoutPurchasePanel
                 sessionUser={user}

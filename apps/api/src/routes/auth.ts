@@ -1,23 +1,166 @@
-import { user } from "@auction/db/schema";
-import { forgotPasswordBodySchema, requestEmailChangeSchema } from "@auction/validators";
+import { account, user } from "@auction/db/schema";
+import {
+  forgotPasswordBodySchema,
+  requestEmailChangeSchema,
+  setupPasswordBodySchema,
+} from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../lib/email-change-token.js";
+import {
+  createForgotPasswordRateLimitMiddleware,
+  createSetupPasswordRateLimitMiddleware,
+} from "../middleware/auth-rate-limit.js";
+
+/** Providers we render "Sign in with X" copy for in the OAuth-only reset
+ * email. Other providerIds (e.g. `credential`, future Microsoft) fall back
+ * to the generic message rendered by the template.
+ */
+const SUPPORTED_SOCIAL_PROVIDERS = new Set(["google", "apple"]);
+
+/** Side-effects for `POST /auth/forgot-password`, executed off the
+ * response path so the request returns at near-constant time regardless of
+ * whether the email is registered or which providers it uses.
+ */
+async function runForgotPasswordSideEffects(args: {
+  email: string;
+  webOrigin: string;
+  container: Container;
+}): Promise<void> {
+  const { email, webOrigin, container } = args;
+  const [found] = await container.db
+    .select({ id: user.id, email: user.email, name: user.name })
+    .from(user)
+    .where(sql`lower(${user.email}) = ${email}`)
+    .limit(1);
+  if (!found) return;
+
+  const linked = await container.db
+    .select({ providerId: account.providerId })
+    .from(account)
+    .where(eq(account.userId, found.id));
+
+  const hasCredential = linked.some((a) => a.providerId === "credential");
+  const social = linked.find((a) => SUPPORTED_SOCIAL_PROVIDERS.has(a.providerId));
+
+  if (hasCredential) {
+    await container.auth.api.requestPasswordReset({
+      body: { email: found.email, redirectTo: `${webOrigin}/reset-password` },
+    });
+    return;
+  }
+
+  if (social && (social.providerId === "google" || social.providerId === "apple")) {
+    await container.emailService.enqueue({
+      template: "oauth-account-reset-attempt",
+      to: found.email,
+      userId: found.id,
+      category: "auth",
+      vars: {
+        provider: social.providerId,
+        signInUrl: `${webOrigin}/login`,
+        settingsUrl: `${webOrigin}/dashboard/settings?tab=security`,
+        userEmail: found.email,
+        userName: found.name,
+      },
+    });
+  }
+}
 
 export function createAuthRoutes(container: Container) {
   const r = new Hono();
-  r.post("/forgot-password", zValidator("json", forgotPasswordBodySchema), async (c) => {
-    const body = c.req.valid("json");
-    await container.auth.api.requestPasswordReset({
-      body: {
-        email: body.email,
-        redirectTo: `${container.env.WEB_ORIGIN.replace(/\/$/, "")}/reset-password`,
-      },
-    });
-    return c.json({ ok: true });
-  });
+
+  r.post(
+    "/forgot-password",
+    createForgotPasswordRateLimitMiddleware(container.redis),
+    zValidator("json", forgotPasswordBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const email = body.email.trim().toLowerCase();
+      const webOrigin = container.env.WEB_ORIGIN.replace(/\/$/, "");
+
+      // SECURITY: every branch (unknown email, credential user, oauth-only
+      // user) must return the identical {ok:true} response to prevent email
+      // enumeration. Side-effects are dispatched fire-and-forget so the
+      // response latency is also roughly equal across branches (a timing
+      // attacker cannot tell the lookup outcome from the response time
+      // alone). Errors thrown inside the background task are swallowed for
+      // the same reason.
+      void runForgotPasswordSideEffects({ email, webOrigin, container }).catch(() => undefined);
+
+      return c.json({ ok: true });
+    },
+  );
+
+  r.post(
+    "/setup-password",
+    createSetupPasswordRateLimitMiddleware(container.redis),
+    zValidator("json", setupPasswordBodySchema),
+    async (c) => {
+      const session = await container.auth.api.getSession({ headers: c.req.raw.headers });
+      const userId = session?.user?.id;
+      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+      const current = await container.userService.getById(userId);
+      if (!current) return c.json({ error: "User not found" }, 404);
+
+      const { password } = c.req.valid("json");
+      const auth = container.auth as unknown as {
+        $context: Promise<{ password: { hash: (pw: string) => Promise<string> } }>;
+      };
+      const ctx = await auth.$context;
+      const hash = await ctx.password.hash(password);
+
+      // SECURITY: the check + insert must run in a single transaction.
+      // Without it, two concurrent submissions can both observe "no
+      // credential row" and both insert one. There is no DB-level unique
+      // constraint on (user_id, provider_id) today (see
+      // packages/db/src/schema/auth.ts), so the transaction is the only
+      // line of defence against that race.
+      let alreadySet = false;
+      try {
+        await container.db.transaction(async (tx) => {
+          const existing = await tx
+            .select({ id: account.id })
+            .from(account)
+            .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
+            .limit(1);
+          if (existing.length > 0) {
+            alreadySet = true;
+            return;
+          }
+          const now = new Date();
+          await tx.insert(account).values({
+            id: crypto.randomUUID(),
+            accountId: userId,
+            providerId: "credential",
+            userId,
+            password: hash,
+            createdAt: now,
+            updatedAt: now,
+          });
+        });
+      } catch (e) {
+        return c.json({ error: e instanceof Error ? e.message : "Could not set password." }, 500);
+      }
+
+      if (alreadySet) {
+        return c.json({ error: "A password is already set on this account." }, 409);
+      }
+
+      void container.emailService.enqueue({
+        template: "password-changed",
+        to: current.email,
+        userId,
+        category: "auth",
+        vars: { userName: current.name },
+      });
+
+      return c.json({ ok: true });
+    },
+  );
   r.post("/change-email", zValidator("json", requestEmailChangeSchema), async (c) => {
     const session = await container.auth.api.getSession({ headers: c.req.raw.headers });
     const userId = session?.user?.id;

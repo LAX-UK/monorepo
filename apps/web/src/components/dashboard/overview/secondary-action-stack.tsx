@@ -17,13 +17,12 @@ import Link from "next/link";
 
 export function SecondaryActionStack({
   vm,
-  featureV2,
 }: {
   vm: DashboardOverviewVm;
-  featureV2: boolean;
 }) {
   const firstSettlement = vm.settlementsDue[0];
   const firstArtist = vm.artistFollowPreview[0];
+  const hasAcquired = vm.acquiredCount > 0;
 
   return (
     <section className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
@@ -32,10 +31,16 @@ export function SecondaryActionStack({
           <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
             Settlement path
           </CardTitle>
-          <CardDescription>Track payment, invoice, and delivery readiness.</CardDescription>
+          <CardDescription>
+            {firstSettlement
+              ? `Invoice \u2192 Paid \u2192 Shipping \u2192 Delivered for "${firstSettlement.lot.title}".`
+              : hasAcquired
+                ? "All acquired works are settled. View the full timeline in your collection."
+                : "Track payment, invoice, and delivery readiness as you win lots."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {firstSettlement && featureV2 ? (
+          {firstSettlement ? (
             <TimelineStages
               activeIndex={settlementStageIndex(firstSettlement)}
               stages={[
@@ -47,7 +52,9 @@ export function SecondaryActionStack({
             />
           ) : (
             <BodyText className="text-sm text-on-surface-variant">
-              No settlement steps are waiting right now.
+              {hasAcquired
+                ? "Every won lot has cleared the settlement queue."
+                : "Bid on live lots to start your collection."}
             </BodyText>
           )}
           <Button variant="secondary" className="w-full justify-between" asChild>

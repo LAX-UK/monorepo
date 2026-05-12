@@ -1,5 +1,6 @@
 "use client";
 
+import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { LotCardTimer } from "@/components/lot-timer";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import {
@@ -24,9 +26,10 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Toolbar } from "@auction/ui/components/toolbar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Download, History } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { type BidBoardRow, type BidTab, parseBidTab } from "./bid-board-rows";
 
@@ -54,11 +57,18 @@ function statusVariant(row: BidBoardRow) {
   return "neutral";
 }
 
-function lotArtistLabel(row: BidBoardRow): string {
-  return row.lot?.artistId ?? row.lot?.sellerId ?? "—";
+function lotArtistLabel(row: BidBoardRow, artistNameById: Record<string, string>): string {
+  const id = row.lot?.artistId;
+  if (id && artistNameById[id]) return artistNameById[id];
+  return "Unattributed";
 }
 
-function bidColumns(): ColumnDef<BidBoardRow>[] {
+type BidColumnContext = {
+  artistNameById: Record<string, string>;
+  onOpenHistory: (lotId: string, title: string) => void;
+};
+
+function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
   return [
     {
       id: "lot",
@@ -94,10 +104,12 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
     {
       id: "artist",
       header: "Artist",
+      accessorFn: (r) => lotArtistLabel(r, ctx.artistNameById),
       cell: ({ row }) => (
-        <span className="text-on-surface-variant">{lotArtistLabel(row.original)}</span>
+        <span className="text-on-surface-variant">
+          {lotArtistLabel(row.original, ctx.artistNameById)}
+        </span>
       ),
-      enableSorting: false,
     },
     {
       id: "lotNumber",
@@ -145,6 +157,27 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
       enableSorting: false,
     },
     {
+      id: "history",
+      header: "",
+      cell: ({ row }) => {
+        const a = row.original.lot;
+        if (!a) return null;
+        return (
+          <UiButton
+            variant="ghost"
+            size="sm"
+            type="button"
+            aria-label={`View bid history for ${a.title}`}
+            onClick={() => ctx.onOpenHistory(a.id, a.title)}
+          >
+            <History className="size-4" aria-hidden />
+            <span className="ml-1 hidden sm:inline">History</span>
+          </UiButton>
+        );
+      },
+      enableSorting: false,
+    },
+    {
       id: "actions",
       header: "",
       cell: ({ row }) => {
@@ -161,14 +194,76 @@ function bidColumns(): ColumnDef<BidBoardRow>[] {
   ];
 }
 
-function BoardTable({ rows }: { rows: BidBoardRow[] }) {
-  const columns = useMemo(() => bidColumns(), []);
+function BoardTable({
+  rows,
+  artistNameById,
+  onOpenHistory,
+}: {
+  rows: BidBoardRow[];
+  artistNameById: Record<string, string>;
+  onOpenHistory: (lotId: string, title: string) => void;
+}) {
+  const columns = useMemo(
+    () => bidColumns({ artistNameById, onOpenHistory }),
+    [artistNameById, onOpenHistory],
+  );
   if (rows.length === 0) return null;
   return (
     <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
       <DataTable columns={columns} data={rows} density="compact" />
     </div>
   );
+}
+
+function csvCell(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportRowsToCsv(rows: BidBoardRow[], artistNameById: Record<string, string>): string {
+  const header = [
+    "lot_id",
+    "lot_number",
+    "title",
+    "artist",
+    "medium",
+    "status",
+    "my_bid",
+    "current_price",
+    "ended_at",
+  ];
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    const a = r.lot;
+    const cells = [
+      a?.id ?? "",
+      a?.lotNumber != null ? String(a.lotNumber) : "",
+      a?.title ?? "",
+      a?.artistId ? (artistNameById[a.artistId] ?? "Unattributed") : "Unattributed",
+      a?.medium ?? "",
+      r.statusLabel,
+      r.bid.amount,
+      a?.currentPrice ?? "",
+      a?.endTime.toISOString() ?? "",
+    ].map((v) => csvCell(String(v)));
+    lines.push(cells.join(","));
+  }
+  return lines.join("\n");
+}
+
+function triggerCsvDownload(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function BidsBoard({
@@ -178,6 +273,7 @@ export function BidsBoard({
   lost,
   initialTab,
   initialQ,
+  artistNameById = {},
 }: {
   fetchError: string | null;
   active: BidBoardRow[];
@@ -185,6 +281,7 @@ export function BidsBoard({
   lost: BidBoardRow[];
   initialTab: BidTab;
   initialQ: string;
+  artistNameById?: Record<string, string>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -203,6 +300,11 @@ export function BidsBoard({
   const filteredActive = useMemo(() => filterBidRows(active, appliedQ), [active, appliedQ]);
   const filteredWon = useMemo(() => filterBidRows(won, appliedQ), [won, appliedQ]);
   const filteredLost = useMemo(() => filterBidRows(lost, appliedQ), [lost, appliedQ]);
+
+  const [history, setHistory] = useState<{ lotId: string; title: string } | null>(null);
+  const openHistory = useCallback((lotId: string, title: string) => {
+    setHistory({ lotId, title });
+  }, []);
 
   const replaceQuery = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
@@ -246,12 +348,38 @@ export function BidsBoard({
     [replaceQuery, searchForm, tab],
   );
 
+  const exportCurrentTab = useCallback(() => {
+    const rows = tab === "won" ? filteredWon : tab === "lost" ? filteredLost : filteredActive;
+    if (rows.length === 0) return;
+    const filename = `lax-bids-${tab}-${new Date().toISOString().slice(0, 10)}.csv`;
+    triggerCsvDownload(filename, exportRowsToCsv(rows, artistNameById));
+  }, [tab, filteredActive, filteredWon, filteredLost, artistNameById]);
+
+  const currentTabHasRows =
+    (tab === "won"
+      ? filteredWon.length
+      : tab === "lost"
+        ? filteredLost.length
+        : filteredActive.length) > 0;
+
   return (
     <div className="min-w-0 max-w-[var(--container-inner,1376px)]">
       <PageHeader
         title="My Bids"
         description="Track active, won, and lost lots with your latest bid values."
         className="border-0 pb-0"
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={exportCurrentTab}
+            disabled={!currentTabHasRows}
+            aria-label="Download current tab as CSV"
+          >
+            <Download className="mr-1 size-4" aria-hidden />
+            Export CSV
+          </Button>
+        }
       />
 
       {fetchError ? (
@@ -372,8 +500,21 @@ export function BidsBoard({
           }
         />
       ) : (
-        <BoardTable rows={currentRows.filtered} />
+        <BoardTable
+          rows={currentRows.filtered}
+          artistNameById={artistNameById}
+          onOpenHistory={openHistory}
+        />
       )}
+
+      <BidHistoryDrawer
+        open={history != null}
+        lotId={history?.lotId ?? null}
+        lotTitle={history?.title ?? ""}
+        onOpenChange={(o) => {
+          if (!o) setHistory(null);
+        }}
+      />
     </div>
   );
 }
