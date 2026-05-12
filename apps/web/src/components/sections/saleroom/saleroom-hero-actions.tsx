@@ -1,7 +1,8 @@
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
 import { SaleroomRegisterToBid } from "@/components/sections/saleroom/saleroom-register-to-bid";
+import type { LegalEntityMemberRole } from "@auction/types";
 
-type BuyerEntity = { id: string; displayName: string };
+type BuyerEntity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
 
 type Props = {
   saleId: string;

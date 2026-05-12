@@ -31,6 +31,7 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
       <td className="py-3 pr-4 font-body text-sm">
         {row.buyerLegalEntityDisplayName ?? row.buyerLegalEntityId}
       </td>
+      <td className="py-3 pr-4 font-body text-xs text-secondary">{row.memberRole ?? "—"}</td>
       <td className="py-3 pr-4 font-body text-sm">{row.bidLimit ?? "—"}</td>
       <td className="py-3 pr-4">
         <StatusBadge
@@ -133,6 +134,7 @@ export default async function SaleRegistrationsPage({ params, searchParams }: Pr
               <tr className="border-b border-outline-variant/30 font-label text-xs uppercase tracking-widest text-secondary">
                 <th className="py-2 pr-4">Bidder</th>
                 <th className="py-2 pr-4">Buying as</th>
+                <th className="py-2 pr-4">Membership</th>
                 <th className="py-2 pr-4">Limit</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Requested</th>
