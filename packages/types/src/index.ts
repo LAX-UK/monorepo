@@ -9,3 +9,10 @@ export * from "./socket.js";
 export * from "./user.js";
 export * from "./role-policy.js";
 export * from "./item-submission.js";
+/** Legal Entity Model types */
+export * from "./legal-entity.js";
+export * from "./acting-context-cookie.js";
+export * from "./payout.js";
+export * from "./bill-to.js";
+export * from "./domain-event-pii.js";
+export * from "./onboarding-steps.js";

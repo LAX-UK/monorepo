@@ -1,4 +1,7 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
+import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
+import { actionFailure } from "@/lib/forms/form-result";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -13,24 +16,37 @@ export default async function ConfirmEmailChangePage({
   const token = typeof sp.t === "string" ? sp.t : "";
   const result = token
     ? await confirmEmailChangeAction(token)
-    : { ok: false as const, error: "Missing token" };
+    : actionFailure(
+        AUTH_ERROR_MESSAGES.email_change_missing_token,
+        undefined,
+        400,
+        "email_change_missing_token",
+      );
 
   return (
-    <div className="space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Confirm email change"
         description="Finish updating your account email."
         className="border-b border-outline-variant/20 pb-5"
       />
-      {result.ok ? (
+      {result.ok && result.data?.completed ? (
         <Alert>
           <AlertTitle>Email updated</AlertTitle>
           <AlertDescription>Your account email has been changed.</AlertDescription>
         </Alert>
+      ) : result.ok && !result.data?.completed ? (
+        <Alert>
+          <AlertTitle>One more step</AlertTitle>
+          <AlertDescription>
+            {result.data?.message ??
+              "Check the other inbox for a second confirmation link to finish the change."}
+          </AlertDescription>
+        </Alert>
       ) : (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not confirm</AlertTitle>
-          <AlertDescription>{result.error}</AlertDescription>
+          <AlertDescription>{!result.ok ? result.error : "Something went wrong."}</AlertDescription>
         </Alert>
       )}
       <Button asChild className="min-h-11">
@@ -38,6 +54,6 @@ export default async function ConfirmEmailChangePage({
           Back to account settings
         </Link>
       </Button>
-    </div>
+    </DashboardPage>
   );
 }

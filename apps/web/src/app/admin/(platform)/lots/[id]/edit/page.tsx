@@ -1,5 +1,6 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import {
   getAdminArtistList,
@@ -7,6 +8,7 @@ import {
   getAdminUserList,
 } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -27,9 +29,10 @@ export default async function AdminEditAuctionPage({
   }
 
   const isDraft = auction.status === "draft";
+  const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <AppScreen className="mx-auto max-w-2xl space-y-8">
       <Link
         href={`/admin/lots/${id}`}
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -42,7 +45,7 @@ export default async function AdminEditAuctionPage({
       {isDraft ? null : (
         <p className="font-body text-sm text-on-surface-variant">
           Core auction fields (price, times) are locked after publish. You can still update
-          condition, provenance, exhibitions, and the artist note below.
+          estimate, condition, provenance, exhibitions, and the artist note below.
         </p>
       )}
 
@@ -53,13 +56,16 @@ export default async function AdminEditAuctionPage({
           defaultValues={lotToAdminLotFormValues(auction)}
           categories={categories}
           sellers={users.rows}
+          artists={artists}
+          englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         />
       ) : null}
       <AdminLotMarketingForm
         lotId={id}
         marketingDetails={auction.marketingDetails}
         artists={artists}
+        artistId={auction.artistId ?? null}
       />
-    </div>
+    </AppScreen>
   );
 }

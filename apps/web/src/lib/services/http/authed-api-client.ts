@@ -1,11 +1,8 @@
 import "server-only";
-
-import { readApiError } from "@/lib/actions/_utils";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ServiceResult, bodyToServiceFailure, serviceSuccess } from "./service-result";
 
-/**
- * Low-level API client (DIP). Server-only: uses session cookies via `authedServerFetch`.
+/** Low-level API client (DIP). Server-only: uses session cookies via `authedServerFetch`.
  */
 export interface IAuthedApiClient {
   json<T>(path: string, init?: RequestInit): Promise<ServiceResult<T>>;

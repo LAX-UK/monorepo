@@ -62,6 +62,30 @@ The decision in D5 documents the alternatives we rejected, but the reasoning is 
 
 The pattern's only meaningful cost is the discipline required to never bypass it. Anyone writing application code that calls Zoho directly defeats the entire architecture. Code review must reject any direct integration call from outside `apps/worker/src/projectors/`.
 
+## Payload PII policy
+
+**Principle.** Stored `domain_events.payload` JSON may contain sensitive attributes for downstream projectors and accounting. Anything **exported** to humans (CSV/JSON admin download, structured logs in worker projectors) must minimise PII by default: recursive redaction with a **default-deny** posture for string leaves, while retaining obvious reference fields (`*Id`, monetary amounts, ISO timestamps, status enums).
+
+**Snake_case reference keys (2026-05-07).** The redaction helper also treats leaf keys ending in `_id` (for example `target_legal_entity_id`) as non-PII references, mirroring the existing `*Id` camelCase rule so JSON payloads that use snake_case remain usable in exports without enumerating every key.
+
+**Implementation.** `redactDomainEventPayload(eventType, payload, { includePii })` ships in `@auction/types` ([packages/types/src/domain-event-pii.ts](../../packages/types/src/domain-event-pii.ts)). The worker re-exports it from [apps/worker/src/projectors/lib/redact-pii.ts](../../apps/worker/src/projectors/lib/redact-pii.ts) for projector logging. Admin export: `GET /admin/audit/domain-events/export` applies the helper unless the caller passes `includePii=1` **and** holds the `audit.read_pii` capability (administrator-only today).
+
+**Documented exceptions** (these event types retain named PII fields when not using `includePii`):
+
+| Event type | Allowed PII paths |
+|---|---|
+| `legal_entity.member_invited` | `email`, `inviteeEmail`, `invitedEmail` |
+| `payment.captured` | `buyerName`, `buyerEmail`, `buyer.name`, `buyer.email`, `email`, `name` |
+| `kyc.verified` | `firstName`, `lastName`, `dateOfBirth`, and under `verified.*` the identity document subset listed in code (`firstName`, `lastName`, `dateOfBirth`, `fullName`, `nationality`, `documentType`, `documentCountry`, `documentExpiry`) |
+| `legal_entity.docs_requested` | `from_status`, `to_status`, `reason` (operational audit text) |
+| `legal_entity.review_started` | `from_status`, `to_status`, `reason` |
+| `legal_entity.approved` | `from_status`, `to_status`, `reason` |
+| `legal_entity.restricted` | `from_status`, `to_status`, `reason` |
+| `legal_entity.rejected` | `from_status`, `to_status`, `reason` |
+| `legal_entity.archived` | `from_status`, `to_status`, `reason` |
+
+When adding a new event type that must carry PII for a lawful purpose, update this table **and** the allowlist in `domain-event-pii.ts` in the same PR.
+
 ## Event catalog
 
 This catalog is the contract between event producers and projectors. When you add a new event type, add it here. When you change a payload schema, bump the `schema_version` and document the change. When you add a new projector that consumes an existing event, add a new row to the consumers column.

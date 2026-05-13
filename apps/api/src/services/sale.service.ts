@@ -3,32 +3,68 @@ import {
   type Lot,
   type Sale,
   type UserRole,
+  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
 } from "@auction/validators";
-import { getSaleModeCapabilities } from "@auction/validators";
+import {
+  englishOnlyAdminLotAuctionTypeViolation,
+  getSaleModeCapabilities,
+} from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import { AuthzError, LotError } from "../lib/errors.js";
+import {
+  presentLotsImages,
+  presentSaleImages,
+  presentSalesWithLotsImages,
+} from "../lib/media-presenters.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { MediaUrlResolver } from "./media-url-resolver.js";
+
+/** Optional follow state for public sale detail responses. */
+export type SaleFollowReader = {
+  isFollowing(userId: string, saleId: string): Promise<boolean>;
+};
 
 type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
 
 const SALE_CANCELLABLE: ReadonlySet<Sale["status"]> = new Set(["draft", "scheduled", "active"]);
 
+export type SaleServiceOptions = {
+  saleRepo: ISaleRepository;
+  lotRepo: ILotRepository;
+  jobScheduler: ILotJobScheduler | null;
+  imageCleanup?: ImageCleanupService;
+  saleFollowReader?: SaleFollowReader | null;
+  mediaUrlResolver?: MediaUrlResolver;
+  englishOnlyAuctions?: boolean;
+};
+
 export class SaleService {
-  constructor(
-    private readonly saleRepo: ISaleRepository,
-    private readonly lotRepo: ILotRepository,
-    private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly imageCleanup?: ImageCleanupService,
-  ) {}
+  private readonly saleRepo: ISaleRepository;
+  private readonly lotRepo: ILotRepository;
+  private readonly jobScheduler: ILotJobScheduler | null;
+  private readonly imageCleanup: ImageCleanupService | undefined;
+  private readonly saleFollowReader: SaleFollowReader | null;
+  private readonly mediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly englishOnlyAuctions: boolean;
+
+  constructor(opts: SaleServiceOptions) {
+    this.saleRepo = opts.saleRepo;
+    this.lotRepo = opts.lotRepo;
+    this.jobScheduler = opts.jobScheduler;
+    this.imageCleanup = opts.imageCleanup;
+    this.saleFollowReader = opts.saleFollowReader ?? null;
+    this.mediaUrlResolver = opts.mediaUrlResolver;
+    this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+  }
 
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
     if (input.endTime <= input.startTime) {
@@ -36,15 +72,23 @@ export class SaleService {
     }
     const mode = input.deliveryMode ?? "onsite";
     const caps = getSaleModeCapabilities(mode);
-    const sale = await this.saleRepo.create({ ...input, createdBy: adminId });
+    const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId: adminId });
     if (input.lots?.length) {
       for (const row of input.lots) {
+        const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
+          enabled: this.englishOnlyAuctions,
+          requested: row.auctionType,
+        });
+        if (lockMsg) {
+          throw new LotError(lockMsg);
+        }
         const { sellerId, ...lotFields } = row;
         const inherited = caps.inheritsLotTiming
           ? { startTime: input.startTime, endTime: input.endTime }
           : {};
-        await this.lotRepo.create(sellerId, {
+        await this.lotRepo.create({
           ...lotFields,
+          sellerLegalEntityId: sellerId,
           ...inherited,
           saleId: sale.id,
         });
@@ -58,6 +102,58 @@ export class SaleService {
     if (!sale) return null;
     const lots = await this.lotRepo.findBySaleId(id);
     return { sale, lots };
+  }
+
+  /** Public sale detail: bundle, follow flag, resolved media URLs. */
+  async getSaleDetailForPublicApi(
+    saleId: string,
+    viewerUserId: string | undefined,
+  ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+    const bundle = await this.getByIdWithLots(saleId);
+    if (!bundle) return null;
+    const isFollowing =
+      viewerUserId && this.saleFollowReader
+        ? await this.saleFollowReader.isFollowing(viewerUserId, saleId)
+        : false;
+    const [sale, lots] = await Promise.all([
+      presentSaleImages(this.mediaUrlResolver, bundle.sale),
+      presentLotsImages(this.mediaUrlResolver, bundle.lots),
+    ]);
+    return { data: { sale, lots, viewer: { isFollowing } } };
+  }
+
+  async listSalesForPublicApi(
+    filter: Parameters<ISaleRepository["list"]>[0],
+  ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }> {
+    const rows = await this.list(filter);
+    const data = await presentSalesWithLotsImages(this.mediaUrlResolver, rows);
+    return { data };
+  }
+
+  async listSaleLotsPageForPublicApi(
+    saleId: string,
+    opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
+  ): Promise<{
+    data: {
+      items: Lot[];
+      total: number;
+      limit: number;
+      offset: number;
+      sort: typeof opts.sort;
+    };
+  } | null> {
+    const page = await this.listLotsPage(saleId, opts);
+    if (!page) return null;
+    const items = await presentLotsImages(this.mediaUrlResolver, page.items);
+    return {
+      data: {
+        items,
+        total: page.total,
+        limit: opts.limit,
+        offset: opts.offset,
+        sort: opts.sort,
+      },
+    };
   }
 
   /** Paginated lots for a sale; used by the saleroom catalog (server-side pagination). */
@@ -107,9 +203,16 @@ export class SaleService {
     _userId: string,
     userRole: string,
     saleId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can publish sales", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can publish sales", 403));
     }
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return err(new LotError("Sale not found", 404));
@@ -164,9 +267,16 @@ export class SaleService {
     _userId: string,
     userRole: string,
     saleId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can cancel sales", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can cancel sales", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -190,9 +300,16 @@ export class SaleService {
     userRole: string,
     saleId: string,
     row: CreateNestedLotForSaleInput,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can add lots to a sale", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can add lots to a sale", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -206,8 +323,16 @@ export class SaleService {
     if (endTime <= startTime) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const created = await this.lotRepo.create(sellerId, {
+    const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
+      enabled: this.englishOnlyAuctions,
+      requested: row.auctionType,
+    });
+    if (lockMsg) {
+      return err(new LotError(lockMsg));
+    }
+    const created = await this.lotRepo.create({
       ...lotFields,
+      sellerLegalEntityId: sellerId,
       startTime,
       endTime,
       saleId,
@@ -219,9 +344,16 @@ export class SaleService {
     userRole: string,
     saleId: string,
     lotId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can attach lots", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can attach lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -251,9 +383,16 @@ export class SaleService {
     userRole: string,
     saleId: string,
     lotId: string,
+    userStaffRole?: string | null,
   ): Promise<Result<void, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can detach lots", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can detach lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -272,9 +411,16 @@ export class SaleService {
     userRole: string,
     saleId: string,
     patch: UpdateSaleBody,
+    userStaffRole?: string | null,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can edit sales", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can edit sales", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));

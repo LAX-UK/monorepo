@@ -1,4 +1,5 @@
 import { AdminCategoryForm } from "@/components/admin/admin-category-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminCategoryById, getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
@@ -21,7 +22,7 @@ export default async function EditAdminCategoryPage({
   if (!category) notFound();
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title={`Edit ${category.name}`}
         description="Update taxonomy copy, hierarchy, sort order, and archived state."
@@ -69,6 +70,6 @@ export default async function EditAdminCategoryPage({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppScreen>
   );
 }

@@ -49,6 +49,23 @@ export async function sendEmailJob({ db, sender, log }: SendEmailJobDeps, data: 
 
   const to = await resolveRecipient(db, row);
 
+  const [supNow] = await db
+    .select({ emailHash: emailSuppression.emailHash })
+    .from(emailSuppression)
+    .where(eq(emailSuppression.emailHash, row.toEmailHash))
+    .limit(1);
+  if (supNow && row.category !== "auth") {
+    await db
+      .update(emailOutbox)
+      .set({ status: "suppressed", lastError: "suppressed_after_enqueue" })
+      .where(eq(emailOutbox.id, row.id));
+    log.info({ outboxId: row.id }, "email send skipped: address suppressed after enqueue");
+    return;
+  }
+  if (supNow && row.category === "auth") {
+    log.warn({ outboxId: row.id }, "email send: auth mail to suppressed address (flagged)");
+  }
+
   try {
     const result = await sender.send({
       outboxId: row.id,

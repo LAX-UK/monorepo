@@ -3,12 +3,18 @@ import type { ZodError } from "zod";
 /** Field path → error messages (RHF `setError` / `formState`) */
 export type FieldErrorMap = Record<string, string[] | undefined>;
 
-/**
- * Server action return shape for RHF: success or structured failure with optional field errors.
+/** Server action return shape for RHF: success or structured failure with optional field errors.
  */
 export type ActionResult<T = void> =
   | { ok: true; data?: T }
-  | { ok: false; error: string; fieldErrors?: FieldErrorMap; status?: number };
+  | {
+      ok: false;
+      error: string;
+      fieldErrors?: FieldErrorMap;
+      status?: number;
+      /** Machine-readable API error code when present (e.g. `connect_required`). */
+      errorCode?: string;
+    };
 
 export function actionSuccess<T = void>(data?: T): ActionResult<T> {
   return data === undefined ? { ok: true } : { ok: true, data };
@@ -18,12 +24,14 @@ export function actionFailure(
   error: string,
   fieldErrors?: FieldErrorMap,
   status?: number,
+  errorCode?: string,
 ): ActionResult<never> {
   return {
     ok: false,
     error,
     ...(fieldErrors !== undefined ? { fieldErrors } : {}),
     ...(status !== undefined ? { status } : {}),
+    ...(errorCode !== undefined ? { errorCode } : {}),
   };
 }
 

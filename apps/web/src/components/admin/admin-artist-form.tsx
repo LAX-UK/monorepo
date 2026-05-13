@@ -1,38 +1,42 @@
 "use client";
 
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
-import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
-import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
-import { Checkbox } from "@auction/ui/components/checkbox";
+import { ArtistPreview } from "@/components/admin/artist-form/artist-preview";
+import { ArtistFormSection } from "@/components/admin/artist-form/form-section";
+import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
+  SCENARIO_REGISTRY,
+  scenarioFromOwnerUserId,
+} from "@/components/admin/artist-form/scenario-config";
+import { ScenarioSelector } from "@/components/admin/artist-form/scenario-selector";
+import { BiographySection } from "@/components/admin/artist-form/sections/biography-section";
+import { CatalogueSection } from "@/components/admin/artist-form/sections/catalogue-section";
+import { FlagsSection } from "@/components/admin/artist-form/sections/flags-section";
+import { IdentitySection } from "@/components/admin/artist-form/sections/identity-section";
+import { LifespanSection } from "@/components/admin/artist-form/sections/lifespan-section";
+import { MediaSection } from "@/components/admin/artist-form/sections/media-section";
+import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
+import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
+import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
+import { artistKindMeta } from "@/lib/artists/kind-presenter";
+import { notify } from "@/lib/ui/notify";
+import type { ArtistKind } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
+import { Form } from "@auction/ui/components/form";
 import { adminCreateArtistBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import type { z } from "zod";
-
-type ArtistFormValues = z.infer<typeof adminCreateArtistBodySchema>;
+import { useMemo, useState, useTransition } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 type Props = {
   mode: "create" | "edit";
   artistId?: string;
-  users: AdminUserRow[];
   defaultValues: ArtistFormValues;
+  /** From URL `?scenario=historical` or `maker-seller` */
+  initialScenario?: ArtistScenario | null;
 };
 
-export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props) {
+export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario = null }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const form = useForm<ArtistFormValues>({
@@ -40,11 +44,55 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
     defaultValues,
   });
 
+  const editScenario = useMemo(
+    () => scenarioFromOwnerUserId(defaultValues.ownerUserId),
+    [defaultValues.ownerUserId],
+  );
+
+  const [createScenario, setCreateScenario] = useState<ArtistScenario | null>(() => {
+    if (mode === "edit") return null;
+    if (defaultValues.ownerUserId) return "maker-seller";
+    if (initialScenario) return initialScenario;
+    return null;
+  });
+
+  const activeScenario: ArtistScenario =
+    mode === "edit" ? editScenario : (createScenario ?? "historical");
+
+  const watchedDisplay = useWatch({ control: form.control, name: "displayName" }) ?? "";
+  const watchedKind =
+    (useWatch({ control: form.control, name: "kind" }) as ArtistKind | undefined) ?? "artist";
+  const watchedShortBio = useWatch({ control: form.control, name: "shortBio" }) ?? "";
+  const watchedPortrait = useWatch({ control: form.control, name: "portraitUrl" }) ?? "";
+
+  function applyScenarioChange(next: ArtistScenario) {
+    setCreateScenario(next);
+    if (next === "historical") {
+      form.setValue("ownerUserId", null);
+      const kind = form.getValues("kind");
+      if (kind === "maker") {
+        form.setValue("kind", SCENARIO_REGISTRY.historical.defaultKind);
+      }
+      return;
+    }
+    const currentKind = form.getValues("kind");
+    if (currentKind === "artist" || currentKind === undefined) {
+      form.setValue("kind", SCENARIO_REGISTRY["maker-seller"].defaultKind);
+    }
+  }
+
+  const showFormBody = mode === "edit" || createScenario !== null;
+  const showPreview = showFormBody;
+
   return (
     <Form {...form}>
       <form
-        className="space-y-6"
+        className="space-y-8"
         onSubmit={form.handleSubmit((values) => {
+          if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {
+            notify.error("Link a platform user for a maker–seller profile.");
+            return;
+          }
           startTransition(async () => {
             const result =
               mode === "create"
@@ -62,169 +110,123 @@ export function AdminArtistForm({ mode, artistId, users, defaultValues }: Props)
           });
         })}
       >
-        <FormField
-          control={form.control}
-          name="displayName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>Display name</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput placeholder="Artist name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid gap-6 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="slug"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <LabelCaps>Slug</LabelCaps>
-                </FormLabel>
-                <FormControl>
-                  <UnderlineInput
-                    placeholder="Auto-generated"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        {mode === "edit" ? <ArtistScenarioBadge scenario={editScenario} /> : null}
+
+        {mode === "create" ? (
+          <ScenarioSelector
+            value={createScenario}
+            onChange={applyScenarioChange}
+            disabled={pending}
           />
-          <FormField
-            control={form.control}
-            name="ownerUserId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <LabelCaps>Linked client</LabelCaps>
-                </FormLabel>
-                <FormControl>
-                  <select
-                    value={field.value ?? ""}
-                    onChange={(event) => field.onChange(event.target.value || null)}
-                    onBlur={field.onBlur}
-                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-                  >
-                    <option value="">Unclaimed / unlinked</option>
-                    {users
-                      .filter((user) => user.role === "client")
-                      .map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} · {user.email}
-                        </option>
-                      ))}
-                  </select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <TextField name="portraitUrl" label="Portrait URL" form={form} />
-          <TextField name="websiteUrl" label="Website URL" form={form} />
-          <TextField name="nationality" label="Nationality" form={form} />
-          <TextField name="location" label="Location" form={form} />
-          <TextField name="birthYear" label="Birth year" form={form} />
-          <TextField name="deathYear" label="Death year" form={form} />
-        </div>
-        <TextareaField name="shortBio" label="Short bio" form={form} rows={3} />
-        <TextareaField name="longBio" label="Long bio" form={form} rows={6} />
-        <TextareaField name="statement" label="Artist statement" form={form} rows={6} />
-        <div className="grid gap-3 sm:grid-cols-3">
-          {(["featured", "verified", "archived"] as const).map((name) => (
-            <FormField
-              key={name}
-              control={form.control}
-              name={name}
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value === true}
-                      onCheckedChange={(checked) => field.onChange(checked === true)}
-                    />
-                  </FormControl>
-                  <FormLabel className="capitalize">{name}</FormLabel>
-                </FormItem>
-              )}
-            />
-          ))}
-        </div>
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/artists")}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving..." : mode === "create" ? "Create artist" : "Save artist"}
-          </Button>
-        </div>
+        ) : null}
+
+        {mode === "create" && createScenario === null ? (
+          <p className="text-sm text-on-surface-variant">
+            Choose a profile type above to continue. Fields stay tailored to catalogue-only vs
+            linked maker–seller workflows.
+          </p>
+        ) : null}
+
+        {showFormBody ? (
+          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+            <div className="min-w-0 space-y-6">
+              {activeScenario === "maker-seller" ? (
+                <ArtistFormSection
+                  title="Platform user"
+                  description="Who this catalogue profile represents when they sell their own work."
+                  defaultOpen
+                >
+                  <UserLinkSection control={form.control} disabled={pending} emphasize />
+                </ArtistFormSection>
+              ) : null}
+
+              <ArtistFormSection
+                title="Identity"
+                description="Public name, URL slug, and place."
+                defaultOpen
+              >
+                <IdentitySection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              <ArtistFormSection
+                title="Lifespan"
+                description="Optional years for biographical context."
+                defaultOpen={false}
+              >
+                <LifespanSection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              <ArtistFormSection
+                title="Biography"
+                description="Copy shown on the public artist profile."
+                defaultOpen
+              >
+                <BiographySection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              <ArtistFormSection
+                title="Media"
+                description="Portrait, hero, and website links."
+                defaultOpen={false}
+              >
+                <MediaSection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              <ArtistFormSection
+                title="Catalogue"
+                description="Taxonomy and lifecycle for the registry."
+                defaultOpen
+              >
+                <CatalogueSection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              {activeScenario === "historical" ? (
+                <ArtistFormSection
+                  title="Optional user link"
+                  description="Rarely needed for external profiles; use maker–seller path when the seller is the maker."
+                  defaultOpen={false}
+                >
+                  <UserLinkSection control={form.control} disabled={pending} emphasize={false} />
+                </ArtistFormSection>
+              ) : null}
+
+              <ArtistFormSection
+                title="Visibility"
+                description="Featured, verified, and archive flags."
+                defaultOpen={false}
+              >
+                <FlagsSection control={form.control} disabled={pending} />
+              </ArtistFormSection>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/admin/artists")}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving..." : mode === "create" ? "Create artist" : "Save artist"}
+                </Button>
+              </div>
+            </div>
+
+            {showPreview ? (
+              <ArtistPreview
+                className="lg:sticky lg:top-4"
+                scenario={activeScenario}
+                data={{
+                  displayName: String(watchedDisplay),
+                  kindLabel: artistKindMeta(watchedKind).label,
+                  shortBio: String(watchedShortBio ?? ""),
+                  portraitUrl: String(watchedPortrait ?? ""),
+                }}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </form>
     </Form>
-  );
-}
-
-function TextField({
-  form,
-  name,
-  label,
-}: {
-  form: ReturnType<typeof useForm<ArtistFormValues>>;
-  name: keyof ArtistFormValues;
-  label: string;
-}) {
-  return (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            <LabelCaps>{label}</LabelCaps>
-          </FormLabel>
-          <FormControl>
-            <UnderlineInput {...field} value={String(field.value ?? "")} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-}
-
-function TextareaField({
-  form,
-  name,
-  label,
-  rows,
-}: {
-  form: ReturnType<typeof useForm<ArtistFormValues>>;
-  name: keyof ArtistFormValues;
-  label: string;
-  rows: number;
-}) {
-  return (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            <LabelCaps>{label}</LabelCaps>
-          </FormLabel>
-          <FormControl>
-            <Textarea {...field} value={String(field.value ?? "")} rows={rows} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
   );
 }

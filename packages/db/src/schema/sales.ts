@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { check, index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
+import { legalEntity } from "./legal-entities.js";
 
 export const saleStatusEnum = pgEnum("sale_status", [
   "draft",
@@ -41,16 +41,23 @@ export const sale = pgTable(
       .notNull()
       .default("0.25"),
     terms: text("terms"),
-    createdBy: text("created_by")
+    createdByLegalEntityId: uuid("created_by_legal_entity_id")
       .notNull()
-      .references(() => user.id, { onDelete: "restrict" }),
+      .references(() => legalEntity.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("sale_status_end_time_idx").on(table.status, table.endTime),
-    index("sale_created_by_idx").on(table.createdBy),
+    index("sale_created_by_legal_entity_id_idx").on(table.createdByLegalEntityId),
     index("sale_start_time_idx").on(table.startTime),
     check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
   ],
 );
+
+export const saleRelations = relations(sale, ({ one }) => ({
+  createdByLegalEntity: one(legalEntity, {
+    fields: [sale.createdByLegalEntityId],
+    references: [legalEntity.id],
+  }),
+}));

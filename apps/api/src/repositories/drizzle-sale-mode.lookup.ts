@@ -4,10 +4,8 @@ import type { SaleDeliveryMode } from "@auction/types";
 import { eq } from "drizzle-orm";
 import type { ISaleModeLookup } from "../services/interfaces/sale-mode-lookup.js";
 
-/**
- * Single-purpose Drizzle implementation of {@link ISaleModeLookup}.
- *
- * One small SELECT joining `lot.sale_id` to `sale.delivery_mode`; intentionally
+/** Single-purpose Drizzle implementation of {@link ISaleModeLookup}.
+ * * One small SELECT joining `lot.sale_id` to `sale.delivery_mode`; intentionally
  * does not reuse the full sale repository (Interface Segregation).
  */
 export class DrizzleSaleModeLookup implements ISaleModeLookup {

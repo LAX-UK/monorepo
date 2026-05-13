@@ -17,8 +17,7 @@ type ActionFormOptions<TFieldValues extends FieldValues, TData> = {
   formOptions?: Omit<UseFormProps<TFieldValues>, "defaultValues" | "resolver">;
 };
 
-/**
- * RHF + server action: runs the action in a transition, maps `ActionResult` field errors to the form.
+/** RHF + server action: runs the action in a transition, maps `ActionResult` field errors to the form.
  */
 export function useActionForm<TFieldValues extends FieldValues, TData = void>({
   schema,

@@ -40,20 +40,44 @@ vi.mock("./command-palette-lazy", () => ({
   CommandPaletteLazy: () => null,
 }));
 
+vi.mock("@/hooks/use-unread-notifications", () => ({
+  useUnreadNotifications: () => ({
+    items: [],
+    setItems: () => {},
+    loaded: true,
+    unread: 0,
+    refresh: async () => {},
+  }),
+}));
+
+vi.mock("@/lib/socket", () => ({
+  getSocket: () => ({ emit: () => {}, on: () => {}, off: () => {} }),
+}));
+
+vi.mock("@/lib/actions/user-ui-preferences", () => ({
+  syncUiThemeFromClientAction: vi.fn(),
+  updateUiPreferencesAction: vi.fn(),
+}));
+
 const clientUser = {
   id: "user-1",
   email: "client@example.com",
   name: "Client User",
   role: "client" as const,
   image: null,
+  emailVerified: true,
+  emailStatus: "ok" as const,
 };
 
 const adminUser = {
   id: "admin-1",
   email: "admin@example.com",
   name: "Admin User",
-  role: "administrator" as const,
+  role: "staff" as const,
+  staffRole: "super_admin" as const,
   image: null,
+  emailVerified: true,
+  emailStatus: "ok" as const,
 };
 
 describe("AppShell", () => {
@@ -76,7 +100,7 @@ describe("AppShell", () => {
 
   it("does not render public-site affordances for staff shells", () => {
     render(
-      <AppShell user={adminUser} shellRole="admin">
+      <AppShell user={adminUser} shellRole="platform">
         <p>Admin content</p>
       </AppShell>,
     );

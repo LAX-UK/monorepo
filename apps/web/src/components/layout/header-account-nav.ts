@@ -18,9 +18,10 @@ const BASE: AccountNavLink[] = [
 export function accountNavLinks(user: SessionUser): AccountNavLink[] {
   const out = [...BASE];
   const role = user.role as UserRole;
-  if (canAccessPlatformAdminRoutes(role)) {
+  const staff = user.staffRole ?? null;
+  if (canAccessPlatformAdminRoutes(role, staff)) {
     out.push({ href: "/admin", label: "Admin panel" });
-  } else if (canAccessFinanceAdminRoutes(role)) {
+  } else if (canAccessFinanceAdminRoutes(role, staff)) {
     out.push({ href: "/admin/payments", label: "Finance admin" });
   }
   return out;

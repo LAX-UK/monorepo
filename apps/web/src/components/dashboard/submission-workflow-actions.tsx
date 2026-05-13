@@ -20,7 +20,10 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <section
+      aria-label="Submission actions"
+      className="flex flex-wrap gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm"
+    >
       {canSubmit ? (
         <Button
           type="button"
@@ -64,6 +67,6 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
           Withdraw
         </Button>
       ) : null}
-    </div>
+    </section>
   );
 }

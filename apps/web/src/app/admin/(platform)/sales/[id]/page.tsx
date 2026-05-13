@@ -1,4 +1,5 @@
 import { AdminSaleDetailActions } from "@/components/admin/admin-sale-detail-actions";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotList, getAdminSaleById } from "@/lib/data/http/admin.server";
 import Link from "next/link";
@@ -21,7 +22,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
   const canMarkOnsiteEnded = isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <AppScreen className="max-w-4xl space-y-8">
       <Link
         href="/admin/sales"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -53,16 +54,16 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
         draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
       />
 
-      {isOnsite ? (
+      {sale.status === "scheduled" || sale.status === "active" ? (
         <p className="font-body text-sm">
           <Link
             href={`/admin/sales/${id}/registrations`}
             className="text-primary underline-offset-4 hover:underline"
           >
-            Paddle registrations & approvals
+            {isOnsite ? "Paddle registrations & approvals" : "Bidder registrations & approvals"}
           </Link>
         </p>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

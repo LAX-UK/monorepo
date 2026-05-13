@@ -1,3 +1,4 @@
+import { COLORS, FONT_STACK_BODY } from "@auction/branding";
 import { Text } from "@react-email/components";
 import type { ReactNode } from "react";
 
@@ -10,7 +11,8 @@ export function TextBlock({ children }: TextBlockProps) {
 }
 
 const paragraph = {
-  color: "#342c26",
+  color: COLORS.textPrimary,
+  fontFamily: FONT_STACK_BODY,
   fontSize: "15px",
   lineHeight: "24px",
   margin: "0 0 14px",

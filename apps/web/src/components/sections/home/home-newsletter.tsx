@@ -27,14 +27,16 @@ export function HomeNewsletter() {
     const result = await run({ email: values.email });
     if (result.ok) {
       form.reset();
-      setStatus(result.code === "already_subscribed" ? "already_subscribed" : "subscribed");
+      setStatus(
+        result.newsletterDisposition === "already_subscribed" ? "already_subscribed" : "subscribed",
+      );
     }
   });
 
   return (
     <section
       id="newsletter"
-      className="border-t border-outline-variant bg-surface-container-low px-6 py-20 text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
+      className="border-t border-outline-variant bg-surface-container-low px-6 py-[var(--section-spacing)] text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
     >
       <div className="mx-auto flex max-w-[600px] flex-col items-center gap-7">
         <div>

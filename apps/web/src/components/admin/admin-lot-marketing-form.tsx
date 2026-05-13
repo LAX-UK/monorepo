@@ -1,9 +1,13 @@
 "use client";
 
+import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { lotMarketingSection } from "@/components/sections/artwork/lot-marketing-sections";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
-import { adminUpdateLotMarketingDetailsResultAction } from "@/lib/actions/admin";
+import {
+  adminUpdateLotMarketingDetailsResultAction,
+  adminUpdateLotResultAction,
+} from "@/lib/actions/admin";
 import {
   type AdminLotMarketingFormValues,
   adminLotMarketingFormValuesSchema,
@@ -26,16 +30,19 @@ import { updateLotMarketingDetailsSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { type UseFormReturn, useFieldArray, useForm } from "react-hook-form";
 
 type Props = {
   lotId: string;
   marketingDetails: LotMarketingDetails;
   artists: ArtistProfile[];
+  /** FK on the lot row. Marketing form is read-only on this concern: catalog
+   * copy and artist attribution are persisted via separate endpoints. */
+  artistId: string | null;
 };
 
-export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Props) {
+export function AdminLotMarketingForm({ lotId, marketingDetails, artists, artistId }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminLotMarketingFormValues>({
@@ -48,10 +55,17 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Prop
         <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
         <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Lot story</h2>
         <p className="mt-1 font-body text-sm text-on-surface-variant">
-          These fields feed the public artwork page (condition, provenance, exhibitions, about the
-          artist). Changes apply immediately for lots that can still be edited in the catalogue.
+          These fields feed the public artwork page (estimate, condition, provenance, exhibitions,
+          about the artist, plus fees and documents where configured). Changes apply immediately for
+          lots that can still be edited in the catalogue.
         </p>
       </div>
+      <ArtistAttributionPanel
+        lotId={lotId}
+        artists={artists}
+        artistId={artistId}
+        onSaved={() => router.refresh()}
+      />
       <Form {...form}>
         <form
           className="space-y-10"
@@ -75,35 +89,7 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Prop
             });
           })}
         >
-          <FormField
-            control={form.control}
-            name="sellerArtistId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-label text-xs uppercase">Canonical artist</FormLabel>
-                <FormControl>
-                  <select
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-                  >
-                    <option value="">No artist attribution</option>
-                    {artists.map((artist) => (
-                      <option key={artist.id} value={artist.id}>
-                        {artist.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </FormControl>
-                <p className="mt-2 text-xs text-on-surface-variant">
-                  Links this lot to a canonical artist profile for related rails and future artist
-                  pages.
-                </p>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <EstimateFields form={form} />
           <ConditionReportFields form={form} />
           <ProvenanceListField form={form} />
           <ExhibitionsListField form={form} />
@@ -116,6 +102,132 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists }: Prop
         </form>
       </Form>
     </div>
+  );
+}
+
+/** Standalone admin control for the canonical-artist FK on a lot. Kept out of
+ * the catalog-copy form because it auto-saves on change (single-purpose,
+ * high-stakes assignment) and writes through the lot PATCH endpoint, not the
+ * marketing-details JSON merge. */
+function ArtistAttributionPanel({
+  lotId,
+  artists,
+  artistId,
+  onSaved,
+}: {
+  lotId: string;
+  artists: ArtistProfile[];
+  artistId: string | null;
+  onSaved: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [value, setValue] = useState<string | null>(artistId);
+
+  function onChange(next: string | null) {
+    setValue(next);
+    startTransition(() => {
+      void (async () => {
+        const r = await adminUpdateLotResultAction(lotId, { artistId: next ?? null });
+        if (r.ok) {
+          notify.success(next ? "Artist attribution updated" : "Artist attribution cleared");
+          onSaved();
+          return;
+        }
+        notify.error(r.error);
+        // revert on failure
+        setValue(artistId);
+      })();
+    });
+  }
+
+  return (
+    <section className="space-y-3 rounded-md border border-outline-variant/30 bg-surface-container-lowest/60 p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-label text-sm font-semibold text-on-surface">
+          Canonical artist / maker
+        </h3>
+        {pending ? <span className="text-xs text-on-surface-variant">Saving…</span> : null}
+      </div>
+      <ArtistPicker
+        value={value}
+        onChange={onChange}
+        selected={chipFromArtists(artists, value)}
+        helpText="Drives the public artist page, structured data, and 'more by this maker' rails. Sellers cannot set this."
+      />
+    </section>
+  );
+}
+
+function chipFromArtists(
+  artists: ArtistProfile[],
+  artistId: string | null,
+): ArtistChipModel | null {
+  if (!artistId) return null;
+  const found = artists.find((a) => a.id === artistId);
+  if (!found) return null;
+  return {
+    id: found.id,
+    displayName: found.displayName,
+    slug: found.slug,
+    kind: found.kind ?? "artist",
+    status: found.status ?? "approved",
+  };
+}
+
+function EstimateFields({
+  form,
+}: {
+  form: UseFormReturn<AdminLotMarketingFormValues>;
+}) {
+  return (
+    <section className="space-y-4">
+      <h3 className="font-label text-sm font-semibold text-on-surface">Pre-sale estimate</h3>
+      <p className="font-body text-xs text-on-surface-variant">
+        Shown in the catalogue accordion when low, high, and currency are all set. Use plain amounts
+        (e.g. 8000.00); leave empty to hide the estimate block.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <FormField
+          control={form.control}
+          name="estimate.low"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">Low</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="8000.00" inputMode="decimal" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="estimate.high"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">High</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="12000.00" inputMode="decimal" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="estimate.currency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-label text-xs uppercase">Currency</FormLabel>
+              <FormControl>
+                <UnderlineInput {...field} placeholder="GBP" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </section>
   );
 }
 

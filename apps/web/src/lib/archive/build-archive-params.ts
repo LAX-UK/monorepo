@@ -36,8 +36,7 @@ function parseSort(v: string | undefined): ArchiveSortMode {
   return "hammer";
 }
 
-/**
- * Map URL search params to API list params for the past-auctions grid.
+/** Map URL search params to API list params for the past-auctions grid.
  * Artist A–Z uses server-side `sellerAsc` (seller display name).
  */
 export function buildArchivePageQuery(

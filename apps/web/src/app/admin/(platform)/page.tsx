@@ -3,8 +3,10 @@ import {
   type AdminAttentionRow,
   AdminOperationsHomeView,
 } from "@/components/admin/admin-operations-home-view";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import {
   getAdminAttentionFeed,
+  getAdminFinanceIssues,
   getAdminLotList,
   getAdminMetricsLive,
   getAdminMetricsToday,
@@ -24,6 +26,7 @@ export default async function AdminHomePage() {
   let activeLotIds: string[] = [];
   let attention: AdminAttentionRow[] = [];
   let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
+  let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
 
   try {
     const [m, live, active, feed, recent] = await Promise.all([
@@ -46,6 +49,12 @@ export default async function AdminHomePage() {
     recentLots = recent;
   } catch {
     /* overview still renders */
+  }
+
+  try {
+    financeIssues = await getAdminFinanceIssues();
+  } catch {
+    financeIssues = null;
   }
 
   const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => {
@@ -75,12 +84,15 @@ export default async function AdminHomePage() {
   });
 
   return (
-    <AdminOperationsHomeView
-      metrics={metrics}
-      bidsPerMinute={bidsPerMinute}
-      activeLotIds={activeLotIds}
-      attention={attention}
-      activity={activity}
-    />
+    <AppScreen>
+      <AdminOperationsHomeView
+        metrics={metrics}
+        bidsPerMinute={bidsPerMinute}
+        activeLotIds={activeLotIds}
+        attention={attention}
+        activity={activity}
+        financeIssues={financeIssues}
+      />
+    </AppScreen>
   );
 }

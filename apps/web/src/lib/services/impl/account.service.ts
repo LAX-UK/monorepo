@@ -23,4 +23,18 @@ export class AccountService implements IAccountService {
       body: JSON.stringify(input),
     });
   }
+
+  cancelEmailChange(): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>("/auth/change-email", { method: "DELETE" });
+  }
+
+  requestAccountDeletion(input: {
+    confirmation: "DELETE MY ACCOUNT";
+  }): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>("/users/me/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  }
 }

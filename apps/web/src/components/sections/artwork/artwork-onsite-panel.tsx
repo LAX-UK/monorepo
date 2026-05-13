@@ -1,4 +1,3 @@
-import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { formatMoney } from "@/lib/format-currency";
 import type { Lot, Sale } from "@auction/types";
@@ -14,20 +13,18 @@ type Props = {
   summarySeed: LotSummarySeedVM;
 };
 
-/**
- * Read-only marketing panel for lots inside an onsite (in-person) auction.
- *
- * Onsite sales are catalog-only and do not accept bids on the website. We
+/** Read-only marketing panel for lots inside an onsite (in-person) auction.
+ * * Onsite sales are catalog-only and do not accept bids on the website. We
  * intentionally render a different component than {@link ArtworkBidPanel} so
  * the bid controls, BidGate, and realtime bid hooks are not even mounted for
  * these lots (Single Responsibility / Liskov: each panel renders one mode).
  */
 export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
-  const eventStartLabel = new Date(sale.startTime).toLocaleString(undefined, {
+  const eventStartLabel = new Date(sale.startTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const eventEndLabel = new Date(sale.endTime).toLocaleString(undefined, {
+  const eventEndLabel = new Date(sale.endTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -131,10 +128,6 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
           Bidding takes place in person at the venue or via a registered representative. Online
           bidding is not available for this lot.
         </p>
-
-        <div className="mt-6">
-          <ArtworkTrustStrip compact />
-        </div>
       </div>
     </div>
   );

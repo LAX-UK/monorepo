@@ -8,8 +8,10 @@ import {
   LineItem,
   XeroClient,
 } from "xero-node";
-import type { TokenSet } from "xero-node";
 import type { Env } from "../../env.js";
+import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
+import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
   AccountingCheckoutContext,
   AccountingCheckoutResult,
@@ -20,6 +22,9 @@ import type {
   IXeroConnectionRepository,
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
+import type { InvoiceAddressingService } from "../invoice-addressing.js";
+import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
+import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
 const XERO_SCOPES = [
   "openid",
@@ -41,14 +46,6 @@ function dueDate(from: Date, days: number): string {
   return isoDate(t);
 }
 
-function tokenExpiryDate(tokenSet: TokenSet): Date {
-  const raw = tokenSet.expires_at;
-  if (raw == null) return new Date(Date.now() + 25 * 60_000);
-  const sec = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
-  if (!Number.isFinite(sec)) return new Date(Date.now() + 25 * 60_000);
-  return new Date(sec * 1000);
-}
-
 export class XeroAccountingProvider implements IPaymentAccountingProvider {
   constructor(
     private readonly env: Pick<
@@ -59,11 +56,34 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
       | "XERO_DEFAULT_REVENUE_ACCOUNT_CODE"
       | "XERO_DEFAULT_TAX_TYPE"
       | "XERO_INVOICE_DUE_DAYS"
+      | "XERO_USE_LEGAL_ENTITY_CONTACT"
     >,
     private readonly connections: IXeroConnectionRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
     private readonly onInvoicePaid: (paymentId: string) => Promise<void>,
+    private readonly legalEntities: ILegalEntityRepository | null,
+    /** when `XERO_USE_LEGAL_ENTITY_CONTACT`, sets Xero `invoiceAddresses` to match email/PDF bill-to. */
+    private readonly invoiceAddressing: InvoiceAddressingService | null,
+    private readonly errorReporter: IErrorReporter,
   ) {}
+
+  private async refreshXeroTokensReporting(
+    xero: XeroClient,
+    conn: XeroConnectionRow,
+  ): Promise<XeroConnectionRow> {
+    try {
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+    } catch (cause) {
+      this.errorReporter.report({
+        severity: "error",
+        code: "xero_refresh_failed",
+        message: "Xero OAuth token refresh failed",
+        status: 502,
+        cause,
+      });
+      throw cause;
+    }
+  }
 
   isConfigured(): boolean {
     return Boolean(
@@ -102,8 +122,8 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
 
     const xero = this.baseClient();
     await xero.initialize();
-    await this.applyStoredTokens(xero, conn);
-    const liveConn = await this.refreshIfNeeded(xero, conn);
+    await applyStoredTokens(xero, conn);
+    const liveConn = await this.refreshXeroTokensReporting(xero, conn);
 
     const tenantId = liveConn.tenantId;
     const lot = ctx.lot as Lot;
@@ -118,7 +138,24 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
 
     let contactId: string;
     try {
-      contactId = await this.ensureContact(xero, tenantId, ctx.buyerName, ctx.buyerEmail);
+      if (this.env.XERO_USE_LEGAL_ENTITY_CONTACT && this.legalEntities && ctx.buyerLegalEntityId) {
+        const ent = await this.legalEntities.findById(ctx.buyerLegalEntityId);
+        if (!ent) {
+          await this.externalRefs.updateError(ctx.paymentId, "Buyer legal entity not found");
+          return { checkoutUrl: null, error: "Buyer legal entity not found" };
+        }
+        const billingAddress = await this.legalEntities.findPrimaryAddressForXero(ent.id);
+        contactId = await ensureXeroContactForLegalEntity({
+          xero,
+          tenantId,
+          entity: ent,
+          billingAddress,
+          // biome-ignore lint/style/noNonNullAssertion: guarded by the surrounding conditional
+          persistContactId: (id, cid) => this.legalEntities!.setXeroContactId(id, cid),
+        });
+      } else {
+        contactId = await this.ensureContact(xero, tenantId, ctx.buyerName, ctx.buyerEmail);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await this.externalRefs.updateError(ctx.paymentId, msg);
@@ -173,6 +210,11 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
       inv.dueDate = dueDate(today, this.env.XERO_INVOICE_DUE_DAYS);
       inv.reference = `payment:${ctx.paymentId}`;
       inv.status = Invoice.StatusEnum.AUTHORISED;
+
+      if (this.env.XERO_USE_LEGAL_ENTITY_CONTACT && this.invoiceAddressing) {
+        const { billTo } = await this.invoiceAddressing.resolveForPayment(ctx.paymentId);
+        inv.invoiceAddresses = [billToContextToXeroInvoiceToAddress(billTo)];
+      }
 
       const invoicesBody = new Invoices();
       invoicesBody.invoices = [inv];
@@ -251,8 +293,8 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
   ): Promise<{ ok: boolean; error?: string }> {
     const xero = this.baseClient();
     await xero.initialize();
-    await this.applyStoredTokens(xero, conn);
-    await this.refreshIfNeeded(xero, conn);
+    await applyStoredTokens(xero, conn);
+    await this.refreshXeroTokensReporting(xero, conn);
     try {
       const res = await xero.accountingApi.getInvoice(conn.tenantId, invoiceId);
       const inv = res.body.invoices?.[0];
@@ -316,39 +358,6 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
       );
     }
     return out.contactID;
-  }
-
-  private async applyStoredTokens(xero: XeroClient, conn: XeroConnectionRow): Promise<void> {
-    xero.setTokenSet({
-      access_token: conn.accessToken,
-      refresh_token: conn.refreshToken,
-      expires_at: Math.floor(conn.expiresAt.getTime() / 1000),
-    } as TokenSet);
-  }
-
-  private async refreshIfNeeded(
-    xero: XeroClient,
-    conn: XeroConnectionRow,
-  ): Promise<XeroConnectionRow> {
-    const skewMs = 120_000;
-    if (conn.expiresAt.getTime() > Date.now() + skewMs) {
-      return conn;
-    }
-    const refreshed = await xero.refreshToken();
-    const exp = tokenExpiryDate(refreshed);
-    await this.connections.updateTokens(conn.tenantId, {
-      accessToken: refreshed.access_token ?? conn.accessToken,
-      refreshToken: refreshed.refresh_token ?? conn.refreshToken,
-      expiresAt: exp,
-    });
-    const next = await this.connections.findLatest();
-    if (!next) throw new Error("Xero connection missing after refresh");
-    xero.setTokenSet({
-      access_token: next.accessToken,
-      refresh_token: next.refreshToken,
-      expires_at: Math.floor(next.expiresAt.getTime() / 1000),
-    } as TokenSet);
-    return next;
   }
 }
 

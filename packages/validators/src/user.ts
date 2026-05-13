@@ -1,4 +1,4 @@
-import { userRoles } from "@auction/types";
+import { userRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 import { mediaReferenceSchema } from "./media.js";
 
@@ -17,8 +17,32 @@ export const setRoleSchema = z.object({
   role: z.enum(userRoles),
 });
 
-export const adminSetRoleBodySchema = z.object({
-  role: z.enum(userRoles),
+export const adminSetRoleBodySchema = z
+  .object({
+    role: z.enum(userRoles),
+    staffRole: z.enum(userStaffRoles).optional().nullable(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.role === "staff") {
+      if (v.staffRole == null) {
+        ctx.addIssue({
+          code: "custom",
+          message: "staffRole is required when role is staff",
+          path: ["staffRole"],
+        });
+      }
+    } else if (v.staffRole != null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "staffRole must be omitted when role is client",
+        path: ["staffRole"],
+      });
+    }
+  });
+
+/** @deprecated Prefer {@link adminSetRoleBodySchema} with `role` + `staffRole`. */
+export const adminSetStaffRoleBodySchema = z.object({
+  staffRole: z.enum(userStaffRoles).nullable(),
 });
 
 /** Better Auth user ids are opaque strings (not always UUID). */

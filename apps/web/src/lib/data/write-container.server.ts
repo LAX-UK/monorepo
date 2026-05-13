@@ -14,6 +14,7 @@ import { NotificationPrefsService } from "@/lib/services/impl/notification-prefs
 import { PaymentService } from "@/lib/services/impl/payment.service";
 import { ProfileService } from "@/lib/services/impl/profile.service";
 import { SubmissionService } from "@/lib/services/impl/submission.service";
+import { UiPrefsService } from "@/lib/services/impl/ui-prefs.service";
 import type { IAccountService } from "@/lib/services/interfaces/account-service";
 import type { IAdminArtistService } from "@/lib/services/interfaces/admin-artist-service";
 import type { IAdminCategoryService } from "@/lib/services/interfaces/admin-category-service";
@@ -27,6 +28,7 @@ import type { INotificationPrefsService } from "@/lib/services/interfaces/notifi
 import type { IPaymentService } from "@/lib/services/interfaces/payment-service";
 import type { IProfileService } from "@/lib/services/interfaces/profile-service";
 import type { ISubmissionService } from "@/lib/services/interfaces/submission-service";
+import type { IUiPrefsService } from "@/lib/services/interfaces/ui-prefs-service";
 
 export type WriteServiceContainer = {
   api: IAuthedApiClient;
@@ -35,6 +37,7 @@ export type WriteServiceContainer = {
   profile: IProfileService;
   biddingPrefs: IBiddingPrefsService;
   notificationPrefs: INotificationPrefsService;
+  uiPrefs: IUiPrefsService;
   payments: IPaymentService;
   adminCategories: IAdminCategoryService;
   adminArtists: IAdminArtistService;
@@ -47,8 +50,7 @@ export type WriteServiceContainer = {
 
 let cached: WriteServiceContainer | null = null;
 
-/**
- * Server-only composition root for write paths (server actions + services).
+/** Server-only composition root for write paths (server actions + services).
  * Tests can inject a different container by not using this in unit tests, or we expand with factory later.
  */
 export function getWriteContainer(): WriteServiceContainer {
@@ -61,6 +63,7 @@ export function getWriteContainer(): WriteServiceContainer {
     profile: new ProfileService(api),
     biddingPrefs: new BiddingPrefsService(api),
     notificationPrefs: new NotificationPrefsService(api),
+    uiPrefs: new UiPrefsService(api),
     payments: new PaymentService(api),
     adminCategories: new AdminCategoryService(api),
     adminArtists: new AdminArtistService(api),

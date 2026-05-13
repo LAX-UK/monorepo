@@ -31,8 +31,7 @@ function buildHref(basePath: string, tab: TabKey, preserved: Array<[string, stri
   return `${basePath}?${qs.toString()}`;
 }
 
-/**
- * SSR-friendly tab container — URL is source of truth (`?tab=`).
+/** SSR-friendly tab container — URL is source of truth (`?tab=`).
  */
 export function SaleroomTabs({ tabs, activeTab, basePath, preservedQuery, children }: Props) {
   return (

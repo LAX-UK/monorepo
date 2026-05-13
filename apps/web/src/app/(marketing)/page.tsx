@@ -1,10 +1,12 @@
+import { LaxEditorsPicksMarketing } from "@/components/sections/home/editors-picks-marketing/lax-editors-picks-marketing";
 import { getHomeData } from "@/components/sections/home/get-home-data";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
-import { LaxArtists } from "@/components/sections/home/lax-artists";
-import { LaxEditorialStrip } from "@/components/sections/home/lax-editorial-strip";
+import { LaxConsignCTA } from "@/components/sections/home/lax-consign-cta";
+import { LaxEndingSoon } from "@/components/sections/home/lax-ending-soon";
 import { LaxHero } from "@/components/sections/home/lax-hero";
-import { LaxUpcomingAuctions } from "@/components/sections/home/lax-upcoming-auctions";
-import { LaxUpcomingLots } from "@/components/sections/home/lax-upcoming-lots";
+import { LaxPrivateSaleHighlightsMarketing } from "@/components/sections/home/private-sale-highlights-marketing/lax-private-sale-highlights-marketing";
+import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
+import { LaxUpcomingAuctionsMarketing } from "@/components/sections/home/upcoming-auctions-marketing/lax-upcoming-auctions-marketing";
 import { SITE_TAGLINE } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -21,30 +23,45 @@ export const metadata: Metadata = metadataForStatic({
 export const revalidate = 60;
 
 async function MarketingHomeContent() {
-  const { heroState, lotCards, auctionVm, artistCards, saleMetaLine } = await getHomeData();
+  const data = await getHomeData();
+  const {
+    heroState,
+    jsonLdListFallback,
+    endingSoonLots,
+    upcomingAuctionTiles,
+    editorsPickLots,
+    privateSaleHighlights,
+  } = data;
   const base = getSiteUrl();
-  const upcomingLotsJsonLd =
-    lotCards.length > 0
+  const listForJsonLd =
+    upcomingAuctionTiles.length > 0
+      ? upcomingAuctionTiles
+      : jsonLdListFallback.length > 0
+        ? jsonLdListFallback
+        : [];
+  const homeListJsonLd =
+    listForJsonLd.length > 0
       ? itemListJsonLd(
-          lotCards.map((lot) => ({
-            name: lot.title,
-            url: `${base}${lot.href.startsWith("/") ? lot.href : `/${lot.href}`}`,
+          listForJsonLd.map((entry) => ({
+            name: entry.title,
+            url: `${base}${entry.href.startsWith("/") ? entry.href : `/${entry.href}`}`,
           })),
         )
       : null;
 
   return (
     <>
-      {upcomingLotsJsonLd ? (
+      {homeListJsonLd ? (
         <script type="application/ld+json" suppressHydrationWarning>
-          {jsonLdScript(upcomingLotsJsonLd)}
+          {jsonLdScript(homeListJsonLd)}
         </script>
       ) : null}
       <LaxHero state={heroState} />
-      <LaxUpcomingLots items={lotCards} saleMetaLine={saleMetaLine} />
-      <LaxUpcomingAuctions auction={auctionVm} />
-      <LaxArtists items={artistCards} />
-      <LaxEditorialStrip />
+      <LaxEndingSoon items={endingSoonLots} />
+      <LaxUpcomingAuctionsMarketing tiles={upcomingAuctionTiles} />
+      <LaxEditorsPicksMarketing lots={editorsPickLots} />
+      <LaxPrivateSaleHighlightsMarketing highlights={privateSaleHighlights} />
+      <LaxConsignCTA />
       <HomeNewsletter />
     </>
   );
@@ -53,14 +70,7 @@ async function MarketingHomeContent() {
 export default function HomePage() {
   return (
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
-      <Suspense
-        fallback={
-          <div
-            className="min-h-[min(100svh,520px)] w-full animate-pulse bg-surface-container-low md:min-h-[min(100svh,760px)]"
-            aria-hidden
-          />
-        }
-      >
+      <Suspense fallback={<HomeSkeleton />}>
         <MarketingHomeContent />
       </Suspense>
     </main>

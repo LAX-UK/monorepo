@@ -1,3 +1,4 @@
+import type { CapabilityRequirement } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -5,6 +6,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   badge?: number;
+  /** When set, item is shown only if {@link userHasAccessTo} passes for the session user. */
+  requirement?: CapabilityRequirement;
 };
 
 export type NavGroup = {

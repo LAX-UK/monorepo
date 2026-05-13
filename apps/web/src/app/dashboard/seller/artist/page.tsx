@@ -1,22 +1,42 @@
+import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-request-form";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 
+/** Read-only seller-facing view of the canonical artist profile.
+ *
+ * In this auction model the catalogue identity (artist / maker / brand) is
+ * an admin-curated entity, decoupled from the consigning user. Sellers do
+ * not edit their own artist profile here — the admin team owns the registry
+ * end-to-end. We surface a structured "Request changes" form that drafts a
+ * curated email to the catalogue team so the seller knows exactly what
+ * information we need to action the change. */
 export default function SellerArtistProfilePage() {
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Artist profile"
-        description="Portrait, biography, statement, and catalogue links. Attribution updates route through admin approval so public pages stay authoritative."
+        description="Your catalogue artist profile is managed by the admin team."
         className="border-0 pb-0"
       />
       <Alert>
-        <AlertTitle>Editor launching next</AlertTitle>
+        <AlertTitle>Managed by admin</AlertTitle>
         <AlertDescription className="font-body text-sm">
-          Canonical artist records live in admin. Client-side editing will mirror those fields with
-          an approval queue—follow the roadmap PR that wires{" "}
-          <span className="font-mono text-xs">artist_profiles.owner_user_id</span> to your account.
+          The artist, maker, or brand attached to your lots is part of the platform&apos;s curated
+          catalogue and can only be edited by an administrator. Use the form below to request a
+          change — submissions route to the catalogue team at{" "}
+          <a
+            href={`mailto:${SITE_CONSIGNMENT_EMAIL}`}
+            className="underline underline-offset-2 hover:text-on-surface"
+          >
+            {SITE_CONSIGNMENT_EMAIL}
+          </a>
+          .
         </AlertDescription>
       </Alert>
-    </div>
+
+      <ArtistChangeRequestForm recipient={SITE_CONSIGNMENT_EMAIL} />
+    </DashboardPage>
   );
 }

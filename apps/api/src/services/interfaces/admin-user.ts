@@ -9,6 +9,7 @@ export type AdminUserListRow = {
   email: string;
   name: string;
   role: string;
+  staffRole: string | null;
   createdAt: Date;
   suspendedAt: Date | null;
 };
@@ -35,7 +36,8 @@ export interface IAdminUserReader {
 }
 
 export interface IAdminUserRoleManager {
-  setRole(actorRole: string, userId: string, role: string): Promise<void>;
+  /** Atomically sets `role` and `staff_role` (`staff_role` null iff `role` is `client`). */
+  setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void>;
 }
 
 export interface IAdminUserSuspender {

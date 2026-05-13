@@ -190,6 +190,223 @@
       "when": 1778400000000,
       "tag": "0026_artist_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0027_legal_entity_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0028_legal_entity_final_cutover",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1778700000000,
+      "tag": "0030_payout_statement_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1778800000000,
+      "tag": "0031_domain_events_impersonation_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0032_payout_line_source_event_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0033_lot_voided_archived_seller",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0034_impersonation_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0035_payment_manual_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0036_payment_manual_review_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0037_payment_stripe_refund_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0038_payment_stripe_charge_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0039_audit_fixes_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0040_signup_persona",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1779750000000,
+      "tag": "0041_org_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0042_email_change_connect_payment_cancel_hotpath_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0043_org_onboarding_idempotent_replay",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0044_status_check_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0045_withdrawal_two_factor_deletion",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0046_artist_consolidation",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1780300000000,
+      "tag": "0047_internal_staff_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1780400000000,
+      "tag": "0048_sale_registration",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0049_condition_report_request",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1780600000000,
+      "tag": "0050_absentee_and_telephone_bids",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1780700000000,
+      "tag": "0051_saleroom_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1780800000000,
+      "tag": "0052_lot_fulfilment",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1780900000000,
+      "tag": "0053_absentee_executing_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1781000000000,
+      "tag": "0054_role_staff_client",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1781200000000,
+      "tag": "0056_email_suppression_soft_bounce_threshold",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1781300000000,
+      "tag": "0057_auth_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1781400000000,
+      "tag": "0058_user_pii_purge",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1781500000000,
+      "tag": "0059_user_ui_preference",
+      "breakpoints": true
     }
   ]
 }

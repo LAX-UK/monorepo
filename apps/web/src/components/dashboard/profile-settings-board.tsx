@@ -1,20 +1,16 @@
 "use client";
 
+import { SettingsField } from "@/components/dashboard/settings-field";
+import { SettingsSection } from "@/components/dashboard/settings-section";
+import { SettingsTag } from "@/components/dashboard/settings-tag";
 import { UploadField } from "@/components/forms/upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
 import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import { notify } from "@/lib/ui/notify";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Button as UiButton } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -25,6 +21,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Separator } from "@auction/ui/components/separator";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { CreditCard, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -47,79 +44,74 @@ type Props = {
   initialName: string;
   initialImage: string | null;
   addresses: ProfileAddressRow[];
+  /** When set, shows email + verification in Personal details */
+  email?: string;
+  emailVerified?: boolean;
+  emailStatus?: string;
 };
 
-function ProfileNameCard({ initialName }: { initialName: string }) {
+function emailStatusLabel(status: string | undefined, verified: boolean | undefined): string {
+  if (status === "bounced") return "Bounced";
+  if (status === "complained") return "Complained";
+  if (verified === false) return "Unverified";
+  return "Verified";
+}
+
+function emailStatusVariant(
+  status: string | undefined,
+  verified: boolean | undefined,
+): "success" | "danger" | "warning" {
+  if (status === "bounced" || status === "complained") return "danger";
+  if (verified === false) return "warning";
+  return "success";
+}
+
+function PersonalNameBlock({ initialName }: { initialName: string }) {
   const { form, onSubmit, isSubmitting } = useProfileNameController(initialName);
 
   return (
-    <Card className="rounded-sm border-outline-variant/20 shadow-none">
-      <CardHeader className="flex-row items-start justify-between space-y-0 pb-3">
-        <div>
-          <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
-            Personal details
-          </CardTitle>
-          <CardDescription className="mt-1 text-xs">
-            Your public display name and profile details.
-          </CardDescription>
-        </div>
-        <Button
+    <SettingsField
+      label="Name"
+      action={
+        <UiButton
           type="submit"
           form="profile-name-form"
-          variant="tertiary"
-          className="h-8 px-2 text-on-surface"
+          variant="ghost"
+          size="sm"
+          className="h-8 px-0 font-semibold text-on-surface underline underline-offset-2"
         >
-          <Pencil className="mr-1 size-3.5" aria-hidden />
-          Edit
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
+          Save
+        </UiButton>
+      }
+      value={
         <Form {...form}>
-          <form id="profile-name-form" onSubmit={onSubmit} className="space-y-4">
+          <form id="profile-name-form" onSubmit={onSubmit} className="w-full max-w-lg space-y-3">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-label text-xs uppercase text-on-surface-variant">
-                    <LabelCaps>Display name</LabelCaps>
-                  </FormLabel>
                   <FormControl>
                     <UnderlineInput
                       {...field}
-                      className="w-full border-b border-outline-variant/40 py-2 font-medium"
+                      className="w-full border-b border-outline-variant/50 py-2 font-body text-base font-normal text-on-surface"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" variant="primary" disabled={isSubmitting} className="min-w-28">
+            <Button type="submit" variant="secondary" disabled={isSubmitting} className="min-w-28">
               {isSubmitting ? "Saving…" : "Save name"}
             </Button>
           </form>
         </Form>
-        <p className="font-body text-xs text-on-surface-variant">
-          <Link
-            href="/dashboard/settings/security"
-            className="text-primary underline-offset-2 hover:underline"
-          >
-            Security settings
-          </Link>
-          {" · "}
-          <Link
-            href="/dashboard/settings/account"
-            className="text-primary underline-offset-2 hover:underline"
-          >
-            Manage email and sign-in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+      }
+    />
   );
 }
 
-function ProfileAvatarCard({ initialImage }: { initialImage: string | null }) {
+function ProfileAvatarBlock({ initialImage }: { initialImage: string | null }) {
   const [value, setValue] = useState(initialImage ? [initialImage] : []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -138,27 +130,27 @@ function ProfileAvatarCard({ initialImage }: { initialImage: string | null }) {
   }
 
   return (
-    <Card className="rounded-sm border-outline-variant/20 shadow-none">
-      <CardHeader>
-        <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
-          Profile picture
-        </CardTitle>
-        <CardDescription>Shown on your profile and bidding account.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <p className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
+        Profile photo
+      </p>
+      <p className="mt-1 font-body text-sm text-on-surface-variant">
+        Shown on your profile and bidding account.
+      </p>
+      <div className="mt-4 max-w-md">
         <UploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
-        {pending ? <p className="font-body text-xs text-on-surface-variant">Saving…</p> : null}
-      </CardContent>
-    </Card>
+        {pending ? <p className="mt-2 font-body text-xs text-on-surface-variant">Saving…</p> : null}
+      </div>
+    </div>
   );
 }
 
-function AddAddressCard() {
+function AddAddressBlock() {
   const { form, onSubmit, isSubmitting } = useCreateAddressController();
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-label text-xs uppercase tracking-[0.18em] text-on-surface">
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low/30 p-5">
+      <h3 className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
         Add new address
       </h3>
       <Form {...form}>
@@ -312,106 +304,161 @@ function AddAddressCard() {
   );
 }
 
-export function ProfileSettingsBoard({ initialName, initialImage, addresses }: Props) {
+function addressTypeTags(a: ProfileAddressRow) {
+  const tags: { key: string; label: string }[] = [];
+  if (a.isDefault) tags.push({ key: "default", label: "Default" });
+  if (a.addressType === "both") tags.push({ key: "both", label: "Billing & shipping" });
+  else if (a.addressType === "billing") tags.push({ key: "bill", label: "Billing" });
+  else tags.push({ key: "ship", label: "Shipping" });
+  return tags;
+}
+
+export function ProfileSettingsBoard({
+  initialName,
+  initialImage,
+  addresses,
+  email,
+  emailVerified,
+  emailStatus,
+}: Props) {
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
-      <ProfileAvatarCard initialImage={initialImage} />
-      <ProfileNameCard initialName={initialName} />
+    <div className="space-y-10">
+      <ProfileAvatarBlock initialImage={initialImage} />
 
-      <Card className="rounded-sm border-outline-variant/20 shadow-none">
-        <CardHeader className="flex-row items-start justify-between space-y-0">
-          <div>
-            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
-              Address management
-            </CardTitle>
-            <CardDescription>Shipping addresses used for invoices and delivery.</CardDescription>
+      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+        <SettingsSection title="Personal details" eyebrow bordered={false}>
+          <div className="space-y-6">
+            <PersonalNameBlock initialName={initialName} />
+            {email ? (
+              <SettingsField
+                label="Email address"
+                action={
+                  <Link
+                    href="/dashboard/settings/account"
+                    className="font-label text-sm font-semibold text-on-surface underline underline-offset-2"
+                  >
+                    Edit
+                  </Link>
+                }
+                value={email}
+                valueAccessory={
+                  <StatusBadge variant={emailStatusVariant(emailStatus, emailVerified)} size="sm">
+                    {emailStatusLabel(emailStatus, emailVerified)}
+                  </StatusBadge>
+                }
+              />
+            ) : null}
           </div>
-          <Button asChild type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
-            <Link href="/dashboard/settings/addresses">
-              <Pencil className="mr-1 size-3.5" aria-hidden />
-              Manage all addresses
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {addresses.length === 0 ? (
-            <p className="font-body text-sm text-on-surface-variant">No addresses yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {addresses.map((a) => (
-                <li
-                  key={a.id}
-                  className="rounded-sm border border-outline-variant/20 bg-surface-container-low/40 px-4 py-3 text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-label text-[11px] uppercase tracking-[0.16em] text-on-surface">
-                      {a.label}
-                    </span>
-                    {a.isDefault ? (
-                      <span className="rounded bg-success/10 px-2 py-0.5 font-label text-[10px] uppercase text-success">
-                        Default
-                      </span>
-                    ) : null}
-                    <span className="rounded bg-surface-container-high px-2 py-0.5 font-label text-[10px] uppercase text-on-surface-variant">
-                      {a.addressType === "both" ? "Billing + shipping" : a.addressType}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-on-surface">
-                    {a.line1}
-                    {a.line2 ? `, ${a.line2}` : ""}
-                  </p>
-                  <p className="text-on-surface-variant">
-                    {a.city}
-                    {a.state ? `, ${a.state}` : ""} {a.postalCode}, {a.country}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Separator />
-          <AddAddressCard />
-        </CardContent>
-      </Card>
+        </SettingsSection>
+      </div>
 
-      <Card className="rounded-sm border-outline-variant/20 shadow-none">
-        <CardHeader className="flex-row items-start justify-between space-y-0">
-          <div>
-            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
-              Phone book
-            </CardTitle>
-            <CardDescription>Phone numbers for bid and delivery updates.</CardDescription>
+      <SettingsSection
+        title="Address management"
+        action={
+          <Link
+            href="/dashboard/settings/addresses"
+            className="inline-flex items-center gap-1 font-label text-sm font-semibold text-on-surface underline underline-offset-2"
+          >
+            <Pencil className="size-3.5" aria-hidden />
+            Edit
+          </Link>
+        }
+      >
+        {addresses.length === 0 ? (
+          <p className="font-body text-sm text-on-surface-variant">No addresses yet.</p>
+        ) : (
+          <ul className="space-y-6">
+            {addresses.map((a, index) => (
+              <li
+                key={a.id}
+                className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
+                    {a.label || `Address ${index + 1}`}
+                  </span>
+                  <Link
+                    href="/dashboard/settings/addresses"
+                    className="font-label text-sm font-semibold text-on-surface underline underline-offset-2"
+                  >
+                    Edit
+                  </Link>
+                </div>
+                <p className="mt-3 font-body text-base leading-6 text-on-surface">
+                  {a.line1}
+                  {a.line2 ? (
+                    <>
+                      <br />
+                      {a.line2}
+                    </>
+                  ) : null}
+                  <br />
+                  {a.city}
+                  {a.state ? `, ${a.state}` : ""} {a.postalCode}
+                  <br />
+                  {a.country}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {addressTypeTags(a).map((t) => (
+                    <SettingsTag key={t.key} variant="outline">
+                      {t.label}
+                    </SettingsTag>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Separator className="bg-outline-variant/20" />
+        <AddAddressBlock />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Phone book"
+        action={
+          <Link
+            href="/dashboard/settings/account"
+            className="inline-flex items-center gap-1 font-label text-sm font-semibold text-on-surface underline underline-offset-2"
+          >
+            <Phone className="size-3.5" aria-hidden />
+            Edit
+          </Link>
+        }
+      >
+        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
+              Mobile
+            </span>
           </div>
-          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
-            <Phone className="mr-1 size-3.5" aria-hidden />
-            Add number
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-on-surface-variant">
-            Phone management is not connected yet in this release.
+          <p className="mt-3 font-body text-base text-on-surface-variant">
+            Add a verified phone number in account settings so we can reach you about live bidding
+            and fulfilment.
           </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-sm border-outline-variant/20 shadow-none">
-        <CardHeader className="flex-row items-start justify-between space-y-0">
-          <div>
-            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
-              Payment method
-            </CardTitle>
-            <CardDescription>Saved payment methods appear here.</CardDescription>
+          <div className="mt-3">
+            <SettingsTag variant="outline">Primary phone</SettingsTag>
           </div>
-          <Button type="button" variant="tertiary" className="h-8 px-2 text-on-surface">
-            <CreditCard className="mr-1 size-3.5" aria-hidden />
-            Add card
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-on-surface-variant">
-            Payment method management is not connected yet in this release.
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Payment method"
+        bordered={false}
+        action={
+          <Link
+            href="/dashboard/settings/payment-methods"
+            className="inline-flex items-center gap-1 font-label text-sm font-semibold text-on-surface underline underline-offset-2"
+          >
+            <CreditCard className="size-3.5" aria-hidden />
+            Manage
+          </Link>
+        }
+      >
+        <p className="font-body text-sm text-on-surface-variant">
+          Cards are saved during checkout and used for future invoices. View saved cards on the
+          payment methods page.
+        </p>
+      </SettingsSection>
     </div>
   );
 }

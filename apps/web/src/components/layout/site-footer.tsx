@@ -5,7 +5,6 @@ import {
   legalLinks,
   serviceLinks,
 } from "@/components/layout/footer-link-groups";
-import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { siteCopyrightLine } from "@/lib/brand";
@@ -20,7 +19,7 @@ type SiteFooterProps = {
 
 export function SiteFooter({
   tagline = "Fine art auctions since 2018.",
-  regionsLine = "London \u00B7 New York \u00B7 Hong Kong",
+  regionsLine = "London",
 }: SiteFooterProps = {}) {
   const linkClass =
     "font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary";
@@ -70,16 +69,8 @@ export function SiteFooter({
               ))}
             </ul>
             <FooterSocials />
-            <FooterNewsletter />
-            <a
-              href="/register"
-              className={`${linkClass} inline-flex min-h-11 items-center underline-offset-2 hover:underline`}
-            >
-              Join us
-            </a>
           </div>
         </div>
-        <div className="h-px w-full max-w-[1280px] bg-divider" aria-hidden />
         <div className="flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <LaxLogo variant="header" className="opacity-90" />
           <div className="flex flex-col gap-1 sm:items-end">

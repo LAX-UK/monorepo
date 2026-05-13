@@ -64,7 +64,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       aria-label="Upcoming salerooms"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: carousel must receive focus for ArrowLeft/ArrowRight
       tabIndex={0}
-      className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
+      className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}

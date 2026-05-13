@@ -4,14 +4,16 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { SessionUser } from "@/lib/data/contracts";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { type AppShellRole, appShellRoleMeta } from "./app-shell-nav";
+import { type AppShellRole, appShellRoleMeta, sessionUserToShellRole } from "./app-shell-nav";
 import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
+import { useSiteHeaderChrome } from "./site-header-chrome-context";
 
 const MENU_ID = "header-account-menu";
 
@@ -34,6 +36,7 @@ type HeaderUserMenuProps = {
 };
 
 export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
+  const { blendWithHero } = useSiteHeaderChrome();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -96,7 +99,7 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
 
   const links = accountNavLinks(user);
   const displayName = user.name.trim() || user.email;
-  const shellRole: AppShellRole = user.role === "administrator" ? "admin" : user.role;
+  const shellRole: AppShellRole = sessionUserToShellRole(user);
   const roleMeta = appShellRoleMeta[shellRole];
 
   return (
@@ -105,7 +108,12 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         ref={triggerRef}
         type="button"
         variant="ghost"
-        className="h-auto max-w-[200px] justify-start gap-2 py-1 pl-1 pr-2 text-left hover:bg-page-bg motion-reduce:transition-none dark:hover:bg-surface-container-low"
+        className={cn(
+          "h-auto max-w-[200px] justify-start gap-2 py-1 pl-1 pr-2 text-left transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+          blendWithHero
+            ? "hover:bg-white/10 dark:hover:bg-surface-container-low"
+            : "hover:bg-page-bg dark:hover:bg-surface-container-low",
+        )}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={MENU_ID}
@@ -121,11 +129,24 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
           sizes="36px"
           className="h-9 w-9 shrink-0"
         />
-        <span className="hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight text-brand-900 sm:inline dark:text-on-surface">
+        <span
+          className={cn(
+            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight sm:inline",
+            blendWithHero
+              ? "text-white dark:text-on-surface"
+              : "text-brand-900 dark:text-on-surface",
+          )}
+        >
           {displayName}
         </span>
         <ChevronDown
-          className={`shrink-0 text-base! text-brand-900 transition-transform motion-reduce:transition-none dark:text-on-surface ${open ? "rotate-180" : ""}`}
+          className={cn(
+            "shrink-0 text-base! transition-transform duration-200 motion-reduce:transition-none",
+            blendWithHero
+              ? "text-white dark:text-on-surface"
+              : "text-brand-900 dark:text-on-surface",
+            open ? "rotate-180" : "",
+          )}
           aria-hidden
         />
       </Button>

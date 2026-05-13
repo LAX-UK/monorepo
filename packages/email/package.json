@@ -17,7 +17,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@auction/branding": "workspace:^",
     "@auction/db": "workspace:^",
+    "@auction/types": "workspace:^",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
     "bullmq": "^5.74.1",

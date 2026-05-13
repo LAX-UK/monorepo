@@ -8,13 +8,11 @@ type SentryWindow = Window & {
   };
 };
 
-/**
- * Lightweight Web Vitals reporter. Forwards each metric to Sentry's global
+/** Lightweight Web Vitals reporter. Forwards each metric to Sentry's global
  * shim when available (`window.Sentry.captureMessage`). When Sentry is not
  * loaded — or when `NEXT_PUBLIC_SENTRY_DSN_WEB` is not configured — the
  * component is a no-op.
- *
- * The component renders nothing; it only mounts the reporter hook.
+ * * The component renders nothing; it only mounts the reporter hook.
  */
 export function WebVitalsReporter() {
   useReportWebVitals((metric) => {

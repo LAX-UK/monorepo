@@ -1,27 +1,52 @@
-import { Body, Container, Head, Heading, Html, Preview, Section } from "@react-email/components";
+import {
+  COLORS,
+  EMAIL_RADIUS_PX,
+  type EmailCategory,
+  FONT_STACK_BODY,
+  categoryAccentColor,
+} from "@auction/branding";
+import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
 import type { ReactNode } from "react";
-import { Footer } from "./Footer.js";
+import { Eyebrow } from "./Eyebrow.js";
 import { Header } from "./Header.js";
+import { DocumentHeading } from "./Heading.js";
+import { LegalFooter } from "./LegalFooter.js";
 
-type LayoutProps = {
+export type LayoutProps = {
   preview: string;
+  eyebrow: string;
+  category: EmailCategory;
   title: string;
+  unsubscribeUrl?: string | null;
   children: ReactNode;
 };
 
-export function Layout({ preview, title, children }: LayoutProps) {
+export function Layout({
+  preview,
+  eyebrow,
+  category,
+  title,
+  unsubscribeUrl,
+  children,
+}: LayoutProps) {
+  const accent = categoryAccentColor(category);
+
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <meta content="light" name="color-scheme" />
+        <meta content="light" name="supported-color-schemes" />
+      </Head>
       <Preview>{preview}</Preview>
       <Body style={body}>
         <Container style={container}>
-          <Section style={brand}>
+          <Section style={inner}>
             <Header />
+            <Eyebrow category={category} label={eyebrow} />
+            <DocumentHeading accentColor={accent}>{title}</DocumentHeading>
+            {children}
+            <LegalFooter {...(unsubscribeUrl != null ? { unsubscribeUrl } : {})} />
           </Section>
-          <Heading style={heading}>{title}</Heading>
-          {children}
-          <Footer />
         </Container>
       </Body>
     </Html>
@@ -29,29 +54,21 @@ export function Layout({ preview, title, children }: LayoutProps) {
 }
 
 const body = {
-  backgroundColor: "#f7f4ef",
-  color: "#1f1a17",
-  fontFamily: "Arial, sans-serif",
+  backgroundColor: COLORS.paper,
+  color: COLORS.textPrimary,
+  fontFamily: FONT_STACK_BODY,
   margin: 0,
-  padding: "32px 0",
+  padding: "32px 16px",
 };
 
 const container = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #e5ded4",
-  borderRadius: "12px",
   margin: "0 auto",
-  maxWidth: "560px",
+  maxWidth: "600px",
+};
+
+const inner = {
+  backgroundColor: COLORS.surface,
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: `${EMAIL_RADIUS_PX}px`,
   padding: "32px",
-};
-
-const brand = {
-  marginBottom: "24px",
-};
-
-const heading = {
-  color: "#1f1a17",
-  fontSize: "24px",
-  lineHeight: "32px",
-  margin: "0 0 20px",
 };

@@ -1,9 +1,10 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 
 export default function AdminAuditWebhooksPage() {
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Webhook deliveries"
         description="Retry flows, signature validation, and latency histograms for partner integrations."
@@ -13,6 +14,6 @@ export default function AdminAuditWebhooksPage() {
         title="No webhook attempts"
         description="Connect outbound webhook providers to populate this ledger."
       />
-    </div>
+    </AppScreen>
   );
 }

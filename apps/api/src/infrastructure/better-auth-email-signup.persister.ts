@@ -2,7 +2,11 @@ import type { Auth } from "@auction/auth/server";
 import type { IEmailSignupPersister } from "../services/interfaces/registration.js";
 
 export class BetterAuthEmailSignupPersister implements IEmailSignupPersister {
-  constructor(private readonly auth: Auth) {}
+  constructor(
+    private readonly auth: Auth,
+    /** Public web origin (e.g. https://lax.bid) — never the auth issuer subdomain. */
+    private readonly webOrigin: string,
+  ) {}
 
   async signUpEmail(input: {
     name: string;
@@ -12,11 +16,14 @@ export class BetterAuthEmailSignupPersister implements IEmailSignupPersister {
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   > {
     try {
+      const base = this.webOrigin.replace(/\/$/, "");
+      const callbackURL = `${base}/verify-email?email=${encodeURIComponent(input.email)}`;
       const result = await this.auth.api.signUpEmail({
         body: {
           name: input.name,
           email: input.email,
           password: input.password,
+          callbackURL,
         },
       });
       const userId =

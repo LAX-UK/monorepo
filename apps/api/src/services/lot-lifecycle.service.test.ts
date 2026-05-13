@@ -1,6 +1,6 @@
+import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { LotLifecycleService } from "./lot-lifecycle.service.js";
@@ -8,10 +8,13 @@ import { NotificationFactory } from "./notification.factory.js";
 
 function bid(overrides: Partial<Bid> = {}): Bid {
   const now = new Date();
+  const bidderId = overrides.bidderId ?? overrides.placedByUserId ?? "u1";
   return {
     id: "b1",
     lotId: "a1",
-    bidderId: "u1",
+    bidderId,
+    placedByUserId: bidderId,
+    buyerLegalEntityId: overrides.buyerLegalEntityId ?? `${bidderId}-entity`,
     amount: "500.00",
     isWinning: true,
     isAutoBid: false,
@@ -48,6 +51,9 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
     endTime: now,
     status: "active",
     winnerId: null,
+    voidedReason: null,
+    archivedSeller: false,
+    sellerLegalEntityId: "se-1",
     createdAt: now,
     updatedAt: now,
     marketingDetails: {},
@@ -60,13 +66,12 @@ function createFactory(lots: ILotRepository, bids: IBidRepository): IRepositoryF
   return {
     root,
     forConnection: () => root,
-    runInTransaction: async <T>(fn: (r: typeof root) => Promise<T>) => fn(root),
+    runInTransaction: async <T>(fn: (r: typeof root, tx: Database) => Promise<T>) =>
+      fn(root, {} as unknown as Database),
   };
 }
 
 describe("LotLifecycleService", () => {
-  const strategyFactory = new LotStrategyFactory();
-
   it("does not set winner when reserve is not met", async () => {
     const lot = baseLot({
       reservePrice: "1000.00",
@@ -84,20 +89,24 @@ describe("LotLifecycleService", () => {
       setDutchLastDecrementAt: vi.fn(),
       updateDutchCurrentPrice: vi.fn(),
       updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
     } as unknown as ILotRepository;
 
     const bids: IBidRepository = {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
+      findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
     } as unknown as IBidRepository;
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,
       new NotificationFactory(),
+      null,
+      null,
+      null,
     );
     await svc.runTransitions(new Date());
 
@@ -122,26 +131,155 @@ describe("LotLifecycleService", () => {
       setDutchLastDecrementAt: vi.fn(),
       updateDutchCurrentPrice: vi.fn(),
       updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
     } as unknown as ILotRepository;
 
     const bids: IBidRepository = {
       listForLotSettlement: vi
         .fn()
         .mockResolvedValue([bid({ amount: "500.00", bidderId: "winner" })]),
+      findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
     } as unknown as IBidRepository;
 
     const svc = new LotLifecycleService(
       createFactory(lots, bids),
-      strategyFactory,
       null,
       null,
       null,
       new NotificationFactory(),
+      null,
+      null,
+      null,
     );
     await svc.runTransitions(new Date());
 
-    expect(lots.setWinner).toHaveBeenCalledWith("a1", "winner");
+    expect(lots.setWinner).toHaveBeenCalledWith("a1", "winner", "winner-entity");
     expect(lots.updateStatus).toHaveBeenCalledWith("a1", "ended");
+  });
+
+  it("voids lot when anti-shilling blocks every eligible bid at close", async () => {
+    const lotRow = baseLot({ reservePrice: "100.00" });
+    const lots: ILotRepository = {
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([lotRow]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lotRow),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findActiveDutchLots: vi.fn().mockResolvedValue([]),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const findEligible = vi.fn().mockResolvedValue([]);
+    const bids: IBidRepository = {
+      listForLotSettlement: vi
+        .fn()
+        .mockResolvedValue([
+          bid({ amount: "500.00", bidderId: "u1" }),
+          bid({ amount: "400.00", bidderId: "u2" }),
+        ]),
+      findEligibleBidsForLotClose: findEligible,
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["u1", "u2"]),
+    } as unknown as IBidRepository;
+
+    const guard = {
+      bidderSharesSellerLegalEntity: vi.fn().mockResolvedValue(false),
+      violatesAntiShilling: vi.fn().mockResolvedValue(true),
+    };
+
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const publisher = { publish } as import("./domain-event.publisher.js").DomainEventPublisher;
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      guard,
+      publisher,
+      null,
+    );
+    await svc.runTransitions(new Date());
+
+    expect(lots.voidLotAntiShillingClose).toHaveBeenCalledWith("a1");
+    expect(lots.setWinner).not.toHaveBeenCalled();
+    expect(lots.updateStatus).not.toHaveBeenCalled();
+    expect(findEligible).toHaveBeenCalledTimes(1);
+    expect(findEligible).toHaveBeenCalledWith("a1", {
+      sellerLegalEntityId: "se-1",
+      reservePrice: "100.00",
+      sort: "english",
+    });
+    expect(publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "lot.voided",
+        payload: expect.objectContaining({ reason: "no_valid_winner" }),
+      }),
+    );
+  });
+
+  it("selects first SQL-eligible bid in one query when higher bids violate anti-shilling", async () => {
+    const lotRow = baseLot({ reservePrice: "100.00" });
+    const lots: ILotRepository = {
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([lotRow]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lotRow),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findActiveDutchLots: vi.fn().mockResolvedValue([]),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const settlementBids = Array.from({ length: 10 }, (_, i) =>
+      bid({
+        id: `bid-${i}`,
+        amount: `${1000 - i * 100}.00`,
+        bidderId: `u${i}`,
+        buyerLegalEntityId: `entity-u${i}`,
+      }),
+    );
+    const winnerBid = settlementBids[3];
+    if (!winnerBid) throw new Error("expected settlementBids[3]");
+    const findEligible = vi.fn().mockResolvedValue([winnerBid]);
+    const bids: IBidRepository = {
+      listForLotSettlement: vi.fn().mockResolvedValue(settlementBids),
+      findEligibleBidsForLotClose: findEligible,
+      listDistinctBidderIds: vi.fn().mockResolvedValue(settlementBids.map((b) => b.bidderId)),
+    } as unknown as IBidRepository;
+
+    const guard = {
+      bidderSharesSellerLegalEntity: vi.fn(),
+      violatesAntiShilling: vi.fn(),
+    };
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      guard,
+      null,
+      null,
+    );
+    await svc.runTransitions(new Date());
+
+    expect(findEligible).toHaveBeenCalledTimes(1);
+    expect(lots.setWinner).toHaveBeenCalledWith(
+      "a1",
+      winnerBid.placedByUserId,
+      winnerBid.buyerLegalEntityId,
+    );
+    expect(guard.violatesAntiShilling).not.toHaveBeenCalled();
   });
 });

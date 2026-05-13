@@ -1,15 +1,12 @@
 import type { PoolConfig } from "pg";
 
-/**
- * Build the `pg` SSL config for managed Postgres (DigitalOcean, RDS, etc.).
- *
- * Newer pg-connection-string treats `sslmode=require` as `verify-full`, so a
+/** Build the `pg` SSL config for managed Postgres (DigitalOcean, RDS, etc.).
+ * * Newer pg-connection-string treats `sslmode=require` as `verify-full`, so a
  * connection to a cluster fronted by a private CA fails with
  * `SELF_SIGNED_CERT_IN_CHAIN` unless we supply the CA explicitly.
- *
- * - `DATABASE_CA_CERT`: PEM-encoded CA certificate. Preferred path.
+ * * - `DATABASE_CA_CERT`: PEM-encoded CA certificate. Preferred path.
  * - `DATABASE_SSL_REJECT_UNAUTHORIZED=false`: opt-out escape hatch for local
- *   debugging only. Never set in production.
+ * debugging only. Never set in production.
  */
 export function buildPgSslConfig(): PoolConfig["ssl"] {
   const ca = process.env.DATABASE_CA_CERT;
@@ -22,11 +19,9 @@ export function buildPgSslConfig(): PoolConfig["ssl"] {
   return undefined;
 }
 
-/**
- * Build a `pg.Pool` / `pg.Client` config from a connection string while ensuring
+/** Build a `pg.Pool` / `pg.Client` config from a connection string while ensuring
  * our explicit `ssl` always wins over any sslmode embedded in the URL.
- *
- * `pg.ConnectionParameters` does `Object.assign({}, config, parse(connectionString))`,
+ * * `pg.ConnectionParameters` does `Object.assign({}, config, parse(connectionString))`,
  * so any `ssl` we pass alongside `connectionString` is silently overwritten by
  * the URL parse result (e.g. `sslmode=require` → `{ rejectUnauthorized: true }`),
  * which drops our `ca` and reproduces SELF_SIGNED_CERT_IN_CHAIN against private

@@ -1,5 +1,6 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -11,7 +12,9 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { artistProfile } from "./artist-profiles.js";
 import { user } from "./auth.js";
+import { legalEntity } from "./legal-entities.js";
 import { sale } from "./sales.js";
 
 export const lotAuctionTypeEnum = pgEnum("auction_type", [
@@ -27,6 +30,8 @@ export const lotStatusEnum = pgEnum("lot_status", [
   "active",
   "ended",
   "cancelled",
+  /** no valid winner after anti-shilling re-check at close. */
+  "voided",
 ]);
 
 export const lot = pgTable(
@@ -35,9 +40,15 @@ export const lot = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     saleId: uuid("sale_id").references(() => sale.id, { onDelete: "set null" }),
     lotNumber: integer("lot_number"),
-    sellerId: text("seller_id")
+    sellerLegalEntityId: uuid("seller_legal_entity_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => legalEntity.id, { onDelete: "restrict" }),
+    /** artist registry FK */
+    artistId: uuid("artist_id").references(() => artistProfile.id, {
+      onDelete: "restrict",
+    }),
+    /** gates publish when artist is pending */
+    artistReviewRequired: boolean("artist_review_required").notNull().default(false),
     title: text("title").notNull(),
     description: text("description"),
     medium: text("medium"),
@@ -54,7 +65,15 @@ export const lot = pgTable(
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     status: lotStatusEnum("status").notNull().default("draft"),
+    /** set when lot is voided (e.g. `no_valid_winner` after anti-shilling at close). */
+    voidedReason: text("voided_reason"),
+    /** seller entity was archived; admin reviews before unscheduling. */
+    archivedSeller: boolean("archived_seller").notNull().default(false),
     winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
+    /** winner's acting legal entity at time of win */
+    buyerLegalEntityId: uuid("buyer_legal_entity_id").references(() => legalEntity.id, {
+      onDelete: "set null",
+    }),
     minBidIncrement: numeric("min_bid_increment", { precision: 18, scale: 2 })
       .notNull()
       .default("1.00"),
@@ -73,11 +92,30 @@ export const lot = pgTable(
       .default(sql`'{}'::jsonb`),
   },
   (table) => [
-    index("lot_seller_id_idx").on(table.sellerId),
+    index("lot_seller_legal_entity_id_idx").on(table.sellerLegalEntityId),
+    index("lot_artist_id_idx").on(table.artistId),
+    index("lot_artist_review_required_idx").on(table.artistReviewRequired),
+    index("lot_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
+    index("lot_sale_id_status_idx").on(table.saleId, table.status),
     uniqueIndex("lot_sale_id_lot_number_uid")
       .on(table.saleId, table.lotNumber)
       .where(sql`${table.saleId} IS NOT NULL AND ${table.lotNumber} IS NOT NULL`),
   ],
 );
+
+export const lotRelations = relations(lot, ({ one }) => ({
+  sellerLegalEntity: one(legalEntity, {
+    fields: [lot.sellerLegalEntityId],
+    references: [legalEntity.id],
+  }),
+  artist: one(artistProfile, {
+    fields: [lot.artistId],
+    references: [artistProfile.id],
+  }),
+  buyerLegalEntity: one(legalEntity, {
+    fields: [lot.buyerLegalEntityId],
+    references: [legalEntity.id],
+  }),
+}));

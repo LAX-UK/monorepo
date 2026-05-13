@@ -34,17 +34,29 @@ export type UpdateAddressInput = Partial<CreateAddressInput> & {
   isDefault?: boolean | undefined;
 };
 
+export type ProfileMeRow = {
+  id: string;
+  email: string;
+  name: string;
+  image: string | null;
+  role: string;
+  staffRole: string | null;
+  emailVerified: boolean;
+  emailStatus: "ok" | "bounced" | "complained";
+  emailStatusChangedAt: Date | null;
+  /** Target address for an in-flight dual-confirm email change, if any. */
+  pendingNewEmail: string | null;
+  hasSeenActingContextTooltip: boolean;
+  kycStatus: "unverified" | "pending" | "approved" | "rejected";
+  signupPersona: "individual" | "organisation" | null;
+  /** When set, a self-serve deletion has been requested (GDPR). */
+  deletionRequestedAt: Date | null;
+  /** TOTP / backup-code 2FA enabled for this account (Better Auth). */
+  twoFactorEnabled: boolean;
+};
+
 export interface IProfileReader {
-  getProfile(userId: string): Promise<{
-    id: string;
-    email: string;
-    name: string;
-    image: string | null;
-    role: string;
-    emailVerified: boolean;
-    emailStatus: "ok" | "bounced" | "complained";
-    emailStatusChangedAt: Date | null;
-  } | null>;
+  getProfile(userId: string): Promise<ProfileMeRow | null>;
 }
 
 export interface IProfileWriter {

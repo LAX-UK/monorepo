@@ -3,6 +3,7 @@ import {
   type LotStatus,
   type Sale,
   type UserRole,
+  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
@@ -12,8 +13,7 @@ import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 
-/**
- * Allowed admin overrides per current lot status. These intentionally do not
+/** Allowed admin overrides per current lot status. These intentionally do not
  * include moves back into `active` (admins should only be ending or cancelling).
  */
 const ALLOWED_LOT_TRANSITIONS: Record<LotStatus, ReadonlySet<LotStatus>> = {
@@ -22,6 +22,7 @@ const ALLOWED_LOT_TRANSITIONS: Record<LotStatus, ReadonlySet<LotStatus>> = {
   active: new Set(["ended", "cancelled"]),
   ended: new Set(),
   cancelled: new Set(),
+  voided: new Set(),
 };
 
 export class SaleStatusTransitionService implements ISaleStatusTransitionService {
@@ -35,9 +36,16 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     userRole: string,
     saleId: string,
     _reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can change sale status", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can change sale status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -70,9 +78,16 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     saleId: string,
     lotId: string,
     _reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can cancel lots", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can cancel lots", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -96,9 +111,16 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     lotId: string,
     status: LotStatus,
     _reason?: string,
+    userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (!roleHasCapability(userRole as UserRole, "auction.manage")) {
-      return err(new AuthzError("Only administrators can change lot status", 403));
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can change lot status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));

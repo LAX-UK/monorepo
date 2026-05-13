@@ -27,10 +27,12 @@ export function WatchlistPreviewCard({
   const items = vm.watchPreview.slice(0, tileCount).filter((row) => row.lot);
 
   return (
-    <Card className="border-outline-variant/15 shadow-sm">
+    <Card className="border-outline-variant/15 shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
         <div>
-          <CardTitle className="font-headline text-xl">Watchlist</CardTitle>
+          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+            Watchlist
+          </CardTitle>
           <CardDescription>Saved lots you are tracking.</CardDescription>
         </div>
         <Button variant="chevron" asChild>
@@ -42,9 +44,12 @@ export function WatchlistPreviewCard({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">
-            Save lots from artwork pages to build a personal watchlist.
-          </p>
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
+            <span>Save lots from artwork pages to build a personal watchlist.</span>
+            <Button size="sm" variant="outline" asChild className="shrink-0">
+              <Link href="/search">Browse auctions</Link>
+            </Button>
+          </div>
         ) : variant === "tile-grid" ? (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map((row) => {
@@ -54,7 +59,7 @@ export function WatchlistPreviewCard({
                 <li key={row.watchlistId}>
                   <Link
                     href={lotPath(lot)}
-                    className="flex min-h-16 items-center gap-3 rounded-md border border-outline-variant/15 bg-surface-container-lowest p-2 transition-colors hover:bg-surface-container-low/60"
+                    className="flex min-h-16 items-center gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high/50"
                   >
                     <LotThumbnail
                       src={lot.images[0]}

@@ -1,4 +1,5 @@
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { authSubmitFailure } from "@/lib/auth/auth-error-code";
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
 
 export type ResetPasswordInput = {
@@ -23,7 +24,7 @@ class ResetPasswordService implements IResetPasswordService {
     });
 
     if (!res.ok) {
-      return { ok: false, message: "We could not reset your password. Please request a new link." };
+      return authSubmitFailure("reset_password_failed");
     }
 
     return { ok: true };

@@ -52,4 +52,7 @@ export interface IXeroWebhookEventRepository {
   }): Promise<{ claimed: boolean }>;
   markProcessed(eventKey: string): Promise<void>;
   markFailed(eventKey: string, error: string): Promise<void>;
+  listRecentFailures(
+    limit: number,
+  ): Promise<{ tenantId: string; resourceId: string; eventKey: string }[]>;
 }

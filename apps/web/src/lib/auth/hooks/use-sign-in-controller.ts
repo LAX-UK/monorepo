@@ -4,15 +4,30 @@ import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client"
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { signInService } from "@/lib/auth/services/sign-in.service";
+import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useSignInController(nextHref: string) {
   const router = useRouter();
-  const { run, loading, bannerError } = useAuthSubmit(signInService);
+  const turnstileRef = useRef<string | undefined>(undefined);
+  const { run, loading, bannerError, lastErrorCode } = useAuthSubmit((data: SignInFormValues) =>
+    signInService({ ...data, turnstileToken: turnstileRef.current }),
+  );
+  const siteKey = turnstileSiteKey();
+  const [showCaptcha, setShowCaptcha] = useState(false);
+
+  const onTurnstileToken = useCallback((t: string) => {
+    turnstileRef.current = t;
+  }, []);
+
+  const onTurnstileExpire = useCallback(() => {
+    turnstileRef.current = undefined;
+  }, []);
 
   const form = useForm<SignInFormValues>({
     resolver: zodResolver(signInFormSchema),
@@ -21,7 +36,19 @@ export function useSignInController(nextHref: string) {
 
   const onSubmit = form.handleSubmit(async (data) => {
     const result = await run(data);
+    if (!result.ok && result.code === "captcha_required" && siteKey) {
+      setShowCaptcha(true);
+      return;
+    }
     if (result.ok) {
+      setShowCaptcha(false);
+      turnstileRef.current = undefined;
+      if (result.requiresTwoFactor) {
+        const safeNext = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
+        router.push(`/login/two-factor?next=${encodeURIComponent(safeNext)}`);
+        router.refresh();
+        return;
+      }
       const me = await fetchSessionUserAfterAuth();
       if (me) {
         router.push(
@@ -44,13 +71,23 @@ export function useSignInController(nextHref: string) {
       router.refresh();
       return;
     }
-    const maybeUnverified =
-      result.code === "EMAIL_NOT_VERIFIED" || /email.*not.*verified/i.test(result.message);
+    const maybeUnverified = result.code === "email_not_verified";
     if (maybeUnverified) {
-      router.push(`/register/verify-pending?email=${encodeURIComponent(data.email)}`);
+      const q = isSafeNextPath(nextHref) ? `?next=${encodeURIComponent(nextHref)}` : "";
+      router.push(`/register/verify-pending${q}`);
       router.refresh();
     }
   });
 
-  return { form, onSubmit, loading, bannerError };
+  return {
+    form,
+    onSubmit,
+    loading,
+    bannerError,
+    lastErrorCode,
+    showCaptcha: showCaptcha && Boolean(siteKey),
+    turnstileSiteKey: siteKey,
+    onTurnstileToken,
+    onTurnstileExpire,
+  };
 }

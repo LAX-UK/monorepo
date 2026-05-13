@@ -1,3 +1,4 @@
+import { twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 const baseURL =
@@ -5,7 +6,63 @@ const baseURL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:3001";
 
+/** Canonical Better Auth issuer origin (same logic as the browser auth client). */
+export function getAuthIssuerBaseUrl(): string {
+  return baseURL;
+}
+
+function createAppAuthClient() {
+  return createAuthClient({
+    baseURL,
+    plugins: [twoFactorClient()],
+  });
+}
+
+/** Narrow export surface: avoids TS2742 from Better Auth’s deep plugin + zod inference graph. */
+type AuthErr = { message?: string; code?: string } | null | undefined;
+
+type AuctionAuthClient = {
+  signIn: {
+    email: (args: { email: string; password: string }) => Promise<{
+      data?: {
+        twoFactorRedirect?: boolean;
+        twoFactorMethods?: string[];
+      } | null;
+      error?: AuthErr;
+    }>;
+    social: (args: Record<string, unknown>) => Promise<{ data?: unknown; error?: AuthErr }>;
+  };
+  signOut: () => Promise<{ data?: unknown; error?: AuthErr }>;
+  sendVerificationEmail: (
+    args: Record<string, unknown>,
+  ) => Promise<{ data?: unknown; error?: AuthErr }>;
+  useSession: () => {
+    data: { user?: Record<string, unknown> } | null;
+    isPending: boolean;
+    isRefetching: boolean;
+    error: Error | null;
+    refetch: (opts?: { query?: { disableCookieCache?: boolean } }) => Promise<void>;
+  };
+  twoFactor: {
+    enable: (args: { password: string }) => Promise<{
+      data?: { totpURI?: string; backupCodes?: string[] };
+      error?: AuthErr;
+    }>;
+    verifyTotp: (args: { code: string; trustDevice?: boolean }) => Promise<{
+      data?: unknown;
+      error?: AuthErr;
+    }>;
+    verifyBackupCode: (args: { code: string; trustDevice?: boolean }) => Promise<{
+      data?: unknown;
+      error?: AuthErr;
+    }>;
+    disable: (args: { password: string }) => Promise<{ data?: unknown; error?: AuthErr }>;
+    generateBackupCodes: (args: { password: string }) => Promise<{
+      data?: { backupCodes?: string[] };
+      error?: AuthErr;
+    }>;
+  };
+};
+
 /** Points at the canonical auth issuer; Better Auth uses `/api/auth` routes on that host. */
-export const authClient = createAuthClient({
-  baseURL,
-}) as ReturnType<typeof createAuthClient>;
+export const authClient: AuctionAuthClient = createAppAuthClient() as unknown as AuctionAuthClient;

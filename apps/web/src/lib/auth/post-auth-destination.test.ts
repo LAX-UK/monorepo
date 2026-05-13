@@ -1,12 +1,10 @@
-import {
-  isSafeNextPath,
-  resolvePostAuthDestination,
-  roleDefaultDestination,
-} from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { staffRoleDefaultDestination } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
 const clientUser = {
   role: "client" as const,
+  staffRole: null,
   email: "a@b.com",
   emailVerified: true,
   suspended: false as const,
@@ -28,14 +26,16 @@ describe("isSafeNextPath", () => {
     expect(isSafeNextPath("/admin/api/secret")).toBe(false);
     expect(isSafeNextPath("relative")).toBe(false);
     expect(isSafeNextPath(null)).toBe(false);
+    expect(isSafeNextPath("/%2F%2Fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%5Cevil")).toBe(false);
   });
 });
 
-describe("roleDefaultDestination", () => {
-  it("maps roles", () => {
-    expect(roleDefaultDestination("administrator")).toBe("/admin");
-    expect(roleDefaultDestination("accountant")).toBe("/admin/payments");
-    expect(roleDefaultDestination("client")).toBe("/dashboard");
+describe("staffRoleDefaultDestination", () => {
+  it("maps staff specializations", () => {
+    expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
+    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/payments");
+    expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
   });
 });
 
@@ -56,14 +56,22 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-up",
         requireEmailVerification: true,
       }),
-    ).toBe("/register/verify-pending?email=a%40b.com");
+    ).toBe("/register/verify-pending");
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, emailVerified: false },
         context: "redirect-if-authed",
         requireEmailVerification: true,
       }),
-    ).toBe("/register/verify-pending?email=a%40b.com");
+    ).toBe("/register/verify-pending");
+    expect(
+      resolvePostAuthDestination({
+        user: { ...clientUser, emailVerified: false },
+        requestedNext: "/dashboard/foo",
+        context: "sign-up",
+        requireEmailVerification: true,
+      }),
+    ).toBe("/register/verify-pending?next=%2Fdashboard%2Ffoo");
   });
 
   it("uses safe next when present", () => {
@@ -86,7 +94,7 @@ describe("resolvePostAuthDestination", () => {
     ).toBe("/dashboard");
     expect(
       resolvePostAuthDestination({
-        user: { ...clientUser, role: "administrator" },
+        user: { ...clientUser, role: "staff", staffRole: "super_admin" },
         requestedNext: "//evil",
         context: "sign-in",
       }),

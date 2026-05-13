@@ -1,12 +1,15 @@
+import { ArtistFollowCard } from "@/components/dashboard/artist-follow-card";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { artistPath } from "@/lib/seo/url";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
-function artistDisplayName(artistId: string): string {
+function fallbackArtistName(artistId: string): string {
   return artistId
     .split(/[-_]/)
     .filter(Boolean)
@@ -24,8 +27,10 @@ export default async function ArtistFollowPage() {
     err = e instanceof Error ? e.message : "Could not load followed artists.";
   }
 
+  const artistNameById = await resolveArtistNames(rows.map((r) => r.artistId));
+
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage>
       <PageHeader
         title="Followed artists"
         description="Jump to artist profiles you watch for new catalog drops."
@@ -42,7 +47,7 @@ export default async function ArtistFollowPage() {
       />
 
       {err ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not load followed artists</AlertTitle>
           <AlertDescription>{err}</AlertDescription>
         </Alert>
@@ -52,27 +57,26 @@ export default async function ArtistFollowPage() {
         <EmptyState
           title="No followed artists yet"
           description="Follow artists from their public profile to see them listed here."
+          action={
+            <Button variant="outline" asChild>
+              <Link href="/search">Browse catalogue</Link>
+            </Button>
+          }
         />
       ) : null}
 
       {!err && rows.length > 0 ? (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((row) => (
-            <li key={row.watchlistId}>
-              <Link
-                href={artistPath({ id: row.artistId, name: artistDisplayName(row.artistId) })}
-                title={artistDisplayName(row.artistId)}
-                className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 px-4 py-3 text-on-surface transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="min-w-0 flex-1 truncate font-headline text-sm">
-                  {artistDisplayName(row.artistId)}
-                </span>
-                <span className="shrink-0 font-label text-[10px] uppercase text-primary">Open</span>
-              </Link>
-            </li>
-          ))}
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((row) => {
+            const displayName = artistNameById[row.artistId] ?? fallbackArtistName(row.artistId);
+            return (
+              <li key={row.watchlistId}>
+                <ArtistFollowCard artistId={row.artistId} displayName={displayName} />
+              </li>
+            );
+          })}
         </ul>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }

@@ -8,8 +8,7 @@ type Props = {
   endedBanner: string | null;
 };
 
-/**
- * Promotes winning / owner messaging above the primary CTA; keeps copy in `BidDisplayStatusBanner`.
+/** Promotes winning / owner messaging above the primary CTA; keeps copy in `BidDisplayStatusBanner`.
  */
 export function LotHighestBidderBanner({ status, endedBanner }: Props) {
   return (

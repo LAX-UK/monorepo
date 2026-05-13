@@ -1,9 +1,10 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { Separator } from "@auction/ui/components/separator";
 
 export default function AdminPlatformSettingsPage() {
   return (
-    <div className="screen w-full max-w-3xl space-y-8">
+    <AppScreen className="max-w-3xl space-y-8">
       <PageHeader
         title="Platform defaults"
         description="Buyer premium ladders, currency display rules, increment tables, soft-close windows, upload ceilings, and provider health checks consolidate here with audited writes."
@@ -14,6 +15,6 @@ export default function AdminPlatformSettingsPage() {
         Configuration forms ship incrementally—each toggle posts through audited admin APIs so
         finance and operations retain traceability.
       </section>
-    </div>
+    </AppScreen>
   );
 }

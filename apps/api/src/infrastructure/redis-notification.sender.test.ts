@@ -67,5 +67,7 @@ describe("RedisNotificationSender", () => {
     const payload = publish.mock.calls[0]?.[1] as string;
     expect(payload).toContain('"bid"');
     expect(payload).toContain("user-secret");
+    const parsed = JSON.parse(payload) as { emittedAt?: number };
+    expect(typeof parsed.emittedAt).toBe("number");
   });
 });

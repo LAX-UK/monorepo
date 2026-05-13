@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
-import { session, user } from "@auction/db/schema";
+import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
 import { count, desc, eq, ilike, or } from "drizzle-orm";
+import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -29,6 +31,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: user.email,
         name: user.name,
         role: user.role,
+        staffRole: user.staffRole,
         createdAt: user.createdAt,
         suspendedAt: user.suspendedAt,
       })
@@ -46,6 +49,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: r.email,
         name: r.name,
         role: r.role,
+        staffRole: r.staffRole ?? null,
         createdAt: r.createdAt,
         suspendedAt: r.suspendedAt ?? null,
       })),
@@ -59,6 +63,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         email: user.email,
         name: user.name,
         role: user.role,
+        staffRole: user.staffRole,
         createdAt: user.createdAt,
         suspendedAt: user.suspendedAt,
         suspendedReason: user.suspendedReason,
@@ -72,6 +77,7 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       email: row.email,
       name: row.name,
       role: row.role,
+      staffRole: row.staffRole ?? null,
       createdAt: row.createdAt,
       suspendedAt: row.suspendedAt ?? null,
       suspendedReason: row.suspendedReason ?? null,
@@ -82,15 +88,47 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
   constructor(private readonly db: Database) {}
 
-  async setRole(_actorRole: string, userId: string, role: string): Promise<void> {
-    await this.db.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, userId));
+  async setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void> {
+    if (role === "client") {
+      await this.db
+        .update(user)
+        .set({ role: "client", staffRole: null, updatedAt: new Date() })
+        .where(eq(user.id, userId));
+      return;
+    }
+    const value =
+      staffRole === null || staffRole === ""
+        ? null
+        : (staffRole as (typeof userStaffRoleEnum.enumValues)[number]);
+    await this.db
+      .update(user)
+      .set({
+        role: "staff",
+        staffRole: value,
+        updatedAt: new Date(),
+      })
+      .where(eq(user.id, userId));
   }
 }
 
 export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly sessions: { revokeAllForUser: (userId: string) => Promise<unknown> },
+    private readonly hooks?: {
+      authAudit?: AuthAuditPublisher;
+      emailService?: IEmailService;
+      accountSuspendedSupportEmail?: string;
+    },
+  ) {}
 
   async suspend(userId: string, reason: string | null): Promise<void> {
+    const [before] = await this.db
+      .select({ email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
     await this.db
       .update(user)
       .set({
@@ -99,6 +137,29 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
         updatedAt: new Date(),
       })
       .where(eq(user.id, userId));
+    await this.sessions.revokeAllForUser(userId);
+
+    void this.hooks?.authAudit
+      ?.publish(this.db, {
+        eventType: "auth.account_suspended",
+        aggregateId: userId,
+        payload: {},
+        actorUserId: null,
+      })
+      .catch(() => {});
+
+    if (before?.email && this.hooks?.emailService) {
+      void this.hooks.emailService.enqueue({
+        template: "account-suspended",
+        to: before.email,
+        userId,
+        category: "auth",
+        vars: {
+          userName: before.name,
+          supportContactEmail: this.hooks?.accountSuspendedSupportEmail ?? "support@lax.bid",
+        },
+      });
+    }
   }
 
   async unsuspend(userId: string): Promise<void> {

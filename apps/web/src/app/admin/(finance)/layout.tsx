@@ -9,7 +9,7 @@ export default async function AdminFinanceLayout({ children }: { children: React
   if (!user) {
     redirect("/login?next=/admin/payments&auth=required");
   }
-  if (!canAccessFinanceAdminRoutes(user.role as UserRole)) {
+  if (!canAccessFinanceAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/dashboard");
   }
   return children;

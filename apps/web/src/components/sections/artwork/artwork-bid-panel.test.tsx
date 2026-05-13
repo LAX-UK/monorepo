@@ -12,6 +12,11 @@ vi.mock("@/lib/context/lot-ports", () => ({
     bidWriter: {
       placeBid: vi.fn().mockResolvedValue({ ok: false, error: "fail", status: 400 }),
     },
+    health: {
+      subscribe: () => () => {},
+      probe: () => {},
+      setBidPropagationLotId: () => {},
+    },
   }),
 }));
 

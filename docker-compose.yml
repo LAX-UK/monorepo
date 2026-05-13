@@ -29,6 +29,20 @@ services:
       timeout: 3s
       retries: 5
 
+  # Applies packages/db/drizzle migrations to the compose Postgres volume (same DATABASE_URL as api).
+  # Runs automatically before api starts; re-run manually with: pnpm db:migrate:docker
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auction
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "packages/db/dist/migrate.js"]
+    restart: "no"
+
   api:
     build:
       context: .
@@ -43,18 +57,24 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-min-16-chars}
       API_PUBLIC_URL: http://localhost:3001
       WEB_ORIGIN: http://localhost:3000
+      # Required by API env when NODE_ENV=production; override in real deployments.
+      POSTMARK_WEBHOOK_BASIC_AUTH: ${POSTMARK_WEBHOOK_BASIC_AUTH:-local-docker-dev}
+      ENGLISH_ONLY_AUCTIONS: ${ENGLISH_ONLY_AUCTIONS:-true}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   ws:
     build:
       context: .
       dockerfile: apps/ws/Dockerfile
     ports:
-      - "3002:3002"
+      # If host 3002 is taken, set WS_PUBLISH_PORT (e.g. 3022) in .env or the shell.
+      - "${WS_PUBLISH_PORT:-3002}:3002"
     environment:
       NODE_ENV: production
       PORT: "3002"

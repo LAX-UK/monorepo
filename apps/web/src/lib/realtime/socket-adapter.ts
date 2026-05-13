@@ -25,6 +25,8 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
       currentPrice: o.currentPrice,
       endTime: typeof o.endTime === "string" ? o.endTime : undefined,
       outbidUserId: typeof o.outbidUserId === "string" ? o.outbidUserId : undefined,
+      emittedAt:
+        typeof o.emittedAt === "number" && Number.isFinite(o.emittedAt) ? o.emittedAt : undefined,
     };
   }
   return null;
@@ -35,21 +37,26 @@ function asLotEnded(raw: unknown): LotEndedEvent | null {
   const o = raw as Record<string, unknown>;
   const lotId =
     typeof o.lotId === "string" ? o.lotId : typeof o.auctionId === "string" ? o.auctionId : null;
+  const winnerId = o.winnerId;
+  const bidId = o.bidId;
+  const hasWinner =
+    typeof winnerId === "string" && winnerId.length > 0 && typeof bidId === "string";
+  const noSale = o.noSale === true;
   if (
     (o.type === "lot_ended" || o.type === "auction_ended") &&
     lotId &&
-    typeof o.winnerId === "string" &&
-    typeof o.bidId === "string" &&
     typeof o.currentPrice === "string" &&
-    typeof o.status === "string"
+    typeof o.status === "string" &&
+    (hasWinner || noSale)
   ) {
     return {
       type: "lot_ended",
       lotId,
-      winnerId: o.winnerId,
-      bidId: o.bidId,
+      ...(typeof winnerId === "string" ? { winnerId } : { winnerId: null }),
+      ...(typeof bidId === "string" ? { bidId } : { bidId: null }),
       currentPrice: o.currentPrice,
       status: o.status,
+      ...(noSale ? { noSale: true } : {}),
     };
   }
   return null;

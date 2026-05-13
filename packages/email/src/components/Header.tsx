@@ -1,13 +1,56 @@
-import { Text } from "@react-email/components";
+import {
+  COLORS,
+  EMAIL_LOGO_ALT,
+  EMAIL_LOGO_DISPLAY_WIDTH,
+  EMAIL_LOGO_URL,
+  EMAIL_LOGO_URL_2X,
+  EMAIL_SITE_URL,
+} from "@auction/branding";
+import { Img, Link, Section } from "@react-email/components";
+
+const displayHeight = Math.round((140 * EMAIL_LOGO_DISPLAY_WIDTH) / 480);
 
 export function Header() {
-  return <Text style={brandText}>London Art Exchange</Text>;
+  return (
+    <Section style={section}>
+      <Link href={EMAIL_SITE_URL} style={logoLink}>
+        <Img
+          alt={EMAIL_LOGO_ALT}
+          height={displayHeight}
+          src={EMAIL_LOGO_URL}
+          srcSet={`${EMAIL_LOGO_URL} 1x, ${EMAIL_LOGO_URL_2X} 2x`}
+          style={img}
+          width={EMAIL_LOGO_DISPLAY_WIDTH}
+        />
+      </Link>
+      <div style={goldRule} />
+    </Section>
+  );
 }
 
-const brandText = {
-  color: "#6f4e37",
-  fontSize: "13px",
-  fontWeight: "bold",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase" as const,
+const section = {
+  margin: "0 0 8px",
+  textAlign: "center" as const,
+};
+
+const logoLink = {
+  display: "inline-block",
+  textDecoration: "none",
+};
+
+const img = {
+  border: 0,
+  display: "block",
+  height: "auto",
+  margin: "0 auto",
+  maxWidth: "100%",
+  outline: "none",
+};
+
+const goldRule = {
+  backgroundColor: COLORS.gold,
+  height: "2px",
+  margin: "16px auto 0",
+  maxWidth: "120px",
+  width: "100%",
 };

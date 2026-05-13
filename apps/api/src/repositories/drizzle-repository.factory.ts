@@ -17,7 +17,7 @@ export class DrizzleRepositoryFactory implements IRepositoryFactory {
     };
   }
 
-  runInTransaction<T>(fn: (repos: LotBidRepos) => Promise<T>): Promise<T> {
-    return this.db.transaction(async (tx) => fn(this.forConnection(tx)));
+  runInTransaction<T>(fn: (repos: LotBidRepos, tx: Database) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => fn(this.forConnection(tx), tx));
   }
 }

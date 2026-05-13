@@ -16,8 +16,7 @@ type Props = {
 
 const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
 
-/**
- * First-class auto-bid surface; values are submitted with `placeBid` via parent `ArtworkBidPanel`.
+/** First-class auto-bid surface; values are submitted with `placeBid` via parent `ArtworkBidPanel`.
  */
 export function LotAutoBidPanel({
   auctionType,
@@ -32,28 +31,26 @@ export function LotAutoBidPanel({
     maxAuto.trim() !== "" ? maxAuto : serverMaxAuto && serverMaxAuto !== "" ? serverMaxAuto : null;
 
   return (
-    <div className="w-full max-w-[550px] rounded border border-outline-variant bg-surface-container-low/40 p-4">
-      <p className="mb-1 font-label text-xs font-semibold uppercase tracking-wide text-on-surface">
-        Auto-bid
-      </p>
+    <div className="w-full border-t border-[rgba(209,209,209,0.65)] pt-2.5 dark:border-outline-variant/40">
+      <p className="sr-only">Auto-bid settings</p>
       {activeLabel ? (
         <BodyText className="mb-3 text-sm text-on-surface-variant">
           {`Your max auto-bid is ${formatMoney(activeLabel)}. We’ll raise bids for you up to this amount.`}
         </BodyText>
       ) : (
         <BodyText className="mb-3 text-sm text-on-surface-variant">
-          Optional: set the maximum you’re willing to pay. We’ll bid incrementally on your behalf.
+          Set the maximum you’re willing to pay. We’ll bid incrementally on your behalf.
         </BodyText>
       )}
       <label htmlFor="lot-auto-bid-max" className="sr-only">
         Max auto-bid amount
       </label>
-      <div className="flex items-center gap-2 border-b border-outline-variant py-2">
-        <span className="font-headline text-lg text-on-surface">$</span>
+      <div className="flex items-center gap-2 border-b border-[rgba(209,209,209,0.65)] py-2 dark:border-outline-variant/40">
+        <span className="font-headline text-lg text-[#050505] dark:text-on-surface">$</span>
         <UnderlineInput
           id="lot-auto-bid-max"
           inputMode="decimal"
-          placeholder="Set max (optional)"
+          placeholder="Enter max amount"
           value={maxAuto}
           onChange={(e) => onMaxAutoChange(e.target.value)}
           disabled={disabled}
