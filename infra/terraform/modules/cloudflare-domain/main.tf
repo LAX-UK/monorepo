@@ -68,6 +68,11 @@ resource "cloudflare_zone_settings_override" "this" {
 locals {
   auth_host_expression = join(" ", [for host in var.auth_hosts : "\"${host}\""])
   api_host_expression  = join(" ", [for host in var.api_hosts : "\"${host}\""])
+
+  # Free tier http_ratelimit only allows period 10 (not 60). Map the intended
+  # per-minute cap (min of the two auth paths) into a 10s window via ceil.
+  auth_ratelimit_rpm_effective    = min(var.signup_rpm, var.send_verification_email_rpm)
+  auth_ratelimit_requests_per_10s = max(1, ceil(local.auth_ratelimit_rpm_effective * 10.0 / 60.0))
 }
 
 # Named zone_auth_waf (not auth_waf) so upgrades from pre-count state destroy the old
@@ -89,7 +94,8 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
   }
 }
 
-# Cloudflare Free plan caps the http_ratelimit phase at ONE rule per zone (error 50001).
+# Cloudflare Free plan caps the http_ratelimit phase at ONE rule per zone (error 50001)
+# and only allows period 10 seconds (not 60) for that phase.
 # Production protection is prioritized: this rule guards the highest-stakes auth endpoints
 # (sign-up and email-verification) which are the realistic edge attack surface
 # (account-creation abuse, email-bombing). Lower-priority paths
@@ -109,13 +115,13 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
   rules {
     action      = "block"
     expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
-    description = "Auth sign-up + verification-email: shared most-restrictive bucket (Free-plan single-rule cap)."
+    description = "Auth sign-up + verification-email: shared bucket (Free: 1 rule, 10s period; RPM via locals)."
     enabled     = true
 
     ratelimit {
       characteristics     = ["ip.src", "cf.colo.id"]
-      period              = 60
-      requests_per_period = min(var.signup_rpm, var.send_verification_email_rpm)
+      period              = 10
+      requests_per_period = local.auth_ratelimit_requests_per_10s
       mitigation_timeout  = 60
     }
   }

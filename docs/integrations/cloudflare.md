@@ -38,11 +38,12 @@ guarded at the app layer until the zone is upgraded.
 ### Edge (Cloudflare, single rule)
 
 - `/api/auth/sign-up` and `/api/auth/send-verification-email` on `auth_hosts`:
-  shared bucket at `min(signup_rpm, send_verification_email_rpm)` req/min/IP
-  (defaults 10 and 5 → effective **5 req/min/IP**), 60s mitigation. The shared
-  bucket prevents an attacker from rotating across both endpoints to double
-  their effective quota. Variables: `signup_rpm`,
-  `send_verification_email_rpm`.
+  shared bucket targeting `min(signup_rpm, send_verification_email_rpm)` req/min/IP
+  (defaults 10 and 5 → **5 req/min/IP** intent). **Free tier** only allows a **10s**
+  rate-limit window in `http_ratelimit`; Terraform sets `period = 10` and
+  `requests_per_period = max(1, ceil(rpm * 10 / 60))` (defaults → **1** request per
+  10s per IP/colo, **60s** mitigation). **Pro** can restore 60s windows and
+  per-path rules (commit `a8027e39`).
 
 ### App layer (Hono middleware on `api_hosts`)
 

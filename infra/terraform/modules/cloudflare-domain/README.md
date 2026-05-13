@@ -10,10 +10,12 @@ production endpoints, the module declares a single auth abuse guard and pushes
 lower-priority paths to app-layer middleware.
 
 - `/api/auth/sign-up` and `/api/auth/send-verification-email` on `auth_hosts`:
-  shared bucket at `min(signup_rpm, send_verification_email_rpm)` req/min/IP
-  (defaults: 10 and 5 → effective 5 RPM/IP), 60s mitigation. Using the more
-  restrictive of the two preserves the verification-email policy when the same
-  attacker rotates between endpoints.
+  shared bucket derived from `min(signup_rpm, send_verification_email_rpm)`
+  (defaults 10 and 5 → effective **5 req/min/IP** intent). On **Cloudflare Free**,
+  the `http_ratelimit` phase only allows a **10 second** evaluation window; the
+  module maps RPM into `max(1, ceil(rpm * 10 / 60))` requests per 10s, with
+  **60s mitigation**. On **Pro**, restore commit `a8027e39` for 60s windows and
+  per-path rules.
 - `/webhooks/postmark` and `/.well-known/*`: rate-limited at the app layer
   (`apps/api/src/middleware/rate-limit.ts`) on Free. The `postmark_webhook_rpm`
   variable is kept as a forward-compatible knob for when the zone moves to
