@@ -49,7 +49,7 @@ const WEAK_PASSWORDS = new Set([
   "jordan123456",
   "harley123456",
   "ranger123456",
-  "hockey123456",
+  "hockey123456", // gitleaks:allow
   "hunter123456",
   "morgan123456",
   "joseph123456",
@@ -61,7 +61,7 @@ const WEAK_PASSWORDS = new Set([
   "taylor123456",
   "matthew12345",
   "amanda123456",
-  "access123456",
+  "access123456", // gitleaks:allow
   "qwerty123456",
   "asdfgh123456",
   "zxcvbn123456",
