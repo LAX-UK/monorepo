@@ -16,8 +16,7 @@ export type Sale = {
   streamUrl: string | null;
   /** Onsite venue name (free-form). */
   locationName: string | null;
-  /**
-   * Free-form single-line/multi-line address used for fallback display and
+  /** Free-form single-line/multi-line address used for fallback display and
    * older records. Newer onsite sales prefer the structured address fields
    * below; UI should fall back to this string when those are missing.
    */
@@ -42,7 +41,9 @@ export type Sale = {
   previewStartTime: Date | null;
   buyerPremiumRate: string;
   terms: string | null;
-  createdBy: string;
+  /** Transitional compatibility only; new API mappers do not emit this field. */
+  createdBy?: string;
+  createdByLegalEntityId?: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -71,5 +72,5 @@ export type CreateSaleInput = {
   previewStartTime?: Date | undefined;
   buyerPremiumRate?: string | undefined;
   terms?: string | undefined;
-  createdBy: string;
+  createdByLegalEntityId?: string | undefined;
 };

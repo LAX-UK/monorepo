@@ -1,4 +1,4 @@
-import type { TemplateName, TemplateVarsByName } from "./types.js";
+import type { RecipientResolution, TemplateName, TemplateVarsByName } from "./types.js";
 
 export type EmailCategory = "auth" | "transactional";
 export type EmailStream = "transactional" | "broadcast";
@@ -7,6 +7,8 @@ export type EmailEnqueueInput<T extends TemplateName = TemplateName> = {
   template: T;
   to: string;
   userId?: string;
+  /** When set, overrides {@link RECIPIENT_RESOLUTION} for this row (e.g. ops inbox without `userId`). */
+  recipientResolution?: RecipientResolution;
   vars: TemplateVarsByName[T];
   stream?: EmailStream;
   idempotencyKey?: string;

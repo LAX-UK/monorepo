@@ -187,3 +187,161 @@ variable "zoho_campaigns_list_key" {
   sensitive   = true
   description = "Zoho Campaigns target list key used by apps/worker."
 }
+
+# --- Stripe + internal jobs + KYC + ops (apps/api, apps/worker) ---
+variable "stripe_secret_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe secret key (sk_test_… in test)."
+}
+variable "stripe_publishable_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe publishable key (pk_test_… in test)."
+}
+variable "stripe_identity_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Identity webhook signing secret (whsec_…)."
+}
+variable "stripe_connect_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Connect webhook signing secret (whsec_…)."
+}
+variable "stripe_payments_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Payments webhook signing secret (whsec_…) for disputes/refunds."
+}
+variable "cron_internal_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Shared secret for worker → API internal cron (min 32 chars). Auto-generated if empty."
+}
+variable "kyc_threshold_amount" {
+  type        = string
+  default     = "1000"
+  description = "KYC threshold in major currency units."
+}
+variable "kyc_threshold_currency" {
+  type        = string
+  default     = "GBP"
+  description = "ISO 4217 currency code for KYC threshold."
+}
+variable "ops_support_email" {
+  type        = string
+  default     = ""
+  description = "Support inbox for ops alerts (only required when APP_ENV=production)."
+}
+variable "ops_oncall_email" {
+  type        = string
+  default     = ""
+  description = "On-call escalation email (only required when APP_ENV=production)."
+}
+variable "admin_email_address" {
+  type        = string
+  default     = ""
+  description = "Worker ops notifications (only required when APP_ENV=production)."
+}
+
+# --- Xero (optional OAuth; all three must be set together in app env) ---
+variable "xero_client_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_client_secret" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_redirect_uri" {
+  type        = string
+  default     = ""
+  description = "OAuth redirect URI registered in Xero (e.g. https://test-api.lax.bid/admin/integrations/xero/callback)."
+}
+variable "xero_webhook_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "xero_default_revenue_account_code" {
+  type    = string
+  default = "200"
+}
+variable "xero_default_tax_type" {
+  type    = string
+  default = "NONE"
+}
+variable "xero_invoice_due_days" {
+  type    = string
+  default = "14"
+}
+variable "xero_post_connect_web_redirect" {
+  type        = string
+  default     = ""
+  description = "Browser redirect after Xero OAuth (e.g. https://test.lax.bid/admin/integrations/xero)."
+}
+variable "xero_use_legal_entity_contact" {
+  type    = string
+  default = "false"
+}
+variable "xero_payout_bill_account_code" {
+  type    = string
+  default = "400"
+}
+
+# --- Auth hardening (auth-hardening branch) ---
+
+variable "auth_dek_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "32-byte DEK for envelope-encrypting OAuth tokens and 2FA secrets at rest. Hex (64 chars) or base64url (44 chars). Required in NODE_ENV=production. Generate: openssl rand -hex 32"
+}
+
+variable "turnstile_secret_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Cloudflare Turnstile secret key. When set, sign-in, register, and forgot-password require a valid widget token. Obtain from dash.cloudflare.com → Turnstile → Create site."
+}
+
+variable "turnstile_site_key" {
+  type        = string
+  default     = ""
+  description = "Cloudflare Turnstile public site key (rendered by the browser widget). Obtain alongside turnstile_secret_key."
+}
+
+variable "verify_origin" {
+  type        = string
+  default     = "true"
+  description = "When \"true\", mutating non-auth requests must carry an Origin/Referer matching WEB_ORIGIN."
+  validation {
+    condition     = contains(["true", "false"], var.verify_origin)
+    error_message = "verify_origin must be \"true\" or \"false\"."
+  }
+}
+
+variable "csp_enforce" {
+  type        = string
+  default     = "0"
+  description = "Set to \"1\" to flip Content-Security-Policy from report-only to enforcing on apps/web."
+  validation {
+    condition     = contains(["0", "1"], var.csp_enforce)
+    error_message = "csp_enforce must be \"0\" or \"1\"."
+  }
+}
+
+variable "next_public_csp_report_uri" {
+  type        = string
+  default     = ""
+  description = "Optional CSP violation report endpoint (e.g. https://o123.ingest.sentry.io/api/456/security/?sentry_key=…)."
+}

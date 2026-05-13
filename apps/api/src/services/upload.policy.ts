@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
-import type { UserRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 
-export const uploadKinds = ["avatar", "submission_image", "lot_image", "sale_cover"] as const;
+export const uploadKinds = [
+  "avatar",
+  "submission_image",
+  "lot_image",
+  "sale_cover",
+  "legal_entity_document",
+] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
 type UploadPolicy = {
@@ -32,23 +38,42 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/sales",
   },
+  legal_entity_document: {
+    maxBytes: 15 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/legal-entity-documents",
+  },
 };
 
 export function isUploadKind(value: string): value is UploadKind {
   return (uploadKinds as readonly string[]).includes(value);
 }
 
-export function canUploadKind(kind: UploadKind, role: UserRole): boolean {
+export function canUploadKind(
+  kind: UploadKind,
+  role: UserRole,
+  staffRole?: UserStaffRole | null,
+): boolean {
   switch (kind) {
     case "avatar":
       return true;
     case "submission_image":
       return (
-        roleHasCapability(role, "client.submit") || roleHasCapability(role, "platform.admin.full")
+        roleHasCapability(role, "client.submit", staffRole) ||
+        roleHasCapability(role, "legal_entity.read", staffRole)
       );
     case "lot_image":
     case "sale_cover":
-      return roleHasCapability(role, "platform.admin.full");
+      return (
+        roleHasCapability(role, "platform.admin.full", staffRole) ||
+        roleHasCapability(role, "auction.manage", staffRole) ||
+        roleHasCapability(role, "catalogue.write", staffRole)
+      );
+    case "legal_entity_document":
+      return (
+        roleHasCapability(role, "client.submit", staffRole) ||
+        roleHasCapability(role, "legal_entity.read", staffRole)
+      );
   }
 }
 
@@ -60,6 +85,8 @@ export function extForContentType(contentType: string): string {
       return ".png";
     case "image/webp":
       return ".webp";
+    case "application/pdf":
+      return ".pdf";
     default:
       return ".bin";
   }

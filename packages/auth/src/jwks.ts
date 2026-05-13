@@ -1,6 +1,7 @@
 import { type Database, jwksKey } from "@auction/db";
 import type { Jwk } from "better-auth/plugins/jwt";
 import { eq, inArray } from "drizzle-orm";
+import type { EnvelopeCrypto } from "./crypto/envelope.js";
 
 type StoredJwk = {
   kid?: string;
@@ -22,7 +23,20 @@ function toStoredJwk(value: string): StoredJwk | string {
   }
 }
 
-export function createJwksAdapter(db: Database) {
+function privatePayloadToSignInput(payload: unknown, envelope?: EnvelopeCrypto): string {
+  if (envelope && typeof payload === "string" && payload.startsWith("v1:")) {
+    return envelope.open(payload);
+  }
+  return parseKey(payload);
+}
+
+function sealPrivateForDb(data: Omit<Jwk, "id">, envelope?: EnvelopeCrypto): unknown {
+  const raw = typeof data.privateKey === "string" ? data.privateKey : parseKey(data.privateKey);
+  if (!envelope) return toStoredJwk(data.privateKey);
+  return envelope.seal(raw);
+}
+
+export function createJwksAdapter(db: Database, envelope?: EnvelopeCrypto) {
   return {
     async getJwks(): Promise<Jwk[]> {
       const rows = await db
@@ -33,20 +47,21 @@ export function createJwksAdapter(db: Database) {
       return rows.map((row) => ({
         id: row.kid,
         publicKey: parseKey(row.publicJwk),
-        privateKey: parseKey(row.privateJwk),
+        privateKey: privatePayloadToSignInput(row.privateJwk, envelope),
         createdAt: row.createdAt,
         alg: row.algorithm as Jwk["alg"],
       }));
     },
     async createJwk(data: Omit<Jwk, "id">): Promise<Jwk> {
       const kid = crypto.randomUUID();
+      const privateForDb = sealPrivateForDb(data, envelope);
       const [row] = await db
         .insert(jwksKey)
         .values({
           kid,
           algorithm: data.alg ?? "RS256",
           publicJwk: toStoredJwk(data.publicKey),
-          privateJwk: toStoredJwk(data.privateKey),
+          privateJwk: privateForDb as never,
           status: "active",
           createdAt: data.createdAt,
           rotatedAt: data.expiresAt ?? null,

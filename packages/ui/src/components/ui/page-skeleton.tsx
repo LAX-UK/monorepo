@@ -1,8 +1,7 @@
-import * as React from "react";
 import { cn } from "../../lib/utils.js";
 import { Skeleton } from "./skeleton.js";
 
-export type PageSkeletonVariant = "dashboard" | "table" | "grid";
+export type PageSkeletonVariant = "dashboard" | "table" | "grid" | "checkout";
 
 export type PageSkeletonProps = {
   variant?: PageSkeletonVariant;
@@ -27,6 +26,22 @@ export function PageSkeleton({ variant = "dashboard", className }: PageSkeletonP
           {(["a", "b", "c", "d", "e", "f"] as const).map((k) => (
             <Skeleton key={k} className="aspect-[4/5] w-full rounded-xl" />
           ))}
+        </div>
+      </div>
+    );
+  }
+  if (variant === "checkout") {
+    return (
+      <div className={cn("space-y-6", className)} aria-busy="true" aria-label="Loading checkout">
+        <Skeleton className="h-10 w-56 rounded-md" />
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <Skeleton className="h-[min(50vh,420px)] w-full shrink-0 rounded-xl lg:h-[min(72vh,640px)] lg:w-1/2" />
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <Skeleton className="h-12 w-full max-w-lg rounded-md" />
+            <Skeleton className="h-16 w-full max-w-xl rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );

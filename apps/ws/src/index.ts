@@ -36,6 +36,12 @@ const httpDuration = new Histogram({
   labelNames: ["route", "status"] as const,
   registers: [metricsRegistry],
 });
+const latencyProbeAckSeconds = new Histogram({
+  name: "auction_ws_latency_probe_ack_seconds",
+  help: "Latency probe handler duration until ack sent (seconds)",
+  buckets: [0.000_01, 0.000_05, 0.000_1, 0.000_5, 0.001, 0.005, 0.01, 0.05, 0.1],
+  registers: [metricsRegistry],
+});
 
 const httpServer = createServer((req, res) => {
   const url = req.url ?? "";
@@ -97,7 +103,13 @@ bridgeRedisToSockets(io, container.redisSub);
 
 io.on("connection", (socket) => {
   socketConnections.inc();
-  registerSocketHandlers(socket, { io, env });
+  registerSocketHandlers(socket, {
+    io,
+    env,
+    recordLatencyProbeAckSeconds: (seconds) => {
+      latencyProbeAckSeconds.observe(seconds);
+    },
+  });
 });
 
 httpServer.listen(env.PORT, () => {

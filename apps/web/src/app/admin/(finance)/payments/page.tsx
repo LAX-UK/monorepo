@@ -1,6 +1,11 @@
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
-import { getAdminLotList, getAdminPaymentList } from "@/lib/data/http/admin.server";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
+import {
+  getAdminLotFulfilmentList,
+  getAdminLotList,
+  getAdminPaymentList,
+} from "@/lib/data/http/admin.server";
 import type { PaymentStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -28,14 +33,19 @@ export default async function AdminPaymentsPage({
 
   let payments: Awaited<ReturnType<typeof getAdminPaymentList>> = [];
   let auctions: Awaited<ReturnType<typeof getAdminLotList>> = [];
+  let fulfilmentByLotId = new Map<string, string>();
   let loadError: string | null = null;
   try {
-    const [p, a] = await Promise.all([
+    const [p, a, fulfilRows] = await Promise.all([
       getAdminPaymentList(),
-      getAdminLotList({ limit: 200, offset: 0 }),
+      getAdminLotList({ limit: 100, offset: 0 }),
+      getAdminLotFulfilmentList().catch(
+        () => [] as Awaited<ReturnType<typeof getAdminLotFulfilmentList>>,
+      ),
     ]);
     payments = p;
     auctions = a;
+    fulfilmentByLotId = new Map(fulfilRows.map((r) => [r.lotId, r.status] as const));
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payments.";
   }
@@ -51,6 +61,7 @@ export default async function AdminPaymentsPage({
     amount: p.amount,
     platformFee: p.platformFee,
     status: p.status,
+    fulfilmentStatus: fulfilmentByLotId.get(p.lotId) ?? null,
     xeroInvoiceNumber: p.xeroInvoiceNumber,
     xeroOnlineInvoiceUrl: p.xeroOnlineInvoiceUrl,
     xeroSyncStatus: p.xeroSyncStatus,
@@ -84,7 +95,7 @@ export default async function AdminPaymentsPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Payments"
         description="Filter by status, search loaded rows, and use the drawer for capture/refund on touch devices."
@@ -108,6 +119,6 @@ export default async function AdminPaymentsPage({
           />
         </Suspense>
       )}
-    </div>
+    </AppScreen>
   );
 }

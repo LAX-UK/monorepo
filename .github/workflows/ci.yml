@@ -13,8 +13,26 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -25,6 +43,20 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+
+      - name: Biome root check
+        run: pnpm exec biome check .
+
+      # OSS binary — avoids gitleaks/gitleaks-action@v2 org license requirement (GITLEAKS_LICENSE).
+      - name: Gitleaks secret scan
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION=8.30.1
+          curl -sSLf "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz
+          ./gitleaks detect --source . --verbose --redact
 
       - name: Lint
         run: pnpm turbo run lint

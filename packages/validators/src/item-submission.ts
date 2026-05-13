@@ -1,5 +1,6 @@
 import { itemSubmissionStatuses } from "@auction/types";
 import { z } from "zod";
+import { inlineCreateArtistSchema } from "./artist.js";
 import { mediaReferenceSchema } from "./media.js";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
@@ -39,8 +40,7 @@ export function splitSubmissionUrlLines(raw: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * RHF form: text fields + uploaded image URLs. Validates then maps to `createItemSubmissionSchema` input.
+/** RHF form: text fields + uploaded image URLs. Validates then maps to `createItemSubmissionSchema` input.
  */
 export const itemSubmissionFormSchema = z
   .object({
@@ -120,9 +120,21 @@ export const updateItemSubmissionSchema = z.preprocess(
   createItemSubmissionBodySchema.partial(),
 );
 
-export const approveSubmissionBodySchema = z.object({
-  reviewNotes: z.string().max(5000).optional(),
-});
+export const approveSubmissionBodySchema = z
+  .object({
+    reviewNotes: z.string().max(5000).optional(),
+    artistId: z.string().uuid().nullable().optional(),
+    newArtist: inlineCreateArtistSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.artistId && data.newArtist) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Provide either artistId or newArtist, not both",
+        path: ["newArtist"],
+      });
+    }
+  });
 
 export const rejectSubmissionBodySchema = z.object({
   rejectionReason: z.string().min(1).max(2000),

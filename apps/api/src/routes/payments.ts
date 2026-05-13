@@ -1,26 +1,95 @@
-import { createPaymentBodySchema, paymentIdParamSchema } from "@auction/validators";
+import {
+  adminLotFulfilmentLotIdParamSchema,
+  createPaymentBodySchema,
+  myPaymentsQuerySchema,
+  paymentIdParamSchema,
+} from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
+import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
+import { createOptionalLegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const requireContext = createOptionalLegalEntityContext(
+    container.legalEntityRepository,
+    (input) => container.impersonationAuditService.recordSessionTimedOut(input),
+    container.impersonationSessionService,
+  );
+  const r = new Hono<{
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: LegalEntityContext;
+    };
+  }>();
 
   r.get("/", requireAuth, async (c) => {
     const role = c.get("userRole") ?? "client";
-    const result = await container.paymentService.listAllForAdmin(role);
+    const staffRole = c.get("userStaffRole") ?? null;
+    const result = await container.paymentService.listAllForAdmin(role, staffRole);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });
+
+  /** Buyer-facing payments list. Strictly scoped to the JWT user; the route never
+   * accepts a buyerId from the client. Optional `?status` narrows the result.
+   */
+  r.get("/me", requireAuth, zValidator("query", myPaymentsQuerySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { status } = c.req.valid("query");
+    const { data } = await container.paymentService.listMyPaymentsForBuyerApi(userId, {
+      ...(status !== undefined ? { status } : {}),
+    });
+    return c.json({ data });
+  });
+
+  /** Winning bidder: fulfilment row for checkout / collection tracking. */
+  r.get(
+    "/me/lot/:lotId/fulfilment",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { lotId } = c.req.valid("param");
+      const result = await container.lotFulfilmentService.getForWinner(userId, lotId);
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  /** Buyer relinquishes an unpaid pending invoice (winner-only). */
+  r.post(
+    "/me/:id/cancel-pending",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", paymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const result = await container.paymentService.cancelPendingAsBuyer(userId, id);
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
   r.post(
     "/",
@@ -37,7 +106,6 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
             {
               data: {
                 paymentId: data.paymentId,
-                clientSecret: data.clientSecret,
                 checkoutUrl: data.checkoutUrl,
               },
             },
@@ -48,26 +116,63 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     },
   );
 
-  r.post("/:id/capture", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
-    const role = c.get("userRole") ?? "client";
-    const { id } = c.req.valid("param");
-    const result = await container.paymentService.markCapturedByAdmin(role, id);
-    return result.match(
-      () => c.json({ ok: true }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+  r.post(
+    "/:id/capture",
+    requireAuth,
+    requireContext,
+    requireFinanceEntityWrite,
+    zValidator("param", paymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
+      const { id } = c.req.valid("param");
+      const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
+      const result = await container.paymentService.markCapturedByAdmin(
+        userId,
+        role,
+        id,
+        ctx?.legalEntityId,
+        staffRole,
+      );
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => {
+          const mapped = paymentCommandErrorToHttp(error);
+          return c.json(mapped.body, mapped.status);
+        },
+      );
+    },
+  );
 
-  r.post("/:id/refund", requireAuth, zValidator("param", paymentIdParamSchema), async (c) => {
-    const userId = c.get("userId") as string;
-    const role = c.get("userRole") ?? "client";
-    const { id } = c.req.valid("param");
-    const result = await container.paymentService.refundPayment(userId, role, id);
-    return result.match(
-      () => c.json({ ok: true }),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+  r.post(
+    "/:id/refund",
+    requireAuth,
+    requireContext,
+    requireFinanceEntityWrite,
+    zValidator("param", paymentIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = c.get("userRole") ?? "client";
+      const staffRole = c.get("userStaffRole") ?? null;
+      const { id } = c.req.valid("param");
+      const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
+      const result = await container.paymentService.refundPayment(
+        userId,
+        role,
+        id,
+        ctx?.legalEntityId,
+        staffRole,
+      );
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => {
+          const mapped = paymentCommandErrorToHttp(error);
+          return c.json(mapped.body, mapped.status);
+        },
+      );
+    },
+  );
 
   return r;
 }

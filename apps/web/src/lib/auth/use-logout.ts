@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { AUTH_BROADCAST_CHANNEL, type AuthBroadcastMessage } from "@/lib/auth/auth-broadcast";
 import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -23,6 +24,13 @@ export function useLogout(options?: UseLogoutOptions) {
       if (error) {
         notify.error(error.message ?? "Could not sign out");
         return;
+      }
+      try {
+        const bc = new BroadcastChannel(AUTH_BROADCAST_CHANNEL);
+        bc.postMessage({ type: "signed-out" } satisfies AuthBroadcastMessage);
+        bc.close();
+      } catch {
+        /* ignore unsupported environments */
       }
       router.push("/");
       router.refresh();

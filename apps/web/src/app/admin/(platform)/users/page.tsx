@@ -3,6 +3,7 @@ import { AdminUsersSearchForm } from "@/components/admin/admin-users-search-form
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
 import { ShareFiltersButton } from "@/components/admin/share-filters-button";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { getAdminUserList } from "@/lib/data/http/admin.server";
 import { type UserRole, userRoles } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -48,7 +49,7 @@ export default async function AdminUsersPage({
 
   const kpis: AdminUsersKpiStrip = {
     totalMatches: total,
-    adminsOnPage: rawRows.filter((r) => r.role === "administrator").length,
+    adminsOnPage: rawRows.filter((r) => r.role === "staff").length,
     suspendedOnPage: rawRows.filter((r) => r.suspendedAt).length,
     pageCount: rawRows.length,
   };
@@ -75,12 +76,7 @@ export default async function AdminUsersPage({
         },
         ...userRoles.map((role) => ({
           id: role,
-          label:
-            role === "administrator"
-              ? "Administrators"
-              : role === "accountant"
-                ? "Accountants"
-                : "Clients",
+          label: role === "staff" ? "Staff" : "Clients",
           href: chipCommon({ role, suspended: suspendedOnly }),
           active: roleFilter === role,
         })),
@@ -97,7 +93,7 @@ export default async function AdminUsersPage({
   );
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="Users"
         description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."
@@ -130,6 +126,6 @@ export default async function AdminUsersPage({
       {!loadError && rows.length > 0 ? (
         <AdminUsersBoard rows={rows} kpis={kpis} roleChips={roleChips} />
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

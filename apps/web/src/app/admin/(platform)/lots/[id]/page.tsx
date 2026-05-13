@@ -1,14 +1,22 @@
+import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function AdminAuctionDetailPage({
   params,
-}: { params: Promise<{ id: string }> }) {
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; error_code?: string }>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const auction = await getAdminLotById(id).catch(() => null);
   if (!auction) notFound();
@@ -25,7 +33,7 @@ export default async function AdminAuctionDetailPage({
     auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
 
   return (
-    <div className="max-w-4xl space-y-10">
+    <AppScreen className="max-w-4xl space-y-10">
       <Link
         href="/admin/lots"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -45,8 +53,22 @@ export default async function AdminAuctionDetailPage({
         </p>
       </div>
 
+      {sp.error_code === "connect_required" ? (
+        <AdminLotConnectRequiredBanner
+          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+          detail={sp.error ?? null}
+        />
+      ) : sp.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Action failed</AlertTitle>
+          <AlertDescription>{sp.error}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <AdminLotDetailActions
+        key={id}
         lotId={id}
+        sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
         canPublish={canPublish}
         canCancel={canCancel}
         showEditDraft={auction.status === "draft"}
@@ -67,13 +89,15 @@ export default async function AdminAuctionDetailPage({
           <ul className="space-y-2 rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4">
             {bids.map((b) => (
               <li key={b.id} className="flex justify-between font-body text-sm">
-                <span>{b.amount}</span>
-                <span className="text-on-surface-variant">{b.bidderId.slice(0, 8)}…</span>
+                <span className="tabular-nums">{b.amount}</span>
+                <span className="text-on-surface-variant">
+                  {(b.bidderId ?? b.placedByUserId ?? "").slice(0, 8)}…
+                </span>
               </li>
             ))}
           </ul>
         )}
       </section>
-    </div>
+    </AppScreen>
   );
 }

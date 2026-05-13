@@ -1,8 +1,7 @@
 import type { AppType } from "@auction/api/app";
 import { hc } from "hono/client";
 
-/**
- * Hono's inferred `hc<AppType>` client type can collapse to `unknown` in this workspace.
+/** Hono's inferred `hc<AppType>` client type can collapse to `unknown` in this workspace.
  * We keep a narrow structural type for the routes the web app calls.
  */
 export type RpcApp = {
@@ -37,11 +36,16 @@ export type RpcApp = {
       json: { lotId: string; amount: number; maxAutoBidAmount?: number };
     }) => Promise<Response>;
   };
+  artists: {
+    public: {
+      $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+    };
+    ":id": {
+      $get: (args: { param: { id: string } }) => Promise<Response>;
+    };
+  };
   users: {
     public: {
-      artists: {
-        $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
-      };
       ":userId": {
         $get: (args: { param: { userId: string } }) => Promise<Response>;
       };

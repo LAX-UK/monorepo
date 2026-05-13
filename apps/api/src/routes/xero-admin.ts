@@ -1,38 +1,26 @@
-import { isXeroCallbackUrlAllowed, xeroOAuthCompleteBodySchema } from "@auction/validators";
+import { xeroOAuthCompleteBodySchema } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import type { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 
 export function attachXeroAdminRoutes(
   r: Hono<{ Variables: { userId?: string; userRole?: string } }>,
-  container: Container,
+  admin: AdminRouteServices,
 ): void {
-  const xeroOAuth = container.xeroOAuthService;
+  const xero = admin.xero;
 
   r.get("/integrations/xero/status", async (c) => {
-    if (!xeroOAuth) {
-      return c.json({
-        data: {
-          connected: false,
-          tenantId: null,
-          tenantName: null,
-          expiresAt: null,
-          oauthConfigured: false,
-        },
-      });
-    }
-    const data = await xeroOAuth.getConnectionSummary();
-    return c.json({ data: { ...data, oauthConfigured: true } });
+    const data = await xero.getStatusPayload();
+    return c.json({ data });
   });
-
-  if (!xeroOAuth) {
-    return;
-  }
 
   r.get("/integrations/xero/oauth/consent-url", async (c) => {
     const userId = c.get("userId") as string;
-    const url = await xeroOAuth.buildConsentUrlForUser(userId);
-    return c.json({ data: { url } });
+    const built = await xero.buildConsentUrl(userId);
+    if (!built.ok) {
+      return c.json({ error: built.error }, 503);
+    }
+    return c.json({ data: { url: built.url } });
   });
 
   r.post(
@@ -41,11 +29,7 @@ export function attachXeroAdminRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const allowed = container.env.XERO_REDIRECT_URI;
-      if (!allowed || !isXeroCallbackUrlAllowed(body.callbackUrl, allowed)) {
-        return c.json({ error: "Invalid callback URL" }, 400);
-      }
-      const result = await xeroOAuth.completeOAuth({
+      const result = await xero.completeOAuth({
         userId,
         state: body.state,
         callbackFullUrl: body.callbackUrl,
@@ -58,7 +42,10 @@ export function attachXeroAdminRoutes(
   );
 
   r.post("/integrations/xero/disconnect", async (c) => {
-    await xeroOAuth.disconnect();
+    const out = await xero.disconnect();
+    if (!out.ok) {
+      return c.json({ error: out.error }, 503);
+    }
     return c.json({ ok: true });
   });
 }

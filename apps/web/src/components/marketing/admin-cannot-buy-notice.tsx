@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 export function isAdminBuyerBlocked(user: SessionUser | null | undefined): boolean {
   if (!user) return false;
-  return !roleHasCapability(user.role as UserRole, "bid.place");
+  return !roleHasCapability(user.role as UserRole, "bid.place", user.staffRole ?? null);
 }
 
 export function AdminCannotBuyNotice({ className }: { className?: string }) {

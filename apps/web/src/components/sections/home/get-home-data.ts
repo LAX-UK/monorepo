@@ -1,25 +1,25 @@
 import "server-only";
 
-import { HERO_PLACEHOLDER_SALE_LINE } from "@/components/sections/home/home-defaults";
 import {
-  type ArtistCardVM,
+  type EditorsPickLotCardVM,
   type HeroLotVM,
   type HeroStateVM,
+  type HomeUpcomingAuctionTileVM,
   type LotCardVM,
-  type UpcomingAuctionVM,
+  type PrivateSaleHighlightVM,
   createHeroFallbackVm,
-  toArtistCardVMs,
+  toEditorsPickLotCardVMs,
+  toEndingSoonLotCardVMs,
   toHeroLotVM,
   toHeroSaleSlideVM,
-  toLotCardVMs,
-  toUpcomingAuctionVM,
+  toHomeUpcomingAuctionTileVMs,
+  toPrivateSaleHighlightVMs,
 } from "@/components/sections/home/home-view-models";
-import type { ArtistProfile, ListLotsParams } from "@/lib/data/contracts";
-import { mapPublicUserToArtist } from "@/lib/data/http/artist.server";
+import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
-import { salePath } from "@/lib/seo/url";
+import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
 import { cache } from "react";
@@ -35,12 +35,21 @@ type HomeSaleListQuery = {
 
 type HomeSaleListRow = { sale: Sale; lots: Lot[] };
 
+/** Minimal shape for `itemList` JSON-LD when there are no upcoming-auction tiles. */
+export type HomeJsonLdListEntry = { title: string; href: string };
+
+function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
+  return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
+}
+
 export type HomePageData = {
   heroState: HeroStateVM;
-  lotCards: LotCardVM[];
-  auctionVm: UpcomingAuctionVM | null;
-  artistCards: ArtistCardVM[];
-  saleMetaLine: string;
+  /** Lots promoted for structured data when `upcomingAuctionTiles` is empty. */
+  jsonLdListFallback: HomeJsonLdListEntry[];
+  endingSoonLots: LotCardVM[];
+  upcomingAuctionTiles: HomeUpcomingAuctionTileVM[];
+  editorsPickLots: EditorsPickLotCardVM[];
+  privateSaleHighlights: PrivateSaleHighlightVM[];
 };
 
 function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {
@@ -78,39 +87,55 @@ async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<HomeSaleL
   }));
 }
 
-async function fetchHomeFeaturedArtists(): Promise<ArtistProfile[]> {
-  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
-  const res = await fetch(`${getServerApiBase()}/users/public/artists?limit=24&offset=0`, {
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) return [];
-  const body = (await res.json()) as {
-    data: { id: string; name: string; image?: string | null }[];
-  };
-  return body.data.map(mapPublicUserToArtist);
+const ENDING_SOON_WINDOW_MS = 100 * 60 * 60 * 1000;
+
+/** Prefer lots past the editor’s-picks window; fall back to the tail so thin
+ * catalogues still surface a distinct row when possible. */
+function pickPrivateSaleHighlightLots(lots: Lot[]): Lot[] {
+  if (lots.length === 0) return [];
+  const fromOffset = lots.slice(12, 15);
+  if (fromOffset.length > 0) return fromOffset;
+  return lots.slice(-Math.min(3, lots.length));
+}
+
+function lotsEndingSoon(lots: Lot[]): Lot[] {
+  const now = Date.now();
+  const endingSoon: Lot[] = [];
+  for (const lot of lots) {
+    const end =
+      lot.endTime instanceof Date ? lot.endTime.getTime() : Date.parse(String(lot.endTime));
+    if (
+      lot.status === "active" &&
+      Number.isFinite(end) &&
+      end - now > 0 &&
+      end - now <= ENDING_SOON_WINDOW_MS
+    ) {
+      endingSoon.push(lot);
+    }
+  }
+  return endingSoon;
 }
 
 export const getHomeData = cache(async (): Promise<HomePageData> => {
   let upcoming: Lot[] = [];
   let salesRows: HomeSaleListRow[] = [];
-  let artists: ArtistProfile[] = [];
-
   try {
     const filtered: ListLotsParams = {
-      limit: 5,
+      limit: 12,
       status: "active",
       sort: "endingAsc",
     };
     upcoming = await fetchHomeLots(filtered);
     if (upcoming.length === 0) {
-      upcoming = await fetchHomeLots({ limit: 5, sort: "endingAsc" });
+      upcoming = await fetchHomeLots({ limit: 12, sort: "endingAsc" });
     }
-    const [salesResult, artistsResult] = await Promise.all([
-      fetchHomeSales({ status: "active", limit: 1 }),
-      fetchHomeFeaturedArtists(),
-    ]);
-    salesRows = salesResult;
-    artists = artistsResult;
+    // Upcoming-auctions strip: scheduled + active, both delivery modes. Public list API has no
+    // `deliveryMode` param (see listSalesQuerySchema); onsite/online tabs filter client-side.
+    salesRows = await fetchHomeSales({
+      statuses: ["scheduled", "active"],
+      sort: "startAsc",
+      limit: 12,
+    });
   } catch (err) {
     console.error("[getHomeData] data load failed", err);
   }
@@ -125,12 +150,29 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const heroVm: HeroLotVM = featuredLot
     ? toHeroLotVM(featuredLot, saleTitleForHero, { saleId: featuredLot.saleId ?? null })
     : createHeroFallbackVm();
-  const lotCards = toLotCardVMs(upcoming.slice(1, 5));
-  const auctionVm = firstSale ? toUpcomingAuctionVM(firstSale) : null;
-  const artistCards = toArtistCardVMs(artists.slice(0, 4));
-  const saleMetaLine = firstSale?.sale.title ?? HERO_PLACEHOLDER_SALE_LINE;
+  const endingSoon = lotsEndingSoon(upcoming);
+  const endingSoonWithoutHero = featuredLot
+    ? endingSoon.filter((l) => l.id !== featuredLot.id)
+    : endingSoon;
+  const endingSoonLots = toEndingSoonLotCardVMs(endingSoonWithoutHero.slice(0, 4));
+  const endingSoonRowIds = new Set(endingSoonWithoutHero.slice(0, 4).map((l) => l.id));
+  const upcomingAfterHero = upcoming.filter(
+    (l) => l.id !== featuredLot?.id && !endingSoonRowIds.has(l.id),
+  );
+  const jsonLdListFallback = jsonLdListEntriesFromLots(upcomingAfterHero.slice(0, 4));
+  const upcomingAuctionTiles = toHomeUpcomingAuctionTileVMs(salesRows);
+  const editorsPickLots = toEditorsPickLotCardVMs(upcomingAfterHero.slice(0, 12));
+  const privateSaleHighlights = toPrivateSaleHighlightVMs(
+    pickPrivateSaleHighlightLots(upcomingAfterHero),
+  );
 
-  const base = { lotCards, auctionVm, artistCards, saleMetaLine };
+  const base = {
+    jsonLdListFallback,
+    endingSoonLots,
+    upcomingAuctionTiles,
+    editorsPickLots,
+    privateSaleHighlights,
+  };
 
   try {
     const activeRows = await fetchHomeSales({ status: "active", limit: 10 });

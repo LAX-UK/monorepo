@@ -1,25 +1,38 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { getAdminUserList } from "@/lib/data/http/admin.server";
+import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { PageHeader } from "@auction/ui/components/page-header";
 
-export default async function NewAdminArtistPage() {
-  const users = await getAdminUserList({ limit: 100 });
+type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
+
+export default async function NewAdminArtistPage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
+  const sp = await searchParams;
+  const ownerFromUrl = sp.ownerUserId?.trim() ?? "";
+  const displayFromUrl = sp.displayName?.trim() ?? "";
+  const ownerUserId = ownerFromUrl.length > 0 ? ownerFromUrl : null;
+  const initialScenario = parseScenarioParam(sp.scenario?.trim());
 
   return (
-    <div className="screen w-full space-y-6">
+    <AppScreen className="space-y-6">
       <PageHeader
         title="New artist"
-        description="Create a canonical artist profile that can be linked to a client and assigned to lots."
+        description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
       />
       <Card>
         <CardContent className="pt-6">
           <AdminArtistForm
             mode="create"
-            users={users.rows}
+            initialScenario={initialScenario}
             defaultValues={{
-              displayName: "",
+              displayName: displayFromUrl,
               slug: "",
+              kind: "artist",
+              status: "approved",
               portraitUrl: "",
               heroImageUrl: "",
               shortBio: "",
@@ -30,7 +43,7 @@ export default async function NewAdminArtistPage() {
               birthYear: "",
               deathYear: "",
               websiteUrl: "",
-              ownerUserId: null,
+              ownerUserId,
               featured: false,
               verified: false,
               archived: false,
@@ -38,6 +51,6 @@ export default async function NewAdminArtistPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    </AppScreen>
   );
 }

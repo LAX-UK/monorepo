@@ -9,7 +9,7 @@ export default async function AdminPlatformLayout({ children }: { children: Reac
   if (!user) {
     redirect("/login?next=/admin&auth=required");
   }
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole)) {
+  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin/payments");
   }
   return children;

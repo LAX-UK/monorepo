@@ -1,160 +1,82 @@
-# Feature Specification: Role Model And Invitations (V1)
+# Feature Specification: Role Model And Invitations (V2 — staff \| client)
 
 **Feature Branch**: `003-role-model-invites`  
 **Created**: 2026-04-28  
+**Updated**: 2026-05-11 (collapsed top-level roles)  
 **Status**: Draft  
-**Input**: User description: "V1 role model and invitation implementation"
+**Input**: User description: "V1 role model and invitation implementation" → evolved to `staff | client` + `user.staff_role`.
+
+## Model
+
+- **`user.role`**: `staff` \| `client` (DB-enforced).
+- **`user.staff_role`**: required iff `role = staff`; one of `super_admin`, `auction_manager`, `catalogue_manager`, `specialist`, `finance_ops`, `operations_fulfilment`, `content_marketing`, `support_concierge`, `staff_viewer`.
+- **Capabilities**: `@auction/types` `role-policy` maps `(role, staff_role)` → `RoleCapability` checks (`roleHasCapability`, `userHasAccessTo`).
+- **Invitations**: `user_invitation.target_role` ∈ {`staff`,`client`}; `target_staff_role` required iff `target_role = staff`. Acceptance sets both columns on the new user.
+
+Legacy session values `administrator` / `accountant` / `admin` normalize to `staff` for JWT/session cutover.
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+### User Story 1 - Enforce Role + Capability Access (Priority: P1)
 
-### User Story 1 - Enforce V1 Role Access (Priority: P1)
+As platform security, I need authorization based on `staff | client` and staff capabilities so users only reach allowed APIs and admin UI.
 
-As a system administrator, I need role-based authorization for `administrator`, `accountant`, and `client` so users can access only allowed capabilities.
-
-**Why this priority**: Role access is a blocking security and operational requirement for all V1 features.
-
-**Independent Test**: Role-gated API routes and UI actions are validated with role-specific tests and access matrix checks.
+**Independent Test**: Role-gated API routes and capability-filtered admin nav are covered by automated tests.
 
 **Acceptance Scenarios**:
 
-1. **Given** an accountant user, **When** attempting non-finance admin actions, **Then** access is denied.
-2. **Given** an administrator user, **When** using admin management features, **Then** full access is granted.
-3. **Given** a client user, **When** accessing client auction flows, **Then** access is granted without staff permissions.
+1. **Given** a `staff` user with `finance_ops`, **When** opening platform-only admin surfaces without finance or shared caps, **Then** UI omits those items and APIs return 403 where appropriate.
+2. **Given** `staff` + `super_admin`, **When** using full platform admin features, **Then** access matches the capability matrix.
+3. **Given** `client`, **When** using auction client flows, **Then** buyer/seller capabilities apply and staff routes are unreachable.
 
----
+### User Story 2 - Invite Users With Role + Staff Role (Priority: P1)
 
-### User Story 2 - Invite Users With Role Assignment (Priority: P1)
-
-As an administrator, I need to invite staff and clients with explicit role assignment so onboarding is controlled and auditable.
-
-**Why this priority**: V1 staffing and user growth require invitation-based onboarding with correct permissions at account creation.
-
-**Independent Test**: Invitation creation, acceptance, and final role assignment can be tested end-to-end.
+As staff with invite rights, I need invitations that assign `client` or `staff` plus `target_staff_role` for staff invites.
 
 **Acceptance Scenarios**:
 
-1. **Given** an admin inviter, **When** creating an invite with role `accountant`, **Then** invite metadata stores role target.
-2. **Given** a valid invitation link, **When** invitee signs up, **Then** resulting account has the invited role.
-3. **Given** an expired invite token, **When** used for signup, **Then** signup is rejected with a clear error.
+1. **Given** an inviter, **When** creating a staff invite with `target_staff_role`, **Then** metadata stores both fields.
+2. **Given** a valid invitation, **When** the invitee completes signup, **Then** the account has `role` and `staff_role` from the invitation.
+3. **Given** an expired token, **When** used for signup, **Then** signup is rejected with a clear error.
 
----
+### User Story 3 - One Client Identity For Buy/Sell (Priority: P2)
 
-### User Story 3 - Keep One Client Identity For Buy/Sell (Priority: P2)
+Unchanged: a single `client` account participates in buyer and seller journeys.
 
-As a client, I need one account that can act as both buyer and seller so I can participate in both sides of auctions.
+### User Story 4 - Migration & Legacy Sessions (Priority: P2)
 
-**Why this priority**: This is a core V1 product rule and affects both submission and bidding behavior.
-
-**Independent Test**: A client account can submit artwork and place bids in permitted flows using the same identity.
-
-**Acceptance Scenarios**:
-
-1. **Given** an approved client submission, **When** lot is generated, **Then** submitter defaults as artist/seller association.
-2. **Given** admin reassignment, **When** assigning another artist/client to lot, **Then** lot reflects reassigned artist/seller link.
-
----
-
-### User Story 4 - Align V1 Policy With Existing System Constraints (Priority: P2)
-
-As a developer, I need explicit handling rules for existing non-V1 states (legacy roles/strategy values) so rollout is predictable.
-
-**Why this priority**: Current schema/code includes non-English auction strategies and role gaps; rollout needs defined migration behavior.
-
-**Independent Test**: Policy enforcement tests verify unsupported states are blocked/hidden in V1 flows.
-
-**Acceptance Scenarios**:
-
-1. **Given** non-English strategy values in existing data, **When** V1 UI/admin creation flows are used, **Then** only English is exposed.
-2. **Given** legacy role data, **When** authz checks run, **Then** unmapped roles are denied or mapped per migration policy.
-
-### Edge Cases
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
-
-- What happens to existing users if role migration to `accountant` is incomplete?
-- How are invitations invalidated when inviter role changes or account is disabled?
-- How are legacy lots with non-English strategy surfaced in V1 UI?
-- What happens if artist reassignment occurs after active bidding has started?
+**Acceptance**: Migration `0054_role_staff_client` backfills `staff_role` and collapses legacy `administrator` / `accountant` rows; `normalizeUserRole` maps legacy strings to `staff` / `client` at runtime.
 
 ## Requirements *(mandatory)*
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
-
 ### Functional Requirements
 
-- **FR-001**: System MUST support role types `administrator`, `accountant`, and `client`.
-- **FR-002**: Accountant role MUST be restricted to finance domains (payments, invoices, accounting operations/reports).
-- **FR-003**: Administrator role MUST retain full platform access.
-- **FR-004**: Client role MUST support both buyer and seller actions from one account.
-- **FR-005**: System MUST provide admin-controlled invitation flow with target role assignment.
-- **FR-006**: Invitation acceptance MUST create account with invited role and preserve invitation audit metadata.
+- **FR-001**: System MUST persist only `staff` and `client` as `user.role`.
+- **FR-002**: System MUST persist `user.staff_role` for every staff user and MUST forbid `staff_role` on clients (DB + application).
+- **FR-003**: Finance-heavy staff roles MUST be modeled via `staff_role` capabilities (e.g. `finance_ops`), not a separate top-level role.
+- **FR-004**: Client role MUST support buyer and seller actions from one account.
+- **FR-005**: Admin invitation flow MUST capture `target_staff_role` when `target_role = staff`.
+- **FR-006**: Invitation acceptance MUST set `role` + `staff_role` and preserve invitation audit metadata.
 - **FR-007**: System MUST reject expired, invalid, and reused invitation tokens.
-- **FR-008**: Approved submissions MUST default submitter as artist/seller association with admin override support.
-- **FR-009**: Product-facing V1 flows MUST expose English strategy only.
+- **FR-008**: Submission approval artist rules (unchanged from prior spec): explicit catalogue artist decision; `artist.review` / catalogue flows as implemented.
+- **FR-009**: Product-facing V1 flows MUST expose English strategy only where applicable.
 - **FR-010**: Authorization and invitation logic MUST be covered by automated tests.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities
 
-- **UserRole**: Role assignment for `administrator`, `accountant`, and `client`.
-- **Invitation**: Role-targeted onboarding token and status lifecycle.
-- **UserPermissionScope**: Authorization boundaries for finance, admin, and client features.
-- **ArtistAssignment**: Link between lot/submission and effective artist/seller identity.
-
-## SOLID Impact *(mandatory for code-affecting features)*
-
-<!--
-  ACTION REQUIRED: Explain how the proposed feature preserves SOLID principles.
-  If any principle is intentionally bent, document rationale and mitigation.
--->
-
-- **S (Single Responsibility)**: Separate invitation lifecycle, role policy, and feature authz checks into dedicated modules.
-- **O (Open/Closed)**: Add role-policy handlers via composable authorization guards instead of hardcoding checks across routes.
-- **L (Liskov Substitution)**: Ensure authz service implementations preserve shared interface behavior across API and test adapters.
-- **I (Interface Segregation)**: Keep finance-role interfaces separate from general admin/user management interfaces.
-- **D (Dependency Inversion)**: Route and service layers depend on role/authz abstractions, with repositories/adapters injected.
+- **UserRole**: `staff` \| `client`.
+- **UserStaffRole**: internal LAX staff job function; drives capabilities.
+- **Invitation**: `target_role`, optional `target_staff_role`, token lifecycle.
+- **ArtistProfile / LotArtistLink**: unchanged from prior spec.
 
 ## Success Criteria *(mandatory)*
 
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
-
-### Measurable Outcomes
-
-- **SC-001**: 100% of protected test routes/actions enforce role matrix as specified for admin/accountant/client.
-- **SC-002**: Invitation flow supports all three V1 roles with token validation and audited acceptance.
-- **SC-003**: A single client account can complete both submission (seller path) and bidding (buyer path) in tests.
-- **SC-004**: V1 creation/configuration flows do not expose non-English auction strategy options.
+- **SC-001**: Protected routes and admin UI respect the capability matrix for representative `staff_role` values.
+- **SC-002**: Invitation flow supports `staff` (with `target_staff_role`) and `client` with token validation and audited acceptance.
+- **SC-003**: A single `client` account can complete submission and bidding paths in tests where permitted.
+- **SC-004**: Post-migration DB invariant: no user row has legacy `administrator` / `accountant` role values.
 
 ## Assumptions
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
--->
-
-- Existing authentication/session infrastructure remains in use and is extended for V1 role needs.
-- Invitation delivery channel (email/link) can be implemented using existing infrastructure or equivalent.
-- Existing users/roles can be migrated safely to V1 role matrix.
-- This feature focuses on role/invite enforcement and does not replace existing bidding core logic.
+- Better Auth / session payloads expose `role` and `staff_role` to the web app for nav and guards.
+- One-shot SQL migration is applied before relying on the new invariant in production.

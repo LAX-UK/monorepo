@@ -20,9 +20,11 @@ import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http
 import {
   type SaleLotsPage,
   getServerSaleLotsPage,
+  getServerSaleMyRegistrations,
   getServerSaleWithLots,
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
@@ -149,6 +151,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     getServerRelatedSales({ id, categoryId, limit: 4 }).catch(() => []),
   ]);
 
+  const actingCtx = session
+    ? await resolveActingContext(session.role, session.staffRole ?? null)
+    : null;
+  const mySaleRegs = session ? await getServerSaleMyRegistrations(id).catch(() => []) : [];
+
   const base = getSiteUrl();
   const viewerUserId = session?.id ?? null;
   const basePath = salePath(bundle.sale);
@@ -212,6 +219,27 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const isAuthenticated = Boolean(session);
 
+  const buyerEntities =
+    actingCtx?.memberships
+      .filter((m) => m.status === "approved" || m.status === "restricted")
+      .map((m) => ({
+        id: m.id,
+        displayName: m.displayName,
+        memberRole: m.role,
+      })) ?? [];
+
+  const registerToBidShow =
+    bundle.sale.deliveryMode === "online" &&
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
+    buyerEntities.some((e) => e.memberRole === "buyer_agent");
+
+  const myRegistrations = mySaleRegs.map((r) => ({
+    buyerLegalEntityId: r.buyerLegalEntityId,
+    status: r.status,
+  }));
+
+  const kycApproved = session?.kycStatus === "approved";
+
   return (
     <main
       id="main-content"
@@ -237,6 +265,12 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             saleHref={basePath}
             isAuthenticated={isAuthenticated}
             initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+            registerToBid={{
+              show: registerToBidShow,
+              buyerEntities,
+              myRegistrations,
+              kycApproved,
+            }}
           />
         }
       />

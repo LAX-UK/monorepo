@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
 
 export class DrizzleUserRepository implements IUserRepository {
@@ -15,12 +15,28 @@ export class DrizzleUserRepository implements IUserRepository {
       email: row.email,
       name: row.name,
       role: row.role,
+      staffRole: row.staffRole ?? null,
       image: row.image ?? null,
+      hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
     };
   }
 
   async listIdsByRole(role: string): Promise<string[]> {
     const rows = await this.db.select({ id: user.id }).from(user).where(eq(user.role, role));
+    return rows.map((r) => r.id);
+  }
+
+  async listStaffIdsForSubmissionNotifications(): Promise<string[]> {
+    const staffRoles = [
+      "super_admin",
+      "auction_manager",
+      "catalogue_manager",
+      "specialist",
+    ] as const;
+    const rows = await this.db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.role, "staff"), inArray(user.staffRole, [...staffRoles])));
     return rows.map((r) => r.id);
   }
 
@@ -32,5 +48,12 @@ export class DrizzleUserRepository implements IUserRepository {
       .limit(params.limit)
       .offset(params.offset);
     return rows;
+  }
+
+  async updateActingContextTooltipSeen(userId: string, seen: boolean): Promise<void> {
+    await this.db
+      .update(user)
+      .set({ hasSeenActingContextTooltip: seen })
+      .where(eq(user.id, userId));
   }
 }

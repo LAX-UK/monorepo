@@ -5,8 +5,7 @@ import type {
   ILotNotificationSender,
 } from "./interfaces/notifications.js";
 
-/**
- * Application-level notifications — delegates to segregated senders (ISP).
+/** Application-level notifications — delegates to segregated senders (ISP).
  */
 export class NotificationService {
   constructor(
@@ -22,7 +21,7 @@ export class NotificationService {
     return this.lotSender.notifyLotExtended(lot, newEndTime);
   }
 
-  notifyLotEnded(lot: Lot, bid: Bid): Promise<void> {
-    return this.lotSender.notifyLotEnded(lot, bid);
+  notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
+    return this.lotSender.notifyLotEnded(lot, winningBid);
   }
 }

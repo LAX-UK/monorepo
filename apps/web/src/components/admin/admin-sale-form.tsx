@@ -44,6 +44,8 @@ type Props = {
   saleId?: string;
   defaultValues: AdminSaleFormValues;
   categories: CategoryNode[];
+  /** When true, nested lots on create must use the English auction type (API-enforced). */
+  englishOnlyAuctionsLocked?: boolean;
 };
 
 function applyZodErrorsToForm(
@@ -58,7 +60,13 @@ function applyZodErrorsToForm(
   form.setError(path.map(String).join(".") as FieldPath<AdminSaleFormValues>, { message });
 }
 
-export function AdminSaleForm({ mode, saleId, defaultValues, categories }: Props) {
+export function AdminSaleForm({
+  mode,
+  saleId,
+  defaultValues,
+  categories,
+  englishOnlyAuctionsLocked = false,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const form = useForm<AdminSaleFormValues>({
@@ -132,6 +140,14 @@ export function AdminSaleForm({ mode, saleId, defaultValues, categories }: Props
           });
         })}
       >
+        {englishOnlyAuctionsLocked ? (
+          <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
+            English-only mode is on: any lots created with this sale must use the{" "}
+            <span className="font-medium text-on-surface">english</span> auction type (the database
+            enum is unchanged for legacy rows).
+          </p>
+        ) : null}
+
         <FormField
           control={form.control}
           name="title"

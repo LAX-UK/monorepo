@@ -1,3 +1,4 @@
+import { authSubmitFailure } from "@/lib/auth/auth-error-code";
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
 
 /** DIP: swap for Mailchimp / CRM later without changing the form. */
@@ -15,13 +16,17 @@ export class StubNewsletterSubmitter implements INewsletterSubmitter {
       body: JSON.stringify({ email }),
     });
     if (!res.ok) {
-      return { ok: false, message: "Something went wrong. Please try again." };
+      return authSubmitFailure("newsletter_submit_failed");
     }
     const body = (await res.json()) as { ok?: boolean; status?: string };
     if (body.ok !== true) {
-      return { ok: false, message: "Something went wrong. Please try again." };
+      return authSubmitFailure("newsletter_submit_failed");
     }
-    return body.status ? { ok: true, code: body.status } : { ok: true };
+    const disposition =
+      body.status === "already_subscribed"
+        ? ("already_subscribed" as const)
+        : ("subscribed" as const);
+    return { ok: true, newsletterDisposition: disposition };
   }
 }
 

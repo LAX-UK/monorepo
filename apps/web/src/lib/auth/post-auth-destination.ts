@@ -1,11 +1,10 @@
 import type { SessionUser } from "@/lib/data/contracts";
-import type { UserRole } from "@auction/types";
-import { canAccessPlatformAdminRoutes, canAccessStaffAdminShell } from "@auction/types";
+import { type UserRole, staffRoleDefaultDestination } from "@auction/types";
 
 export type PostAuthContext = "sign-in" | "sign-up" | "redirect-if-authed" | "verify-email-success";
 
 export type ResolvePostAuthDestinationInput = {
-  user: Pick<SessionUser, "role" | "suspended" | "emailVerified" | "email">;
+  user: Pick<SessionUser, "role" | "staffRole" | "suspended" | "emailVerified" | "email">;
   requestedNext?: string | null | undefined;
   context: PostAuthContext;
   /** When true, unverified users are sent to verify-pending for sign-up / redirect-if-authed contexts. */
@@ -14,8 +13,8 @@ export type ResolvePostAuthDestinationInput = {
   withWelcomeBack?: boolean;
 };
 
-/**
- * Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
+/** Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
+ * Rejects URL-encoded variants (e.g. `/%2F%2Fevil.com` → `///evil.com`).
  */
 export function isSafeNextPath(next: string | null | undefined): boolean {
   if (next == null || next === "") return false;
@@ -26,13 +25,14 @@ export function isSafeNextPath(next: string | null | undefined): boolean {
   if (!pathOnly.startsWith("/")) return false;
   if (pathOnly.startsWith("/api")) return false;
   if (pathOnly.startsWith("/admin/api")) return false;
+  try {
+    const decoded = decodeURIComponent(pathOnly);
+    if (decoded.includes("//")) return false;
+    if (decoded.includes("\\")) return false;
+  } catch {
+    return false;
+  }
   return true;
-}
-
-export function roleDefaultDestination(role: UserRole): string {
-  if (canAccessPlatformAdminRoutes(role)) return "/admin";
-  if (canAccessStaffAdminShell(role)) return "/admin/payments";
-  return "/dashboard";
 }
 
 function appendWelcomeBack(path: string, withWelcomeBack: boolean): string {
@@ -41,8 +41,7 @@ function appendWelcomeBack(path: string, withWelcomeBack: boolean): string {
   return `${path}${joiner}welcome=back`;
 }
 
-/**
- * Central post-auth navigation for web (server guards, middleware heuristic, client after sign-in).
+/** Central post-auth navigation for web (server guards, middleware heuristic, client after sign-in).
  */
 export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInput): string {
   const {
@@ -63,8 +62,15 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     (context === "sign-up" || context === "redirect-if-authed");
 
   if (needsEmailGate) {
-    const emailQ = encodeURIComponent(user.email ?? "");
-    return appendWelcomeBack(`/register/verify-pending?email=${emailQ}`, withWelcomeBack);
+    const q = new URLSearchParams();
+    if (isSafeNextPath(requestedNext ?? undefined)) {
+      q.set("next", requestedNext as string);
+    }
+    const qs = q.toString();
+    return appendWelcomeBack(
+      qs ? `/register/verify-pending?${qs}` : "/register/verify-pending",
+      withWelcomeBack,
+    );
   }
 
   if (isSafeNextPath(requestedNext ?? undefined)) {
@@ -72,5 +78,8 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
   }
 
   const role = user.role as UserRole;
-  return appendWelcomeBack(roleDefaultDestination(role), withWelcomeBack);
+  return appendWelcomeBack(
+    staffRoleDefaultDestination(role, user.staffRole ?? null),
+    withWelcomeBack,
+  );
 }

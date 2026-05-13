@@ -1,9 +1,7 @@
 import type { SaleDeliveryMode } from "@auction/types";
 
-/**
- * Single source of truth for what each sale delivery mode permits.
- *
- * Consumers (validators, services, route guards, UI gates) ask the policy
+/** Single source of truth for what each sale delivery mode permits.
+ * * Consumers (validators, services, route guards, UI gates) ask the policy
  * instead of branching on `deliveryMode` strings directly. New modes can be
  * added by extending this map without rewriting bid services, forms, and
  * lifecycle code in multiple places (Open/Closed).
@@ -15,8 +13,7 @@ export type SaleModeCapabilities = {
   readonly allowsStreamUrl: boolean;
   /** Whether onsite-style location fields apply for this mode. */
   readonly allowsLocation: boolean;
-  /**
-   * Whether lots inside a sale of this mode inherit the sale's
+  /** Whether lots inside a sale of this mode inherit the sale's
    * start/end window instead of carrying their own schedule.
    */
   readonly inheritsLotTiming: boolean;

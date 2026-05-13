@@ -11,6 +11,12 @@ function read(rel: string): string {
 }
 
 describe("auth guard contract (source)", () => {
+  it("requireAuthenticatedUser enforces verified email with verify-pending redirect", () => {
+    const src = read("lib/auth/guards.server.ts");
+    expect(src).toContain("emailVerified !== true");
+    expect(src).toContain("/register/verify-pending");
+  });
+
   it("guarded marketing pages import redirectIfAuthenticated or verify-pending guard", () => {
     expect(read("app/(marketing)/login/page.tsx")).toContain("redirectIfAuthenticated");
     expect(read("app/(marketing)/register/page.tsx")).toContain("redirectIfAuthenticated");

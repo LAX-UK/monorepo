@@ -9,8 +9,7 @@ export type SectionCtaProps = {
   className?: string;
 };
 
-/**
- * Recurring marketing strip: headline, optional body, primary + optional secondary actions.
+/** Recurring marketing strip: headline, optional body, primary + optional secondary actions.
  */
 export function SectionCta({ title, description, primary, secondary, className }: SectionCtaProps) {
   return (

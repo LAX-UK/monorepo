@@ -1,5 +1,4 @@
-/**
- * Registry of routes that must run {@link createRequireBuyerRole} after {@link createRequireAuth}.
+/** Registry of routes that must run {@link createRequireBuyerRole} after {@link createRequireAuth}.
  * Keep in sync with route modules; used for docs and static checks, not auto-wiring.
  */
 export const buyerRoleProtectedOperations = [

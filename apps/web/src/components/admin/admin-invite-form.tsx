@@ -4,6 +4,7 @@ import { RhfSelect } from "@/components/ui/rhf-select";
 import { adminCreateInvitationResultAction } from "@/lib/actions/admin";
 import { useActionForm } from "@/lib/forms/use-action-form";
 import { type UserRole, userRoles } from "@auction/types";
+import { type UserStaffRole, userStaffRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -16,14 +17,24 @@ import {
 import { Input } from "@auction/ui/components/input";
 import { adminCreateInvitationBodySchema } from "@auction/validators";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useWatch } from "react-hook-form";
 
 function roleLabel(r: UserRole): string {
-  if (r === "administrator") return "Administrator";
-  if (r === "accountant") return "Accountant";
+  if (r === "staff") return "Staff";
   return "Client";
 }
 
 const roleOptions = userRoles.map((r) => ({ value: r, label: roleLabel(r) }));
+
+function staffRoleLabel(r: UserStaffRole): string {
+  return r.replace(/_/g, " ");
+}
+
+const staffRoleOptions = userStaffRoles.map((r) => ({
+  value: r,
+  label: staffRoleLabel(r),
+}));
 
 export function AdminInviteForm() {
   const router = useRouter();
@@ -32,14 +43,23 @@ export function AdminInviteForm() {
     defaultValues: {
       email: "",
       targetRole: "client",
+      targetStaffRole: undefined,
     },
     action: adminCreateInvitationResultAction,
     successToast: { title: "Invitation sent" },
     onSuccess: () => {
-      form.reset({ email: "", targetRole: "client" });
+      form.reset({ email: "", targetRole: "client", targetStaffRole: undefined });
       router.refresh();
     },
   });
+
+  const targetRole = useWatch({ control: form.control, name: "targetRole" });
+
+  useEffect(() => {
+    if (targetRole !== "staff") {
+      form.setValue("targetStaffRole", undefined);
+    }
+  }, [targetRole, form]);
 
   return (
     <div className="mt-4 space-y-4">
@@ -96,6 +116,28 @@ export function AdminInviteForm() {
               </FormItem>
             )}
           />
+          {targetRole === "staff" ? (
+            <FormField
+              control={form.control}
+              name="targetStaffRole"
+              render={({ field }) => (
+                <FormItem className="grid min-w-0 gap-1 sm:w-64">
+                  <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
+                    Staff role
+                  </FormLabel>
+                  <RhfSelect
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v === "" ? undefined : v)}
+                    onBlur={field.onBlur}
+                    options={staffRoleOptions}
+                    placeholder="Select staff role"
+                    triggerClassName="min-h-11 w-full font-body text-sm"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
           <Button
             type="submit"
             className="min-h-11 font-label text-xs uppercase tracking-widest"

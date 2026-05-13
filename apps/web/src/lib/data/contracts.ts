@@ -1,4 +1,12 @@
-import type { Bid, Category, CategoryNode, Lot, LotStatus, UserRole } from "@auction/types";
+import type {
+  Bid,
+  Category,
+  CategoryNode,
+  Lot,
+  LotStatus,
+  UserRole,
+  UserStaffRole,
+} from "@auction/types";
 
 export type ListLotsParams = {
   status?: LotStatus;
@@ -6,6 +14,9 @@ export type ListLotsParams = {
   sellerId?: string;
   winnerId?: string;
   saleId?: string;
+  /** Filter to a single canonical artist via `lot.artist_id` FK. Used by the
+   * admin "Lots by this artist" panel and the public artist detail rail. */
+  artistId?: string;
   /** Filter lots whose endTime falls in this calendar year (UTC). */
   endYear?: number;
   /** Server-side title search (API `q`). */
@@ -52,6 +63,7 @@ export type SessionUser = {
   email: string;
   name: string;
   role: UserRole;
+  staffRole?: UserStaffRole | null;
   /** Profile / OAuth avatar when present. */
   image?: string | null;
   /** When true (if API exposes it), bidding UI is blocked client-side. */
@@ -59,9 +71,19 @@ export type SessionUser = {
   emailVerified?: boolean;
   emailStatus?: "ok" | "bounced" | "complained";
   emailStatusChangedAt?: string | Date | null;
+  /** From GET /users/me; omitted in client-only session shapes (treat as seen). */
+  hasSeenActingContextTooltip?: boolean;
+  /** From GET /users/me. Drives KYC banner + bid gating (Phase C). */
+  kycStatus?: "unverified" | "pending" | "approved" | "rejected";
+  /** Persona captured at signup; null for users created before Phase B. */
+  signupPersona?: "individual" | "organisation" | null;
+  /** From GET /users/me when a self-serve account deletion has been requested. */
+  deletionRequestedAt?: string | Date | null;
+  /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
+  twoFactorEnabled?: boolean;
+  /** From GET /users/me — synced UI preferences (colour scheme, etc.). */
+  uiPreferences?: { theme: "light" | "dark" | "system" };
 };
-
-/** Session / “who am I” without exposing auth client (DIP). */
 export interface SessionReader {
   getSession(): Promise<SessionUser | null>;
 }

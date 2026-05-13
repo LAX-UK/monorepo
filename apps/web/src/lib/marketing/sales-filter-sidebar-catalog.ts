@@ -1,0 +1,10 @@
+/** Accordion `value` + human label for the sales calendar filter sidebar (data only). */
+export const SALES_FILTER_SIDEBAR_GROUPS = [
+  { value: "sort", title: "Sort by Date" },
+  { value: "price", title: "Price" },
+  { value: "department", title: "Department" },
+  { value: "month", title: "Month" },
+  { value: "year", title: "Year" },
+] as const;
+
+export type SalesFilterSidebarGroupValue = (typeof SALES_FILTER_SIDEBAR_GROUPS)[number]["value"];

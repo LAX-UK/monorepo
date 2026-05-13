@@ -4,13 +4,15 @@ export type EmailChangeTokenPayload = {
   userId: string;
   oldEmail: string;
   newEmail: string;
+  /** Which inbox must click this link — both must confirm before the switch. */
+  confirmFor: "old" | "new";
   exp: number;
 };
 
 export function createEmailChangeToken(
   payload: Omit<EmailChangeTokenPayload, "exp">,
   secret: string,
-  ttlSeconds = 60 * 60,
+  ttlSeconds = 60 * 60 * 24 * 7,
 ): string {
   const body = Buffer.from(
     JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + ttlSeconds }),
@@ -40,6 +42,7 @@ function isPayload(value: unknown): value is EmailChangeTokenPayload {
     typeof v.userId === "string" &&
     typeof v.oldEmail === "string" &&
     typeof v.newEmail === "string" &&
+    (v.confirmFor === "old" || v.confirmFor === "new") &&
     typeof v.exp === "number"
   );
 }

@@ -1,30 +1,48 @@
 "use client";
 
+import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
 import { type ForgotPasswordFormValues, forgotPasswordFormSchema } from "@/lib/auth/schemas";
 import { forgotPasswordService } from "@/lib/auth/services/forgot-password.service";
+import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useForgotPasswordController() {
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const { run, loading, bannerError } = useAuthSubmit(forgotPasswordService);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = window.setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
-    return () => window.clearTimeout(t);
-  }, [cooldown]);
+  const { remaining: cooldown, start: startCooldown } = useResendCooldown(45);
+  const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(forgotPasswordService);
+  const siteKey = turnstileSiteKey();
+  const needsTurnstile = Boolean(siteKey);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordFormSchema),
     defaultValues: { email: "" },
   });
 
+  const onTurnstileToken = useCallback(
+    (t: string) => {
+      setTurnstileToken(t);
+      form.clearErrors("root");
+    },
+    [form],
+  );
+
+  const onTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
   const onSubmit = form.handleSubmit(async (data) => {
-    const result = await run(data);
+    if (needsTurnstile && !turnstileToken) {
+      form.setError("root", { message: "Please complete the security check." });
+      return;
+    }
+    const result = await run({
+      ...data,
+      ...(turnstileToken ? { turnstileToken } : {}),
+    });
     if (result.ok) {
       setSubmittedEmail(data.email);
     }
@@ -32,9 +50,26 @@ export function useForgotPasswordController() {
 
   const resend = useCallback(async () => {
     if (!submittedEmail || cooldown > 0 || loading) return;
-    const result = await run({ email: submittedEmail });
-    if (result.ok) setCooldown(45);
-  }, [submittedEmail, cooldown, loading, run]);
+    if (needsTurnstile && !turnstileToken) return;
+    const result = await run({
+      email: submittedEmail,
+      ...(turnstileToken ? { turnstileToken } : {}),
+    });
+    if (result.ok) startCooldown(45);
+  }, [submittedEmail, cooldown, loading, run, startCooldown, needsTurnstile, turnstileToken]);
 
-  return { form, onSubmit, loading, bannerError, submittedEmail, resend, cooldown };
+  return {
+    form,
+    onSubmit,
+    loading,
+    bannerError,
+    lastErrorCode,
+    submittedEmail,
+    resend,
+    cooldown,
+    turnstileSiteKey: siteKey,
+    onTurnstileToken,
+    onTurnstileExpire,
+    turnstileReady: !needsTurnstile || Boolean(turnstileToken),
+  };
 }

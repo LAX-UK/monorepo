@@ -15,8 +15,7 @@ type Props = {
 const bidClass =
   "box-border h-10 min-w-0 flex-1 rounded-[4px] border border-brand-200 bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent dark:border-outline-variant/50 dark:text-on-surface";
 
-/**
- * Per-lot actions: Bid + Follow (watch). OCP: `SaleroomLotCard` still accepts any `actions` slot.
+/** Per-lot actions: Bid + Follow (watch). OCP: `SaleroomLotCard` still accepts any `actions` slot.
  */
 export function SaleroomLotActions({
   lotId,

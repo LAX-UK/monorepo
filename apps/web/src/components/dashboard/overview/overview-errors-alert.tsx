@@ -18,7 +18,7 @@ export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
   if (!hasErrors) return null;
 
   return (
-    <Alert variant="destructive" className="border-error/40">
+    <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
       <AlertTitle>Some data could not load</AlertTitle>
       <AlertDescription>
         <ul className="mt-2 list-inside list-disc space-y-1">

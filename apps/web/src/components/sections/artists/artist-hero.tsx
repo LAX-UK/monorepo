@@ -18,8 +18,7 @@ type Props = {
   actions?: ReactNode;
 };
 
-/**
- * Single-responsibility hero composing the portrait, name, tagline, bio and an
+/** Single-responsibility hero composing the portrait, name, tagline, bio and an
  * actions slot. Used by both registered artist profiles and the seller
  * fallback path so the chrome stays Liskov-substitutable across both routes.
  */

@@ -29,6 +29,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
         lotId: lot.id,
         bid,
         currentPrice: lot.currentPrice,
+        emittedAt: Date.now(),
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
       }),
     );
@@ -46,17 +47,19 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
     );
   }
 
-  async notifyLotEnded(lot: Lot, bid: Bid): Promise<void> {
+  async notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
     const channel = `lot:${lot.id}:events`;
+    const winnerId = winningBid?.placedByUserId ?? winningBid?.bidderId ?? null;
     await this.redis.publish(
       channel,
       JSON.stringify({
         type: "lot_ended",
         lotId: lot.id,
-        winnerId: bid.bidderId,
-        bidId: bid.id,
-        currentPrice: bid.amount,
+        winnerId,
+        bidId: winningBid?.id ?? null,
+        currentPrice: winningBid?.amount ?? lot.currentPrice,
         status: "ended",
+        ...(winnerId ? {} : { noSale: true }),
       }),
     );
   }

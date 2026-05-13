@@ -17,8 +17,7 @@ async function authedInit(init: RequestInit = {}): Promise<RequestInit> {
   return init;
 }
 
-/**
- * Returns `isFollowing` for the current viewer (anonymous callers always get `false`).
+/** Returns `isFollowing` for the current viewer (anonymous callers always get `false`).
  * SSR only reads this for authenticated users (see page orchestrator).
  */
 export async function getServerSaleFollowState(id: string): Promise<{ isFollowing: boolean }> {

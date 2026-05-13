@@ -10,13 +10,18 @@ const lotId = "00000000-0000-4000-8000-000000000001";
 const submissionId = "00000000-0000-4000-8000-000000000002";
 
 const adminAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "admin-user", role: "administrator" }),
+  getSessionUser: async () => ({
+    id: "admin-user",
+    role: "staff",
+    staffRole: "super_admin",
+  }),
 };
 
 function minimalContainer(partial: Record<string, unknown>): Container {
   return {
     redis: { get: vi.fn().mockResolvedValue(null), set: vi.fn(), ping: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    kycService: { isConfigured: () => false, enforceThreshold: vi.fn(), getStatus: vi.fn() },
     ...partial,
   } as unknown as Container;
 }

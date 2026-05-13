@@ -50,12 +50,12 @@
 
 ## Phase 5: User Story 3 - One Client Identity For Buy/Sell (P2)
 
-**Goal**: Maintain one-account buyer/seller behavior with submission default artist assignment + admin override.
+**Goal**: Maintain one-account buyer/seller behavior; admin-driven catalogue artist assignment on submission approval (`{ artistId } | { newArtist }`) with later admin override on `lot.artist_id` via `<ArtistPicker />`.
 
-**Independent Test**: Same client account can submit and bid in allowed contexts.
+**Independent Test**: Same client account can submit and bid in allowed contexts; submission approval and admin lot edit both resolve to a canonical `artist_profile`.
 
-- [ ] T016 [P] [US3] Add tests for submitter default artist/seller assignment path.
-- [ ] T017 [US3] Implement/align admin override artist assignment workflow on lot.
+- [ ] T016 [P] [US3] Add tests covering admin-driven artist resolution at submission approve (existing `artistId`, inline `newArtist`, missing-decision rejection).
+- [ ] T017 [US3] Implement/align admin override of `lot.artist_id` on the admin lot edit screen via the shared `<ArtistPicker />`.
 - [ ] T018 [US3] Validate no regressions in own-lot bidding restrictions and existing buyer guardrails.
 
 ---

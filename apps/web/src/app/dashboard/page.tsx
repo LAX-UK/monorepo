@@ -1,14 +1,19 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import { getServerMyNotifications } from "@/lib/data/http/notifications.server";
+import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { isDashboardV2Enabled } from "@/lib/feature-flags/dashboard-v2";
 import { formatMoney } from "@/lib/format-currency";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
 
-async function DashboardHomeContent() {
+async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean }) {
   const user = await getServerSessionUser();
   const c = await getServerDataContainer();
 
@@ -70,6 +75,13 @@ async function DashboardHomeContent() {
     errors.submissions = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
+  const [kyc, orgOnboarding, addresses, notifications] = await Promise.all([
+    getServerKycStatusSummary().catch(() => null),
+    getServerOrgOnboardingResume().catch(() => null),
+    getServerMyAddresses().catch(() => []),
+    getServerMyNotifications({ limit: 12 }).catch(() => []),
+  ]);
+
   const vm = buildDashboardOverviewVm({
     user,
     activeLots: active,
@@ -82,13 +94,54 @@ async function DashboardHomeContent() {
     formatMoney,
   });
 
-  return <DashboardOverviewView vm={vm} featureV2={isDashboardV2Enabled()} />;
+  const activity = buildDashboardActivityVm({
+    notifications,
+    portfolio,
+    bidRows,
+    limit: 8,
+  });
+
+  return (
+    <>
+      {orgSubmitted ? (
+        <Alert
+          className="mb-6 rounded-xl border-lot-orange/40 bg-surface-container-low/80 shadow-sm"
+          variant="default"
+        >
+          <AlertTitle>Organisation submitted</AlertTitle>
+          <AlertDescription className="text-on-surface">
+            Your organisation is being reviewed. We&apos;ll notify you when approved.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <DashboardOverviewView
+        vm={vm}
+        user={
+          user ?? {
+            emailVerified: false,
+            emailStatus: "ok",
+            twoFactorEnabled: false,
+          }
+        }
+        kyc={kyc}
+        orgOnboarding={orgOnboarding}
+        addressesCount={addresses.length}
+        activity={activity}
+      />
+    </>
+  );
 }
 
-export default function DashboardHomePage() {
+export default async function DashboardHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org_submitted?: string }>;
+}) {
+  const sp = await searchParams;
+  const orgSubmitted = sp.org_submitted === "1";
   return (
     <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-      <DashboardHomeContent />
+      <DashboardHomeContent orgSubmitted={orgSubmitted} />
     </Suspense>
   );
 }

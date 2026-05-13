@@ -1,6 +1,12 @@
+import { DashboardBannerStack } from "@/components/dashboard/dashboard-banner-stack";
+import { DashboardThemeSync } from "@/components/dashboard/dashboard-theme-sync";
+import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { AppShell } from "@/components/layout/app-shell";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -21,6 +27,9 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
+  const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
+  const kycSummary = await getServerKycStatusSummary().catch(() => null);
+  const orgOnboardingResume = await getServerOrgOnboardingResume().catch(() => null);
 
   const jar = await cookies();
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
@@ -32,7 +41,23 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       shellRole="client"
       clientWorkspaceMode={clientWorkspaceMode}
       cookieDensity={cookieDensity}
+      hideEmailStatusBanner
+      headerSlot={
+        <ActingAsBanner
+          hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
+          userRole={user.role}
+          userStaffRole={user.staffRole ?? null}
+          prefetchedActingContext={actingContext}
+        />
+      }
     >
+      <DashboardThemeSync theme={user.uiPreferences?.theme ?? "system"} />
+      <DashboardBannerStack
+        user={user}
+        acting={actingContext.acting}
+        kycSummary={kycSummary}
+        orgOnboardingResume={orgOnboardingResume}
+      />
       <WelcomeBackToast />
       {children}
     </AppShell>

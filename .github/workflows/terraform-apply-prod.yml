@@ -41,6 +41,33 @@ jobs:
       TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
       TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+      TF_VAR_stripe_identity_webhook_secret: ${{ secrets.STRIPE_IDENTITY_WEBHOOK_SECRET }}
+      TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
+      TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
+      TF_VAR_kyc_threshold_amount: "1000"
+      TF_VAR_kyc_threshold_currency: "GBP"
+      TF_VAR_ops_support_email: ${{ secrets.OPS_SUPPORT_EMAIL }}
+      TF_VAR_ops_oncall_email: ${{ secrets.OPS_ONCALL_EMAIL }}
+      TF_VAR_admin_email_address: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
+      TF_VAR_xero_client_id: ${{ secrets.XERO_CLIENT_ID }}
+      TF_VAR_xero_client_secret: ${{ secrets.XERO_CLIENT_SECRET }}
+      TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
+      TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
+      TF_VAR_xero_default_revenue_account_code: "200"
+      TF_VAR_xero_default_tax_type: "NONE"
+      TF_VAR_xero_invoice_due_days: "14"
+      TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
+      TF_VAR_xero_use_legal_entity_contact: "false"
+      TF_VAR_xero_payout_bill_account_code: "400"
+      TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
+      TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TF_VAR_turnstile_site_key: ${{ secrets.TURNSTILE_SITE_KEY }}
+      TF_VAR_verify_origin: "true"
+      TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
+      TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)

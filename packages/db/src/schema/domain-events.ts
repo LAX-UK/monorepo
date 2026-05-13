@@ -11,6 +11,8 @@ export const domainEvent = pgTable(
     payload: jsonb("payload").notNull(),
     producer: text("producer").notNull(),
     actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** acting legal entity context at event time (nullable; not a FK since entity may be archived) */
+    actingLegalEntityId: text("acting_legal_entity_id"),
     correlationId: uuid("correlation_id").notNull().defaultRandom(),
     schemaVersion: integer("schema_version").notNull().default(1),
     occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true })
@@ -21,6 +23,7 @@ export const domainEvent = pgTable(
     index("domain_events_event_type_idx").on(table.eventType),
     index("domain_events_aggregate_idx").on(table.aggregateType, table.aggregateId),
     index("domain_events_occurred_at_idx").on(table.occurredAt),
+    index("domain_events_acting_legal_entity_idx").on(table.actingLegalEntityId, table.occurredAt),
   ],
 );
 

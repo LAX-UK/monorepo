@@ -1,3 +1,4 @@
+import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath, salePath } from "@/lib/seo/url";
@@ -9,6 +10,8 @@ import { lotMarketingSection } from "./lot-marketing-sections";
 export const ARTWORK_PAGE_ACCORDION_IDS = {
   lotDetails: "lot-details",
   bidHistory: "bid-history",
+  fees: "fees",
+  documents: "lot-documents",
 } as const;
 
 export type LotHeroVM = {
@@ -21,8 +24,7 @@ export type LotHeroVM = {
   nextHref: string | null;
   /** e.g. "1 / 8" when navigating within a sale; null if unknown */
   positionLabel: string | null;
-  /**
-   * Optional Home segment prepended to the breadcrumb so the trail reads
+  /** Optional Home segment prepended to the breadcrumb so the trail reads
    * Home › Sale › Lot N (mockup parity). When omitted the breadcrumb keeps
    * the historical "Auctions" first crumb behaviour.
    */
@@ -72,8 +74,7 @@ function sortSaleLotsForNav(lots: Lot[]): Lot[] {
   });
 }
 
-/**
- * Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
+/** Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
  */
 export function mapLotToHeroVM(
   lot: Lot,
@@ -131,8 +132,7 @@ export type LotSummarySeedVM = {
   sellerImageUrl: string | null;
 };
 
-/**
- * Static hero copy; live bid/close values come from `ArtworkBidPanel` client state.
+/** Static hero copy; live bid/close values come from `ArtworkBidPanel` client state.
  */
 export function mapLotToSummarySeed(
   lot: Lot,
@@ -182,11 +182,15 @@ export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): st
   );
 }
 
-/**
- * Data-driven accordion list; `hidden` items are filtered out in the component.
+/** Data-driven accordion list; `hidden` items are filtered out in the component.
  */
 export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): AccordionBlock[] {
   const md = lot.marketingDetails;
+  const est = md.estimate;
+  const estimateText =
+    est?.low != null && est?.high != null
+      ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}`.trim()
+      : "";
   const cr = md.conditionReport;
   const crText = [cr?.summary, cr?.details, cr?.downloadUrl ? `Download: ${cr.downloadUrl}` : ""]
     .filter(Boolean)
@@ -197,6 +201,12 @@ export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): Ac
   const aboutText = aboutArtistBlockContent(lot, artist);
 
   return [
+    {
+      id: lotMarketingSection.estimate.id,
+      title: lotMarketingSection.estimate.title,
+      content: estimateText,
+      hidden: estimateText.trim() === "",
+    },
     {
       id: lotMarketingSection.condition.id,
       title: lotMarketingSection.condition.title,
@@ -237,14 +247,13 @@ function lotToRailCard(lot: Lot, artistName: string): LotRailCardVM {
     currentPrice: lot.currentPrice,
     endTime: lot.endTime,
     status: lot.status,
-    sellerId: lot.sellerId,
+    sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
   };
 }
 
 const MIN_SALE_SIBLINGS = 1;
 
-/**
- * Prefers other lots from the same sale; falls back to the seller’s active list when the sale
+/** Prefers other lots from the same sale; falls back to the seller’s active list when the sale
  * is missing or has too few peers.
  */
 export function mapSiblingsToRailVM(
@@ -274,8 +283,7 @@ export function mapSiblingsToRailVM(
   };
 }
 
-/**
- * For auto-bid panel: latest bid from this user with optional max.
+/** For auto-bid panel: latest bid from this user with optional max.
  */
 export function findUserLatestBidMeta(
   userId: string | undefined,
@@ -291,5 +299,207 @@ export function findUserLatestBidMeta(
     maxAutoBidAmount: latest.maxAutoBidAmount,
     amount: latest.amount,
     bidId: latest.id,
+  };
+}
+
+/** Single lot row in the online session queue (sidebar or horizontal rail). */
+export type LotQueueCardVM = {
+  id: string;
+  href: string;
+  lotNumber: number | null;
+  title: string;
+  artistName: string;
+  imageUrl: string | null;
+  estimateLine: string | null;
+  currentBid: string | null;
+  isCurrentLot: boolean;
+  isUpNext: boolean;
+};
+
+/** Live / onsite bid feed row (paddle anonymized in UI). */
+export type BidFeedEntryVM = {
+  id: string;
+  paddleNumber: string;
+  amount: string;
+  rank: number;
+  isHighest: boolean;
+  isYourBid: boolean;
+  timestamp: number;
+};
+
+/** Top session bar for online auction layout. */
+export type AuctionSessionHeaderVM = {
+  saleTitle: string;
+  lotLabel: string;
+  paddleNumber: string | null;
+  userVerified: boolean;
+};
+
+function lotToQueueCardVM(
+  lot: Lot,
+  artistName: string,
+  flags: { isCurrentLot: boolean; isUpNext: boolean },
+): LotQueueCardVM {
+  const est = lot.marketingDetails.estimate;
+  return {
+    id: lot.id,
+    href: lotPath(lot),
+    lotNumber: lot.lotNumber,
+    title: lot.title,
+    artistName,
+    imageUrl: lot.images[0] ?? null,
+    estimateLine: est ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}` : null,
+    currentBid: lot.currentPrice ? formatMoney(lot.currentPrice) : null,
+    isCurrentLot: flags.isCurrentLot,
+    isUpNext: flags.isUpNext,
+  };
+}
+
+/** Lots that may still appear in Up next / Queue (not finished or unpublished). */
+function isQueueEligibleStatus(status: Lot["status"]): boolean {
+  return status === "active" || status === "scheduled";
+}
+
+/** Build queue VMs for the current sale (ordered nav); empty when not in a sale.
+ * Up next and Queue only include lots that are `active` or `scheduled` (in catalog order after the current lot).
+ */
+export function mapSaleLotsToQueueVMs(
+  currentLot: Lot,
+  saleLots: Lot[] | null,
+  resolveArtistName: (l: Lot) => string,
+): { current: LotQueueCardVM; upNext: LotQueueCardVM | null; queue: LotQueueCardVM[] } {
+  const ordered = sortSaleLotsForNav(saleLots?.filter((l) => l.saleId === currentLot.saleId) ?? []);
+  const idx = ordered.findIndex((l) => l.id === currentLot.id);
+  if (idx < 0) {
+    const solo = lotToQueueCardVM(currentLot, resolveArtistName(currentLot), {
+      isCurrentLot: true,
+      isUpNext: false,
+    });
+    return { current: solo, upNext: null, queue: [] };
+  }
+  const cur = ordered[idx];
+  if (!cur) {
+    const solo = lotToQueueCardVM(currentLot, resolveArtistName(currentLot), {
+      isCurrentLot: true,
+      isUpNext: false,
+    });
+    return { current: solo, upNext: null, queue: [] };
+  }
+  const current = lotToQueueCardVM(cur, resolveArtistName(cur), {
+    isCurrentLot: true,
+    isUpNext: false,
+  });
+  const afterCurrent = ordered.slice(idx + 1);
+  const upcoming = afterCurrent.filter((l) => isQueueEligibleStatus(l.status));
+  const nextLot = upcoming[0] ?? null;
+  const upNext = nextLot
+    ? lotToQueueCardVM(nextLot, resolveArtistName(nextLot), { isCurrentLot: false, isUpNext: true })
+    : null;
+  const queue = upcoming
+    .slice(1)
+    .map((l) =>
+      lotToQueueCardVM(l, resolveArtistName(l), { isCurrentLot: false, isUpNext: false }),
+    );
+  return { current, upNext, queue };
+}
+
+function maskPaddleFromBidderId(bidderId: string): string {
+  const tail = bidderId.replace(/-/g, "").slice(-4).toUpperCase();
+  return tail ? `Paddle#•••${tail}` : "Paddle#—";
+}
+
+/** Current user's bid rows for the "Your bids" card (online mockup). */
+export type UserBidHistoryRowVM = {
+  id: string;
+  amount: string;
+  status: "highest" | "outbid" | "won";
+};
+
+export type UserBidsHistoryVM = {
+  count: number;
+  paddleLabel: string;
+  rows: UserBidHistoryRowVM[];
+};
+
+/** Pure mapper: newest user bids first; status from global leading bid and lot outcome. */
+export function mapUserBidsHistoryVM(
+  entries: BidHistoryEntry[],
+  userId: string | null,
+  lot: Pick<Lot, "status" | "winnerId">,
+): UserBidsHistoryVM | null {
+  if (!userId || entries.length === 0) return null;
+  const userBids = entries.filter((e) => e.bidderId === userId);
+  if (userBids.length === 0) return null;
+
+  const sortedByAmount = [...entries].sort((a, b) => {
+    const na = Number.parseFloat(a.amount);
+    const nb = Number.parseFloat(b.amount);
+    if (nb !== na) return nb - na;
+    return b.at - a.at;
+  });
+  const top = sortedByAmount[0];
+  if (!top) return null;
+
+  const rows: UserBidHistoryRowVM[] = [...userBids]
+    .sort((a, b) => b.at - a.at)
+    .map((e) => {
+      const isLeadingBid = e.id === top.id && e.bidderId === top.bidderId;
+      let status: UserBidHistoryRowVM["status"] = "outbid";
+      if (isLeadingBid) {
+        const userWon = lot.status === "ended" && lot.winnerId === userId;
+        status = userWon ? "won" : "highest";
+      }
+      return {
+        id: e.id,
+        amount: formatMoney(e.amount),
+        status,
+      };
+    });
+
+  return {
+    count: userBids.length,
+    paddleLabel: maskPaddleFromBidderId(userId),
+    rows,
+  };
+}
+
+/** Map bid history to feed rows: highest amount first, stable tie-breaker by recency. */
+export function mapBidHistoryToFeedEntries(
+  entries: BidHistoryEntry[],
+  currentUserId: string | null,
+): BidFeedEntryVM[] {
+  if (entries.length === 0) return [];
+  const sorted = [...entries].sort((a, b) => {
+    const na = Number.parseFloat(a.amount);
+    const nb = Number.parseFloat(b.amount);
+    if (nb !== na) return nb - na;
+    return b.at - a.at;
+  });
+  return sorted.map((e, i) => ({
+    id: e.id,
+    paddleNumber: maskPaddleFromBidderId(e.bidderId),
+    amount: formatMoney(e.amount),
+    rank: i + 1,
+    isHighest: i === 0,
+    isYourBid: Boolean(currentUserId && e.bidderId === currentUserId),
+    timestamp: e.at,
+  }));
+}
+
+export function mapAuctionSessionHeaderVM(args: {
+  saleTitle: string;
+  lot: Lot;
+  paddleNumber?: string | null;
+  userVerified?: boolean;
+}): AuctionSessionHeaderVM {
+  const lotNo =
+    args.lot.lotNumber != null
+      ? args.lot.lotNumber
+      : args.lot.id.replace(/-/g, "").slice(0, 4).toUpperCase();
+  return {
+    saleTitle: args.saleTitle,
+    lotLabel: `Lot ${lotNo} — ${args.lot.title}`,
+    paddleNumber: args.paddleNumber ?? null,
+    userVerified: args.userVerified ?? false,
   };
 }

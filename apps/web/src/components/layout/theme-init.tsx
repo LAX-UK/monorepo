@@ -1,11 +1,24 @@
-import Script from "next/script";
+import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 
-const SNIPPET = `(function(){try{var d=document.documentElement;var s=localStorage.getItem("theme");if(s==="dark"){d.classList.add("dark")}else if(s==="light"){d.classList.remove("dark")}else if(window.matchMedia("(prefers-color-scheme:dark)").matches){d.classList.add("dark")}else{d.classList.remove("dark")}}catch(e){}})();`;
-
+/**
+ * Inline script that runs before paint to set theme + reduce-motion attributes.
+ *
+ * Uses a raw `<script>` tag instead of `next/script` because:
+ *   - `next/script` with `strategy="beforeInteractive"` injects a wrapper that
+ *     causes a hydration mismatch on the `nonce` attribute (server renders
+ *     empty string, client renders undefined).
+ *   - We need this to run synchronously before first paint to avoid theme
+ *     flicker — a plain inline `<script>` in `<head>` does that natively.
+ *
+ * CSP allows this script via a static `sha256-...` hash (see middleware); no
+ * `nonce` on this tag avoids browser clearing nonce and React hydration noise.
+ */
 export function ThemeInit() {
   return (
-    <Script id="theme-init" strategy="beforeInteractive">
-      {SNIPPET}
-    </Script>
+    <script
+      suppressHydrationWarning
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted inline script for theme init
+      dangerouslySetInnerHTML={{ __html: THEME_INIT_SNIPPET }}
+    />
   );
 }

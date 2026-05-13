@@ -2,7 +2,7 @@ import type { LotMarketingDetails } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 
 const MANAGED_KEYS = [
-  "sellerArtistId",
+  "estimate",
   "conditionReport",
   "provenance",
   "exhibitions",
@@ -10,8 +10,7 @@ const MANAGED_KEYS = [
   "artistNote",
 ] as const satisfies readonly (keyof UpdateLotMarketingDetailsInput)[];
 
-/**
- * Merge a partial marketing patch into existing JSON. `null` clears a key; `undefined` leaves it unchanged.
+/** Merge a partial marketing patch into existing JSON. `null` clears a key; `undefined` leaves it unchanged.
  * Preserves keys not in the patch (e.g. estimate).
  */
 export function mergeLotMarketingDetailsPatch(

@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 export type PortfolioLotCardVm = {
   id: string;
   title: string;
+  artistName: string | null;
   image: string | null;
   hammerLabel: string;
   premiumLabel: string;
@@ -23,12 +24,13 @@ export type PortfolioLotCardVm = {
   dimensions: string | null;
   paymentStatus: string | null;
   checkoutHref: string;
+  conditionReportUrl: string | null;
+  endYear: number;
 };
 
 type Props = {
   items: PortfolioLotCardVm[];
-  /**
-   * `split` (default) keeps the historical image-left / detail-right card.
+  /** `split` (default) keeps the historical image-left / detail-right card.
    * `stacked` (mockup parity) renders image on top + 3-col hammer/premium/total
    * + a single primary "Complete checkout" CTA. Drawer detail is unchanged.
    */
@@ -89,6 +91,11 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       {row.title}
                     </Link>
                   </CardTitle>
+                  {row.artistName ? (
+                    <p className="mt-1 font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+                      {row.artistName}
+                    </p>
+                  ) : null}
                   {row.medium ? (
                     <p className="mt-2 line-clamp-2 text-sm text-on-surface-variant">
                       {row.medium}
@@ -101,7 +108,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Hammer
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.hammerLabel}
                       </p>
                     </div>
@@ -109,7 +116,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Premium
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.premiumLabel}
                       </p>
                     </div>
@@ -117,7 +124,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         {row.dueLabel}
                       </p>
-                      <p className="mt-1 font-headline text-base text-on-surface">
+                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
                         {row.totalLabel}
                       </p>
                     </div>
@@ -177,6 +184,15 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 { id: "done", label: "Delivered" },
               ]}
             />
+            {active.artistName ? (
+              <p>
+                <span className="font-label text-xs uppercase tracking-widest text-on-surface">
+                  Artist
+                </span>
+                <br />
+                {active.artistName}
+              </p>
+            ) : null}
             {active.medium ? (
               <p>
                 <span className="font-label text-xs uppercase tracking-widest text-on-surface">
@@ -204,6 +220,35 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 <span className="text-on-surface">{active.paymentStatus}</span>
               </p>
             ) : null}
+            <div className="space-y-2">
+              <span className="block font-label text-xs uppercase tracking-widest text-on-surface">
+                Paperwork
+              </span>
+              <ul className="space-y-1.5 text-sm">
+                {active.conditionReportUrl ? (
+                  <li>
+                    <a
+                      href={active.conditionReportUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Condition report (PDF)
+                    </a>
+                  </li>
+                ) : (
+                  <li className="text-on-surface-variant">Condition report not available</li>
+                )}
+                <li>
+                  <Link
+                    href={active.checkoutHref}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    Invoice &amp; payment details
+                  </Link>
+                </li>
+              </ul>
+            </div>
             <Button variant="primary" asChild className="mt-2 w-full sm:w-auto">
               <Link href={active.checkoutHref}>Go to checkout</Link>
             </Button>

@@ -1,6 +1,7 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -23,7 +24,12 @@ export type EmailEventType =
   | "open"
   | "click"
   | "unsubscribe";
-export type EmailSuppressionReason = "hard_bounce" | "complaint" | "manual" | "unsubscribe";
+export type EmailSuppressionReason =
+  | "hard_bounce"
+  | "complaint"
+  | "manual"
+  | "unsubscribe"
+  | "soft_bounce_threshold";
 export type NewsletterSignupStatus = "queued" | "pushed" | "rejected" | "failed";
 
 export const emailOutbox = pgTable(
@@ -57,6 +63,10 @@ export const emailOutbox = pgTable(
     index("email_outbox_user_id_idx").on(table.userId),
     index("email_outbox_message_id_idx").on(table.messageId),
     index("email_outbox_snapshot_purge_idx").on(table.toSnapshotPurgeAt),
+    check(
+      "email_outbox_status_check",
+      sql`${table.status} IN ('pending', 'sending', 'sent', 'failed', 'suppressed')`,
+    ),
   ],
 );
 

@@ -1,6 +1,7 @@
-import type { Lot } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
-import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -8,18 +9,20 @@ import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 
-/**
- * Scheduled status transitions (scheduled→active, active→ended + winner),
+/** Scheduled status transitions (scheduled→active, active→ended + winner),
  * Dutch price decrements, and single-lot job hooks for BullMQ.
  */
 export class LotLifecycleService {
   constructor(
     private readonly repos: IRepositoryFactory,
-    private readonly strategyFactory: ILotStrategyFactory,
     private readonly watchlist: IWatchlistRepository | null,
     private readonly cache: ICacheProvider | null,
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly notificationFactory: NotificationFactory,
+    private readonly antiShillingGuard: IAntiShillingGuard | null = null,
+    private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    /** Optional hook after a lot transitions to `active` (e.g. absentee replay). */
+    private readonly onLotActivated: ((lotId: string) => Promise<void>) | null = null,
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
@@ -61,6 +64,7 @@ export class LotLifecycleService {
         await lots.setDutchLastDecrementAt(a.id, now);
       }
       await this.notifyWatchlistStarting(a);
+      await this.onLotActivated?.(a.id);
     }
 
     await this.runDutchDecrements(now);
@@ -109,32 +113,110 @@ export class LotLifecycleService {
     }
   }
 
-  private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
-    const outcome = await this.repos.runInTransaction(async ({ lot, bid }) => {
+  /** Same settlement rules as timed close, but ignores the auction clock (clerk hammer). */
+  async finalizeActiveLotFromClerkHammer(
+    lotId: string,
+  ): Promise<{ winnerId: string | null; voided: boolean } | null> {
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
+    if (!a || a.status !== "active") return null;
+    const outcome = await this.runFinalizeLotTransaction(a, new Date(), true);
+    if (!outcome) return null;
+    await this.notifyBiddersAfterLotClose(a, outcome);
+    return { winnerId: outcome.winnerId, voided: outcome.voided };
+  }
+
+  /** Clerk declares no sale: end the active lot without a winner (reserve not met / passed). */
+  async noSaleEndActiveLotFromClerk(lotId: string): Promise<boolean> {
+    const lots = this.repos.root.lot;
+    const a = await lots.findById(lotId);
+    if (!a || a.status !== "active") return false;
+    const ok = await this.repos.runInTransaction(async ({ lot }) => {
+      const row = await lot.findByIdForUpdate(lotId);
+      if (!row || row.status !== "active") return false;
+      await lot.updateStatus(lotId, "ended");
+      return true;
+    });
+    if (!ok) return false;
+    await this.notifyBiddersAfterLotClose(a, { lotId, winnerId: null, voided: false });
+    return true;
+  }
+
+  private async runFinalizeLotTransaction(
+    a: Lot,
+    now: Date,
+    ignoreEndTime: boolean,
+  ): Promise<{ lotId: string; winnerId: string | null; voided: boolean } | null> {
+    return this.repos.runInTransaction(async ({ lot, bid }, tx) => {
       const row = await lot.findByIdForUpdate(a.id);
-      if (!row || row.status !== "active" || row.endTime > now) {
+      if (!row || row.status !== "active") {
+        return null;
+      }
+      if (!ignoreEndTime && row.endTime > now) {
         return null;
       }
       const bidsList = await bid.listForLotSettlement(row.id, 10_000);
-      const strategy = this.strategyFactory.create(row.auctionType);
-      const winnerBid = strategy.determineWinner(row, bidsList);
-      let winnerId: string | null = null;
-      if (
-        winnerBid &&
-        (!row.reservePrice ||
-          row.reservePrice === "" ||
-          moneyGte(winnerBid.amount, row.reservePrice))
-      ) {
-        await lot.setWinner(row.id, winnerBid.bidderId);
-        winnerId = winnerBid.bidderId;
+      const ordered =
+        row.auctionType === "dutch"
+          ? [...bidsList].sort((x, y) => x.createdAt.getTime() - y.createdAt.getTime())
+          : bidsList;
+
+      const meetsReserve = (b: Bid) =>
+        !row.reservePrice || row.reservePrice === "" || moneyGte(b.amount, row.reservePrice);
+
+      const reserveMet = ordered.filter((b) =>
+        Boolean(b.placedByUserId && b.buyerLegalEntityId && meetsReserve(b)),
+      );
+
+      let chosen: Bid | undefined;
+      if (reserveMet.length === 0) {
+        chosen = undefined;
+      } else if (!this.antiShillingGuard) {
+        chosen = reserveMet[0];
+      } else {
+        const sqlEligible = await bid.findEligibleBidsForLotClose(row.id, {
+          sellerLegalEntityId: row.sellerLegalEntityId ?? null,
+          reservePrice: row.reservePrice ?? null,
+          sort: row.auctionType === "dutch" ? "dutch" : "english",
+        });
+        chosen = sqlEligible[0];
       }
-      await lot.updateStatus(row.id, "ended");
-      return { lotId: row.id, winnerId };
+
+      let winnerId: string | null = null;
+      let voided = false;
+
+      if (chosen?.placedByUserId && chosen.buyerLegalEntityId) {
+        await lot.setWinner(row.id, chosen.placedByUserId, chosen.buyerLegalEntityId);
+        winnerId = chosen.placedByUserId;
+      } else if (reserveMet.length > 0 && this.antiShillingGuard && !chosen) {
+        await lot.voidLotAntiShillingClose(row.id);
+        voided = true;
+        if (this.domainEventPublisher) {
+          await this.domainEventPublisher.publish(tx, {
+            aggregateType: "lot",
+            aggregateId: row.id,
+            eventType: "lot.voided",
+            payload: { reason: "no_valid_winner", lotId: row.id },
+            actorUserId: null,
+            actingLegalEntityId: row.sellerLegalEntityId ?? null,
+            schemaVersion: 1,
+            producer: "apps/api",
+          });
+        }
+      }
+
+      if (!voided) {
+        await lot.updateStatus(row.id, "ended");
+      }
+      return { lotId: row.id, winnerId, voided };
     });
+  }
 
-    if (!outcome) return;
-
-    if (!this.notificationDispatcher) return;
+  private async notifyBiddersAfterLotClose(
+    a: Lot,
+    outcome: { lotId: string; winnerId: string | null; voided: boolean },
+  ): Promise<void> {
+    if (!this.notificationDispatcher || outcome.voided) return;
     const bids = this.repos.root.bid;
     const bidderIds = await bids.listDistinctBidderIds(outcome.lotId);
     if (outcome.winnerId) {
@@ -152,6 +234,12 @@ export class LotLifecycleService {
     }
   }
 
+  private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
+    const outcome = await this.runFinalizeLotTransaction(a, now, false);
+    if (!outcome) return;
+    await this.notifyBiddersAfterLotClose(a, outcome);
+  }
+
   /** Idempotent activation for delayed jobs. */
   async processActivateJob(lotId: string, now: Date = new Date()): Promise<void> {
     const lots = this.repos.root.lot;
@@ -162,6 +250,7 @@ export class LotLifecycleService {
       await lots.setDutchLastDecrementAt(a.id, now);
     }
     await this.notifyWatchlistStarting(a);
+    await this.onLotActivated?.(lotId);
   }
 
   /** Idempotent end for delayed jobs. */

@@ -1,4 +1,5 @@
 import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
+import { cn } from "@auction/ui";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -6,8 +7,7 @@ type LaxLogoProps = {
   /** "header" = compact nav bar; "footer" = larger mark; "auth" = centered sign-in/up */
   variant?: "header" | "footer" | "auth";
   className?: string;
-  /**
-   * Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
+  /** Logo URL from `/public`. Omit to use `SITE_LOGO_PATH`.
    * Pass `""` to force the typeset wordmark (no image).
    */
   imageSrc?: string;
@@ -54,7 +54,11 @@ export function LaxLogo({
           alt={imageAlt}
           width={imageWidth}
           height={imageHeight}
-          className={`h-auto w-auto ${imgMax} dark:brightness-0 dark:invert`}
+          className={cn(
+            "h-auto w-auto motion-reduce:transition-none",
+            imgMax,
+            variant === "header" && "dark:brightness-0 dark:invert",
+          )}
           priority={variant === "header"}
         />
         {children}
@@ -70,7 +74,7 @@ export function LaxLogo({
         {SITE_SHORT_NAME}
       </span>
       <span
-        className={`font-label font-semibold uppercase tracking-[0.28em] text-brand-900 dark:text-accent-gold ${subSize} mt-1`}
+        className={`font-label font-semibold uppercase tracking-[0.28em] text-accent-brand ${subSize} mt-1`}
       >
         London Auction House Ltd
       </span>

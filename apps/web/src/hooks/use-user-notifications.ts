@@ -10,8 +10,7 @@ export type UserNotificationSocketPayload = {
   notification?: unknown;
 };
 
-/**
- * Joins the authenticated user's Socket.IO room and forwards inbox payloads from Redis.
+/** Joins the authenticated user's Socket.IO room and forwards inbox payloads from Redis.
  */
 export function useUserNotifications(opts: {
   enabled: boolean;

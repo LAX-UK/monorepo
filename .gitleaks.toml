@@ -1,0 +1,15 @@
+title = "LAX auction monorepo"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe demo strings, seeds, and package manager caches"
+paths = [
+  '''packages/db/src/seed.ts''',
+  # Common-password blocklist — intentional weak strings, never real secrets.
+  '''packages/validators/src/password-policy\.ts''',
+  # Never scan pnpm content-store or node_modules (minified code triggers generic-api-key / jwt).
+  '''(^|/)\.pnpm-store/''',
+  '''(^|/)node_modules/''',
+]

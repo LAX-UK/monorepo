@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { userInvitation } from "@auction/db/schema";
-import type { UserRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import { and, desc, eq } from "drizzle-orm";
 import type {
   IUserInvitationRepository,
@@ -14,6 +14,7 @@ function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
     id: r.id,
     email: r.email,
     targetRole: r.targetRole as UserRole,
+    targetStaffRole: (r.targetStaffRole ?? null) as InvitationRow["targetStaffRole"],
     tokenHash: r.tokenHash,
     status: r.status,
     expiresAt: r.expiresAt,
@@ -29,6 +30,7 @@ function mapSummary(r: {
   id: string;
   email: string;
   targetRole: string;
+  targetStaffRole: string | null;
   status: InvitationRow["status"];
   expiresAt: Date;
   acceptedAt: Date | null;
@@ -41,6 +43,7 @@ function mapSummary(r: {
     id: r.id,
     email: r.email,
     targetRole: r.targetRole as UserRole,
+    targetStaffRole: (r.targetStaffRole ?? null) as UserStaffRole | null,
     status: r.status,
     expiresAt: r.expiresAt,
     acceptedAt: r.acceptedAt ?? null,
@@ -59,6 +62,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       id: row.id,
       email: row.email,
       targetRole: row.targetRole,
+      targetStaffRole: row.targetStaffRole,
       tokenHash: row.tokenHash,
       status: row.status,
       expiresAt: row.expiresAt,
@@ -92,6 +96,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         id: userInvitation.id,
         email: userInvitation.email,
         targetRole: userInvitation.targetRole,
+        targetStaffRole: userInvitation.targetStaffRole,
         status: userInvitation.status,
         expiresAt: userInvitation.expiresAt,
         acceptedAt: userInvitation.acceptedAt,

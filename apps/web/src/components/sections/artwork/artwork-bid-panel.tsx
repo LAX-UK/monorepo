@@ -3,7 +3,6 @@
 import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
 import { classifyLotTimerState } from "@/components/lot-timer";
-import { ArtworkTrustStrip } from "@/components/sections/artwork/artwork-trust-strip";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import type { BidDisplayStatus } from "@/components/sections/artwork/bid-display-status-banner";
@@ -16,13 +15,16 @@ import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
-import { ChevronDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn } from "@auction/ui";
+import { ArrowUpToLine, CircleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -33,6 +35,9 @@ type Props = {
   summarySeed: LotSummarySeedVM;
   initialUserMaxAuto: string | null;
   loginNextPath?: string;
+  /** When true, omit estimate/timer stack (e.g. online layout shows it in the queue sidebar). */
+  omitPricingHeader?: boolean;
+  kycSummary?: KycStatusSummaryDto | null;
 };
 
 const HISTORY_CAP = 20;
@@ -48,6 +53,8 @@ export function ArtworkBidPanel({
   summarySeed,
   initialUserMaxAuto,
   loginNextPath,
+  omitPricingHeader = false,
+  kycSummary = null,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -118,8 +125,8 @@ export function ArtworkBidPanel({
     onLotEnded: (p) => {
       setLotStatus("ended");
       setCurrentPrice(p.currentPrice);
-      setLeadingBidderId(p.winnerId);
-      setEndedBanner("This lot has ended.");
+      setLeadingBidderId(p.winnerId ?? null);
+      setEndedBanner(p.noSale ? "This lot has ended (no sale)." : "This lot has ended.");
     },
   });
 
@@ -134,16 +141,32 @@ export function ArtworkBidPanel({
     return () => window.clearTimeout(t);
   }, [bidSuccess]);
 
+  const bidStepNumeric = useMemo(() => {
+    const inc = Number.parseFloat(auction.minBidIncrement);
+    return Number.isFinite(inc) && inc > 0 ? inc : 0.01;
+  }, [auction.minBidIncrement]);
+
+  const useOnlineBidStepper =
+    omitPricingHeader &&
+    (auction.auctionType === "english" || auction.auctionType === "buy_it_now");
+
+  useEffect(() => {
+    if (!useOnlineBidStepper) return;
+    if (amount.trim() !== "") return;
+    setAmount(minNumeric.toFixed(2));
+  }, [useOnlineBidStepper, minNumeric, amount]);
+
   const remainingLabel = formatCountdownForDisplay(endTime - now);
 
+  /** Fixed locale so SSR and client match (undefined follows Node vs browser locale and hydrates badly). */
   const saleEndLocalLabel = useMemo(() => {
     const d = new Date(endTime);
-    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
   }, [endTime]);
 
   const saleStartLocalLabel = useMemo(() => {
     const d = new Date(startTimeMs);
-    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
   }, [startTimeMs]);
 
   const timerState = useMemo(
@@ -219,12 +242,13 @@ export function ArtworkBidPanel({
       return;
     }
     setCurrentPrice(result.bid.amount);
-    setLeadingBidderId(result.bid.bidderId);
+    const bidderId = result.bid.bidderId ?? result.bid.placedByUserId ?? "";
+    setLeadingBidderId(bidderId || null);
     setLastKnownMaxAuto(result.bid.maxAutoBidAmount ?? null);
     triggerPriceFlash();
     pushHistory({
       id: result.bid.id,
-      bidderId: result.bid.bidderId,
+      bidderId,
       amount: result.bid.amount,
     });
     setAmount("");
@@ -267,127 +291,184 @@ export function ArtworkBidPanel({
   const live = lotStatus === "active";
   const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
-  return (
-    <BidGate user={sessionUser} lot={auction} lotStatus={lotStatus} loginNextPath={loginNext}>
-      {({ decision }) => (
-        <div className="min-w-0 max-w-[480px]">
-          <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
-            <LotInfoStack
-              estimateLine={summarySeed.estimateLine}
-              currentPrice={currentPrice}
-              bidCount={history.length}
-              reservePrice={auction.reservePrice}
-              timerState={timerState}
-              countdownClock={countdownClock}
-              saleEndLocalLabel={saleEndLocalLabel}
-              saleStartLocalLabel={saleStartLocalLabel}
-              endAtIso={new Date(endTime).toISOString()}
-              startAtIso={new Date(startTimeMs).toISOString()}
-            />
+  const englishOnlySurfaceLock =
+    isEnglishOnlyAuctionsLocked() &&
+    auction.auctionType !== "english" &&
+    auction.auctionType !== "buy_it_now";
 
-            <div className="mt-4">
-              <ArtworkTrustStrip compact />
-            </div>
+  return (
+    <BidGate
+      user={sessionUser}
+      lot={auction}
+      lotStatus={lotStatus}
+      loginNextPath={loginNext}
+      kycBidGate={kycSummary?.requiresKyc ? { requiresKyc: true } : null}
+    >
+      {({ decision }) => (
+        <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
+          <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
+            {omitPricingHeader ? null : (
+              <LotInfoStack
+                estimateLine={summarySeed.estimateLine}
+                currentPrice={currentPrice}
+                bidCount={history.length}
+                reservePrice={auction.reservePrice}
+                timerState={timerState}
+                countdownClock={countdownClock}
+                saleEndLocalLabel={saleEndLocalLabel}
+                saleStartLocalLabel={saleStartLocalLabel}
+                endAtIso={new Date(endTime).toISOString()}
+                startAtIso={new Date(startTimeMs).toISOString()}
+              />
+            )}
 
             <div className="mt-6">
               <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
             </div>
 
-            {auction.auctionType === "english" || auction.auctionType === "buy_it_now" ? (
-              <details
-                className="group mt-6"
-                open={autoBidOpen}
-                onToggle={(e) => setAutoBidOpen((e.target as HTMLDetailsElement).open)}
-              >
-                <summary className="cursor-pointer list-none font-label text-xs font-bold uppercase tracking-widest text-primary hover:underline [&::-webkit-details-marker]:hidden">
-                  <span className="inline-flex items-center gap-1">
-                    Set a max auto-bid
-                    <ChevronDown className="size-3 transition-transform duration-200 group-open:rotate-180" />
-                  </span>
-                </summary>
-                <div className="mt-3">
-                  <LotAutoBidPanel
-                    auctionType={auction.auctionType}
-                    maxAuto={maxAuto}
-                    onMaxAutoChange={setMaxAuto}
-                    serverMaxAuto={lastKnownMaxAuto}
-                    disabled={gateBlocked(decision)}
-                  />
-                </div>
-              </details>
+            {englishOnlySurfaceLock ? (
+              <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
+                Self-service bidding is only offered for English and buy-now lots while this
+                catalogue mode is enabled. For this listing, please contact the saleroom team.
+              </p>
             ) : null}
 
-            <div
-              id="bid-interactive-anchor"
-              tabIndex={-1}
-              className="mt-6 scroll-mt-28 outline-none focus:outline-none"
-            >
-              {bidSuccess ? (
-                <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
-                  Bid placed successfully.
-                </output>
-              ) : null}
+            {!englishOnlySurfaceLock &&
+            (auction.auctionType === "english" || auction.auctionType === "buy_it_now") ? (
+              <>
+                <TooltipProvider delayDuration={200}>
+                  <details
+                    className="group mt-6 w-full rounded-[4px] bg-white p-3 outline outline-1 outline-offset-[-1px] outline-[rgba(209,209,209,0.65)] dark:bg-surface-container-low dark:outline-outline-variant/50"
+                    open={autoBidOpen}
+                    onToggle={(e) => setAutoBidOpen((e.target as HTMLDetailsElement).open)}
+                  >
+                    <summary className="flex h-10 cursor-pointer list-none items-center gap-2.5 [&::-webkit-details-marker]:hidden">
+                      <ArrowUpToLine
+                        className="size-5 shrink-0 text-[#050505] transition-transform duration-200 motion-reduce:transition-none group-open:rotate-180 dark:text-on-surface"
+                        aria-hidden
+                      />
+                      <span className="flex-1 font-body text-sm font-semibold uppercase leading-6 text-[#050505] dark:text-on-surface">
+                        Set auto bid
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-full p-0.5 text-[#050505] hover:bg-black/5 dark:text-on-surface dark:hover:bg-white/10"
+                            aria-label="About max auto-bid"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <CircleAlert className="size-5" strokeWidth={1.5} aria-hidden />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left leading-snug">
+                          Set a maximum amount; we place incremental bids for you up to that limit.
+                        </TooltipContent>
+                      </Tooltip>
+                    </summary>
+                    <div className="mt-2.5">
+                      <LotAutoBidPanel
+                        auctionType={auction.auctionType}
+                        maxAuto={maxAuto}
+                        onMaxAutoChange={setMaxAuto}
+                        serverMaxAuto={lastKnownMaxAuto}
+                        disabled={gateBlocked(decision)}
+                      />
+                    </div>
+                  </details>
+                </TooltipProvider>
+                <p className="mt-4 text-center font-body text-[13px] font-medium uppercase leading-[13px] text-[#474747] dark:text-on-surface-variant">
+                  OR enter bid manually
+                </p>
+              </>
+            ) : null}
 
-              {decision.kind === "block" ? (
-                decision.render()
-              ) : step === 1 ? (
-                <BidForm
-                  auctionType={auction.auctionType}
-                  minNumeric={minNumeric}
-                  amount={amount}
-                  maxAuto={maxAuto}
-                  onAmountChange={setAmount}
-                  onMaxAutoChange={setMaxAuto}
-                  onReview={onReview}
-                  onUseMinimum={onUseMinimum}
-                  error={error}
-                  showMaxAutoField={false}
-                  reviewButtonClassName={FIGMA_PRIMARY}
-                />
-              ) : (
-                <BidConfirmation
-                  amount={amount}
-                  maxAuto={maxAuto.trim() === "" ? null : maxAuto}
-                  error={error}
-                  submitting={submitting}
-                  onCancel={() => setStep(1)}
-                  onConfirm={onConfirm}
-                />
-              )}
-            </div>
+            {!englishOnlySurfaceLock ? (
+              <>
+                <div
+                  id="bid-interactive-anchor"
+                  tabIndex={-1}
+                  className={cn(
+                    "scroll-mt-28 outline-none focus:outline-none",
+                    auction.auctionType === "english" || auction.auctionType === "buy_it_now"
+                      ? "mt-4"
+                      : "mt-6",
+                  )}
+                >
+                  {bidSuccess ? (
+                    <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+                      Bid placed successfully.
+                    </output>
+                  ) : null}
 
-            <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
-              Minimum next bid{" "}
-              <span className="font-medium text-on-surface">
-                {formatMoney(minNumeric.toFixed(2))}
-              </span>
-              {live ? (
-                <>
-                  {" "}
-                  · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price plus
-                  buyer&apos;s premium; see{" "}
-                  <a href="/shipping" className="text-primary underline">
-                    shipping
-                  </a>
-                  .
-                </>
-              ) : null}
-            </p>
+                  {decision.kind === "block" ? (
+                    decision.render()
+                  ) : step === 1 ? (
+                    <BidForm
+                      auctionType={auction.auctionType}
+                      minNumeric={minNumeric}
+                      amount={amount}
+                      maxAuto={maxAuto}
+                      onAmountChange={setAmount}
+                      onMaxAutoChange={setMaxAuto}
+                      onReview={onReview}
+                      onUseMinimum={onUseMinimum}
+                      error={error}
+                      showMaxAutoField={false}
+                      reviewButtonClassName={FIGMA_PRIMARY}
+                      amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
+                      stepNumeric={bidStepNumeric}
+                      step1ButtonLabel={useOnlineBidStepper ? "Place bid" : "Review bid"}
+                    />
+                  ) : (
+                    <BidConfirmation
+                      amount={amount}
+                      maxAuto={maxAuto.trim() === "" ? null : maxAuto}
+                      error={error}
+                      submitting={submitting}
+                      onCancel={() => setStep(1)}
+                      onConfirm={onConfirm}
+                    />
+                  )}
+                </div>
+
+                <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
+                  Minimum next bid{" "}
+                  <span className="font-medium text-on-surface">
+                    {formatMoney(minNumeric.toFixed(2))}
+                  </span>
+                  {live ? (
+                    <>
+                      {" "}
+                      · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price
+                      plus buyer&apos;s premium; see{" "}
+                      <a href="/shipping" className="text-primary underline">
+                        shipping
+                      </a>
+                      .
+                    </>
+                  ) : null}
+                </p>
+              </>
+            ) : null}
           </div>
 
-          <BidStickyMobileBar
-            live={live}
-            decision={decision}
-            loginNextPath={loginNext}
-            step={step}
-            currentPriceLabel={formatMoney(currentPrice)}
-            priceFlash={priceFlash}
-            onScrollToBid={scrollToBid}
-            remainingLabel={remainingLabel}
-            msRemaining={endTime - now}
-            timerState={timerState}
-            countdownClock={countdownClock}
-          />
+          {!englishOnlySurfaceLock ? (
+            <BidStickyMobileBar
+              live={live}
+              decision={decision}
+              loginNextPath={loginNext}
+              step={step}
+              currentPriceLabel={formatMoney(currentPrice)}
+              priceFlash={priceFlash}
+              onScrollToBid={scrollToBid}
+              remainingLabel={remainingLabel}
+              msRemaining={endTime - now}
+              timerState={timerState}
+              countdownClock={countdownClock}
+            />
+          ) : null}
         </div>
       )}
     </BidGate>

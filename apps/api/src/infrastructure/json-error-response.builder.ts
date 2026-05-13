@@ -7,6 +7,9 @@ import type {
 export class JsonErrorResponseBuilder implements IErrorResponseBuilder {
   build(classified: ClassifiedError): Response {
     const body: Record<string, unknown> = { error: classified.message };
+    if (classified.code) {
+      body.code = classified.code;
+    }
     if (classified.cause instanceof ZodError) {
       body.details = classified.cause.flatten();
     }

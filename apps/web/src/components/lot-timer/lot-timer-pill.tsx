@@ -15,6 +15,16 @@ const SHELL_LIVE =
 const SHELL_MUTED =
   "border-transparent bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 
+/** Ending-soon tag: glass chip; live shows red dot + countdown only (no “Live” copy). */
+const ENDING_SOON_TAG_GLASS =
+  "pointer-events-none absolute bottom-4 left-4 z-10 inline-flex h-8 max-w-[calc(100%-2rem)] items-center gap-2 rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px]";
+
+const ENDING_SOON_COUNTDOWN =
+  "min-w-0 tabular-nums text-base font-semibold leading-4 tracking-normal text-[#D1D1D1]";
+
+const ENDING_SOON_MUTED_SHELL =
+  "pointer-events-none absolute bottom-4 left-4 z-10 inline-flex h-8 max-w-[calc(100%-2rem)] items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-[family-name:var(--font-poppins)] text-xs font-semibold uppercase leading-4 tracking-wide text-[#D1D1D1]/85";
+
 function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   switch (state.kind) {
     case "live":
@@ -32,49 +42,121 @@ function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   }
 }
 
-export function LotTimerPill({ state, clockText }: { state: LotTimerState; clockText?: string }) {
+export type LotTimerPillVariant = "default" | "endingSoon";
+
+export function LotTimerPill({
+  state,
+  clockText,
+  surfaceClassName,
+  variant = "default",
+}: {
+  state: LotTimerState;
+  clockText?: string;
+  /** Merged last so marketing surfaces can override shell (e.g. glass pill). */
+  surfaceClassName?: string;
+  variant?: LotTimerPillVariant;
+}) {
   const aria = ariaLabelFor(state, clockText);
+  const figma = variant === "endingSoon";
 
   switch (state.kind) {
     case "live":
       return (
-        <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_LIVE)}>
-          <LiveDot size="sm" />
-          <span className="min-w-0">
-            <span>Live · </span>
-            <span className="tabular-nums" aria-hidden>
+        <output
+          aria-live="off"
+          aria-label={aria}
+          className={
+            figma
+              ? cn(ENDING_SOON_TAG_GLASS, surfaceClassName)
+              : cn(PILL_BASE, SHELL_LIVE, surfaceClassName)
+          }
+        >
+          <LiveDot size="sm" className={figma ? "live-dot-pulse" : ""} />
+          {figma ? (
+            <span className={ENDING_SOON_COUNTDOWN} aria-hidden>
               {clockText ?? "—"}
             </span>
-          </span>
+          ) : (
+            <span className="min-w-0">
+              <span>Live · </span>
+              <span className="tabular-nums" aria-hidden>
+                {clockText ?? "—"}
+              </span>
+            </span>
+          )}
         </output>
       );
     case "opensSoon":
       return (
-        <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_LIVE)}>
-          <Clock className="size-3.5 shrink-0 text-accent-gold" aria-hidden />
-          <span className="min-w-0">
-            <span>Opens in </span>
-            <span className="tabular-nums" aria-hidden>
+        <output
+          aria-live="off"
+          aria-label={aria}
+          className={
+            figma
+              ? cn(ENDING_SOON_TAG_GLASS, surfaceClassName)
+              : cn(PILL_BASE, SHELL_LIVE, surfaceClassName)
+          }
+        >
+          <Clock
+            className={cn(
+              "shrink-0",
+              figma ? "size-4 text-[#D1D1D1]" : "size-3.5 text-accent-brand",
+            )}
+            aria-hidden
+          />
+          {figma ? (
+            <span className={ENDING_SOON_COUNTDOWN} aria-hidden>
               {clockText ?? "—"}
             </span>
-          </span>
+          ) : (
+            <span className="min-w-0">
+              <span>Opens in </span>
+              <span className="tabular-nums" aria-hidden>
+                {clockText ?? "—"}
+              </span>
+            </span>
+          )}
         </output>
       );
     case "closed":
       return (
-        <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_MUTED)}>
+        <output
+          aria-live="off"
+          aria-label={aria}
+          className={
+            figma
+              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
+              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
+          }
+        >
           Closed
         </output>
       );
     case "cancelled":
       return (
-        <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_MUTED)}>
+        <output
+          aria-live="off"
+          aria-label={aria}
+          className={
+            figma
+              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
+              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
+          }
+        >
           Cancelled
         </output>
       );
     case "unknown":
       return (
-        <output aria-live="off" aria-label={aria} className={cn(PILL_BASE, SHELL_MUTED)}>
+        <output
+          aria-live="off"
+          aria-label={aria}
+          className={
+            figma
+              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
+              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
+          }
+        >
           Soon
         </output>
       );

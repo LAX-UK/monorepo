@@ -1,4 +1,12 @@
 import {
+  legalEntityMember,
+  lot,
+  payment,
+  payout,
+  twoFactor,
+  user as userTable,
+} from "@auction/db/schema";
+import {
   addressIdParamSchema,
   artistWatchlistArtistIdParamSchema,
   artistWatchlistBodySchema,
@@ -9,6 +17,7 @@ import {
   pushSubscriptionBodySchema,
   pushUnsubscribeBodySchema,
   registerBodySchema,
+  uiPreferencePatchSchema,
   updateAddressBodySchema,
   updateProfileSchema,
   userIdParamSchema,
@@ -17,31 +26,53 @@ import {
   watchlistQuerySchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
+import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { createRequireRecentPasswordAuth } from "../middleware/require-recent-password-auth.js";
+import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
 import type { UpdateAddressInput } from "../services/interfaces/profile.js";
+
+const deleteAccountBodySchema = z.object({
+  confirmation: z.literal("DELETE MY ACCOUNT"),
+});
+
+const sessionIdParamSchema = z.object({
+  sessionId: z.string().min(8, "Invalid session id"),
+});
 
 export function createUserRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
+  const requireRecentPasswordAuth = createRequireRecentPasswordAuth(container);
+  const requireTurnstile = createTurnstileMiddleware(container.env?.TURNSTILE_SECRET_KEY);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  r.post("/register", zValidator("json", registerBodySchema), async (c) => {
+  r.post("/register", zValidator("json", registerBodySchema), requireTurnstile, async (c) => {
+    if (container.env?.DISABLE_NEW_USER_REGISTRATION) {
+      return c.json(
+        { error: "New registrations are temporarily disabled", code: "registration_disabled" },
+        503,
+      );
+    }
     const body = c.req.valid("json");
+    const { turnstileToken: _turnstile, ...reg } = body;
     const result = await container.registrationService.register({
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      password: body.password,
-      ...(body.inviteToken !== undefined ? { inviteToken: body.inviteToken } : {}),
-      ...(body.mobile !== undefined ? { mobile: body.mobile } : {}),
+      firstName: reg.firstName,
+      lastName: reg.lastName,
+      email: reg.email,
+      password: reg.password,
+      persona: reg.persona,
+      ...(reg.inviteToken !== undefined ? { inviteToken: reg.inviteToken } : {}),
+      ...(reg.mobile !== undefined ? { mobile: reg.mobile } : {}),
     });
     if (!result.ok) {
       return c.json({ error: result.message }, result.status as 400);
@@ -364,6 +395,24 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
+  r.get("/me/preferences/ui", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const data = await container.uiPreferenceService.getForUser(userId);
+    return c.json({ data });
+  });
+
+  r.patch(
+    "/me/preferences/ui",
+    requireAuth,
+    zValidator("json", uiPreferencePatchSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const data = await container.uiPreferenceService.patch(userId, body);
+      return c.json({ data });
+    },
+  );
+
   r.post(
     "/me/push-subscription",
     requireAuth,
@@ -392,9 +441,264 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
+  r.get("/me/sessions", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    try {
+      const rows = await container.sessionRevocation.listForUser(userId);
+      const currentToken = extractBetterAuthSessionToken(c.req.header("cookie"));
+      const data = rows.map(
+        ({ token, ipAddress, userAgent, id, createdAt, expiresAt, lastPasswordAuthAt }) => ({
+          id,
+          createdAt,
+          expiresAt,
+          ipAddress,
+          userAgent,
+          lastPasswordAuthAt,
+          isCurrent: currentToken !== null && token === currentToken,
+        }),
+      );
+      return c.json({ data });
+    } catch (err) {
+      console.error("[users/me/sessions] list failed", {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return c.json(
+        {
+          error: "Could not load sessions",
+          code: "sessions_list_failed",
+        },
+        500,
+      );
+    }
+  });
+
+  r.delete(
+    "/me/sessions/:sessionId",
+    requireAuth,
+    requireRecentPasswordAuth,
+    zValidator("param", sessionIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { sessionId } = c.req.valid("param");
+      const currentToken = extractBetterAuthSessionToken(c.req.header("cookie"));
+      const rows = await container.sessionRevocation.listForUser(userId);
+      const current = rows.find((r) => r.token === currentToken);
+      if (current?.id === sessionId) {
+        return c.json(
+          { error: "Use sign out to end this session.", code: "session_cannot_delete_current" },
+          400,
+        );
+      }
+      const ok = await container.sessionRevocation.deleteSessionForUser(userId, sessionId);
+      if (!ok) return c.json({ error: "Session not found", code: "session_not_found" }, 404);
+      void container.authAuditPublisher
+        .publish(container.db, {
+          eventType: "auth.session_revoked",
+          aggregateId: userId,
+          payload: { sessionId },
+          actorUserId: userId,
+        })
+        .catch(() => {});
+      return c.body(null, 204);
+    },
+  );
+
+  r.post("/me/sessions/revoke-all", requireAuth, requireRecentPasswordAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const currentToken = extractBetterAuthSessionToken(c.req.header("cookie"));
+    if (!currentToken) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
+    const sid = await container.sessionRevocation.getSessionIdForCookieToken(userId, currentToken);
+    if (!sid) return c.json({ error: "Session not found", code: "session_required" }, 401);
+    await container.sessionRevocation.revokeAllForUserExcept(userId, sid);
+    void container.authAuditPublisher
+      .publish(container.db, {
+        eventType: "auth.sessions_revoked_all_except_current",
+        aggregateId: userId,
+        payload: {},
+        actorUserId: userId,
+      })
+      .catch(() => {});
+    return c.json({ ok: true });
+  });
+
+  r.post("/me/security-notify/two-factor-enabled", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    // Server-side assertion: verify 2FA is actually enabled in the DB before
+    // sending the notification. This prevents a malicious client from triggering
+    // false security emails or spamming the user.
+    const [tf] = await container.authDb
+      .select({ id: twoFactor.id })
+      .from(twoFactor)
+      .where(eq(twoFactor.userId, userId))
+      .limit(1);
+    if (!tf) {
+      return c.json(
+        { error: "Two-factor authentication is not enabled", code: "two_factor_not_enabled" },
+        409,
+      );
+    }
+    const row = await container.userService.getById(userId);
+    if (!row) return c.json({ error: "Not found", code: "user_not_found" }, 404);
+    void container.emailService.enqueue({
+      template: "2fa-enabled",
+      to: row.email,
+      userId,
+      category: "auth",
+      vars: { userName: row.name },
+    });
+    void container.authAuditPublisher
+      .publish(container.db, {
+        eventType: "auth.two_factor_security_email",
+        aggregateId: userId,
+        payload: { kind: "enabled" },
+        actorUserId: userId,
+      })
+      .catch(() => {});
+    return c.json({ ok: true });
+  });
+
+  r.post("/me/security-notify/two-factor-disabled", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    // Server-side assertion: verify 2FA is actually disabled before sending the
+    // notification. A row in two_factor means 2FA is still active — reject the call.
+    const [tf] = await container.authDb
+      .select({ id: twoFactor.id })
+      .from(twoFactor)
+      .where(eq(twoFactor.userId, userId))
+      .limit(1);
+    if (tf) {
+      return c.json(
+        { error: "Two-factor authentication is still enabled", code: "two_factor_still_enabled" },
+        409,
+      );
+    }
+    const row = await container.userService.getById(userId);
+    if (!row) return c.json({ error: "Not found", code: "user_not_found" }, 404);
+    void container.emailService.enqueue({
+      template: "2fa-disabled",
+      to: row.email,
+      userId,
+      category: "auth",
+      vars: { userName: row.name },
+    });
+    void container.authAuditPublisher
+      .publish(container.db, {
+        eventType: "auth.two_factor_security_email",
+        aggregateId: userId,
+        payload: { kind: "disabled" },
+        actorUserId: userId,
+      })
+      .catch(() => {});
+    return c.json({ ok: true });
+  });
+
+  r.post(
+    "/me/delete",
+    requireAuth,
+    requireRecentPasswordAuth,
+    zValidator("json", deleteAccountBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const [u] = await container.db
+        .select({ deletionRequestedAt: userTable.deletionRequestedAt })
+        .from(userTable)
+        .where(eq(userTable.id, userId))
+        .limit(1);
+      if (u?.deletionRequestedAt) {
+        return c.json(
+          { error: "Deletion already requested", code: "account_deletion_already_requested" },
+          409,
+        );
+      }
+
+      const [pendingPayment] = await container.db
+        .select({ id: payment.id })
+        .from(payment)
+        .where(and(eq(payment.buyerId, userId), eq(payment.status, "pending")))
+        .limit(1);
+      if (pendingPayment) {
+        return c.json(
+          {
+            error: "You have unpaid pending payments; resolve them before deleting your account.",
+            code: "account_deletion_pending_payments",
+          },
+          409,
+        );
+      }
+
+      const [activeSellerLot] = await container.db
+        .select({ id: lot.id })
+        .from(lot)
+        .innerJoin(
+          legalEntityMember,
+          and(
+            eq(legalEntityMember.legalEntityId, lot.sellerLegalEntityId),
+            eq(legalEntityMember.userId, userId),
+            isNull(legalEntityMember.removedAt),
+            isNotNull(legalEntityMember.acceptedAt),
+          ),
+        )
+        .where(
+          and(
+            isNotNull(lot.sellerLegalEntityId),
+            inArray(lot.status, ["draft", "scheduled", "active"]),
+          ),
+        )
+        .limit(1);
+      if (activeSellerLot) {
+        return c.json(
+          {
+            error:
+              "You still have active or scheduled lots as a seller; withdraw or complete them first.",
+            code: "account_deletion_active_seller_lots",
+          },
+          409,
+        );
+      }
+
+      const memberRows = await container.db
+        .select({ legalEntityId: legalEntityMember.legalEntityId })
+        .from(legalEntityMember)
+        .where(and(eq(legalEntityMember.userId, userId), isNull(legalEntityMember.removedAt)));
+      const entityIds = memberRows.map((r) => r.legalEntityId).filter(Boolean);
+      if (entityIds.length > 0) {
+        const [openPayout] = await container.db
+          .select({ id: payout.id })
+          .from(payout)
+          .where(
+            and(
+              inArray(payout.legalEntityId, entityIds as string[]),
+              inArray(payout.status, ["scheduled", "in_transit", "clawback_pending"]),
+            ),
+          )
+          .limit(1);
+        if (openPayout) {
+          return c.json(
+            {
+              error: "Your organisation has payouts still in flight; resolve them before deletion.",
+              code: "account_deletion_open_payouts",
+            },
+            409,
+          );
+        }
+      }
+
+      await container.db
+        .update(userTable)
+        .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
+        .where(eq(userTable.id, userId));
+
+      return c.json({ ok: true });
+    },
+  );
+
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const row = await container.profileService.getProfile(userId);
+    const [row, uiPrefs] = await Promise.all([
+      container.profileService.getProfile(userId),
+      container.uiPreferenceService.getForUser(userId),
+    ]);
     if (!row) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -405,10 +709,18 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         email: row.email,
         name: row.name,
         role: row.role,
+        staffRole: row.staffRole,
         image,
         emailVerified: row.emailVerified,
         emailStatus: row.emailStatus,
         emailStatusChangedAt: row.emailStatusChangedAt,
+        pendingNewEmail: row.pendingNewEmail,
+        hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
+        kycStatus: row.kycStatus,
+        signupPersona: row.signupPersona,
+        deletionRequestedAt: row.deletionRequestedAt,
+        twoFactorEnabled: row.twoFactorEnabled,
+        uiPreferences: uiPrefs,
       },
     });
   });

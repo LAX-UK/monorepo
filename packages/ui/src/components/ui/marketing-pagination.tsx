@@ -47,8 +47,7 @@ function defaultRenderLink({
   );
 }
 
-/**
- * Landmark pagination: disabled steps are `<span>`, not inert links.
+/** Landmark pagination: disabled steps are `<span>`, not inert links.
  */
 export function MarketingPagination({
   "aria-label": ariaLabel = "Pagination",

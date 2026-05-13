@@ -6,20 +6,21 @@ import {
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import type { IAdminInvitationApplicationService } from "../services/interfaces/admin-routes.js";
 
 export function attachAdminInvitationRoutes(
   r: Hono<{ Variables: { userId?: string; userRole?: string } }>,
-  container: Container,
+  invitations: IAdminInvitationApplicationService,
 ): void {
   r.post("/invitations", zValidator("json", adminCreateInvitationBodySchema), async (c) => {
     const actorId = c.get("userId") as string;
     const body = c.req.valid("json");
-    const result = await container.invitationService.create({
+    const result = await invitations.create({
       actorUserId: actorId,
       email: body.email,
       targetRole: body.targetRole,
+      ...(body.targetStaffRole != null ? { targetStaffRole: body.targetStaffRole } : {}),
     });
     return result.match(
       (data) => c.json({ data }, 201),
@@ -28,7 +29,7 @@ export function attachAdminInvitationRoutes(
   });
 
   r.get("/invitations", async (c) => {
-    const data = await container.invitationService.listPendingForActor(c.get("userId") as string);
+    const data = await invitations.listPendingForActor(c.get("userId") as string);
     return c.json({ data });
   });
 
@@ -38,8 +39,8 @@ export function attachAdminInvitationRoutes(
     for (const invitationId of ids) {
       const result =
         op === "revoke"
-          ? await container.invitationService.revoke({ actorUserId, invitationId })
-          : await container.invitationService.resend({ actorUserId, invitationId });
+          ? await invitations.revoke({ actorUserId, invitationId })
+          : await invitations.resend({ actorUserId, invitationId });
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -53,7 +54,7 @@ export function attachAdminInvitationRoutes(
     async (c) => {
       const actorId = c.get("userId") as string;
       const { invitationId } = c.req.valid("param");
-      const result = await container.invitationService.revoke({
+      const result = await invitations.revoke({
         actorUserId: actorId,
         invitationId,
       });
@@ -70,7 +71,7 @@ export function attachAdminInvitationRoutes(
     async (c) => {
       const actorId = c.get("userId") as string;
       const { invitationId } = c.req.valid("param");
-      const result = await container.invitationService.resend({
+      const result = await invitations.resend({
         actorUserId: actorId,
         invitationId,
       });
@@ -82,12 +83,12 @@ export function attachAdminInvitationRoutes(
   );
 }
 
-export function createPublicInvitationRoutes(container: Container) {
+export function createPublicInvitationRoutes(invitations: IAdminInvitationApplicationService) {
   const r = new Hono();
 
   r.get("/preview", zValidator("query", invitationPreviewQuerySchema), async (c) => {
     const { token } = c.req.valid("query");
-    const result = await container.invitationService.preview(token);
+    const result = await invitations.preview(token);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),

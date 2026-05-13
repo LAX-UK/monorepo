@@ -2,18 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
 import { uploadObject } from "@auction/db/schema";
 import type { UserRole } from "@auction/types";
+import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import type { Queue } from "bullmq";
 import { and, eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
-import {
-  type UploadKind,
-  canUploadKind,
-  createUploadKey,
-  isUploadKind,
-  uploadPolicies,
-} from "./upload.policy.js";
+import { canUploadKind, createUploadKey, isUploadKind, uploadPolicies } from "./upload.policy.js";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -60,6 +55,7 @@ export class UploadService {
   async createPresignedUpload(input: {
     userId: string;
     userRole: UserRole;
+    userStaffRole?: string | null;
     kind: string;
     contentType: string;
     byteSize: number;
@@ -82,7 +78,8 @@ export class UploadService {
     if (!isUploadKind(input.kind)) {
       return { ok: false, status: 400, error: "unsupported_upload_kind" };
     }
-    if (!canUploadKind(input.kind, input.userRole)) {
+    const staff = normalizeUserStaffRole(input.userStaffRole);
+    if (!canUploadKind(input.kind, input.userRole, staff)) {
       return { ok: false, status: 403, error: "forbidden_upload_kind" };
     }
     const policy = uploadPolicies[input.kind];
@@ -96,7 +93,7 @@ export class UploadService {
     ) {
       return { ok: false, status: 400, error: "invalid_byte_size" };
     }
-    if (input.userRole !== "administrator") {
+    if (!roleHasCapability(input.userRole, "platform.admin.full", staff)) {
       const quota = await this.checkQuota(input.userId, input.byteSize);
       if (!quota.ok) {
         return { ok: false, status: 429, error: "quota_exceeded", resetAt: quota.resetAt };
@@ -141,6 +138,7 @@ export class UploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
+    userStaffRole?: import("@auction/types").UserStaffRole | null;
   }): Promise<
     | { ok: true; value: { status: "queued"; key: string; publicUrl: string } }
     | { ok: false; status: number; error: string }
@@ -148,7 +146,12 @@ export class UploadService {
     if (!this.db || !this.validationQueue) {
       return { ok: false, status: 503, error: "upload_validation_not_configured" };
     }
-    const row = await this.findUploadForAccess(input.uploadId, input.userId, input.userRole);
+    const row = await this.findUploadForAccess(
+      input.uploadId,
+      input.userId,
+      input.userRole,
+      input.userStaffRole,
+    );
     if (!row) return { ok: false, status: 404, error: "upload_not_found" };
     if (row.status !== "pending") {
       return { ok: false, status: 409, error: `upload_status_${row.status}` };
@@ -173,6 +176,7 @@ export class UploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
+    userStaffRole?: import("@auction/types").UserStaffRole | null;
   }): Promise<
     | {
         ok: true;
@@ -188,7 +192,12 @@ export class UploadService {
     | { ok: false; status: number; error: string }
   > {
     if (!this.db) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
-    const row = await this.findUploadForAccess(input.uploadId, input.userId, input.userRole);
+    const row = await this.findUploadForAccess(
+      input.uploadId,
+      input.userId,
+      input.userRole,
+      input.userStaffRole,
+    );
     if (!row) return { ok: false, status: 404, error: "upload_not_found" };
     const publicUrl =
       row.status === "active"
@@ -212,12 +221,17 @@ export class UploadService {
     await this.storage.putObject(key, body, contentType);
   }
 
-  private async findUploadForAccess(uploadId: string, userId: string, userRole: UserRole) {
+  private async findUploadForAccess(
+    uploadId: string,
+    userId: string,
+    userRole: UserRole,
+    userStaffRole?: import("@auction/types").UserStaffRole | null,
+  ) {
     if (!this.db) return null;
-    const where =
-      userRole === "administrator"
-        ? eq(uploadObject.id, uploadId)
-        : and(eq(uploadObject.id, uploadId), eq(uploadObject.ownerUserId, userId));
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    const where = roleHasCapability(userRole, "platform.admin.full", staff)
+      ? eq(uploadObject.id, uploadId)
+      : and(eq(uploadObject.id, uploadId), eq(uploadObject.ownerUserId, userId));
     const [row] = await this.db.select().from(uploadObject).where(where).limit(1);
     return row ?? null;
   }

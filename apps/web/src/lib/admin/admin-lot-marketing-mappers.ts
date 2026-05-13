@@ -2,9 +2,17 @@ import type { LotMarketingDetails } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { z } from "zod";
 
-/** Wider than API schema: allows empty strings in the form before normalization. */
+/** Wider than API schema: allows empty strings in the form before normalization.
+ *
+ * Catalogue artist attribution lives on `lot.artist_id` and is edited via
+ * {@link AdminLotMarketingForm}'s ArtistAttributionPanel (lot PATCH), not in
+ * this marketing-details form. */
 export const adminLotMarketingFormValuesSchema = z.object({
-  sellerArtistId: z.string(),
+  estimate: z.object({
+    low: z.string().max(32),
+    high: z.string().max(32),
+    currency: z.string().max(8),
+  }),
   conditionReport: z.object({
     summary: z.string().max(5000),
     details: z.string().max(10_000),
@@ -23,8 +31,13 @@ export const adminLotMarketingFormValuesSchema = z.object({
 export type AdminLotMarketingFormValues = z.infer<typeof adminLotMarketingFormValuesSchema>;
 
 export function marketingDetailsToFormValues(md: LotMarketingDetails): AdminLotMarketingFormValues {
+  const est = md.estimate;
   return {
-    sellerArtistId: md.sellerArtistId ?? "",
+    estimate: {
+      low: est?.low ?? "",
+      high: est?.high ?? "",
+      currency: est?.currency ?? "GBP",
+    },
     conditionReport: {
       summary: md.conditionReport?.summary ?? "",
       details: md.conditionReport?.details ?? "",
@@ -48,6 +61,8 @@ export function marketingDetailsToFormValues(md: LotMarketingDetails): AdminLotM
 export function formValuesToApiPatch(
   values: AdminLotMarketingFormValues,
 ): UpdateLotMarketingDetailsInput {
+  const e = values.estimate;
+  const estimateHas = Boolean(e.low.trim() && e.high.trim() && e.currency.trim());
   const c = values.conditionReport;
   const condHas = Boolean(c.summary.trim() || c.details.trim() || c.downloadUrl.trim());
   const provenance = values.provenance
@@ -64,7 +79,13 @@ export function formValuesToApiPatch(
     }))
     .filter((e) => e.venue.length > 0);
   return {
-    sellerArtistId: values.sellerArtistId.trim() ? values.sellerArtistId.trim() : null,
+    estimate: estimateHas
+      ? {
+          low: e.low.trim(),
+          high: e.high.trim(),
+          currency: e.currency.trim(),
+        }
+      : null,
     conditionReport: condHas
       ? {
           summary: c.summary.trim() || undefined,

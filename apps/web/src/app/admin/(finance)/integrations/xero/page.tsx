@@ -1,3 +1,4 @@
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { adminXeroDisconnectAction, adminXeroOAuthStartAction } from "@/lib/actions/admin";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -22,7 +23,7 @@ export default async function AdminXeroIntegrationPage({
   }
 
   return (
-    <div className="screen w-full max-w-[560px] space-y-6">
+    <AppScreen className="max-w-[560px] space-y-6">
       <PageHeader
         title="Xero"
         description="Connect one Xero organisation for hosted invoices and payment collection. Redirect URI must match your Xero app and environment variables."
@@ -118,6 +119,6 @@ export default async function AdminXeroIntegrationPage({
           </div>
         </div>
       ) : null}
-    </div>
+    </AppScreen>
   );
 }

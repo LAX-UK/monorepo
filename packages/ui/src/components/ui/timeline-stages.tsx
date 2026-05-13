@@ -1,6 +1,4 @@
 "use client";
-
-import * as React from "react";
 import { cn } from "../../lib/utils.js";
 
 export type TimelineStage = {
@@ -15,8 +13,7 @@ export type TimelineStagesProps = {
   className?: string;
 };
 
-/**
- * Horizontal stepper at sm+; vertical stack on &lt;sm. Keyboard: Tab through stages (decorative) or use roving tabindex on parent.
+/** Horizontal stepper at sm+; vertical stack on &lt;sm. Keyboard: Tab through stages (decorative) or use roving tabindex on parent.
  */
 export function TimelineStages({ stages, activeIndex, className }: TimelineStagesProps) {
   return (

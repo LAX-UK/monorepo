@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import {
   type ProfileAddressRow,
   ProfileSettingsBoard,
@@ -20,7 +21,15 @@ export default async function ProfileSettingsPage({
   if (!meRes.ok) redirect("/dashboard?error=profile");
 
   const meBody = (await meRes.json()) as {
-    data: { id: string; email: string; name: string; role: string; image: string | null };
+    data: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      image: string | null;
+      emailVerified?: boolean;
+      emailStatus?: string;
+    };
   };
   const me = meBody.data;
 
@@ -30,19 +39,26 @@ export default async function ProfileSettingsPage({
     : [];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <DashboardPage className="mx-auto max-w-5xl space-y-8">
       <PageHeader
         title="Profile"
         description="Manage your personal details, addresses, and account preferences."
         className="border-b border-outline-variant/20 pb-5"
       />
       {err ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
           <AlertTitle>Could not update</AlertTitle>
           <AlertDescription>{err}</AlertDescription>
         </Alert>
       ) : null}
-      <ProfileSettingsBoard initialName={me.name} initialImage={me.image} addresses={addresses} />
-    </div>
+      <ProfileSettingsBoard
+        initialName={me.name}
+        initialImage={me.image}
+        addresses={addresses}
+        email={me.email}
+        {...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {})}
+        {...(me.emailStatus !== undefined ? { emailStatus: me.emailStatus } : {})}
+      />
+    </DashboardPage>
   );
 }

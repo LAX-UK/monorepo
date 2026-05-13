@@ -2,6 +2,7 @@
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
 import type { SessionUser } from "@/lib/data/contracts";
+import { showLiveBiddingNav } from "@/lib/feature-flags";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -75,12 +76,21 @@ const adminPlatformSections: PaletteSection[] = [
       { id: "a-new-lot", href: "/admin/lots/new", label: "New lot" },
       { id: "a-sales", href: "/admin/sales", label: "Sales" },
       { id: "a-subs", href: "/admin/submissions", label: "Submissions" },
+      {
+        id: "a-cr",
+        href: "/admin/condition-reports",
+        label: "Condition report requests",
+      },
+      { id: "a-fulfil", href: "/admin/lot-fulfilment", label: "Lot fulfilment queue" },
+      { id: "a-conveyor", href: "/admin/conveyor", label: "Conveyor pipeline" },
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
       { id: "a-users", href: "/admin/users", label: "Users" },
       { id: "a-analytics", href: "/admin/analytics", label: "Analytics" },
       { id: "a-invitations", href: "/admin/invitations", label: "Invitations" },
       { id: "a-email-templates", href: "/admin/email/templates", label: "Email templates" },
       { id: "a-audit", href: "/admin/audit/events", label: "Audit log" },
+      { id: "a-audit-timeline", href: "/admin/audit/timeline", label: "Audit aggregate timeline" },
       { id: "a-settings", href: "/admin/settings/platform", label: "System settings" },
       { id: "a-cms", href: "/admin/cms", label: "CMS & pages" },
       { id: "a-saleroom", href: "/admin/saleroom", label: "Saleroom console" },
@@ -96,6 +106,7 @@ const adminFinanceSections: PaletteSection[] = [
     heading: "Finance admin",
     items: [
       { id: "a-pay", href: "/admin/payments", label: "Payments" },
+      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
       { id: "a-xero", href: "/admin/integrations/xero", label: "Xero" },
       { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
     ],
@@ -113,7 +124,15 @@ function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
 
 function isAdminFinanceOnly(sessionUser: SessionUser | null | undefined): boolean {
   if (!sessionUser) return false;
-  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole);
+  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null);
+}
+
+function hideLiveBiddingItems(sections: PaletteSection[]): PaletteSection[] {
+  if (showLiveBiddingNav()) return sections;
+  return sections.map((sec) => ({
+    ...sec,
+    items: sec.items.filter((item) => item.id !== "d-live"),
+  }));
 }
 
 function buildVisibleSections(
@@ -126,7 +145,7 @@ function buildVisibleSections(
     variant === "dashboard"
       ? clientWorkspaceMode === "selling"
         ? dashboardSellingSections
-        : dashboardBuyingSections
+        : hideLiveBiddingItems(dashboardBuyingSections)
       : variant === "admin"
         ? isAdminFinanceOnly(sessionUser)
           ? adminFinanceSections

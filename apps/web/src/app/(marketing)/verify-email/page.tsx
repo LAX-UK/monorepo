@@ -1,5 +1,8 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { VerifyEmailSuccessRedirect } from "@/components/auth/verify-email-success-redirect";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
+import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -14,11 +17,20 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; email?: string }>;
+  searchParams: Promise<{ error?: string; email?: string; next?: string; persona?: string }>;
 }) {
   const sp = await searchParams;
   const error = typeof sp.error === "string" ? sp.error : "";
   const email = typeof sp.email === "string" ? sp.email : "";
+  const queryNext = typeof sp.next === "string" ? sp.next : null;
+  const queryPersona = typeof sp.persona === "string" ? sp.persona : null;
+
+  const sessionUser = await getServerSessionUser();
+  const destination = resolvePostVerifyDestination({
+    requestedNext: queryNext,
+    queryPersona,
+    sessionPersona: sessionUser?.signupPersona ?? null,
+  });
 
   if (error) {
     return (
@@ -59,9 +71,10 @@ export default async function VerifyEmailPage({
           >
             Email verified — you&apos;re ready to use London Art Exchange.
           </output>
+          <VerifyEmailSuccessRedirect href={destination.href} />
           <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-            <Link href="/dashboard" prefetch>
-              Go to dashboard
+            <Link href={destination.href} prefetch>
+              {destination.label}
             </Link>
           </Button>
         </div>

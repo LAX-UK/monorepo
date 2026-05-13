@@ -14,8 +14,7 @@ type Props = {
   secondaryLabel?: string;
 };
 
-/**
- * Mockup-aligned segment 404 body. Render inside the segment layout so the
+/** Mockup-aligned segment 404 body. Render inside the segment layout so the
  * existing chrome (header / footer / app shell) stays intact.
  */
 export function SegmentNotFound({

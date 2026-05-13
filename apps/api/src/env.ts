@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { z } from "zod";
 
 /** Docker Compose uses `VAR=` for unset substitutions, which is `""`, not missing. */
@@ -6,9 +7,42 @@ function emptyToUndefined(val: unknown): unknown {
   return val;
 }
 
+function trimEmptyToUndefined(val: unknown): unknown {
+  if (val === "" || val === null) return undefined;
+  if (typeof val === "string") {
+    let t = val.trim();
+    if (t.length >= 2) {
+      const first = t[0];
+      const last = t[t.length - 1];
+      if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+        t = t.slice(1, -1).trim();
+      }
+    }
+    return t === "" ? undefined : t;
+  }
+  return val;
+}
+
+function validateAuthDekKey(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) return null;
+  try {
+    const b64 = trimmed.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const buf = Buffer.from(b64 + pad, "base64");
+    if (buf.length !== 32) return "AUTH_DEK_KEY must decode to exactly 32 bytes";
+    return null;
+  } catch {
+    return "Invalid AUTH_DEK_KEY encoding";
+  }
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    /** Deployment environment for financial / ops validation. Decoupled from NODE_ENV so that the
+     * test stack can run with NODE_ENV=production (Node.js optimisations) but sk_test_ keys. */
+    APP_ENV: z.enum(["production", "test", "development"]).default("development"),
     PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
@@ -16,6 +50,21 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Comma-separated extra browser origins allowed for CORS (e.g. `https://lax.art,https://lax.shop`). */
+    WEB_ORIGINS: z.preprocess((val) => {
+      if (val === undefined || val === "" || val == null) return undefined;
+      if (typeof val !== "string") return undefined;
+      const parts = val
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return parts.length > 0 ? parts : undefined;
+    }, z.array(z.string().url()).optional()),
+    JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    /** Same 32-byte DEK as the auth issuer (64 hex or base64). Required in NODE_ENV=production. */
+    AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    /** Cloudflare Turnstile secret; when set, register + forgot-password require `turnstileToken`. */
+    TURNSTILE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().min(1).optional()),
     COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -86,20 +135,71 @@ const envSchema = z
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
     /** Days after invoice date for due date. */
     XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+    /** use one Xero Contact per buyer `legal_entity` (stored on `legal_entity.xero_contact_id`)
+     * instead of creating contacts from winner email only.
+     */
+    XERO_USE_LEGAL_ENTITY_CONTACT: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    /** chart account for supplier bill line items (ACCPAY) created from paid payouts. */
+    XERO_PAYOUT_BILL_ACCOUNT_CODE: z.string().min(1).default("400"),
     /** After OAuth, redirect browser here (web app), e.g. https://app.example.com/admin/integrations/xero */
     XERO_POST_CONNECT_WEB_REDIRECT: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    /**
-     * Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
+    /** Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
      * Expected to accept payloads like: { to, subject, text }.
      */
     INVITE_EMAIL_WEBHOOK_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     INVITE_EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(3).optional()),
+    /** Stripe secret key (sk_test_… / sk_live_…). Optional until KYC enabled. */
+    STRIPE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Stripe publishable key (pk_test_… / pk_live_…). Public for client SDK. */
+    STRIPE_PUBLISHABLE_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Stripe Identity webhook signing secret (whsec_…). */
+    STRIPE_IDENTITY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Connect webhook signing secret (whsec_…). */
+    STRIPE_CONNECT_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Payments webhook signing secret (whsec_…) for disputes/refunds. */
+    STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Threshold (in major currency units, e.g. 1000.00 for £1000) at which KYC is required for buyer exposure. */
+    KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
+    /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
+    KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
+     * Optional until bulk jobs are enabled in deploy.
+     */
+    CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** Days before `pending` buyer payments auto-expire (cron). */
+    PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    /** Emergency: reject new bids with 503. */
+    DISABLE_BIDDING: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
+    /** Block `POST /users/register` (public sign-up). */
+    DISABLE_NEW_USER_REGISTRATION: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
+    /** Skip Stripe transfer initiation inside bulk payout settlement cron. */
+    DISABLE_PAYOUT_SETTLEMENT: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
+    /** When true, admin lot/sale inventory APIs reject new non-English `auction_type` values (DB enum unchanged). */
+    ENGLISH_ONLY_AUCTIONS: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(true),
+    /** Support inbox for money-path alerts and ops (required in production). */
+    OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** On-call / escalation inbox (required in production). */
+    OPS_ONCALL_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
+      });
+    }
+    if (e.NODE_ENV === "production" && !e.POSTMARK_WEBHOOK_BASIC_AUTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "POSTMARK_WEBHOOK_BASIC_AUTH is required when NODE_ENV=production",
       });
     }
     if (e.STORAGE_DRIVER === "s3") {
@@ -139,6 +239,141 @@ const envSchema = z
         message:
           "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
       });
+    }
+
+    const appEnv = e.APP_ENV;
+
+    // Stripe key format — enforced per deployment environment.
+    // production: live keys required. test: test keys required (prevents accidental live key use).
+    if (appEnv === "production") {
+      const stripeSk = e.STRIPE_SECRET_KEY;
+      if (!stripeSk || !stripeSk.startsWith("sk_live_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_SECRET_KEY is required in production and must start with sk_live_",
+          path: ["STRIPE_SECRET_KEY"],
+        });
+      }
+      const stripePk = e.STRIPE_PUBLISHABLE_KEY;
+      if (!stripePk || !stripePk.startsWith("pk_live_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_PUBLISHABLE_KEY is required in production and must start with pk_live_",
+          path: ["STRIPE_PUBLISHABLE_KEY"],
+        });
+      }
+      for (const [key, val] of [
+        ["STRIPE_IDENTITY_WEBHOOK_SECRET", e.STRIPE_IDENTITY_WEBHOOK_SECRET] as const,
+        ["STRIPE_CONNECT_WEBHOOK_SECRET", e.STRIPE_CONNECT_WEBHOOK_SECRET] as const,
+        ["STRIPE_PAYMENTS_WEBHOOK_SECRET", e.STRIPE_PAYMENTS_WEBHOOK_SECRET] as const,
+      ]) {
+        if (!val || !val.startsWith("whsec_")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${key} is required in production and must start with whsec_`,
+            path: [key],
+          });
+        }
+      }
+    } else if (appEnv === "test") {
+      if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_SECRET_KEY in test must use a test key (sk_test_…)",
+          path: ["STRIPE_SECRET_KEY"],
+        });
+      }
+      if (e.STRIPE_PUBLISHABLE_KEY && !e.STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
+          path: ["STRIPE_PUBLISHABLE_KEY"],
+        });
+      }
+    }
+
+    // CRON secret required for all deployed environments (prevents misconfigured cron jobs).
+    if (appEnv !== "development") {
+      const cron = e.CRON_INTERNAL_SECRET;
+      if (!cron || cron.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
+          path: ["CRON_INTERNAL_SECRET"],
+        });
+      }
+    }
+
+    if (e.NODE_ENV === "production") {
+      if (e.ALLOW_HTTP_COOKIES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "ALLOW_HTTP_COOKIES must be false in NODE_ENV=production",
+          path: ["ALLOW_HTTP_COOKIES"],
+        });
+      }
+      if (e.BETTER_AUTH_SECRET.length < 48) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "BETTER_AUTH_SECRET must be at least 48 characters in NODE_ENV=production",
+          path: ["BETTER_AUTH_SECRET"],
+        });
+      }
+      const originChecks: string[] = [e.WEB_ORIGIN, e.API_PUBLIC_URL];
+      if (e.OIDC_ISSUER_URL) originChecks.push(e.OIDC_ISSUER_URL);
+      for (const u of originChecks) {
+        if (u.includes("localhost") || u.includes("127.0.0.1")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `URL must not reference localhost/127.0.0.1 in NODE_ENV=production: ${u}`,
+          });
+        }
+      }
+      if (e.WEB_ORIGINS) {
+        for (const u of e.WEB_ORIGINS) {
+          if (u.includes("localhost") || u.includes("127.0.0.1")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `WEB_ORIGINS must not reference localhost in NODE_ENV=production: ${u}`,
+              path: ["WEB_ORIGINS"],
+            });
+          }
+        }
+      }
+      if (!e.AUTH_DEK_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "AUTH_DEK_KEY is required in NODE_ENV=production",
+          path: ["AUTH_DEK_KEY"],
+        });
+      } else {
+        const dekErr = validateAuthDekKey(e.AUTH_DEK_KEY);
+        if (dekErr) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: dekErr,
+            path: ["AUTH_DEK_KEY"],
+          });
+        }
+      }
+    }
+
+    // Ops contacts required only in production (test stack uses debug channels).
+    if (appEnv === "production") {
+      if (!e.OPS_SUPPORT_EMAIL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "OPS_SUPPORT_EMAIL is required in production",
+          path: ["OPS_SUPPORT_EMAIL"],
+        });
+      }
+      if (!e.OPS_ONCALL_EMAIL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "OPS_ONCALL_EMAIL is required in production",
+          path: ["OPS_ONCALL_EMAIL"],
+        });
+      }
     }
   });
 

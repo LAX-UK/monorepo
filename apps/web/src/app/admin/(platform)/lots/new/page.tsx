@@ -1,7 +1,13 @@
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
+import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DisplayHeading } from "@/components/ui/typography";
-import { getAdminLotById, getAdminUserList } from "@/lib/data/http/admin.server";
+import {
+  getAdminArtistList,
+  getAdminLotById,
+  getAdminUserList,
+} from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import {
   emptyAdminLotFormValues,
   lotToAdminLotFormValues,
@@ -13,6 +19,7 @@ type PageProps = { searchParams: Promise<{ fromLot?: string }> };
 export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const fromLotId = (sp.fromLot ?? "").trim();
+  const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   let cloneDefaults = emptyAdminLotFormValues();
   if (fromLotId) {
@@ -28,14 +35,18 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
       /* ignore clone failures — fall back to empty form */
     }
   }
+  if (englishOnlyAuctionsLocked && cloneDefaults.auctionType !== "english") {
+    cloneDefaults = { ...cloneDefaults, auctionType: "english" };
+  }
 
-  const [categories, users] = await Promise.all([
+  const [categories, users, artists] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
+    getAdminArtistList(),
   ]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <AppScreen className="mx-auto max-w-2xl space-y-8">
       <Link
         href="/admin/lots"
         className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
@@ -58,7 +69,9 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
         defaultValues={cloneDefaults}
         categories={categories}
         sellers={users.rows}
+        artists={artists}
+        englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
       />
-    </div>
+    </AppScreen>
   );
 }

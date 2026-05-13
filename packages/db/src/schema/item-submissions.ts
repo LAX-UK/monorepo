@@ -1,3 +1,4 @@
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -10,6 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
 
 export const itemSubmissionStatusEnum = pgEnum("item_submission_status", [
@@ -26,9 +28,11 @@ export const itemSubmission = pgTable(
   "item_submission",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    sellerId: text("seller_id")
+    legalEntityId: uuid("legal_entity_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => legalEntity.id, {
+        onDelete: "restrict",
+      }),
     title: text("title").notNull(),
     description: text("description"),
     medium: text("medium"),
@@ -56,12 +60,25 @@ export const itemSubmission = pgTable(
     reviewNotes: text("review_notes"),
     rejectionReason: text("rejection_reason"),
     convertedLotId: uuid("converted_lot_id").references(() => lot.id, { onDelete: "set null" }),
+    assignedToUserId: text("assigned_to_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("item_submission_seller_id_idx").on(table.sellerId),
+    index("item_submission_legal_entity_id_idx").on(table.legalEntityId),
     index("item_submission_status_created_at_idx").on(table.status, table.createdAt),
     index("item_submission_converted_lot_id_idx").on(table.convertedLotId),
+    index("item_submission_assigned_to_idx")
+      .on(table.assignedToUserId)
+      .where(sql`${table.assignedToUserId} IS NOT NULL`),
   ],
 );
+
+export const itemSubmissionRelations = relations(itemSubmission, ({ one }) => ({
+  legalEntity: one(legalEntity, {
+    fields: [itemSubmission.legalEntityId],
+    references: [legalEntity.id],
+  }),
+}));

@@ -28,29 +28,29 @@ export type DashboardOverviewVm = {
     winRatePercent: number | null;
     engagementLabel: string;
     activeBidsCount: number;
-    /** Normalized 0–1 points for sparklines (placeholder when no history) */
-    trend: readonly number[];
   };
   activeLots: Lot[];
   activeLotBidHints: Record<string, "high" | "outbid" | "none">;
   wonLotsSidebar: PortfolioRow[];
   watchPreview: WatchlistWithLotRow[];
+  /** Full watchlist size (not just preview). */
+  watchlistTotalCount: number;
+  /** Active watchlist lots whose endTime falls within the next 24h. */
+  endingSoonWatchlist: WatchlistWithLotRow[];
   artistFollowPreview: ArtistFollowRow[];
+  artistFollowTotalCount: number;
   settlementsDue: PortfolioRow[];
   submissionsCount: number;
-  liveCount: number;
+  /** Number of preview lots returned (NOT a global total). */
+  liveLotsPreviewCount: number;
+  /** Number of active lots where the user has been outbid. */
+  outbidCount: number;
   acquiredCount: number;
   /** Smart primary action for hero CTA */
   primaryCta: { label: string; href: string } | null;
 };
 
-function stubTrend(seed: number): readonly number[] {
-  const out: number[] = [];
-  for (let i = 0; i < 7; i += 1) {
-    out.push(0.35 + 0.08 * Math.sin(seed * 0.7 + i * 0.9) + i * 0.02);
-  }
-  return out.map((v) => Math.min(1, Math.max(0, v)));
-}
+const ENDING_SOON_MS = 24 * 60 * 60 * 1000;
 
 export function buildDashboardOverviewVm(input: {
   user: { id: string; name: string; role?: string } | null;
@@ -134,11 +134,19 @@ export function buildDashboardOverviewVm(input: {
 
   const wonLotsSidebar = portfolio.filter((row) => row.lot.status === "ended").slice(0, 4);
   const watchPreview = watchlist.filter((w) => w.lot).slice(0, 4);
+  const watchlistTotalCount = watchlist.filter((w) => w.lot).length;
+  const now = Date.now();
+  const endingSoonWatchlist = watchlist.filter((w) => {
+    if (!w.lot || w.lot.status !== "active") return false;
+    const ms = w.lot.endTime.getTime() - now;
+    return ms > 0 && ms <= ENDING_SOON_MS;
+  });
   const artistFollowPreview = artistFollow.slice(0, 8);
   const settlementsDue = portfolio.filter((row) => {
     if (row.lot.status !== "ended") return false;
     return portfolioSettlementLabel(row) !== "Paid";
   });
+  const outbidCount = activeLots.filter((lot) => activeLotBidHints[lot.id] === "outbid").length;
 
   let primaryCta: { label: string; href: string } | null = null;
   const firstSettlement = settlementsDue[0];
@@ -175,16 +183,19 @@ export function buildDashboardOverviewVm(input: {
       winRatePercent: winRate,
       engagementLabel,
       activeBidsCount,
-      trend: stubTrend(totalSpent),
     },
     activeLots,
     activeLotBidHints,
     wonLotsSidebar,
     watchPreview,
+    watchlistTotalCount,
+    endingSoonWatchlist,
     artistFollowPreview,
+    artistFollowTotalCount: artistFollow.length,
     settlementsDue,
     submissionsCount,
-    liveCount: activeLots.length,
+    liveLotsPreviewCount: activeLots.length,
+    outbidCount,
     acquiredCount: portfolio.length,
     primaryCta,
   };

@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { EditSubmissionForm } from "@/components/dashboard/edit-submission-form";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { MediaImage } from "@/components/ui/media-image";
@@ -24,10 +25,10 @@ export default async function SubmissionDetailPage({
   const canWithdraw = s.status === "draft" || s.status === "submitted";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <DashboardPage className="mx-auto max-w-2xl space-y-8">
       <Link
         href="/dashboard/submissions"
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        className="inline-flex min-h-10 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
       >
         ← Submissions
       </Link>
@@ -38,7 +39,7 @@ export default async function SubmissionDetailPage({
         <SubmissionStatusBadge status={s.status} />
       </div>
       {!editable ? (
-        <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant">
+        <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant shadow-sm">
           <p>{s.description ?? "No description."}</p>
           {s.rejectionReason ? (
             <p className="text-error">
@@ -94,6 +95,6 @@ export default async function SubmissionDetailPage({
         canSubmit={canSubmit}
         canWithdraw={canWithdraw}
       />
-    </div>
+    </DashboardPage>
   );
 }

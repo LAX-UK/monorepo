@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { payment } from "./payments.js";
@@ -67,7 +67,12 @@ export const xeroWebhookEvent = pgTable(
     error: text("error"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("xero_webhook_event_tenant_resource_idx").on(table.tenantId, table.resourceId)],
+  (table) => [
+    index("xero_webhook_event_tenant_resource_idx").on(table.tenantId, table.resourceId),
+    index("xero_webhook_event_error_created_idx")
+      .on(table.createdAt)
+      .where(sql`${table.error} IS NOT NULL`),
+  ],
 );
 
 export const xeroConnectionRelations = relations(xeroConnection, ({ one }) => ({

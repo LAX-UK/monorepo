@@ -1,10 +1,17 @@
+import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte, saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { AdminMetricsService } from "./admin-metrics.service.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
+import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
@@ -26,24 +33,70 @@ export type LotJobSchedulerPort = {
   cancelLotJobs(lotId: string): Promise<void>;
 };
 
-export class BidService {
-  constructor(
-    private readonly repos: IRepositoryFactory,
-    private readonly strategyFactory: ILotStrategyFactory,
-    private readonly cache: ICacheProvider,
-    private readonly notifications: NotificationService,
-    private readonly notificationDispatcher: NotificationDispatcher | null,
-    private readonly lotJobs: LotJobSchedulerPort | null,
-    private readonly adminMetrics: AdminMetricsService | null = null,
-    private readonly saleModeLookup: ISaleModeLookup | null = null,
-  ) {}
+export type PlaceBidWithIdempotencyOutcome =
+  | { type: "replay"; body: { data: Bid } }
+  | { type: "err"; error: BidError }
+  | { type: "ok"; body: { data: Bid } };
 
-  async placeBid(
-    bidderId: string,
-    lotId: string,
-    amount: number,
-    maxAutoBidAmount?: number,
-  ): Promise<Result<Bid, BidError>> {
+export type BidServiceOptions = {
+  repos: IRepositoryFactory;
+  strategyFactory: ILotStrategyFactory;
+  cache: ICacheProvider;
+  notifications: NotificationService;
+  notificationDispatcher: NotificationDispatcher | null;
+  lotJobs: LotJobSchedulerPort | null;
+  adminMetrics?: AdminMetricsService | null;
+  saleModeLookup?: ISaleModeLookup | null;
+  antiShillingGuard?: IAntiShillingGuard | null;
+  domainEventPublisher?: DomainEventPublisher | null;
+  legalEntityRepository?: ILegalEntityRepository | null;
+  idempotencyStore?: IIdempotencyStore | null;
+  bidEligibility?: IBidEligibility | null;
+  englishOnlyAuctions?: boolean;
+};
+
+export class BidService implements IBidPlacer {
+  private readonly repos: IRepositoryFactory;
+  private readonly strategyFactory: ILotStrategyFactory;
+  private readonly cache: ICacheProvider;
+  private readonly notifications: NotificationService;
+  private readonly notificationDispatcher: NotificationDispatcher | null;
+  private readonly lotJobs: LotJobSchedulerPort | null;
+  private readonly adminMetrics: AdminMetricsService | null;
+  private readonly saleModeLookup: ISaleModeLookup | null;
+  private readonly antiShillingGuard: IAntiShillingGuard | null;
+  private readonly domainEventPublisher: DomainEventPublisher | null;
+  private readonly legalEntityRepository: ILegalEntityRepository | null;
+  private readonly idempotencyStore: IIdempotencyStore | null;
+  private readonly bidEligibility: IBidEligibility | null;
+  private readonly englishOnlyAuctions: boolean;
+
+  constructor(opts: BidServiceOptions) {
+    this.repos = opts.repos;
+    this.strategyFactory = opts.strategyFactory;
+    this.cache = opts.cache;
+    this.notifications = opts.notifications;
+    this.notificationDispatcher = opts.notificationDispatcher;
+    this.lotJobs = opts.lotJobs;
+    this.adminMetrics = opts.adminMetrics ?? null;
+    this.saleModeLookup = opts.saleModeLookup ?? null;
+    this.antiShillingGuard = opts.antiShillingGuard ?? null;
+    this.domainEventPublisher = opts.domainEventPublisher ?? null;
+    this.legalEntityRepository = opts.legalEntityRepository ?? null;
+    this.idempotencyStore = opts.idempotencyStore ?? null;
+    this.bidEligibility = opts.bidEligibility ?? null;
+    this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+  }
+
+  async placeBid(input: PlaceBidInput): Promise<Result<Bid, BidError>> {
+    const {
+      placedByUserId,
+      buyerLegalEntityId,
+      lotId,
+      amount,
+      maxAutoBidAmount,
+      placement: bidPlacement,
+    } = input;
     try {
       // Read-only mode gate: reject bids targeting lots whose parent sale is
       // marketing-only (onsite). Done outside the bid transaction so it stays
@@ -54,9 +107,35 @@ export class BidService {
           return err(new BidError("Lot is not accepting bids", 400));
         }
       }
+      if (this.legalEntityRepository) {
+        const ent = await this.legalEntityRepository.findById(buyerLegalEntityId);
+        if (!ent) {
+          return err(new BidError("Buyer legal entity not found", 404));
+        }
+        if (ent.status !== "approved" && ent.status !== "restricted") {
+          return err(
+            new BidError(
+              "Buyer legal entity is not authorised to bid",
+              403,
+              "entity_not_authorised_to_bid",
+            ),
+          );
+        }
+      }
+      if (this.bidEligibility) {
+        const elig = await this.bidEligibility.assertCanPlaceBid({
+          placedByUserId,
+          buyerLegalEntityId,
+          lotId,
+          amount,
+        });
+        if (elig.isErr()) {
+          return err(elig.error);
+        }
+      }
       let prevWinnerId: string | null = null;
       const { created, lot, nextEnd, endedEarly } = await this.repos.runInTransaction(
-        async ({ lot: lots, bid: bids }) => {
+        async ({ lot: lots, bid: bids }, tx) => {
           const lotRow = await lots.findByIdForUpdate(lotId);
           if (!lotRow) {
             throw new BidError("Lot not found", 404);
@@ -67,12 +146,37 @@ export class BidService {
           if (Date.now() > lotRow.endTime.getTime()) {
             throw new BidError("Lot has ended", 400);
           }
+          if (
+            this.englishOnlyAuctions &&
+            lotRow.auctionType !== "english" &&
+            lotRow.auctionType !== "buy_it_now"
+          ) {
+            throw new BidError(
+              "Self-service bidding is only available for English and buy-now lots while English-only mode is enabled.",
+              400,
+              "english_only_catalogue",
+            );
+          }
+          if (
+            this.antiShillingGuard &&
+            (await this.antiShillingGuard.violatesAntiShilling({
+              bidderUserId: placedByUserId,
+              buyerLegalEntityId,
+              lot: lotRow,
+            }))
+          ) {
+            throw new BidError("Seller cannot bid on own lot", 400);
+          }
 
           const prevWinning = await bids.findWinningBid(lotId);
-          prevWinnerId = prevWinning?.bidderId ?? null;
+          prevWinnerId = prevWinning?.placedByUserId ?? null;
 
           const strategy = this.strategyFactory.create(lotRow.auctionType);
-          const validation = strategy.validateBid(lotRow, { bidderId, amount });
+          const validation = strategy.validateBid(lotRow, {
+            placedByUserId,
+            buyerLegalEntityId,
+            amount,
+          });
           if (validation.isErr()) {
             throw validation.error;
           }
@@ -88,15 +192,31 @@ export class BidService {
 
           let lastBid = await bids.create({
             lotId,
-            bidderId,
+            placedByUserId,
+            buyerLegalEntityId,
             amount: amountStr,
             isWinning: false,
             isAutoBid: hasMax,
             maxAutoBidAmount: maxStr,
+            ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
+            ...(bidPlacement?.telephoneBookingId != null
+              ? { telephoneBookingId: bidPlacement.telephoneBookingId }
+              : {}),
           });
 
+          if (this.antiShillingGuard) {
+            await this.cancelViolatingProxyBids(lotId, lotRow, bids, tx);
+          }
+
           if (lotRow.auctionType === "english" || lotRow.auctionType === "buy_it_now") {
-            lastBid = await this.runProxyAutoBids(bids, lotId, lastBid, minIncrementAmount(lotRow));
+            lastBid = await this.runProxyAutoBids(
+              bids,
+              lotId,
+              lotRow,
+              lastBid,
+              minIncrementAmount(lotRow),
+              tx,
+            );
           }
 
           await bids.markWinningBid(lotId, lastBid.id);
@@ -109,7 +229,8 @@ export class BidService {
           let nextEnd = lotRow.endTime;
           if (
             strategy.shouldExtendTime(lotRow, {
-              bidderId,
+              placedByUserId,
+              buyerLegalEntityId,
               amount: Number.parseFloat(amountStr),
             })
           ) {
@@ -119,7 +240,12 @@ export class BidService {
 
           let endedEarly = false;
           if (lotRow.auctionType === "dutch") {
-            await lots.setWinner(lotId, lastBid.bidderId);
+            const winnerUserId = lastBid.placedByUserId ?? lastBid.bidderId;
+            const winnerLegalEntityId = lastBid.buyerLegalEntityId ?? buyerLegalEntityId;
+            if (!winnerUserId || !winnerLegalEntityId) {
+              throw new BidError("Bid legal entity context missing", 400);
+            }
+            await lots.setWinner(lotId, winnerUserId, winnerLegalEntityId);
             await lots.updateStatus(lotId, "ended");
             endedEarly = true;
           } else if (lotRow.auctionType === "buy_it_now") {
@@ -134,7 +260,12 @@ export class BidService {
               lotRow.buyNowPrice !== "" &&
               moneyGte(lastBid.amount, lotRow.buyNowPrice)
             ) {
-              await lots.setWinner(lotId, lastBid.bidderId);
+              const winnerUserId = lastBid.placedByUserId ?? lastBid.bidderId;
+              const winnerLegalEntityId = lastBid.buyerLegalEntityId ?? buyerLegalEntityId;
+              if (!winnerUserId || !winnerLegalEntityId) {
+                throw new BidError("Bid legal entity context missing", 400);
+              }
+              await lots.setWinner(lotId, winnerUserId, winnerLegalEntityId);
               await lots.updateStatus(lotId, "ended");
               endedEarly = true;
             }
@@ -146,6 +277,7 @@ export class BidService {
 
       const displayPrice =
         lot.auctionType === "sealed" && !endedEarly ? lot.startingPrice : created.amount;
+      const createdUserId = created.placedByUserId ?? created.bidderId ?? null;
 
       const updatedLot = endedEarly
         ? {
@@ -153,7 +285,10 @@ export class BidService {
             endTime: nextEnd,
             currentPrice: created.amount,
             status: "ended" as const,
-            winnerId: created.bidderId,
+            winnerId: createdUserId,
+            ...(created.buyerLegalEntityId
+              ? { buyerLegalEntityId: created.buyerLegalEntityId }
+              : {}),
           }
         : nextEnd.getTime() !== lot.endTime.getTime()
           ? { ...lot, endTime: nextEnd, currentPrice: displayPrice }
@@ -164,7 +299,7 @@ export class BidService {
       void this.adminMetrics?.recordBidPlaced();
 
       const outbidMeta =
-        prevWinnerId && prevWinnerId !== created.bidderId
+        prevWinnerId && prevWinnerId !== created.placedByUserId
           ? { outbidUserId: prevWinnerId }
           : undefined;
       await this.notifications.notifyBidPlaced(updatedLot, created, outbidMeta);
@@ -179,7 +314,7 @@ export class BidService {
         await this.lotJobs?.rescheduleEnd(lotId, nextEnd);
       }
 
-      if (this.notificationDispatcher && prevWinnerId && prevWinnerId !== created.bidderId) {
+      if (this.notificationDispatcher && prevWinnerId && prevWinnerId !== created.placedByUserId) {
         const factory = new NotificationFactory();
         await this.notificationDispatcher.dispatch(
           prevWinnerId,
@@ -196,24 +331,94 @@ export class BidService {
     }
   }
 
+  private async cancelViolatingProxyBids(
+    lotId: string,
+    lotRow: Lot,
+    bids: IBidRepository,
+    tx: Database,
+  ): Promise<void> {
+    if (!this.antiShillingGuard) return;
+    const states = await bids.listBidderCeilingStates(lotId);
+    for (const s of states) {
+      if (!(await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId))) continue;
+      if (
+        await this.antiShillingGuard.violatesAntiShilling({
+          bidderUserId: s.bidderId,
+          buyerLegalEntityId: s.buyerLegalEntityId,
+          lot: lotRow,
+        })
+      ) {
+        await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
+        if (this.domainEventPublisher) {
+          await this.domainEventPublisher.publish(tx, {
+            aggregateType: "lot",
+            aggregateId: lotId,
+            eventType: "bid.proxy_cancelled",
+            payload: {
+              lotId,
+              bidderUserId: s.bidderId,
+              buyerLegalEntityId: s.buyerLegalEntityId,
+              reason: "anti_shilling_violation",
+            },
+            actorUserId: null,
+          });
+        }
+      }
+    }
+  }
+
   private async runProxyAutoBids(
     bids: IBidRepository,
     lotId: string,
+    lot: Lot,
     initialBid: Bid,
     minInc: number,
+    tx: Database,
   ): Promise<Bid> {
     let lastBid = initialBid;
     let currentPrice = Number(lastBid.amount);
-    let winnerId = lastBid.bidderId;
+    let winnerId = lastBid.placedByUserId ?? lastBid.bidderId ?? null;
+    if (!winnerId) return lastBid;
 
     for (let round = 0; round < MAX_PROXY_ROUNDS; round++) {
-      const ceilings = await bids.aggregateBidderCeilings(lotId);
-      type Cand = { bidderId: string; ceiling: number };
+      const states = await bids.listBidderCeilingStates(lotId);
+      type Cand = { bidderId: string; ceiling: number; buyerLegalEntityId: string };
       const candidates: Cand[] = [];
-      for (const [bidderId, ceiling] of ceilings) {
-        if (bidderId === winnerId) continue;
-        if (ceiling >= currentPrice + minInc - 1e-9) {
-          candidates.push({ bidderId, ceiling });
+      for (const s of states) {
+        if (s.bidderId === winnerId) continue;
+        if (this.antiShillingGuard) {
+          const shill = await this.antiShillingGuard.violatesAntiShilling({
+            bidderUserId: s.bidderId,
+            buyerLegalEntityId: s.buyerLegalEntityId,
+            lot,
+          });
+          if (shill) {
+            if (await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId)) {
+              await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
+              if (this.domainEventPublisher) {
+                await this.domainEventPublisher.publish(tx, {
+                  aggregateType: "lot",
+                  aggregateId: lotId,
+                  eventType: "bid.proxy_cancelled",
+                  payload: {
+                    lotId,
+                    bidderUserId: s.bidderId,
+                    buyerLegalEntityId: s.buyerLegalEntityId,
+                    reason: "anti_shilling_violation",
+                  },
+                  actorUserId: null,
+                });
+              }
+            }
+            continue;
+          }
+        }
+        if (s.ceiling >= currentPrice + minInc - 1e-9) {
+          candidates.push({
+            bidderId: s.bidderId,
+            ceiling: s.ceiling,
+            buyerLegalEntityId: s.buyerLegalEntityId,
+          });
         }
       }
       if (candidates.length === 0) break;
@@ -229,11 +434,14 @@ export class BidService {
       const nextStr = nextAmt.toFixed(2);
       lastBid = await bids.create({
         lotId,
-        bidderId: challenger.bidderId,
+        placedByUserId: challenger.bidderId,
+        buyerLegalEntityId: challenger.buyerLegalEntityId,
         amount: nextStr,
         isWinning: false,
         isAutoBid: true,
         maxAutoBidAmount: challenger.ceiling.toFixed(2),
+        placedVia: null,
+        telephoneBookingId: null,
       });
       currentPrice = nextAmt;
       winnerId = challenger.bidderId;
@@ -245,5 +453,62 @@ export class BidService {
   /** Public bid history for a lot (newest first). */
   async listForLot(lotId: string, limit: number): Promise<Bid[]> {
     return this.repos.root.bid.listForLot(lotId, limit);
+  }
+
+  /**
+   * Buyer bid placement with optional idempotency replay (Redis) and personal
+   * buyer entity resolution.
+   */
+  async placeBidWithIdempotency(input: {
+    placedByUserId: string;
+    idempotencyKey: string | undefined;
+    lotId: string;
+    amount: number;
+    maxAutoBidAmount?: number;
+    placedVia?: string;
+    telephoneBookingId?: string;
+  }): Promise<PlaceBidWithIdempotencyOutcome> {
+    const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
+    if (idempotencyKey && this.idempotencyStore) {
+      const key = `idempotency:bid:${placedByUserId}:${idempotencyKey}`;
+      const cached = await this.idempotencyStore.get(key);
+      if (cached) {
+        return { type: "replay", body: JSON.parse(cached) as { data: Bid } };
+      }
+    }
+    if (!this.legalEntityRepository) {
+      return { type: "err", error: new BidError("Bid placement is not configured", 503) };
+    }
+    const buyerEntity = await this.legalEntityRepository.ensurePersonalEntity(placedByUserId);
+    const placement =
+      input.placedVia != null || input.telephoneBookingId != null
+        ? {
+            ...(input.placedVia != null ? { placedVia: input.placedVia } : {}),
+            ...(input.telephoneBookingId != null
+              ? { telephoneBookingId: input.telephoneBookingId }
+              : {}),
+          }
+        : undefined;
+    const result = await this.placeBid({
+      placedByUserId,
+      buyerLegalEntityId: buyerEntity.id,
+      lotId,
+      amount,
+      ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
+      ...(placement !== undefined ? { placement } : {}),
+    });
+    if (result.isErr()) {
+      return { type: "err", error: result.error };
+    }
+    const bid = result.value;
+    const body = { data: bid };
+    if (idempotencyKey && this.idempotencyStore) {
+      await this.idempotencyStore.setWithExpiry(
+        `idempotency:bid:${placedByUserId}:${idempotencyKey}`,
+        JSON.stringify(body),
+        86_400,
+      );
+    }
+    return { type: "ok", body };
   }
 }

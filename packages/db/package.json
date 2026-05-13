@@ -17,13 +17,16 @@
     "build": "tsc -p tsconfig.json",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:migrate:prod": "tsx src/migrate-prod.ts",
     "db:roles": "tsx src/migrate-roles.ts",
     "db:migrate:kit": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
+    "db:backfill-auth-at-rest": "tsx scripts/backfill-auth-at-rest.ts"
   },
   "dependencies": {
     "@better-auth/utils": "0.4.0",
@@ -35,6 +38,7 @@
     "@types/pg": "^8.11.10",
     "drizzle-kit": "^0.31.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }

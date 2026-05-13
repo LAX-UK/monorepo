@@ -6,6 +6,7 @@ import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { authClient } from "@/lib/auth-client";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
@@ -14,6 +15,7 @@ import { normalizeUserRoleOrClient } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 type SignInFormProps = {
   /** When true (e.g. `/login?switch=1`), show sign-out to use another account. */
@@ -23,13 +25,40 @@ type SignInFormProps = {
 export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
-  const { form, onSubmit, loading, bannerError } = useSignInController(next);
+  const {
+    form,
+    onSubmit,
+    loading,
+    bannerError,
+    showCaptcha,
+    turnstileSiteKey,
+    onTurnstileToken,
+    onTurnstileExpire,
+  } = useSignInController(next);
   const socialError =
     searchParams.get("social_error") === "1" ? "Could not sign in with that provider." : null;
   const sessionExpired =
     searchParams.get("session_expired") === "1"
       ? "Your session expired or could not be restored. Please sign in again."
       : null;
+
+  // Strip transient banner params from the URL after render so refresh / back-nav
+  // doesn't re-show "session expired" once the user has acknowledged it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    let mutated = false;
+    for (const key of ["session_expired", "auth", "social_error"]) {
+      if (params.has(key)) {
+        params.delete(key);
+        mutated = true;
+      }
+    }
+    if (!mutated) return;
+    const qs = params.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+  }, []);
 
   const session = authClient.useSession();
   const rawUser = session.data?.user as
@@ -137,6 +166,11 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         </output>
       ) : null}
       <FormBanner message={bannerError ?? socialError} />
+      {bannerError || socialError ? (
+        <p className="-mt-6 font-footer-links text-xs text-on-surface-variant">
+          Signed up with Google or Apple? Use the button above.
+        </p>
+      ) : null}
       <div className="flex flex-col gap-6">
         <SocialSignInButtons next={next} />
         <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
@@ -151,7 +185,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           name="email"
           label="Email Address"
           type="email"
-          autoComplete="email"
+          autoComplete="username"
         />
         <div className="flex flex-col gap-2">
           <RHFPasswordField
@@ -160,6 +194,18 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             label="Password"
             autoComplete="current-password"
           />
+          {showCaptcha && turnstileSiteKey ? (
+            <div className="flex flex-col gap-2">
+              <p className="font-footer-links text-sm text-on-surface-variant">
+                For your security, complete the check below and try again.
+              </p>
+              <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                onToken={onTurnstileToken}
+                onClear={onTurnstileExpire}
+              />
+            </div>
+          ) : null}
           <div className="flex justify-end">
             <Link
               href="/forgot-password"

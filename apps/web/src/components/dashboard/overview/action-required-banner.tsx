@@ -16,7 +16,7 @@ export function ActionRequiredBanner({ row }: ActionRequiredBannerProps) {
   if (!row) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-lot-orange/25 bg-lot-orange/10 shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-lot-orange/25 bg-lot-orange/10 shadow-md">
       <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6">
         <div className="flex min-w-0 items-center gap-4">
           <LotThumbnail

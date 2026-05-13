@@ -1,21 +1,20 @@
 import "server-only";
 
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { isRequireEmailVerificationServer } from "@/lib/auth/require-email-verification.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   type UserRole,
-  canAccessPlatformAdminRoutes,
   canAccessStaffAdminShell,
+  staffRoleDefaultDestination,
 } from "@auction/types";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export type AuthenticatedShell = "client" | "staff";
 
-/**
- * Ensures a valid session for protected areas. Handles stale edge cookie loop (`x-lax-auth-edge`).
+/** Ensures a valid session for protected areas. Handles stale edge cookie loop (`x-lax-auth-edge`).
  */
 export async function requireAuthenticatedUser(opts: {
   shell: AuthenticatedShell;
@@ -37,10 +36,21 @@ export async function requireAuthenticatedUser(opts: {
     redirect("/account-suspended");
   }
 
+  if (user.emailVerified !== true) {
+    if (isSafeNextPath(opts.loginNext)) {
+      redirect(
+        `/register/verify-pending?${new URLSearchParams({ next: opts.loginNext }).toString()}`,
+      );
+    } else {
+      redirect("/register/verify-pending");
+    }
+  }
+
   const role = user.role as UserRole;
+  const staff = user.staffRole ?? null;
 
   if (opts.shell === "client" && canAccessStaffAdminShell(role)) {
-    redirect(canAccessPlatformAdminRoutes(role) ? "/admin" : "/admin/payments");
+    redirect(staffRoleDefaultDestination(role, staff));
   }
 
   if (opts.shell === "staff" && !canAccessStaffAdminShell(role)) {
@@ -72,8 +82,7 @@ export async function redirectIfVerifyPendingNotNeeded(): Promise<void> {
   }
 }
 
-/**
- * Marketing auth pages: bounce authenticated users to the appropriate home (unless bypass / email rules).
+/** Marketing auth pages: bounce authenticated users to the appropriate home (unless bypass / email rules).
  */
 export async function redirectIfAuthenticated(opts: {
   route: RedirectIfAuthenticatedRoute;
