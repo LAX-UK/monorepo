@@ -1,12 +1,12 @@
 "use client";
 
 import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
+import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
+import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const STORAGE_KEY = "theme";
 
 function readDomDark(): boolean {
   return document.documentElement.classList.contains("dark");
@@ -31,10 +31,11 @@ export function ThemeToggle() {
 
   const toggle = useCallback(() => {
     const next = !readDomDark();
+    const mode = next ? "dark" : "light";
     const apply = () => {
-      document.documentElement.classList.toggle("dark", next);
-      localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
+      applyThemeDom(mode);
       setIsDark(next);
+      void syncUiThemeFromClientAction({ theme: mode });
     };
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

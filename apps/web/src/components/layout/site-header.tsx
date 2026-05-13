@@ -106,7 +106,7 @@ function SiteHeaderShell({
             logo={
               <Link
                 href="/"
-                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
+                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               >
                 <LaxLogo variant="header" />
               </Link>

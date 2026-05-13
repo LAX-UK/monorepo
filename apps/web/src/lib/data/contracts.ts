@@ -81,9 +81,9 @@ export type SessionUser = {
   deletionRequestedAt?: string | Date | null;
   /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
   twoFactorEnabled?: boolean;
+  /** From GET /users/me — synced UI preferences (colour scheme, etc.). */
+  uiPreferences?: { theme: "light" | "dark" | "system" };
 };
-
-/** Session / “who am I” without exposing auth client (DIP). */
 export interface SessionReader {
   getSession(): Promise<SessionUser | null>;
 }

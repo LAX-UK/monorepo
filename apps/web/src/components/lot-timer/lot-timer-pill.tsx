@@ -100,7 +100,7 @@ export function LotTimerPill({
           <Clock
             className={cn(
               "shrink-0",
-              figma ? "size-4 text-[#D1D1D1]" : "size-3.5 text-accent-gold",
+              figma ? "size-4 text-[#D1D1D1]" : "size-3.5 text-accent-brand",
             )}
             aria-hidden
           />

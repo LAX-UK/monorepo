@@ -49,11 +49,11 @@ export function BidFeedback({ amount, userIsHighBidder = false, children }: BidF
  *
  *   <article {...dataProps} className={cn(bidFeedbackClasses)}>
  *
- * - `new-bid`  → gold border pulse + diagonal sheen.
+ * - `new-bid`  → accent border pulse + diagonal sheen.
  * - `outbid`   → horizontal shake + red border.
  */
 export const bidFeedbackClasses =
-  "data-[bid-feedback=new-bid]:gold-pulse data-[bid-feedback=new-bid]:shimmer-sweep " +
+  "data-[bid-feedback=new-bid]:accent-pulse data-[bid-feedback=new-bid]:shimmer-sweep " +
   "data-[bid-feedback=outbid]:outbid-shake data-[bid-feedback=outbid]:ring-2 data-[bid-feedback=outbid]:ring-live-red";
 
 /** Combine with a target className. */
