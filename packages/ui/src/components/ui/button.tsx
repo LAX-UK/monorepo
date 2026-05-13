@@ -19,15 +19,15 @@ const buttonVariants = cva(
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
         ctaLink:
-          "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-gold",
+          "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
         /** Primary marketing CTA (solid) */
-        cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-gold",
+        cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-brand",
         /** “Join live” style — border + label caps */
         liveJoin:
           "rounded border border-brand-100 bg-transparent font-label text-base font-semibold uppercase tracking-wide text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
         /** Text “View all” with chevron slot — pair with `asChild` + Link */
         chevron:
-          "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold tracking-[0.8px] text-brand-900 shadow-none hover:underline focus-visible:ring-accent-gold dark:text-on-surface",
+          "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold tracking-[0.8px] text-brand-900 shadow-none hover:underline focus-visible:ring-accent-brand dark:text-on-surface",
       },
       size: {
         default: "h-9 px-4 py-2",

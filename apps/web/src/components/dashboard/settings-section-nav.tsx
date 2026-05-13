@@ -26,6 +26,13 @@ const primary = [
       pathname === "/dashboard/settings/sessions" ||
       pathname.startsWith("/dashboard/settings/sessions/"),
   },
+  {
+    href: "/dashboard/settings/appearance",
+    label: "Appearance",
+    match: (pathname: string, _tab: string | null) =>
+      pathname === "/dashboard/settings/appearance" ||
+      pathname.startsWith("/dashboard/settings/appearance/"),
+  },
 ] as const;
 
 const secondary = [

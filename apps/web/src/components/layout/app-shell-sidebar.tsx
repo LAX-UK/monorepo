@@ -103,7 +103,7 @@ export function AppShellSidebar({
             imageHeight={labelsHidden ? 201 : 202}
             className={cn(labelsHidden ? "max-h-9 w-auto max-w-none" : "max-w-[128px]")}
           />
-          <span className="size-1.5 rounded-full bg-accent-gold" aria-hidden />
+          <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
         </Link>
         <div
           className={cn(

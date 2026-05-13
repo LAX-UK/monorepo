@@ -28,10 +28,10 @@ type AuthUserLike = {
 };
 
 const loginPillClassSolid =
-  "inline-flex items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
+  "inline-flex items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
 
 const loginPillClassHero =
-  "inline-flex items-center justify-center rounded-full border border-white/80 bg-white/5 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-white backdrop-blur-[2px] transition-colors duration-300 hover:border-white hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:border-on-surface dark:bg-transparent dark:text-on-surface dark:hover:border-on-surface dark:hover:bg-on-surface/10 dark:hover:text-on-surface";
+  "inline-flex items-center justify-center rounded-full border border-white/80 bg-white/5 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-white backdrop-blur-[2px] transition-colors duration-300 hover:border-white hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:bg-transparent dark:text-on-surface dark:hover:border-on-surface dark:hover:bg-on-surface/10 dark:hover:text-on-surface";
 
 function mapAuthUser(user: AuthUserLike): SessionUser {
   const out: SessionUser = {
@@ -121,7 +121,7 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
       <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
         <Link
           href="/login"
-          className="block w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
+          className="block w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
           onClick={onNavigate}
         >
           Log in

@@ -1,6 +1,5 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import type { LegalEntityStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -98,8 +97,6 @@ export default async function AccountSettingsPage({
           />
         </CardContent>
       </Card>
-
-      <ReduceMotionCard />
 
       <Card className="rounded-xl border-outline-variant/15 shadow-none">
         <CardHeader>

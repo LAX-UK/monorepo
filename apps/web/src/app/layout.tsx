@@ -2,11 +2,14 @@ import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { Toaster } from "@/components/ui/toaster";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
+import { parseThemeCookie, THEME_COOKIE_NAME } from "@/lib/preferences/theme-cookie";
+import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
+import { cn } from "@auction/ui";
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Montserrat, Poppins } from "next/font/google";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -55,13 +58,22 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const nonce = (await headers()).get("x-nonce") ?? "";
+  const hdrs = await headers();
+  const nonce = hdrs.get("x-nonce") ?? "";
   const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
+  const cookieStore = await cookies();
+  const themePref = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
+  const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
 
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${montserrat.variable} ${poppins.variable}`}
+      className={cn(
+        dmSans.variable,
+        montserrat.variable,
+        poppins.variable,
+        isDark && "dark",
+      )}
       suppressHydrationWarning
     >
       <head>

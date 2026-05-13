@@ -42,7 +42,7 @@ export function WatchlistHeart({ pressed, onChange, lotTitle, className }: Watch
       aria-pressed={isPressed}
       aria-label={label}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-sm transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none",
+        "inline-flex size-9 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-sm transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none",
         className,
       )}
     >

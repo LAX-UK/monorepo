@@ -74,7 +74,7 @@ export function LaxLogo({
         {SITE_SHORT_NAME}
       </span>
       <span
-        className={`font-label font-semibold uppercase tracking-[0.28em] text-brand-900 dark:text-accent-gold ${subSize} mt-1`}
+        className={`font-label font-semibold uppercase tracking-[0.28em] text-accent-brand ${subSize} mt-1`}
       >
         London Auction House Ltd
       </span>
