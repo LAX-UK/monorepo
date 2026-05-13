@@ -2,42 +2,44 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthRoutes } from "./auth.js";
 
-/** Drizzle query builders are deeply chained; tests provide a minimal stub
- * keyed by the `from()` target so the route can compose its two queries.
+/** Drizzle query builders are deeply chained; tests stub `db` (user lookup,
+ * `api_app`) and `authDb` (linked `account` rows, `auth_app`) separately —
+ * production routes them through different Postgres roles.
  */
 type UserRow = { id: string; email: string; name: string | null };
 type AccountRow = { providerId: string };
 
+function buildFakeUserDb(userResult: UserRow[]) {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => userResult),
+        })),
+      })),
+    })),
+  };
+}
+
+function buildFakeAuthDb(accountResult: AccountRow[]) {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(async () => accountResult),
+      })),
+    })),
+  };
+}
+
 type FakeDbOpts = {
-  /** Result of the first .from(user)...limit(1) call. */
   userResult: UserRow[];
-  /** Result of the second .from(account) call. */
   accountResult: AccountRow[];
 };
 
-function buildFakeDb({ userResult, accountResult }: FakeDbOpts) {
-  let userCall = 0;
+function buildForgotPasswordDbPair(opts: FakeDbOpts) {
   return {
-    select: vi.fn(() => ({
-      from: vi.fn((tableRef: { _: { name?: string } } | object) => {
-        // Drizzle table refs expose their name through Symbol.toStringTag
-        // (or a private symbol), but in this stub we discriminate by call
-        // order: user query is always issued first, account query second.
-        const targetIsUser = userCall === 0;
-        userCall += 1;
-        if (targetIsUser) {
-          void tableRef;
-          return {
-            where: vi.fn(() => ({
-              limit: vi.fn(async () => userResult),
-            })),
-          };
-        }
-        return {
-          where: vi.fn(async () => accountResult),
-        };
-      }),
-    })),
+    db: buildFakeUserDb(opts.userResult),
+    authDb: buildFakeAuthDb(opts.accountResult),
   };
 }
 
@@ -50,6 +52,7 @@ function buildFakeRedis() {
 
 function mountAuth(opts: {
   db: object;
+  authDb: object;
   emailEnqueue?: ReturnType<typeof vi.fn>;
   requestPasswordReset?: ReturnType<typeof vi.fn>;
 }) {
@@ -58,6 +61,7 @@ function mountAuth(opts: {
   const container = {
     env: { BETTER_AUTH_SECRET: "test", WEB_ORIGIN: "http://localhost:3000" },
     db: opts.db,
+    authDb: opts.authDb,
     redis: buildFakeRedis(),
     auth: {
       api: {
@@ -91,8 +95,8 @@ async function flushSideEffects(): Promise<void> {
 
 describe("POST /auth/forgot-password (provider-aware)", () => {
   it("returns identical {ok:true} for an unknown email and enqueues nothing", async () => {
-    const db = buildFakeDb({ userResult: [], accountResult: [] });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db });
+    const { db, authDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
 
     const res = await callForgotPassword(app, "nobody@example.com");
     expect(res.status).toBe(200);
@@ -104,11 +108,11 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
   });
 
   it("still triggers Better Auth reset for an unverified credential user", async () => {
-    const db = buildFakeDb({
+    const { db, authDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u-unv", email: "new@example.com", name: "N" }],
       accountResult: [{ providerId: "credential" }],
     });
-    const { app, requestPasswordReset } = mountAuth({ db });
+    const { app, requestPasswordReset } = mountAuth({ db, authDb });
 
     const res = await callForgotPassword(app, "new@example.com");
     expect(res.status).toBe(200);
@@ -117,11 +121,11 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
   });
 
   it("returns {ok:true} for a credential user and triggers Better Auth reset exactly once", async () => {
-    const db = buildFakeDb({
+    const { db, authDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
       accountResult: [{ providerId: "credential" }],
     });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
 
     const res = await callForgotPassword(app, "alice@example.com");
     expect(res.status).toBe(200);
@@ -138,11 +142,11 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
   });
 
   it("returns {ok:true} for an oauth-only user and enqueues a tailored email exactly once", async () => {
-    const db = buildFakeDb({
+    const { db, authDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u2", email: "bob@example.com", name: null }],
       accountResult: [{ providerId: "google" }],
     });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
 
     const res = await callForgotPassword(app, "bob@example.com");
     expect(res.status).toBe(200);
@@ -171,26 +175,26 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     const responses: string[] = [];
 
     {
-      const db = buildFakeDb({ userResult: [], accountResult: [] });
-      const { app } = mountAuth({ db });
+      const { db, authDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
+      const { app } = mountAuth({ db, authDb });
       const res = await callForgotPassword(app, "nobody@example.com");
       responses.push(await res.text());
     }
     {
-      const db = buildFakeDb({
+      const { db, authDb } = buildForgotPasswordDbPair({
         userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
         accountResult: [{ providerId: "credential" }],
       });
-      const { app } = mountAuth({ db });
+      const { app } = mountAuth({ db, authDb });
       const res = await callForgotPassword(app, "alice@example.com");
       responses.push(await res.text());
     }
     {
-      const db = buildFakeDb({
+      const { db, authDb } = buildForgotPasswordDbPair({
         userResult: [{ id: "u2", email: "bob@example.com", name: null }],
         accountResult: [{ providerId: "apple" }],
       });
-      const { app } = mountAuth({ db });
+      const { app } = mountAuth({ db, authDb });
       const res = await callForgotPassword(app, "bob@example.com");
       responses.push(await res.text());
     }
@@ -200,14 +204,14 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
   });
 
   it("still returns {ok:true} when Better Auth requestPasswordReset throws (no leak)", async () => {
-    const db = buildFakeDb({
+    const { db, authDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
       accountResult: [{ providerId: "credential" }],
     });
     const requestPasswordReset = vi.fn(async () => {
       throw new Error("rate-limited");
     });
-    const { app } = mountAuth({ db, requestPasswordReset });
+    const { app } = mountAuth({ db, authDb, requestPasswordReset });
     const res = await callForgotPassword(app, "alice@example.com");
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('{"ok":true}');
