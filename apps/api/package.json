@@ -33,6 +33,7 @@
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "@sentry/node": "^10.51.0",
+    "@better-auth/utils": "^0.4.0",
     "better-auth": "^1.6.9",
     "bullmq": "^5.74.1",
     "drizzle-orm": "^0.41.0",
