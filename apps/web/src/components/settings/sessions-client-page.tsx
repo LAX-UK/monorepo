@@ -5,14 +5,16 @@ import { ReauthDialog, useReauthGate } from "@/components/auth/reauth-gate";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 
-function formatUA(ua: string | null): string {
-  if (!ua) return "Unknown device";
-  if (ua.length > 80) return `${ua.slice(0, 80)}…`;
-  return ua;
+function formatUA(ua: string | null | undefined): string {
+  if (ua == null || typeof ua !== "string") return "Unknown device";
+  const trimmed = ua.trim();
+  if (!trimmed) return "Unknown device";
+  if (trimmed.length > 80) return `${trimmed.slice(0, 80)}…`;
+  return trimmed;
 }
 
 function formatDate(iso: string): string {
@@ -25,9 +27,14 @@ function formatDate(iso: string): string {
 
 export function SessionsClientPage({ sessions }: { sessions: SessionRow[] }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
   const reauth = useReauthGate();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function deleteSession(id: string) {
     setRevoking(id);
@@ -98,8 +105,9 @@ export function SessionsClientPage({ sessions }: { sessions: SessionRow[] }) {
               {s.ipAddress ? (
                 <p className="font-body text-xs text-on-surface-variant">{s.ipAddress}</p>
               ) : null}
-              <p className="font-body text-xs text-on-surface-variant">
-                Signed in {formatDate(s.createdAt)} · Expires {formatDate(s.expiresAt)}
+              <p className="font-body text-xs text-on-surface-variant" suppressHydrationWarning>
+                Signed in {mounted ? formatDate(s.createdAt) : "…"} · Expires{" "}
+                {mounted ? formatDate(s.expiresAt) : "…"}
               </p>
             </div>
             {!s.isCurrent ? (

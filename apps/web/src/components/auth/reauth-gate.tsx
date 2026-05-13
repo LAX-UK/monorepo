@@ -43,7 +43,9 @@ export function useReauthGate() {
         const msg =
           code === "invalid_credentials"
             ? AUTH_ERROR_MESSAGES.invalid_credentials
-            : AUTH_ERROR_MESSAGES.unknown;
+            : code === "session_required"
+              ? "Your session has expired or is no longer valid. Please sign in again and retry."
+              : AUTH_ERROR_MESSAGES.unknown;
         setError(msg);
         return;
       }
