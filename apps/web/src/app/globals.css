@@ -15,6 +15,9 @@
   --color-brand-200: #a3a3a3;
   --color-brand-100: #d1d1d1;
   --color-accent-gold: #d4af37;
+  /** Web accent: blue in light mode; the `.dark` root override maps brand accent to gold. */
+  --color-accent-blue: #2b7fff;
+  --color-accent-brand: var(--color-accent-blue);
   --color-lot-orange: #e17100;
   --color-live-red: #e83030;
   --color-success: #2ea043;
@@ -362,6 +365,7 @@
 /* Dark theme: semantic tokens (mirrors @theme names) */
 html.dark {
   color-scheme: dark;
+  --color-accent-brand: var(--color-accent-gold);
   /* Marketing surfaces in dark */
   --color-page-bg: #121414;
   --color-footer-bg: #0d0f0f;
@@ -589,20 +593,25 @@ html.dark {
 
 /* Gold border pulse (F3b) — emitted on a card when a new bid lands. Caller
    toggles a data attribute or class for one cycle and removes after. */
-@keyframes gold-pulse {
+@keyframes accent-pulse {
   0% {
-    box-shadow: 0 0 0 0 var(--color-accent-gold);
+    box-shadow: 0 0 0 0 var(--color-accent-brand);
   }
   60% {
-    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent-brand) 0%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-brand) 0%, transparent);
   }
 }
 
+.accent-pulse {
+  animation: accent-pulse var(--motion-duration-xl, 900ms) var(--motion-ease-decelerate);
+}
+
+/* Back-compat alias — same animation as `.accent-pulse`. */
 .gold-pulse {
-  animation: gold-pulse var(--motion-duration-xl, 900ms) var(--motion-ease-decelerate);
+  animation: accent-pulse var(--motion-duration-xl, 900ms) var(--motion-ease-decelerate);
 }
 
 /* Outbid shake (F3b) — short horizontal nudge on a card when user is outbid. */
@@ -657,6 +666,7 @@ html.dark {
   .zoom-bg,
   .tick-in,
   .shimmer-sweep::after,
+  .accent-pulse,
   .gold-pulse,
   .outbid-shake,
   .sold-stamp-in {

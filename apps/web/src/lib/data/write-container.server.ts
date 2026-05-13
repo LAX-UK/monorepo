@@ -11,6 +11,7 @@ import { AdminSubmissionService } from "@/lib/services/impl/admin-submission.ser
 import { AdminUserService } from "@/lib/services/impl/admin-user.service";
 import { BiddingPrefsService } from "@/lib/services/impl/bidding-prefs.service";
 import { NotificationPrefsService } from "@/lib/services/impl/notification-prefs.service";
+import { UiPrefsService } from "@/lib/services/impl/ui-prefs.service";
 import { PaymentService } from "@/lib/services/impl/payment.service";
 import { ProfileService } from "@/lib/services/impl/profile.service";
 import { SubmissionService } from "@/lib/services/impl/submission.service";
@@ -24,6 +25,7 @@ import type { IAdminSubmissionService } from "@/lib/services/interfaces/admin-su
 import type { IAdminUserService } from "@/lib/services/interfaces/admin-user-service";
 import type { IBiddingPrefsService } from "@/lib/services/interfaces/bidding-prefs-service";
 import type { INotificationPrefsService } from "@/lib/services/interfaces/notification-prefs-service";
+import type { IUiPrefsService } from "@/lib/services/interfaces/ui-prefs-service";
 import type { IPaymentService } from "@/lib/services/interfaces/payment-service";
 import type { IProfileService } from "@/lib/services/interfaces/profile-service";
 import type { ISubmissionService } from "@/lib/services/interfaces/submission-service";
@@ -35,6 +37,7 @@ export type WriteServiceContainer = {
   profile: IProfileService;
   biddingPrefs: IBiddingPrefsService;
   notificationPrefs: INotificationPrefsService;
+  uiPrefs: IUiPrefsService;
   payments: IPaymentService;
   adminCategories: IAdminCategoryService;
   adminArtists: IAdminArtistService;
@@ -60,6 +63,7 @@ export function getWriteContainer(): WriteServiceContainer {
     profile: new ProfileService(api),
     biddingPrefs: new BiddingPrefsService(api),
     notificationPrefs: new NotificationPrefsService(api),
+    uiPrefs: new UiPrefsService(api),
     payments: new PaymentService(api),
     adminCategories: new AdminCategoryService(api),
     adminArtists: new AdminArtistService(api),

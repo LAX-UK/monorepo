@@ -77,7 +77,7 @@ export function LaxHeroLot({ lot }: Props) {
                 <StatTile label="Current bid" value={lot.currentBidFormatted} tone="white" />
                 <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
                 {lot.isAuctionLive && lot.endTime ? (
-                  <div className="flex min-w-0 flex-col gap-2 border-l-2 border-accent-gold pl-4">
+                  <div className="flex min-w-0 flex-col gap-2 border-l-2 border-accent-brand pl-4">
                     <span className="font-label text-[13px] font-medium uppercase leading-4 text-white/80">
                       Closes in
                     </span>

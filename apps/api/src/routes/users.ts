@@ -19,6 +19,7 @@ import {
   registerBodySchema,
   updateAddressBodySchema,
   updateProfileSchema,
+  uiPreferencePatchSchema,
   userIdParamSchema,
   watchlistBodySchema,
   watchlistLotIdParamSchema,
@@ -394,6 +395,24 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
+  r.get("/me/preferences/ui", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const data = await container.uiPreferenceService.getForUser(userId);
+    return c.json({ data });
+  });
+
+  r.patch(
+    "/me/preferences/ui",
+    requireAuth,
+    zValidator("json", uiPreferencePatchSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const data = await container.uiPreferenceService.patch(userId, body);
+      return c.json({ data });
+    },
+  );
+
   r.post(
     "/me/push-subscription",
     requireAuth,
@@ -676,7 +695,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const row = await container.profileService.getProfile(userId);
+    const [row, uiPrefs] = await Promise.all([
+      container.profileService.getProfile(userId),
+      container.uiPreferenceService.getForUser(userId),
+    ]);
     if (!row) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -698,6 +720,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         signupPersona: row.signupPersona,
         deletionRequestedAt: row.deletionRequestedAt,
         twoFactorEnabled: row.twoFactorEnabled,
+        uiPreferences: uiPrefs,
       },
     });
   });

@@ -59,7 +59,8 @@ It uses existing implementation as source of truth:
 | Token | Use |
 |-------|-----|
 | `brand-900` … `brand-100` | Text hierarchy, borders, neutrals |
-| `accent-gold` | Stat rail, focus rings |
+| `accent-brand` | Stat rail, focus rings, bid pulse | Resolves to blue (`--color-accent-blue`) in light, gold (`--color-accent-gold`) in dark |
+| `accent-gold` | Literal gold hex | Kept for email/branding parity; prefer `accent-brand` in web UI |
 | `lot-orange` | Lot labels, lot identity accents |
 | `live-red` | Live indicators |
 | `page-bg` | Default marketing canvas |

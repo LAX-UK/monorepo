@@ -37,3 +37,4 @@ export * from "./payout.js";
 export * from "./saleroom.js";
 export * from "./fulfilment.js";
 export * from "./reauth.js";
+export * from "./ui-preferences.js";

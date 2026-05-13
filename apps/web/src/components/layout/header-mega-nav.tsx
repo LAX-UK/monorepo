@@ -290,7 +290,7 @@ function HeaderMegaMenuPanelContent({
               <Link
                 href={row.href}
                 data-megamenu-link
-                className="font-body text-sm font-medium text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:text-on-surface"
+                className="font-body text-sm font-medium text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:text-on-surface"
                 onClick={onNavigate}
               >
                 {row.label}
@@ -305,7 +305,7 @@ function HeaderMegaMenuPanelContent({
         <Link
           href={viewAllHref}
           data-megamenu-link
-          className="w-fit font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold motion-reduce:transition-none dark:text-on-surface"
+          className="w-fit font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:text-on-surface"
           onClick={onNavigate}
         >
           {viewAllLabel}

@@ -5,7 +5,6 @@ import { AutoClearQueryParams } from "@/components/dashboard/auto-clear-query-pa
 import { SettingsConnectedAccounts } from "@/components/dashboard/settings-connected-accounts";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
-import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import type { LegalEntityStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import {
@@ -169,8 +168,6 @@ export function SettingsSecurityTabContent({
           </div>
         </SettingsSection>
       </div>
-
-      <ReduceMotionCard />
 
       <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Password" titleAs="h3" eyebrow bordered={false}>

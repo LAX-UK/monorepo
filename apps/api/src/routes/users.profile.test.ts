@@ -34,6 +34,10 @@ function appWithGetProfile(row: ProfileMeRow | null) {
   const app = new Hono();
   const container = {
     profileService,
+    uiPreferenceService: {
+      getForUser: vi.fn().mockResolvedValue({ theme: "system" }),
+      patch: vi.fn(),
+    },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     mediaUrlResolver: {
       resolve: vi.fn().mockImplementation((x: string | null) => Promise.resolve(x)),
@@ -51,16 +55,22 @@ describe("GET /users/me", () => {
     const { app } = appWithGetProfile(baseProfile({ twoFactorEnabled: false }));
     const res = await app.request("/users/me");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { twoFactorEnabled: boolean } };
+    const body = (await res.json()) as {
+      data: { twoFactorEnabled: boolean; uiPreferences: { theme: string } };
+    };
     expect(body.data.twoFactorEnabled).toBe(false);
+    expect(body.data.uiPreferences).toEqual({ theme: "system" });
   });
 
   it("includes twoFactorEnabled true", async () => {
     const { app } = appWithGetProfile(baseProfile({ twoFactorEnabled: true }));
     const res = await app.request("/users/me");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { twoFactorEnabled: boolean } };
+    const body = (await res.json()) as {
+      data: { twoFactorEnabled: boolean; uiPreferences: { theme: string } };
+    };
     expect(body.data.twoFactorEnabled).toBe(true);
+    expect(body.data.uiPreferences).toEqual({ theme: "system" });
   });
 });
 

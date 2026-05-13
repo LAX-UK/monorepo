@@ -10,6 +10,7 @@ import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
+import { THEME_COOKIE_MAX_AGE_SEC, THEME_COOKIE_NAME } from "@/lib/preferences/theme-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
   CLIENT_WORKSPACE_COOKIE,
@@ -31,6 +32,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const orgOnboardingResume = await getServerOrgOnboardingResume().catch(() => null);
 
   const jar = await cookies();
+  const theme = user.uiPreferences?.theme ?? "system";
+  jar.set(THEME_COOKIE_NAME, theme, {
+    path: "/",
+    maxAge: THEME_COOKIE_MAX_AGE_SEC,
+    sameSite: "lax",
+  });
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
   const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 

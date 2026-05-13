@@ -58,6 +58,7 @@ import { DrizzleLegalEntityNotificationRecipientRepository } from "./repositorie
 import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entity.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
+import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
@@ -118,6 +119,7 @@ import type { ILegalEntityNotificationRecipientReader } from "./services/interfa
 import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-repository.js";
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
+import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
 import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
 import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
@@ -152,6 +154,7 @@ import { OrganizationOnboardingFlowService } from "./services/organization-onboa
 import { PaymentService } from "./services/payment.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
+import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
@@ -223,6 +226,8 @@ export type Container = {
   artistWatchlistService: ArtistWatchlistService;
   notificationService: NotificationService;
   notificationPreferenceRepository: INotificationPreferenceRepository;
+  uiPreferenceRepository: IUiPreferenceRepository;
+  uiPreferenceService: UiPreferenceService;
   pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
   notificationFactory: NotificationFactory;
@@ -429,6 +434,8 @@ export function createContainer(env: Env): Container {
   const notificationWriteRepo = new DrizzleNotificationWriteRepository(db);
   const paymentRepo = new DrizzlePaymentRepository(db);
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
+  const uiPreferenceRepository = new DrizzleUiPreferenceRepository(db);
+  const uiPreferenceService = new UiPreferenceService(uiPreferenceRepository);
   const emailObservabilityRepository = new DrizzleEmailObservabilityRepository(db);
   const pushSubscriptionRepository = new DrizzlePushSubscriptionRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
@@ -851,6 +858,8 @@ export function createContainer(env: Env): Container {
     artistWatchlistService,
     notificationService,
     notificationPreferenceRepository,
+    uiPreferenceRepository,
+    uiPreferenceService,
     pushSubscriptionRepository,
     notificationDispatcher,
     notificationFactory,

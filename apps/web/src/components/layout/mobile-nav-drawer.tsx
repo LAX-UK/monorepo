@@ -63,7 +63,7 @@ export function MobileNavDrawer({
           <div className="flex items-center justify-between border-b border-nav-border pb-4">
             <Link
               href="/"
-              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold"
+              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               onClick={close}
             >
               <LaxLogo variant="header" />
