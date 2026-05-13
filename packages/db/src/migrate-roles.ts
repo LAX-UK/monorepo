@@ -3,7 +3,8 @@ import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Client } = pg;
 
-const AUTH_FULL_TABLES = [
+/** Tables Better Auth runs as `auth_app` must have full DML on (see `createAuth` in apps/api + apps/auth). */
+export const AUTH_FULL_TABLES = [
   "user",
   "session",
   "account",
@@ -13,7 +14,9 @@ const AUTH_FULL_TABLES = [
   "oauth_application",
   "oauth_access_token",
   "oauth_consent",
-];
+  /** `twoFactor` plugin backing table — required for `requestPasswordReset` / sign-in hooks on apps/api. */
+  "two_factor",
+] as const;
 // apps/auth (auth_app) needs to enqueue email via IEmailService.enqueue() from the
 // Better Auth send-verification-email / send-reset-password / databaseHooks.user.create.after
 // hooks. That requires INSERT + SELECT on email_outbox, plus SELECT on email_suppression

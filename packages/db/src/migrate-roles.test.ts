@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns } from "drizzle-orm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { API_COLUMN_UPDATE_GRANTS } from "./migrate-roles.js";
+import { API_COLUMN_UPDATE_GRANTS, AUTH_FULL_TABLES } from "./migrate-roles.js";
 import { user } from "./schema/auth.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -311,6 +311,12 @@ async function collectCallSites(): Promise<CallSiteRecord[]> {
   }
   return records;
 }
+
+describe("migrate-roles invariants", () => {
+  it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {
+    expect([...AUTH_FULL_TABLES]).toContain("two_factor");
+  });
+});
 
 describe("api_app user UPDATE grants vs apps/api sources", () => {
   it("every .update(user|userTable).set(...) column maps to API_COLUMN_UPDATE_GRANTS.user", async () => {
