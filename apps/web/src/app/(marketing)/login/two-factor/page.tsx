@@ -1,6 +1,7 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { TwoFactorVerifyForm } from "@/components/auth/two-factor-verify-form";
 import { redirectIfAuthenticated } from "@/lib/auth/guards.server";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -20,7 +21,8 @@ export default async function LoginTwoFactorPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const sp = await searchParams;
-  const next = typeof sp.next === "string" && sp.next.startsWith("/") ? sp.next : "/dashboard";
+  const rawNext = typeof sp.next === "string" ? sp.next : "/dashboard";
+  const next = isSafeNextPath(rawNext) ? rawNext : "/dashboard";
   await redirectIfAuthenticated({ route: "login", next });
 
   return (

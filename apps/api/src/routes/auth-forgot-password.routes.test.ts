@@ -47,6 +47,18 @@ function buildFakeRedis() {
   return {
     incr: vi.fn(async () => 1),
     expire: vi.fn(async () => 1),
+    multi: vi.fn(() => ({
+      zadd: vi.fn().mockReturnThis(),
+      zremrangebyscore: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      zcard: vi.fn().mockReturnThis(),
+      exec: vi.fn(async () => [
+        [null, 0],
+        [null, 0],
+        [null, 1],
+        [null, 1],
+      ]),
+    })),
   };
 }
 
@@ -71,6 +83,7 @@ function mountAuth(opts: {
     },
     userService: {},
     emailService: { enqueue },
+    authAuditPublisher: { publish: vi.fn(async () => {}) },
   };
   const app = new Hono().route("/auth", createAuthRoutes(container as never));
   return { app, enqueue, requestPasswordReset };

@@ -6,6 +6,7 @@ import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Montserrat, Poppins } from "next/font/google";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -53,9 +54,10 @@ export const viewport: Viewport = {
   ],
 };
 
-const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
+  const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
 
-export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
@@ -66,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeInit />
       </head>
       <body>
-        <script type="application/ld+json" suppressHydrationWarning>
+        <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
           {rootJsonLd}
         </script>
         <a href="#main-content" className="skip-link">

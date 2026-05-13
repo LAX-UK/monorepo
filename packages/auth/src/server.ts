@@ -17,28 +17,26 @@
  *   `{ domain, sameSite: "lax", secure: true }`, aligning session cookies with
  *   HTTPS production deployments.
  *
+ * **`__Host-` prefix:** Not used — incompatible with `Domain` for `*.lax.bid`.
+ *
  * JWT access tokens (15m) are configured via the `jwt` plugin separately from
  * the DB-backed session cookie TTL (`session.expiresIn` / `updateAge` below).
  */
 
 import type { Database } from "@auction/db";
-import {
-  account,
-  oauthAccessToken,
-  oauthApplication,
-  oauthConsent,
-  session,
-  twoFactor as twoFactorTable,
-  user,
-  verification,
-} from "@auction/db/schema";
+import { session as sessionTable } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor } from "better-auth/plugins";
-import { jwt } from "better-auth/plugins/jwt";
-import { oidcProvider } from "better-auth/plugins/oidc-provider";
-import { createJwksAdapter } from "./jwks.js";
+import { count, eq } from "drizzle-orm";
+import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+import { parseAuthDekKey } from "./crypto/dek.js";
+import { createEnvelopeCrypto } from "./crypto/envelope.js";
+import {
+  buildDrizzleDatabase,
+  buildEmailAndPasswordBlock,
+  buildEmailVerificationBlock,
+  buildJwtAndOidcPlugins,
+} from "./server-plugins.js";
 
 export type AuthEnv = {
   db: Database;
@@ -59,6 +57,12 @@ export type AuthEnv = {
   appleClientSecret?: string | undefined;
   email?: IEmailService | undefined;
   requireEmailVerification?: boolean | undefined;
+  /** `aud` claim for JWTs consumed by `lax-api` (Bearer). OIDC clients may use separate audiences via issuer config. */
+  jwtAudience?: string | undefined;
+  /** When set (64 hex or base64 of 32 bytes), envelope-encrypts OAuth tokens, 2FA secrets, and JWKS private keys at rest. */
+  authDekKey?: string | undefined;
+  /** Called after password reset succeeds — revoke all other sessions; returns count of revoked rows (optional; wired in apps/api). */
+  revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth).
    * The api wires this to provision the user's personal legal entity (Phase B / SE-P24).
    * Errors are caught + logged and never block account creation.
@@ -66,6 +70,11 @@ export type AuthEnv = {
   onUserCreated?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  /**
+   * When `true`, `databaseHooks.session.create.after` fires a `new-device-login` email
+   * for every new session. Enabled in production; leave unset in tests.
+   */
+  enableNewDeviceLoginEmail?: boolean | undefined;
 };
 
 export type Auth = {
@@ -116,32 +125,25 @@ export function createSocialProviders(
 
 export function createAuth(env: AuthEnv): Auth {
   const issuer = env.issuerURL ?? env.baseURL;
-  const jwksAdapter = createJwksAdapter(env.db);
   const socialProviders = createSocialProviders(env);
+  const jwtAudience = env.jwtAudience ?? DEFAULT_JWT_AUDIENCE;
+  const envelope =
+    env.authDekKey && env.authDekKey.trim().length > 0
+      ? createEnvelopeCrypto(parseAuthDekKey(env.authDekKey.trim()))
+      : undefined;
 
   return betterAuth({
     secret: env.secret,
     baseURL: issuer,
     basePath: "/api/auth",
     trustedOrigins: env.trustedOrigins,
-    database: drizzleAdapter(env.db, {
-      provider: "pg",
-      schema: {
-        user,
-        session,
-        account,
-        verification,
-        oauthApplication,
-        oauthAccessToken,
-        oauthConsent,
-        twoFactor: twoFactorTable,
-      },
-    }),
+    database: buildDrizzleDatabase(env.db, envelope),
     socialProviders,
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: ["google", "apple"],
+        /** Empty: do not treat Google/Apple as "trusted" for linking without `email_verified`. */
+        trustedProviders: [],
       },
     },
     user: {
@@ -159,56 +161,12 @@ export function createAuth(env: AuthEnv): Auth {
         },
       },
     },
-    emailAndPassword: {
-      enabled: true,
-      requireEmailVerification: env.requireEmailVerification ?? true,
-      sendResetPassword: async ({ user: authUser, url }) => {
-        void env.email?.enqueue({
-          template: "reset-password",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: {
-            resetLink: url,
-            userEmail: authUser.email,
-            userName: authUser.name,
-            expirationMinutes: 60,
-          },
-        });
-      },
-      onPasswordReset: async ({ user: authUser }) => {
-        void env.email?.enqueue({
-          template: "password-changed",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: { userName: authUser.name },
-        });
-      },
-    },
-    emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: true,
-      autoSignInAfterVerification: true,
-      sendVerificationEmail: async ({ user: authUser, url }) => {
-        void env.email?.enqueue({
-          template: "verify-email",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: { verificationUrl: url, userName: authUser.name },
-        });
-      },
-      afterEmailVerification: async (authUser) => {
-        void env.email?.enqueue({
-          template: "welcome",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "transactional",
-          vars: { userName: authUser.name },
-        });
-      },
-    },
+    emailAndPassword: buildEmailAndPasswordBlock({
+      email: env.email,
+      requireEmailVerification: env.requireEmailVerification,
+      revokeAllSessions: env.revokeAllSessions,
+    }),
+    emailVerification: buildEmailVerificationBlock(env.email),
     databaseHooks: {
       user: {
         create: {
@@ -228,70 +186,77 @@ export function createAuth(env: AuthEnv): Auth {
               }
             }
             if (!authUser.emailVerified) return;
-            void env.email?.enqueue({
-              template: "welcome",
-              to: authUser.email,
-              userId: authUser.id,
-              category: "transactional",
-              vars: { userName: authUser.name },
+            env.email
+              ?.enqueue({
+                template: "welcome",
+                to: authUser.email,
+                userId: authUser.id,
+                category: "transactional",
+                vars: { userName: authUser.name },
+              })
+              .catch((err: unknown) => {
+                console.error("[auth] enqueue welcome failed", {
+                  userId: authUser.id,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (sess) => {
+            if (!env.enableNewDeviceLoginEmail) return;
+            // Count all sessions for this user (the new one is already committed).
+            // If count === 1 this is the very first session — the user just registered.
+            // Don't send a "new device login" email in that case; they already receive
+            // a welcome / email-verification email and the duplicate is confusing.
+            const countResult = await env.db
+              .select({ value: count() })
+              .from(sessionTable)
+              .where(eq(sessionTable.userId, sess.userId));
+            const sessionCount = countResult[0]?.value ?? 0;
+            if (sessionCount <= 1) return;
+            const userRow = await env.db.query.user.findFirst({
+              where: (u, { eq }) => eq(u.id, sess.userId),
+              columns: { email: true, name: true },
             });
+            if (!userRow) return;
+            const when = new Date(sess.createdAt);
+            env.email
+              ?.enqueue({
+                template: "new-device-login",
+                to: userRow.email,
+                userId: sess.userId,
+                category: "auth",
+                vars: {
+                  userName: userRow.name,
+                  whenDisplay: when.toUTCString(),
+                  deviceSummary: (sess as { userAgent?: string | null }).userAgent ?? null,
+                },
+              })
+              .catch((err: unknown) => {
+                console.error("[auth] enqueue new-device-login failed", {
+                  userId: sess.userId,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
           },
         },
       },
     },
     session: {
-      expiresIn: 60 * 60 * 24 * 7,
-      updateAge: 60 * 60 * 24,
+      expiresIn: AUTH_TIMINGS.sessionExpiresSec,
+      updateAge: AUTH_TIMINGS.sessionUpdateAgeSec,
     },
-    plugins: [
-      jwt({
-        jwks: {
-          jwksPath: "/.well-known/jwks.json",
-          keyPairConfig: {
-            alg: "RS256",
-            modulusLength: 2048,
-          },
-          gracePeriod: 60 * 30,
-        },
-        jwt: {
-          issuer,
-          expirationTime: "15 minutes",
-          definePayload: ({ user: sessionUser }) => ({
-            email: sessionUser.email,
-            email_verified: sessionUser.emailVerified,
-            name: sessionUser.name,
-            image: sessionUser.image,
-            role: (sessionUser as { role?: string }).role ?? "client",
-            staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
-          }),
-        },
-        adapter: {
-          getJwks: () => jwksAdapter.getJwks(),
-          createJwk: (data) => jwksAdapter.createJwk(data),
-        },
-      }),
-      oidcProvider({
-        __skipDeprecationWarning: true,
-        accessTokenExpiresIn: 60 * 15,
-        refreshTokenExpiresIn: 60 * 60 * 24 * 30,
-        loginPage: `${env.webOrigin ?? issuer}/login`,
-        useJWTPlugin: true,
-        requirePKCE: true,
-        scopes: ["openid", "profile", "email", "offline_access"],
-        metadata: {
-          issuer,
-          jwks_uri: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
-        },
-        getAdditionalUserInfoClaim: (sessionUser) => ({
-          email_verified: sessionUser.emailVerified,
-          role: (sessionUser as { role?: string }).role ?? "client",
-          staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
-        }),
-      }),
-      twoFactor({ issuer: "LAX" }),
-    ],
+    plugins: buildJwtAndOidcPlugins({
+      db: env.db,
+      issuer,
+      webOrigin: env.webOrigin,
+      jwtAudience,
+      envelope,
+    }),
     advanced: {
-      // Allow cookies over HTTP when explicitly enabled (for testing without HTTPS)
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
       crossSubDomainCookies: env.cookieDomain
         ? {
@@ -309,3 +274,12 @@ export function createAuth(env: AuthEnv): Auth {
     },
   }) as Auth;
 }
+
+export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+export {
+  runSignInTurnstileGate,
+  isSignInEmailPost,
+  type SignInGateRedis,
+} from "./sign-in-turnstile-gate.js";
+export { verifyTurnstileResponse } from "./turnstile-siteverify.js";
+export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";

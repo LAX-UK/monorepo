@@ -2,34 +2,162 @@ import {
   buildRequestWithAuthEdgeHeader,
   getAuthPublicCookieRedirectUrl,
 } from "@/lib/auth/auth-public-edge";
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
+import { type NextRequest, NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
-  const tagged = buildRequestWithAuthEdgeHeader(request);
-  if (tagged) {
-    return NextResponse.next(tagged);
-  }
-
-  const redirectUrl = getAuthPublicCookieRedirectUrl(
-    request.nextUrl,
-    request.headers.get("cookie") ?? "",
-  );
-  if (redirectUrl) {
-    return NextResponse.redirect(redirectUrl, 307);
-  }
-
-  return NextResponse.next();
+/** Generate a cryptographically random nonce string for CSP. */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
 }
 
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+/** CSP `script-src` token for the inline theme-init script (matches {@link THEME_INIT_SNIPPET}). */
+const themeInitScriptSrcTokenPromise = (async (): Promise<string> => {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(THEME_INIT_SNIPPET));
+  const b64 = uint8ArrayToBase64(new Uint8Array(buf));
+  return `'sha256-${b64}'`;
+})();
+
+/**
+ * Build Content-Security-Policy header value.
+ * Set `CSP_ENFORCE=1` to flip from report-only to enforcing.
+ */
+function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
+  const isDev = process.env.NODE_ENV !== "production";
+  // Next.js dev mode (HMR / React Refresh) and Turbopack rely on `eval()`,
+  // so we permit `'unsafe-eval'` in development only. Production runs without it.
+  // Theme init runs without a nonce (avoids hydration mismatch); allow via static hash.
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${themeInitScriptSrcToken}`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${themeInitScriptSrcToken}`;
+
+  const directives = [
+    `default-src 'self'`,
+    scriptSrc,
+    // Inline styles from Next.js emotion / tailwind; adjust as needed.
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob: https:`,
+    `font-src 'self' data:`,
+    // Include configured API/auth origins. In local dev these vars are typically
+    // absent so we fall back to localhost ports to avoid CSP violations.
+    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} https://challenges.cloudflare.com`.trim(),
+    // Cloudflare Turnstile + YouTube embeds (live-stream hero) render iframes.
+    "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com",
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    ...(process.env.NEXT_PUBLIC_CSP_REPORT_URI
+      ? [`report-uri ${process.env.NEXT_PUBLIC_CSP_REPORT_URI}`]
+      : []),
+  ];
+  return directives.join("; ");
+}
+
+const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
+
+/** Better Auth cookie names that may carry a stale session after server-side invalidation. */
+const STALE_AUTH_COOKIE_NAMES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+  "better-auth.session_data",
+  "__Secure-better-auth.session_data",
+];
+
+/**
+ * Expire stale Better Auth cookies in the browser.
+ *
+ * To actually delete a cookie the Set-Cookie triple (name, path, domain) must
+ * match what was set. Better Auth sets cookies with `Domain=<COOKIE_DOMAIN>`
+ * in production (`.lax.bid`). Without repeating the domain attribute, the
+ * browser creates a separate host-only expired cookie while the original
+ * domain-scoped one persists — the loop returns on the very next request.
+ *
+ * `NEXT_PUBLIC_COOKIE_DOMAIN` is the web-app-readable counterpart of the
+ * server-side `COOKIE_DOMAIN`; both must be identical for this to work.
+ */
+function purgeStaleAuthCookies(response: NextResponse): void {
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN?.trim() || undefined;
+  for (const name of STALE_AUTH_COOKIE_NAMES) {
+    response.cookies.set(name, "", {
+      path: "/",
+      expires: new Date(0),
+      maxAge: 0,
+      sameSite: "lax",
+      ...(domain ? { domain } : {}),
+    });
+  }
+}
+
+/** True when the URL is the post-stale-session landing page; we purge the cookies as we render it. */
+function isStaleSessionLanding(url: URL): boolean {
+  if (url.pathname !== "/login") return false;
+  return (
+    url.searchParams.get("session_expired") === "1" || url.searchParams.get("auth") === "required"
+  );
+}
+
+export async function middleware(request: NextRequest) {
+  const nonce = generateNonce();
+  const themeInitScriptSrcToken = await themeInitScriptSrcTokenPromise;
+
+  // Auth edge header tagging.
+  const tagged = buildRequestWithAuthEdgeHeader(request);
+  let baseResponse: ReturnType<typeof NextResponse.next> | ReturnType<typeof NextResponse.redirect>;
+
+  if (tagged) {
+    // `buildRequestWithAuthEdgeHeader` returns a NextResponse (already tagged).
+    // Clone it and patch in the nonce header.
+    const res = NextResponse.next(tagged);
+    res.headers.set("x-nonce", nonce);
+    baseResponse = res;
+  } else {
+    const redirectUrl = getAuthPublicCookieRedirectUrl(
+      request.nextUrl,
+      request.headers.get("cookie") ?? "",
+    );
+    if (redirectUrl) {
+      return NextResponse.redirect(redirectUrl, 307);
+    }
+
+    const reqHeaders = new Headers(request.headers);
+    reqHeaders.set("x-nonce", nonce);
+    baseResponse = NextResponse.next({ request: { headers: reqHeaders } });
+  }
+
+  if (isStaleSessionLanding(request.nextUrl)) {
+    purgeStaleAuthCookies(baseResponse);
+  }
+
+  const csp = buildCsp(nonce, themeInitScriptSrcToken);
+  const headerName = CSP_REPORT_ONLY
+    ? "content-security-policy-report-only"
+    : "content-security-policy";
+  baseResponse.headers.set(headerName, csp);
+  baseResponse.headers.set("x-frame-options", "DENY");
+  baseResponse.headers.set("x-content-type-options", "nosniff");
+  baseResponse.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  // HSTS is a transport-layer control; it must be sent in production regardless
+  // of whether CSP is in report-only or enforcing mode.
+  if (process.env.NODE_ENV === "production") {
+    baseResponse.headers.set(
+      "strict-transport-security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+  }
+
+  return baseResponse;
+}
+
+/** CSP + security headers on all HTML routes; excludes static assets and `/api/*` route handlers. */
 export const config = {
-  matcher: [
-    "/login",
-    "/login/two-factor",
-    "/register",
-    "/dashboard",
-    "/dashboard/:path*",
-    "/admin",
-    "/admin/:path*",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

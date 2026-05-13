@@ -1,16 +1,20 @@
 import { authClient } from "@/lib/auth-client";
+import { authSubmitFailure, mapBetterAuthSecondaryFailure } from "@/lib/auth/auth-error-code";
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
+import { notifyTwoFactorDisabledEmail } from "@/lib/auth/security-notify.client";
 
 export async function disableTwoFactorService(password: string): Promise<AuthSubmitResult> {
   const res = await authClient.twoFactor.disable({ password });
   if (res.error) {
-    const code =
+    const rawCode =
       "code" in res.error && typeof res.error.code === "string" ? res.error.code : undefined;
-    return {
-      ok: false,
-      message: res.error.message ?? "Could not disable two-factor authentication",
-      ...(code ? { code } : {}),
-    };
+    const code = mapBetterAuthSecondaryFailure({
+      rawCode,
+      message: res.error.message,
+      defaultCode: "two_factor_disable_failed",
+    });
+    return authSubmitFailure(code);
   }
+  notifyTwoFactorDisabledEmail();
   return { ok: true };
 }

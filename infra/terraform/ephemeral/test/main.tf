@@ -151,7 +151,10 @@ locals {
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
-        { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" }
+        { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "NEXT_PUBLIC_TURNSTILE_SITE_KEY", value = var.turnstile_site_key, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "CSP_ENFORCE", value = var.csp_enforce, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_CSP_REPORT_URI", value = var.next_public_csp_report_uri, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" }
       ])
     },
     {
@@ -208,7 +211,10 @@ locals {
         { key = "XERO_INVOICE_DUE_DAYS", value = var.xero_invoice_due_days, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_POST_CONNECT_WEB_REDIRECT", value = var.xero_post_connect_web_redirect, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_USE_LEGAL_ENTITY_CONTACT", value = var.xero_use_legal_entity_contact, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "XERO_PAYOUT_BILL_ACCOUNT_CODE", value = var.xero_payout_bill_account_code, type = "GENERAL", scope = "RUN_TIME" }
+        { key = "XERO_PAYOUT_BILL_ACCOUNT_CODE", value = var.xero_payout_bill_account_code, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "AUTH_DEK_KEY", value = var.auth_dek_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "TURNSTILE_SECRET_KEY", value = var.turnstile_secret_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "VERIFY_ORIGIN", value = var.verify_origin, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {
@@ -234,7 +240,9 @@ locals {
         { key = "OIDC_ISSUER_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "CORS_ALLOWED_ORIGINS", value = local.cors_allowed_origins, type = "GENERAL", scope = "RUN_TIME" },
         { key = "APPLE_DOMAIN_ASSOCIATION", value = var.apple_domain_association, type = "SECRET", scope = "RUN_TIME" },
-        { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" }
+        { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "AUTH_DEK_KEY", value = var.auth_dek_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "VERIFY_ORIGIN", value = var.verify_origin, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {

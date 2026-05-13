@@ -26,8 +26,14 @@ export const backupCodeFormSchema = z.object({
 
 export type BackupCodeFormValues = z.infer<typeof backupCodeFormSchema>;
 
-/** Current password for sensitive 2FA actions. */
-export const twoFactorPasswordSchema = z.string().min(8, "Use at least 8 characters");
+/**
+ * Current password for sensitive 2FA actions.
+ *
+ * Intentionally no minimum length here — the API / Better Auth layer
+ * enforces correctness; this validator only ensures the field is non-empty
+ * so that users with pre-policy passwords (< 12 chars) are not locked out.
+ */
+export const twoFactorPasswordSchema = z.string().min(1, "Password is required");
 
 export const enableTwoFactorFormSchema = z.object({
   password: twoFactorPasswordSchema,

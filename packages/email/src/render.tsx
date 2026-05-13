@@ -1,5 +1,14 @@
 import { render } from "@react-email/render";
 import type { ReactElement } from "react";
+import TwoFactorDisabledEmail, {
+  subject as twoFactorDisabledSubject,
+} from "./templates/2fa-disabled.js";
+import TwoFactorEnabledEmail, {
+  subject as twoFactorEnabledSubject,
+} from "./templates/2fa-enabled.js";
+import AccountSuspendedEmail, {
+  subject as accountSuspendedSubject,
+} from "./templates/account-suspended.js";
 import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
@@ -25,9 +34,15 @@ import LotVoidedNoticeEmail, {
   subject as lotVoidedNoticeSubject,
 } from "./templates/lot-voided-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
+import NewDeviceLoginEmail, {
+  subject as newDeviceLoginSubject,
+} from "./templates/new-device-login.js";
 import OAuthAccountResetAttemptEmail, {
   subject as oauthAccountResetAttemptSubject,
 } from "./templates/oauth-account-reset-attempt.js";
+import PasswordChangedElsewhereEmail, {
+  subject as passwordChangedElsewhereSubject,
+} from "./templates/password-changed-elsewhere.js";
 import PasswordChanged, {
   subject as passwordChangedSubject,
 } from "./templates/password-changed.js";
@@ -72,6 +87,10 @@ type TemplateRenderer<T extends TemplateName> = {
 };
 
 const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
+  "account-suspended": {
+    subject: accountSuspendedSubject,
+    component: (vars) => <AccountSuspendedEmail {...vars} />,
+  },
   welcome: { subject: welcomeSubject, component: (vars) => <WelcomeEmail {...vars} /> },
   "verify-email": { subject: verifyEmailSubject, component: (vars) => <VerifyEmail {...vars} /> },
   "reset-password": {
@@ -85,6 +104,22 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "password-changed": {
     subject: passwordChangedSubject,
     component: (vars) => <PasswordChanged {...vars} />,
+  },
+  "2fa-enabled": {
+    subject: twoFactorEnabledSubject,
+    component: (vars) => <TwoFactorEnabledEmail {...vars} />,
+  },
+  "2fa-disabled": {
+    subject: twoFactorDisabledSubject,
+    component: (vars) => <TwoFactorDisabledEmail {...vars} />,
+  },
+  "new-device-login": {
+    subject: newDeviceLoginSubject,
+    component: (vars) => <NewDeviceLoginEmail {...vars} />,
+  },
+  "password-changed-elsewhere": {
+    subject: passwordChangedElsewhereSubject,
+    component: (vars) => <PasswordChangedElsewhereEmail {...vars} />,
   },
   "change-email": {
     subject: changeEmailSubject,

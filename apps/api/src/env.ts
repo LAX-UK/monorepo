@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { z } from "zod";
 
 /** Docker Compose uses `VAR=` for unset substitutions, which is `""`, not missing. */
@@ -22,6 +23,20 @@ function trimEmptyToUndefined(val: unknown): unknown {
   return val;
 }
 
+function validateAuthDekKey(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) return null;
+  try {
+    const b64 = trimmed.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const buf = Buffer.from(b64 + pad, "base64");
+    if (buf.length !== 32) return "AUTH_DEK_KEY must decode to exactly 32 bytes";
+    return null;
+  } catch {
+    return "Invalid AUTH_DEK_KEY encoding";
+  }
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -35,6 +50,21 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Comma-separated extra browser origins allowed for CORS (e.g. `https://lax.art,https://lax.shop`). */
+    WEB_ORIGINS: z.preprocess((val) => {
+      if (val === undefined || val === "" || val == null) return undefined;
+      if (typeof val !== "string") return undefined;
+      const parts = val
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return parts.length > 0 ? parts : undefined;
+    }, z.array(z.string().url()).optional()),
+    JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    /** Same 32-byte DEK as the auth issuer (64 hex or base64). Required in NODE_ENV=production. */
+    AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    /** Cloudflare Turnstile secret; when set, register + forgot-password require `turnstileToken`. */
+    TURNSTILE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().min(1).optional()),
     COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -271,6 +301,60 @@ const envSchema = z
           message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
           path: ["CRON_INTERNAL_SECRET"],
         });
+      }
+    }
+
+    if (e.NODE_ENV === "production") {
+      if (e.ALLOW_HTTP_COOKIES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "ALLOW_HTTP_COOKIES must be false in NODE_ENV=production",
+          path: ["ALLOW_HTTP_COOKIES"],
+        });
+      }
+      if (e.BETTER_AUTH_SECRET.length < 48) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "BETTER_AUTH_SECRET must be at least 48 characters in NODE_ENV=production",
+          path: ["BETTER_AUTH_SECRET"],
+        });
+      }
+      const originChecks: string[] = [e.WEB_ORIGIN, e.API_PUBLIC_URL];
+      if (e.OIDC_ISSUER_URL) originChecks.push(e.OIDC_ISSUER_URL);
+      for (const u of originChecks) {
+        if (u.includes("localhost") || u.includes("127.0.0.1")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `URL must not reference localhost/127.0.0.1 in NODE_ENV=production: ${u}`,
+          });
+        }
+      }
+      if (e.WEB_ORIGINS) {
+        for (const u of e.WEB_ORIGINS) {
+          if (u.includes("localhost") || u.includes("127.0.0.1")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `WEB_ORIGINS must not reference localhost in NODE_ENV=production: ${u}`,
+              path: ["WEB_ORIGINS"],
+            });
+          }
+        }
+      }
+      if (!e.AUTH_DEK_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "AUTH_DEK_KEY is required in NODE_ENV=production",
+          path: ["AUTH_DEK_KEY"],
+        });
+      } else {
+        const dekErr = validateAuthDekKey(e.AUTH_DEK_KEY);
+        if (dekErr) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: dekErr,
+            path: ["AUTH_DEK_KEY"],
+          });
+        }
       }
     }
 

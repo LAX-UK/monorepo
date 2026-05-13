@@ -46,6 +46,12 @@ jobs:
       TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
       TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
       TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
+      TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
+      TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TF_VAR_turnstile_site_key: ${{ secrets.TURNSTILE_SITE_KEY }}
+      TF_VAR_verify_origin: "true"
+      TF_VAR_csp_enforce: "0"
+      TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/terraform-setup

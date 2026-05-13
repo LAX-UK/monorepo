@@ -62,6 +62,12 @@ jobs:
       TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
       TF_VAR_xero_use_legal_entity_contact: "false"
       TF_VAR_xero_payout_bill_account_code: "400"
+      TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
+      TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TF_VAR_turnstile_site_key: ${{ secrets.TURNSTILE_SITE_KEY }}
+      TF_VAR_verify_origin: "true"
+      TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
+      TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)

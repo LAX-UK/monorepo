@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -41,7 +41,8 @@ export const user = pgTable(
     firstName: text("first_name"),
     lastName: text("last_name"),
     mobile: text("mobile"),
-    email: text("email").notNull().unique(),
+    /** Stored lowercased + trimmed; uniqueness enforced by `user_email_lower_uidx`. */
+    email: text("email").notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: text("role").notNull().default("client"),
@@ -84,7 +85,13 @@ export const user = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },
-  (table) => [index("user_email_idx").on(table.email)],
+  (table) => [
+    index("user_email_idx").on(table.email),
+    uniqueIndex("user_email_lower_uidx").on(sql`lower(trim(${table.email}))`),
+    uniqueIndex("user_pending_new_email_lower_uidx")
+      .on(sql`lower(trim(${table.pendingNewEmail}))`)
+      .where(sql`${table.pendingNewEmail} IS NOT NULL`),
+  ],
 );
 
 export const session = pgTable(
@@ -97,6 +104,11 @@ export const session = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /** Step-up re-auth: last time user proved password on this session (password sign-in or /auth/reauth). */
+    lastPasswordAuthAt: timestamp("last_password_auth_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -129,17 +141,27 @@ export const account = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },
-  (table) => [index("account_user_id_idx").on(table.userId)],
+  (table) => [
+    index("account_user_id_idx").on(table.userId),
+    uniqueIndex("account_user_id_provider_id_uidx").on(table.userId, table.providerId),
+  ],
 );
 
-export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }),
-  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }),
-});
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    index("verification_identifier_idx").on(table.identifier),
+    index("verification_expires_at_idx").on(table.expiresAt),
+  ],
+);
 
 /** Better Auth `two-factor` plugin backing table (model name `twoFactor`). */
 export const twoFactor = pgTable(

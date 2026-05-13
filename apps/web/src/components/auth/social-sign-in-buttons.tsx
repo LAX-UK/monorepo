@@ -3,6 +3,7 @@
 import { ProviderMark } from "@/components/auth/provider-mark";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { useState } from "react";
 
 type Props = {
@@ -27,9 +28,10 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
   const signInWith = async (provider: SupportedProvider) => {
     setPending(provider);
     const webOrigin = window.location.origin;
+    const safeNext = isSafeNextPath(next) ? next : "/dashboard";
     const { error } = await authClient.signIn.social({
       provider,
-      callbackURL: `${webOrigin}${next}`,
+      callbackURL: `${webOrigin}${safeNext}`,
       errorCallbackURL: `${webOrigin}/login?social_error=1`,
     });
     if (error) {

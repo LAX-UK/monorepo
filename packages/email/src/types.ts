@@ -1,11 +1,16 @@
 import type { BillToContext } from "@auction/types";
 
 export const templateNames = [
+  "account-suspended",
   "welcome",
   "verify-email",
   "reset-password",
   "oauth-account-reset-attempt",
   "password-changed",
+  "2fa-enabled",
+  "2fa-disabled",
+  "new-device-login",
+  "password-changed-elsewhere",
   "change-email",
   "invite",
   "bid-outbid",
@@ -32,6 +37,10 @@ export const templateNames = [
 export type TemplateName = (typeof templateNames)[number];
 
 export type TemplateVarsByName = {
+  "account-suspended": {
+    userName?: string | null;
+    supportContactEmail: string;
+  };
   welcome: {
     userName?: string | null;
   };
@@ -58,6 +67,20 @@ export type TemplateVarsByName = {
     userName?: string | null;
   };
   "password-changed": {
+    userName?: string | null;
+  };
+  "2fa-enabled": {
+    userName?: string | null;
+  };
+  "2fa-disabled": {
+    userName?: string | null;
+  };
+  "new-device-login": {
+    userName?: string | null;
+    whenDisplay?: string | null;
+    deviceSummary?: string | null;
+  };
+  "password-changed-elsewhere": {
     userName?: string | null;
   };
   "change-email": {
@@ -220,11 +243,16 @@ export type TemplateVarsByName = {
 export type RecipientResolution = "live" | "snapshot";
 
 export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
+  "account-suspended": "live",
   welcome: "live",
   "verify-email": "live",
   "reset-password": "live",
   "oauth-account-reset-attempt": "live",
   "password-changed": "live",
+  "2fa-enabled": "live",
+  "2fa-disabled": "live",
+  "new-device-login": "live",
+  "password-changed-elsewhere": "live",
   "change-email": "snapshot",
   invite: "live",
   "bid-outbid": "live",

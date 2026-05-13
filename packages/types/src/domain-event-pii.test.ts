@@ -133,4 +133,11 @@ describe("redactDomainEventPayload", () => {
     expect(out.expires_at).toBe("2026-01-01T00:00:00.000Z");
     expect(out.internalNote).toBe("[REDACTED]");
   });
+
+  it("redacts unknown string leaves on auth audit payloads", () => {
+    const out = redactDomainEventPayload("auth.forgot_password_requested", {
+      note: "should-not-leak",
+    }) as Record<string, unknown>;
+    expect(out.note).toBe("[REDACTED]");
+  });
 });

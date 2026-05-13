@@ -177,6 +177,16 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "kind",
     "stripeAccountId",
   ]),
+  "auth.forgot_password_requested": new Set(),
+  "auth.password_credential_enabled": new Set(),
+  "auth.email_change_started": new Set(),
+  "auth.email_change_cancelled": new Set(),
+  "auth.email_change_completed": new Set(),
+  "auth.reauth_success": new Set(),
+  "auth.session_revoked": new Set(["sessionId"]),
+  "auth.sessions_revoked_all_except_current": new Set(),
+  "auth.two_factor_security_email": new Set(["kind"]),
+  "auth.account_suspended": new Set(),
 };
 
 function isExceptionPath(eventType: string, path: string): boolean {
