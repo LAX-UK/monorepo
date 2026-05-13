@@ -143,13 +143,15 @@ Specific Cloudflare configurations that matter architecturally:
 
 **Cache TTL on `/.well-known/*` is 60 seconds** per D2/Q36. Discovery and JWKS endpoints are intentionally cacheable so we're not absorbing 1000 req/s on every key rotation. The 60-second TTL is the lower bound that bounds key-rotation propagation latency.
 
-**Rate limit on `/.well-known/*` is 100 req/min/IP** per F9. These endpoints are intentionally unauthenticated (they have to be, per the OIDC spec), so we shield them from scraping and scanning at the edge. Cache hits don't count against this limit because Cloudflare doesn't reach origin.
+**Rate limit on `/api/auth/sign-up` and `/api/auth/send-verification-email`** is the single edge rate-limit rule we run today. Both endpoints can be abused to enumerate addresses or burn our Postmark sending reputation, so they share the highest-priority edge slot. They sit in one Cloudflare rule with the most-restrictive per-IP bucket — see [../integrations/cloudflare.md](../integrations/cloudflare.md).
 
-**Rate limit on `/api/auth/sign-in/*` is 5 attempts per 15 minutes per IP** per Q37. Bounds password-spray attempts. Legitimate users rarely retry sign-in more than two or three times.
+**Why only one edge rule?** `lax.bid` is on the Cloudflare Free plan, which caps the `http_ratelimit` phase at a single rule per zone. Production protection takes that slot; everything else is rate-limited at the app layer.
 
-**Rate limit on `/webhooks/*` is 100 req/min/IP per source** per Q37. Shopify, WordPress, Xero, and Postmark each fire from their own IP ranges, so this is a per-source limit in practice. The Postmark webhook (`/webhooks/postmark`) has its own dedicated rule sized for Postmark's burst cadence — see [../integrations/cloudflare.md](../integrations/cloudflare.md). Anyone outside those ranges hitting our webhook endpoints at high volume is by definition an attack.
+**Rate limit on `/api/auth/sign-in/*` is 5 attempts per 15 minutes per IP** per Q37. Bounds password-spray attempts. Legitimate users rarely retry sign-in more than two or three times. This runs in the auth app, not at the edge.
 
-**Rate limit on `/api/auth/sign-up` and `/api/auth/send-verification-email` is sized for human use** (configured per [../integrations/cloudflare.md](../integrations/cloudflare.md)). Both endpoints can be abused to enumerate addresses or burn our Postmark sending reputation, so they sit behind their own edge rules independent of the generic `/api/auth/sign-in` limit.
+**Rate limit on `/webhooks/*` (incl. `/webhooks/postmark`) and `/.well-known/*`** runs at the app layer (`apps/api/src/middleware/rate-limit.ts`) on Free. Shopify, WordPress, Xero, and Postmark each fire from their own IP ranges, so per-source limits are still meaningful from origin. When the zone moves to Cloudflare Pro, the per-path edge rules will be restored — see [../integrations/cloudflare.md](../integrations/cloudflare.md).
+
+**Cache on `/.well-known/*`** still happens at Cloudflare per D2/Q36, so steady-state read traffic is absorbed at the edge regardless of which layer holds the rate-limit rule.
 
 **WAF challenges non-browser User-Agent strings on `/api/auth/authorize`** per Q37. Legitimate OIDC clients sending users through this endpoint always have browsers; bots scraping authorize endpoints don't. Server-to-server endpoints like `/api/auth/token` and `/.well-known/*` skip this check because they're explicitly machine-to-machine.
 
