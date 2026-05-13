@@ -14,8 +14,7 @@ lower-priority paths to app-layer middleware.
   (defaults 10 and 5 → effective **5 req/min/IP** intent). On **Cloudflare Free**,
   the `http_ratelimit` phase only allows a **10 second** evaluation window; the
   module maps RPM into `max(1, ceil(rpm * 10 / 60))` requests per 10s, with
-  **60s mitigation**. On **Pro**, restore commit `a8027e39` for 60s windows and
-  per-path rules.
+  **10s mitigation** (Free tier requires mitigation_timeout 10). On **Pro**, restore commit `a8027e39` for 60s windows, longer mitigation, and per-path rules.
 - `/webhooks/postmark` and `/.well-known/*`: rate-limited at the app layer
   (`apps/api/src/middleware/rate-limit.ts`) on Free. The `postmark_webhook_rpm`
   variable is kept as a forward-compatible knob for when the zone moves to
