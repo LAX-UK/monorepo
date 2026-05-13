@@ -9,6 +9,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../lib/email-change-token.js";
+import { createAppLogger } from "../lib/logger.js";
 import {
   createForgotPasswordRateLimitMiddleware,
   createSetupPasswordRateLimitMiddleware,
@@ -86,9 +87,20 @@ export function createAuthRoutes(container: Container) {
       // enumeration. Side-effects are dispatched fire-and-forget so the
       // response latency is also roughly equal across branches (a timing
       // attacker cannot tell the lookup outcome from the response time
-      // alone). Errors thrown inside the background task are swallowed for
-      // the same reason.
-      void runForgotPasswordSideEffects({ email, webOrigin, container }).catch(() => undefined);
+      // alone). Log failures without leaking enumeration in the HTTP body.
+      void runForgotPasswordSideEffects({ email, webOrigin, container }).catch((err) => {
+        const logEnv = {
+          LOG_LEVEL: container.env.LOG_LEVEL ?? "info",
+          NODE_ENV: container.env.NODE_ENV ?? "production",
+        };
+        createAppLogger(logEnv).error(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack?.slice(0, 2000) : undefined,
+          },
+          "forgot_password_side_effect_failed",
+        );
+      });
 
       return c.json({ ok: true });
     },
