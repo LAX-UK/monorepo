@@ -1,9 +1,12 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
 import { redirectIfVerifyPendingNotNeeded } from "@/lib/auth/guards.server";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Verify your email",
@@ -16,10 +19,16 @@ export default async function VerifyPendingPage({
   searchParams: Promise<{ email?: string; next?: string }>;
 }) {
   const sp = await searchParams;
-  const email = typeof sp.email === "string" ? sp.email : "";
-  const next = typeof sp.next === "string" ? sp.next : "";
+  const user = await getServerSessionUser();
+  const email = user?.email ?? (typeof sp.email === "string" ? sp.email : "");
+  const rawNext = typeof sp.next === "string" ? sp.next : "";
+  const next = isSafeNextPath(rawNext) ? rawNext : undefined;
 
   await redirectIfVerifyPendingNotNeeded();
+
+  if (!email) {
+    redirect("/login?verify_pending=1");
+  }
 
   return (
     <main id="main-content">
@@ -32,7 +41,7 @@ export default async function VerifyPendingPage({
             We sent the verification email to{" "}
             <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
           </p>
-          {email ? <VerifyPendingActions email={email} {...(next ? { next } : {})} /> : null}
+          <VerifyPendingActions email={email} {...(next ? { next } : {})} />
         </div>
       </AuthLayout>
     </main>

@@ -5,6 +5,7 @@ import {
   cancelEmailChangeAction,
   requestEmailChangeAction,
 } from "@/lib/actions/request-email-change";
+import { AUTH_ERROR_MESSAGES, isAuthErrorCode } from "@/lib/auth/auth-error-code";
 import { maskEmail } from "@/lib/format/mask-email";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -61,8 +62,12 @@ export function ChangeEmailForm({
               }
               return;
             }
-            form.setError("root", { message: result.error });
-            notify.error(result.error);
+            const displayError =
+              result.errorCode && isAuthErrorCode(result.errorCode)
+                ? AUTH_ERROR_MESSAGES[result.errorCode]
+                : result.error;
+            form.setError("root", { message: displayError });
+            notify.error(displayError);
           })}
         >
           <FormField

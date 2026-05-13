@@ -5,7 +5,7 @@ const baseValid = {
   firstName: "Alice",
   lastName: "Test",
   email: "alice@example.com",
-  password: "correct horse battery staple",
+  password: "CorrectHorse1!Staple",
 };
 
 describe("ZodRegistrationValidator (SE-P24 persona enforcement)", () => {

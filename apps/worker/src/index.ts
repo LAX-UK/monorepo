@@ -18,6 +18,8 @@ import {
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
 import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
 import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
+import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
+import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
 import {
   type SendEmailJobData,
   enqueueStaleEmailOutboxRows,
@@ -85,6 +87,7 @@ const heartbeatKeys = [
   ...(env.CRON_INTERNAL_SECRET ? ["worker:heartbeat:payout-settlement"] : []),
   "worker:heartbeat:legal-entity-archive",
   "worker:heartbeat:impersonation-sweeper",
+  "worker:heartbeat:purge-expired-verifications",
 ];
 async function heartbeat(queue: string) {
   await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
@@ -273,6 +276,50 @@ void impersonationSweeperQueue.add(
   },
 );
 
+const purgeVerificationsQueue = new Queue("purge-expired-verifications", { connection: redis });
+const purgeVerificationsWorker = new Worker(
+  "purge-expired-verifications",
+  async () => {
+    const { deleted } = await purgeExpiredVerifications(db, { log });
+    log.info({ deleted }, "purge-expired-verifications: done");
+    await heartbeat("purge-expired-verifications");
+  },
+  { connection: redis },
+);
+purgeVerificationsWorker.on("completed", () => void heartbeat("purge-expired-verifications"));
+void purgeVerificationsQueue.add(
+  "purge",
+  {},
+  {
+    jobId: "purge-expired-verifications-6h",
+    repeat: { every: 6 * 60 * 60 * 1000 },
+    removeOnComplete: 10,
+  },
+);
+
+const purgeSoftDeletedUsersQueue = new Queue("purge-soft-deleted-users", { connection: redis });
+const purgeSoftDeletedUsersWorker = new Worker(
+  "purge-soft-deleted-users",
+  async () => {
+    const { processed } = await purgeSoftDeletedUsers(db, { log });
+    log.info({ processed }, "purge-soft-deleted-users: done");
+  },
+  { connection: redis },
+);
+purgeSoftDeletedUsersWorker.on("failed", (job, err) => {
+  log.error({ jobId: job?.id, err }, "purge-soft-deleted-users: job failed");
+});
+// Run weekly; deletions take 30 days to become eligible anyway.
+void purgeSoftDeletedUsersQueue.add(
+  "purge",
+  {},
+  {
+    jobId: "purge-soft-deleted-users-weekly",
+    repeat: { every: 7 * 24 * 60 * 60 * 1000 },
+    removeOnComplete: 10,
+  },
+);
+
 let payoutSettlementQueue: Queue | undefined;
 let payoutSettlementWorker: Worker | undefined;
 if (env.CRON_INTERNAL_SECRET) {
@@ -321,6 +368,7 @@ void Promise.all([
   heartbeat("payout-statements"),
   heartbeat("legal-entity-archive"),
   heartbeat("impersonation-sweeper"),
+  heartbeat("purge-expired-verifications"),
   ...(env.CRON_INTERNAL_SECRET ? [heartbeat("payout-settlement")] : []),
 ]);
 
@@ -407,6 +455,10 @@ function shutdown(signal: NodeJS.Signals) {
     legalEntityArchiveQueue.close(),
     impersonationSweeperWorker.close(),
     impersonationSweeperQueue.close(),
+    purgeVerificationsWorker.close(),
+    purgeVerificationsQueue.close(),
+    purgeSoftDeletedUsersWorker.close(),
+    purgeSoftDeletedUsersQueue.close(),
     ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
     ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
     projectorRunner.stop(),

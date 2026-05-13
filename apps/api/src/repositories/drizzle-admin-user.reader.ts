@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
 import { count, desc, eq, ilike, or } from "drizzle-orm";
+import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -110,9 +112,23 @@ export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
 }
 
 export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly sessions: { revokeAllForUser: (userId: string) => Promise<unknown> },
+    private readonly hooks?: {
+      authAudit?: AuthAuditPublisher;
+      emailService?: IEmailService;
+      accountSuspendedSupportEmail?: string;
+    },
+  ) {}
 
   async suspend(userId: string, reason: string | null): Promise<void> {
+    const [before] = await this.db
+      .select({ email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
     await this.db
       .update(user)
       .set({
@@ -121,6 +137,29 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
         updatedAt: new Date(),
       })
       .where(eq(user.id, userId));
+    await this.sessions.revokeAllForUser(userId);
+
+    void this.hooks?.authAudit
+      ?.publish(this.db, {
+        eventType: "auth.account_suspended",
+        aggregateId: userId,
+        payload: {},
+        actorUserId: null,
+      })
+      .catch(() => {});
+
+    if (before?.email && this.hooks?.emailService) {
+      void this.hooks.emailService.enqueue({
+        template: "account-suspended",
+        to: before.email,
+        userId,
+        category: "auth",
+        vars: {
+          userName: before.name,
+          supportContactEmail: this.hooks?.accountSuspendedSupportEmail ?? "support@lax.bid",
+        },
+      });
+    }
   }
 
   async unsuspend(userId: string): Promise<void> {

@@ -1,8 +1,9 @@
+import { emailSubjects } from "@auction/branding";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "Your password was changed";
+export const subject = emailSubjects.passwordChanged;
 
 export default function PasswordChanged({ userName }: TemplateVarsByName["password-changed"]) {
   return (

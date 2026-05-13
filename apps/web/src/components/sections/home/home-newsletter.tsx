@@ -27,7 +27,9 @@ export function HomeNewsletter() {
     const result = await run({ email: values.email });
     if (result.ok) {
       form.reset();
-      setStatus(result.code === "already_subscribed" ? "already_subscribed" : "subscribed");
+      setStatus(
+        result.newsletterDisposition === "already_subscribed" ? "already_subscribed" : "subscribed",
+      );
     }
   });
 

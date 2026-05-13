@@ -16,6 +16,17 @@ describe("createAuth", () => {
     ).not.toThrow();
   });
 
+  it("boots with crossSubDomainCookies when cookieDomain is set (__Host- is incompatible with Domain)", () => {
+    expect(() =>
+      createAuth({
+        db: {} as Database,
+        secret: "test-secret-that-is-long-enough",
+        baseURL: "https://auth.example.com",
+        cookieDomain: ".example.com",
+      }),
+    ).not.toThrow();
+  });
+
   it("registers Google and Apple providers when credentials are configured", () => {
     expect(
       createSocialProviders({

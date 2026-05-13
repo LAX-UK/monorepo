@@ -1,5 +1,5 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
-import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { ResetPasswordWithUrlStrip } from "@/components/auth/reset-password-with-url-strip";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -26,7 +26,7 @@ export default async function ResetPasswordPage({
         description="Choose a strong password to finish resetting your account."
       >
         {token ? (
-          <ResetPasswordForm token={token} />
+          <ResetPasswordWithUrlStrip token={token} />
         ) : (
           <div className="flex flex-col gap-6">
             <Alert variant="destructive">

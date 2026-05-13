@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 
 export function useResetPasswordController(token: string) {
   const router = useRouter();
-  const { run, loading, bannerError } = useAuthSubmit(
+  const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(
     resetPasswordService.submit.bind(resetPasswordService),
   );
   const form = useForm<ResetPasswordFormValues>({
@@ -27,5 +27,5 @@ export function useResetPasswordController(token: string) {
     }
   });
 
-  return { form, onSubmit, loading, bannerError };
+  return { form, onSubmit, loading, bannerError, lastErrorCode };
 }

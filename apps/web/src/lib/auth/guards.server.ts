@@ -1,6 +1,6 @@
 import "server-only";
 
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { isRequireEmailVerificationServer } from "@/lib/auth/require-email-verification.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -37,11 +37,13 @@ export async function requireAuthenticatedUser(opts: {
   }
 
   if (user.emailVerified !== true) {
-    const qs = new URLSearchParams({
-      next: opts.loginNext,
-      email: user.email,
-    });
-    redirect(`/register/verify-pending?${qs.toString()}`);
+    if (isSafeNextPath(opts.loginNext)) {
+      redirect(
+        `/register/verify-pending?${new URLSearchParams({ next: opts.loginNext }).toString()}`,
+      );
+    } else {
+      redirect("/register/verify-pending");
+    }
   }
 
   const role = user.role as UserRole;

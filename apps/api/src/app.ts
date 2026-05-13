@@ -1,3 +1,7 @@
+import {
+  runSignInTurnstileGate,
+  stampLastPasswordAuthFromSignInResponse,
+} from "@auction/auth/server";
 import { lot } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
@@ -5,12 +9,15 @@ import { cors } from "hono/cors";
 import type { Container } from "./container.js";
 import type { Env } from "./env.js";
 import { createAppLogger } from "./lib/logger.js";
+import { trustedWebOrigins } from "./lib/trusted-origins.js";
+import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformAdmin } from "./middleware/require-capability.js";
+import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
 import { createAdminRoutes } from "./routes/admin.js";
@@ -41,6 +48,7 @@ import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
+  const webOrigins = trustedWebOrigins(env);
   const app = new Hono();
   app.onError((err, c) => container.httpErrorHandler.handle(err, c));
   const appLogger = createAppLogger(env);
@@ -58,6 +66,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   );
 
   app.use("*", createRequestIdMiddleware());
+  app.use("*", createSecurityHeadersMiddleware());
   app.use("*", createMetricsMiddleware());
   app.use(
     "/.well-known/*",
@@ -72,14 +81,17 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use(
     "*",
     cors({
-      origin: env.WEB_ORIGIN,
+      origin: webOrigins,
       allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
       exposeHeaders: ["Content-Length"],
       maxAge: 600,
       credentials: true,
     }),
   );
-  app.use("*", createVerifyOriginMiddleware(env.WEB_ORIGIN, env.VERIFY_ORIGIN));
+  app.use("*", createVerifyOriginMiddleware(webOrigins, env.VERIFY_ORIGIN));
+
+  app.use("/api/auth/*", createAuthNoStoreMiddleware());
+  app.use("/auth/*", createAuthNoStoreMiddleware());
 
   app.use("/lots/*", createRateLimitMiddleware(container.redis));
   app.use("/sales/*", createRateLimitMiddleware(container.redis));
@@ -132,7 +144,16 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   });
 
   app.use("/api/auth/*", createAuthRateLimitMiddleware(container.redis));
-  app.all("/api/auth/*", (c) => container.auth.handler(c.req.raw));
+  app.all("/api/auth/*", async (c) => {
+    return runSignInTurnstileGate({
+      incoming: c.req.raw,
+      redis: container.redis,
+      turnstileSecret: env.TURNSTILE_SECRET_KEY,
+      authHandler: (req: Request) => container.auth.handler(req),
+      onEmailPasswordSignInSuccess: (res: Response) =>
+        stampLastPasswordAuthFromSignInResponse(container.authDb, res),
+    });
+  });
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))

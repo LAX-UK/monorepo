@@ -1,5 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
+import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
+import { actionFailure } from "@/lib/forms/form-result";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -14,7 +16,12 @@ export default async function ConfirmEmailChangePage({
   const token = typeof sp.t === "string" ? sp.t : "";
   const result = token
     ? await confirmEmailChangeAction(token)
-    : { ok: false as const, error: "Missing token" };
+    : actionFailure(
+        AUTH_ERROR_MESSAGES.email_change_missing_token,
+        undefined,
+        400,
+        "email_change_missing_token",
+      );
 
   return (
     <DashboardPage>

@@ -46,9 +46,50 @@ function createTxMock(initial: UserRow, opts?: { otherUserOnThirdLimit?: boolean
   return { db, getState: () => state, getLimitCalls: () => limitCalls };
 }
 
+/**
+ * Fake session token included in requests that reach `requireRecentPasswordAuth`.
+ * The value must match what `extractBetterAuthSessionToken` can parse.
+ */
+const FAKE_SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
+
+/**
+ * Minimal `authDb` stub for `requireRecentPasswordAuth`.
+ *
+ * Call order mirrors the middleware:
+ *  1st `.limit()` → session row with recent `lastPasswordAuthAt`
+ *  2nd `.limit()` → credential account row (non-empty → triggers the age check,
+ *                   which passes because `lastPasswordAuthAt` is fresh)
+ *
+ * Routes that use `container.authDb` directly (e.g. `POST /confirm-email-change`)
+ * receive a dedicated `authDb` override through the second parameter of `mountAuthDb`.
+ */
+function makeRecentAuthDb() {
+  let callIdx = 0;
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => {
+            callIdx += 1;
+            if (callIdx === 1) return [{ lastPasswordAuthAt: new Date() }];
+            // Return a fake credential row so the middleware enforces the age check
+            // (which passes because lastPasswordAuthAt is fresh).
+            return [{ id: "cred-fixture" }];
+          }),
+        })),
+      })),
+    })),
+  };
+}
+
 function mountAuthDb(db: object, authDb: object = db) {
   const container = {
-    env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
+    env: {
+      BETTER_AUTH_SECRET: fixtureHmacKey,
+      WEB_ORIGIN: "http://localhost:3000",
+      LOG_LEVEL: "error",
+      NODE_ENV: "test",
+    },
     db,
     /** POST /auth/confirm-email-change writes `user.email` + `user.email_verified`,
      * which `api_app` is intentionally denied. The route runs that transaction
@@ -60,8 +101,14 @@ function mountAuthDb(db: object, authDb: object = db) {
         getSession: vi.fn(async () => ({ user: { id: "u1" } })),
       },
     },
+    authenticator: {
+      getSessionUser: vi.fn(async () => ({ id: "u1", role: "client" as const, staffRole: null })),
+    },
+    userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
+    sessionRevocation: { revokeAllForUser: vi.fn(async () => 0) },
     userService: {},
     emailService: { enqueue: vi.fn() },
+    authAuditPublisher: { publish: vi.fn(async () => {}) },
   };
   const app = new Hono().route("/auth", createAuthRoutes(container as never));
   return { app, auth: container.auth };
@@ -252,8 +299,12 @@ describe("DELETE /auth/change-email", () => {
       db,
       authDb: db,
       auth: { api: { getSession: vi.fn(async () => null) } },
+      authenticator: { getSessionUser: vi.fn(async () => null) },
+      userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
+      sessionRevocation: { revokeAllForUser: vi.fn(async () => {}) },
       userService: {},
       emailService: { enqueue: vi.fn() },
+      authAuditPublisher: { publish: vi.fn(async () => {}) },
     };
     const app = new Hono().route("/auth", createAuthRoutes(container as never));
     const res = await app.request("/auth/change-email", { method: "DELETE" });
@@ -272,8 +323,13 @@ describe("DELETE /auth/change-email", () => {
       })),
       update: vi.fn(),
     };
-    const { app } = mountAuthDb(db);
-    const res = await app.request("/auth/change-email", { method: "DELETE" });
+    // Use a dedicated authDb so requireRecentPasswordAuth can validate the session
+    // independently from the route's own DB queries.
+    const { app } = mountAuthDb(db, makeRecentAuthDb());
+    const res = await app.request("/auth/change-email", {
+      method: "DELETE",
+      headers: { cookie: FAKE_SESSION_COOKIE },
+    });
     expect(res.status).toBe(400);
     expect(db.update).not.toHaveBeenCalled();
   });
@@ -293,8 +349,13 @@ describe("DELETE /auth/change-email", () => {
       })),
       update: vi.fn(() => ({ set: setSpy })),
     };
-    const { app } = mountAuthDb(db);
-    const res = await app.request("/auth/change-email", { method: "DELETE" });
+    // Use a dedicated authDb so requireRecentPasswordAuth can validate the session
+    // independently from the route's own DB queries.
+    const { app } = mountAuthDb(db, makeRecentAuthDb());
+    const res = await app.request("/auth/change-email", {
+      method: "DELETE",
+      headers: { cookie: FAKE_SESSION_COOKIE },
+    });
     expect(res.status).toBe(200);
     expect(db.update).toHaveBeenCalled();
     expect(setSpy).toHaveBeenCalledWith(
