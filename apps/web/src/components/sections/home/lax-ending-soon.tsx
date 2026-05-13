@@ -126,7 +126,9 @@ function EndingSoonLotCard({ item, index }: EndingSoonLotCardProps) {
           </>
         ) : (
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">{item.priceLabel}</span>
+            <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
+              {item.priceLabel}
+            </span>
             <span className="text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
               {item.priceFormatted}
             </span>

@@ -1,6 +1,7 @@
+import type { UiPreferencePatch } from "@auction/validators";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
-import type { IUiPrefsService, UiPreferencePatch } from "../interfaces/ui-prefs-service";
+import type { IUiPrefsService } from "../interfaces/ui-prefs-service";
 
 export class UiPrefsService implements IUiPrefsService {
   constructor(private readonly api: IAuthedApiClient) {}

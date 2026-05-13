@@ -54,6 +54,11 @@ vi.mock("@/lib/socket", () => ({
   getSocket: () => ({ emit: () => {}, on: () => {}, off: () => {} }),
 }));
 
+vi.mock("@/lib/actions/user-ui-preferences", () => ({
+  syncUiThemeFromClientAction: vi.fn(),
+  updateUiPreferencesAction: vi.fn(),
+}));
+
 const clientUser = {
   id: "user-1",
   email: "client@example.com",

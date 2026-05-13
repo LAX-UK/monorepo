@@ -1,4 +1,9 @@
-import { THEME_COOKIE_MAX_AGE_SEC, THEME_COOKIE_NAME, THEME_STORAGE_KEY, type ThemePreference } from "./theme-cookie";
+import {
+  THEME_COOKIE_MAX_AGE_SEC,
+  THEME_COOKIE_NAME,
+  THEME_STORAGE_KEY,
+  type ThemePreference,
+} from "./theme-cookie";
 
 /** Resolved dark class for `document.documentElement` from stored preference. */
 export function resolveEffectiveDark(mode: ThemePreference): boolean {

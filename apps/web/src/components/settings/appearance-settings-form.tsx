@@ -2,9 +2,9 @@
 
 import { updateUiPreferencesAction } from "@/lib/actions/user-ui-preferences";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
-import type { ThemePreference } from "@auction/validators";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import type { ThemePreference } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -44,9 +44,16 @@ export function AppearanceSettingsForm({ initialTheme }: { initialTheme: ThemePr
           key={o.value}
           className="flex items-start gap-3 rounded-lg border border-outline-variant/30 p-4"
         >
-          <RadioGroupItem value={o.value} id={`theme-${o.value}`} aria-describedby={`hint-${o.value}`} />
+          <RadioGroupItem
+            value={o.value}
+            id={`theme-${o.value}`}
+            aria-describedby={`hint-${o.value}`}
+          />
           <div className="grid gap-1">
-            <Label htmlFor={`theme-${o.value}`} className="cursor-pointer font-label text-xs font-bold uppercase tracking-widest">
+            <Label
+              htmlFor={`theme-${o.value}`}
+              className="cursor-pointer font-label text-xs font-bold uppercase tracking-widest"
+            >
               {o.label}
             </Label>
             <p id={`hint-${o.value}`} className="text-sm text-on-surface-variant">

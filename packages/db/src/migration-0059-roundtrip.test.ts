@@ -13,7 +13,10 @@ describe.skipIf(!url)("migration 0059 user_ui_preference roundtrip", () => {
     const client = new pg.Client({ connectionString: url });
     await client.connect();
     try {
-      const forward = readFileSync(join(__dirname, "../drizzle/0059_user_ui_preference.sql"), "utf8");
+      const forward = readFileSync(
+        join(__dirname, "../drizzle/0059_user_ui_preference.sql"),
+        "utf8",
+      );
       const rollback = readFileSync(join(__dirname, "../drizzle/0059_rollback.sql"), "utf8");
 
       await client.query(rollback);

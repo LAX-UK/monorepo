@@ -1,8 +1,11 @@
 import type { Database } from "@auction/db";
 import { userUiPreference } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type { ThemePreference, UiPreferencePatch } from "@auction/validators";
-import type { IUiPreferenceRepository, UiPreferenceRow } from "../services/interfaces/ui-preference.js";
+import { eq } from "drizzle-orm";
+import type {
+  IUiPreferenceRepository,
+  UiPreferenceRow,
+} from "../services/interfaces/ui-preference.js";
 
 export class DrizzleUiPreferenceRepository implements IUiPreferenceRepository {
   constructor(private readonly db: Database) {}
