@@ -89,69 +89,34 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
   }
 }
 
+# Cloudflare Free plan caps the http_ratelimit phase at ONE rule per zone (error 50001).
+# Production protection is prioritized: this rule guards the highest-stakes auth endpoints
+# (sign-up and email-verification) which are the realistic edge attack surface
+# (account-creation abuse, email-bombing). Lower-priority paths
+# (/.well-known/*, /webhooks/postmark) are protected at the app layer instead — see
+# apps/api/src/middleware/rate-limit.ts and docs/integrations/cloudflare.md.
+# When the zone is upgraded to Pro (10 rules), restore the per-path rules from
+# git history (commit a8027e39) and reference postmark_webhook_rpm again.
 resource "cloudflare_ruleset" "zone_rate_limits" {
   count = var.manage_firewall_rulesets ? 1 : 0
 
   zone_id     = data.cloudflare_zone.this.id
   name        = "lax-${var.environment}-rate-limits"
-  description = "Host-scoped API and auth rate limits (see docs/integrations/cloudflare.md)."
+  description = "Auth abuse guard (Free-plan single-rule budget; see docs/integrations/cloudflare.md)."
   kind        = "zone"
   phase       = "http_ratelimit"
 
-  # Matches docs/integrations/cloudflare.md — separate buckets per path (do not merge RPMs).
   rules {
     action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/sign-up\")"
-    description = "Auth sign-up: 10 req/min/IP (SE-P23 edge parity)."
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
+    description = "Auth sign-up + verification-email: shared most-restrictive bucket (Free-plan single-rule cap)."
     enabled     = true
 
     ratelimit {
       characteristics     = ["ip.src", "cf.colo.id"]
-      period                = 60
-      requests_per_period   = var.signup_rpm
-      mitigation_timeout    = 60
-    }
-  }
-
-  rules {
-    action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/send-verification-email\")"
-    description = "Auth send-verification-email: 5 req/min/IP."
-    enabled     = true
-
-    ratelimit {
-      characteristics     = ["ip.src", "cf.colo.id"]
-      period                = 60
-      requests_per_period   = var.send_verification_email_rpm
-      mitigation_timeout    = 60
-    }
-  }
-
-  rules {
-    action      = "block"
-    expression  = "(starts_with(http.request.uri.path, \"/.well-known/\"))"
-    description = "Well-known discovery: 100 req/min/IP."
-    enabled     = true
-
-    ratelimit {
-      characteristics     = ["ip.src", "cf.colo.id"]
-      period                = 60
-      requests_per_period   = 100
-      mitigation_timeout    = 60
-    }
-  }
-
-  rules {
-    action      = "block"
-    expression  = "(http.host in {${local.api_host_expression}} and http.request.uri.path eq \"/webhooks/postmark\")"
-    description = "Postmark webhook ingress: 500 req/min/IP."
-    enabled     = true
-
-    ratelimit {
-      characteristics     = ["ip.src", "cf.colo.id"]
-      period                = 60
-      requests_per_period   = var.postmark_webhook_rpm
-      mitigation_timeout    = 60
+      period              = 60
+      requests_per_period = min(var.signup_rpm, var.send_verification_email_rpm)
+      mitigation_timeout  = 60
     }
   }
 }

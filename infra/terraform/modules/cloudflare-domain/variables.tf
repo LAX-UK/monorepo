@@ -26,11 +26,6 @@ variable "api_hosts" {
   type = set(string)
 }
 
-variable "postmark_webhook_rpm" {
-  type    = number
-  default = 500
-}
-
 variable "signup_rpm" {
   type    = number
   default = 10
@@ -39,6 +34,15 @@ variable "signup_rpm" {
 variable "send_verification_email_rpm" {
   type    = number
   default = 5
+}
+
+# Reserved: Cloudflare Free caps http_ratelimit at 1 rule per zone, so the
+# postmark webhook is rate-limited at the app layer for now. Kept as a variable
+# so a future Pro-plan upgrade can re-enable a /webhooks/postmark edge rule
+# without a breaking interface change.
+variable "postmark_webhook_rpm" {
+  type    = number
+  default = 500
 }
 
 # Zone-level WAF / rate-limit rulesets exist once per Cloudflare zone per phase.
