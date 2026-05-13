@@ -36,10 +36,11 @@ variable "send_verification_email_rpm" {
   default = 5
 }
 
-# Reserved: Cloudflare Free caps http_ratelimit at 1 rule per zone, so the
-# postmark webhook is rate-limited at the app layer for now. Kept as a variable
-# so a future Pro-plan upgrade can re-enable a /webhooks/postmark edge rule
-# without a breaking interface change.
+# Reserved: Cloudflare Free caps http_ratelimit at 1 rule per zone and restricts
+# period and mitigation_timeout to 10s in that phase; the postmark webhook is
+# rate-limited at the app layer for now. Kept as a variable so a future Pro-plan
+# upgrade can re-enable a /webhooks/postmark edge rule without a breaking
+# interface change.
 variable "postmark_webhook_rpm" {
   type    = number
   default = 500

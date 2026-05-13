@@ -2,9 +2,8 @@
 
 The full Cloudflare configuration is declared in
 [infra/terraform/modules/cloudflare-domain/](../../infra/terraform/modules/cloudflare-domain/)
-and applied per environment from `infra/terraform/persistent/<env>/` (DNS,
-zone settings) and `infra/terraform/ephemeral/<env>/` (rate limits, WAF rules).
-This page is the human-readable reference; Terraform is the source of truth.
+and applied from `infra/terraform/persistent/<env>/` (DNS, zone settings, WAF,
+and edge rate limits). This page is the human-readable reference; Terraform is the source of truth.
 
 ## DNS
 
@@ -42,8 +41,8 @@ guarded at the app layer until the zone is upgraded.
   (defaults 10 and 5 → **5 req/min/IP** intent). **Free tier** only allows a **10s**
   rate-limit window in `http_ratelimit`; Terraform sets `period = 10` and
   `requests_per_period = max(1, ceil(rpm * 10 / 60))` (defaults → **1** request per
-  10s per IP/colo, **60s** mitigation). **Pro** can restore 60s windows and
-  per-path rules (commit `a8027e39`).
+  10s per IP/colo, **10s** mitigation — Free requires `mitigation_timeout` 10). **Pro** can restore 60s windows,
+  longer mitigation, and per-path rules (commit `a8027e39`).
 
 ### App layer (Hono middleware on `api_hosts`)
 
