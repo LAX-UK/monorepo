@@ -2,7 +2,6 @@
 
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
-import { THEME_COOKIE_MAX_AGE_SEC, THEME_COOKIE_NAME } from "@/lib/preferences/theme-cookie";
 import {
   type ActionResult,
   actionFailure,
@@ -10,9 +9,10 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
+import { THEME_COOKIE_MAX_AGE_SEC, THEME_COOKIE_NAME } from "@/lib/preferences/theme-cookie";
 import { uiPreferencePatchSchema } from "@auction/validators";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
 export async function updateUiPreferencesAction(input: unknown): Promise<ActionResult<void>> {
   const parsed = uiPreferencePatchSchema.safeParse(input);

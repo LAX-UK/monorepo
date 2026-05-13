@@ -58,7 +58,6 @@ import { DrizzleLegalEntityNotificationRecipientRepository } from "./repositorie
 import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entity.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
-import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
@@ -72,6 +71,7 @@ import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.re
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
+import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
@@ -119,7 +119,6 @@ import type { ILegalEntityNotificationRecipientReader } from "./services/interfa
 import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-repository.js";
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
-import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
 import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
 import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
@@ -130,6 +129,7 @@ import type { IPushSender } from "./services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
 import type { IStripeConnectService } from "./services/interfaces/stripe-connect.js";
+import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
 import { InvitationService } from "./services/invitation.service.js";
@@ -154,7 +154,6 @@ import { OrganizationOnboardingFlowService } from "./services/organization-onboa
 import { PaymentService } from "./services/payment.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { ProfileService } from "./services/profile.service.js";
-import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
@@ -168,6 +167,7 @@ import { SessionRevocationService } from "./services/session-revocation.service.
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
+import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";

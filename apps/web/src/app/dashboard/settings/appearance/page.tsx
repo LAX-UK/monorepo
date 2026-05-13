@@ -24,7 +24,10 @@ export default async function AppearanceSettingsPage() {
         className="border-0 pb-0"
       />
       <section className="space-y-3" aria-labelledby="theme-heading">
-        <h2 id="theme-heading" className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+        <h2
+          id="theme-heading"
+          className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant"
+        >
           Colour scheme
         </h2>
         <AppearanceSettingsForm initialTheme={initialTheme} />
@@ -32,7 +35,10 @@ export default async function AppearanceSettingsPage() {
       <ReduceMotionCard />
       <p className="text-sm text-on-surface-variant">
         Quick toggle is also in the site header.{" "}
-        <Link href="/dashboard/settings/account" className="text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/dashboard/settings/account"
+          className="text-primary underline-offset-4 hover:underline"
+        >
           Account &amp; email
         </Link>{" "}
         for sign-in details.

@@ -2,8 +2,8 @@ import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { Toaster } from "@/components/ui/toaster";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
-import { parseThemeCookie, THEME_COOKIE_NAME } from "@/lib/preferences/theme-cookie";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
+import { THEME_COOKIE_NAME, parseThemeCookie } from "@/lib/preferences/theme-cookie";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import { cn } from "@auction/ui";
@@ -68,12 +68,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang="en"
-      className={cn(
-        dmSans.variable,
-        montserrat.variable,
-        poppins.variable,
-        isDark && "dark",
-      )}
+      className={cn(dmSans.variable, montserrat.variable, poppins.variable, isDark && "dark")}
       suppressHydrationWarning
     >
       <head>
