@@ -36,6 +36,12 @@ jobs:
       TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
       TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
+      TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TF_VAR_turnstile_site_key: ${{ secrets.TURNSTILE_SITE_KEY }}
+      TF_VAR_verify_origin: "true"
+      TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
+      TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@v4

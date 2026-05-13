@@ -24,7 +24,9 @@
     "db:roles": "tsx src/migrate-roles.ts",
     "db:migrate:kit": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
+    "db:backfill-auth-at-rest": "tsx scripts/backfill-auth-at-rest.ts"
   },
   "dependencies": {
     "@better-auth/utils": "0.4.0",

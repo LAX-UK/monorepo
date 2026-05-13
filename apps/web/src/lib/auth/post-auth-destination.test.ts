@@ -26,6 +26,8 @@ describe("isSafeNextPath", () => {
     expect(isSafeNextPath("/admin/api/secret")).toBe(false);
     expect(isSafeNextPath("relative")).toBe(false);
     expect(isSafeNextPath(null)).toBe(false);
+    expect(isSafeNextPath("/%2F%2Fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%5Cevil")).toBe(false);
   });
 });
 
@@ -54,14 +56,22 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-up",
         requireEmailVerification: true,
       }),
-    ).toBe("/register/verify-pending?email=a%40b.com");
+    ).toBe("/register/verify-pending");
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, emailVerified: false },
         context: "redirect-if-authed",
         requireEmailVerification: true,
       }),
-    ).toBe("/register/verify-pending?email=a%40b.com");
+    ).toBe("/register/verify-pending");
+    expect(
+      resolvePostAuthDestination({
+        user: { ...clientUser, emailVerified: false },
+        requestedNext: "/dashboard/foo",
+        context: "sign-up",
+        requireEmailVerification: true,
+      }),
+    ).toBe("/register/verify-pending?next=%2Fdashboard%2Ffoo");
   });
 
   it("uses safe next when present", () => {

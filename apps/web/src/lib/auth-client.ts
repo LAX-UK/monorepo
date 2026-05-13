@@ -6,6 +6,11 @@ const baseURL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:3001";
 
+/** Canonical Better Auth issuer origin (same logic as the browser auth client). */
+export function getAuthIssuerBaseUrl(): string {
+  return baseURL;
+}
+
 function createAppAuthClient() {
   return createAuthClient({
     baseURL,

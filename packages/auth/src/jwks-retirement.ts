@@ -13,7 +13,7 @@ type Logger = {
 
 type LockRow = {
   lock_acquired?: boolean;
-  pg_try_advisory_lock?: boolean;
+  pg_try_advisory_xact_lock?: boolean;
 };
 
 type ScheduleOptions = {
@@ -51,7 +51,7 @@ export function startJwksRetirementSchedule(options: ScheduleOptions): { stop: (
     try {
       await options.db.transaction(async (tx) => {
         const lockResult = await tx.execute(
-          sql`select pg_try_advisory_lock(${lockKey}::bigint) as lock_acquired`,
+          sql`select pg_try_advisory_xact_lock(${lockKey}::bigint) as lock_acquired`,
         );
         const lockAcquired = Boolean(rowsFromExecuteResult(lockResult)[0]?.lock_acquired);
         if (!lockAcquired) {
@@ -59,12 +59,8 @@ export function startJwksRetirementSchedule(options: ScheduleOptions): { stop: (
           return;
         }
 
-        try {
-          await retireExpiredJwksKeys(tx);
-          options.log.info({ lockKey }, "jwks_retirement_tick");
-        } finally {
-          await tx.execute(sql`select pg_advisory_unlock(${lockKey}::bigint)`);
-        }
+        await retireExpiredJwksKeys(tx);
+        options.log.info({ lockKey }, "jwks_retirement_tick");
       });
     } catch (err) {
       options.log.error({ err }, "jwks_retirement_tick_failed");

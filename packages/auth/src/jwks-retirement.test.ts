@@ -32,7 +32,8 @@ function createMockDb() {
   const update = vi.fn(() => ({ set }));
   const execute = vi.fn();
   const tx = { execute, update };
-  const transaction = vi.fn(async (callback: (tx: typeof tx) => Promise<void>) => callback(tx));
+  type Tx = { execute: typeof execute; update: typeof update };
+  const transaction = vi.fn(async (callback: (tx: Tx) => Promise<void>) => callback(tx));
 
   return {
     db: { execute, transaction, update } as unknown as Database,
@@ -59,7 +60,7 @@ describe("retireExpiredJwksKeys", () => {
     expect(update).toHaveBeenCalledWith(jwksKey);
     expect(set).toHaveBeenCalledWith({ status: "retired" });
 
-    const predicate = where.mock.calls[0]?.[0] as {
+    const predicate = (where.mock.calls as unknown[][])[0]?.[0] as {
       kind: string;
       conditions: Array<{ kind: string; column: unknown; value: unknown }>;
     };
@@ -78,7 +79,7 @@ describe("retireExpiredJwksKeys", () => {
 });
 
 describe("startJwksRetirementSchedule", () => {
-  it("takes an advisory lock before retirement and unlocks after", async () => {
+  it("takes a transaction-scoped advisory lock before retirement (no explicit unlock)", async () => {
     vi.useFakeTimers();
     const { db, execute, transaction, update } = createMockDb();
     const log = {
@@ -87,9 +88,7 @@ describe("startJwksRetirementSchedule", () => {
       info: vi.fn(),
     };
 
-    execute.mockResolvedValueOnce({ rows: [{ lock_acquired: true }] }).mockResolvedValueOnce({
-      rows: [],
-    });
+    execute.mockResolvedValueOnce({ rows: [{ lock_acquired: true }] });
 
     const schedule = startJwksRetirementSchedule({
       db,
@@ -102,16 +101,12 @@ describe("startJwksRetirementSchedule", () => {
     schedule.stop();
 
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute).toHaveBeenCalledTimes(1);
     expect(execute.mock.calls[0]?.[0]).toMatchObject({
       kind: "sql",
       values: ["123"],
     });
     expect(update).toHaveBeenCalledWith(jwksKey);
-    expect(execute.mock.calls[1]?.[0]).toMatchObject({
-      kind: "sql",
-      values: ["123"],
-    });
     expect(log.info).toHaveBeenCalledWith({ lockKey: "123" }, "jwks_retirement_tick");
     expect(log.error).not.toHaveBeenCalled();
   });

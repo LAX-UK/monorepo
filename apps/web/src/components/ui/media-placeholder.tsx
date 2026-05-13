@@ -70,18 +70,23 @@ export function MediaPlaceholder({
           {normalizedLabel ? `${normalizedLabel} placeholder pattern` : "Image placeholder pattern"}
         </title>
         <defs>
+          {/* `useId()` can resolve to different values between SSR-stream and
+              client-hydrate when this component lives inside a Suspense boundary;
+              the id only links the <pattern> to the <rect> fill so a mismatch
+              has no functional consequence. Suppress the warning to avoid noise. */}
           <pattern
             id={patternId}
             patternUnits="userSpaceOnUse"
             width="18"
             height="18"
             patternTransform="rotate(45)"
+            suppressHydrationWarning
           >
             <rect width="18" height="18" fill="transparent" />
             <rect width="1" height="18" fill="currentColor" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+        <rect width="100%" height="100%" fill={`url(#${patternId})`} suppressHydrationWarning />
       </svg>
       {normalizedLabel ? (
         <span

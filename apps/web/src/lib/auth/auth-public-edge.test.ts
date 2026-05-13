@@ -16,6 +16,26 @@ describe("getAuthPublicCookieRedirectUrl", () => {
     expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
   });
 
+  it("bypasses when session_expired=1 (avoid stale-cookie loop)", () => {
+    const u = new URL("http://localhost:3000/login?session_expired=1");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+  });
+
+  it("bypasses when auth=required (avoid stale-cookie loop)", () => {
+    const u = new URL("http://localhost:3000/login?auth=required&next=/dashboard");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+  });
+
+  it("bypasses when registered=1 (post-signup landing)", () => {
+    const u = new URL("http://localhost:3000/login?registered=1");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+  });
+
+  it("bypasses when reset=1 (post-reset landing)", () => {
+    const u = new URL("http://localhost:3000/login?reset=1");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+  });
+
   it("bypasses register with invite", () => {
     const u = new URL("http://localhost:3000/register?invite=abc");
     expect(getAuthPublicCookieRedirectUrl(u, "session_token=x")).toBeNull();

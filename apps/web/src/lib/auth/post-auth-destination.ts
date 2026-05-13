@@ -14,6 +14,7 @@ export type ResolvePostAuthDestinationInput = {
 };
 
 /** Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
+ * Rejects URL-encoded variants (e.g. `/%2F%2Fevil.com` → `///evil.com`).
  */
 export function isSafeNextPath(next: string | null | undefined): boolean {
   if (next == null || next === "") return false;
@@ -24,6 +25,13 @@ export function isSafeNextPath(next: string | null | undefined): boolean {
   if (!pathOnly.startsWith("/")) return false;
   if (pathOnly.startsWith("/api")) return false;
   if (pathOnly.startsWith("/admin/api")) return false;
+  try {
+    const decoded = decodeURIComponent(pathOnly);
+    if (decoded.includes("//")) return false;
+    if (decoded.includes("\\")) return false;
+  } catch {
+    return false;
+  }
   return true;
 }
 
@@ -54,8 +62,15 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     (context === "sign-up" || context === "redirect-if-authed");
 
   if (needsEmailGate) {
-    const emailQ = encodeURIComponent(user.email ?? "");
-    return appendWelcomeBack(`/register/verify-pending?email=${emailQ}`, withWelcomeBack);
+    const q = new URLSearchParams();
+    if (isSafeNextPath(requestedNext ?? undefined)) {
+      q.set("next", requestedNext as string);
+    }
+    const qs = q.toString();
+    return appendWelcomeBack(
+      qs ? `/register/verify-pending?${qs}` : "/register/verify-pending",
+      withWelcomeBack,
+    );
   }
 
   if (isSafeNextPath(requestedNext ?? undefined)) {

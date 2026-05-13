@@ -1,3 +1,5 @@
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+
 /**
  * Better Auth resolves relative `callbackURL` against the auth issuer (e.g.
  * test-auth.lax.bid), which has no Next.js `/verify-email` page — always use
@@ -9,6 +11,6 @@ export function buildVerifyEmailCallbackUrl(email: string, next?: string | null)
   }
   const origin = window.location.origin.replace(/\/$/, "");
   const nextQs =
-    next?.startsWith("/") && !next.startsWith("//") ? `&next=${encodeURIComponent(next)}` : "";
+    next != null && next !== "" && isSafeNextPath(next) ? `&next=${encodeURIComponent(next)}` : "";
   return `${origin}/verify-email?email=${encodeURIComponent(email)}${nextQs}`;
 }

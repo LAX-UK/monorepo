@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import { createJwksAdapter } from "@auction/auth";
-import { createAuth } from "@auction/auth/server";
-import type { Auth } from "@auction/auth/server";
+import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import { Queue } from "bullmq";
@@ -34,6 +33,7 @@ import { ZodRegistrationValidator } from "./infrastructure/zod-registration.vali
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
+import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import {
   createRequireLegalEntityContext,
   createSubmissionsLegalEntityContext,
@@ -91,6 +91,7 @@ import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistRegistryService } from "./services/artist-registry.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
+import { AuthAuditPublisher } from "./services/auth-audit.publisher.js";
 import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
@@ -160,6 +161,7 @@ import { SaleRegistrationService } from "./services/sale-registration.service.js
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
+import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
@@ -181,6 +183,8 @@ export type Container = {
    * in `packages/db/src/migrate-roles.ts`.
    */
   authDb: ReturnType<typeof createDb>;
+  /** Revokes Better Auth sessions in `authDb` (password reset, email change, etc.). */
+  sessionRevocation: SessionRevocationService;
   redis: Redis;
   /** Exposed for web push subscription (public key only). */
   vapidPublicKey: string | null;
@@ -232,6 +236,8 @@ export type Container = {
   analyticsService: AnalyticsService;
   accountLinkingService: AccountLinkingService;
   domainEventPublisher: DomainEventPublisher;
+  /** `auth.*` rows in `domain_events` (password setup, email change, suspension, etc.). */
+  authAuditPublisher: AuthAuditPublisher;
   /** admin KYB status transitions + domain events. */
   legalEntityLifecycleAdminService: LegalEntityLifecycleAdminService;
   /** timeout audit + shared legal-entity middleware (impersonation cookie). */
@@ -294,6 +300,8 @@ export function createContainer(env: Env): Container {
       : new ConsoleEmailService(db, emailQueue);
   const jwksAdapter = createJwksAdapter(authDb);
 
+  const sessionRevocation = new SessionRevocationService(authDb);
+
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
 
   const auth = createAuth({
@@ -301,7 +309,7 @@ export function createContainer(env: Env): Container {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.API_PUBLIC_URL,
     issuerURL: env.OIDC_ISSUER_URL,
-    trustedOrigins: [env.WEB_ORIGIN],
+    trustedOrigins: trustedWebOrigins(env),
     allowInsecureCookies: env.ALLOW_HTTP_COOKIES,
     cookieDomain: env.COOKIE_DOMAIN,
     webOrigin: env.WEB_ORIGIN,
@@ -311,6 +319,9 @@ export function createContainer(env: Env): Container {
     appleClientSecret: env.APPLE_CLIENT_SECRET,
     email: emailService,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
+    authDekKey: env.AUTH_DEK_KEY?.trim(),
+    revokeAllSessions: (userId: string) => sessionRevocation.revokeAllForUser(userId),
     onUserCreated: async (authUser) => {
       await ensurePersonalLegalEntityService.ensure({
         userId: authUser.id,
@@ -318,6 +329,7 @@ export function createContainer(env: Env): Container {
         email: authUser.email,
       });
     },
+    enableNewDeviceLoginEmail: env.NODE_ENV === "production",
   });
 
   const issuer = env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL;
@@ -326,6 +338,7 @@ export function createContainer(env: Env): Container {
     new JwtAuthenticator({
       issuer,
       jwksUrl: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
+      audience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
     }),
   ]);
   const repoFactory: IRepositoryFactory = new DrizzleRepositoryFactory(db);
@@ -339,6 +352,7 @@ export function createContainer(env: Env): Container {
   const kycRepository = new DrizzleKycRepository(db);
   const kycService: IKycService = new StripeKycService(env, kycRepository);
   const domainEventPublisher = new DomainEventPublisher();
+  const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
   const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
@@ -751,7 +765,11 @@ export function createContainer(env: Env): Container {
 
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
-  const adminSuspender = new DrizzleAdminUserSuspender(db);
+  const adminSuspender = new DrizzleAdminUserSuspender(db, sessionRevocation, {
+    emailService,
+    authAudit: authAuditPublisher,
+    accountSuspendedSupportEmail: env.EMAIL_REPLY_TO?.trim() || "support@lax.bid",
+  });
   const adminActivityReader = new DrizzleAdminUserActivityReader(db);
   const adminUserService = new AdminUserService(
     adminUserReader,
@@ -797,6 +815,7 @@ export function createContainer(env: Env): Container {
     env,
     db,
     authDb,
+    sessionRevocation,
     redis,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
     auth,
@@ -845,6 +864,7 @@ export function createContainer(env: Env): Container {
     analyticsService,
     accountLinkingService,
     domainEventPublisher,
+    authAuditPublisher,
     legalEntityLifecycleAdminService,
     impersonationAuditService,
     impersonationSessionService,

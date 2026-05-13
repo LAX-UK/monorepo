@@ -308,3 +308,51 @@ variable "xero_payout_bill_account_code" {
   type    = string
   default = "400"
 }
+
+# --- Auth hardening (auth-hardening branch) ---
+
+variable "auth_dek_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "32-byte DEK for envelope-encrypting OAuth tokens and 2FA secrets at rest. Hex (64 chars) or base64url (44 chars). Required in NODE_ENV=production. Generate: openssl rand -hex 32"
+}
+
+variable "turnstile_secret_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Cloudflare Turnstile secret key. When set, sign-in, register, and forgot-password require a valid widget token. Obtain from dash.cloudflare.com → Turnstile → Create site."
+}
+
+variable "turnstile_site_key" {
+  type        = string
+  default     = ""
+  description = "Cloudflare Turnstile public site key (rendered by the browser widget). Obtain alongside turnstile_secret_key."
+}
+
+variable "verify_origin" {
+  type        = string
+  default     = "true"
+  description = "When \"true\", mutating non-auth requests must carry an Origin/Referer matching WEB_ORIGIN."
+  validation {
+    condition     = contains(["true", "false"], var.verify_origin)
+    error_message = "verify_origin must be \"true\" or \"false\"."
+  }
+}
+
+variable "csp_enforce" {
+  type        = string
+  default     = "0"
+  description = "Set to \"1\" to flip Content-Security-Policy from report-only to enforcing on apps/web."
+  validation {
+    condition     = contains(["0", "1"], var.csp_enforce)
+    error_message = "csp_enforce must be \"0\" or \"1\"."
+  }
+}
+
+variable "next_public_csp_report_uri" {
+  type        = string
+  default     = ""
+  description = "Optional CSP violation report endpoint (e.g. https://o123.ingest.sentry.io/api/456/security/?sentry_key=…)."
+}

@@ -1,4 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
+import { verification } from "@auction/db/schema";
+import { inArray, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
@@ -147,6 +149,38 @@ export function createInternalCronRoutes(container: Container, env: Env) {
       }
     }
     return c.json({ data: { attempted: rows.length, recovered } });
+  });
+
+  /**
+   * Purge expired Better Auth `verification` rows (email links, OTP artifacts).
+   *
+   * Deletes in batches of 500 via a subquery to avoid long table locks on large tables.
+   * The cron should be invoked frequently enough that a single batch clears the backlog.
+   */
+  r.post("/purge-expired-verifications", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const now = new Date();
+    const batchSize = 500;
+    const deleted = await container.authDb
+      .delete(verification)
+      .where(
+        inArray(
+          verification.id,
+          container.authDb
+            .select({ id: verification.id })
+            .from(verification)
+            .where(lt(verification.expiresAt, now))
+            .limit(batchSize),
+        ),
+      )
+      .returning({ id: verification.id });
+    return c.json({ data: { deleted: deleted.length, capped: deleted.length === batchSize } });
   });
 
   return r;
