@@ -38,7 +38,7 @@ async function runForgotPasswordSideEffects(args: {
     .limit(1);
   if (!found) return;
 
-  const linked = await container.db
+  const linked = await container.authDb
     .select({ providerId: account.providerId })
     .from(account)
     .where(eq(account.userId, found.id));
@@ -131,9 +131,10 @@ export function createAuthRoutes(container: Container) {
       // constraint on (user_id, provider_id) today (see
       // packages/db/src/schema/auth.ts), so the transaction is the only
       // line of defence against that race.
+      // `account` is denied to `api_app`; credential check + insert run as `auth_app`.
       let alreadySet = false;
       try {
-        await container.db.transaction(async (tx) => {
+        await container.authDb.transaction(async (tx) => {
           const existing = await tx
             .select({ id: account.id })
             .from(account)
