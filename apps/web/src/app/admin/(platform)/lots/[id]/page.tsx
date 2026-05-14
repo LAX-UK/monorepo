@@ -1,7 +1,6 @@
+import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -33,26 +32,39 @@ export default async function AdminAuctionDetailPage({
     auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
 
   return (
-    <AppScreen className="max-w-4xl space-y-10">
-      <Link
-        href="/admin/lots"
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Auctions
-      </Link>
-
-      <div>
-        <p className="font-label text-xs uppercase tracking-widest text-secondary">
+    <AdminEntityDetailShell
+      className="max-w-4xl space-y-10"
+      breadcrumbs={
+        <Link
+          href="/admin/lots"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Auctions
+        </Link>
+      }
+      title={auction.title}
+      meta={
+        <span className="font-label text-xs uppercase tracking-widest text-secondary">
           {auction.status}
-        </p>
-        <DisplayHeading as="h1" className="mt-2 text-4xl">
-          {auction.title}
-        </DisplayHeading>
-        <p className="mt-4 font-body text-sm text-on-surface-variant">
-          {auction.description ?? "—"}
-        </p>
-      </div>
-
+        </span>
+      }
+      description={auction.description ?? undefined}
+      actions={
+        <AdminLotDetailActions
+          key={id}
+          lotId={id}
+          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+          canPublish={canPublish}
+          canCancel={canCancel}
+          showEditDraft={auction.status === "draft"}
+          showEditCatalog={
+            auction.status === "draft" ||
+            auction.status === "scheduled" ||
+            auction.status === "active"
+          }
+        />
+      }
+    >
       {sp.error_code === "connect_required" ? (
         <AdminLotConnectRequiredBanner
           sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
@@ -64,20 +76,6 @@ export default async function AdminAuctionDetailPage({
           <AlertDescription>{sp.error}</AlertDescription>
         </Alert>
       ) : null}
-
-      <AdminLotDetailActions
-        key={id}
-        lotId={id}
-        sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
-        canPublish={canPublish}
-        canCancel={canCancel}
-        showEditDraft={auction.status === "draft"}
-        showEditCatalog={
-          auction.status === "draft" ||
-          auction.status === "scheduled" ||
-          auction.status === "active"
-        }
-      />
 
       <section>
         <p className="mb-4 font-label text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
@@ -98,6 +96,6 @@ export default async function AdminAuctionDetailPage({
           </ul>
         )}
       </section>
-    </AppScreen>
+    </AdminEntityDetailShell>
   );
 }

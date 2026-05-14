@@ -1,13 +1,14 @@
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
+import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
 import {
   getAdminArtistList,
   getAdminLotById,
   getAdminUserList,
 } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import Link from "next/link";
@@ -17,11 +18,12 @@ export default async function AdminEditAuctionPage({
   params,
 }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [auction, categories, users, artists] = await Promise.all([
+  const [auction, categories, users, artists, lotDocuments] = await Promise.all([
     getAdminLotById(id).catch(() => null),
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
     getAdminArtistList(),
+    getServerLotDocuments(id),
   ]);
   if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled") {
@@ -32,23 +34,23 @@ export default async function AdminEditAuctionPage({
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   return (
-    <AppScreen className="mx-auto max-w-2xl space-y-8">
-      <Link
-        href={`/admin/lots/${id}`}
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Lot detail
-      </Link>
-      <DisplayHeading as="h1" className="text-4xl">
-        {isDraft ? "Edit draft" : "Edit catalog copy"}
-      </DisplayHeading>
-      {isDraft ? null : (
-        <p className="font-body text-sm text-on-surface-variant">
-          Core auction fields (price, times) are locked after publish. You can still update
-          estimate, condition, provenance, exhibitions, and the artist note below.
-        </p>
-      )}
-
+    <AdminEntityFormShell
+      maxWidthClassName="max-w-3xl"
+      breadcrumbs={
+        <Link
+          href={`/admin/lots/${id}`}
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Lot detail
+        </Link>
+      }
+      title={isDraft ? "Edit draft" : "Edit catalog copy"}
+      description={
+        isDraft
+          ? undefined
+          : "Core auction fields (price, times) are locked after publish. You can still update estimate, condition, provenance, exhibitions, and the artist note below."
+      }
+    >
       {isDraft ? (
         <AdminLotForm
           mode="edit"
@@ -66,6 +68,7 @@ export default async function AdminEditAuctionPage({
         artists={artists}
         artistId={auction.artistId ?? null}
       />
-    </AppScreen>
+      <LotDocumentsSection lotId={id} initialDocuments={lotDocuments} />
+    </AdminEntityFormShell>
   );
 }

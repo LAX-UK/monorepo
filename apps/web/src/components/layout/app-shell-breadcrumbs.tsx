@@ -21,7 +21,7 @@ export function AppShellBreadcrumbs({
   clientWorkspaceMode?: ClientWorkspaceMode;
 }) {
   const pathname = usePathname();
-  const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode);
+  const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode, sessionUser);
   const current = getRouteLabel(pathname, role, clientWorkspaceMode, sessionUser);
   const workspace = appShellRoleMeta[role].workspaceLabel;
   const segments =

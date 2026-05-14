@@ -1,5 +1,5 @@
 import { AdminLegalEntityOpenForm } from "@/components/admin/admin-legal-entity-open-form";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -33,30 +32,29 @@ export default async function AdminLegalEntitiesLookupPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Legal entities"
-        description="Search by name to open an organisation or selling entity, review status, and run verification lifecycle transitions."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="ctaLink" asChild>
-              <Link href="/admin/impersonation" className="inline-flex items-center gap-1">
-                Impersonation
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-            <Button variant="ctaLink" asChild>
-              <Link
-                href="/admin/legal-entities/stripe-connect-requirements"
-                className="inline-flex items-center gap-1"
-              >
-                Stripe requirements
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-        }
-      />
+    <AdminPanelPage
+      title="Legal entities"
+      description="Search by name to open an organisation or selling entity, review status, and run verification lifecycle transitions."
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ctaLink" asChild>
+            <Link href="/admin/impersonation" className="inline-flex items-center gap-1">
+              Impersonation
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button variant="ctaLink" asChild>
+            <Link
+              href="/admin/legal-entities/stripe-connect-requirements"
+              className="inline-flex items-center gap-1"
+            >
+              Stripe requirements
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       {error ? (
         <Alert variant="destructive" role="alert">
           <AlertTitle>Something went wrong</AlertTitle>
@@ -74,6 +72,6 @@ export default async function AdminLegalEntitiesLookupPage({
           <AdminLegalEntityOpenForm />
         </CardContent>
       </Card>
-    </AppScreen>
+    </AdminPanelPage>
   );
 }

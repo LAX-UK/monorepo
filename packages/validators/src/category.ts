@@ -33,6 +33,11 @@ export const adminCreateCategoryBodySchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(10_000).optional(),
 });
 
+/** Admin category form (create + edit) — `archived` is only sent on update. */
+export const adminCategoryFormSchema = adminCreateCategoryBodySchema.extend({
+  archived: z.boolean().optional(),
+});
+
 export const adminUpdateCategoryBodySchema = adminCreateCategoryBodySchema.partial().extend({
   archived: z.boolean().optional(),
 });

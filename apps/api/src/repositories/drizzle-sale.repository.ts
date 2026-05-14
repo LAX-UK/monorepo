@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
 
@@ -23,6 +23,13 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
           sql`, `,
         )})
     )`);
+  }
+  const q = input.q?.trim();
+  if (q) {
+    const safe = q.replace(/[%_\\]/g, "");
+    if (safe.length > 0) {
+      conditions.push(ilike(sale.title, `%${safe}%`));
+    }
   }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }

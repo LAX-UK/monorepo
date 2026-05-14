@@ -2,6 +2,10 @@ export type AdminUserListFilter = {
   q?: string | undefined;
   limit: number;
   offset: number;
+  /** When set, only users with this `user.role` value. */
+  role?: string | undefined;
+  /** When true, only users with non-null `suspendedAt`. */
+  suspendedOnly?: boolean | undefined;
 };
 
 export type AdminUserListRow = {

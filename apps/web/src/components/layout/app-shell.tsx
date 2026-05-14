@@ -131,7 +131,7 @@ function AppShellFrame({
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
-        {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
+        {...(shellRole === "client" ? { clientWorkspaceMode } : { pendingSubmissionCount })}
       />
 
       <div

@@ -281,6 +281,7 @@ export type AdminSaleListRow = { sale: Sale; lots: Lot[] };
 export async function getAdminSalesList(
   params: {
     status?: Sale["status"];
+    q?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -289,6 +290,7 @@ export async function getAdminSalesList(
   qs.set("limit", String(params.limit ?? 50));
   qs.set("offset", String(params.offset ?? 0));
   if (params.status) qs.set("status", params.status);
+  if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
@@ -465,6 +467,46 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAdminPaymentRow);
+}
+
+export type AdminEmailSuppressionListRow = {
+  emailHash: string;
+  reason: "hard_bounce" | "complaint" | "manual" | "unsubscribe";
+  createdAt: string;
+};
+
+export async function getAdminEmailSuppressions(): Promise<AdminEmailSuppressionListRow[]> {
+  const res = await authedServerFetch("/admin/email/suppressions");
+  if (!res.ok) {
+    throw new Error(`Failed to load email suppressions: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminEmailSuppressionListRow[] };
+  return body.data;
+}
+
+export type AdminEmailOutboxRow = {
+  id: string;
+  userEmail: string | null;
+  toEmailHash: string;
+  template: string;
+  status: "pending" | "sending" | "sent" | "failed" | "suppressed";
+  messageId: string | null;
+  lastError: string | null;
+  createdAt: string;
+};
+
+export async function getAdminEmailOutbox(params?: {
+  status?: string;
+}): Promise<AdminEmailOutboxRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(`/admin/email/outbox${suffix}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load email outbox: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminEmailOutboxRow[] };
+  return body.data;
 }
 
 export type AdminLotFulfilmentListRow = {
@@ -826,11 +868,15 @@ export async function getAdminUserList(params: {
   q?: string;
   limit?: number;
   offset?: number;
+  role?: string;
+  suspendedOnly?: boolean;
 }): Promise<{ rows: AdminUserRow[]; total: number }> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
+  if (params.role) qs.set("role", params.role);
+  if (params.suspendedOnly) qs.set("suspended", "1");
   const res = await authedServerFetch(`/admin/users?${qs.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to load users: ${res.status}`);
@@ -956,12 +1002,14 @@ function parseAdminDomainEventRows(body: {
 
 export async function getAdminDomainEvents(params: {
   limit?: number;
+  offset?: number;
   eventTypePrefix?: string;
   aggregateType?: string;
   aggregateId?: string;
 }): Promise<AdminDomainEventRow[]> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 100));
+  qs.set("offset", String(params.offset ?? 0));
   if (params.eventTypePrefix?.trim()) {
     qs.set("eventTypePrefix", params.eventTypePrefix.trim());
   }
@@ -980,9 +1028,11 @@ export async function getAdminDomainEvents(params: {
 /** Finance admin + platform admin: Stripe dispute-related domain events only. */
 export async function getAdminFinanceDisputeDomainEvents(params: {
   limit?: number;
+  offset?: number;
 }): Promise<AdminDomainEventRow[]> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 200));
+  qs.set("offset", String(params.offset ?? 0));
   const res = await authedServerFetch(`/admin/finance/dispute-domain-events?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load dispute domain events: ${res.status}`);
   const body = (await res.json()) as { data: Record<string, unknown>[] };

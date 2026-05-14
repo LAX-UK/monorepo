@@ -712,13 +712,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/audit/domain-events",
     zValidator("query", adminDomainEventsQuerySchema),
     async (c) => {
-      const { limit, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
+      const { limit, offset, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
+        offset,
         includePii,
         ...(eventTypePrefix !== undefined ? { eventTypePrefix } : {}),
         ...(aggregateType !== undefined && aggregateId !== undefined
@@ -902,6 +903,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       q: q.q,
       limit: q.limit,
       offset: q.offset,
+      role: q.role,
+      suspendedOnly: q.suspended === "1",
     });
     return c.json({ data });
   });
@@ -1110,13 +1113,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/finance/dispute-domain-events",
     zValidator("query", adminFinanceDisputeDomainEventsQuerySchema),
     async (c) => {
-      const { limit } = c.req.valid("query");
+      const { limit, offset } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
+        offset,
         eventTypePrefix: "payment.dispute",
         includePii,
       });
