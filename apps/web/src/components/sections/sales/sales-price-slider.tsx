@@ -34,13 +34,13 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
 
   return (
     <div className="flex w-full max-w-[280px] flex-col gap-4">
-      <div className="flex items-center gap-2 font-body text-sm font-semibold uppercase text-[#1C170D] dark:text-on-surface">
+      <div className="flex items-center gap-2 font-body text-sm font-semibold uppercase text-nav-text dark:text-on-surface">
         <span>{lo.toLocaleString()}£</span>
         <span className="font-medium">-</span>
         <span>{hi.toLocaleString()}£</span>
       </div>
       <div className="flex flex-col gap-3">
-        <label className="font-body text-xs text-[#474747] dark:text-on-surface-variant">
+        <label className="font-body text-xs text-on-surface-variant">
           Min
           <input
             type="range"
@@ -51,10 +51,10 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
               const v = Number(e.target.value);
               setLo((_prev) => (v > hi ? hi : v));
             }}
-            className="mt-1 w-full accent-[#050505]"
+            className="mt-1 w-full accent-primary"
           />
         </label>
-        <label className="font-body text-xs text-[#474747] dark:text-on-surface-variant">
+        <label className="font-body text-xs text-on-surface-variant">
           Max
           <input
             type="range"
@@ -65,7 +65,7 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
               const v = Number(e.target.value);
               setHi((_prev) => (v < lo ? lo : v));
             }}
-            className="mt-1 w-full accent-[#050505]"
+            className="mt-1 w-full accent-primary"
           />
         </label>
       </div>

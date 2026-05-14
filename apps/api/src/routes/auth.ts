@@ -16,7 +16,10 @@ import {
   createSetupPasswordRateLimitMiddleware,
 } from "../middleware/auth-rate-limit.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import { createRequireRecentPasswordAuth } from "../middleware/require-recent-password-auth.js";
+import {
+  PASSWORD_REQUIRED_POLICY,
+  createRequireRecentPasswordAuth,
+} from "../middleware/require-recent-password-auth.js";
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 import { setupCredentialPassword } from "../services/auth/credential-setup.service.js";
 import {
@@ -25,7 +28,10 @@ import {
   requestEmailChange,
 } from "../services/auth/email-change.service.js";
 import { runForgotPasswordSideEffects } from "../services/auth/forgot-password.service.js";
-import { stampReauthWithPassword } from "../services/auth/reauth.service.js";
+import {
+  stampReauthWithPassword,
+  stampSessionPasswordProofNow,
+} from "../services/auth/reauth.service.js";
 
 export function createAuthRoutes(container: Container) {
   const r = new Hono();
@@ -34,7 +40,10 @@ export function createAuthRoutes(container: Container) {
   const requireAuth = createRequireAuth(container.authenticator, {
     isSuspended: (userId) => container.userSuspensionChecker.isSuspended(userId),
   });
-  const requireRecentPasswordAuth = createRequireRecentPasswordAuth(container);
+  const requireRecentPasswordAuth = createRequireRecentPasswordAuth(
+    container,
+    PASSWORD_REQUIRED_POLICY,
+  );
   // redis may be absent in unit-test containers; fall back to a no-op passthrough.
   const confirmEmailChangeRateLimit = container.redis
     ? createConfirmEmailChangeRateLimitMiddleware(container.redis)
@@ -131,7 +140,15 @@ export function createAuthRoutes(container: Container) {
         password,
         authAudit: container.authAuditPublisher,
       });
-      if (result.ok) return c.json({ ok: true });
+      if (result.ok) {
+        const token = extractBetterAuthSessionToken(c.req.header("cookie"));
+        void stampSessionPasswordProofNow({
+          authDb: container.authDb,
+          userId,
+          sessionTokenFromCookie: token,
+        }).catch(() => {});
+        return c.json({ ok: true });
+      }
       if (result.kind === "user_not_found") {
         return c.json({ error: "User not found", code: "user_not_found" }, 404);
       }

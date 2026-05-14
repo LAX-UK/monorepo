@@ -18,7 +18,7 @@ export function SaleCalendarCountdown({ endIso, className }: Props) {
     return (
       <span
         className={cn(
-          "text-center font-body text-[13px] font-semibold leading-4 tabular-nums text-[#F1F1F3]",
+          "text-center font-body text-sm font-semibold leading-4 tabular-nums text-cta-on",
           className,
         )}
       >
@@ -32,7 +32,7 @@ export function SaleCalendarCountdown({ endIso, className }: Props) {
       end={end}
       variant="default"
       className={cn(
-        "text-center font-body text-[13px] font-semibold leading-4 tabular-nums text-[#F1F1F3]",
+        "text-center font-body text-sm font-semibold leading-4 tabular-nums text-cta-on",
         className,
       )}
       announce={false}

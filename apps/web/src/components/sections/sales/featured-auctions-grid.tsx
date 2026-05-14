@@ -5,12 +5,12 @@ type Props = {
   vms: FeaturedAuctionCardVM[];
 };
 
-/** Three-up featured row — `calendar.html` trending section (gap 16px, flex). */
+/** Featured row — mobile-first grid, 1 / 2 / 3 columns. */
 export function FeaturedAuctionsGrid({ vms }: Props) {
   if (vms.length === 0) return null;
 
   return (
-    <ul className="m-0 flex w-full list-none flex-col gap-4 p-0 sm:flex-row sm:gap-4 lg:gap-4">
+    <ul className="m-0 grid w-full list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-4">
       {vms.map((vm, index) => (
         <FeaturedAuctionCard key={vm.id} vm={vm} index={index} />
       ))}

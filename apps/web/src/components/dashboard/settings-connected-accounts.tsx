@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 const APPLE_ENABLED = process.env.NEXT_PUBLIC_APPLE_ENABLED === "true";
 
 type RowProps = {
+  id?: string;
   title: string;
   description: string;
   Icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -32,6 +33,7 @@ type RowProps = {
 };
 
 function ProviderRow({
+  id,
   title,
   description,
   Icon,
@@ -41,7 +43,10 @@ function ProviderRow({
   helper,
 }: RowProps) {
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      {...(id ? { id } : {})}
+      className="flex flex-col gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="flex min-w-0 items-start gap-3">
         <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 ring-1 ring-outline-variant/30">
           <Icon className="size-4 text-on-surface" aria-hidden />
@@ -270,6 +275,7 @@ export function SettingsConnectedAccounts({
         ) : (
           <ul className="mt-4 space-y-3">
             <ProviderRow
+              id="password-setup"
               title="Password"
               description="Sign in with your email and a password."
               Icon={KeyRound}
