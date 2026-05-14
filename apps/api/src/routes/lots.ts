@@ -25,6 +25,7 @@ import type { Container } from "../container.js";
 import { type AuthzError, LotError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
+import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { presentLotImages } from "../lib/media-presenters.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
@@ -286,7 +287,12 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       return c.json({ error: "Not found" }, 404);
     }
     const presented = await presentLotImages(container.mediaUrlResolver, lot);
-    return c.json({ data: maskLotForPublicView(presented, role, staffRole) });
+    const sale = lot.saleId ? await container.saleService.getById(lot.saleId) : null;
+    const withPricing = {
+      ...presented,
+      checkoutPricing: computeLotCheckoutPricing(presented, sale),
+    };
+    return c.json({ data: maskLotForPublicView(withPricing, role, staffRole) });
   });
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {

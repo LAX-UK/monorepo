@@ -2,10 +2,12 @@ import type { Database } from "@auction/db";
 import {
   type Lot,
   type PaymentStatus,
+  type Sale,
   type UserRole,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
+import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
@@ -15,7 +17,11 @@ import type { ILegalEntityRepository } from "./interfaces/legal-entity-repositor
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
-import type { ILotRepository, IUserRepository } from "./interfaces/repositories.js";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  IUserRepository,
+} from "./interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import { notificationRowToPayload } from "./notification-payload.js";
@@ -58,6 +64,12 @@ export class PaymentService {
     private readonly stripePayments: IStripePaymentGateway | null = null,
     private readonly mediaUrlResolver?: MediaUrlResolver,
     private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
+    /**
+     * Optional sale repository used by `totalDue` to resolve sale-level buyer-premium
+     * tiers. When omitted (e.g. older test fixtures) the service falls back to the
+     * existing per-lot `buyerPremiumRate` — preserving the previous behaviour exactly.
+     */
+    private readonly sales: ISaleRepository | null = null,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -111,7 +123,7 @@ export class PaymentService {
       return ok({ paymentId: existing.id, checkoutUrl });
     }
 
-    const total = this.totalDue(lot);
+    const total = await this.totalDue(lot);
     const platformFee = (total * 0.05).toFixed(2);
     const amount = total.toFixed(2);
     const sellerEntity = this.legalEntityRepository
@@ -614,11 +626,29 @@ export class PaymentService {
     }
   }
 
-  private totalDue(lot: Lot): number {
+  /**
+   * Hammer + buyer's premium, in major-currency units (e.g. £125.00 → 125).
+   *
+   * Pricing rule (Strategy + Dependency Inversion):
+   *  1. Resolve the parent sale (if a `ISaleRepository` is wired and `lot.saleId` is set).
+   *  2. Delegate to `buildBuyerPremiumPolicy({ saleTiers, lotRate })` — a sale with non-empty
+   *     `buyerPremiumTiers` overrides the per-lot flat rate; otherwise the existing per-lot
+   *     `buyerPremiumRate` is used (back-compat).
+   *  3. Add the premium to hammer.
+   */
+  private async totalDue(lot: Lot): Promise<number> {
     const hammer = Number.parseFloat(lot.currentPrice);
-    const rate = Number.parseFloat(lot.buyerPremiumRate);
     const safeHammer = Number.isFinite(hammer) ? hammer : 0;
-    const safeRate = Number.isFinite(rate) ? rate : 0;
-    return safeHammer * (1 + safeRate);
+    let sale: Sale | null = null;
+    if (this.sales && lot.saleId) {
+      sale = await this.sales.findById(lot.saleId).catch(() => null);
+    }
+    const policy = buildBuyerPremiumPolicy({
+      saleTiers: sale?.buyerPremiumTiers ?? null,
+      lotRate: lot.buyerPremiumRate,
+    });
+    const premiumMajor = Number.parseFloat(policy.computePremiumMajor(lot.currentPrice));
+    const safePremium = Number.isFinite(premiumMajor) ? premiumMajor : 0;
+    return safeHammer + safePremium;
   }
 }

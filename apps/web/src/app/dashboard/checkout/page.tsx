@@ -1,7 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -46,8 +46,8 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
   const rows: BasketRow[] = [];
   let unauthorisedCount = 0;
   if (requestedIds.length > 0) {
-    const reader = await getServerLotReader();
-    const results = await Promise.allSettled(requestedIds.map((id) => reader.getById(id)));
+    const c = await getServerDataContainer();
+    const results = await Promise.allSettled(requestedIds.map((id) => c.lots.getById(id)));
     for (const result of results) {
       if (result.status !== "fulfilled" || !result.value) continue;
       const lot = result.value;
@@ -55,7 +55,11 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
         unauthorisedCount += 1;
         continue;
       }
-      const totals = buildCheckoutTotalsVm(lot.currentPrice, lot.buyerPremiumRate);
+      const totals = buildCheckoutTotalsVm(
+        lot.currentPrice,
+        lot.buyerPremiumRate,
+        lot.checkoutPricing,
+      );
       rows.push({
         lot,
         hammer: totals.hammer,

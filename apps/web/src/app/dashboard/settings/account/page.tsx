@@ -1,6 +1,7 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import type { LegalEntityStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import {
@@ -13,7 +14,6 @@ import {
 import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function AccountSettingsPage({
   searchParams,
@@ -21,34 +21,14 @@ export default async function AccountSettingsPage({
   searchParams: Promise<{ changed?: string }>;
 }) {
   const sp = await searchParams;
-  const meRes = await authedServerFetch("/users/me");
-  if (meRes.status === 401) redirect("/login?next=/dashboard/settings/account&auth=required");
-  if (!meRes.ok) redirect("/dashboard?error=account");
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/account",
+  });
 
-  const meBody = (await meRes.json()) as {
-    data: {
-      email: string;
-      emailStatus?: string;
-      emailVerified?: boolean;
-      pendingNewEmail?: string | null;
-    };
-  };
-  const user = meBody.data;
-
-  const leRes = await authedServerFetch("/legal-entities/me", { cache: "no-store" });
-  const organisations =
-    leRes.ok && leRes.status === 200
-      ? ((
-          (await leRes.json()) as {
-            data?: Array<{
-              id: string;
-              displayName: string;
-              kind: string;
-              status: LegalEntityStatus;
-            }>;
-          }
-        ).data?.filter((m) => m.kind === "organisation") ?? [])
-      : [];
+  const c = await getServerDataContainer();
+  const memberships = await c.legalEntities.listMine().catch(() => []);
+  const organisations = memberships.filter((m) => m.kind === "organisation");
 
   return (
     <DashboardPage>

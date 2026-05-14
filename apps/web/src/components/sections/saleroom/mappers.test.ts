@@ -29,6 +29,7 @@ const baseSale: Sale = {
   endTime: new Date("2026-06-01T21:00:00Z"),
   previewStartTime: null,
   buyerPremiumRate: "0.25",
+  buyerPremiumTiers: null,
   terms: null,
   createdBy: "admin-1",
   createdAt: new Date(),

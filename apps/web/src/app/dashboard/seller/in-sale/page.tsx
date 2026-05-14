@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
+import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { Lot } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -137,10 +137,11 @@ function InSaleRowCard({ row }: { row: InSaleDisplayRow }) {
 
 async function loadSaleLookup(
   saleIds: string[],
+  sales: DashboardSalesReader,
 ): Promise<Map<string, { id: string; title: string }>> {
   const map = new Map<string, { id: string; title: string }>();
   if (saleIds.length === 0) return map;
-  const results = await Promise.all(saleIds.map((id) => getServerSaleWithLots(id)));
+  const results = await Promise.all(saleIds.map((id) => sales.getWithLots(id)));
   for (const result of results) {
     if (result) map.set(result.sale.id, { id: result.sale.id, title: result.sale.title });
   }
@@ -160,11 +161,11 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   const rawQ = typeof sp.q === "string" ? sp.q.trim().slice(0, 200) : "";
   const qLower = rawQ.toLowerCase();
 
-  const lotReader = await getServerLotReader();
+  const c = await getServerDataContainer();
   let lots: Lot[] = [];
   let fetchError: string | null = null;
   try {
-    lots = await lotReader.list({ sellerId: acting.id, limit: 100 });
+    lots = await c.lots.list({ sellerId: acting.id, limit: 100 });
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Could not load your lots.";
   }
@@ -172,7 +173,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   const saleIds = Array.from(
     new Set(lots.map((lot) => lot.saleId).filter((id): id is string => Boolean(id))),
   );
-  const saleLookup = await loadSaleLookup(saleIds).catch(() => new Map());
+  const saleLookup = await loadSaleLookup(saleIds, c.sales).catch(() => new Map());
   const allDisplay = sortInSaleRows(toInSaleDisplayRows(lots, saleLookup));
   const statusFiltered = filterInSaleRows(allDisplay, filter);
   const filtered =

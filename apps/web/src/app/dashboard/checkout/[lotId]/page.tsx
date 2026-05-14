@@ -3,9 +3,7 @@ import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-p
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerLotFulfilmentForWinner } from "@/lib/data/http/payments.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -21,8 +19,12 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const { lotId } = await params;
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
-  const reader = await getServerLotReader();
-  const auction = await reader.getById(lotId);
+  const c = await getServerDataContainer();
+  const [auction, fulfilment, addresses] = await Promise.all([
+    c.lots.getById(lotId),
+    c.payments.getLotFulfilmentForWinner(lotId).catch(() => null),
+    c.addresses.listMine(),
+  ]);
   if (!auction || auction.winnerId !== user.id) {
     redirect("/dashboard/portfolio");
   }
@@ -30,11 +32,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const { premium, total, premiumPercentLabel } = buildCheckoutTotalsVm(
     auction.currentPrice,
     auction.buyerPremiumRate,
+    auction.checkoutPricing,
   );
-  const addressRes = await authedServerFetch("/users/me/addresses");
-  const addresses = addressRes.ok ? ((await addressRes.json()) as { data: unknown[] }).data : [];
-
-  const fulfilment = await getServerLotFulfilmentForWinner(lotId).catch(() => null);
 
   const img = auction.images[0];
 

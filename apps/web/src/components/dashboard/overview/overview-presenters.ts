@@ -1,4 +1,5 @@
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
+import { lotTotalMajorUnits } from "@/lib/data/view-models/lot-pricing-helpers";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { KpiTileProps } from "@auction/ui";
@@ -18,11 +19,7 @@ export const accountEssentialLinks: readonly AccountEssentialLink[] = [
 ];
 
 export function formatSettlementTotal(row: SettlementRow): string {
-  const hammer = Number.parseFloat(row.lot.currentPrice);
-  const premiumRate = Number.parseFloat(row.lot.buyerPremiumRate);
-  if (!Number.isFinite(hammer)) return formatMoney(row.lot.currentPrice);
-  const premium = Number.isFinite(premiumRate) ? hammer * premiumRate : 0;
-  return formatMoney((hammer + premium).toFixed(2));
+  return formatMoney(lotTotalMajorUnits(row.lot).toFixed(2));
 }
 
 export function settlementStageIndex(row: SettlementRow): number {

@@ -463,4 +463,18 @@ export class SaleService {
     }
     return ok(updated);
   }
+
+  /** Read sale by id for joins (e.g. portfolio pricing). Resolves cover image URLs when configured. */
+  async getById(id: string): Promise<Sale | null> {
+    const row = await this.saleRepo.findById(id);
+    if (!row) return null;
+    return presentSaleImages(this.mediaUrlResolver, row);
+  }
+
+  /** Batch read by ids — single DB round trip for portfolio / lot-list pricing joins. */
+  async findByIds(ids: string[]): Promise<Sale[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.saleRepo.findByIds(ids);
+    return Promise.all(rows.map((r) => presentSaleImages(this.mediaUrlResolver, r)));
+  }
 }
