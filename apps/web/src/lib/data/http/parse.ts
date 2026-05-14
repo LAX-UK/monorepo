@@ -1,5 +1,6 @@
 import type {
   Bid,
+  BuyerPremiumTier,
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
@@ -21,6 +22,24 @@ function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   if (v === "online" || v === "onsite") return v;
   if (v === "hybrid") return "online";
   return "onsite";
+}
+
+function parseBuyerPremiumTiers(raw: unknown): BuyerPremiumTier[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: BuyerPremiumTier[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const threshold =
+      typeof o.hammerThresholdMinor === "number"
+        ? o.hammerThresholdMinor
+        : Number.parseInt(String(o.hammerThresholdMinor ?? ""), 10);
+    const rate = String(o.rate ?? "");
+    if (!Number.isFinite(threshold) || threshold < 0) continue;
+    if (!/^\d(\.\d{1,4})?$/.test(rate)) continue;
+    out.push({ hammerThresholdMinor: threshold, rate });
+  }
+  return out.length > 0 ? out : null;
 }
 
 export function parseSale(raw: unknown): Sale {
@@ -60,6 +79,7 @@ export function parseSale(raw: unknown): Sale {
       o.previewStartTime == null || o.previewStartTime === "" ? null : toDate(o.previewStartTime),
     buyerPremiumRate:
       o.buyerPremiumRate == null || o.buyerPremiumRate === "" ? "0.25" : String(o.buyerPremiumRate),
+    buyerPremiumTiers: parseBuyerPremiumTiers(o.buyerPremiumTiers),
     terms: o.terms == null || o.terms === "" ? null : String(o.terms),
     createdBy: String(o.createdBy ?? ""),
     createdAt: toDate(o.createdAt),
@@ -72,8 +92,27 @@ function parseMarketingDetails(raw: unknown): LotMarketingDetails {
   return raw as LotMarketingDetails;
 }
 
+function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const x = raw as Record<string, unknown>;
+  const hammerMajor = String(x.hammerMajor ?? "").trim();
+  const premiumMajor = String(x.premiumMajor ?? "").trim();
+  const totalMajor = String(x.totalMajor ?? "").trim();
+  const policyId = String(x.policyId ?? "").trim();
+  if (!hammerMajor || !policyId) return undefined;
+  const rawKind = x.kind;
+  const kind: "flat" | "tiered" =
+    rawKind === "tiered" || rawKind === "flat"
+      ? rawKind
+      : policyId.startsWith("tiered:")
+        ? "tiered"
+        : "flat";
+  return { hammerMajor, premiumMajor, totalMajor, policyId, kind };
+}
+
 export function parseLot(raw: unknown): Lot {
   const o = raw as Record<string, unknown>;
+  const checkoutPricing = parseCheckoutPricing(o.checkoutPricing);
   return {
     id: String(o.id),
     saleId: o.saleId == null || o.saleId === "" ? null : String(o.saleId),
@@ -97,6 +136,7 @@ export function parseLot(raw: unknown): Lot {
     currentPrice: String(o.currentPrice),
     buyerPremiumRate:
       o.buyerPremiumRate == null || o.buyerPremiumRate === "" ? "0.25" : String(o.buyerPremiumRate),
+    ...(checkoutPricing !== undefined ? { checkoutPricing } : {}),
     minBidIncrement:
       o.minBidIncrement == null || o.minBidIncrement === "" ? "1.00" : String(o.minBidIncrement),
     dutchDecrementAmount:

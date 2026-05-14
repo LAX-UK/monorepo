@@ -1,9 +1,9 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
-import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SubmissionListFilterValues } from "@/lib/forms/submission/submission-form-schema";
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
@@ -32,10 +32,11 @@ export default async function DashboardSubmissionsPage({
 
   const initialStatus: SubmissionListFilterValues["status"] = status ?? "all";
 
-  let rows: Awaited<ReturnType<typeof getMySubmissions>> = [];
+  const c = await getServerDataContainer();
+  let rows: ItemSubmission[] = [];
   let loadError: string | null = null;
   try {
-    rows = await getMySubmissions(
+    rows = await c.submissions.listMine(
       status !== undefined ? { status, limit: 50, offset: 0 } : { limit: 50, offset: 0 },
     );
   } catch (e) {

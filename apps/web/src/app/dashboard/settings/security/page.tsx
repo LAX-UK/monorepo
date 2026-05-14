@@ -2,7 +2,7 @@ import { SecurityPasswordForm } from "@/components/auth/security-password-form";
 import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import {
   Card,
@@ -14,24 +14,18 @@ import {
 import { PageHeader } from "@auction/ui/components/page-header";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Security",
 };
 
 export default async function SecuritySettingsPage() {
-  const meRes = await authedServerFetch("/users/me");
-  if (meRes.status === 401) redirect("/login?next=/dashboard/settings/security&auth=required");
-  if (!meRes.ok) redirect("/dashboard?error=security");
-
-  const meBody = (await meRes.json()) as {
-    data: { deletionRequestedAt?: string | null; twoFactorEnabled?: boolean };
-  };
-  const deletionRequestedAt = meBody.data.deletionRequestedAt
-    ? new Date(meBody.data.deletionRequestedAt)
-    : null;
-  const twoFactorEnabled = meBody.data.twoFactorEnabled === true;
+  const me = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/security",
+  });
+  const deletionRequestedAt = me.deletionRequestedAt ? new Date(me.deletionRequestedAt) : null;
+  const twoFactorEnabled = me.twoFactorEnabled === true;
 
   return (
     <DashboardPage className="mx-auto max-w-md space-y-8">

@@ -7,6 +7,7 @@ import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
+import { portfolioRowTotalMajorUnits } from "./lot-pricing-helpers";
 
 export type DashboardOverviewErrors = {
   active: string | null;
@@ -75,10 +76,7 @@ export function buildDashboardOverviewVm(input: {
     formatMoney,
   } = input;
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
-  const totalSpent = portfolio.reduce(
-    (sum, row) => sum + Number.parseFloat(row.lot.currentPrice),
-    0,
-  );
+  const totalSpent = portfolio.reduce((sum, row) => sum + portfolioRowTotalMajorUnits(row), 0);
   const yearUtc = new Date().getUTCFullYear();
   const wonThisYear = portfolio.filter(
     (row) => row.lot.endTime.getUTCFullYear() === yearUtc,

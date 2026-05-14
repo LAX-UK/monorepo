@@ -4,7 +4,6 @@ import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
 import type { Category } from "@auction/types";
 import { LabelCaps } from "@auction/ui";
@@ -98,13 +97,12 @@ export default async function DashboardWatchlistPage({
 }) {
   const filters = parseParams(await searchParams);
   const c = await getServerDataContainer();
-  const catReader = await getServerCategoryReader();
   let rows: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
   let categories: Category[] = [];
   let err: string | null = null;
 
   try {
-    [rows, categories] = await Promise.all([c.watchlist.listMine(filters), catReader.list()]);
+    [rows, categories] = await Promise.all([c.watchlist.listMine(filters), c.categories.list()]);
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load watchlist.";
   }

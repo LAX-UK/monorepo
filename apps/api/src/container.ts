@@ -682,6 +682,7 @@ export function createContainer(env: Env): Container {
       onPaymentCaptured: (lotId, paymentId) =>
         lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
     },
+    saleRepo,
   );
   paymentServiceRef.current = paymentService;
 
