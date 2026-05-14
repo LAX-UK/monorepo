@@ -18,6 +18,7 @@ export const serviceLinks: FooterLink[] = [
 
 export const policyLinks: FooterLink[] = [
   { href: "/privacy", label: "Privacy Notice" },
+  { href: "/cookies", label: "Cookie Policy" },
   { href: "/legal", label: "Legal" },
   { href: "/terms", label: "Conditions of Business" },
   { href: "/shipping", label: "Shipping & Logistics" },
@@ -44,6 +45,7 @@ export const companyLinks: FooterLink[] = [
 export const legalLinks: FooterLink[] = [
   { href: "/terms", label: "Conditions of Business" },
   { href: "/privacy", label: "Privacy Notice" },
+  { href: "/cookies", label: "Cookie Policy" },
   { href: "/shipping", label: "Shipping & Logistics" },
   { href: "/legal", label: "Legal" },
 ];
