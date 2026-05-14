@@ -1,7 +1,7 @@
 import "server-only";
 
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+import type { OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 

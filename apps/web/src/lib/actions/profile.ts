@@ -180,6 +180,7 @@ export async function createAddressAction(formData: FormData): Promise<void> {
     redirect(`/dashboard/settings/profile?error=${encodeURIComponent(r.message)}`);
   }
   revalidatePath("/dashboard/settings/profile");
+  revalidatePath("/dashboard/settings/addresses");
   const { redirect } = await import("next/navigation");
   redirect("/dashboard/settings/profile");
 }

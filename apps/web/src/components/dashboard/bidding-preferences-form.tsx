@@ -172,7 +172,8 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
                   />
                 </FormControl>
                 <p className="text-xs text-on-surface-variant">
-                  Hint for quick bid forms; server stores notification prefs only today.
+                  Optional hint for quick bid forms. Outbid and ending-soon toggles above are saved
+                  to your account; this amount is not stored on the server yet.
                 </p>
                 <FormMessage />
               </FormItem>

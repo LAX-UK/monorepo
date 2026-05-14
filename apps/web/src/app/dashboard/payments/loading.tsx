@@ -1,9 +1,9 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 
 export default function DashboardPaymentsLoading() {
   return (
     <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] py-6">
-      <PageSkeleton variant="table" />
+      <DashboardSkeleton variant="list" />
     </div>
   );
 }

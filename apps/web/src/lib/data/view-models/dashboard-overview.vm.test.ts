@@ -1,7 +1,10 @@
+import type { WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
+import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { buildDashboardOverviewVm } from "./dashboard-overview.vm";
 
 const emptyErrors = {
+  session: null,
   active: null,
   portfolio: null,
   watchlist: null,
@@ -38,5 +41,33 @@ describe("buildDashboardOverviewVm", () => {
       formatMoney: (s) => `£${s}`,
     });
     expect(vm.firstName).toBe("Ada");
+  });
+
+  it("uses injected now for ending-soon watchlist window", () => {
+    const far = new Date("2030-01-15T12:00:00.000Z");
+    const vm = buildDashboardOverviewVm({
+      user: { id: "u1", name: "Test", role: "client" },
+      activeLots: [],
+      portfolio: [],
+      watchlist: [
+        {
+          watchlistId: "w1",
+          lotId: "l1",
+          createdAt: new Date(),
+          lot: {
+            id: "l1",
+            title: "Lot",
+            status: "active",
+            endTime: new Date("2030-01-15T18:00:00.000Z"),
+          } as unknown as Lot,
+        } satisfies WatchlistWithLotRow,
+      ],
+      artistFollow: [],
+      bidRows: [],
+      errors: emptyErrors,
+      formatMoney: (s) => `£${s}`,
+      now: far,
+    });
+    expect(vm.endingSoonWatchlist).toHaveLength(1);
   });
 });

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { formatMoney } from "@/lib/format-currency";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";

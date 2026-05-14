@@ -43,8 +43,8 @@ export default async function PaymentMethodsSettingsPage() {
         <AlertTitle>Cards are saved during checkout</AlertTitle>
         <AlertDescription>
           When you complete a payment for the first time, you can opt in to save the card for future
-          invoices. We do not store card details on our servers \u2014 Stripe vaults them and we
-          only reference a token.
+          invoices. We do not store card details on our servers — Stripe vaults them and we only
+          reference a token.
         </AlertDescription>
       </Alert>
 

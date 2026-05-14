@@ -123,12 +123,12 @@ export default async function SellerPayoutsPage() {
         </Card>
       )}
 
-      {payouts.length === 0 ? (
+      {payouts.length === 0 && !listError ? (
         <EmptyState
           title="No payouts yet"
           description="When LAX processes a settlement batch for your sales, the payout statement will appear here with line-by-line breakdowns."
         />
-      ) : (
+      ) : payouts.length > 0 ? (
         <ul className="space-y-3">
           {payouts.map((p) => {
             const statusView = getPayoutStatusView(p.status);
@@ -173,7 +173,7 @@ export default async function SellerPayoutsPage() {
             );
           })}
         </ul>
-      )}
+      ) : null}
     </DashboardPage>
   );
 }

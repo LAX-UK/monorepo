@@ -13,8 +13,7 @@ import {
 import { SecondaryActionStack } from "@/components/dashboard/overview/secondary-action-stack";
 import { WatchlistPreviewCard } from "@/components/dashboard/overview/watchlist-preview-card";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { ActivityItem } from "@/lib/data/view-models/dashboard-activity.vm";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { Button } from "@auction/ui/components/button";
@@ -65,7 +64,12 @@ export function DashboardOverviewView({
             />
           ),
           compliance: (
-            <ComplianceStatusStrip user={user} kyc={kyc} addressesCount={addressesCount} />
+            <ComplianceStatusStrip
+              user={user}
+              kyc={kyc}
+              addressesCount={addressesCount}
+              hideIdentityPill={kyc?.requiresKyc === true}
+            />
           ),
           banner: <ActionRequiredBanner row={firstSettlement} />,
           attention: (

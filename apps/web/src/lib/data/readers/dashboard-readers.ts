@@ -1,14 +1,15 @@
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import type { ListLotsParams, SessionUser } from "@/lib/data/contracts";
 import type {
   ArtistFollowRow,
   BidWithLot,
+  KycStatusSummaryDto,
+  OrgOnboardingResumeVm,
+  ProfileAddressRow,
   WatchlistListParams,
   WatchlistWithLotRow,
-} from "@/lib/data/http/dashboard.server";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+} from "@/lib/data/dto/dashboard-dtos";
+import type { PostKycSessionResult } from "@/lib/data/http/kyc.server";
 import type { ListMyNotificationsParams } from "@/lib/data/http/notifications.server";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
 import type {
   LotFulfilmentSnapshot,
   MyPaymentRow,
@@ -81,9 +82,10 @@ export type DashboardSessionReader = {
   getCurrent(): Promise<SessionUser | null>;
 };
 
-/** KYC status summary for dashboard chrome. */
+/** KYC summary + hosted verification session for dashboard. */
 export type DashboardKycReader = {
   getSummary(): Promise<KycStatusSummaryDto | null>;
+  startSession(returnUrl: string): Promise<PostKycSessionResult>;
 };
 
 export type DashboardNotificationsReader = {
@@ -125,7 +127,11 @@ export type DashboardCategoriesReader = {
 };
 
 /** Single-lot read for checkout / deep links (winner flows). */
-export type DashboardLotReader = {
+export type DashboardBuyerLotReader = {
   getById(id: string): Promise<Lot | null>;
+};
+
+/** Listing lots for seller workspace (acting entity). */
+export type DashboardSellerLotReader = {
   list(params: ListLotsParams): Promise<Lot[]>;
 };

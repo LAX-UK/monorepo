@@ -1,4 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { actionFailure } from "@/lib/forms/form-result";
@@ -44,10 +45,10 @@ export default async function ConfirmEmailChangePage({
           </AlertDescription>
         </Alert>
       ) : (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not confirm</AlertTitle>
-          <AlertDescription>{!result.ok ? result.error : "Something went wrong."}</AlertDescription>
-        </Alert>
+        <DashboardErrorAlert
+          title="Could not confirm"
+          message={!result.ok ? result.error : "Something went wrong."}
+        />
       )}
       <Button asChild className="min-h-11">
         <Link href="/dashboard/settings/account" prefetch>

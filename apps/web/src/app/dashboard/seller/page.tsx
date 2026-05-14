@@ -1,4 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -6,7 +7,6 @@ import { formatMoney } from "@/lib/format-currency";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
@@ -112,19 +112,18 @@ export default async function SellerOverviewPage() {
   const c = await getServerDataContainer();
   let rows: ItemSubmission[] = [];
   let err: string | null = null;
-  try {
-    rows = await c.submissions.listMine({ limit: 100, offset: 0 });
-  } catch (e) {
-    err = e instanceof Error ? e.message : "Could not load submissions.";
-  }
-
   let sellerLots: Lot[] = [];
-  if (acting) {
-    try {
-      sellerLots = await c.lots.list({ sellerId: acting.id, limit: 100 });
-    } catch {
-      sellerLots = [];
-    }
+  const [subRes, lotsRes] = await Promise.allSettled([
+    c.submissions.listMine({ limit: 100, offset: 0 }),
+    acting ? c.sellerLots.list({ sellerId: acting.id, limit: 100 }) : Promise.resolve([] as Lot[]),
+  ]);
+  if (subRes.status === "fulfilled") {
+    rows = subRes.value;
+  } else {
+    err = subRes.reason instanceof Error ? subRes.reason.message : "Could not load submissions.";
+  }
+  if (lotsRes.status === "fulfilled") {
+    sellerLots = lotsRes.value;
   }
 
   const upcomingSaleIds = Array.from(
@@ -193,14 +192,10 @@ export default async function SellerOverviewPage() {
         className="border-0 pb-0"
       />
 
-      {err ? (
-        <Card className="border-error/30 bg-error/5">
-          <CardContent className="p-6 font-body text-sm text-error">{err}</CardContent>
-        </Card>
-      ) : null}
+      {err ? <DashboardErrorAlert title="Could not load submissions" message={err} /> : null}
 
       {!err && rows.length === 0 ? (
-        <EmptyState
+        <DashboardEmptyState
           title="Start your first submission"
           description="Tell our specialists about an artwork or collectible. When approved, we draft the catalogue lot for you."
           action={
