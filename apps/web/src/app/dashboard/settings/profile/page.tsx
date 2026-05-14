@@ -1,11 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import {
   type ProfileAddressRow,
   ProfileSettingsBoard,
 } from "@/components/dashboard/profile-settings-board";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 
 export default async function ProfileSettingsPage({
@@ -31,12 +31,7 @@ export default async function ProfileSettingsPage({
         description="Manage your personal details, addresses, and account preferences."
         className="border-b border-outline-variant/20 pb-5"
       />
-      {err ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not update</AlertTitle>
-          <AlertDescription>{err}</AlertDescription>
-        </Alert>
-      ) : null}
+      {err ? <DashboardErrorAlert title="Could not update" message={err} /> : null}
       <ProfileSettingsBoard
         initialName={me.name}
         initialImage={me.image ?? null}

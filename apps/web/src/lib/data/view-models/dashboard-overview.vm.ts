@@ -2,7 +2,7 @@ import type {
   ArtistFollowRow,
   BidWithLot,
   WatchlistWithLotRow,
-} from "@/lib/data/http/dashboard.server";
+} from "@/lib/data/dto/dashboard-dtos";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
@@ -10,6 +10,7 @@ import type { PortfolioRow } from "@auction/types";
 import { portfolioRowTotalMajorUnits } from "./lot-pricing-helpers";
 
 export type DashboardOverviewErrors = {
+  session: string | null;
   active: string | null;
   portfolio: string | null;
   watchlist: string | null;
@@ -63,6 +64,8 @@ export function buildDashboardOverviewVm(input: {
   bidRows: BidWithLot[];
   errors: DashboardOverviewErrors;
   formatMoney: (amount: string) => string;
+  /** Fixed clock for tests and deterministic SSR snapshots. */
+  now?: Date;
 }): DashboardOverviewVm {
   const {
     user,
@@ -74,10 +77,12 @@ export function buildDashboardOverviewVm(input: {
     bidRows,
     errors,
     formatMoney,
+    now: nowInput,
   } = input;
+  const nowDate = nowInput ?? new Date();
   const firstName = user?.name?.split(/\s+/)[0] ?? "curator";
   const totalSpent = portfolio.reduce((sum, row) => sum + portfolioRowTotalMajorUnits(row), 0);
-  const yearUtc = new Date().getUTCFullYear();
+  const yearUtc = nowDate.getUTCFullYear();
   const wonThisYear = portfolio.filter(
     (row) => row.lot.endTime.getUTCFullYear() === yearUtc,
   ).length;
@@ -133,10 +138,10 @@ export function buildDashboardOverviewVm(input: {
   const wonLotsSidebar = portfolio.filter((row) => row.lot.status === "ended").slice(0, 4);
   const watchPreview = watchlist.filter((w) => w.lot).slice(0, 4);
   const watchlistTotalCount = watchlist.filter((w) => w.lot).length;
-  const now = Date.now();
+  const nowMs = nowDate.getTime();
   const endingSoonWatchlist = watchlist.filter((w) => {
     if (!w.lot || w.lot.status !== "active") return false;
-    const ms = w.lot.endTime.getTime() - now;
+    const ms = w.lot.endTime.getTime() - nowMs;
     return ms > 0 && ms <= ENDING_SOON_MS;
   });
   const artistFollowPreview = artistFollow.slice(0, 8);

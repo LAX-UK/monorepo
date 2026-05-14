@@ -18,11 +18,18 @@ import {
   CardTitle,
 } from "@auction/ui/components/card";
 import { Checkbox } from "@auction/ui/components/checkbox";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
 import { createAddressBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
@@ -69,6 +76,7 @@ function normalizeAddress(values: AddressFormValues): AddressFormValues {
 }
 
 function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormValues>> }) {
+  const defaultAddressFieldId = useId();
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <FormField
@@ -183,11 +191,17 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
           <FormItem className="flex items-center gap-2">
             <FormControl>
               <Checkbox
+                id={defaultAddressFieldId}
                 checked={field.value === true}
                 onCheckedChange={(checked) => field.onChange(checked === true)}
               />
             </FormControl>
-            <span className="font-body text-sm text-on-surface">Default address</span>
+            <FormLabel
+              htmlFor={defaultAddressFieldId}
+              className="cursor-pointer font-body text-sm font-normal text-on-surface"
+            >
+              Default address
+            </FormLabel>
             <FormMessage />
           </FormItem>
         )}
@@ -341,9 +355,16 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
                         type="button"
                         variant="destructive"
                         disabled={pending}
-                        onClick={() =>
-                          run(async () => removeAddressAction(address.id), "Address removed")
-                        }
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              "Remove this address from your account? Invoices and shipping may still reference archived records.",
+                            )
+                          ) {
+                            return;
+                          }
+                          void run(async () => removeAddressAction(address.id), "Address removed");
+                        }}
                       >
                         Remove
                       </Button>

@@ -1,5 +1,5 @@
 import { buildBidBoardRows } from "@/components/dashboard/bid-board-rows";
-import type { BidWithLot } from "@/lib/data/http/dashboard.server";
+import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 
 /** Latest bid per lot, ordered by lot end time (ascending). */
 export function buildDashboardBidsBoardVm(

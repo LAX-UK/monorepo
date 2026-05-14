@@ -1,4 +1,4 @@
-import type { BidWithLot } from "@/lib/data/http/dashboard.server";
+import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { PortfolioRow, UserNotification } from "@auction/types";

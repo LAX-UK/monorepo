@@ -17,7 +17,7 @@ import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";

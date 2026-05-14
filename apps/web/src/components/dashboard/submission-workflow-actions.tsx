@@ -19,6 +19,10 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  if (!canSubmit && !canWithdraw) {
+    return null;
+  }
+
   return (
     <section
       aria-label="Submission actions"
@@ -53,6 +57,13 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
           onClick={() => {
             startTransition(() => {
               void (async () => {
+                if (
+                  !window.confirm(
+                    "Withdraw this submission? You can start a new submission later if needed.",
+                  )
+                ) {
+                  return;
+                }
                 const r = await withdrawSubmissionFromValuesAction(submissionId);
                 if (r.ok) {
                   notify.success("Withdrawn");

@@ -10,7 +10,6 @@ import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import { notify } from "@/lib/ui/notify";
-import { Button as UiButton } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -72,17 +71,6 @@ function PersonalNameBlock({ initialName }: { initialName: string }) {
   return (
     <SettingsField
       label="Name"
-      action={
-        <UiButton
-          type="submit"
-          form="profile-name-form"
-          variant="ghost"
-          size="sm"
-          className="h-8 px-0 font-semibold text-on-surface underline underline-offset-2"
-        >
-          Save
-        </UiButton>
-      }
       value={
         <Form {...form}>
           <form id="profile-name-form" onSubmit={onSubmit} className="w-full max-w-lg space-y-3">
@@ -91,6 +79,7 @@ function PersonalNameBlock({ initialName }: { initialName: string }) {
               name="name"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel className="sr-only">Display name</FormLabel>
                   <FormControl>
                     <UnderlineInput
                       {...field}

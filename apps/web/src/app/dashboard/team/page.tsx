@@ -1,3 +1,4 @@
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -82,6 +83,7 @@ export default async function DashboardTeamPage() {
 
   const members = fetched.data;
   const meRow = members.find((m) => m.userId === user.id);
+  const missingSelfInList = !meRow;
   const viewerIsAdmin = meRow ? ADMIN_ROLES.includes(meRow.role) : false;
   const viewerIsPrimaryAdmin = meRow?.isPrimaryAdmin === true;
 
@@ -93,7 +95,14 @@ export default async function DashboardTeamPage() {
         className="border-b border-outline-variant/20 pb-5"
       />
 
-      {!viewerIsAdmin && (
+      {missingSelfInList ? (
+        <DashboardErrorAlert
+          title="Could not verify your membership"
+          message="Your account is not listed in the member response we received. Refresh the page or ask an organisation admin to confirm your access."
+        />
+      ) : null}
+
+      {!missingSelfInList && !viewerIsAdmin && (
         <Alert>
           <AlertTitle>Read-only view</AlertTitle>
           <AlertDescription>
@@ -103,7 +112,7 @@ export default async function DashboardTeamPage() {
         </Alert>
       )}
 
-      {viewerIsAdmin && <InviteMemberForm legalEntityId={acting.id} />}
+      {!missingSelfInList && viewerIsAdmin && <InviteMemberForm legalEntityId={acting.id} />}
 
       <MemberList
         legalEntityId={acting.id}

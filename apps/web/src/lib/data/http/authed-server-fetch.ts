@@ -44,6 +44,7 @@ export async function authedServerFetch(
   }
   return fetch(`${getServerApiBase()}${path}`, {
     ...fetchInit,
+    cache: fetchInit.cache ?? "no-store",
     headers,
     credentials: "include",
   });
