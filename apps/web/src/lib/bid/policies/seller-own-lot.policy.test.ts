@@ -34,7 +34,7 @@ const baseCtx = (): BidPolicyContext => ({
     marketingDetails: {},
   },
   lotStatus: "active",
-  loginNextPath: "/artwork/test-lot/lot1",
+  loginNextPath: "/lot/test-lot/lot1",
 });
 
 describe("sellerOwnLotPolicy", () => {

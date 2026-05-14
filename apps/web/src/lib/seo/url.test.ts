@@ -25,7 +25,7 @@ describe("slugify", () => {
   });
 
   it("builds canonical entity paths", () => {
-    expect(lotPath({ id: "lot-id", title: "Memory Garden" })).toBe("/artwork/memory-garden/lot-id");
+    expect(lotPath({ id: "lot-id", title: "Memory Garden" })).toBe("/lot/memory-garden/lot-id");
     expect(salePath({ id: "sale-id", title: "Evening Sale" })).toBe("/sales/evening-sale/sale-id");
     expect(artistPath({ id: "artist-id", name: "Stanley Whitney" })).toBe(
       "/artist/stanley-whitney/artist-id",

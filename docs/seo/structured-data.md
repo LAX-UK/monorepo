@@ -28,7 +28,7 @@ the rich-result coverage stays consistent.
 | `/` (root layout) | `organization`, `website` |
 | `/sales` | `breadcrumb`, `itemList` |
 | `/sales/[id]` | `breadcrumb`, `saleEvent`, `itemList` (lots) |
-| `/artwork/[id]` | `breadcrumb` (Home › Sale › Lot when sale is known), `lotProduct` (with brand + seller when available) |
+| `/lot/[slug]/[id]` | `breadcrumb` (Home › Sale › Lot when sale is known), `lotProduct` (with brand + seller when available) |
 | `/artist/[slug]/[id]` | `breadcrumb`, `visualArtistJsonLd`, optional `itemList` (artist row resolved from the public `artist_profile` registry via `GET /artists/public`) |
 | `/artist/[slug]/[id]` (seller fallback) | `breadcrumb`, `personJsonLd`, optional `itemList` (used only when the lot still has a legacy seller-only attribution and no canonical `lot.artist_id`) |
 | `/faq` | `breadcrumb`, `faqPage` |
@@ -41,7 +41,7 @@ The marketing routes co-locate `opengraph-image.tsx` files generated with
 
 - `apps/web/src/app/(marketing)/opengraph-image.tsx` — homepage
 - `apps/web/src/app/(marketing)/sales/[id]/opengraph-image.tsx` — sale catalogue
-- `apps/web/src/app/(marketing)/artwork/[id]/opengraph-image.tsx` — lot detail
+- `apps/web/src/app/(marketing)/lot/[slug]/[id]/opengraph-image.tsx` — lot detail
 - `apps/web/src/app/(marketing)/artist/[id]/opengraph-image.tsx` — artist profile
 
 Next.js automatically wires the same image into Twitter cards. The static

@@ -34,7 +34,7 @@ const base = (): BidPolicyContext => ({
     marketingDetails: {},
   },
   lotStatus: "ended",
-  loginNextPath: "/artwork/test-lot/l1",
+  loginNextPath: "/lot/test-lot/l1",
 });
 
 describe("notLivePolicy", () => {
@@ -45,6 +45,25 @@ describe("notLivePolicy", () => {
 
   it("allows when lotStatus is active", () => {
     const d = notLivePolicy.evaluate({ ...base(), lotStatus: "active" });
+    expect(d.kind).toBe("allow");
+  });
+
+  it("blocks with lifecycle copy when biddingLifecycle is preLaunch", () => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: "scheduled",
+      biddingLifecycle: { kind: "preLaunch" },
+    });
+    expect(d.kind).toBe("block");
+    if (d.kind === "block") expect(d.viewId).toBe("not-live:preLaunch");
+  });
+
+  it("allows live lifecycle when lot is active", () => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: "active",
+      biddingLifecycle: { kind: "live" },
+    });
     expect(d.kind).toBe("allow");
   });
 });

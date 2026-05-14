@@ -70,7 +70,7 @@ describe("toInSaleDisplayRows", () => {
 
   it("emits a public lot href and sale href when sale is in the lookup", () => {
     const [out] = toInSaleDisplayRows([lot()], saleMap);
-    expect(out?.lotHref).toMatch(/^\/artwork\//);
+    expect(out?.lotHref).toMatch(/^\/lot\//);
     expect(out?.lotHref).toContain("lot-1");
     expect(out?.saleHref).toMatch(/^\/sales\//);
     expect(out?.saleTitle).toBe("Spring Modern Sale");

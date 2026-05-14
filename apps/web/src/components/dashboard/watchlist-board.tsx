@@ -111,7 +111,12 @@ function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<Wat
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <ArtworkWatchToggle lotId={row.original.lotId} initialWatching isAuthenticated />
+        <ArtworkWatchToggle
+          lotId={row.original.lotId}
+          initialWatching
+          isAuthenticated
+          loginNextPath={lotPath({ id: row.original.lotId, title: row.original.title })}
+        />
       ),
       enableSorting: false,
     },

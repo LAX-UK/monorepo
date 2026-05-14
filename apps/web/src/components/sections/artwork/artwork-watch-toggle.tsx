@@ -13,7 +13,9 @@ type Props = {
    * `default` — existing card / detail rail (unchanged for LSP).
    */
   appearance?: "default" | "outlined-block";
-  loginNextPath?: string;
+  loginNextPath: string;
+  /** Alternate copy for scheduled / no-sale marketing CTAs (still toggles the same watchlist). */
+  marketingCta?: "watchLot" | "notifyWhenOpens" | "notifyIfRelisted";
 };
 
 const lotBtnClass =
@@ -24,7 +26,8 @@ export function ArtworkWatchToggle({
   initialWatching,
   isAuthenticated,
   appearance = "default",
-  loginNextPath = `/artwork/${lotId}`,
+  loginNextPath,
+  marketingCta = "watchLot",
 }: Props) {
   const { watching, busy, error, toggle, loginHref } = useWatchlistToggle({
     lotId,
@@ -33,6 +36,30 @@ export function ArtworkWatchToggle({
     loginNextPath,
   });
 
+  const signInLabel =
+    marketingCta === "notifyWhenOpens"
+      ? "Sign in to get notified"
+      : marketingCta === "notifyIfRelisted"
+        ? "Sign in for relist alerts"
+        : "Sign in to watch";
+
+  const outlinedFollowLabel = marketingCta === "notifyIfRelisted" ? "Save lot" : "Follow";
+
+  const defaultIdleLabel =
+    marketingCta === "notifyWhenOpens"
+      ? "Notify me when bidding opens"
+      : marketingCta === "notifyIfRelisted"
+        ? "Notify me if relisted"
+        : "Watch lot";
+
+  const defaultActiveLabel =
+    marketingCta === "notifyWhenOpens"
+      ? "You will be notified when bidding opens"
+      : marketingCta === "notifyIfRelisted"
+        ? "Watching for relist"
+        : "Watching";
+
+  const outlinedActiveLabel = marketingCta === "notifyIfRelisted" ? "Saved" : "Following";
   if (!isAuthenticated) {
     if (appearance === "outlined-block") {
       return (
@@ -40,7 +67,7 @@ export function ArtworkWatchToggle({
           href={loginHref}
           className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
-          Follow
+          {signInLabel}
         </Link>
       );
     }
@@ -50,7 +77,7 @@ export function ArtworkWatchToggle({
         className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
       >
         <Eye className="size-4" aria-hidden />
-        Sign in to watch
+        {signInLabel}
       </Link>
     );
   }
@@ -73,7 +100,7 @@ export function ArtworkWatchToggle({
           onClick={() => void toggle()}
           className={`${lotBtnClass} ${watching ? "border-primary/40 bg-primary/5" : ""}`}
         >
-          {watching ? "Following" : "Follow"}
+          {watching ? outlinedActiveLabel : outlinedFollowLabel}
         </Button>
       </>
     );
@@ -99,7 +126,7 @@ export function ArtworkWatchToggle({
         ) : (
           <BookmarkPlus className="size-4" aria-hidden />
         )}
-        {watching ? "Watching" : "Watch lot"}
+        {watching ? defaultActiveLabel : defaultIdleLabel}
       </Button>
     </>
   );
