@@ -1,10 +1,9 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
-import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function EditAdminArtistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,13 +16,35 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
   ]);
   if (!artist) notFound();
 
+  const mergedNotice =
+    artist.status === "merged_into" && artist.mergedIntoArtistId ? (
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-on-surface">
+        This profile is marked <strong>merged</strong>. Canonical work should happen on the{" "}
+        <Link
+          href={`/admin/artists/${artist.mergedIntoArtistId}`}
+          className="font-medium text-primary hover:underline"
+        >
+          surviving artist
+        </Link>
+        . The form below may be locked down by policy; prefer the surviving profile for edits.
+      </div>
+    ) : null;
+
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title={`Edit ${artist.displayName}`}
-        description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
-      />
-      <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
+    <AdminEntityFormShell
+      maxWidthClassName="max-w-4xl"
+      breadcrumbs={
+        <Link
+          href="/admin/artists"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Artists
+        </Link>
+      }
+      title={`Edit ${artist.displayName}`}
+      description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
+    >
+      {mergedNotice}
 
       <Card>
         <CardContent className="pt-6">
@@ -62,6 +83,6 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
         </p>
         <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
       </section>
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }

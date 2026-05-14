@@ -1,4 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
@@ -21,21 +22,22 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
   const c = await getServerDataContainer();
   const [auction, fulfilment, addresses] = await Promise.all([
-    c.lots.getById(lotId),
+    c.buyerLots.getById(lotId),
     c.payments.getLotFulfilmentForWinner(lotId).catch(() => null),
     c.addresses.listMine(),
   ]);
   if (!auction || auction.winnerId !== user.id) {
-    redirect("/dashboard/portfolio");
+    redirect("/dashboard/portfolio?notice=not-winner");
   }
 
-  const { premium, total, premiumPercentLabel } = buildCheckoutTotalsVm(
-    auction.currentPrice,
-    auction.buyerPremiumRate,
-    auction.checkoutPricing,
-  );
+  const checkoutPricing = auction.checkoutPricing;
+  const hasPricing = checkoutPricing != null;
+  const totalsVm = checkoutPricing ? buildCheckoutTotalsVm(checkoutPricing) : null;
 
   const img = auction.images[0];
+  const premium = totalsVm?.premium ?? 0;
+  const total = totalsVm?.total ?? 0;
+  const premiumPercentLabel = totalsVm?.premiumPercentLabel ?? "";
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
@@ -73,39 +75,57 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               invoice is ready — this page updates the fulfilment status automatically.
             </p>
 
-            <section
-              aria-labelledby="checkout-flow-heading"
-              className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8"
-            >
-              <h2 id="checkout-flow-heading" className="sr-only">
-                Invoice and payment
-              </h2>
-              <nav
-                aria-label="Checkout steps"
-                className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest"
-              >
-                <span className="rounded-full border border-primary/35 bg-primary-container/45 px-4 py-1.5 text-primary shadow-sm">
-                  1 · Invoice
-                </span>
-                <span className="text-on-surface-variant/50" aria-hidden>
-                  →
-                </span>
-                <span className="rounded-full border border-outline-variant/25 bg-surface-container-low px-4 py-1.5 text-on-surface-variant">
-                  2 · Confirm
-                </span>
-              </nav>
-              <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
+            <DashboardSection id="checkout-flow" title="Invoice and payment">
+              <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+                {!hasPricing ? (
+                  <DashboardErrorAlert
+                    title="Could not load checkout pricing"
+                    message="We could not load pricing for this lot. Refresh the page or contact support if this keeps happening."
+                  >
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="secondary" asChild>
+                        <Link href={`/dashboard/checkout/${lotId}`}>Retry</Link>
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link
+                          href={`mailto:${process.env.NEXT_PUBLIC_SETTLEMENTS_EMAIL?.trim() || "settlements@example.com"}`}
+                        >
+                          Contact support
+                        </Link>
+                      </Button>
+                    </div>
+                  </DashboardErrorAlert>
+                ) : (
+                  <>
+                    <nav
+                      aria-label="Checkout steps"
+                      className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest"
+                    >
+                      <span className="rounded-full border border-primary/35 bg-primary-container/45 px-4 py-1.5 text-primary shadow-sm">
+                        1 · Invoice
+                      </span>
+                      <span className="text-on-surface-variant/50" aria-hidden>
+                        →
+                      </span>
+                      <span className="rounded-full border border-outline-variant/25 bg-surface-container-low px-4 py-1.5 text-on-surface-variant">
+                        2 · Confirm
+                      </span>
+                    </nav>
+                    <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
 
-              <CheckoutPurchasePanel
-                sessionUser={user}
-                lotId={auction.id}
-                hammer={formatMoney(auction.currentPrice)}
-                buyerPremium={formatMoney(premium.toFixed(2))}
-                total={formatMoney(total.toFixed(2))}
-                premiumPercentLabel={premiumPercentLabel}
-                addresses={addresses}
-              />
-            </section>
+                    <CheckoutPurchasePanel
+                      sessionUser={user}
+                      lotId={auction.id}
+                      hammer={formatMoney(auction.currentPrice)}
+                      buyerPremium={formatMoney(premium.toFixed(2))}
+                      total={formatMoney(total.toFixed(2))}
+                      premiumPercentLabel={premiumPercentLabel}
+                      addresses={addresses}
+                    />
+                  </>
+                )}
+              </div>
+            </DashboardSection>
 
             <p className="mt-8 font-body text-xs text-on-surface-variant lg:mt-10">
               <Link
@@ -119,23 +139,25 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
-        <div>
-          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Total due
-          </p>
-          <p className="font-headline text-lg tabular-nums text-primary">
-            {formatMoney(total.toFixed(2))}
-          </p>
+      {hasPricing ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
+          <div>
+            <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+              Total due
+            </p>
+            <p className="font-headline text-lg tabular-nums text-primary">
+              {formatMoney(total.toFixed(2))}
+            </p>
+          </div>
+          <Button
+            variant="cta"
+            asChild
+            className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <Link href="#checkout-complete-purchase">Complete purchase</Link>
+          </Button>
         </div>
-        <Button
-          variant="cta"
-          asChild
-          className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <Link href="#checkout-complete-purchase">Pay</Link>
-        </Button>
-      </div>
+      ) : null}
     </DashboardPage>
   );
 }

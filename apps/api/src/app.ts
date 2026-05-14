@@ -30,14 +30,17 @@ import { createInternalCronRoutes } from "./routes/internal-cron.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
+import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
 import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statements.js";
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
+import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleRoutes } from "./routes/sales.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
+import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
@@ -159,7 +162,9 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/internal/jobs", createInternalCronRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
+    .route("/lots", createLotDocumentRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
+    .route("/sales", createSaleDocumentRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))
     .route("/users", createActingContextUserRoutes(container, authenticator))
@@ -179,6 +184,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/categories", createCategoryRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
     .route("/submissions", createSubmissionRoutes(container, authenticator))
+    .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))

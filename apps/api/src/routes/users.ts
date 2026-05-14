@@ -6,6 +6,7 @@ import {
   twoFactor,
   user as userTable,
 } from "@auction/db/schema";
+import type { Lot } from "@auction/types";
 import {
   addressIdParamSchema,
   artistWatchlistArtistIdParamSchema,
@@ -30,7 +31,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
-import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
+import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
@@ -112,12 +113,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     const rows = await container.dashboardQueryService.listBidsWithLotsForBidder(userId);
-    const data = await Promise.all(
+    const presented = await Promise.all(
       rows.map(async (row) => ({
         ...row,
         lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
       })),
     );
+    const lots = presented.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
+    const priced = await lotsWithCheckoutPricing(container, lots);
+    const byId = new Map(priced.map((l) => [l.id, l]));
+    const data = presented.map((row) => ({
+      ...row,
+      lot: row.lot ? (byId.get(row.lot.id) ?? row.lot) : null,
+    }));
     return c.json({ data });
   });
 
@@ -134,20 +142,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
     }
     const presentedLots = await presentLotsImages(container.mediaUrlResolver, lots);
-    const saleIds = [
-      ...new Set(
-        presentedLots
-          .map((l) => l.saleId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
-      ),
-    ];
-    const saleRows = await container.saleService.findByIds(saleIds);
-    const saleById = new Map(saleRows.map((s) => [s.id, s]));
-    const data = presentedLots.map((lotRow) => {
+    const pricedLots = await lotsWithCheckoutPricing(container, presentedLots);
+    const data = pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
-      const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
       return {
-        lot: { ...lotRow, checkoutPricing: computeLotCheckoutPricing(lotRow, sale) },
+        lot: lotRow,
         payment: p ? { id: p.id, status: p.status } : null,
       };
     });
@@ -162,12 +161,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       ...(query.status ? { status: query.status } : {}),
       ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
     });
-    const data = await Promise.all(
+    const presented = await Promise.all(
       rows.map(async (row) => ({
         ...row,
         lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
       })),
     );
+    const lots = presented.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
+    const priced = await lotsWithCheckoutPricing(container, lots);
+    const byId = new Map(priced.map((l) => [l.id, l]));
+    const data = presented.map((row) => ({
+      ...row,
+      lot: row.lot ? (byId.get(row.lot.id) ?? row.lot) : null,
+    }));
     return c.json({ data });
   });
 

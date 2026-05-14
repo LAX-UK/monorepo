@@ -10,7 +10,7 @@ import {
   getServerMyPortfolio,
   getServerMyWatchlist,
 } from "@/lib/data/http/dashboard.server";
-import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http/kyc.server";
 import { getServerMyLegalEntityMemberships } from "@/lib/data/http/legal-entities.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerMyNotificationPreferences } from "@/lib/data/http/notification-preferences.server";
@@ -34,16 +34,17 @@ import type {
   DashboardAddressesReader,
   DashboardArtistFollowReader,
   DashboardBidsReader,
+  DashboardBuyerLotReader,
   DashboardCategoriesReader,
   DashboardKycReader,
   DashboardLegalEntitiesReader,
-  DashboardLotReader,
   DashboardNotificationPreferencesReader,
   DashboardNotificationsReader,
   DashboardOrgOnboardingReader,
   DashboardPaymentsReader,
   DashboardPortfolioReader,
   DashboardSalesReader,
+  DashboardSellerLotReader,
   DashboardSellerPayoutsReader,
   DashboardSessionReader,
   DashboardSessionsReader,
@@ -63,7 +64,8 @@ export type ServerDataContainer = {
   submissions: DashboardSubmissionsReader;
   orgOnboarding: DashboardOrgOnboardingReader;
   categories: DashboardCategoriesReader;
-  lots: DashboardLotReader;
+  buyerLots: DashboardBuyerLotReader;
+  sellerLots: DashboardSellerLotReader;
   bids: DashboardBidsReader;
   portfolio: DashboardPortfolioReader;
   watchlist: DashboardWatchlistReader;
@@ -84,7 +86,7 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
   const categoryReader = await getServerCategoryReader();
   return {
     session: { getCurrent: getServerSessionUser },
-    kyc: { getSummary: getServerKycStatusSummary },
+    kyc: { getSummary: getServerKycStatusSummary, startSession: postServerKycSession },
     notifications: { listMine: getServerMyNotifications },
     notificationPreferences: { getMine: getServerMyNotificationPreferences },
     addresses: { listMine: getServerMyAddresses },
@@ -95,8 +97,10 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
       list: () => categoryReader.list(),
       tree: () => categoryReader.tree(),
     },
-    lots: {
+    buyerLots: {
       getById: (id) => lotReader.getById(id),
+    },
+    sellerLots: {
       list: (params) => lotReader.list(params),
     },
     bids: { listMine: getServerMyBids },

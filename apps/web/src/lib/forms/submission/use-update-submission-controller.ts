@@ -3,11 +3,14 @@
 import { updateSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { notify } from "@/lib/ui/notify";
+import {
+  type ItemSubmissionFormValues as NewSubmissionFormValues,
+  itemSubmissionFormSchema as newSubmissionFormSchema,
+} from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
-import { type NewSubmissionFormValues, newSubmissionFormSchema } from "./submission-form-schema";
 
 export function useUpdateSubmissionController(
   submissionId: string,

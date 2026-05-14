@@ -1,7 +1,6 @@
 import { AttentionList, type AttentionListItem } from "@/components/dashboard/attention-list";
 import { formatSettlementTotal } from "@/components/dashboard/overview/overview-presenters";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotPath } from "@/lib/seo/url";
 import { LabelCaps } from "@auction/ui";

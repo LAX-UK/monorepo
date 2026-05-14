@@ -17,7 +17,7 @@ export default function LiveBiddingHubPage() {
         description="When you register for an onsite or hybrid auction, active rooms surface here with deep links like /dashboard/live/[saleId]."
         action={
           <Button variant="default" asChild>
-            <Link href="/">Browse sales</Link>
+            <Link href="/search">Browse sales</Link>
           </Button>
         }
       />

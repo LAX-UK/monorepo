@@ -6,11 +6,20 @@ export type PageHeaderProps = {
   description?: string;
   /** Eyebrow / metadata above title */
   meta?: React.ReactNode;
+  /** Rendered above the title (e.g. breadcrumb trail). */
+  breadcrumbs?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 };
 
-export function PageHeader({ title, description, meta, actions, className }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  meta,
+  breadcrumbs,
+  actions,
+  className,
+}: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -19,6 +28,11 @@ export function PageHeader({ title, description, meta, actions, className }: Pag
       )}
     >
       <div className="w-full md:flex-1 md:pr-8">
+        {breadcrumbs ? (
+          <div className="mb-4 text-on-surface-variant [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline">
+            {breadcrumbs}
+          </div>
+        ) : null}
         {meta ? <div className="mb-2 text-on-surface-variant">{meta}</div> : null}
         <h1 className="font-headline text-4xl font-semibold tracking-tight text-on-surface md:text-5xl">
           {title}

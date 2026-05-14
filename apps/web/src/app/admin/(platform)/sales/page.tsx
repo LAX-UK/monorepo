@@ -1,15 +1,14 @@
+import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
-import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
-import { ShareFiltersButton } from "@/components/admin/share-filters-button";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
-import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { salesListController } from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import type { SaleStatus } from "@auction/types";
+import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -27,19 +26,25 @@ const statuses: (SaleStatus | "all")[] = [
 export default async function AdminSalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    error?: string;
+    limit?: string;
+    offset?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const statusFilter = sp.status === "all" || !sp.status ? undefined : (sp.status as SaleStatus);
+  const query = salesListController.parseQuery(sp);
+  const q = query.q;
+  const statusFilter = query.status;
 
-  let rows: Awaited<ReturnType<typeof getAdminSalesList>> = [];
   let err: string | null = null;
+  let rows = [] as Awaited<ReturnType<typeof salesListController.fetch>>["rows"];
   try {
-    rows = await getAdminSalesList({
-      limit: 100,
-      ...(statusFilter ? { status: statusFilter } : {}),
-    });
+    const result = await salesListController.fetch(query);
+    rows = result.rows;
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load sales.";
   }
@@ -50,9 +55,11 @@ export default async function AdminSalesPage({
     <FilterChipRow
       label="Filter by status"
       chips={statuses.map((s) => {
-        const qs = new URLSearchParams();
-        if (s !== "all") qs.set("status", s);
-        const href = qs.toString() ? `/admin/sales?${qs.toString()}` : "/admin/sales";
+        const href = buildListHref("/admin/sales", sp, {
+          status: s === "all" ? "" : s,
+          q: q ?? "",
+          offset: 0,
+        });
         return {
           id: s,
           label: s,
@@ -63,63 +70,110 @@ export default async function AdminSalesPage({
     />
   );
 
-  return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Sales"
-        description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <ShareFiltersButton />
-            <ResetFiltersLink active={Boolean(statusFilter)} href="/admin/sales" />
-            <Button variant="primary" asChild>
-              <Link href="/admin/sales/new">
-                <Plus className="size-4" aria-hidden />
-                New sale
-              </Link>
-            </Button>
-          </div>
+  const pagination =
+    !err && (query.offset > 0 || rows.length === query.limit) ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={rows.length}
+        prevHref={
+          query.offset > 0
+            ? buildListHref("/admin/sales", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          rows.length === query.limit
+            ? buildListHref("/admin/sales", sp, {
+                offset: query.offset + query.limit,
+              })
+            : null
         }
       />
+    ) : null;
 
-      {err || error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load sales</AlertTitle>
-          <AlertDescription>{err ?? error}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {!err && rows.length === 0 ? (
-        <EmptyState
-          title="No sales yet"
-          description="Create a sale to group lots for a session or season."
-          action={
-            <Button variant="primary" asChild>
-              <Link href="/admin/sales/new">
-                <Plus className="size-4" aria-hidden />
-                New sale
-              </Link>
-            </Button>
-          }
-        />
-      ) : null}
-
-      {!err && boardRows.length > 0 ? (
-        <Suspense fallback={<PageSkeleton variant="table" />}>
-          <AdminSalesBoard
-            rows={boardRows}
-            statusChips={statusChips}
-            toolbarEnd={
-              <Link
-                href="/sales"
-                className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
-              >
-                Public sales
-              </Link>
+  return (
+    <AdminListPage
+      title="Sales"
+      description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
+      primaryAction={
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" asChild>
+            <Link href="/admin/sales/new">
+              <Plus className="size-4" aria-hidden />
+              New sale
+            </Link>
+          </Button>
+        </div>
+      }
+      hasFilters={Boolean(statusFilter || q)}
+      resetHref="/admin/sales"
+      errorAlert={
+        err || error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Could not load sales</AlertTitle>
+            <AlertDescription>{err ?? error}</AlertDescription>
+          </Alert>
+        ) : null
+      }
+      chips={statusChips}
+      filters={
+        <form
+          action="/admin/sales"
+          method="get"
+          className="flex max-w-xl flex-wrap items-end gap-2"
+        >
+          <label className="block min-w-[12rem] flex-1">
+            <span className="mb-1 block font-label text-xs uppercase tracking-widest text-secondary">
+              Search titles
+            </span>
+            <input
+              name="q"
+              type="search"
+              defaultValue={q ?? ""}
+              placeholder="Search by sale title…"
+              className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 font-body text-sm text-on-surface"
+            />
+          </label>
+          {statusFilter ? <input type="hidden" name="status" value={sp.status} /> : null}
+          <Button variant="secondary" type="submit" className="h-11 shrink-0">
+            Search
+          </Button>
+        </form>
+      }
+      toolbarEnd={
+        <Link
+          href="/sales"
+          className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
+        >
+          Public sales
+        </Link>
+      }
+      view={
+        !err && boardRows.length > 0 ? (
+          <Suspense fallback={<PageSkeleton variant="table" />}>
+            <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
+          </Suspense>
+        ) : null
+      }
+      empty={
+        !err && rows.length === 0 ? (
+          <EmptyState
+            title="No sales yet"
+            description="Create a sale to group lots for a session or season."
+            action={
+              <Button variant="primary" asChild>
+                <Link href="/admin/sales/new">
+                  <Plus className="size-4" aria-hidden />
+                  New sale
+                </Link>
+              </Button>
             }
           />
-        </Suspense>
-      ) : null}
-    </AppScreen>
+        ) : null
+      }
+      pagination={pagination}
+    />
   );
 }

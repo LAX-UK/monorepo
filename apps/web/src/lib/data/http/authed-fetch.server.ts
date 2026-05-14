@@ -15,6 +15,7 @@ export async function authedServerFetch(path: string, init?: RequestInit): Promi
   if (cookie) headers.set("Cookie", cookie);
   return fetch(`${getServerApiBase()}${path}`, {
     ...init,
+    cache: init?.cache ?? "no-store",
     headers,
     credentials: "include",
   });

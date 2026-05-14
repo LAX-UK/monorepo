@@ -9,6 +9,7 @@ import {
 import { notify } from "@/lib/ui/notify";
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
   FormControl,
@@ -18,14 +19,18 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
-import { adminCreateCategoryBodySchema } from "@auction/validators";
+import {
+  adminCategoryFormSchema,
+  adminCreateCategoryBodySchema,
+  adminUpdateCategoryBodySchema,
+} from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
-type CategoryFormValues = z.infer<typeof adminCreateCategoryBodySchema>;
+type CategoryFormValues = z.infer<typeof adminCategoryFormSchema>;
 
 type Props = {
   mode: "create" | "edit";
@@ -38,7 +43,7 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(adminCreateCategoryBodySchema),
+    resolver: zodResolver(adminCategoryFormSchema),
     defaultValues,
   });
 
@@ -50,9 +55,12 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
           startTransition(async () => {
             const result =
               mode === "create"
-                ? await adminCreateCategoryResultAction(values)
+                ? await adminCreateCategoryResultAction(adminCreateCategoryBodySchema.parse(values))
                 : categoryId
-                  ? await adminUpdateCategoryResultAction(categoryId, values)
+                  ? await adminUpdateCategoryResultAction(
+                      categoryId,
+                      adminUpdateCategoryBodySchema.parse(values),
+                    )
                   : { ok: false as const, error: "Missing category" };
             if (result.ok) {
               notify.success(mode === "create" ? "Category created" : "Category saved");
@@ -156,6 +164,31 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
             </FormItem>
           )}
         />
+
+        {mode === "edit" ? (
+          <FormField
+            control={form.control}
+            name="archived"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-outline-variant/40 p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value === true}
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="font-body text-sm font-medium text-on-surface">
+                    Archived
+                  </FormLabel>
+                  <p className="font-body text-xs text-on-surface-variant">
+                    Archived categories stay in history but are hidden from default pickers.
+                  </p>
+                </div>
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <FormField
           control={form.control}

@@ -1,51 +1,25 @@
+import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
+import { getStaffNavItems, getStaffNavParentLabel } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
-import {
-  AUDIT_ACCESS,
-  CMS_ACCESS,
-  CONDITION_REPORTS_ACCESS,
-  EMAIL_OUTBOX_ACCESS,
-  STAFF_OVERVIEW_ACCESS,
-  SUBMISSIONS_ACCESS,
-} from "@/lib/navigation/staff-nav-access";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type {
-  AppShellLayout,
-  CapabilityRequirement,
-  UserRole,
-  UserStaffRole,
-} from "@auction/types";
-import { staffRoleToShellLayout, userHasAccessTo } from "@auction/types";
+import type { AppShellLayout, UserRole, UserStaffRole } from "@auction/types";
+import { staffRoleToShellLayout } from "@auction/types";
 import {
-  BarChart3,
   Bell,
   Brush,
-  Building2,
-  ClipboardList,
   CreditCard,
-  FileText,
-  Gauge,
   Heart,
   Layers,
   LayoutGrid,
-  ListTree,
-  Mail,
   Menu,
-  MonitorPlay,
-  MonitorSmartphone,
   Package,
-  Plug,
-  ScrollText,
   Settings,
-  ShieldAlert,
   Store,
   TrendingUp,
-  Truck,
   Upload,
   Users,
   WalletCards,
-  Workflow,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 /** Visual shell segment for the dashboard chrome. */
 export type AppShellRole = AppShellLayout;
@@ -57,14 +31,7 @@ export function sessionUserToShellRole(
   return staffRoleToShellLayout(user.role as UserRole, user.staffRole ?? null);
 }
 
-export type AppShellNavItem = {
-  id: string;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  badge?: number;
-  match?: (pathname: string) => boolean;
-};
+export type { AppShellNavItem };
 
 export type AppShellRoleMeta = {
   label: string;
@@ -208,204 +175,21 @@ export function getClientMobileBottomTabs(
   ].filter((item): item is AppShellNavItem => item != null);
 }
 
-type StaffNavSpec = AppShellNavItem & { requirement: CapabilityRequirement };
-
-function buildStaffNavSpecs(pendingSubmissionCount: number): StaffNavSpec[] {
-  return [
-    {
-      id: "overview",
-      label: "Operations",
-      href: "/admin",
-      icon: Gauge,
-      match: (pathname) => pathname === "/admin",
-      requirement: STAFF_OVERVIEW_ACCESS,
-    },
-    {
-      id: "lots",
-      label: "Lots",
-      href: "/admin/lots",
-      icon: Package,
-      requirement: "catalogue.write",
-    },
-    {
-      id: "sales",
-      label: "Sales",
-      href: "/admin/sales",
-      icon: ScrollText,
-      requirement: "auction.manage",
-    },
-    {
-      id: "categories",
-      label: "Categories",
-      href: "/admin/categories",
-      icon: ListTree,
-      requirement: "catalogue.write",
-    },
-    {
-      id: "artists",
-      label: "Artists",
-      href: "/admin/artists",
-      icon: Brush,
-      requirement: "artist.read",
-    },
-    {
-      id: "submissions",
-      label: "Submissions",
-      href: "/admin/submissions",
-      icon: Upload,
-      ...(pendingSubmissionCount > 0 ? { badge: pendingSubmissionCount } : {}),
-      requirement: SUBMISSIONS_ACCESS,
-    },
-    {
-      id: "condition-reports",
-      label: "Condition reports",
-      href: "/admin/condition-reports",
-      icon: ClipboardList,
-      requirement: CONDITION_REPORTS_ACCESS,
-    },
-    {
-      id: "conveyor",
-      label: "Conveyor",
-      href: "/admin/conveyor",
-      icon: Workflow,
-      match: (pathname) => pathname.startsWith("/admin/conveyor"),
-      requirement: "operations.fulfilment",
-    },
-    {
-      id: "users",
-      label: "Users",
-      href: "/admin/users",
-      icon: Users,
-      requirement: "platform.admin.full",
-    },
-    {
-      id: "impersonation",
-      label: "Impersonate",
-      href: "/admin/impersonation",
-      icon: MonitorSmartphone,
-      requirement: "platform.admin.full",
-    },
-    {
-      id: "legal-entities",
-      label: "Legal entities",
-      href: "/admin/legal-entities",
-      icon: Building2,
-      match: (pathname) => pathname.startsWith("/admin/legal-entities"),
-      requirement: "legal_entity.read",
-    },
-    {
-      id: "analytics",
-      label: "Analytics",
-      href: "/admin/analytics",
-      icon: BarChart3,
-      requirement: "platform.admin.full",
-    },
-    {
-      id: "admin-payments",
-      label: "Payments",
-      href: "/admin/payments",
-      icon: WalletCards,
-      requirement: "finance.read",
-    },
-    {
-      id: "admin-disputes",
-      label: "Disputes",
-      href: "/admin/disputes",
-      icon: ShieldAlert,
-      requirement: "finance.read",
-    },
-    {
-      id: "payouts",
-      label: "Payouts",
-      href: "/admin/payouts",
-      icon: WalletCards,
-      requirement: "finance.read",
-    },
-    {
-      id: "invitations",
-      label: "Invitations",
-      href: "/admin/invitations",
-      icon: Mail,
-      requirement: "platform.admin.full",
-    },
-    {
-      id: "email",
-      label: "Email",
-      href: "/admin/email/outbox",
-      icon: Mail,
-      requirement: EMAIL_OUTBOX_ACCESS,
-    },
-    {
-      id: "saleroom",
-      label: "Saleroom",
-      href: "/admin/saleroom",
-      icon: MonitorPlay,
-      requirement: "auction.manage",
-    },
-    {
-      id: "lot-fulfilment",
-      label: "Fulfilment",
-      href: "/admin/lot-fulfilment",
-      icon: Truck,
-      match: (pathname) => pathname.startsWith("/admin/lot-fulfilment"),
-      requirement: "operations.fulfilment",
-    },
-    {
-      id: "audit",
-      label: "Audit",
-      href: "/admin/audit/events",
-      icon: FileText,
-      match: (pathname) => pathname.startsWith("/admin/audit"),
-      requirement: AUDIT_ACCESS,
-    },
-    {
-      id: "system",
-      label: "System",
-      href: "/admin/settings/platform",
-      icon: Settings,
-      match: (pathname) => pathname.startsWith("/admin/settings"),
-      requirement: "platform.admin.full",
-    },
-    {
-      id: "cms",
-      label: "CMS",
-      href: "/admin/cms",
-      icon: LayoutGrid,
-      match: (pathname) => pathname.startsWith("/admin/cms"),
-      requirement: CMS_ACCESS,
-    },
-    {
-      id: "xero",
-      label: "Xero",
-      href: "/admin/integrations/xero",
-      icon: Plug,
-      requirement: "finance.read",
-    },
-  ];
-}
-
-/** Staff sidebar items filtered by the signed-in user's capabilities. */
-export function getStaffNavItems(
-  role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
-  pendingSubmissionCount = 0,
-): AppShellNavItem[] {
-  return buildStaffNavSpecs(pendingSubmissionCount)
-    .filter((spec) => userHasAccessTo(role, staffRole ?? null, spec.requirement))
-    .map(({ requirement: _r, ...item }) => item);
-}
+export { getStaffNavItems };
 
 export function getAppShellNavItems(
   shell: AppShellRole,
   sessionUser: Pick<SessionUser, "role" | "staffRole">,
   pendingSubmissionCount = 0,
   clientWorkspace: ClientWorkspaceMode = "buying",
+  pendingArtistCount = 0,
 ): AppShellNavItem[] {
   if (shell === "client") return getClientNavItems(clientWorkspace);
   return getStaffNavItems(
     sessionUser.role as UserRole,
     sessionUser.staffRole ?? null,
     pendingSubmissionCount,
+    pendingArtistCount,
   );
 }
 
@@ -435,6 +219,7 @@ export function getRouteParentLabel(
   pathname: string,
   shell: AppShellRole,
   clientWorkspace: ClientWorkspaceMode = "buying",
+  sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
 ): string | null {
   if (shell === "client" && pathname.startsWith("/dashboard/settings")) return "Settings";
   if (shell === "client" && pathname.startsWith("/dashboard/checkout")) return "Collection";
@@ -442,18 +227,12 @@ export function getRouteParentLabel(
     return clientWorkspace === "selling" ? "Selling" : null;
   if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
   if (shell === "client" && pathname.startsWith("/dashboard/team")) return "Team";
-  if (shell !== "client" && pathname.startsWith("/admin/lots/")) return "Lots";
-  if (shell !== "client" && pathname.startsWith("/admin/sales/")) return "Sales";
-  if (shell !== "client" && pathname.startsWith("/admin/categories/")) return "Categories";
-  if (shell !== "client" && pathname.startsWith("/admin/artists/")) return "Artists";
-  if (shell !== "client" && pathname.startsWith("/admin/submissions/")) return "Submissions";
-  if (shell !== "client" && pathname.startsWith("/admin/conveyor")) return "Operations";
-  if (shell !== "client" && pathname.startsWith("/admin/users/")) return "Users";
-  if (shell !== "client" && pathname.startsWith("/admin/saleroom")) return "Saleroom";
-  if (shell !== "client" && pathname.startsWith("/admin/audit")) return "Audit";
-  if (shell !== "client" && pathname.startsWith("/admin/settings")) return "System";
-  if (shell !== "client" && pathname.startsWith("/admin/cms")) return "CMS";
-  if (shell !== "client" && pathname.startsWith("/admin/payouts")) return "Finance";
-  if (shell !== "client" && pathname.startsWith("/admin/integrations")) return "Xero";
+  if (shell !== "client" && pathname.startsWith("/admin")) {
+    const u = sessionUser ?? {
+      role: "staff" as UserRole,
+      staffRole: "super_admin" as UserStaffRole,
+    };
+    return getStaffNavParentLabel(pathname, u.role as UserRole, u.staffRole ?? null, 0);
+  }
   return null;
 }

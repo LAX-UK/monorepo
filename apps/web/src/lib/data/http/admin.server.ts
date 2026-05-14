@@ -5,6 +5,9 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import type {
+  AdminArtistListResult,
+  AdminArtistListRow,
+  AdminArtistStats,
   AdminCategory,
   ArtistKind,
   ArtistProfile,
@@ -129,6 +132,30 @@ function parseArtistProfile(raw: unknown): ArtistProfile {
   };
 }
 
+function parseAdminArtistListRow(raw: unknown): AdminArtistListRow {
+  const base = parseArtistProfile(raw);
+  const o = raw as Record<string, unknown>;
+  return {
+    ...base,
+    lotCount: Number(o.lotCount ?? 0),
+    aliasCount: Number(o.aliasCount ?? 0),
+    ownerDisplayName: o.ownerDisplayName == null ? null : String(o.ownerDisplayName),
+    ownerImage: o.ownerImage == null ? null : String(o.ownerImage),
+  };
+}
+
+function parseAdminArtistStats(raw: unknown): AdminArtistStats {
+  const o = raw as Record<string, unknown>;
+  return {
+    total: Number(o.total ?? 0),
+    pendingReview: Number(o.pendingReview ?? 0),
+    makerSellers: Number(o.makerSellers ?? 0),
+    historical: Number(o.historical ?? 0),
+    brands: Number(o.brands ?? 0),
+    featured: Number(o.featured ?? 0),
+  };
+}
+
 function isPaymentStatus(s: string): s is PaymentStatus {
   return (
     s === "pending" ||
@@ -241,31 +268,102 @@ export async function getAdminCategoryById(id: string): Promise<AdminCategory | 
   return parseAdminCategory(body.data);
 }
 
+export type GetAdminArtistListParams = {
+  includeArchived?: boolean;
+  archivedOnly?: boolean;
+  q?: string;
+  kind?: string;
+  kinds?: string;
+  status?: string;
+  ownerUserId?: string;
+  featured?: boolean;
+  verified?: boolean;
+  linked?: "yes" | "no";
+  sort?: string;
+  limit?: number;
+  offset?: number;
+};
+
 export async function getAdminArtistList(
-  params: {
-    includeArchived?: boolean;
-    q?: string;
-    kind?: string;
-    status?: string;
-    ownerUserId?: string;
-  } = {},
-): Promise<ArtistProfile[]> {
+  params: GetAdminArtistListParams = {},
+): Promise<AdminArtistListResult> {
   const qs = new URLSearchParams();
   if (params.includeArchived) qs.set("includeArchived", "true");
+  if (params.archivedOnly) qs.set("archivedOnly", "true");
   if (params.q) qs.set("q", params.q);
   if (params.kind) qs.set("kind", params.kind);
+  if (params.kinds) qs.set("kinds", params.kinds);
   if (params.status) qs.set("status", params.status);
   if (params.ownerUserId) qs.set("ownerUserId", params.ownerUserId);
+  if (params.featured === true) qs.set("featured", "true");
+  if (params.verified === true) qs.set("verified", "true");
+  if (params.linked) qs.set("linked", params.linked);
+  if (params.sort) qs.set("sort", params.sort);
+  qs.set("limit", String(params.limit ?? 50));
+  qs.set("offset", String(params.offset ?? 0));
   const query = qs.toString();
-  const res = await authedServerFetch(`/admin/artists${query ? `?${query}` : ""}`);
+  const res = await authedServerFetch(`/admin/artists?${query}`);
   if (!res.ok) throw new Error(`Failed to load artists: ${res.status}`);
+  const body = (await res.json()) as { data: { rows: unknown[]; total: number } };
+  return {
+    rows: body.data.rows.map(parseAdminArtistListRow),
+    total: body.data.total,
+  };
+}
+
+export async function getAdminArtistStats(): Promise<AdminArtistStats> {
+  const res = await authedServerFetch("/admin/artists/stats");
+  if (!res.ok) throw new Error(`Failed to load artist stats: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseAdminArtistStats(body.data);
+}
+
+export type AdminArtistDuplicateHit = {
+  id: string;
+  displayName: string;
+  slug: string;
+  kind: ArtistKind;
+  status: ArtistStatus;
+  matchedAlias: string | null;
+  matchType: string;
+  score: number;
+};
+
+export async function getAdminArtistDuplicateCandidates(
+  artistId: string,
+): Promise<AdminArtistDuplicateHit[]> {
+  const res = await authedServerFetch(`/admin/artists/${encodeURIComponent(artistId)}/duplicates`);
+  if (!res.ok) throw new Error(`Failed to load duplicate candidates: ${res.status}`);
   const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseArtistProfile);
+  return body.data.map((raw) => {
+    const o = raw as Record<string, unknown>;
+    const k = o.kind;
+    const kind =
+      typeof k === "string" && (artistKinds as readonly string[]).includes(k)
+        ? (k as ArtistKind)
+        : "artist";
+    const st = o.status;
+    const status =
+      typeof st === "string" && (artistStatuses as readonly string[]).includes(st)
+        ? (st as ArtistStatus)
+        : "approved";
+    return {
+      id: String(o.id ?? ""),
+      displayName: String(o.displayName ?? ""),
+      slug: String(o.slug ?? ""),
+      kind,
+      status,
+      matchedAlias: o.matchedAlias == null ? null : String(o.matchedAlias),
+      matchType: String(o.matchType ?? ""),
+      score: Number(o.score ?? 0),
+    };
+  });
 }
 
 /** Artist profiles where `ownerUserId` matches (includes archived). */
 export async function getAdminArtistsByOwnerUserId(ownerUserId: string): Promise<ArtistProfile[]> {
-  return getAdminArtistList({ ownerUserId, includeArchived: true });
+  const { rows } = await getAdminArtistList({ ownerUserId, includeArchived: true, limit: 200 });
+  return rows;
 }
 
 export async function getAdminArtistById(id: string): Promise<ArtistProfile | null> {
@@ -281,6 +379,7 @@ export type AdminSaleListRow = { sale: Sale; lots: Lot[] };
 export async function getAdminSalesList(
   params: {
     status?: Sale["status"];
+    q?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -289,6 +388,7 @@ export async function getAdminSalesList(
   qs.set("limit", String(params.limit ?? 50));
   qs.set("offset", String(params.offset ?? 0));
   if (params.status) qs.set("status", params.status);
+  if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
@@ -465,6 +565,46 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAdminPaymentRow);
+}
+
+export type AdminEmailSuppressionListRow = {
+  emailHash: string;
+  reason: "hard_bounce" | "complaint" | "manual" | "unsubscribe";
+  createdAt: string;
+};
+
+export async function getAdminEmailSuppressions(): Promise<AdminEmailSuppressionListRow[]> {
+  const res = await authedServerFetch("/admin/email/suppressions");
+  if (!res.ok) {
+    throw new Error(`Failed to load email suppressions: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminEmailSuppressionListRow[] };
+  return body.data;
+}
+
+export type AdminEmailOutboxRow = {
+  id: string;
+  userEmail: string | null;
+  toEmailHash: string;
+  template: string;
+  status: "pending" | "sending" | "sent" | "failed" | "suppressed";
+  messageId: string | null;
+  lastError: string | null;
+  createdAt: string;
+};
+
+export async function getAdminEmailOutbox(params?: {
+  status?: string;
+}): Promise<AdminEmailOutboxRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await authedServerFetch(`/admin/email/outbox${suffix}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load email outbox: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminEmailOutboxRow[] };
+  return body.data;
 }
 
 export type AdminLotFulfilmentListRow = {
@@ -826,11 +966,15 @@ export async function getAdminUserList(params: {
   q?: string;
   limit?: number;
   offset?: number;
+  role?: string;
+  suspendedOnly?: boolean;
 }): Promise<{ rows: AdminUserRow[]; total: number }> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
+  if (params.role) qs.set("role", params.role);
+  if (params.suspendedOnly) qs.set("suspended", "1");
   const res = await authedServerFetch(`/admin/users?${qs.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to load users: ${res.status}`);
@@ -956,12 +1100,14 @@ function parseAdminDomainEventRows(body: {
 
 export async function getAdminDomainEvents(params: {
   limit?: number;
+  offset?: number;
   eventTypePrefix?: string;
   aggregateType?: string;
   aggregateId?: string;
 }): Promise<AdminDomainEventRow[]> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 100));
+  qs.set("offset", String(params.offset ?? 0));
   if (params.eventTypePrefix?.trim()) {
     qs.set("eventTypePrefix", params.eventTypePrefix.trim());
   }
@@ -980,9 +1126,11 @@ export async function getAdminDomainEvents(params: {
 /** Finance admin + platform admin: Stripe dispute-related domain events only. */
 export async function getAdminFinanceDisputeDomainEvents(params: {
   limit?: number;
+  offset?: number;
 }): Promise<AdminDomainEventRow[]> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 200));
+  qs.set("offset", String(params.offset ?? 0));
   const res = await authedServerFetch(`/admin/finance/dispute-domain-events?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load dispute domain events: ${res.status}`);
   const body = (await res.json()) as { data: Record<string, unknown>[] };

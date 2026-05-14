@@ -27,6 +27,7 @@ import { asHttpStatus } from "../lib/http-status.js";
 import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
+import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { presentLotImages } from "../lib/media-presenters.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -79,7 +80,8 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       role,
       staffRole,
     );
-    return c.json({ data });
+    const withPricing = await lotsWithCheckoutPricing(container, data);
+    return c.json({ data: withPricing });
   });
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {

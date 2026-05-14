@@ -8,13 +8,13 @@
 
 ## Cross-cutting summary
 
-- **Two data-access styles:** Pages mix `getServerDataContainer()` with direct imports from `@/lib/data/http/*.server.ts` and `authedServerFetch`. Target: **one composition root** — extend `ServerDataContainer` so route files only depend on the container + auth guards + session where unavoidable.
-- **Business logic in view-models:** `dashboard-portfolio.vm.ts` and `dashboard-checkout.vm.ts` compute hammer × rate. Target: **BE-attached `checkoutPricing`** on `Lot` (or dedicated DTO) using `buildBuyerPremiumPolicy` so web VMs only format strings.
-- **Parallelism:** `dashboard/page.tsx` used sequential `try/catch` blocks for independent fetches. Target: **`Promise.allSettled`** (or batched container call) with structured per-slice errors.
-- **Empty / error / loading:** Inconsistent use of `@auction/ui` `EmptyState`, `Alert`, `PageSkeleton`. Some routes lack `loading.tsx` / route-level `error.tsx`. Target: **dashboard primitives** (`DashboardSection`, `DashboardEmptyState`, `DashboardErrorAlert`, `DashboardSkeleton`) + co-located `loading.tsx` per route.
-- **SOLID:** Several pages embed orchestration (fetch + map + branch) in `page.tsx`. Target: **thin server component** → VM builder (pure) → presentational component; mutations via **client service** interfaces (mirror `apps/web/src/lib/services/impl` for admin).
-- **BE gaps (tracked):** Portfolio API currently joins lots + payments in the route handler; optional future **`GET /users/me/portfolio`** aggregation is deferred — we first attach **pricing** per lot. **Bid eligibility** already exists server-side (`BidEligibilityService` in API container); web still re-runs policies — document as P1 to expose on lot DTOs for dashboard consumers.
-- **Sequencing:** Buyer-premium migration `0060` + tier JSON on `sale` is live; dashboard totals must consume **sale tiers** via BE-computed pricing, not duplicated math.
+- **Data access (buyer + settings):** Pages use `getServerDataContainer()`; shared types live in `apps/web/src/lib/data/dto/dashboard-dtos.ts` (not `*.server.ts`).
+- **Pricing:** `checkoutPricing` is attached on portfolio, single-lot `GET`, public `GET /lots`, `/users/me/bids`, and `/users/me/watchlist` via `lotsWithCheckoutPricing`. Web VMs (`dashboard-checkout.vm`, `lot-pricing-helpers`, portfolio cards) consume BE numbers only.
+- **Parallelism:** `dashboard/page.tsx` uses `Promise.allSettled` with per-slice error messages.
+- **Empty / error / loading:** Dashboard primitives (`DashboardSection`, `DashboardEmptyState`, `DashboardErrorAlert`, `DashboardSkeleton` incl. `checkout`) + co-located `loading.tsx` for settings and key buyer routes; nested `settings/error.tsx`.
+- **SOLID:** Composition root documented in `apps/web/src/lib/data/README.md`; seller/team/live still have backlog items outside this pass.
+- **BE gaps (remaining):** Optional aggregated `GET /users/me/portfolio`; bid eligibility on lot DTOs for dashboard (P1 elsewhere).
+- **Sequencing:** Sale tier JSON flows through `computeLotCheckoutPricing` / shared batch helper.
 
 ---
 
@@ -24,13 +24,7 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 
 ### `/dashboard` (home)
 
-- **Path:** `apps/web/src/app/dashboard/page.tsx`
-- **Purpose:** Overview — active lots, portfolio, watchlist, artist follow, bids, submissions count, activity feed.
-- **Data:** SSR + `Suspense`. Mixes `getServerDataContainer()` with `getServerMyAddresses`, `getServerKycStatusSummary`, `getServerMyNotifications`, `getServerOrgOnboardingResume`, `getMySubmissions`, `getServerSessionUser`. Sequential try/catch for first six slices; then `Promise.all` for second batch.
-- **SOLID:** Page orchestrates too much; should delegate to one `loadDashboardHomeData()` or container batch.
-- **BE:** Portfolio totals in VM use flat rate; should use `checkoutPricing` from API once attached.
-- **UI/UX:** Uses `PageSkeleton` fallback; org submitted `Alert` is good. Per-slice errors passed into VM — good pattern; unify with `DashboardErrorAlert`.
-- **Severity:** P1 · **Effort:** M (reference migration in Phase 1).
+- **Status (buyer pass):** Container-only fetches, `Promise.allSettled`, `DashboardSkeleton` suspense fallback, `OrgSubmittedAlert`, slice errors via `OverviewErrorsAlert` → `DashboardErrorAlert`.
 
 ### `/dashboard/bids`
 
@@ -53,12 +47,7 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 
 ### `/dashboard/portfolio`
 
-- **Path:** `apps/web/src/app/dashboard/portfolio/page.tsx`
-- **Data:** Container + `resolveArtistNames`. Analytics + grid from VMs.
-- **SOLID:** VM contains premium math — **violates BE-first** once tiers exist.
-- **BE:** **P0** — attach `checkoutPricing` on portfolio `GET /users/me/portfolio` response lots.
-- **UI/UX:** Filters client-side (`filterPortfolioRows`) — acceptable for &lt;50 rows; document P2 for query-param filters.
-- **Severity:** P0 (pricing) / P2 (filters) · **Effort:** M.
+- **Status (buyer pass):** `DashboardSection` / `DashboardEmptyState` / `DashboardErrorAlert`; analytics + grid; BE `checkoutPricing` on portfolio lots; VM has no hammer×rate path.
 
 ### `/dashboard/payments`
 
@@ -78,13 +67,7 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 
 ### `/dashboard/checkout/[lotId]`
 
-- **Path:** `apps/web/src/app/dashboard/checkout/[lotId]/page.tsx`
-- **Purpose:** Winner checkout — lot, addresses fetch, fulfilment strip.
-- **Data:** `getServerLotReader` + `authedServerFetch` for addresses + payments fulfilment helper. Not containerised.
-- **SOLID:** Mixed fetch styles; sequential `await`s.
-- **BE:** **P0** — use same `checkoutPricing` on lot from API (extend lot reader or portfolio-style join sale).
-- **UI/UX:** Good copy and layout; ensure `DashboardPage` spacing tokens on small screens.
-- **Severity:** P0 · **Effort:** M.
+- **Status (buyer pass):** Container + parallel fetch; `buildCheckoutTotalsVm` requires `checkoutPricing`; `DashboardSection` wraps flow; mobile totals bar unchanged.
 
 ### `/dashboard/notifications`
 
@@ -225,15 +208,44 @@ flowchart TB
 
 ---
 
+## Pass 2 — Post-ship UX, flows, and observability (full `/dashboard`)
+
+| Area | Change |
+|------|--------|
+| Checkout `[lotId]` | Inline `DashboardErrorAlert` when `checkoutPricing` missing; non-winner redirect adds `?notice=not-winner`; mobile CTA reads “Complete purchase”; stable `#checkout-complete-purchase` anchor on `CheckoutPurchasePanel` |
+| Multi-lot checkout | Normalizes `?lots=` via `redirect`, invalid-UUID messaging, `skippedPricingCount` + `DashboardErrorAlert`, `DashboardErrorAlert` for unauthorised lots |
+| Verify identity | Skeleton no longer hides Cancel; KYC start uses `getServerDataContainer().kyc.startSession` |
+| Overview | `errors.session` + `OverviewErrorsAlert`; `react.cache` on session / KYC / org-onboarding readers |
+| Org submitted | Client clears `org_submitted=1` from URL after first paint |
+| Submissions | `SubmissionWorkflowActions` returns `null` when no actions; confirm before withdraw |
+| Addresses | Confirm before remove; default checkbox `FormLabel` + `id` |
+| Profile | Removed duplicate header Save; sr-only name label |
+| Bidding prefs | Hint matches API (default max bid not persisted server-side) |
+| Banners | Up to 6 visible; overflow link to settings; compliance strip hides identity pill when KYC blocking banner shows |
+| Bids | `BidsPageContent` inside `Suspense` so `loading.tsx` runs |
+| Portfolio | `PortfolioNoticeToast` for `notice=not-winner`; browse CTA → `/search` |
+| Empty-state CTAs | Portfolio, payments, watchlist, bids, live → `/search` |
+| Seller hub / in-sale | `DashboardErrorAlert` / `DashboardEmptyState`, parallel `Promise.allSettled`, `sellerLots` reader |
+| Seller payouts | Empty state suppressed when list error |
+| Team | `DashboardErrorAlert` when current user missing from member list |
+| Fetch cache | `cache: "no-store"` defaults on `hc-server`, `authed-fetch.server`, `authed-server-fetch` |
+| Error boundaries | `Sentry.captureException` on dashboard + settings; nested `error.tsx` for seller, team, live |
+| Loading / shell | Root `dashboard/loading.tsx` and notifications page use `DashboardPage` |
+| VMs | `buildDashboardOverviewVm` accepts optional `now`; `buildPortfolioAnalytics(rows, { now })` |
+| Container | `buyerLots` / `sellerLots` readers; `kyc.startSession` on reader |
+
+---
+
 ## Completion tracking
 
-| Phase | Artifact / outcome |
-|-------|-------------------|
-| 0 | This document |
-| 1 | Extended `ServerDataContainer`, primitives, `README`, overview refactored |
-| 2 | `checkoutPricing` on portfolio (and checkout) lot payloads; VMs use BE numbers |
-| 3A–B | All routes on container + patterns |
-| 4 | Dark / responsive / a11y sweep |
-| 5 | Tests + CI green |
+| Phase | Artifact / outcome | Status |
+|-------|-------------------|--------|
+| 0 | This document | Done |
+| 1 | `dashboard-dtos.ts`, `apps/web/src/lib/data/README.md`, primitives on buyer + settings; overview errors use `DashboardErrorAlert` | Done |
+| 2 | `checkoutPricing` on `GET /lots`, bids, watchlist, portfolio; VMs require BE pricing only | Done |
+| 3A–B | Co-located `loading.tsx` (settings + submissions); `settings/error.tsx` | Done (seller/team/live out of scope) |
+| 4 | Primitives + sections for portfolio / checkout / payments | Done (targeted) |
+| 5 | VM, primitive, and API `lot-checkout-pricing` tests | Done |
+| **Pass 2** | **Full-dashboard UX fixes (table above), Sentry on errors, fetch `no-store`, reader split, tests** | **Done** |
 
-_Last updated: implementation pass start._
+_Last updated: dashboard Pass 2 (re-audit implementation)._

@@ -1,5 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -64,12 +65,7 @@ export default async function NotificationSettingsPage({
           <AlertDescription>Your preferences were updated.</AlertDescription>
         </Alert>
       ) : null}
-      {error ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not save</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+      {error ? <DashboardErrorAlert title="Could not save" message={error} /> : null}
 
       <NotificationPreferencesForm initial={prefs} />
     </DashboardPage>

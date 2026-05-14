@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import {
@@ -44,11 +45,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
 
   let pendingSubmissionCount = 0;
+  let pendingArtistCount = 0;
   if (canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     try {
       pendingSubmissionCount = await getAdminSubmissionPendingCount();
     } catch {
       pendingSubmissionCount = 0;
+    }
+    try {
+      const stats = await getAdminArtistStats();
+      pendingArtistCount = stats.pendingReview;
+    } catch {
+      pendingArtistCount = 0;
     }
   }
 
@@ -74,6 +82,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         user={user}
         shellRole={role}
         pendingSubmissionCount={pendingSubmissionCount}
+        pendingArtistCount={pendingArtistCount}
         cookieDensity={cookieDensity}
       >
         <WelcomeBackToast />

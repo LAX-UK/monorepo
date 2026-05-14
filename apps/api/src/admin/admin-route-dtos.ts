@@ -67,12 +67,33 @@ export type AdminManualReviewPaymentRow = {
 
 export type AdminReviewTaskRow = InferSelectModel<typeof adminReviewTask>;
 
+export type AdminArtistListSort =
+  | "name_asc"
+  | "name_desc"
+  | "updated_desc"
+  | "updated_asc"
+  | "lots_desc"
+  | "lots_asc"
+  | "status_asc"
+  | "status_desc";
+
+export type AdminArtistListLinkedFilter = "any" | "yes" | "no";
+
 export type AdminArtistListOptions = {
   includeArchived?: boolean;
+  archivedOnly?: boolean;
   q?: string;
   kind?: ArtistKind;
+  /** When set, restricts to these kinds (e.g. brand+marque). Takes precedence over `kind`. */
+  kinds?: ArtistKind[];
   status?: ArtistStatus;
   ownerUserId?: string;
+  featured?: boolean;
+  verified?: boolean;
+  linked?: AdminArtistListLinkedFilter;
+  sort?: AdminArtistListSort;
+  limit?: number;
+  offset?: number;
 };
 
 export type AdminCatalogCreateArtistBody = z.infer<typeof adminCreateArtistBodySchema>;

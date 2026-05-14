@@ -1,9 +1,9 @@
+import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { CopyUuidButton } from "@/components/admin/copy-uuid-button";
 import {
   LegalEntityArchiveForm,
   LegalEntityRejectForm,
 } from "@/components/admin/legal-entity-destructive-forms";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { legalEntityLifecycleSimpleAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import { legalEntityStatusToBadgeVariant } from "@/lib/admin/legal-entity-status-badge-variant";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -19,7 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -76,13 +75,19 @@ export default async function AdminLegalEntityDetailPage({
   const canArchive = entity.status !== "archived";
 
   return (
-    <AppScreen className="max-w-3xl space-y-6">
-      <div className="flex flex-col gap-6 border-b border-outline-variant/15 pb-8 md:flex-row md:items-end md:justify-between">
-        <PageHeader
-          className="mb-0 border-0 pb-0"
-          title={entity.displayName}
-          description={`Legal entity · ${entity.kind} / ${entity.subkind}`}
-        />
+    <AdminEntityDetailShell
+      className="max-w-3xl space-y-6"
+      breadcrumbs={
+        <Link
+          href="/admin/legal-entities"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Legal entities
+        </Link>
+      }
+      title={entity.displayName}
+      description={`Legal entity · ${entity.kind} / ${entity.subkind}`}
+      actions={
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/legal-entities">Back to lookup</Link>
@@ -91,8 +96,8 @@ export default async function AdminLegalEntityDetailPage({
             <Link href="/admin/impersonation">Impersonation</Link>
           </Button>
         </div>
-      </div>
-
+      }
+    >
       {success ? (
         <Alert>
           <AlertTitle>Done</AlertTitle>
@@ -197,6 +202,6 @@ export default async function AdminLegalEntityDetailPage({
           </CardContent>
         </Card>
       ) : null}
-    </AppScreen>
+    </AdminEntityDetailShell>
   );
 }

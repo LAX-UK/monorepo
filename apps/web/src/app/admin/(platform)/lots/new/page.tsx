@@ -1,6 +1,5 @@
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
 import {
   getAdminArtistList,
   getAdminLotById,
@@ -39,31 +38,30 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
     cloneDefaults = { ...cloneDefaults, auctionType: "english" };
   }
 
-  const [categories, users, artists] = await Promise.all([
+  const [categories, users, artistList] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
-    getAdminArtistList(),
+    getAdminArtistList({ includeArchived: false, limit: 500 }),
   ]);
+  const artists = artistList.rows;
 
   return (
-    <AppScreen className="mx-auto max-w-2xl space-y-8">
-      <Link
-        href="/admin/lots"
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Auctions
-      </Link>
-      <DisplayHeading as="h1" className="text-4xl">
-        New auction
-      </DisplayHeading>
-      {fromLotId ? (
-        <p className="font-body text-sm text-on-surface-variant">
-          Cloning catalogue fields from lot{" "}
-          <span className="font-mono text-xs">{fromLotId.slice(0, 8)}…</span>. Schedule new dates
-          before publishing.
-        </p>
-      ) : null}
-
+    <AdminEntityFormShell
+      breadcrumbs={
+        <Link
+          href="/admin/lots"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Auctions
+        </Link>
+      }
+      title="New auction"
+      description={
+        fromLotId
+          ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
+          : undefined
+      }
+    >
       <AdminLotForm
         mode="create"
         defaultValues={cloneDefaults}
@@ -72,6 +70,6 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
         artists={artists}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
       />
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }
