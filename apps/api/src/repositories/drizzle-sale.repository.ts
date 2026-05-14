@@ -59,6 +59,13 @@ export class DrizzleSaleRepository implements ISaleRepository {
     return mapSaleRow(row, categories.get(row.id) ?? []);
   }
 
+  async findByIds(ids: string[]): Promise<Sale[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.select().from(sale).where(inArray(sale.id, ids));
+    const categories = await this.categoryIdsBySaleIds(rows.map((r) => r.id));
+    return rows.map((r) => mapSaleRow(r, categories.get(r.id) ?? []));
+  }
+
   async create(input: CreateSaleInput): Promise<Sale> {
     const coverImages = input.coverImages ?? [];
     const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
@@ -92,6 +99,9 @@ export class DrizzleSaleRepository implements ISaleRepository {
       };
       if (input.buyerPremiumRate !== undefined) {
         values.buyerPremiumRate = input.buyerPremiumRate;
+      }
+      if (input.buyerPremiumTiers !== undefined) {
+        values.buyerPremiumTiers = input.buyerPremiumTiers ?? null;
       }
       const [created] = await tx.insert(sale).values(values).returning();
       if (!created) throw new Error("Failed to create sale");
@@ -144,6 +154,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.previewStartTime !== undefined)
       rowPatch.previewStartTime = patch.previewStartTime ?? null;
     if (patch.buyerPremiumRate !== undefined) rowPatch.buyerPremiumRate = patch.buyerPremiumRate;
+    if (patch.buyerPremiumTiers !== undefined)
+      rowPatch.buyerPremiumTiers = patch.buyerPremiumTiers ?? null;
     if (patch.terms !== undefined) rowPatch.terms = patch.terms ?? null;
     if (patch.deliveryMode !== undefined) rowPatch.deliveryMode = patch.deliveryMode;
     if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;

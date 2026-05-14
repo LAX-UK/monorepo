@@ -1,12 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
-import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { formatMoney } from "@/lib/format-currency";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
-import type { ItemSubmissionStatus, Lot } from "@auction/types";
+import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
@@ -111,10 +109,11 @@ export default async function SellerOverviewPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard/seller" });
   const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
 
-  let rows: Awaited<ReturnType<typeof getMySubmissions>> = [];
+  const c = await getServerDataContainer();
+  let rows: ItemSubmission[] = [];
   let err: string | null = null;
   try {
-    rows = await getMySubmissions({ limit: 100, offset: 0 });
+    rows = await c.submissions.listMine({ limit: 100, offset: 0 });
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load submissions.";
   }
@@ -122,8 +121,7 @@ export default async function SellerOverviewPage() {
   let sellerLots: Lot[] = [];
   if (acting) {
     try {
-      const lotReader = await getServerLotReader();
-      sellerLots = await lotReader.list({ sellerId: acting.id, limit: 100 });
+      sellerLots = await c.lots.list({ sellerId: acting.id, limit: 100 });
     } catch {
       sellerLots = [];
     }
@@ -139,9 +137,7 @@ export default async function SellerOverviewPage() {
   );
   const saleLookup = new Map<string, { id: string; title: string }>();
   if (upcomingSaleIds.length > 0) {
-    const results = await Promise.allSettled(
-      upcomingSaleIds.map((id) => getServerSaleWithLots(id)),
-    );
+    const results = await Promise.allSettled(upcomingSaleIds.map((id) => c.sales.getWithLots(id)));
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) {
         saleLookup.set(result.value.sale.id, {

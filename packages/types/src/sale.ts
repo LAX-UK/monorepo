@@ -1,3 +1,5 @@
+import type { BuyerPremiumTier } from "./buyer-premium.js";
+
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type SaleStatus = (typeof saleStatuses)[number];
 
@@ -40,6 +42,12 @@ export type Sale = {
   endTime: Date;
   previewStartTime: Date | null;
   buyerPremiumRate: string;
+  /**
+   * Optional band-based premium tier override (sale-level). When present and non-empty
+   * the pricing factory uses these tiers in preference to each lot's `buyerPremiumRate`.
+   * See `docs/runbooks/buyer-premium-tiers.md`.
+   */
+  buyerPremiumTiers: BuyerPremiumTier[] | null;
   terms: string | null;
   /** Transitional compatibility only; new API mappers do not emit this field. */
   createdBy?: string;
@@ -71,6 +79,7 @@ export type CreateSaleInput = {
   endTime: Date;
   previewStartTime?: Date | undefined;
   buyerPremiumRate?: string | undefined;
+  buyerPremiumTiers?: BuyerPremiumTier[] | null | undefined;
   terms?: string | undefined;
   createdByLegalEntityId?: string | undefined;
 };

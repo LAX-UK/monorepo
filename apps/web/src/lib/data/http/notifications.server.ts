@@ -11,6 +11,8 @@ export type ListMyNotificationsParams = {
   offset?: number;
   /** Inbox tab. Default: "all". */
   tab?: "all" | "unread" | "archived";
+  /** Optional type filter (API `type` query). */
+  type?: string;
 };
 
 /** Server-side fetcher for the current user's notifications (SSR friendly).
@@ -20,12 +22,14 @@ export type ListMyNotificationsParams = {
 export async function getServerMyNotifications(
   params: ListMyNotificationsParams = {},
 ): Promise<UserNotification[]> {
-  const { limit = 10, offset = 0, tab = "all" } = params;
+  const { limit = 10, offset = 0, tab = "all", type } = params;
   const qs = new URLSearchParams({
     tab,
     limit: String(limit),
     offset: String(offset),
   });
+  const trimmedType = type?.trim();
+  if (trimmedType) qs.set("type", trimmedType);
   try {
     const res = await authedServerFetch(`/users/me/notifications?${qs.toString()}`);
     if (!res.ok) return [];

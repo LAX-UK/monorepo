@@ -27,6 +27,7 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     endTime: now,
     previewStartTime: null,
     buyerPremiumRate: "0.25",
+    buyerPremiumTiers: null,
     terms: null,
     createdBy: "admin",
     createdAt: now,

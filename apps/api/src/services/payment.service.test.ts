@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { PaymentProviderError } from "../lib/errors.js";
@@ -8,7 +8,11 @@ import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
-import type { ILotRepository, IUserRepository } from "./interfaces/repositories.js";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  IUserRepository,
+} from "./interfaces/repositories.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { PaymentService } from "./payment.service.js";
@@ -574,6 +578,88 @@ describe("PaymentService", () => {
         payload: expect.objectContaining({ reason: "seller_archived" }),
       }),
     );
+  });
+
+  it("applies sale-level tier override to total when present (tier band switches at threshold)", async () => {
+    const tieredLot: Lot = {
+      ...lot,
+      saleId: "sale-tier",
+      currentPrice: "499999.99",
+      buyerPremiumRate: "0.1000",
+    };
+    const saleWithTiers: Sale = {
+      id: "sale-tier",
+      title: "Tiered Sale",
+      description: null,
+      coverImages: [],
+      categoryId: null,
+      deliveryMode: "online",
+      streamUrl: null,
+      locationName: null,
+      locationAddress: null,
+      locationMapUrl: null,
+      locationAddressLine1: null,
+      locationAddressLine2: null,
+      locationCity: null,
+      locationCounty: null,
+      locationPostcode: null,
+      locationCountry: null,
+      status: "scheduled",
+      startTime: new Date(),
+      endTime: new Date(),
+      previewStartTime: null,
+      buyerPremiumRate: "0.1500",
+      buyerPremiumTiers: [
+        { hammerThresholdMinor: 0, rate: "0.1500" },
+        { hammerThresholdMinor: 50_000_000, rate: "0.1000" },
+      ],
+      terms: null,
+      createdBy: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ ...payment, id: "pay-tier", status: "pending" }),
+    } as unknown as IPaymentWriteRepository;
+    const accounting: IPaymentAccountingProvider = {
+      isConfigured: vi.fn().mockReturnValue(false),
+      getCheckoutUrlIfAny: vi.fn(),
+      createCheckoutForWinner: vi.fn(),
+      syncPaymentFromProvider: vi.fn(),
+      syncInvoiceFromProvider: vi.fn(),
+    };
+    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const legalEntities: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ id: tieredLot.sellerLegalEntityId, status: "active" }),
+    } as unknown as ILegalEntityRepository;
+    const sales: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(saleWithTiers),
+    } as unknown as ISaleRepository;
+
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(tieredLot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      { findById: vi.fn() } as unknown as IUserRepository,
+      accounting,
+      null,
+      legalEntities,
+      {} as never,
+      publisher as never,
+      null,
+      undefined,
+      null,
+      sales,
+    );
+
+    const result = await service.createPendingForWinner("buyer-1", tieredLot.id);
+    expect(result.isOk()).toBe(true);
+    // Hammer 499_999.99 → tier @ 0 → 15% → banker's-rounded premium = 75000.00
+    // Without tiers the lot's flat 10% would have produced 549999.99 → we assert the tier wins.
+    expect(payments.create).toHaveBeenCalledWith(expect.objectContaining({ amount: "574999.99" }));
+    expect(sales.findById).toHaveBeenCalledWith("sale-tier");
   });
 
   it("listMyPaymentsForBuyerApi filters by status and includes presented rows", async () => {

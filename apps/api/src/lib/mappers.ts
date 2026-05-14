@@ -149,6 +149,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     endTime: row.endTime,
     previewStartTime: row.previewStartTime ?? null,
     buyerPremiumRate: String(row.buyerPremiumRate),
+    buyerPremiumTiers: row.buyerPremiumTiers ?? null,
     terms: row.terms ?? null,
     createdByLegalEntityId: requireBackfilledLegalEntityId(
       row.createdByLegalEntityId,
