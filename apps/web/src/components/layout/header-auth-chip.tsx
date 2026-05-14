@@ -132,7 +132,7 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
-      <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400">
+      <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400 dark:text-on-surface-variant">
         Account
       </p>
       <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-outline-variant/15 dark:bg-surface-container-low">

@@ -204,14 +204,14 @@ export function HeaderMegaNav({
                           : "text-white/85 hover:text-white dark:text-nav-text dark:hover:text-on-surface"
                         : active || open
                           ? "text-brand-900 dark:text-on-surface"
-                          : "text-nav-text hover:text-brand-900",
+                          : "text-nav-text hover:text-brand-900 dark:hover:text-on-surface",
                       open
                         ? blendWithHero
                           ? "border-white dark:border-on-surface"
-                          : "border-brand-900"
+                          : "border-brand-900 dark:border-on-surface"
                         : blendWithHero
                           ? "border-transparent hover:border-white/35 dark:hover:border-on-surface/40"
-                          : "border-transparent hover:border-brand-900/40",
+                          : "border-transparent hover:border-brand-900/40 dark:hover:border-on-surface/40",
                     )}
                     aria-current={active ? "page" : undefined}
                     aria-haspopup="true"
@@ -299,7 +299,9 @@ function HeaderMegaMenuPanelContent({
           ))}
         </ul>
       ) : (
-        <p className="font-body text-sm text-brand-400">Nothing to show yet.</p>
+        <p className="font-body text-sm text-brand-400 dark:text-on-surface-variant">
+          Nothing to show yet.
+        </p>
       )}
       {viewAllHref && viewAllLabel ? (
         <Link
