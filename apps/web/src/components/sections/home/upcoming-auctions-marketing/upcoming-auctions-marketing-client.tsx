@@ -34,15 +34,24 @@ export function UpcomingAuctionsMarketingClient({ tiles }: Props) {
   const visible = useMemo(() => tiles.filter((t) => matchesFilter(t, filter)), [tiles, filter]);
 
   return (
-    <section className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14">
+    <section
+      aria-labelledby="home-upcoming-auctions-heading"
+      className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+    >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
         <div className="flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <DisplayHeading
-            as="h2"
-            className="text-[40px] font-semibold leading-[60px] text-[#050505] dark:text-on-surface"
-          >
-            Upcoming Auctions
-          </DisplayHeading>
+          <div className="flex max-w-[720px] flex-col gap-2">
+            <DisplayHeading
+              as="h2"
+              id="home-upcoming-auctions-heading"
+              className="text-[40px] font-semibold leading-[60px] text-[#050505] dark:text-on-surface"
+            >
+              Upcoming Auctions
+            </DisplayHeading>
+            <p className="font-headline text-2xl font-normal leading-9 text-[#757575] dark:text-on-surface-variant">
+              Scheduled and live sales curated by LAX specialists
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-8">
             <div
               className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#F1F1F3] p-1 outline outline-1 outline-[rgba(209,209,209,0.65)] -outline-offset-1 dark:bg-surface-container-high dark:outline-outline/40"
@@ -99,19 +108,9 @@ export function UpcomingAuctionsMarketingClient({ tiles }: Props) {
             }
           />
         ) : (
-          <div
-            className={
-              visible.length === 2
-                ? "grid grid-cols-1 gap-8 sm:grid-cols-2 sm:items-start"
-                : "flex flex-wrap content-start items-start gap-8"
-            }
-          >
+          <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-8 sm:items-stretch">
             {visible.map((tile) => (
-              <UpcomingAuctionMarketingCard
-                key={tile.id}
-                tile={tile}
-                fillGridCell={visible.length === 2}
-              />
+              <UpcomingAuctionMarketingCard key={tile.id} tile={tile} />
             ))}
           </div>
         )}

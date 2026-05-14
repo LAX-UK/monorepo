@@ -19,10 +19,19 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
 import { cache } from "react";
+
+/** Home marketing strip caps — keep the fold scannable. */
+export const HOME_UPCOMING_LIMIT = 4;
+export const HOME_ENDING_SOON_LIMIT = 4;
+export const HOME_LIVE_NOW_LIMIT = 4;
+export const HOME_EDITORS_PICKS_LIMIT = 8;
+export const HOME_PRIVATE_HIGHLIGHTS_LIMIT = 3;
 
 type HomeSaleListQuery = {
   status?: Sale["status"];
@@ -42,14 +51,24 @@ function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
   return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
 }
 
+export type HomeUrgencySection =
+  | { variant: "endingSoon"; lots: LotCardVM[] }
+  | { variant: "liveNow"; lots: LotCardVM[] }
+  | { variant: "none"; lots: LotCardVM[] };
+
 export type HomePageData = {
   heroState: HeroStateVM;
   /** Lots promoted for structured data when `upcomingAuctionTiles` is empty. */
   jsonLdListFallback: HomeJsonLdListEntry[];
-  endingSoonLots: LotCardVM[];
+  urgencySection: HomeUrgencySection;
   upcomingAuctionTiles: HomeUpcomingAuctionTileVM[];
+  /** First N sales backing `upcomingAuctionTiles` (for Event-rich JSON-LD). */
+  upcomingSales: Sale[];
   editorsPickLots: EditorsPickLotCardVM[];
   privateSaleHighlights: PrivateSaleHighlightVM[];
+  isAuthenticated: boolean;
+  /** Lot IDs on the signed-in user’s watchlist (empty when logged out). */
+  watchedLotIds: string[];
 };
 
 function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {
@@ -95,7 +114,7 @@ function pickPrivateSaleHighlightLots(lots: Lot[]): Lot[] {
   if (lots.length === 0) return [];
   const fromOffset = lots.slice(12, 15);
   if (fromOffset.length > 0) return fromOffset;
-  return lots.slice(-Math.min(3, lots.length));
+  return lots.slice(-Math.min(HOME_PRIVATE_HIGHLIGHTS_LIMIT, lots.length));
 }
 
 function lotsEndingSoon(lots: Lot[]): Lot[] {
@@ -116,7 +135,47 @@ function lotsEndingSoon(lots: Lot[]): Lot[] {
   return endingSoon;
 }
 
+function liveNowLots(lots: Lot[], excludeLotId: string | null): Lot[] {
+  const active = lots.filter(
+    (l) => l.status === "active" && (!excludeLotId || l.id !== excludeLotId),
+  );
+  active.sort((a, b) => {
+    const ea = a.endTime instanceof Date ? a.endTime.getTime() : Date.parse(String(a.endTime));
+    const eb = b.endTime instanceof Date ? b.endTime.getTime() : Date.parse(String(b.endTime));
+    return ea - eb;
+  });
+  return active.slice(0, HOME_LIVE_NOW_LIMIT);
+}
+
+function buildUrgencySection(
+  upcoming: Lot[],
+  featuredLot: Lot | null,
+  endingSoonWithoutHero: Lot[],
+): HomeUrgencySection {
+  if (endingSoonWithoutHero.length > 0) {
+    return {
+      variant: "endingSoon",
+      lots: toEndingSoonLotCardVMs(endingSoonWithoutHero.slice(0, HOME_ENDING_SOON_LIMIT)),
+    };
+  }
+  const live = liveNowLots(upcoming, featuredLot?.id ?? null);
+  if (live.length > 0) {
+    return {
+      variant: "liveNow",
+      lots: toEndingSoonLotCardVMs(live),
+    };
+  }
+  return { variant: "none", lots: [] };
+}
+
 export const getHomeData = cache(async (): Promise<HomePageData> => {
+  const [session, watchedSet] = await Promise.all([
+    getServerSessionUser(),
+    getServerWatchedLotIdSet(),
+  ]);
+  const isAuthenticated = Boolean(session);
+  const watchedLotIds = Array.from(watchedSet);
+
   let upcoming: Lot[] = [];
   let salesRows: HomeSaleListRow[] = [];
   try {
@@ -129,8 +188,6 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     if (upcoming.length === 0) {
       upcoming = await fetchHomeLots({ limit: 12, sort: "endingAsc" });
     }
-    // Upcoming-auctions strip: scheduled + active, both delivery modes. Public list API has no
-    // `deliveryMode` param (see listSalesQuerySchema); onsite/online tabs filter client-side.
     salesRows = await fetchHomeSales({
       statuses: ["scheduled", "active"],
       sort: "startAsc",
@@ -154,24 +211,38 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const endingSoonWithoutHero = featuredLot
     ? endingSoon.filter((l) => l.id !== featuredLot.id)
     : endingSoon;
-  const endingSoonLots = toEndingSoonLotCardVMs(endingSoonWithoutHero.slice(0, 4));
-  const endingSoonRowIds = new Set(endingSoonWithoutHero.slice(0, 4).map((l) => l.id));
+  const endingSoonRowIds = new Set(
+    endingSoonWithoutHero.slice(0, HOME_ENDING_SOON_LIMIT).map((l) => l.id),
+  );
   const upcomingAfterHero = upcoming.filter(
     (l) => l.id !== featuredLot?.id && !endingSoonRowIds.has(l.id),
   );
-  const jsonLdListFallback = jsonLdListEntriesFromLots(upcomingAfterHero.slice(0, 4));
-  const upcomingAuctionTiles = toHomeUpcomingAuctionTileVMs(salesRows);
-  const editorsPickLots = toEditorsPickLotCardVMs(upcomingAfterHero.slice(0, 12));
+  const jsonLdListFallback = jsonLdListEntriesFromLots(
+    upcomingAfterHero.slice(0, HOME_UPCOMING_LIMIT),
+  );
+  const urgencySection = buildUrgencySection(upcoming, featuredLot, endingSoonWithoutHero);
+
+  const upcomingSales = salesRows.slice(0, HOME_UPCOMING_LIMIT).map((r) => r.sale);
+  const upcomingAuctionTiles = toHomeUpcomingAuctionTileVMs(salesRows).slice(
+    0,
+    HOME_UPCOMING_LIMIT,
+  );
+  const editorsPickLots = toEditorsPickLotCardVMs(
+    upcomingAfterHero.slice(0, HOME_EDITORS_PICKS_LIMIT),
+  );
   const privateSaleHighlights = toPrivateSaleHighlightVMs(
-    pickPrivateSaleHighlightLots(upcomingAfterHero),
+    pickPrivateSaleHighlightLots(upcomingAfterHero).slice(0, HOME_PRIVATE_HIGHLIGHTS_LIMIT),
   );
 
   const base = {
     jsonLdListFallback,
-    endingSoonLots,
+    urgencySection,
     upcomingAuctionTiles,
+    upcomingSales,
     editorsPickLots,
     privateSaleHighlights,
+    isAuthenticated,
+    watchedLotIds,
   };
 
   try {

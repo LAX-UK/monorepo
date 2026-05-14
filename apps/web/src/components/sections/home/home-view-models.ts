@@ -132,6 +132,10 @@ export type HomeUpcomingAuctionTileVM = {
   auctionKindLabel: string;
   deliveryMode: Sale["deliveryMode"];
   status: Sale["status"];
+  /** Sale is live (lots may be bidding). */
+  isLive?: boolean;
+  /** Sale starts within the next 7 days and is not yet active. */
+  startsSoon?: boolean;
 };
 
 /** Figma “Editor’s Picks” horizontal lot card (image + estimate + CTA). */
@@ -297,6 +301,13 @@ export function toEndingSoonLotCardVMs(lots: Lot[]): LotCardVM[] {
 export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAuctionTileVM {
   const { sale, lots } = row;
   const auctionKindLabel = sale.deliveryMode === "online" ? "Online auction" : "Onsite auction";
+  const now = Date.now();
+  const startMs =
+    sale.startTime instanceof Date ? sale.startTime.getTime() : Date.parse(String(sale.startTime));
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const isLive = sale.status === "active";
+  const startsSoon =
+    !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
   return {
     id: sale.id,
     href: salePath(sale),
@@ -308,6 +319,8 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     auctionKindLabel,
     deliveryMode: sale.deliveryMode,
     status: sale.status,
+    ...(isLive ? { isLive: true } : {}),
+    ...(startsSoon ? { startsSoon: true } : {}),
   };
 }
 

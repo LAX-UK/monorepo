@@ -88,7 +88,13 @@ export function MobileNavDrawer({
                       aria-controls={panelId}
                       onClick={() => setExpandedIndex(expanded ? null : index)}
                     >
-                      <span className={active ? "text-brand-900" : "text-nav-text"}>
+                      <span
+                        className={
+                          active
+                            ? "text-brand-900 dark:text-on-surface"
+                            : "text-nav-text dark:text-on-surface-variant"
+                        }
+                      >
                         {section.label}
                       </span>
                       <ChevronDown
@@ -119,7 +125,7 @@ export function MobileNavDrawer({
                             ))}
                           </ul>
                         ) : (
-                          <p className="py-1 font-body text-xs text-brand-400">
+                          <p className="py-1 font-body text-xs text-brand-400 dark:text-on-surface-variant">
                             Nothing to show yet.
                           </p>
                         )}
@@ -145,7 +151,7 @@ export function MobileNavDrawer({
               <li key={`drawer-${item.label}`}>
                 <Link
                   href={item.href}
-                  className="block py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900"
+                  className="block py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 dark:text-on-surface"
                   onClick={close}
                 >
                   {item.label}
@@ -157,7 +163,9 @@ export function MobileNavDrawer({
           <MobileAuthSection onNavigate={close} />
 
           <div className="flex items-center gap-3 border-t border-nav-border pt-4">
-            <span className="font-label text-xs font-semibold uppercase text-brand-400">Theme</span>
+            <span className="font-label text-xs font-semibold uppercase text-brand-400 dark:text-on-surface-variant">
+              Theme
+            </span>
             <ThemeToggle />
           </div>
         </div>

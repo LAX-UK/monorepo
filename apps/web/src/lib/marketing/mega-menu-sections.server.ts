@@ -4,6 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import type { ArtistProfile } from "@/lib/data/contracts";
 import { portraitForPublicArtist } from "@/lib/data/http/artist.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
 import { artistPath } from "@/lib/seo/url";
 
@@ -48,15 +49,40 @@ function mergeArtistTeasersIntoSections(
   });
 }
 
+function rewriteDashboardHref(href: string): string {
+  if (!href.startsWith("/dashboard/")) return href;
+  return `/login?next=${encodeURIComponent(href)}`;
+}
+
+/** Logged-out users should not land on dashboard routes from the marketing mega menu. */
+function rewriteMegaMenuForGuest(sections: MegaMenuSection[]): MegaMenuSection[] {
+  return sections.map((section) => ({
+    ...section,
+    href: rewriteDashboardHref(section.href),
+    items: section.items.map((item) => ({
+      ...item,
+      href: rewriteDashboardHref(item.href),
+    })),
+  }));
+}
+
 export async function loadMegaMenuSections(): Promise<MegaMenuSection[]> {
-  const base = getMarketingMegaMenuSections();
-  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
-    return base;
-  }
-  try {
-    const artists = await fetchMenuArtists();
-    return mergeArtistTeasersIntoSections(base, artists);
-  } catch {
-    return base;
-  }
+  const [session, merged] = await Promise.all([
+    getServerSessionUser(),
+    (async (): Promise<MegaMenuSection[]> => {
+      const base = getMarketingMegaMenuSections();
+      if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
+        return base;
+      }
+      try {
+        const artists = await fetchMenuArtists();
+        return mergeArtistTeasersIntoSections(base, artists);
+      } catch {
+        return base;
+      }
+    })(),
+  ]);
+
+  if (!session) return rewriteMegaMenuForGuest(merged);
+  return merged;
 }
