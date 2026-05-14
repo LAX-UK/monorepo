@@ -1,5 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { SessionsClientPage } from "@/components/settings/sessions-client-page";
+import { SessionsClientPage } from "@/components/settings/sessions/sessions-client-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { PageHeader } from "@auction/ui/components/page-header";

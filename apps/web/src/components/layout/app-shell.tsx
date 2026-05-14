@@ -68,7 +68,9 @@ function AppShellFrame({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "b" || (!event.metaKey && !event.ctrlKey)) return;
+      if (!event?.key) return;
+      const key = event.key.toLowerCase();
+      if (key !== "b" || (!event.metaKey && !event.ctrlKey)) return;
       if (!window.matchMedia("(min-width: 1024px)").matches) return;
       event.preventDefault();
       toggleCollapsed();

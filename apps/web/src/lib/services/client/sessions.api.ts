@@ -1,32 +1,32 @@
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { type StepUpActionResult, classifyActionFailure } from "@/lib/auth/step-up";
 
-export type SessionApiError = "forbidden" | "not_found" | "server_error";
+export type ISessionsApi = {
+  revoke(id: string): Promise<StepUpActionResult<void>>;
+  revokeAllOthers(): Promise<StepUpActionResult<void>>;
+};
 
-export type SessionDeleteResult = { ok: true } | { ok: false; error: SessionApiError };
-export type SessionRevokeAllResult = { ok: true } | { ok: false; error: SessionApiError };
-
-function classifyError(status: number): SessionApiError {
-  if (status === 403) return "forbidden";
-  if (status === 404) return "not_found";
-  return "server_error";
+async function voidResultFromResponse(res: Response): Promise<StepUpActionResult<void>> {
+  if (res.ok) return { ok: true, value: undefined };
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, reason: classifyActionFailure(res.status, body) };
 }
 
-/** DELETE /users/me/sessions/:id — revoke a single session. */
-export async function deleteSession(id: string): Promise<SessionDeleteResult> {
-  const res = await fetch(`${apiBaseUrl()}/users/me/sessions/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!res.ok) return { ok: false, error: classifyError(res.status) };
-  return { ok: true };
-}
-
-/** POST /users/me/sessions/revoke-all — revoke all sessions except the current one. */
-export async function revokeAllSessions(): Promise<SessionRevokeAllResult> {
-  const res = await fetch(`${apiBaseUrl()}/users/me/sessions/revoke-all`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) return { ok: false, error: classifyError(res.status) };
-  return { ok: true };
-}
+export const httpSessionsApi: ISessionsApi = {
+  async revoke(id: string) {
+    return voidResultFromResponse(
+      await fetch(`${apiBaseUrl()}/users/me/sessions/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include",
+      }),
+    );
+  },
+  async revokeAllOthers() {
+    return voidResultFromResponse(
+      await fetch(`${apiBaseUrl()}/users/me/sessions/revoke-all`, {
+        method: "POST",
+        credentials: "include",
+      }),
+    );
+  },
+};

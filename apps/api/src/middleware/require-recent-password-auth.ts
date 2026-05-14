@@ -6,16 +6,32 @@ import type { Container } from "../container.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 
 /**
+ * How to treat users who have no password-backed `credential` account row.
+ */
+export type StepUpPolicy = {
+  onMissingCredential: "block" | "allow";
+};
+
+/** Default: OAuth-only users must add a password before step-up-gated actions. */
+export const PASSWORD_REQUIRED_POLICY: StepUpPolicy = { onMissingCredential: "block" };
+
+/** Session revoke: valid session cookie is sufficient for OAuth-only users. */
+export const SESSION_REVOKE_POLICY: StepUpPolicy = { onMissingCredential: "allow" };
+
+/**
  * Requires a fresh proof of identity before sensitive actions (email change, account deletion, etc.).
  *
  * - **Credential users** (have a password): must have used `POST /auth/reauth` within
  *   `AUTH_TIMINGS.recentPasswordProofMaxAgeSec` seconds — checked via `session.last_password_auth_at`.
- * - **OAuth-only users** (no password): must set up a password first via `POST /auth/setup-password`
- *   before accessing step-up-gated endpoints. Until then the request is rejected with
- *   `credential_required` which the frontend maps to a clear user message.
- *   This prevents OAuth sessions — which may be weeks old — from silently bypassing the gate.
+ * - **OAuth-only users** (no password): behaviour depends on {@link StepUpPolicy}:
+ *   - `onMissingCredential: "block"` — reject with `credential_required` (default for destructive flows).
+ *   - `onMissingCredential: "allow"` — allow the request (used for revoking other sessions when the
+ *     current session is already authenticated).
  */
-export function createRequireRecentPasswordAuth(container: Container) {
+export function createRequireRecentPasswordAuth(
+  container: Container,
+  policy: StepUpPolicy = PASSWORD_REQUIRED_POLICY,
+) {
   const maxAgeMs = AUTH_TIMINGS.recentPasswordProofMaxAgeSec * 1000;
   return createMiddleware<{
     Variables: { userId?: string };
@@ -41,7 +57,10 @@ export function createRequireRecentPasswordAuth(container: Container) {
       .limit(1);
 
     if (!cred) {
-      // OAuth-only user: no password exists to verify. Direct them to set one up first.
+      if (policy.onMissingCredential === "allow") {
+        await next();
+        return;
+      }
       return c.json(
         { error: "A password is required for this action", code: "credential_required" },
         403,
