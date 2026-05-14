@@ -1,8 +1,9 @@
 "use client";
 
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
+import { useClientClock } from "@/lib/time/use-client-clock";
 import { cn } from "@auction/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type Props = {
   saleTitle: string;
@@ -13,17 +14,17 @@ type Props = {
 };
 
 export function OnsiteAuctionHeader({ saleTitle, lotLabel, endAtMs, className }: Props) {
-  const [now, setNow] = useState(() => Date.now());
+  // `null` during SSR + first client render so hydration matches; ticks after mount.
+  const now = useClientClock(1000);
 
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  const msLeft = now == null ? null : Math.max(0, endAtMs - now);
+  const clock = useMemo(
+    () => (msLeft == null ? null : formatCountdownForDisplay(msLeft)),
+    [msLeft],
+  );
 
-  const msLeft = Math.max(0, endAtMs - now);
-  const clock = useMemo(() => formatCountdownForDisplay(msLeft), [msLeft]);
-
-  const urgency = msLeft < 60_000 ? "critical" : msLeft < 300_000 ? "soon" : ("ok" as const);
+  const urgency: "critical" | "soon" | "ok" =
+    msLeft == null ? "ok" : msLeft < 60_000 ? "critical" : msLeft < 300_000 ? "soon" : "ok";
 
   return (
     <header
@@ -45,8 +46,9 @@ export function OnsiteAuctionHeader({ saleTitle, lotLabel, endAtMs, className }:
               urgency === "soon" && "text-amber-600 dark:text-amber-400",
               urgency === "ok" && "text-[#474747] dark:text-on-surface-variant",
             )}
+            suppressHydrationWarning
           >
-            {clock}
+            {clock ?? "\u00A0"}
           </span>
         </p>
       </div>

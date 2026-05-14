@@ -44,22 +44,26 @@ function toneClasses(tone: LifecycleBadgeTone): string {
 
 /** Live-updating pill + short countdown for scheduled / live / extended. */
 export function LotStatePill({ lot, sale, className, compact, initialNowMs }: Props) {
-  const [now, setNow] = useState(() => initialNowMs ?? Date.now());
+  // When server passes `initialNowMs`, SSR and CSR start aligned. Otherwise fall
+  // back to `null` until mount to avoid a hydration mismatch on the countdown text.
+  const [now, setNow] = useState<number | null>(() => initialNowMs ?? null);
   const onlineCtx = useOnlineLotLifecycle();
 
   useEffect(() => {
+    setNow((cur) => cur ?? Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
   const recentlyExtended = onlineCtx?.extendedByMs != null && onlineCtx.extendedByMs > 0;
   const lifecycle = useMemo(
-    () => classifyLotLifecycle(lot, sale, now, { recentlyExtended }),
+    () => classifyLotLifecycle(lot, sale, now ?? 0, { recentlyExtended }),
     [lot, sale, now, recentlyExtended],
   );
   const badge = useMemo(() => lifecycleBadge(lifecycle), [lifecycle]);
 
   const countdown =
+    now != null &&
     lifecycle.msLeft != null &&
     (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
       ? formatCountdownForDisplay(lifecycle.msLeft)
@@ -88,6 +92,7 @@ export function LotStatePill({ lot, sale, className, compact, initialNowMs }: Pr
             "font-body tabular-nums text-on-surface-variant",
             compact ? "text-xs" : "text-sm",
           )}
+          suppressHydrationWarning
         >
           {countdown}
         </span>
