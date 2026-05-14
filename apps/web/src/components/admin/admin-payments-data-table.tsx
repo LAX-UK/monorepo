@@ -5,6 +5,7 @@ import {
   adminRefundPaymentResultAction,
 } from "@/lib/actions/admin";
 import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import { notify } from "@/lib/ui/notify";
 import type { PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -14,22 +15,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
 
-export type AdminPaymentTableRow = {
-  id: string;
-  lotId: string;
-  lotTitle: string;
-  buyerId: string;
-  sellerId: string;
-  amount: string;
-  platformFee: string;
-  status: PaymentStatus;
-  /** Lot fulfilment pipeline status when the finance user can read the ops queue; otherwise null. */
-  fulfilmentStatus: string | null;
-  xeroInvoiceNumber: string | null;
-  xeroOnlineInvoiceUrl: string | null;
-  xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
-  xeroLastError: string | null;
-};
+export type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 
 function fulfilmentStatusLabel(status: string | null): string {
   if (!status) return "—";

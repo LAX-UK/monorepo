@@ -144,7 +144,7 @@ type Props = {
   viewPipeline: boolean;
   listError: string | null;
   urlError: string | null;
-  statusChips: ReactNode;
+  statusChips?: ReactNode;
   /** Trimmed search query (?q=) for layout links; rendered only on the client. */
   searchQuery: string;
 };
@@ -194,8 +194,13 @@ export function AdminLotsBoard({
         density={density}
         filters={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {statusChips}
-            <span className="hidden h-6 w-px shrink-0 bg-outline-variant/30 sm:block" aria-hidden />
+            {statusChips ?? null}
+            {statusChips ? (
+              <span
+                className="hidden h-6 w-px shrink-0 bg-outline-variant/30 sm:block"
+                aria-hidden
+              />
+            ) : null}
             <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
           </div>
         }

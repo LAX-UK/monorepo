@@ -22,7 +22,6 @@ import type { ItemSubmissionFormValues } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
 function parseFormDataToCreateInput(formData: FormData) {
-  const imagesRaw = String(formData.get("images") ?? "");
   const categoryIdsRaw = String(formData.get("categoryIds") ?? formData.get("categoryId") ?? "");
   const parseJsonArray = (name: string) => {
     try {
@@ -33,17 +32,24 @@ function parseFormDataToCreateInput(formData: FormData) {
       return [];
     }
   };
+  const parseJsonStringArray = (name: string): string[] | undefined => {
+    try {
+      const raw = String(formData.get(name) ?? "").trim();
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return undefined;
+      const out = parsed.map((x) => String(x).trim()).filter(Boolean);
+      return out.length > 0 ? out : undefined;
+    } catch {
+      return undefined;
+    }
+  };
   return {
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || undefined,
     medium: String(formData.get("medium") ?? "").trim() || undefined,
     dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
-    images: imagesRaw
-      ? imagesRaw
-          .split(/[\n,]+/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : undefined,
+    images: parseJsonStringArray("images"),
     yearOfWork: String(formData.get("yearOfWork") ?? "").trim() || undefined,
     isSigned: String(formData.get("isSigned") ?? "") === "true",
     signatureNote: String(formData.get("signatureNote") ?? "").trim() || undefined,

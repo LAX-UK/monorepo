@@ -1,5 +1,6 @@
 "use client";
 
+import { SaleDocumentsSection } from "@/components/admin/sale-form/sale-documents-section";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { UploadField } from "@/components/forms/upload-field";
 import { UnderlineInput } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
 import { notify } from "@/lib/ui/notify";
-import { type CategoryNode, saleDeliveryModes } from "@auction/types";
+import { type CategoryNode, type EntityDocument, saleDeliveryModes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -48,6 +49,8 @@ type Props = {
   categories: CategoryNode[];
   /** When true, nested lots on create must use the English auction type (API-enforced). */
   englishOnlyAuctionsLocked?: boolean;
+  /** Staff-attached sale documents (edit mode). */
+  initialSaleDocuments?: EntityDocument[];
 };
 
 function zodIssuePathForForm(path: (string | number)[]): (string | number)[] {
@@ -75,6 +78,7 @@ export function AdminSaleForm({
   defaultValues,
   categories,
   englishOnlyAuctionsLocked = false,
+  initialSaleDocuments = [],
 }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -750,6 +754,10 @@ export function AdminSaleForm({
             </div>
           ) : null}
         </div>
+
+        {mode === "edit" && saleId ? (
+          <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
+        ) : null}
 
         <FormField
           control={form.control}

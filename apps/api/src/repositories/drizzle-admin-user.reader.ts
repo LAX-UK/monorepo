@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNotNull, or, type SQL } from "drizzle-orm";
 import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
@@ -19,7 +19,17 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 
   async list(filter: AdminUserListFilter): Promise<AdminUserListResult> {
     const q = filter.q?.trim();
-    const whereClause = q ? or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`)) : undefined;
+    const clauses: SQL[] = [];
+    if (q) {
+      clauses.push(or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`))!);
+    }
+    if (filter.role) {
+      clauses.push(eq(user.role, filter.role));
+    }
+    if (filter.suspendedOnly) {
+      clauses.push(isNotNull(user.suspendedAt));
+    }
+    const whereClause = clauses.length > 0 ? and(...clauses) : undefined;
 
     const countQuery = this.db.select({ n: count() }).from(user);
     const [countRow] = whereClause ? await countQuery.where(whereClause) : await countQuery;

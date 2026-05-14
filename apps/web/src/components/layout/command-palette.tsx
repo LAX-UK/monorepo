@@ -1,6 +1,7 @@
 "use client";
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
+import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
 import { showLiveBiddingNav } from "@/lib/feature-flags";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
@@ -66,52 +67,31 @@ const dashboardSellingSections: PaletteSection[] = [
   },
 ];
 
-const adminPlatformSections: PaletteSection[] = [
-  {
-    id: "admin-pages",
-    heading: "Admin",
+function buildStaffAdminPaletteSections(
+  sessionUser: SessionUser,
+  pendingSubmissionCount: number,
+): PaletteSection[] {
+  const role = sessionUser.role as UserRole;
+  const groups = getStaffNavGroups(role, pendingSubmissionCount, sessionUser.staffRole ?? null);
+  const fromNav: PaletteSection[] = groups.map((g) => ({
+    id: g.id,
+    heading: g.title,
+    items: g.items.map((it) => ({
+      id: `sn-${it.id}`,
+      href: it.href,
+      label: it.label,
+    })),
+  }));
+  const shortcuts: PaletteSection = {
+    id: "shortcuts",
+    heading: "Shortcuts",
     items: [
-      { id: "a-home", href: "/admin", label: "Operations home" },
-      { id: "a-lots", href: "/admin/lots", label: "Lots & auctions" },
-      { id: "a-new-lot", href: "/admin/lots/new", label: "New lot" },
-      { id: "a-sales", href: "/admin/sales", label: "Sales" },
-      { id: "a-subs", href: "/admin/submissions", label: "Submissions" },
-      {
-        id: "a-cr",
-        href: "/admin/condition-reports",
-        label: "Condition report requests",
-      },
-      { id: "a-fulfil", href: "/admin/lot-fulfilment", label: "Lot fulfilment queue" },
-      { id: "a-conveyor", href: "/admin/conveyor", label: "Conveyor pipeline" },
-      { id: "a-pay", href: "/admin/payments", label: "Payments" },
-      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
-      { id: "a-users", href: "/admin/users", label: "Users" },
-      { id: "a-analytics", href: "/admin/analytics", label: "Analytics" },
-      { id: "a-invitations", href: "/admin/invitations", label: "Invitations" },
-      { id: "a-email-templates", href: "/admin/email/templates", label: "Email templates" },
-      { id: "a-audit", href: "/admin/audit/events", label: "Audit log" },
-      { id: "a-audit-timeline", href: "/admin/audit/timeline", label: "Audit aggregate timeline" },
-      { id: "a-settings", href: "/admin/settings/platform", label: "System settings" },
-      { id: "a-cms", href: "/admin/cms", label: "CMS & pages" },
-      { id: "a-saleroom", href: "/admin/saleroom", label: "Saleroom console" },
-      { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
+      { id: "sn-new-lot", href: "/admin/lots/new", label: "New lot" },
+      { id: "sn-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
     ],
-  },
-];
-
-/** Finance-only staff: same routes as sidebar, no platform shortcuts. */
-const adminFinanceSections: PaletteSection[] = [
-  {
-    id: "admin-finance",
-    heading: "Finance admin",
-    items: [
-      { id: "a-pay", href: "/admin/payments", label: "Payments" },
-      { id: "a-disputes", href: "/admin/disputes", label: "Disputes", hint: "Stripe" },
-      { id: "a-xero", href: "/admin/integrations/xero", label: "Xero" },
-      { id: "a-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
-    ],
-  },
-];
+  };
+  return [...fromNav, shortcuts];
+}
 
 function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
   const t = query.trim().toLowerCase();
@@ -120,11 +100,6 @@ function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
     (item) =>
       item.label.toLowerCase().includes(t) || (item.hint?.toLowerCase().includes(t) ?? false),
   );
-}
-
-function isAdminFinanceOnly(sessionUser: SessionUser | null | undefined): boolean {
-  if (!sessionUser) return false;
-  return !canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null);
 }
 
 function hideLiveBiddingItems(sections: PaletteSection[]): PaletteSection[] {
@@ -140,17 +115,18 @@ function buildVisibleSections(
   query: string,
   sessionUser?: SessionUser | null,
   clientWorkspaceMode: ClientWorkspaceMode = "buying",
+  pendingSubmissionCount = 0,
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
       ? clientWorkspaceMode === "selling"
         ? dashboardSellingSections
         : hideLiveBiddingItems(dashboardBuyingSections)
-      : variant === "admin"
-        ? isAdminFinanceOnly(sessionUser)
-          ? adminFinanceSections
-          : adminPlatformSections
-        : marketingSections;
+      : variant === "admin" && sessionUser
+        ? buildStaffAdminPaletteSections(sessionUser, pendingSubmissionCount)
+        : variant === "admin"
+          ? []
+          : marketingSections;
   const q = query.trim();
   const out: PaletteSection[] = [];
   for (const sec of base) {
@@ -167,7 +143,11 @@ function buildVisibleSections(
         label: `Search all lots for "${q}"`,
       },
     ];
-    if (variant === "admin" && !isAdminFinanceOnly(sessionUser)) {
+    if (
+      variant === "admin" &&
+      sessionUser &&
+      canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
+    ) {
       actionItems.push(
         {
           id: "action-admin-lots-q",
@@ -229,12 +209,15 @@ type Props = {
   /** When variant is admin, used to hide platform-only shortcuts for finance-only roles. */
   sessionUser?: SessionUser | null;
   clientWorkspaceMode?: ClientWorkspaceMode;
+  /** Submission badge count for staff nav parity with sidebar (optional). */
+  pendingSubmissionCount?: number;
 };
 
 export function CommandPalette({
   variant,
   sessionUser = null,
   clientWorkspaceMode = "buying",
+  pendingSubmissionCount = 0,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -246,8 +229,15 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const visibleSections = useMemo(
-    () => buildVisibleSections(variant, query, sessionUser, clientWorkspaceMode),
-    [variant, query, sessionUser, clientWorkspaceMode],
+    () =>
+      buildVisibleSections(
+        variant,
+        query,
+        sessionUser,
+        clientWorkspaceMode,
+        pendingSubmissionCount,
+      ),
+    [variant, query, sessionUser, clientWorkspaceMode, pendingSubmissionCount],
   );
   const flatItems = useMemo(() => flattenItems(visibleSections), [visibleSections]);
 

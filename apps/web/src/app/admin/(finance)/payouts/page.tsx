@@ -1,24 +1,22 @@
+import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminPayoutReverseButton } from "@/components/admin/admin-payout-reverse-button";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { payoutsListController } from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import { summarizeSettlementReadiness } from "@/lib/admin/payout-settlement-readiness.vm";
 import {
   addPayoutAdjustmentAction,
   markPayoutPaidAction,
   runPayoutSettlementAction,
 } from "@/lib/admin/payout.actions";
-import { getAdminPayoutList } from "@/lib/data/http/admin.server";
+import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { type PayoutStatus, payoutStatuses } from "@auction/types";
+import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { PageHeader } from "@auction/ui/components/page-header";
-import Link from "next/link";
 
 const filters = ["all", ...payoutStatuses] as const;
-
-function parseStatus(status: string | undefined): PayoutStatus | undefined {
-  return payoutStatuses.includes(status as PayoutStatus) ? (status as PayoutStatus) : undefined;
-}
 
 function formatMoney(amount: string, currency: string): string {
   const value = Number.parseFloat(amount);
@@ -60,362 +58,415 @@ export default async function AdminPayoutsPage({
     success?: string;
     status?: string;
     legalEntityId?: string;
+    limit?: string;
+    offset?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const status = parseStatus(sp.status);
-  const legalEntityId = sp.legalEntityId?.trim() || undefined;
+  const query = payoutsListController.parseQuery(sp);
+  const legalEntityId = query.legalEntityId;
   const success = sp.success ? decodeURIComponent(sp.success) : null;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
 
-  let payouts: Awaited<ReturnType<typeof getAdminPayoutList>> = [];
+  let payouts: AdminPayoutRow[] = [];
+  let summaryPayouts: AdminPayoutRow[] = [];
   let loadError: string | null = null;
   try {
-    payouts = await getAdminPayoutList({
-      ...(status ? { status } : {}),
-      ...(legalEntityId ? { legalEntityId } : {}),
-      limit: 100,
-    });
+    const result = await payoutsListController.fetch(query);
+    payouts = result.rows;
+    summaryPayouts = result.rowsForSummary ?? result.rows;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payouts.";
   }
 
-  const scheduled = payouts.filter((p) => p.status === "scheduled").length;
-  const inTransit = payouts.filter((p) => p.status === "in_transit").length;
-  const clawbackPending = payouts.filter((p) => p.status === "clawback_pending").length;
-  const paid = payouts.filter((p) => p.status === "paid").length;
-  const totalNet = payouts.reduce((sum, p) => sum + Number.parseFloat(p.netAmount || "0"), 0);
-  const readiness = summarizeSettlementReadiness(payouts);
-  const showSettlementReadiness = status === undefined && !loadError && payouts.length > 0;
+  const scheduled = summaryPayouts.filter((p) => p.status === "scheduled").length;
+  const inTransit = summaryPayouts.filter((p) => p.status === "in_transit").length;
+  const clawbackPending = summaryPayouts.filter((p) => p.status === "clawback_pending").length;
+  const paid = summaryPayouts.filter((p) => p.status === "paid").length;
+  const totalNet = summaryPayouts.reduce(
+    (sum, p) => sum + Number.parseFloat(p.netAmount || "0"),
+    0,
+  );
+  const readiness = summarizeSettlementReadiness(summaryPayouts);
+  const showSettlementReadiness =
+    query.status === undefined && !loadError && summaryPayouts.length > 0;
 
-  return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Payouts"
-        description="Run seller settlements, review payout totals, add finance adjustments, and mark Stripe transfers as paid."
+  const statusChips = (
+    <FilterChipRow
+      label="Payout status"
+      chips={filters.map((filter) => ({
+        id: filter,
+        label: filter.replaceAll("_", " "),
+        href: buildListHref("/admin/payouts", sp, {
+          status: filter === "all" ? "" : filter,
+          offset: 0,
+        }),
+        active: (filter === "all" && query.status === undefined) || query.status === filter,
+      }))}
+    />
+  );
+
+  const errorAlert =
+    error || loadError ? (
+      <Alert variant="destructive">
+        <AlertTitle>Could not complete action</AlertTitle>
+        <AlertDescription>{loadError ?? error}</AlertDescription>
+      </Alert>
+    ) : null;
+
+  const filtersSlot = (
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <h2 className="font-heading text-lg">Run settlement</h2>
+          <p className="text-sm text-on-surface-variant">
+            Create a payout from captured payments that are not already linked to a payout line.
+            When the worker and API share <code className="text-xs">CRON_INTERNAL_SECRET</code>, a
+            daily job also settles every eligible legal entity automatically; this form runs one
+            entity on demand.
+          </p>
+          <form action={runPayoutSettlementAction} className="space-y-3">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Legal entity ID</span>
+              <input
+                name="legalEntityId"
+                required
+                placeholder="00000000-0000-4000-8000-000000000000"
+                className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary"
+            >
+              Run settlement
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <h2 className="font-heading text-lg">Filters</h2>
+          <form className="space-y-3" action="/admin/payouts" method="get">
+            {query.status ? <input type="hidden" name="status" value={query.status} /> : null}
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Legal entity ID</span>
+              <input
+                name="legalEntityId"
+                defaultValue={legalEntityId}
+                placeholder="Optional"
+                className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold"
+            >
+              Apply
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    </section>
+  );
+
+  const pagination =
+    !loadError && (query.offset > 0 || payouts.length === query.limit) ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={payouts.length}
+        prevHref={
+          query.offset > 0
+            ? buildListHref("/admin/payouts", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          payouts.length === query.limit
+            ? buildListHref("/admin/payouts", sp, { offset: query.offset + query.limit })
+            : null
+        }
       />
+    ) : null;
 
+  const empty =
+    !loadError && payouts.length === 0 ? (
+      <EmptyState
+        title="No payouts found"
+        description="Run settlement for a legal entity once captured payments are ready."
+      />
+    ) : null;
+
+  const view = (
+    <>
       {success ? (
         <Alert>
           <AlertTitle>Done</AlertTitle>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       ) : null}
-      {error || loadError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not complete action</AlertTitle>
-          <AlertDescription>{loadError ?? error}</AlertDescription>
-        </Alert>
-      ) : null}
 
-      <section className="grid gap-3 md:grid-cols-5">
-        <MetricCard label="Scheduled" value={String(scheduled)} />
-        <MetricCard label="In transit" value={String(inTransit)} />
-        <MetricCard label="Clawback pending" value={String(clawbackPending)} />
-        <MetricCard label="Paid" value={String(paid)} />
-        <MetricCard label="Visible net" value={formatMoney(totalNet.toFixed(2), "GBP")} />
-      </section>
+      {!loadError ? (
+        <>
+          <section className="grid gap-3 md:grid-cols-5">
+            <MetricCard label="Scheduled" value={String(scheduled)} />
+            <MetricCard label="In transit" value={String(inTransit)} />
+            <MetricCard label="Clawback pending" value={String(clawbackPending)} />
+            <MetricCard label="Paid" value={String(paid)} />
+            <MetricCard label="Visible net" value={formatMoney(totalNet.toFixed(2), "GBP")} />
+          </section>
+          <p className="text-xs text-on-surface-variant">
+            KPIs reflect the first 100 payouts for the current filters (legal entity and status when
+            set). The list below uses your page size and offset.
+          </p>
 
-      {showSettlementReadiness ? (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <div>
-              <h2 className="font-heading text-lg">Settlement readiness</h2>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Snapshot for the payouts currently shown (all statuses, optional legal entity
-                filter, up to 100 rows). Hidden while a status filter is on so counts stay
-                meaningful. Use it to spot transfers, statements, and reconciliation work before
-                closing the period.
-              </p>
-            </div>
-            <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">In flight (scheduled + in transit)</span>
-                <p className="text-lg font-semibold">{readiness.inFlightCount}</p>
-              </li>
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">Missing Stripe transfer ID</span>
-                <p className="text-lg font-semibold">{readiness.missingTransferRefCount}</p>
-              </li>
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">Payouts with blockers</span>
-                <p className="text-lg font-semibold">{readiness.blockerPayoutCount}</p>
-              </li>
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">Stripe failure reason</span>
-                <p className="text-lg font-semibold">{readiness.withFailureReasonCount}</p>
-              </li>
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">Statement PDF errors</span>
-                <p className="text-lg font-semibold">{readiness.withStatementErrorCount}</p>
-              </li>
-              <li className="rounded-md bg-surface-container-low px-3 py-2">
-                <span className="text-on-surface-variant">Failed / reversed / clawback</span>
-                <p className="text-lg font-semibold">
-                  {readiness.failedCount} / {readiness.reversedCount} / {readiness.clawbackCount}
-                </p>
-              </li>
-            </ul>
-            {readiness.blockerPayoutCount === 0 &&
-            readiness.missingTransferRefCount === 0 &&
-            payouts.length > 0 ? (
-              <p className="text-sm text-on-surface-variant">
-                No statement errors, Stripe failures, or clawback-style statuses in this list, and
-                every in-flight payout already has a transfer reference recorded.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <h2 className="font-heading text-lg">Run settlement</h2>
-            <p className="text-sm text-on-surface-variant">
-              Create a payout from captured payments that are not already linked to a payout line.
-              When the worker and API share <code className="text-xs">CRON_INTERNAL_SECRET</code>, a
-              daily job also settles every eligible legal entity automatically; this form runs one
-              entity on demand.
-            </p>
-            <form action={runPayoutSettlementAction} className="space-y-3">
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Legal entity ID</span>
-                <input
-                  name="legalEntityId"
-                  required
-                  placeholder="00000000-0000-4000-8000-000000000000"
-                  className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary"
-              >
-                Run settlement
-              </button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <h2 className="font-heading text-lg">Filters</h2>
-            <form className="space-y-3" action="/admin/payouts">
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Legal entity ID</span>
-                <input
-                  name="legalEntityId"
-                  defaultValue={legalEntityId}
-                  placeholder="Optional"
-                  className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold"
-              >
-                Apply
-              </button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
-
-      <nav className="flex min-w-0 gap-2 overflow-x-auto pb-1" aria-label="Payout status filters">
-        {filters.map((filter) => {
-          const qs = new URLSearchParams();
-          if (filter !== "all") qs.set("status", filter);
-          if (legalEntityId) qs.set("legalEntityId", legalEntityId);
-          const href = qs.toString() ? `/admin/payouts?${qs.toString()}` : "/admin/payouts";
-          const active = filter === "all" ? !status : status === filter;
-          return (
-            <Link
-              key={filter}
-              href={href}
-              className={`shrink-0 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
-                active
-                  ? "bg-primary text-on-primary ring-primary"
-                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
-              }`}
-            >
-              {filter.replace("_", " ")}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {payouts.length === 0 && !loadError ? (
-        <EmptyState
-          title="No payouts found"
-          description="Run settlement for a legal entity once captured payments are ready."
-        />
-      ) : null}
-
-      <ul className="space-y-3">
-        {payouts.map((payout) => (
-          <li key={payout.id}>
+          {showSettlementReadiness ? (
             <Card>
-              <CardContent className="space-y-4 p-4">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="break-all font-heading text-lg">{payout.id}</h2>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeClass(
-                          payout.status,
-                        )}`}
-                      >
-                        {payout.status.replace("_", " ")}
-                      </span>
-                    </div>
-                    <p className="mt-1 break-all text-sm text-on-surface-variant">
-                      Entity {payout.legalEntityId}
-                    </p>
-                    <p className="text-xs text-on-surface-variant">
-                      Period {formatDate(payout.periodStart)} → {formatDate(payout.periodEnd)} ·
-                      Created {formatDate(payout.createdAt)}
-                    </p>
-                  </div>
-                  <div className="text-left lg:text-right">
-                    <p className="text-xs uppercase tracking-wide text-on-surface-variant">Net</p>
-                    <p className="text-xl font-semibold">
-                      {formatMoney(payout.netAmount, payout.currency)}
-                    </p>
-                  </div>
+              <CardContent className="space-y-3 p-4">
+                <div>
+                  <h2 className="font-heading text-lg">Settlement readiness</h2>
+                  <p className="mt-1 text-sm text-on-surface-variant">
+                    Snapshot from the same first-100 slice as the KPIs. Hidden while a status filter
+                    is on so counts stay meaningful. Use it to spot transfers, statements, and
+                    reconciliation work before closing the period.
+                  </p>
                 </div>
-
-                <dl className="grid gap-3 rounded-md bg-surface-container-low p-3 text-sm sm:grid-cols-4">
-                  <div>
-                    <dt className="text-on-surface-variant">Gross</dt>
-                    <dd className="font-medium">
-                      {formatMoney(payout.grossAmount, payout.currency)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-on-surface-variant">Platform fee</dt>
-                    <dd className="font-medium">
-                      {formatMoney(payout.platformFee, payout.currency)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-on-surface-variant">Stripe fee</dt>
-                    <dd className="font-medium">
-                      {formatMoney(payout.stripeFee, payout.currency)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-on-surface-variant">Transfer</dt>
-                    <dd className="break-all font-medium">{payout.stripeTransferId ?? "—"}</dd>
-                  </div>
-                </dl>
-
-                {payout.failureReason ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Stripe transfer issue</AlertTitle>
-                    <AlertDescription>{payout.failureReason}</AlertDescription>
-                  </Alert>
+                <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">
+                      In flight (scheduled + in transit)
+                    </span>
+                    <p className="text-lg font-semibold">{readiness.inFlightCount}</p>
+                  </li>
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">Missing Stripe transfer ID</span>
+                    <p className="text-lg font-semibold">{readiness.missingTransferRefCount}</p>
+                  </li>
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">Payouts with blockers</span>
+                    <p className="text-lg font-semibold">{readiness.blockerPayoutCount}</p>
+                  </li>
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">Stripe failure reason</span>
+                    <p className="text-lg font-semibold">{readiness.withFailureReasonCount}</p>
+                  </li>
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">Statement PDF errors</span>
+                    <p className="text-lg font-semibold">{readiness.withStatementErrorCount}</p>
+                  </li>
+                  <li className="rounded-md bg-surface-container-low px-3 py-2">
+                    <span className="text-on-surface-variant">Failed / reversed / clawback</span>
+                    <p className="text-lg font-semibold">
+                      {readiness.failedCount} / {readiness.reversedCount} /{" "}
+                      {readiness.clawbackCount}
+                    </p>
+                  </li>
+                </ul>
+                {readiness.blockerPayoutCount === 0 &&
+                readiness.missingTransferRefCount === 0 &&
+                summaryPayouts.length > 0 ? (
+                  <p className="text-sm text-on-surface-variant">
+                    No statement errors, Stripe failures, or clawback-style statuses in this list,
+                    and every in-flight payout already has a transfer reference recorded.
+                  </p>
                 ) : null}
-
-                {payout.status === "clawback_pending" ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Manual reconciliation required</AlertTitle>
-                    <AlertDescription>
-                      This payout has a negative net amount and cannot be sent through Stripe
-                      Connect. Finance must recover the funds via transfer reversal, next-period
-                      offset, or direct repayment before closing the case.
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
-
-                {payout.statementGenerationError ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Statement PDF unavailable</AlertTitle>
-                    <AlertDescription>{payout.statementGenerationError}</AlertDescription>
-                  </Alert>
-                ) : null}
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <form
-                    action={addPayoutAdjustmentAction}
-                    className="space-y-3 rounded-md border p-3"
-                  >
-                    <input type="hidden" name="payoutId" value={payout.id} />
-                    <h3 className="font-label text-sm font-semibold uppercase tracking-wide">
-                      Add adjustment
-                    </h3>
-                    <div className="grid gap-2 sm:grid-cols-[8rem_1fr]">
-                      <label className="block space-y-1 text-sm">
-                        <span>Amount</span>
-                        <input
-                          name="amount"
-                          required
-                          placeholder="-25.00"
-                          className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-                        />
-                      </label>
-                      <label className="block space-y-1 text-sm">
-                        <span>Note</span>
-                        <input
-                          name="note"
-                          required
-                          minLength={10}
-                          placeholder="Reason for adjustment"
-                          className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-                        />
-                      </label>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={
-                        payout.status === "paid" ||
-                        payout.status === "failed" ||
-                        payout.status === "reversed" ||
-                        payout.status === "clawback_pending"
-                      }
-                      className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold disabled:opacity-50"
-                    >
-                      Add adjustment
-                    </button>
-                  </form>
-
-                  <form action={markPayoutPaidAction} className="space-y-3 rounded-md border p-3">
-                    <input type="hidden" name="payoutId" value={payout.id} />
-                    <h3 className="font-label text-sm font-semibold uppercase tracking-wide">
-                      Mark paid
-                    </h3>
-                    <label className="block space-y-1 text-sm">
-                      <span>Stripe transfer ID</span>
-                      <input
-                        name="stripeTransferId"
-                        required
-                        defaultValue={payout.stripeTransferId ?? ""}
-                        placeholder="tr_..."
-                        className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={
-                        payout.status === "paid" ||
-                        payout.status === "failed" ||
-                        payout.status === "reversed" ||
-                        payout.status === "clawback_pending"
-                      }
-                      className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary disabled:opacity-50"
-                    >
-                      Mark paid
-                    </button>
-                  </form>
-                </div>
-
-                <AdminPayoutReverseButton payoutId={payout.id} status={payout.status} />
               </CardContent>
             </Card>
-          </li>
-        ))}
-      </ul>
-    </AppScreen>
+          ) : null}
+
+          {payouts.length > 0 ? (
+            <ul className="space-y-3">
+              {payouts.map((payout) => (
+                <li key={payout.id}>
+                  <Card>
+                    <CardContent className="space-y-4 p-4">
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="break-all font-heading text-lg">{payout.id}</h2>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeClass(
+                                payout.status,
+                              )}`}
+                            >
+                              {payout.status.replaceAll("_", " ")}
+                            </span>
+                          </div>
+                          <p className="mt-1 break-all text-sm text-on-surface-variant">
+                            Entity {payout.legalEntityId}
+                          </p>
+                          <p className="text-xs text-on-surface-variant">
+                            Period {formatDate(payout.periodStart)} → {formatDate(payout.periodEnd)}{" "}
+                            · Created {formatDate(payout.createdAt)}
+                          </p>
+                        </div>
+                        <div className="text-left lg:text-right">
+                          <p className="text-xs uppercase tracking-wide text-on-surface-variant">
+                            Net
+                          </p>
+                          <p className="text-xl font-semibold">
+                            {formatMoney(payout.netAmount, payout.currency)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <dl className="grid gap-3 rounded-md bg-surface-container-low p-3 text-sm sm:grid-cols-4">
+                        <div>
+                          <dt className="text-on-surface-variant">Gross</dt>
+                          <dd className="font-medium">
+                            {formatMoney(payout.grossAmount, payout.currency)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-on-surface-variant">Platform fee</dt>
+                          <dd className="font-medium">
+                            {formatMoney(payout.platformFee, payout.currency)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-on-surface-variant">Stripe fee</dt>
+                          <dd className="font-medium">
+                            {formatMoney(payout.stripeFee, payout.currency)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-on-surface-variant">Transfer</dt>
+                          <dd className="break-all font-medium">
+                            {payout.stripeTransferId ?? "—"}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {payout.failureReason ? (
+                        <Alert variant="destructive">
+                          <AlertTitle>Stripe transfer issue</AlertTitle>
+                          <AlertDescription>{payout.failureReason}</AlertDescription>
+                        </Alert>
+                      ) : null}
+
+                      {payout.status === "clawback_pending" ? (
+                        <Alert variant="destructive">
+                          <AlertTitle>Manual reconciliation required</AlertTitle>
+                          <AlertDescription>
+                            This payout has a negative net amount and cannot be sent through Stripe
+                            Connect. Finance must recover the funds via transfer reversal,
+                            next-period offset, or direct repayment before closing the case.
+                          </AlertDescription>
+                        </Alert>
+                      ) : null}
+
+                      {payout.statementGenerationError ? (
+                        <Alert variant="destructive">
+                          <AlertTitle>Statement PDF unavailable</AlertTitle>
+                          <AlertDescription>{payout.statementGenerationError}</AlertDescription>
+                        </Alert>
+                      ) : null}
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <form
+                          action={addPayoutAdjustmentAction}
+                          className="space-y-3 rounded-md border p-3"
+                        >
+                          <input type="hidden" name="payoutId" value={payout.id} />
+                          <h3 className="font-label text-sm font-semibold uppercase tracking-wide">
+                            Add adjustment
+                          </h3>
+                          <div className="grid gap-2 sm:grid-cols-[8rem_1fr]">
+                            <label className="block space-y-1 text-sm">
+                              <span>Amount</span>
+                              <input
+                                name="amount"
+                                required
+                                placeholder="-25.00"
+                                className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+                              />
+                            </label>
+                            <label className="block space-y-1 text-sm">
+                              <span>Note</span>
+                              <input
+                                name="note"
+                                required
+                                minLength={10}
+                                placeholder="Reason for adjustment"
+                                className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+                              />
+                            </label>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={
+                              payout.status === "paid" ||
+                              payout.status === "failed" ||
+                              payout.status === "reversed" ||
+                              payout.status === "clawback_pending"
+                            }
+                            className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold disabled:opacity-50"
+                          >
+                            Add adjustment
+                          </button>
+                        </form>
+
+                        <form
+                          action={markPayoutPaidAction}
+                          className="space-y-3 rounded-md border p-3"
+                        >
+                          <input type="hidden" name="payoutId" value={payout.id} />
+                          <h3 className="font-label text-sm font-semibold uppercase tracking-wide">
+                            Mark paid
+                          </h3>
+                          <label className="block space-y-1 text-sm">
+                            <span>Stripe transfer ID</span>
+                            <input
+                              name="stripeTransferId"
+                              required
+                              defaultValue={payout.stripeTransferId ?? ""}
+                              placeholder="tr_..."
+                              className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            disabled={
+                              payout.status === "paid" ||
+                              payout.status === "failed" ||
+                              payout.status === "reversed" ||
+                              payout.status === "clawback_pending"
+                            }
+                            className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary disabled:opacity-50"
+                          >
+                            Mark paid
+                          </button>
+                        </form>
+                      </div>
+
+                      <AdminPayoutReverseButton payoutId={payout.id} status={payout.status} />
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  );
+
+  return (
+    <AdminListPage
+      title="Payouts"
+      description="Run seller settlements, review payout totals, add finance adjustments, and mark Stripe transfers as paid."
+      errorAlert={errorAlert}
+      chips={statusChips}
+      filters={filtersSlot}
+      hasFilters={Boolean(query.status || query.legalEntityId)}
+      resetHref="/admin/payouts"
+      view={view}
+      empty={empty}
+      pagination={pagination}
+    />
   );
 }
 

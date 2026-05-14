@@ -1,11 +1,12 @@
 "use client";
 
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -23,6 +24,7 @@ export function AdminSubmissionsTitleFilterForm({
   status?: ItemSubmissionStatus | undefined;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const form = useForm<AdminSubmissionsTitleFilterValues>({
     resolver: zodResolver(adminSubmissionsTitleFilterSchema),
     defaultValues: { q: initialQ },
@@ -33,11 +35,16 @@ export function AdminSubmissionsTitleFilterForm({
       <form
         className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
         onSubmit={form.handleSubmit((values) => {
-          const params = new URLSearchParams();
-          if (status) params.set("status", status);
-          if (values.q.trim()) params.set("q", values.q.trim());
-          const query = params.toString();
-          router.push(query ? `/admin/submissions?${query}` : "/admin/submissions");
+          const sp: Record<string, string | string[] | undefined> = {};
+          searchParams.forEach((v, k) => {
+            sp[k] = v;
+          });
+          const href = buildListHref("/admin/submissions", sp, {
+            ...(status !== undefined ? { status } : { status: "" }),
+            q: values.q.trim() || "",
+            offset: 0,
+          });
+          router.push(href);
         })}
         noValidate
       >

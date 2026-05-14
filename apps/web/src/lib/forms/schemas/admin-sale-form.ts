@@ -4,6 +4,7 @@ import {
   buyerPremiumTiersSchema,
   createSaleSchema,
   majorToMinor,
+  mediaReferenceSchema,
   updateSaleSchema,
 } from "@auction/validators";
 import { z } from "zod";
@@ -23,7 +24,7 @@ export const adminSaleTierRowSchema = z.object({
 export const adminSaleFormValuesSchema = z.object({
   title: z.string().min(1, "Title is required").max(500),
   description: z.string().max(10_000),
-  coverImages: z.array(z.string().url()).max(6),
+  coverImages: z.array(mediaReferenceSchema).max(6),
   categoryId: z.string(),
   deliveryMode: z.enum(saleDeliveryModes),
   streamUrl: z.string().max(500),

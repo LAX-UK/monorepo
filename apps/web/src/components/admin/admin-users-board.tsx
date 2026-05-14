@@ -21,6 +21,7 @@ import {
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 export type AdminUsersKpiStrip = {
@@ -158,7 +159,7 @@ function UserDrawerContent({ u }: { u: AdminUserRow }) {
 type Props = {
   rows: AdminUserRow[];
   kpis: AdminUsersKpiStrip;
-  roleChips: React.ReactNode;
+  roleChips?: ReactNode;
   globalUserTotals?: AdminUsersGlobalTotals;
 };
 
@@ -234,7 +235,7 @@ export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Pro
 
       <EntityTableShell
         responsiveMode="auto"
-        filters={roleChips}
+        filters={roleChips ?? null}
         search={
           <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
             <label

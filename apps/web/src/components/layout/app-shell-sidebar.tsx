@@ -9,6 +9,7 @@ import {
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
+import { StaffSidebarNav } from "@/components/layout/staff-sidebar-nav";
 import { MediaImage } from "@/components/ui/media-image";
 import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
@@ -129,56 +130,65 @@ export function AppShellSidebar({
         className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-3", !labelsHidden && "px-3")}
         aria-label={`${meta.label} dashboard`}
       >
-        <div className="space-y-1">
-          {items.map((item) => {
-            const active = item.match
-              ? item.match(pathname)
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const Icon = item.icon;
-            return (
-              <Tooltip key={item.id} delayDuration={400}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    {...(onNavigate ? { onClick: onNavigate } : {})}
-                    aria-current={active ? "page" : undefined}
-                    aria-label={item.label}
-                    className={cn(
-                      "group relative flex min-h-10 items-center justify-center gap-3 rounded-md px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
-                      !labelsHidden && "justify-start px-3",
-                      "hover:bg-surface-container-high hover:text-on-surface",
-                      active && "bg-surface-container-high text-on-surface",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    <span
+        {role === "client" ? (
+          <div className="space-y-1">
+            {items.map((item) => {
+              const active = item.match
+                ? item.match(pathname)
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Tooltip key={item.id} delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={item.href}
+                      {...(onNavigate ? { onClick: onNavigate } : {})}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={item.label}
                       className={cn(
-                        "min-w-0 flex-1 truncate whitespace-nowrap transition-[max-width,opacity] duration-150",
-                        labelsHidden ? "max-w-0 opacity-0" : "max-w-[10rem] opacity-100",
+                        "group relative flex min-h-10 items-center justify-center gap-3 rounded-md px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
+                        !labelsHidden && "justify-start px-3",
+                        "hover:bg-surface-container-high hover:text-on-surface",
+                        active && "bg-surface-container-high text-on-surface",
                       )}
-                      aria-hidden={labelsHidden}
                     >
-                      {item.label}
-                    </span>
-                    {item.badge ? (
-                      <Badge
+                      <Icon className="size-4 shrink-0" aria-hidden />
+                      <span
                         className={cn(
-                          "rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white",
-                          labelsHidden && "absolute right-1 top-1",
+                          "min-w-0 flex-1 truncate whitespace-nowrap transition-[max-width,opacity] duration-150",
+                          labelsHidden ? "max-w-0 opacity-0" : "max-w-[10rem] opacity-100",
                         )}
+                        aria-hidden={labelsHidden}
                       >
-                        {item.badge > 99 ? "99+" : item.badge}
-                      </Badge>
-                    ) : null}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right" className={cn("hidden", labelsHidden && "lg:block")}>
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
+                        {item.label}
+                      </span>
+                      {item.badge ? (
+                        <Badge
+                          className={cn(
+                            "rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white",
+                            labelsHidden && "absolute right-1 top-1",
+                          )}
+                        >
+                          {item.badge > 99 ? "99+" : item.badge}
+                        </Badge>
+                      ) : null}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className={cn("hidden", labelsHidden && "lg:block")}>
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        ) : (
+          <StaffSidebarNav
+            user={user}
+            pendingSubmissionCount={pendingSubmissionCount}
+            labelsHidden={labelsHidden}
+            {...(onNavigate ? { onNavigate } : {})}
+          />
+        )}
       </nav>
 
       <div className="border-t border-outline-variant/30 p-3">

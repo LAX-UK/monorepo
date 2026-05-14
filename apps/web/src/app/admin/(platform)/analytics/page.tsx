@@ -4,7 +4,7 @@ import {
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
 import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import {
   Table,
@@ -28,7 +28,6 @@ import {
 import { formatMoney } from "@/lib/format-currency";
 import { CompareDelta } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageHeader } from "@auction/ui/components/page-header";
 
 function toChartsData(
   d: NonNullable<Awaited<ReturnType<typeof getAdminAnalytics>>>,
@@ -75,12 +74,11 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const totalRegs = data ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Analytics"
-        description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
-        actions={<AdminAnalyticsControls days={days} />}
-      />
+    <AdminPanelPage
+      title="Analytics"
+      description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
+      actions={<AdminAnalyticsControls days={days} />}
+    >
       {data ? <AdminAnalyticsExport data={toChartsData(data)} days={days} /> : null}
       {loadError ? (
         <Alert variant="destructive">
@@ -174,6 +172,6 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
           </section>
         </>
       ) : null}
-    </AppScreen>
+    </AdminPanelPage>
   );
 }

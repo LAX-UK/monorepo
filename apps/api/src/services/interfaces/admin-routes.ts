@@ -94,6 +94,7 @@ export type RedactedDomainEventRow = {
 export interface IAdminDomainEventQueryService {
   listRedacted(input: {
     limit: number;
+    offset?: number;
     eventTypePrefix?: string;
     aggregateType?: string;
     aggregateId?: string;
