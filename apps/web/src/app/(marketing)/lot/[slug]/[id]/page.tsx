@@ -11,9 +11,10 @@ import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/build-artwork-accordion-blocks";
 import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwork-online-layout";
-import { ArtworkOnsiteLayout } from "@/components/sections/artwork/layouts/artwork-onsite-layout";
+import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
+import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
@@ -25,6 +26,7 @@ import {
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
@@ -50,6 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArtworkPage({ params }: PageProps) {
   const { id, slug } = await params;
+  const serverNow = Date.now();
   const reader = await getServerLotReader();
   const [auction, session, publicReader] = await Promise.all([
     getServerLotById(id),
@@ -156,7 +159,7 @@ export default async function ArtworkPage({ params }: PageProps) {
     crumbs,
   );
 
-  const isOnsiteSale = saleBundle?.sale.deliveryMode === "onsite";
+  const isOnsiteSale = saleBundle?.sale?.deliveryMode === "onsite";
 
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
@@ -173,6 +176,24 @@ export default async function ArtworkPage({ params }: PageProps) {
     paddleNumber: null,
   });
 
+  const saleLifecyclePick = saleBundle?.sale
+    ? { status: saleBundle.sale.status, deliveryMode: saleBundle.sale.deliveryMode }
+    : null;
+
+  const lifecycleLotPick = {
+    id: auction.id,
+    status: auction.status,
+    startTime: auction.startTime,
+    endTime: auction.endTime,
+    winnerId: auction.winnerId,
+    reservePrice: auction.reservePrice,
+    currentPrice: auction.currentPrice,
+  };
+
+  const previewLife = classifyLotLifecycle(lifecycleLotPick, saleLifecyclePick, serverNow);
+  const showPreviewRibbon = previewLife.kind === "preLaunch";
+  const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
+
   const onlineBidPanel = (
     <OnlineBidsView
       lotId={auction.id}
@@ -188,9 +209,11 @@ export default async function ArtworkPage({ params }: PageProps) {
         sessionUser={session}
         summarySeed={summarySeed}
         initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
+        initialWatching={watching}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
         kycSummary={kycSummary}
+        saleForLifecycle={saleLifecyclePick}
       />
     </OnlineBidsView>
   );
@@ -216,7 +239,7 @@ export default async function ArtworkPage({ params }: PageProps) {
       </script>
       <LotPortsProvider>
         {isOnsiteSale && saleBundle ? (
-          <ArtworkOnsiteLayout
+          <LotOnsiteMarketingLayout
             auction={auction}
             sale={saleBundle.sale}
             summarySeed={summarySeed}
@@ -227,33 +250,38 @@ export default async function ArtworkPage({ params }: PageProps) {
             currentUserId={session?.id ?? null}
             shareUrl={shareUrl}
             followSlot={followSlot}
-            initialHistory={initialHistory}
           />
         ) : (
-          <ArtworkOnlineLayout
-            auction={auction}
-            sessionHeader={sessionHeaderVM}
-            queueCurrent={queueVMs.current}
-            queueUpNext={queueVMs.upNext}
-            queueRest={queueVMs.queue}
-            marketingAccordionBlocks={marketingBlocks}
-            rail={rail}
-            isAuthenticated={Boolean(session)}
-            watchedLotIds={watchedLotIds}
-            currentUserId={session?.id ?? null}
-            shareUrl={shareUrl}
-            followSlot={followSlot}
-            bidPanel={onlineBidPanel}
-            bidPanelTop={
-              <ArtworkConditionReportCta
-                lotId={auction.id}
-                loginNextPath={lotPath(auction)}
-                isAuthenticated={Boolean(session)}
-                show={conditionReportCtaShow}
-                kycApproved={kycApprovedForCr}
-              />
-            }
-          />
+          <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+            <ArtworkOnlineLayout
+              auction={auction}
+              saleForLifecycle={saleLifecyclePick}
+              showPreviewRibbon={showPreviewRibbon}
+              isSaleQueueLoading={isSaleQueueLoading}
+              serverClockMs={serverNow}
+              sessionHeader={sessionHeaderVM}
+              queueCurrent={queueVMs.current}
+              queueUpNext={queueVMs.upNext}
+              queueRest={queueVMs.queue}
+              marketingAccordionBlocks={marketingBlocks}
+              rail={rail}
+              isAuthenticated={Boolean(session)}
+              watchedLotIds={watchedLotIds}
+              currentUserId={session?.id ?? null}
+              shareUrl={shareUrl}
+              followSlot={followSlot}
+              bidPanel={onlineBidPanel}
+              bidPanelTop={
+                <ArtworkConditionReportCta
+                  lotId={auction.id}
+                  loginNextPath={lotPath(auction)}
+                  isAuthenticated={Boolean(session)}
+                  show={conditionReportCtaShow}
+                  kycApproved={kycApprovedForCr}
+                />
+              }
+            />
+          </OnlineLotLifecycleProvider>
         )}
       </LotPortsProvider>
     </main>

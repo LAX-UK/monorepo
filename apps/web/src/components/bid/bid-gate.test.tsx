@@ -42,7 +42,7 @@ describe("BidGate", () => {
         user={{ id: "u", email: "e", name: "n", role: "client" }}
         lot={lot}
         lotStatus="active"
-        loginNextPath="/artwork/test-lot/l1"
+        loginNextPath="/lot/test-lot/l1"
         policies={allowOnly}
       >
         {({ decision }) =>
