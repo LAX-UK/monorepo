@@ -1,6 +1,11 @@
+import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
+import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
+import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { Toaster } from "@/components/ui/toaster";
+import { ConsentProvider } from "@/lib/analytics/consent/context";
+import { readConsentFromCookies } from "@/lib/analytics/consent/server";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
 import { THEME_COOKIE_NAME, parseThemeCookie } from "@/lib/preferences/theme-cookie";
@@ -63,6 +68,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
   const cookieStore = await cookies();
   const themePref = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
+  const consentSnapshot = readConsentFromCookies(cookieStore);
+  const consentProviderKey =
+    consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
 
   return (
@@ -75,15 +83,20 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ThemeInit />
       </head>
       <body>
-        <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
-          {rootJsonLd}
-        </script>
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        {children}
-        <Toaster />
-        <WebVitalsReporter />
+        <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
+          <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
+          <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
+            {rootJsonLd}
+          </script>
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <AnalyticsBootstrap nonce={nonce} />
+          {children}
+          <Toaster />
+          <WebVitalsReporter />
+          <ConsentShell />
+        </ConsentProvider>
       </body>
     </html>
   );

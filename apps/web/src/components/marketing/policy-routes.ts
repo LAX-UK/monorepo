@@ -6,6 +6,7 @@ export const policyRoutes = [
   { href: "/faq", label: "FAQ", sidebarLabel: "FAQ" },
   { href: "/terms", label: "Terms", sidebarLabel: "Conditions of Business" },
   { href: "/privacy", label: "Privacy", sidebarLabel: "Privacy Notice" },
+  { href: "/cookies", label: "Cookies", sidebarLabel: "Cookie Policy" },
   { href: "/shipping", label: "Shipping", sidebarLabel: "Shipping & Logistics" },
 ] as const;
 

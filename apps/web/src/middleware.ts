@@ -49,7 +49,7 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
     `font-src 'self' data:`,
     // Include configured API/auth origins. In local dev these vars are typically
     // absent so we fall back to localhost ports to avoid CSP violations.
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://challenges.cloudflare.com`.trim(),
+    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://challenges.cloudflare.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net`.trim(),
     // Cloudflare Turnstile + YouTube embeds (live-stream hero) render iframes.
     "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com",
     `frame-ancestors 'none'`,

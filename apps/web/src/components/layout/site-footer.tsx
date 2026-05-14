@@ -7,6 +7,7 @@ import {
 } from "@/components/layout/footer-link-groups";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
+import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
 import { siteCopyrightLine } from "@/lib/brand";
 import type { ReactNode } from "react";
 
@@ -51,12 +52,15 @@ export function SiteFooter({
             linkClassName={linkClass}
             headingClassName={headingClass}
           />
-          <FooterColumn
-            title="Legal"
-            links={legalLinks}
-            linkClassName={linkClass}
-            headingClassName={headingClass}
-          />
+          <div className="flex flex-col gap-4">
+            <FooterColumn
+              title="Legal"
+              links={legalLinks}
+              linkClassName={linkClass}
+              headingClassName={headingClass}
+            />
+            <CookiePreferencesLink className={linkClass} />
+          </div>
           <div className="flex min-w-0 flex-col gap-6">
             <h2 className={headingClass}>Our Services</h2>
             <ul className="flex flex-col gap-4">
