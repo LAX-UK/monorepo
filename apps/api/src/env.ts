@@ -80,7 +80,7 @@ const envSchema = z
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     SENTRY_DSN_API: z.preprocess(emptyToUndefined, z.string().url().optional()),
     EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
-    EMAIL_FROM: z.string().default("LAX <no-reply@mail.lax.bid>"),
+    EMAIL_FROM: z.string().default("LAX.BID by London Art Exchange <no-reply@mail.lax.bid>"),
     EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
