@@ -1,10 +1,9 @@
+import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import {
   UserRoleAction,
   UserStaffRoleAction,
   UserSuspendAction,
 } from "@/components/admin/admin-user-actions";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { getAdminArtistsByOwnerUserId, getAdminUserById } from "@/lib/data/http/admin.server";
 import type { ArtistKind, ArtistStatus, UserRole } from "@auction/types";
@@ -31,25 +30,23 @@ export default async function AdminUserDetailPage({ params }: Props) {
   }).toString()}`;
 
   return (
-    <AppScreen className="space-y-8">
-      <Link
-        href="/admin/users"
-        className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Users
-      </Link>
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-label text-xs uppercase tracking-widest text-secondary">User</p>
-          <DisplayHeading as="h1" className="mt-2 text-4xl">
-            {user.name}
-          </DisplayHeading>
-          <p className="mt-2 font-body text-sm text-on-surface-variant">{user.email}</p>
-          <p className="mt-1 font-mono text-xs text-on-surface-variant">{user.id}</p>
+    <AdminEntityDetailShell
+      breadcrumbs={
+        <Link
+          href="/admin/users"
+          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Users
+        </Link>
+      }
+      title={user.name}
+      meta={
+        <div className="space-y-1">
+          <p className="font-body text-sm text-on-surface-variant">{user.email}</p>
+          <p className="font-mono text-xs text-on-surface-variant">{user.id}</p>
         </div>
-      </div>
-
+      }
+    >
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="flex h-auto min-h-11 flex-wrap justify-start gap-1 bg-surface-container-low p-1">
           <TabsTrigger value="profile" className="font-label text-[11px] uppercase tracking-wide">
@@ -183,6 +180,6 @@ export default async function AdminUserDetailPage({ params }: Props) {
           )}
         </TabsContent>
       </Tabs>
-    </AppScreen>
+    </AdminEntityDetailShell>
   );
 }

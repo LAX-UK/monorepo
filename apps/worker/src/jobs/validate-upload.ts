@@ -3,8 +3,7 @@ import { uploadObject } from "@auction/db";
 import { and, eq, lt } from "drizzle-orm";
 import type pino from "pino";
 import type { UploadStorage } from "../lib/upload-storage.js";
-
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+import { pickValidator } from "./content-type-validators.js";
 
 export async function validateUploadJob(args: {
   db: Database;
@@ -28,14 +27,16 @@ export async function validateUploadJob(args: {
     await rejectUpload(args.db, row.id, "oversize", head);
     return;
   }
-  if (!ALLOWED_TYPES.has(row.declaredContentType)) {
+
+  const validator = pickValidator(row.declaredContentType);
+  if (!validator) {
     await rejectUpload(args.db, row.id, "unsupported_content_type", head);
     return;
   }
 
   const firstBytes = await args.storage.getObjectBytes(row.key, 64);
-  const sniffed = firstBytes ? sniffImageContentType(firstBytes) : null;
-  if (sniffed !== row.declaredContentType) {
+  const magic = firstBytes ?? Buffer.alloc(0);
+  if (!validator.matches(magic)) {
     await rejectUpload(args.db, row.id, "content_type_mismatch", head);
     return;
   }
@@ -91,31 +92,4 @@ async function rejectUpload(
       validatedAt: new Date(),
     })
     .where(eq(uploadObject.id, uploadId));
-}
-
-function sniffImageContentType(bytes: Buffer): string | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return "image/jpeg";
-  }
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    return "image/png";
-  }
-  if (
-    bytes.length >= 12 &&
-    bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
-    bytes.subarray(8, 12).toString("ascii") === "WEBP"
-  ) {
-    return "image/webp";
-  }
-  return null;
 }

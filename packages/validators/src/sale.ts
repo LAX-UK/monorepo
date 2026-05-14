@@ -181,6 +181,8 @@ export const listSalesQuerySchema = z.object({
     .refine((arr) => arr == null || arr.every((x) => saleStatuses.includes(x)), {
       message: "Invalid sale status in statuses",
     }),
+  /** Case-insensitive title search (admin / staff catalogue views). */
+  q: z.string().trim().max(200).optional(),
   categoryId: z.string().uuid().optional(),
   categoryIds: z
     .string()

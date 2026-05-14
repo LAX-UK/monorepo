@@ -1,4 +1,4 @@
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntitiesWithStripeConnectRequirements } from "@/lib/data/http/admin.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -33,28 +32,26 @@ export default async function AdminStripeConnectRequirementsPage() {
   }
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Stripe Connect requirements"
-        description="Legal entities where Stripe Connect currently-due requirements are non-empty (database jsonb array length greater than zero)."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="ctaLink" asChild>
-              <Link href="/admin/legal-entities" className="inline-flex items-center gap-1">
-                Legal entities
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-            <Button variant="ctaLink" asChild>
-              <Link href="/admin/impersonation" className="inline-flex items-center gap-1">
-                Impersonation
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-        }
-      />
-
+    <AdminPanelPage
+      title="Stripe Connect requirements"
+      description="Legal entities where Stripe Connect currently-due requirements are non-empty (database jsonb array length greater than zero)."
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ctaLink" asChild>
+            <Link href="/admin/legal-entities" className="inline-flex items-center gap-1">
+              Legal entities
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button variant="ctaLink" asChild>
+            <Link href="/admin/impersonation" className="inline-flex items-center gap-1">
+              Impersonation
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       {loadError ? (
         <p className="text-sm text-error" role="alert">
           {loadError}
@@ -101,6 +98,6 @@ export default async function AdminStripeConnectRequirementsPage() {
           )}
         </CardContent>
       </Card>
-    </AppScreen>
+    </AdminPanelPage>
   );
 }

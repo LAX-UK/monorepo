@@ -190,7 +190,7 @@ function PaymentDrawerContent({ p, onClose }: { p: AdminPaymentTableRow; onClose
 type Props = {
   rows: AdminPaymentTableRow[];
   summaryRows: AdminPaymentTableRow[];
-  statusChips: ReactNode;
+  statusChips?: ReactNode;
 };
 
 export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
@@ -265,7 +265,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
       <EntityTableShell
         responsiveMode="auto"
         density={density}
-        filters={statusChips}
+        {...(statusChips ? { filters: statusChips } : {})}
         search={
           <Form {...searchForm}>
             <form

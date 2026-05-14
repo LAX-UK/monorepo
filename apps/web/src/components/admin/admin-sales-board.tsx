@@ -101,7 +101,7 @@ function saleColumns(): ColumnDef<AdminSaleBoardRow>[] {
 
 type Props = {
   rows: AdminSaleBoardRow[];
-  statusChips: ReactNode;
+  statusChips?: ReactNode;
   toolbarEnd?: ReactNode;
 };
 
@@ -169,7 +169,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
     <EntityTableShell
       responsiveMode="auto"
       density={density}
-      filters={statusChips}
+      filters={statusChips ?? null}
       search={
         <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
           <label

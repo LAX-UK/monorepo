@@ -1,6 +1,7 @@
 "use client";
 
 import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
+import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import { lotMarketingSection } from "@/components/sections/artwork/lot-marketing-sections";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
@@ -90,7 +91,7 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists, artist
           })}
         >
           <EstimateFields form={form} />
-          <ConditionReportFields form={form} />
+          <ConditionReportFields form={form} disabled={pending} />
           <ProvenanceListField form={form} />
           <ExhibitionsListField form={form} />
           <ArtistNoteField form={form} />
@@ -233,8 +234,10 @@ function EstimateFields({
 
 function ConditionReportFields({
   form,
+  disabled,
 }: {
   form: UseFormReturn<AdminLotMarketingFormValues>;
+  disabled?: boolean;
 }) {
   return (
     <section className="space-y-4">
@@ -272,10 +275,19 @@ function ConditionReportFields({
         name="conditionReport.downloadUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="font-label text-xs uppercase">Report PDF URL</FormLabel>
+            <FormLabel className="font-label text-xs uppercase">Condition report PDF</FormLabel>
             <FormControl>
-              <UnderlineInput {...field} type="url" inputMode="url" placeholder="https://…" />
+              <DocumentUploadField
+                kind="lot_document"
+                valueMode="publicUrl"
+                value={field.value?.trim() ? field.value.trim() : null}
+                onChange={(next) => field.onChange(next ?? "")}
+                busy={disabled}
+              />
             </FormControl>
+            <p className="mt-2 font-body text-xs text-on-surface-variant">
+              Upload a PDF or image; the public catalogue link is set from your hosted file.
+            </p>
             <FormMessage />
           </FormItem>
         )}

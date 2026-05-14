@@ -13,6 +13,8 @@ export * from "./absentee-bid.js";
 export * from "./saleroom-session.js";
 export * from "./lot-fulfilment.js";
 export * from "./lot-document.js";
+export * from "./sale-document.js";
+export * from "./submission-document.js";
 export * from "./categories.js";
 export * from "./notifications.js";
 export * from "./notification-preferences.js";

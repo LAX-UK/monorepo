@@ -14,11 +14,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
 
-function splitUrlLines(raw: string): string[] {
-  return raw
-    .split(/[\n,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+function parseCoverImagesFromForm(formData: FormData): string[] | undefined {
+  const raw = String(formData.get("coverImages") ?? "").trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return undefined;
+    const out = parsed.map((x) => String(x).trim()).filter(Boolean);
+    return out.length > 0 ? out : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const LOCATION_FORM_FIELDS = [
@@ -74,7 +80,6 @@ function buildLocationUpdatePayload(
 }
 
 export async function adminCreateSaleAction(formData: FormData): Promise<void> {
-  const coverRaw = String(formData.get("coverImages") ?? "");
   const cat = String(formData.get("categoryId") ?? "").trim();
   const dmRaw = String(formData.get("deliveryMode") ?? "onsite").trim();
   const deliveryMode = dmRaw === "online" || dmRaw === "onsite" ? dmRaw : "onsite";
@@ -84,7 +89,7 @@ export async function adminCreateSaleAction(formData: FormData): Promise<void> {
   const parsed = createSaleSchema.safeParse({
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || undefined,
-    coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
+    coverImages: parseCoverImagesFromForm(formData),
     categoryId: cat && /^[0-9a-f-]{36}$/i.test(cat) ? cat : undefined,
     deliveryMode,
     streamUrl: isOnsite ? streamRaw || undefined : undefined,
@@ -115,7 +120,6 @@ export async function adminCreateSaleAction(formData: FormData): Promise<void> {
 export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   const id = String(formData.get("saleId") ?? "").trim();
   if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
-  const coverRaw = String(formData.get("coverImages") ?? "");
   const cat = String(formData.get("categoryId") ?? "").trim();
   const dmRaw = String(formData.get("deliveryMode") ?? "").trim();
   const deliveryMode = dmRaw === "online" || dmRaw === "onsite" ? dmRaw : undefined;
@@ -125,7 +129,7 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   const parsed = updateSaleSchema.safeParse({
     title: String(formData.get("title") ?? "").trim() || undefined,
     description: String(formData.get("description") ?? "").trim() || undefined,
-    coverImages: coverRaw ? splitUrlLines(coverRaw) : undefined,
+    coverImages: parseCoverImagesFromForm(formData),
     categoryId: cat && /^[0-9a-f-]{36}$/i.test(cat) ? cat : undefined,
     deliveryMode,
     streamUrl: isOnline ? null : streamRaw === "" ? null : streamRaw || undefined,

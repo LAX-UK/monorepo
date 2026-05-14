@@ -1,10 +1,10 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function EditAdminArtistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,11 +18,19 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
   if (!artist) notFound();
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title={`Edit ${artist.displayName}`}
-        description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
-      />
+    <AdminEntityFormShell
+      maxWidthClassName="max-w-4xl"
+      breadcrumbs={
+        <Link
+          href="/admin/artists"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Artists
+        </Link>
+      }
+      title={`Edit ${artist.displayName}`}
+      description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
+    >
       <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
 
       <Card>
@@ -62,6 +70,6 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
         </p>
         <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
       </section>
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }

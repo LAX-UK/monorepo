@@ -1,79 +1,85 @@
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { getAdminFinanceDisputeDomainEvents } from "@/lib/data/http/admin.server";
+import { AdminDisputesDomainEventsBoard } from "@/components/admin/admin-disputes-domain-events-board";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { disputesDomainEventsListController } from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
+import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
-export default async function AdminDisputesPage() {
-  let rows: Awaited<ReturnType<typeof getAdminFinanceDisputeDomainEvents>> = [];
+export default async function AdminDisputesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string; offset?: string; error?: string }>;
+}) {
+  const sp = await searchParams;
+  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const query = disputesDomainEventsListController.parseQuery(sp);
+
+  let rows: Awaited<ReturnType<typeof disputesDomainEventsListController.fetch>>["rows"] = [];
   let loadError: string | null = null;
   try {
-    rows = await getAdminFinanceDisputeDomainEvents({ limit: 200 });
+    const result = await disputesDomainEventsListController.fetch(query);
+    rows = result.rows;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load dispute events.";
   }
 
-  return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Payment disputes"
-        description="Stripe dispute-related domain events (opened, funds withdrawn, closed). Payloads are redacted per audit policy."
+  const errorAlert =
+    error || loadError ? (
+      <Alert variant="destructive">
+        <AlertTitle>Could not load</AlertTitle>
+        <AlertDescription>{loadError ?? error}</AlertDescription>
+      </Alert>
+    ) : null;
+
+  const meta = (
+    <p className="font-body text-sm text-on-surface-variant">
+      For capture/refund actions use{" "}
+      <Link href="/admin/payments" className="text-primary underline">
+        Payments
+      </Link>
+      .
+    </p>
+  );
+
+  const empty =
+    !loadError && rows.length === 0 ? (
+      <p className="font-body text-sm text-on-surface-variant">No dispute events recorded yet.</p>
+    ) : null;
+
+  const view =
+    !loadError && rows.length > 0 ? <AdminDisputesDomainEventsBoard rows={rows} /> : null;
+
+  const pagination =
+    !loadError && (query.offset > 0 || rows.length === query.limit) ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={rows.length}
+        prevHref={
+          query.offset > 0
+            ? buildListHref("/admin/disputes", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          rows.length === query.limit
+            ? buildListHref("/admin/disputes", sp, { offset: query.offset + query.limit })
+            : null
+        }
       />
+    ) : null;
 
-      {loadError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load</AlertTitle>
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <p className="font-body text-sm text-on-surface-variant">
-        For capture/refund actions use{" "}
-        <Link href="/admin/payments" className="text-primary underline">
-          Payments
-        </Link>
-        .
-      </p>
-
-      {rows.length === 0 && !loadError ? (
-        <p className="font-body text-sm text-on-surface-variant">No dispute events recorded yet.</p>
-      ) : null}
-
-      {rows.length > 0 ? (
-        <div className="overflow-x-auto rounded-md border border-outline-variant/20">
-          <table className="w-full min-w-[720px] border-collapse text-left font-body text-sm">
-            <thead className="bg-surface-container-low/80 font-label text-xs uppercase tracking-widest text-on-surface-variant">
-              <tr>
-                <th className="px-3 py-2">When</th>
-                <th className="px-3 py-2">Type</th>
-                <th className="px-3 py-2">Aggregate</th>
-                <th className="px-3 py-2">Actor</th>
-                <th className="px-3 py-2">Payload</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-t border-outline-variant/15">
-                  <td className="whitespace-nowrap px-3 py-2 text-on-surface-variant">
-                    {r.occurredAt.toISOString()}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs">{r.eventType}</td>
-                  <td className="px-3 py-2 font-mono text-xs">
-                    {r.aggregateType}:{r.aggregateId.slice(0, 8)}…
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs">{r.actorUserId ?? "—"}</td>
-                  <td
-                    className="max-w-md truncate px-3 py-2 font-mono text-xs"
-                    title={JSON.stringify(r.payload)}
-                  >
-                    {JSON.stringify(r.payload)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </AppScreen>
+  return (
+    <AdminListPage
+      title="Payment disputes"
+      description="Stripe dispute-related domain events (opened, funds withdrawn, closed). Payloads are redacted per audit policy."
+      errorAlert={errorAlert}
+      meta={meta}
+      view={view}
+      empty={empty}
+      pagination={pagination}
+    />
   );
 }

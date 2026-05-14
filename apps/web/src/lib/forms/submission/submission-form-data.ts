@@ -42,33 +42,3 @@ export function formValuesToUpdateItemSubmissionInput(values: ItemSubmissionForm
     submitterNotes: base.submitterNotes,
   };
 }
-
-export function createSubmissionFormData(values: ItemSubmissionFormValues): FormData {
-  const fd = new FormData();
-  fd.set("title", values.title.trim());
-  fd.set("description", values.description.trim());
-  fd.set("medium", values.medium.trim());
-  fd.set("dimensions", values.dimensions.trim());
-  fd.set("categoryIds", values.categoryIds.join(","));
-  fd.set("images", values.images.join("\n"));
-  fd.set("yearOfWork", values.yearOfWork.trim());
-  fd.set("isSigned", values.isSigned ? "true" : "false");
-  fd.set("signatureNote", values.signatureNote.trim());
-  fd.set("edition", values.edition.trim());
-  fd.set("conditionSelfReport", values.conditionSelfReport.trim());
-  fd.set("provenance", JSON.stringify(values.provenance));
-  fd.set("exhibitions", JSON.stringify(values.exhibitions));
-  fd.set("askingPrice", values.askingPrice.trim());
-  fd.set("reservePrice", values.reservePrice.trim());
-  fd.set("submitterNotes", values.submitterNotes.trim());
-  return fd;
-}
-
-export function updateSubmissionFormData(
-  submissionId: string,
-  values: ItemSubmissionFormValues,
-): FormData {
-  const fd = createSubmissionFormData(values);
-  fd.set("submissionId", submissionId);
-  return fd;
-}

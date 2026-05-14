@@ -1,9 +1,13 @@
+import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import {
+  SubmissionDocumentsSection,
+  SubmissionMetadataSummary,
+} from "@/components/admin/submission-review/submission-staff-sections";
 import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminArtistList, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
+import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
 import { ReviewSplitPane } from "@auction/ui";
 import { Card, CardContent } from "@auction/ui/components/card";
@@ -18,22 +22,17 @@ export default async function AdminSubmissionDetailPage({
   if (!s) notFound();
 
   const submitterLegalEntityId = s.legalEntityId ?? s.sellerId ?? null;
-  const [submitterEntity, artists] = await Promise.all([
+  const [submitterEntity, artists, staffDocuments] = await Promise.all([
     submitterLegalEntityId
       ? getAdminLegalEntityById(submitterLegalEntityId).catch(() => null)
       : Promise.resolve(null),
     getAdminArtistList().catch(() => []),
+    getServerSubmissionDocuments(id),
   ]);
   const submitterDisplayName = submitterEntity?.displayName;
 
-  const record = (
+  const submissionRecord = (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <DisplayHeading as="h2" className="text-2xl md:text-3xl">
-          {s.title}
-        </DisplayHeading>
-        <SubmissionStatusBadge status={s.status} />
-      </div>
       <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm">
         <p>
           <span className="font-label text-xs uppercase tracking-widest text-secondary">
@@ -97,14 +96,18 @@ export default async function AdminSubmissionDetailPage({
   );
 
   return (
-    <AppScreen className="space-y-6">
-      <Link
-        href="/admin/submissions"
-        className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Queue
-      </Link>
-
+    <AdminEntityDetailShell
+      breadcrumbs={
+        <Link
+          href="/admin/submissions"
+          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Queue
+        </Link>
+      }
+      title={s.title}
+      actions={<SubmissionStatusBadge status={s.status} />}
+    >
       <ReviewSplitPane
         recordTitle="Intake"
         decisionTitle="Decision"
@@ -118,7 +121,9 @@ export default async function AdminSubmissionDetailPage({
         }
         record={
           <div className="space-y-6">
-            {record}
+            {submissionRecord}
+            <SubmissionMetadataSummary submission={s} />
+            <SubmissionDocumentsSection submissionId={id} initialDocuments={staffDocuments} />
             <section aria-labelledby="submission-workflow-heading" className="space-y-3">
               <h3 id="submission-workflow-heading" className="sr-only">
                 Specialist workflow
@@ -152,6 +157,6 @@ export default async function AdminSubmissionDetailPage({
         }
         decision={decision}
       />
-    </AppScreen>
+    </AdminEntityDetailShell>
   );
 }

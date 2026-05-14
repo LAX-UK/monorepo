@@ -56,6 +56,7 @@ import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-sub
 import { DrizzleKycRepository } from "./repositories/drizzle-kyc.repository.js";
 import { DrizzleLegalEntityNotificationRecipientRepository } from "./repositories/drizzle-legal-entity-notification-recipient.repository.js";
 import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entity.repository.js";
+import { DrizzleLotDocumentRepository } from "./repositories/drizzle-lot-document.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
@@ -68,9 +69,11 @@ import { DrizzleProfileRepository } from "./repositories/drizzle-profile.reposit
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
 import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.reader.js";
+import { DrizzleSaleDocumentRepository } from "./repositories/drizzle-sale-document.repository.js";
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
+import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
 import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
@@ -100,6 +103,7 @@ import { ConditionReportService } from "./services/condition-report.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
+import { EntityDocumentService } from "./services/entity-document.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
@@ -280,6 +284,9 @@ export type Container = {
   objectStorage: IObjectStorage;
   mediaUrlResolver: MediaUrlResolver;
   uploadService: UploadService;
+  lotDocumentService: EntityDocumentService<string>;
+  saleDocumentService: EntityDocumentService<string>;
+  submissionDocumentService: EntityDocumentService<string>;
   uploadValidationQueue: Queue;
   imageCleanupQueue: Queue;
   marketingSyncQueue: Queue;
@@ -532,6 +539,30 @@ export function createContainer(env: Env): Container {
     db,
     redis,
     uploadValidationQueue,
+    mediaUrlResolver,
+  );
+  const lotDocumentRepo = new DrizzleLotDocumentRepository(db);
+  const saleDocumentRepo = new DrizzleSaleDocumentRepository(db);
+  const submissionDocumentRepo = new DrizzleSubmissionDocumentRepository(db);
+  const lotDocumentService = new EntityDocumentService(
+    "lot",
+    lotDocumentRepo,
+    db,
+    objectStorage,
+    mediaUrlResolver,
+  );
+  const saleDocumentService = new EntityDocumentService(
+    "sale",
+    saleDocumentRepo,
+    db,
+    objectStorage,
+    mediaUrlResolver,
+  );
+  const submissionDocumentService = new EntityDocumentService(
+    "submission",
+    submissionDocumentRepo,
+    db,
+    objectStorage,
     mediaUrlResolver,
   );
   const lotJobScheduler: ILotJobScheduler = new LotJobScheduler(
@@ -901,6 +932,9 @@ export function createContainer(env: Env): Container {
     objectStorage,
     mediaUrlResolver,
     uploadService,
+    lotDocumentService,
+    saleDocumentService,
+    submissionDocumentService,
     uploadValidationQueue,
     imageCleanupQueue,
     marketingSyncQueue,
