@@ -162,3 +162,16 @@ export function calendarSalesHref(params: CalendarSalesUrlParams): string {
   const qs = q.toString();
   return qs ? `/sales?${qs}` : "/sales";
 }
+
+/** Count non-default filters for mobile “Filters (N)” badge. */
+export function countActiveCalendarFilters(state: CalendarSalesUrlState): number {
+  let n = 0;
+  if (state.categoryId) n += 1;
+  if (state.deliveryMode !== "all") n += 1;
+  if (state.location !== "all") n += 1;
+  if (state.month != null) n += 1;
+  if (state.year != null) n += 1;
+  if (state.minPrice != null) n += 1;
+  if (state.maxPrice != null) n += 1;
+  return n;
+}

@@ -53,8 +53,8 @@ export function SalesFilterGroupContents({
           <Link
             href={calendarSalesHrefFromState(state, { sort: "startAsc" })}
             className={cn(
-              "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-              state.sort === "startAsc" && "font-semibold text-[#050505] dark:text-on-surface",
+              "font-body text-sm text-on-surface-variant hover:underline",
+              state.sort === "startAsc" && "font-semibold text-on-surface",
             )}
           >
             Start date (soonest first)
@@ -62,8 +62,8 @@ export function SalesFilterGroupContents({
           <Link
             href={calendarSalesHrefFromState(state, { sort: "createdDesc" })}
             className={cn(
-              "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-              state.sort === "createdDesc" && "font-semibold text-[#050505] dark:text-on-surface",
+              "font-body text-sm text-on-surface-variant hover:underline",
+              state.sort === "createdDesc" && "font-semibold text-on-surface",
             )}
           >
             Newly listed
@@ -78,8 +78,8 @@ export function SalesFilterGroupContents({
           <Link
             href={calendarSalesHrefFromState(state, { categoryId: undefined })}
             className={cn(
-              "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-              !state.categoryId && "font-semibold text-[#050505] dark:text-on-surface",
+              "font-body text-sm text-on-surface-variant hover:underline",
+              !state.categoryId && "font-semibold text-on-surface",
             )}
           >
             All departments
@@ -89,8 +89,8 @@ export function SalesFilterGroupContents({
               key={c.id}
               href={calendarSalesHrefFromState(state, { categoryId: c.id })}
               className={cn(
-                "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-                state.categoryId === c.id && "font-semibold text-[#050505] dark:text-on-surface",
+                "font-body text-sm text-on-surface-variant hover:underline",
+                state.categoryId === c.id && "font-semibold text-on-surface",
               )}
             >
               {c.name}
@@ -104,8 +104,8 @@ export function SalesFilterGroupContents({
           <Link
             href={calendarSalesHrefFromState(state, { month: undefined })}
             className={cn(
-              "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-              state.month == null && "font-semibold text-[#050505] dark:text-on-surface",
+              "font-body text-sm text-on-surface-variant hover:underline",
+              state.month == null && "font-semibold text-on-surface",
             )}
           >
             Any month
@@ -115,8 +115,8 @@ export function SalesFilterGroupContents({
               key={m.n}
               href={calendarSalesHrefFromState(state, { month: m.n })}
               className={cn(
-                "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-                state.month === m.n && "font-semibold text-[#050505] dark:text-on-surface",
+                "font-body text-sm text-on-surface-variant hover:underline",
+                state.month === m.n && "font-semibold text-on-surface",
               )}
             >
               {m.label}
@@ -130,8 +130,8 @@ export function SalesFilterGroupContents({
           <Link
             href={calendarSalesHrefFromState(state, { year: undefined })}
             className={cn(
-              "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-              state.year == null && "font-semibold text-[#050505] dark:text-on-surface",
+              "font-body text-sm text-on-surface-variant hover:underline",
+              state.year == null && "font-semibold text-on-surface",
             )}
           >
             Any year
@@ -141,8 +141,8 @@ export function SalesFilterGroupContents({
               key={y}
               href={calendarSalesHrefFromState(state, { year: y })}
               className={cn(
-                "font-body text-sm text-[#474747] hover:underline dark:text-on-surface-variant",
-                state.year === y && "font-semibold text-[#050505] dark:text-on-surface",
+                "font-body text-sm text-on-surface-variant hover:underline",
+                state.year === y && "font-semibold text-on-surface",
               )}
             >
               {y}

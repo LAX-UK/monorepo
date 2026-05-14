@@ -12,7 +12,7 @@ type Props = {
 export function SalesNewLotsGrid({ lots }: Props) {
   if (lots.length === 0) {
     return (
-      <p className="font-body text-sm text-[#474747] dark:text-on-surface-variant">
+      <p className="font-body text-sm text-on-surface-variant">
         No new lots are listed yet. Check back soon.
       </p>
     );
@@ -22,10 +22,10 @@ export function SalesNewLotsGrid({ lots }: Props) {
     <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3">
       {lots.map((lot, index) => (
         <li key={lot.id}>
-          <article className="group flex flex-col overflow-hidden rounded-lg border border-[#D1D1D1] bg-white transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
+          <article className="group flex flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
             <Link
               href={lotPath(lot)}
-              className="relative aspect-[4/3] w-full overflow-hidden bg-[#E4E4E7] dark:bg-surface-container-low"
+              className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container dark:bg-surface-container-low"
             >
               <MediaImage
                 src={lot.images[0] ?? null}
@@ -45,12 +45,12 @@ export function SalesNewLotsGrid({ lots }: Props) {
               </div>
               <Link
                 href={lotPath(lot)}
-                className="font-body text-base font-semibold leading-snug text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
+                className="font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface"
               >
                 {lot.title}
               </Link>
               {lot.medium ? (
-                <p className="line-clamp-2 font-body text-sm text-[#474747] dark:text-on-surface-variant">
+                <p className="line-clamp-2 font-body text-sm text-on-surface-variant">
                   {lot.medium}
                 </p>
               ) : null}
