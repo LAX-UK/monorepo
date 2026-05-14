@@ -47,7 +47,7 @@ export function slugify(input: string, opts: SlugifyOptions = {}): string {
 }
 
 export function lotPath(lot: LotUrlFields): string {
-  return `/artwork/${slugify(lot.title)}/${lot.id}`;
+  return `/lot/${slugify(lot.title)}/${lot.id}`;
 }
 
 export function salePath(sale: SaleUrlFields): string {

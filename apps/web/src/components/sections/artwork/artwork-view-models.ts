@@ -403,7 +403,7 @@ export function mapSaleLotsToQueueVMs(
   return { current, upNext, queue };
 }
 
-function maskPaddleFromBidderId(bidderId: string): string {
+export function maskPaddleFromBidderId(bidderId: string): string {
   const tail = bidderId.replace(/-/g, "").slice(-4).toUpperCase();
   return tail ? `Paddle#•••${tail}` : "Paddle#—";
 }

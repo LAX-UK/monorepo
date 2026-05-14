@@ -4,7 +4,7 @@ This guide defines the visual and interaction rules for future features across w
 It uses existing implementation as source of truth:
 
 - Marketing home: `apps/web/src/app/(marketing)/page.tsx`
-- Artwork detail: `apps/web/src/app/(marketing)/artwork/[id]/page.tsx`
+- Lot detail: `apps/web/src/app/(marketing)/lot/[slug]/[id]/page.tsx`
 - Sale detail: `apps/web/src/app/(marketing)/sales/[id]/page.tsx`
 - Shared tokens: `apps/web/src/app/globals.css`
 - Shared primitives: `@auction/ui`
@@ -33,7 +33,7 @@ It uses existing implementation as source of truth:
 - Section rhythm: hero, upcoming lots, upcoming auctions, artists, newsletter.
 - Preferred section framing: `SectionHeader` + action slot + content grid.
 
-### Artwork detail (`/artwork/:id`)
+### Lot detail (`/lot/:slug/:id`)
 
 - Split-view detail layout with media + accordion left, summary/actions right.
 - Uses 1440 container rhythm and lightweight section framing (`bg-page-bg`, not heavy card stacks).

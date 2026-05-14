@@ -38,7 +38,7 @@ describe("renderEmail", () => {
     const rendered = await renderEmail("bid-outbid", {
       userName: "Ada",
       lotTitle: "Untitled",
-      lotUrl: "https://lax.bid/artwork/lot",
+      lotUrl: "https://lax.bid/lot/lot",
       currentBid: "GBP 100",
       unsubscribeUrl: "https://lax.bid/unsubscribe?t=token",
     });
