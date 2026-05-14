@@ -1,4 +1,7 @@
+"use client";
+
 import { formatMoney } from "@/lib/format-currency";
+import { useClientClock } from "@/lib/time/use-client-clock";
 
 export type BidHistoryEntry = {
   id: string;
@@ -18,9 +21,9 @@ function maskBidder(id: string): string {
   return `•••${id.replace(/-/g, "").slice(-4).toUpperCase()}`;
 }
 
-function formatRelative(at: number): string {
+function formatRelative(at: number, nowMs: number): string {
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const diffSec = Math.round((at - Date.now()) / 1000);
+  const diffSec = Math.round((at - nowMs) / 1000);
   const abs = Math.abs(diffSec);
   if (abs < 60) return rtf.format(Math.round(diffSec / 1), "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
@@ -29,6 +32,8 @@ function formatRelative(at: number): string {
 }
 
 export function BidHistory({ entries, hideHeading = false, compact = false }: Props) {
+  // `null` during SSR + first client render so relative-time text matches; ticks after mount.
+  const nowMs = useClientClock(30_000);
   return (
     <div className={compact ? "" : "mt-10 border-t border-outline-variant/15 pt-10"}>
       {hideHeading ? null : (
@@ -51,8 +56,11 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
             >
               <div className="min-w-0">
                 <span className="block text-on-surface-variant">{maskBidder(e.bidderId)}</span>
-                <span className="font-label text-xs uppercase tracking-wider text-on-surface-variant/80">
-                  {formatRelative(e.at)}
+                <span
+                  className="font-label text-xs uppercase tracking-wider text-on-surface-variant/80"
+                  suppressHydrationWarning
+                >
+                  {nowMs == null ? "\u00A0" : formatRelative(e.at, nowMs)}
                 </span>
               </div>
               <span className="shrink-0 font-headline tabular-nums text-on-surface">

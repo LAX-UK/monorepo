@@ -8,7 +8,7 @@ import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const MEGAMENU_PANEL_ID = "site-header-megamenu";
 const HOVER_OPEN_MS = 80;
@@ -33,11 +33,14 @@ export function HeaderMegaNav({
 }: HeaderMegaNavProps) {
   const { blendWithHero } = useSiteHeaderChrome();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  /** Extra horizontal offset so mega menu links sit under the active nav trigger (px). */
+  const [menuContentShiftPx, setMenuContentShiftPx] = useState(0);
   const openHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
+  const contentBlockRef = useRef<HTMLDivElement | null>(null);
   const focusFirstOnOpenRef = useRef(false);
 
   const clearOpenHover = useCallback(() => {
@@ -75,6 +78,37 @@ export function HeaderMegaNav({
     }, HOVER_CLOSE_MS);
   }, [clearCloseHover, clearOpenHover]);
 
+  const updateMegaMenuContentShift = useCallback(() => {
+    if (openIndex === null) {
+      setMenuContentShiftPx(0);
+      return;
+    }
+    const panel = panelRef.current;
+    const trigger = triggerRefs.current[openIndex];
+    if (!panel || !trigger) {
+      setMenuContentShiftPx(0);
+      return;
+    }
+    const panelRect = panel.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    if (triggerRect.width <= 0 && triggerRect.height <= 0) {
+      setMenuContentShiftPx(0);
+      return;
+    }
+    let left = Math.round(triggerRect.left - panelRect.left);
+    left = Math.max(0, left);
+    const block = contentBlockRef.current;
+    if (block) {
+      const panelRoot =
+        block.querySelector<HTMLElement>(".header-megamenu__panel-content") ?? block;
+      const ul = panelRoot.querySelector("ul");
+      const w = ul?.offsetWidth && ul.offsetWidth > 0 ? ul.offsetWidth : panelRoot.offsetWidth;
+      const maxLeft = Math.max(0, Math.floor(panelRect.width - w - 16));
+      left = Math.min(left, maxLeft);
+    }
+    setMenuContentShiftPx(left);
+  }, [openIndex]);
+
   const searchKey = searchParams == null ? "" : searchParams.toString();
   useEffect(() => {
     void pathname;
@@ -82,11 +116,43 @@ export function HeaderMegaNav({
     clearOpenHover();
     clearCloseHover();
     setOpenIndex(null);
+    setMenuContentShiftPx(0);
   }, [pathname, searchKey, clearOpenHover, clearCloseHover]);
 
   useEffect(() => {
     onOpenChange?.(openIndex !== null);
   }, [openIndex, onOpenChange]);
+
+  useLayoutEffect(() => {
+    updateMegaMenuContentShift();
+    if (openIndex === null) return;
+    const id = requestAnimationFrame(() => {
+      updateMegaMenuContentShift();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [openIndex, updateMegaMenuContentShift]);
+
+  useEffect(() => {
+    if (openIndex === null) return;
+    const block = contentBlockRef.current;
+    const panel = panelRef.current;
+    const onResize = () => {
+      updateMegaMenuContentShift();
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            updateMegaMenuContentShift();
+          })
+        : null;
+    if (panel) ro?.observe(panel);
+    if (block) ro?.observe(block);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      ro?.disconnect();
+    };
+  }, [openIndex, updateMegaMenuContentShift]);
 
   useEffect(() => {
     return () => {
@@ -258,12 +324,14 @@ export function HeaderMegaNav({
         className="header-megamenu absolute top-full z-40 bg-surface"
         onKeyDown={onPanelKeyDown}
       >
-        <div className="mx-auto max-w-[1440px] px-6 md:px-10">
-          <div className="header-megamenu__inner">
-            {section ? (
-              <HeaderMegaMenuPanelContent section={section} onNavigate={closeMenu} />
-            ) : null}
-          </div>
+        <div ref={contentBlockRef} className="header-megamenu__inner">
+          {section ? (
+            <HeaderMegaMenuPanelContent
+              section={section}
+              leftPx={menuContentShiftPx}
+              onNavigate={closeMenu}
+            />
+          ) : null}
         </div>
       </section>
     </div>
@@ -272,9 +340,11 @@ export function HeaderMegaNav({
 
 function HeaderMegaMenuPanelContent({
   section,
+  leftPx,
   onNavigate,
 }: {
   section: MegaMenuSection;
+  leftPx: number;
   onNavigate: () => void;
 }) {
   const viewAllHref = section.viewAllHref;
@@ -282,9 +352,12 @@ function HeaderMegaMenuPanelContent({
     section.viewAllLabel ?? (viewAllHref ? `View all ${section.label.toLowerCase()}` : undefined);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="header-megamenu__panel-content flex w-max max-w-full flex-col items-start gap-4"
+      style={{ marginLeft: `${leftPx}px` }}
+    >
       {section.items.length > 0 ? (
-        <ul className="flex max-w-xl flex-col gap-3">
+        <ul className="flex w-max max-w-xl flex-col gap-3 self-start">
           {section.items.map((row) => (
             <li key={`${section.id}-${row.label}-${row.href}`}>
               <Link

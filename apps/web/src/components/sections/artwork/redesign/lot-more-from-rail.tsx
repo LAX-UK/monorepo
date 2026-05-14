@@ -6,6 +6,7 @@ import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-
 import { MediaImage } from "@/components/ui/media-image";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { useClientClock } from "@/lib/time/use-client-clock";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +33,9 @@ export function LotMoreFromRail({
   watchedLotIds,
   density = "rich",
 }: Props) {
+  // `null` during SSR + first client render so the per-card "Closing: …" text
+  // matches between server and client; updates every 30s after mount.
+  const nowMs = useClientClock(30_000);
   if (rail.cards.length === 0 || !rail.heading) {
     return null;
   }
@@ -66,8 +70,8 @@ export function LotMoreFromRail({
       </div>
       <ul className="flex list-none gap-5 overflow-x-auto pb-3">
         {rail.cards.map((c) => {
-          const endMs = new Date(c.endTime).getTime() - Date.now();
-          const closing = formatCountdownForDisplay(endMs);
+          const closing =
+            nowMs == null ? null : formatCountdownForDisplay(new Date(c.endTime).getTime() - nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
               <div className="flex flex-col gap-4">
@@ -134,8 +138,11 @@ export function LotMoreFromRail({
                     </div>
                     <p className="text-sm text-[#474747] dark:text-on-surface">
                       <span className="text-xs">Closing: </span>
-                      <span className="font-semibold text-[#050505] dark:text-on-surface">
-                        {closing}
+                      <span
+                        className="font-semibold text-[#050505] dark:text-on-surface"
+                        suppressHydrationWarning
+                      >
+                        {closing ?? "\u00A0"}
                       </span>
                     </p>
                     <div className="flex flex-row gap-4 pt-1">
