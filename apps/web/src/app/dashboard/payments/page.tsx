@@ -1,5 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { PaymentsToolbar } from "@/components/dashboard/payments-toolbar";
+import {
+  DashboardEmptyState,
+  DashboardErrorAlert,
+  DashboardSection,
+} from "@/components/dashboard/primitives";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -13,9 +18,7 @@ import {
   toPaymentDisplayRows,
 } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
@@ -183,28 +186,26 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
       ) : null}
 
       {fetchError ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not load payments</AlertTitle>
-          <AlertDescription>
-            {fetchError} Refresh the page or try again in a few minutes.
-          </AlertDescription>
-        </Alert>
+        <DashboardErrorAlert
+          title="Could not load payments"
+          message={`${fetchError} Refresh the page or try again in a few minutes.`}
+        />
       ) : null}
 
       <section aria-live="polite" aria-busy="false">
         {!fetchError && displayRows.length === 0 ? (
           filter === "all" && !qLower && year == null ? (
-            <EmptyState
+            <DashboardEmptyState
               title="No payments yet"
               description="Your purchases will appear here once you win a lot and an invoice is issued."
               action={
                 <Button variant="primary" asChild>
-                  <Link href="/">Browse auctions</Link>
+                  <Link href="/search">Browse auctions</Link>
                 </Button>
               }
             />
           ) : (
-            <EmptyState
+            <DashboardEmptyState
               title="No payments match this filter"
               description="Try a different status or clear the filter to see everything."
               action={
@@ -217,11 +218,13 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
         ) : null}
 
         {displayRows.length > 0 ? (
-          <ul className="space-y-3">
-            {displayRows.map((row) => (
-              <PaymentRowCard key={row.id} row={row} />
-            ))}
-          </ul>
+          <DashboardSection id="payments-list" title="Payment history">
+            <ul className="space-y-3">
+              {displayRows.map((row) => (
+                <PaymentRowCard key={row.id} row={row} />
+              ))}
+            </ul>
+          </DashboardSection>
         ) : null}
       </section>
     </DashboardPage>

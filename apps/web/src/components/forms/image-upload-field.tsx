@@ -2,19 +2,20 @@
 
 import { MediaImage } from "@/components/ui/media-image";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { Button } from "@auction/ui/components/button";
 import { useRef, useState } from "react";
 
-export type UploadKind =
+/** Image-only upload kinds (presign + thumbnail UI). */
+export type ImageUploadKind =
   | "avatar"
   | "submission_image"
   | "lot_image"
   | "sale_cover"
-  | "legal_entity_document";
+  | "artist_image";
 
-type UploadFieldProps = {
-  kind: UploadKind;
+type ImageUploadFieldProps = {
+  kind: ImageUploadKind;
   multiple?: boolean;
   maxFiles?: number;
   value: string[];
@@ -27,30 +28,12 @@ type UploadItem = {
   message?: string;
 };
 
-type PresignResponse = {
-  data: {
-    uploadId: string;
-    uploadUrl: string;
-    publicUrl: string;
-    requiredHeaders: Record<string, string>;
-  };
-};
-
-type UploadStatusResponse = {
-  data: {
-    key: string;
-    status: string;
-    publicUrl: string | null;
-    rejectionReason: string | null;
-  };
-};
-
 type UploadedImage = {
   value: string;
   previewUrl: string;
 };
 
-function placeholderLabel(kind: UploadKind): string {
+function placeholderLabel(kind: ImageUploadKind): string {
   switch (kind) {
     case "avatar":
       return "Profile";
@@ -60,18 +43,19 @@ function placeholderLabel(kind: UploadKind): string {
       return "Submission image";
     case "lot_image":
       return "Lot artwork";
-    case "legal_entity_document":
-      return "Document";
+    case "artist_image":
+      return "Artist image";
   }
 }
 
-export function UploadField({
+export function ImageUploadField({
   kind,
   multiple = false,
   maxFiles = multiple ? 20 : 1,
   value,
   onChange,
-}: UploadFieldProps) {
+}: ImageUploadFieldProps) {
+  const { uploadFile } = useUploadObjectLifecycle();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -87,7 +71,7 @@ export function UploadField({
     for (const file of fileArray) {
       setItems((prev) => [...prev, { fileName: file.name, status: "uploading" }]);
       try {
-        const uploaded = await uploadOne(file, kind);
+        const uploaded = await uploadOneFile(file, kind, uploadFile);
         setPreviewUrls((prev) => ({ ...prev, [uploaded.value]: uploaded.previewUrl }));
         nextValue = multiple ? [...nextValue, uploaded.value] : [uploaded.value];
         onChange(nextValue);
@@ -195,57 +179,11 @@ export function UploadField({
   );
 }
 
-async function uploadOne(file: File, kind: UploadKind): Promise<UploadedImage> {
-  const base = apiBaseUrl();
-  const presign = await fetch(`${base}/uploads/presign`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind, contentType: file.type, byteSize: file.size }),
-  });
-  if (!presign.ok) throw new Error(await errorFromResponse(presign, "Could not prepare upload"));
-  const presignBody = (await presign.json()) as PresignResponse;
-  const headers = new Headers(presignBody.data.requiredHeaders);
-  const put = await fetch(presignBody.data.uploadUrl, {
-    method: "PUT",
-    headers,
-    body: file,
-  });
-  if (!put.ok) throw new Error("Object storage rejected the upload");
-
-  const confirm = await fetch(`${base}/uploads/confirm`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
-  });
-  if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
-  return waitForActiveUpload(base, presignBody.data.uploadId);
-}
-
-async function waitForActiveUpload(base: string, uploadId: string): Promise<UploadedImage> {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    const res = await fetch(`${base}/uploads/${encodeURIComponent(uploadId)}`, {
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error(await errorFromResponse(res, "Could not read upload status"));
-    const body = (await res.json()) as UploadStatusResponse;
-    if (body.data.status === "active" && body.data.publicUrl) {
-      return { value: body.data.key, previewUrl: body.data.publicUrl };
-    }
-    if (body.data.status === "rejected") {
-      throw new Error(body.data.rejectionReason ?? "Upload rejected");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error("Upload validation timed out");
-}
-
-async function errorFromResponse(response: Response, fallback: string): Promise<string> {
-  const body = await response.json().catch(() => null);
-  if (body && typeof body === "object" && typeof (body as { error?: unknown }).error === "string") {
-    return (body as { error: string }).error;
-  }
-  return fallback;
+async function uploadOneFile(
+  file: File,
+  kind: ImageUploadKind,
+  uploadFile: ReturnType<typeof useUploadObjectLifecycle>["uploadFile"],
+): Promise<UploadedImage> {
+  const out = await uploadFile(file, kind);
+  return { value: out.key, previewUrl: out.publicUrl };
 }

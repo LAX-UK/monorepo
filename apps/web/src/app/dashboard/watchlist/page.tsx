@@ -1,17 +1,19 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import {
+  DashboardEmptyState,
+  DashboardErrorAlert,
+  DashboardSkeleton,
+} from "@/components/dashboard/primitives";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { WatchlistWithLotRow } from "@/lib/data/http/dashboard.server";
+import type { WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
 import type { Category } from "@auction/types";
 import { LabelCaps } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Separator } from "@auction/ui/components/separator";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -196,27 +198,22 @@ export default async function DashboardWatchlistPage({
         ) : null}
       </div>
 
-      {err ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not load watchlist</AlertTitle>
-          <AlertDescription>{err}</AlertDescription>
-        </Alert>
-      ) : null}
+      {err ? <DashboardErrorAlert title="Could not load watchlist" message={err} /> : null}
 
       {!err && tableRows.length === 0 ? (
-        <EmptyState
+        <DashboardEmptyState
           title="No watched lots yet"
           description="Save lots from artwork pages to monitor their status and closing time here."
           action={
             <Button variant="default" asChild>
-              <Link href="/">Browse auctions</Link>
+              <Link href="/search">Browse auctions</Link>
             </Button>
           }
         />
       ) : null}
 
       {!err && tableRows.length > 0 ? (
-        <Suspense fallback={<PageSkeleton variant="table" />}>
+        <Suspense fallback={<DashboardSkeleton variant="list" />}>
           <WatchlistBoard rows={tableRows} artistNameById={artistNameById} />
         </Suspense>
       ) : null}

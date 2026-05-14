@@ -79,9 +79,17 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
     },
     {
       id: "artists",
-      href: "/artist/featured",
+      href: "/artists",
       label: "Artists",
-      items: [{ href: "/artist/featured", label: "Featured artists" }],
+      items: [
+        { href: "/artists", label: "Browse all artists" },
+        { href: "/artists/featured", label: "Featured artists" },
+        { href: "/artists/living", label: "Living artists" },
+        { href: "/artists/historical", label: "Historical & deceased" },
+        { href: "/artists/kind/brands", label: "Brands" },
+        { href: "/artists/kind/marques", label: "Marques" },
+        { href: "/dashboard/submissions/new", label: "Submit your portfolio" },
+      ],
     },
   ];
 }

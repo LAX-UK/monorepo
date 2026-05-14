@@ -3,14 +3,13 @@
 import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { SettingsTag } from "@/components/dashboard/settings-tag";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import { notify } from "@/lib/ui/notify";
-import { Button as UiButton } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -72,17 +71,6 @@ function PersonalNameBlock({ initialName }: { initialName: string }) {
   return (
     <SettingsField
       label="Name"
-      action={
-        <UiButton
-          type="submit"
-          form="profile-name-form"
-          variant="ghost"
-          size="sm"
-          className="h-8 px-0 font-semibold text-on-surface underline underline-offset-2"
-        >
-          Save
-        </UiButton>
-      }
       value={
         <Form {...form}>
           <form id="profile-name-form" onSubmit={onSubmit} className="w-full max-w-lg space-y-3">
@@ -91,6 +79,7 @@ function PersonalNameBlock({ initialName }: { initialName: string }) {
               name="name"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel className="sr-only">Display name</FormLabel>
                   <FormControl>
                     <UnderlineInput
                       {...field}
@@ -138,7 +127,7 @@ function ProfileAvatarBlock({ initialImage }: { initialImage: string | null }) {
         Shown on your profile and bidding account.
       </p>
       <div className="mt-4 max-w-md">
-        <UploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
+        <ImageUploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
         {pending ? <p className="mt-2 font-body text-xs text-on-surface-variant">Saving…</p> : null}
       </div>
     </div>

@@ -1,23 +1,14 @@
+import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminUsersBoard, type AdminUsersKpiStrip } from "@/components/admin/admin-users-board";
 import { AdminUsersSearchForm } from "@/components/admin/admin-users-search-form";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
-import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
-import { ShareFiltersButton } from "@/components/admin/share-filters-button";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { getAdminUserList } from "@/lib/data/http/admin.server";
+import { usersListController } from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
+import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { type UserRole, userRoles } from "@auction/types";
+import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { PageHeader } from "@auction/ui/components/page-header";
-
-function adminUsersHref(parts: { q?: string; role?: UserRole; suspended?: boolean }) {
-  const p = new URLSearchParams();
-  if (parts.q != null && parts.q !== "") p.set("q", parts.q);
-  if (parts.role) p.set("role", parts.role);
-  if (parts.suspended) p.set("suspended", "1");
-  const s = p.toString();
-  return s ? `/admin/users?${s}` : "/admin/users";
-}
 
 function isUserRole(s: string | undefined): s is UserRole {
   return s != null && (userRoles as readonly string[]).includes(s);
@@ -26,43 +17,43 @@ function isUserRole(s: string | undefined): s is UserRole {
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; q?: string; role?: string; suspended?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    q?: string;
+    role?: string;
+    suspended?: string;
+    limit?: string;
+    offset?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const q = sp.q?.trim() ?? "";
-  const roleFilter = isUserRole(sp.role) ? sp.role : undefined;
-  const suspendedOnly = sp.suspended === "1";
+  const query = usersListController.parseQuery(sp);
 
-  let rawRows: Awaited<ReturnType<typeof getAdminUserList>>["rows"] = [];
+  let rows: AdminUserRow[] = [];
   let total = 0;
   let loadError: string | null = null;
   try {
-    const data = await getAdminUserList(
-      q ? { q, limit: 100, offset: 0 } : { limit: 100, offset: 0 },
-    );
-    rawRows = data.rows;
-    total = data.total;
+    const result = await usersListController.fetch(query);
+    rows = result.rows;
+    total = result.total ?? 0;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load users.";
   }
 
+  const roleFilter = isUserRole(query.role) ? query.role : undefined;
+  const suspendedOnly = query.suspendedOnly ?? false;
+  const q = query.q ?? "";
+
   const kpis: AdminUsersKpiStrip = {
     totalMatches: total,
-    adminsOnPage: rawRows.filter((r) => r.role === "staff").length,
-    suspendedOnPage: rawRows.filter((r) => r.suspendedAt).length,
-    pageCount: rawRows.length,
+    adminsOnPage: rows.filter((r) => r.role === "staff").length,
+    suspendedOnPage: rows.filter((r) => r.suspendedAt).length,
+    pageCount: rows.length,
   };
 
-  let rows = rawRows;
-  if (roleFilter) rows = rows.filter((r) => r.role === roleFilter);
-  if (suspendedOnly) rows = rows.filter((r) => r.suspendedAt);
-
-  const chipCommon = (extra: { role?: UserRole; suspended?: boolean }) =>
-    adminUsersHref({
-      ...(q !== "" ? { q } : {}),
-      ...extra,
-    });
+  const chip = (patch: Record<string, string | number | boolean | undefined | null | "">) =>
+    buildListHref("/admin/users", sp, { ...patch, offset: 0 });
 
   const roleChips = (
     <FilterChipRow
@@ -71,61 +62,85 @@ export default async function AdminUsersPage({
         {
           id: "all",
           label: "All roles",
-          href: chipCommon({ suspended: suspendedOnly }),
+          href: chip({ role: "" }),
           active: !roleFilter,
         },
         ...userRoles.map((role) => ({
           id: role,
           label: role === "staff" ? "Staff" : "Clients",
-          href: chipCommon({ role, suspended: suspendedOnly }),
+          href: chip({ role }),
           active: roleFilter === role,
         })),
         {
           id: "suspended",
-          label: suspendedOnly ? "Suspended only" : "Suspended only",
-          href: suspendedOnly
-            ? chipCommon({ ...(roleFilter ? { role: roleFilter } : {}) })
-            : chipCommon({ ...(roleFilter ? { role: roleFilter } : {}), suspended: true }),
+          label: "Suspended only",
+          href: suspendedOnly ? chip({ suspended: false }) : chip({ suspended: true }),
           active: suspendedOnly,
         },
       ]}
     />
   );
 
-  return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="Users"
-        description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <ShareFiltersButton />
-            <ResetFiltersLink
-              active={Boolean(q || roleFilter || suspendedOnly)}
-              href="/admin/users"
-            />
-          </div>
+  const hasFilters = Boolean(q || roleFilter || suspendedOnly);
+
+  const pagination =
+    !loadError && total > 0 ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={rows.length}
+        total={total}
+        prevHref={
+          query.offset > 0
+            ? buildListHref("/admin/users", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          query.offset + rows.length < total
+            ? buildListHref("/admin/users", sp, {
+                offset: query.offset + query.limit,
+              })
+            : null
         }
       />
+    ) : null;
 
-      {error || loadError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load users</AlertTitle>
-          <AlertDescription>{loadError ?? error}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {!loadError ? (
-        <AdminUsersSearchForm initialQ={q} roleFilter={roleFilter} suspendedOnly={suspendedOnly} />
-      ) : null}
-
-      {!loadError && rows.length === 0 ? (
-        <EmptyState title="No users" description="Try a different search query or clear filters." />
-      ) : null}
-
-      {!loadError && rows.length > 0 ? (
-        <AdminUsersBoard rows={rows} kpis={kpis} roleChips={roleChips} />
-      ) : null}
-    </AppScreen>
+  return (
+    <AdminListPage
+      title="Users"
+      description="Search the directory, filter by role or suspension, and open the drawer for touch-friendly account controls."
+      hasFilters={hasFilters}
+      resetHref="/admin/users"
+      errorAlert={
+        error || loadError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Could not load users</AlertTitle>
+            <AlertDescription>{loadError ?? error}</AlertDescription>
+          </Alert>
+        ) : null
+      }
+      chips={roleChips}
+      filters={
+        !loadError ? (
+          <AdminUsersSearchForm
+            initialQ={q}
+            roleFilter={roleFilter}
+            suspendedOnly={suspendedOnly}
+          />
+        ) : null
+      }
+      view={!loadError && rows.length > 0 ? <AdminUsersBoard rows={rows} kpis={kpis} /> : null}
+      empty={
+        !loadError && rows.length === 0 ? (
+          <EmptyState
+            title="No users"
+            description="Try a different search query or clear filters."
+          />
+        ) : null
+      }
+      pagination={pagination}
+    />
   );
 }

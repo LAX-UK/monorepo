@@ -1,12 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert, DashboardSkeleton } from "@/components/dashboard/primitives";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { SubmissionListFilterValues } from "@/lib/forms/submission/submission-form-schema";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -69,17 +68,13 @@ export default async function DashboardSubmissionsPage({
         }
       />
       {error || loadError ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not load</AlertTitle>
-          <AlertDescription className="space-y-3">
-            <p>{loadError ?? error}</p>
-            <Button variant="secondary" asChild>
-              <Link href="/dashboard/submissions">Try again</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <DashboardErrorAlert title="Could not load" message={loadError ?? error ?? ""}>
+          <Button variant="secondary" asChild>
+            <Link href="/dashboard/submissions">Try again</Link>
+          </Button>
+        </DashboardErrorAlert>
       ) : (
-        <Suspense fallback={<PageSkeleton variant="table" />}>
+        <Suspense fallback={<DashboardSkeleton variant="list" />}>
           <SubmissionsBoard
             rows={tableRows}
             initialStatus={initialStatus}

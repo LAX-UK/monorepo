@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/lib/data/contracts";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { cn } from "@auction/ui";
 import {
   AlertTriangle,
@@ -46,6 +46,8 @@ type ComplianceStatusStripProps = {
   /** Number of saved addresses; 0 means none on file. */
   addressesCount: number;
   className?: string;
+  /** When true, omit the identity pill (e.g. KYC blocking banner already covers it). */
+  hideIdentityPill?: boolean;
 };
 
 /** Persistent identity & readiness strip for the dashboard.
@@ -59,12 +61,52 @@ export function ComplianceStatusStrip({
   kyc,
   addressesCount,
   className,
+  hideIdentityPill = false,
 }: ComplianceStatusStripProps) {
   const pills: StatusPill[] = [];
 
   // Identity verification
-  if (kyc) {
-    if (kyc.status === "approved") {
+  if (!hideIdentityPill) {
+    if (kyc) {
+      if (kyc.status === "approved") {
+        pills.push({
+          id: "kyc",
+          icon: ShieldCheck,
+          label: "Identity",
+          value: "Verified",
+          href: "/dashboard/settings/profile",
+          tone: "ok",
+        });
+      } else if (kyc.status === "pending") {
+        pills.push({
+          id: "kyc",
+          icon: Hourglass,
+          label: "Identity",
+          value: "In review",
+          href: "/dashboard/verify-identity",
+          tone: "info",
+        });
+      } else if (kyc.status === "rejected") {
+        pills.push({
+          id: "kyc",
+          icon: ShieldAlert,
+          label: "Identity",
+          value: "Rejected",
+          href: "/dashboard/verify-identity",
+          tone: "danger",
+          hint: "Please resubmit your identity documents",
+        });
+      } else {
+        pills.push({
+          id: "kyc",
+          icon: ShieldAlert,
+          label: "Identity",
+          value: kyc.requiresKyc ? "Required" : "Not verified",
+          href: "/dashboard/verify-identity",
+          tone: kyc.requiresKyc ? "warn" : "info",
+        });
+      }
+    } else if (user.kycStatus === "approved") {
       pills.push({
         id: "kyc",
         icon: ShieldCheck,
@@ -73,44 +115,7 @@ export function ComplianceStatusStrip({
         href: "/dashboard/settings/profile",
         tone: "ok",
       });
-    } else if (kyc.status === "pending") {
-      pills.push({
-        id: "kyc",
-        icon: Hourglass,
-        label: "Identity",
-        value: "In review",
-        href: "/dashboard/verify-identity",
-        tone: "info",
-      });
-    } else if (kyc.status === "rejected") {
-      pills.push({
-        id: "kyc",
-        icon: ShieldAlert,
-        label: "Identity",
-        value: "Rejected",
-        href: "/dashboard/verify-identity",
-        tone: "danger",
-        hint: "Please resubmit your identity documents",
-      });
-    } else {
-      pills.push({
-        id: "kyc",
-        icon: ShieldAlert,
-        label: "Identity",
-        value: kyc.requiresKyc ? "Required" : "Not verified",
-        href: "/dashboard/verify-identity",
-        tone: kyc.requiresKyc ? "warn" : "info",
-      });
     }
-  } else if (user.kycStatus === "approved") {
-    pills.push({
-      id: "kyc",
-      icon: ShieldCheck,
-      label: "Identity",
-      value: "Verified",
-      href: "/dashboard/settings/profile",
-      tone: "ok",
-    });
   }
 
   // Email verification / deliverability

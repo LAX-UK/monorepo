@@ -43,11 +43,13 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
 
   async listRedacted(input: {
     limit: number;
+    offset?: number;
     eventTypePrefix?: string;
     aggregateType?: string;
     aggregateId?: string;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]> {
+    const offset = Math.max(0, input.offset ?? 0);
     const prefix = input.eventTypePrefix?.trim();
     const aggType = input.aggregateType?.trim();
     const aggId = input.aggregateId?.trim();
@@ -57,6 +59,7 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
         .from(domainEvent)
         .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)))
         .orderBy(asc(domainEvent.occurredAt), asc(domainEvent.id))
+        .offset(offset)
         .limit(input.limit);
       return redactRows(rows, input.includePii);
     }
@@ -64,7 +67,7 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
     if (prefix) {
       q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
     }
-    const rows = await q.orderBy(desc(domainEvent.id)).limit(input.limit);
+    const rows = await q.orderBy(desc(domainEvent.id)).offset(offset).limit(input.limit);
     return redactRows(rows, input.includePii);
   }
 

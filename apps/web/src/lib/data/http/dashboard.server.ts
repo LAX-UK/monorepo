@@ -1,13 +1,16 @@
 import "server-only";
+import type {
+  ArtistFollowRow,
+  BidWithLot,
+  WatchlistListParams,
+  WatchlistWithLotRow,
+} from "@/lib/data/dto/dashboard-dtos";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
-import type { Bid, Lot, PaymentStatus, PortfolioRow } from "@auction/types";
+import type { PaymentStatus, PortfolioRow } from "@auction/types";
 
 import { authedServerFetch } from "./authed-fetch.server";
 
-export type BidWithLot = {
-  bid: Bid;
-  lot: Lot | null;
-};
+export type { ArtistFollowRow, BidWithLot, WatchlistListParams, WatchlistWithLotRow };
 
 export async function getServerMyBids(): Promise<BidWithLot[]> {
   const res = await authedServerFetch("/users/me/bids");
@@ -50,19 +53,6 @@ export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   }));
 }
 
-export type WatchlistWithLotRow = {
-  watchlistId: string;
-  lotId: string;
-  createdAt: Date;
-  lot: Lot | null;
-};
-
-export type WatchlistListParams = {
-  sort?: "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
-  status?: "active" | "scheduled" | "ended";
-  categoryIds?: string[];
-};
-
 export async function getServerMyWatchlist(
   params: WatchlistListParams = {},
 ): Promise<WatchlistWithLotRow[]> {
@@ -90,12 +80,6 @@ export async function getServerMyWatchlist(
     lot: row.lot ? parseLot(row.lot) : null,
   }));
 }
-
-export type ArtistFollowRow = {
-  watchlistId: string;
-  artistId: string;
-  createdAt: Date;
-};
 
 export async function getServerMyArtistFollows(): Promise<ArtistFollowRow[]> {
   const res = await authedServerFetch("/users/me/artist-watchlist");

@@ -76,7 +76,8 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
 
 type Props = {
   rows: AdminSubmissionTableRow[];
-  filterForm: ReactNode;
+  /** When omitted, filters are rendered by the parent (e.g. AdminListPage toolbar). */
+  filterForm?: ReactNode;
 };
 
 export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
@@ -125,7 +126,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
       <EntityTableShell
         responsiveMode="auto"
         density={density}
-        filters={filterForm}
+        {...(filterForm ? { filters: filterForm } : {})}
         table={
           <DataTable
             columns={columns}

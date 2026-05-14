@@ -1,8 +1,8 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import Link from "next/link";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
 
@@ -18,11 +18,18 @@ export default async function NewAdminArtistPage({
   const initialScenario = parseScenarioParam(sp.scenario?.trim());
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title="New artist"
-        description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
-      />
+    <AdminEntityFormShell
+      breadcrumbs={
+        <Link
+          href="/admin/artists"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Artists
+        </Link>
+      }
+      title="New artist"
+      description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
+    >
       <Card>
         <CardContent className="pt-6">
           <AdminArtistForm
@@ -51,6 +58,6 @@ export default async function NewAdminArtistPage({
           />
         </CardContent>
       </Card>
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }

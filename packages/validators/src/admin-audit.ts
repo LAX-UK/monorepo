@@ -11,6 +11,7 @@ const aggregateIdField = z.string().min(1).max(191);
 export const adminDomainEventsQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(500).default(100),
+    offset: z.coerce.number().int().min(0).max(50_000).default(0),
     /** Filter `event_type LIKE '<prefix>%'` (alphanumeric, dot, underscore only). */
     eventTypePrefix: z
       .string()
@@ -66,4 +67,5 @@ export const adminDomainEventsExportQuerySchema = z
 /** Finance-only: Stripe dispute-related domain events (`payment.dispute%`). */
 export const adminFinanceDisputeDomainEventsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  offset: z.coerce.number().int().min(0).max(50_000).default(0),
 });

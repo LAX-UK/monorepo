@@ -1,12 +1,11 @@
 "use client";
 
 import { CategoryPicker } from "@/components/forms/category-picker";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
-import type { NewSubmissionFormValues } from "@/lib/forms/submission/submission-form-schema";
 import { useUpdateSubmissionController } from "@/lib/forms/submission/use-update-submission-controller";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -18,6 +17,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
+import type { ItemSubmissionFormValues as NewSubmissionFormValues } from "@auction/validators";
 
 type Props = {
   submissionId: string;
@@ -226,7 +226,7 @@ export function EditSubmissionForm({ submissionId, initialValues, categories }: 
                 <LabelCaps>Images</LabelCaps>
               </FormLabel>
               <FormControl>
-                <UploadField
+                <ImageUploadField
                   kind="submission_image"
                   multiple
                   maxFiles={20}

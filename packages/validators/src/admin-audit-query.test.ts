@@ -26,6 +26,16 @@ describe("adminDomainEventsQuerySchema", () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it("defaults offset to 0 and coerces string offset", () => {
+    const r = adminDomainEventsQuerySchema.safeParse({ limit: 10 });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.offset).toBe(0);
+
+    const r2 = adminDomainEventsQuerySchema.safeParse({ limit: 10, offset: "25" });
+    expect(r2.success).toBe(true);
+    if (r2.success) expect(r2.data.offset).toBe(25);
+  });
 });
 
 describe("adminDomainEventsExportQuerySchema", () => {

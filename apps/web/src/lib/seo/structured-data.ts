@@ -130,6 +130,12 @@ export function visualArtistJsonLd(opts: {
   image?: string;
   description?: string;
   sameAs?: string[];
+  /** YYYY (or YYYY-MM-DD) string from the registry. */
+  birthDate?: string;
+  deathDate?: string;
+  nationality?: string;
+  /** Aliases / akas surfaced as `alternateName`. */
+  alternateName?: string[];
 }) {
   return {
     "@context": "https://schema.org",
@@ -139,6 +145,36 @@ export function visualArtistJsonLd(opts: {
     ...(opts.image ? { image: opts.image } : {}),
     ...(opts.description ? { description: opts.description } : {}),
     ...(opts.sameAs && opts.sameAs.length > 0 ? { sameAs: opts.sameAs } : {}),
+    ...(opts.birthDate ? { birthDate: opts.birthDate } : {}),
+    ...(opts.deathDate ? { deathDate: opts.deathDate } : {}),
+    ...(opts.nationality ? { nationality: opts.nationality } : {}),
+    ...(opts.alternateName && opts.alternateName.length > 0
+      ? { alternateName: opts.alternateName }
+      : {}),
+  };
+}
+
+/** `Brand` / `Organization` JSON-LD for catalogue brand or marque entities. */
+export function brandOrOrganizationJsonLd(opts: {
+  type: "Brand" | "Organization";
+  name: string;
+  url: string;
+  image?: string;
+  description?: string;
+  sameAs?: string[];
+  alternateName?: string[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": opts.type,
+    name: opts.name,
+    url: opts.url,
+    ...(opts.image ? { image: opts.image } : {}),
+    ...(opts.description ? { description: opts.description } : {}),
+    ...(opts.sameAs && opts.sameAs.length > 0 ? { sameAs: opts.sameAs } : {}),
+    ...(opts.alternateName && opts.alternateName.length > 0
+      ? { alternateName: opts.alternateName }
+      : {}),
   };
 }
 

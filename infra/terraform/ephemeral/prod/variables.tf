@@ -131,7 +131,7 @@ variable "email_provider" {
 }
 variable "email_from" {
   type        = string
-  default     = "LAX <no-reply@mail.lax.bid>"
+  default     = "LAX.BID by London Art Xxchange <no-reply@mail.lax.bid>"
   description = "Default From header for transactional/notification mail."
 }
 variable "email_reply_to" {

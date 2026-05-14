@@ -1,19 +1,19 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
+import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
+import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type {
   ArtistFollowRow,
   BidWithLot,
+  KycStatusSummaryDto,
+  OrgOnboardingResumeVm,
   WatchlistWithLotRow,
-} from "@/lib/data/http/dashboard.server";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+} from "@/lib/data/dto/dashboard-dtos";
 import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
 
 function sliceError(e: unknown, fallback: string): string {
@@ -61,6 +61,7 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   ]);
 
   const errors = {
+    session: null as string | null,
     active: null as string | null,
     portfolio: null as string | null,
     watchlist: null as string | null,
@@ -70,6 +71,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   };
 
   const user = userR.status === "fulfilled" ? userR.value : null;
+  if (userR.status === "rejected") {
+    errors.session = sliceError(userR.reason, "Could not load your session.");
+  }
 
   const active: Lot[] = takeSettled(
     activeR,
@@ -153,17 +157,7 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
 
   return (
     <>
-      {orgSubmitted ? (
-        <Alert
-          className="mb-6 rounded-xl border-lot-orange/40 bg-surface-container-low/80 shadow-sm"
-          variant="default"
-        >
-          <AlertTitle>Organisation submitted</AlertTitle>
-          <AlertDescription className="text-on-surface">
-            Your organisation is being reviewed. We&apos;ll notify you when approved.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      {orgSubmitted ? <OrgSubmittedAlert /> : null}
       <DashboardOverviewView
         vm={vm}
         user={
@@ -171,6 +165,7 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
             emailVerified: false,
             emailStatus: "ok",
             twoFactorEnabled: false,
+            kycStatus: "unverified",
           }
         }
         kyc={kyc}
@@ -190,7 +185,7 @@ export default async function DashboardHomePage({
   const sp = await searchParams;
   const orgSubmitted = sp.org_submitted === "1";
   return (
-    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+    <Suspense fallback={<DashboardSkeleton variant="dashboard" />}>
       <DashboardHomeContent orgSubmitted={orgSubmitted} />
     </Suspense>
   );

@@ -3,10 +3,6 @@
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { Button } from "@/components/ui/button";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import {
-  type SubmissionListFilterValues,
-  submissionListFilterSchema,
-} from "@/lib/forms/submission/submission-form-schema";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -20,6 +16,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Toolbar } from "@auction/ui/components/toolbar";
+import { type SubmissionListFilterValues, submissionListFilterSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";

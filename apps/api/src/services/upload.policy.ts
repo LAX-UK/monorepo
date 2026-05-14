@@ -8,6 +8,10 @@ export const uploadKinds = [
   "lot_image",
   "sale_cover",
   "legal_entity_document",
+  "lot_document",
+  "sale_document",
+  "submission_document",
+  "artist_image",
 ] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
@@ -43,6 +47,26 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/legal-entity-documents",
   },
+  lot_document: {
+    maxBytes: 25 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/lot-documents",
+  },
+  sale_document: {
+    maxBytes: 25 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/sale-documents",
+  },
+  submission_document: {
+    maxBytes: 25 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/submission-documents",
+  },
+  artist_image: {
+    maxBytes: 10 * 1024 * 1024,
+    allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/artists",
+  },
 };
 
 export function isUploadKind(value: string): value is UploadKind {
@@ -73,6 +97,25 @@ export function canUploadKind(
       return (
         roleHasCapability(role, "client.submit", staffRole) ||
         roleHasCapability(role, "legal_entity.read", staffRole)
+      );
+    case "lot_document":
+    case "sale_document":
+      return (
+        roleHasCapability(role, "platform.admin.full", staffRole) ||
+        roleHasCapability(role, "auction.manage", staffRole) ||
+        roleHasCapability(role, "catalogue.write", staffRole)
+      );
+    case "submission_document":
+      return (
+        roleHasCapability(role, "platform.admin.full", staffRole) ||
+        roleHasCapability(role, "auction.manage", staffRole) ||
+        roleHasCapability(role, "catalogue.write", staffRole)
+      );
+    case "artist_image":
+      return (
+        roleHasCapability(role, "platform.admin.full", staffRole) ||
+        roleHasCapability(role, "auction.manage", staffRole) ||
+        roleHasCapability(role, "catalogue.write", staffRole)
       );
   }
 }

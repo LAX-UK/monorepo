@@ -712,13 +712,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/audit/domain-events",
     zValidator("query", adminDomainEventsQuerySchema),
     async (c) => {
-      const { limit, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
+      const { limit, offset, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
+        offset,
         includePii,
         ...(eventTypePrefix !== undefined ? { eventTypePrefix } : {}),
         ...(aggregateType !== undefined && aggregateId !== undefined
@@ -814,14 +815,27 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.get("/artists/stats", async (c) => {
+    const data = await container.admin.catalog.getArtistStats();
+    return c.json({ data });
+  });
+
   platform.get("/artists", zValidator("query", adminArtistListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.admin.catalog.listArtists({
       includeArchived: q.includeArchived,
+      archivedOnly: q.archivedOnly,
       ...(q.q ? { q: q.q } : {}),
       ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.kinds ? { kinds: q.kinds } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
+      ...(q.featured === true ? { featured: true } : {}),
+      ...(q.verified === true ? { verified: true } : {}),
+      linked: q.linked,
+      sort: q.sort,
+      limit: q.limit,
+      offset: q.offset,
     });
     return c.json({ data });
   });
@@ -831,6 +845,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.admin.catalog.createArtist(adminUserId, c.req.valid("json"));
     return c.json({ data }, 201);
   });
+
+  platform.get(
+    "/artists/:artistId/duplicates",
+    zValidator("param", artistIdParamSchema),
+    async (c) => {
+      const { artistId } = c.req.valid("param");
+      const data = await container.admin.catalog.listArtistDuplicateCandidates(artistId);
+      return c.json({ data });
+    },
+  );
 
   platform.get("/artists/:artistId", zValidator("param", artistIdParamSchema), async (c) => {
     const { artistId } = c.req.valid("param");
@@ -902,6 +926,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       q: q.q,
       limit: q.limit,
       offset: q.offset,
+      role: q.role,
+      suspendedOnly: q.suspended === "1",
     });
     return c.json({ data });
   });
@@ -1110,13 +1136,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     "/finance/dispute-domain-events",
     zValidator("query", adminFinanceDisputeDomainEventsQuerySchema),
     async (c) => {
-      const { limit } = c.req.valid("query");
+      const { limit, offset } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
         limit,
+        offset,
         eventTypePrefix: "payment.dispute",
         includePii,
       });

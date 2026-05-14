@@ -1,4 +1,4 @@
-import type { BidWithLot } from "@/lib/data/http/dashboard.server";
+import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { describe, expect, it } from "vitest";
 import { buildDashboardBidsBoardVm } from "./dashboard-bids.vm";
 

@@ -1,9 +1,9 @@
 import { AdminCategoryForm } from "@/components/admin/admin-category-form";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminCategoryById, getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function EditAdminCategoryPage({
@@ -22,12 +22,19 @@ export default async function EditAdminCategoryPage({
   if (!category) notFound();
 
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title={`Edit ${category.name}`}
-        description="Update taxonomy copy, hierarchy, sort order, and archived state."
-      />
-
+    <AdminEntityFormShell
+      maxWidthClassName="max-w-6xl"
+      breadcrumbs={
+        <Link
+          href="/admin/categories"
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Categories
+        </Link>
+      }
+      title={`Edit ${category.name}`}
+      description="Update taxonomy copy, hierarchy, sort order, and archived state."
+    >
       {sp.error ? (
         <Alert variant="destructive">
           <AlertTitle>Could not save category</AlertTitle>
@@ -48,6 +55,7 @@ export default async function EditAdminCategoryPage({
                 description: category.description ?? "",
                 parentId: category.parentId,
                 sortOrder: category.sortOrder,
+                archived: category.archived,
               }}
             />
           </CardContent>
@@ -70,6 +78,6 @@ export default async function EditAdminCategoryPage({
           </CardContent>
         </Card>
       </div>
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }

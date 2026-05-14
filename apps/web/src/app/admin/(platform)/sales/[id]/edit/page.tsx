@@ -1,8 +1,8 @@
+import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { saleToAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
 import Link from "next/link";
@@ -19,34 +19,37 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
   if (sale.status !== "draft") {
     return (
-      <AppScreen className="max-w-xl space-y-4">
+      <AdminEntityFormShell title="Edit sale" maxWidthClassName="max-w-xl">
         <p className="text-on-surface-variant">Only draft sales can be edited.</p>
         <Link href={`/admin/sales/${id}`} className="text-primary underline">
           Back to sale
         </Link>
-      </AppScreen>
+      </AdminEntityFormShell>
     );
   }
 
-  return (
-    <AppScreen className="mx-auto max-w-2xl space-y-8">
-      <Link
-        href={`/admin/sales/${id}`}
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-      >
-        ← Sale
-      </Link>
-      <DisplayHeading as="h1" className="text-4xl">
-        Edit sale
-      </DisplayHeading>
+  const saleDocuments = await getServerSaleDocuments(id);
 
+  return (
+    <AdminEntityFormShell
+      breadcrumbs={
+        <Link
+          href={`/admin/sales/${id}`}
+          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        >
+          ← Sale
+        </Link>
+      }
+      title="Edit sale"
+    >
       <AdminSaleForm
         mode="edit"
         saleId={id}
         defaultValues={saleToAdminSaleFormValues(sale)}
         categories={categories}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+        initialSaleDocuments={saleDocuments}
       />
-    </AppScreen>
+    </AdminEntityFormShell>
   );
 }

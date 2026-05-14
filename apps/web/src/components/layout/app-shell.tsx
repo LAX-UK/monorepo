@@ -32,6 +32,7 @@ type Props = {
   user: SessionUser;
   shellRole: AppShellRole;
   pendingSubmissionCount?: number;
+  pendingArtistCount?: number;
   children: ReactNode;
   clientWorkspaceMode?: ClientWorkspaceMode;
   cookieDensity?: DashboardDensity | null;
@@ -47,6 +48,7 @@ function AppShellFrame({
   user,
   shellRole,
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
   clientWorkspaceMode = "buying",
   hideEmailStatusBanner = false,
   children,
@@ -108,6 +110,7 @@ function AppShellFrame({
       user={user}
       role={shellRole}
       pendingSubmissionCount={pendingSubmissionCount}
+      pendingArtistCount={pendingArtistCount}
       onNavigate={() => setMobileOpen(false)}
       collapsible
       {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
@@ -118,6 +121,7 @@ function AppShellFrame({
       user={user}
       role={shellRole}
       pendingSubmissionCount={pendingSubmissionCount}
+      pendingArtistCount={pendingArtistCount}
       onNavigate={() => setMobileOpen(false)}
       {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
     />
@@ -131,7 +135,9 @@ function AppShellFrame({
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
-        {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
+        {...(shellRole === "client"
+          ? { clientWorkspaceMode }
+          : { pendingSubmissionCount, pendingArtistCount })}
       />
 
       <div

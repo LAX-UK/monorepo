@@ -1,10 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 
 export default function CheckoutLoading() {
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
-      <PageSkeleton variant="checkout" />
+      <DashboardSkeleton variant="checkout" />
     </DashboardPage>
   );
 }

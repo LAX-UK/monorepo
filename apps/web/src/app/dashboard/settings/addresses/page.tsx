@@ -1,9 +1,9 @@
 import { AddressesBoard } from "@/components/dashboard/addresses-board";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 
 export default async function AddressSettingsPage({
@@ -29,12 +29,7 @@ export default async function AddressSettingsPage({
         description="Manage shipping and billing addresses for your account."
         className="border-b border-outline-variant/20 pb-5"
       />
-      {err ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not update address</AlertTitle>
-          <AlertDescription>{err}</AlertDescription>
-        </Alert>
-      ) : null}
+      {err ? <DashboardErrorAlert title="Could not update address" message={err} /> : null}
       <AddressesBoard addresses={addresses} />
     </DashboardPage>
   );

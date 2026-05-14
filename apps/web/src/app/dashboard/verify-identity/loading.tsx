@@ -1,10 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 
 export default function DashboardVerifyIdentityLoading() {
   return (
     <DashboardPage className="mx-auto max-w-3xl space-y-6">
-      <PageSkeleton variant="table" />
+      <DashboardSkeleton variant="list" />
     </DashboardPage>
   );
 }
