@@ -1,6 +1,8 @@
 "use client";
 
+import { StepUpDialog } from "@/components/auth/step-up/step-up-dialog";
 import { requestAccountDeletionAction } from "@/lib/actions/account-deletion";
+import { actionResultToStepUpVoid, useStepUpCoordinator, withStepUp } from "@/lib/auth/step-up";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -12,9 +14,11 @@ export function DeleteAccountForm() {
   const router = useRouter();
   const [phrase, setPhrase] = useState("");
   const [busy, setBusy] = useState(false);
+  const coordinator = useStepUpCoordinator();
 
   return (
     <div className="space-y-3 rounded-lg border border-outline-variant/20 p-4">
+      <StepUpDialog coordinator={coordinator} />
       <p className="font-body text-sm text-on-surface-variant">
         Request account deletion. You must have no open buyer invoices, active seller lots, or
         in-flight payouts. This schedules removal per our data retention policy (cooling-off
@@ -41,14 +45,35 @@ export function DeleteAccountForm() {
         onClick={() => {
           setBusy(true);
           void (async () => {
-            const r = await requestAccountDeletionAction(phrase);
-            setBusy(false);
-            if (!r.ok) {
-              notify.error(r.error);
+            const first = await requestAccountDeletionAction(phrase);
+            if (first.ok) {
+              setBusy(false);
+              notify.success("Deletion requested");
+              router.refresh();
               return;
             }
-            notify.success("Deletion requested");
-            router.refresh();
+            if (
+              first.errorCode === "recent_auth_required" ||
+              first.errorCode === "credential_required"
+            ) {
+              const r = await withStepUp(
+                async () => actionResultToStepUpVoid(await requestAccountDeletionAction(phrase)),
+                coordinator,
+              );
+              setBusy(false);
+              if (!r.ok) {
+                if (r.reason === "recent_auth_required" || r.reason === "credential_required") {
+                  return;
+                }
+                notify.error("Could not request account deletion. Please try again.");
+                return;
+              }
+              notify.success("Deletion requested");
+              router.refresh();
+              return;
+            }
+            setBusy(false);
+            notify.error(first.error);
           })();
         }}
       >

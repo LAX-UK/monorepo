@@ -36,7 +36,11 @@ import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import { createRequireRecentPasswordAuth } from "../middleware/require-recent-password-auth.js";
+import {
+  PASSWORD_REQUIRED_POLICY,
+  SESSION_REVOKE_POLICY,
+  createRequireRecentPasswordAuth,
+} from "../middleware/require-recent-password-auth.js";
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
@@ -54,7 +58,14 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const requireRecentPasswordAuth = createRequireRecentPasswordAuth(container);
+  const requirePasswordStepUp = createRequireRecentPasswordAuth(
+    container,
+    PASSWORD_REQUIRED_POLICY,
+  );
+  const requireSessionRevokeAuth = createRequireRecentPasswordAuth(
+    container,
+    SESSION_REVOKE_POLICY,
+  );
   const requireTurnstile = createTurnstileMiddleware(container.env?.TURNSTILE_SECRET_KEY);
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
@@ -493,7 +504,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.delete(
     "/me/sessions/:sessionId",
     requireAuth,
-    requireRecentPasswordAuth,
+    requireSessionRevokeAuth,
     zValidator("param", sessionIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -521,7 +532,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
-  r.post("/me/sessions/revoke-all", requireAuth, requireRecentPasswordAuth, async (c) => {
+  r.post("/me/sessions/revoke-all", requireAuth, requireSessionRevokeAuth, async (c) => {
     const userId = c.get("userId") as string;
     const currentToken = extractBetterAuthSessionToken(c.req.header("cookie"));
     if (!currentToken) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
@@ -613,7 +624,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.post(
     "/me/delete",
     requireAuth,
-    requireRecentPasswordAuth,
+    requirePasswordStepUp,
     zValidator("json", deleteAccountBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
