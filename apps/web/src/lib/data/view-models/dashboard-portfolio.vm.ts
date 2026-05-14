@@ -2,6 +2,7 @@ import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-gr
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { PortfolioRow } from "@auction/types";
+import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
 export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string): PortfolioRow[] {
   if (qLower.length === 0) return rows;
@@ -55,11 +56,7 @@ export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): Portfoli
   let wonThisYear = 0;
   const categoryCount = new Map<string, number>();
   for (const row of rows) {
-    const hammer = Number.parseFloat(row.lot.currentPrice);
-    const premiumRate = Number.parseFloat(row.lot.buyerPremiumRate);
-    const premium =
-      Number.isFinite(hammer) && Number.isFinite(premiumRate) ? hammer * premiumRate : 0;
-    const total = Number.isFinite(hammer) ? hammer + premium : 0;
+    const total = lotTotalMajorUnits(row.lot);
     totalSpent += total;
     if (row.payment?.status !== "captured" && row.payment?.status !== "refunded") {
       outstanding += total;
@@ -90,11 +87,14 @@ export function toPortfolioLotCards(
   return rows.map((row) => {
     const a = row.lot;
     const img = a.images[0];
+    const cp = a.checkoutPricing;
     const hammer = Number.parseFloat(a.currentPrice);
-    const premiumRate = Number.parseFloat(a.buyerPremiumRate);
-    const premium =
-      Number.isFinite(hammer) && Number.isFinite(premiumRate) ? hammer * premiumRate : 0;
-    const total = Number.isFinite(hammer) ? hammer + premium : premium;
+    const premium = cp
+      ? Number.parseFloat(cp.premiumMajor)
+      : Number.isFinite(hammer)
+        ? hammer * (Number.parseFloat(a.buyerPremiumRate) || 0)
+        : 0;
+    const total = cp ? Number.parseFloat(cp.totalMajor) : lotTotalMajorUnits(a);
     const settlementLabel = portfolioSettlementLabel(row);
     const settlementStageIndex =
       settlementLabel === "Paid" || settlementLabel === "Payment authorized"
@@ -113,7 +113,7 @@ export function toPortfolioLotCards(
       artistName,
       image: img ?? null,
       hammerLabel: formatMoney(a.currentPrice),
-      premiumLabel: formatMoney(premium.toFixed(2)),
+      premiumLabel: formatMoney((Number.isFinite(premium) ? premium : 0).toFixed(2)),
       totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2)) : "—",
       dueLabel: row.payment?.status === "captured" ? "Paid" : "Due now",
       settlementLabel,

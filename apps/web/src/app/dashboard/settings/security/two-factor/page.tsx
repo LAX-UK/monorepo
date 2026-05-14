@@ -2,26 +2,19 @@ import { TwoFactorEnableWizard } from "@/components/auth/two-factor-enable-wizar
 import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { PageHeader } from "@auction/ui/components/page-header";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Two-factor authentication",
 };
 
 export default async function SecurityTwoFactorPage() {
-  await requireAuthenticatedUser({
+  const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings/security/two-factor",
   });
-
-  const user = await getServerSessionUser();
-  if (!user) {
-    redirect("/login?next=/dashboard/settings/security/two-factor&auth=required");
-  }
 
   const enabled = user.twoFactorEnabled === true;
 

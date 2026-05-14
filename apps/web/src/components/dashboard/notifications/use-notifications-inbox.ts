@@ -1,16 +1,21 @@
 "use client";
 
+import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
+import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
-import { apiBaseUrl } from "@/lib/auth/api-base";
-import { parseUserNotification } from "@/lib/data/http/parse";
+import {
+  deleteNotification,
+  fetchNotificationsInboxPage,
+  patchNotificationRead,
+  patchNotificationsReadAll,
+  patchNotificationsReadBulk,
+} from "@/lib/services/client/notifications-inbox.api";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** URL-driven tabs for the notifications inbox. */
-export type InboxTab = "all" | "unread" | "archived";
-
-export const NOTIFICATIONS_PAGE_SIZE = 25;
+export type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
+export { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
 
 type FetchState = {
   items: UserNotification[];
@@ -34,6 +39,13 @@ type UseNotificationsInboxOptions = {
   type: string;
   /** Optional callback fired when a new notification arrives via Socket.IO. */
   onRealtimeArrival?: (n: UserNotification) => void;
+  /** First page from SSR when URL tab/type match (skips duplicate fetch on first paint). */
+  initialPage?: {
+    tab: InboxTab;
+    type: string;
+    items: UserNotification[];
+    hasMore: boolean;
+  };
 };
 
 type BulkResult = { fulfilled: number; rejected: number };
@@ -41,69 +53,65 @@ type BulkResult = { fulfilled: number; rejected: number };
 /** Single source of truth for the notifications inbox: list fetching,
  * pagination, mutations, real-time merging, and retry.
  *
- * The hook intentionally keeps the network-base resolution inside (via
- * `apiBaseUrl()`) and exposes only typed operations so components depend on
- * this hook, not on `fetch` (DIP).
+ * Reads use {@link fetchNotificationsInboxPage}; writes use the same client API module.
  */
 export function useNotificationsInbox({
   tab,
   type,
   onRealtimeArrival,
+  initialPage,
 }: UseNotificationsInboxOptions) {
-  const [state, setState] = useState<FetchState>(INITIAL_STATE);
+  const [state, setState] = useState<FetchState>(() =>
+    initialPage
+      ? {
+          items: initialPage.items,
+          loading: false,
+          loadingMore: false,
+          hasMore: initialPage.hasMore,
+          error: null,
+        }
+      : INITIAL_STATE,
+  );
   const requestSeqRef = useRef(0);
   const itemCountRef = useRef(0);
   const onArrivalRef = useRef(onRealtimeArrival);
   onArrivalRef.current = onRealtimeArrival;
+  const skipFirstListFetchRef = useRef(
+    Boolean(initialPage && initialPage.tab === tab && initialPage.type === type),
+  );
 
   const fetchPage = useCallback(
     async (offset: number, append: boolean, signal?: AbortSignal): Promise<void> => {
       const seq = ++requestSeqRef.current;
-      const params = new URLSearchParams({
+      const result = await fetchNotificationsInboxPage(
         tab,
-        limit: String(NOTIFICATIONS_PAGE_SIZE),
-        offset: String(offset),
-      });
-      const trimmedType = type.trim();
-      if (trimmedType) params.set("type", trimmedType);
-      try {
-        const init: RequestInit = { credentials: "include" };
-        if (signal) init.signal = signal;
-        const res = await fetch(`${apiBaseUrl()}/users/me/notifications?${params}`, init);
-        if (seq !== requestSeqRef.current) return;
-        if (!res.ok) {
-          setState((prev) => ({
-            ...prev,
-            items: append ? prev.items : [],
-            loading: false,
-            loadingMore: false,
-            hasMore: false,
-            error: `Could not load notifications (${res.status}).`,
-          }));
-          return;
-        }
-        const body = (await res.json()) as { data: unknown[] };
-        const page = body.data.map(parseUserNotification);
-        setState((prev) => ({
-          ...prev,
-          items: append ? [...prev.items, ...page] : page,
-          loading: false,
-          loadingMore: false,
-          hasMore: page.length === NOTIFICATIONS_PAGE_SIZE,
-          error: null,
-        }));
-      } catch (err) {
-        if (signal?.aborted) return;
-        if (seq !== requestSeqRef.current) return;
+        type,
+        offset,
+        NOTIFICATIONS_PAGE_SIZE,
+        signal,
+      );
+      if (seq !== requestSeqRef.current) return;
+      if (signal?.aborted) return;
+      if (!result.ok) {
         setState((prev) => ({
           ...prev,
           items: append ? prev.items : [],
           loading: false,
           loadingMore: false,
           hasMore: false,
-          error: err instanceof Error ? err.message : "Could not load notifications.",
+          error: result.error,
         }));
+        return;
       }
+      const page = result.items;
+      setState((prev) => ({
+        ...prev,
+        items: append ? [...prev.items, ...page] : page,
+        loading: false,
+        loadingMore: false,
+        hasMore: page.length === NOTIFICATIONS_PAGE_SIZE,
+        error: null,
+      }));
     },
     [tab, type],
   );
@@ -114,6 +122,10 @@ export function useNotificationsInbox({
 
   useEffect(() => {
     const controller = new AbortController();
+    if (skipFirstListFetchRef.current) {
+      skipFirstListFetchRef.current = false;
+      return () => controller.abort();
+    }
     setState({ ...INITIAL_STATE });
     itemCountRef.current = 0;
     void fetchPage(0, false, controller.signal);
@@ -157,21 +169,16 @@ export function useNotificationsInbox({
       ...prev,
       items: prev.items.map((n) => (n.id === id ? { ...n, read: true } : n)),
     }));
-    try {
-      const res = await fetch(
-        `${apiBaseUrl()}/users/me/notifications/${encodeURIComponent(id)}/read`,
-        { method: "PATCH", credentials: "include" },
-      );
-      if (!res.ok) throw new Error(`Could not mark as read (${res.status}).`);
-      return true;
-    } catch (err) {
+    const result = await patchNotificationRead(id);
+    if (!result.ok) {
       setState((prev) => ({
         ...prev,
         items: prev.items.map((n) => (n.id === id ? { ...n, read: false } : n)),
       }));
-      notify.error(err instanceof Error ? err.message : "Could not mark as read");
+      notify.error(result.error);
       return false;
     }
+    return true;
   }, []);
 
   const markReadMany = useCallback(async (ids: ReadonlyArray<string>): Promise<BulkResult> => {
@@ -185,20 +192,13 @@ export function useNotificationsInbox({
         items: prev.items.map((n) => (idSet.has(n.id) ? { ...n, read: true } : n)),
       };
     });
-    try {
-      const res = await fetch(`${apiBaseUrl()}/users/me/notifications/read-bulk`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [...ids] }),
-      });
-      if (!res.ok) throw new Error(`Could not mark selection as read (${res.status}).`);
-      return { fulfilled: ids.length, rejected: 0 };
-    } catch (err) {
+    const result = await patchNotificationsReadBulk([...ids]);
+    if (!result.ok) {
       setState((prev) => ({ ...prev, items: previous }));
-      notify.error(err instanceof Error ? err.message : "Could not mark selection as read");
+      notify.error(result.error);
       return { fulfilled: 0, rejected: ids.length };
     }
+    return { fulfilled: ids.length, rejected: 0 };
   }, []);
 
   const markAllRead = useCallback(async (): Promise<boolean> => {
@@ -207,18 +207,13 @@ export function useNotificationsInbox({
       previous = prev.items;
       return { ...prev, items: prev.items.map((n) => ({ ...n, read: true })) };
     });
-    try {
-      const res = await fetch(`${apiBaseUrl()}/users/me/notifications/read-all`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Could not mark all as read (${res.status}).`);
-      return true;
-    } catch (err) {
+    const result = await patchNotificationsReadAll();
+    if (!result.ok) {
       setState((prev) => ({ ...prev, items: previous }));
-      notify.error(err instanceof Error ? err.message : "Could not mark all as read");
+      notify.error(result.error);
       return false;
     }
+    return true;
   }, []);
 
   const archive = useCallback(async (id: string): Promise<boolean> => {
@@ -227,18 +222,13 @@ export function useNotificationsInbox({
       previous = prev.items;
       return { ...prev, items: prev.items.filter((n) => n.id !== id) };
     });
-    try {
-      const res = await fetch(`${apiBaseUrl()}/users/me/notifications/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok && res.status !== 204) throw new Error(`Could not archive (${res.status}).`);
-      return true;
-    } catch (err) {
+    const result = await deleteNotification(id);
+    if (!result.ok) {
       setState((prev) => ({ ...prev, items: previous }));
-      notify.error(err instanceof Error ? err.message : "Could not archive");
+      notify.error(result.error);
       return false;
     }
+    return true;
   }, []);
 
   const archiveMany = useCallback(async (ids: ReadonlyArray<string>): Promise<BulkResult> => {
@@ -249,26 +239,13 @@ export function useNotificationsInbox({
       previous = prev.items;
       return { ...prev, items: prev.items.filter((n) => !idSet.has(n.id)) };
     });
-    const base = apiBaseUrl();
-    const results = await Promise.allSettled(
-      ids.map((id) =>
-        fetch(`${base}/users/me/notifications/${encodeURIComponent(id)}`, {
-          method: "DELETE",
-          credentials: "include",
-        }).then((res) => {
-          if (!res.ok && res.status !== 204) {
-            throw new Error(`Archive failed (${res.status})`);
-          }
-          return id;
-        }),
-      ),
-    );
+    const results = await Promise.allSettled(ids.map((id) => deleteNotification(id)));
     const failedIds = new Set<string>();
     let fulfilled = 0;
     for (let i = 0; i < results.length; i += 1) {
       const r = results[i];
       const id = ids[i];
-      if (r && r.status === "fulfilled") {
+      if (r && r.status === "fulfilled" && r.value.ok) {
         fulfilled += 1;
       } else if (id !== undefined) {
         failedIds.add(id);

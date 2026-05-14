@@ -9,7 +9,14 @@ export function DashboardPage({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={cn("screen w-full space-y-8 md:space-y-10", className)}>{children}</div>;
+  return (
+    <section
+      aria-label="Dashboard content"
+      className={cn("screen w-full space-y-8 md:space-y-10", className)}
+    >
+      {children}
+    </section>
+  );
 }
 
 /** Same shell as {@link DashboardPage} for staff/admin surfaces. */

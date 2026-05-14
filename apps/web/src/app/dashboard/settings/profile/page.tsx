@@ -3,10 +3,10 @@ import {
   type ProfileAddressRow,
   ProfileSettingsBoard,
 } from "@/components/dashboard/profile-settings-board";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { redirect } from "next/navigation";
 
 export default async function ProfileSettingsPage({
   searchParams,
@@ -16,27 +16,13 @@ export default async function ProfileSettingsPage({
   const sp = await searchParams;
   const err = sp.error ? decodeURIComponent(sp.error) : null;
 
-  const meRes = await authedServerFetch("/users/me");
-  if (meRes.status === 401) redirect("/login?next=/dashboard/settings/profile&auth=required");
-  if (!meRes.ok) redirect("/dashboard?error=profile");
+  const me = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/profile",
+  });
 
-  const meBody = (await meRes.json()) as {
-    data: {
-      id: string;
-      email: string;
-      name: string;
-      role: string;
-      image: string | null;
-      emailVerified?: boolean;
-      emailStatus?: string;
-    };
-  };
-  const me = meBody.data;
-
-  const addrRes = await authedServerFetch("/users/me/addresses");
-  const addresses: ProfileAddressRow[] = addrRes.ok
-    ? ((await addrRes.json()) as { data: ProfileAddressRow[] }).data
-    : [];
+  const c = await getServerDataContainer();
+  const addresses = await c.addresses.listMine().catch(() => [] as ProfileAddressRow[]);
 
   return (
     <DashboardPage className="mx-auto max-w-5xl space-y-8">
@@ -53,7 +39,7 @@ export default async function ProfileSettingsPage({
       ) : null}
       <ProfileSettingsBoard
         initialName={me.name}
-        initialImage={me.image}
+        initialImage={me.image ?? null}
         addresses={addresses}
         email={me.email}
         {...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {})}

@@ -1,20 +1,13 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getServerDataContainer } from "@/lib/data/container.server";
+import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SellerConnectActions } from "./seller-connect-actions";
-
-type ConnectStatus = {
-  stripeAccountId: string | null;
-  chargesEnabled: boolean;
-  payoutsEnabled: boolean;
-  requirementsCurrentlyDue: string[];
-  disabledReason: string | null;
-  ready: boolean;
-};
 
 export default async function SellerStripeConnectPage() {
   const user = await requireAuthenticatedUser({
@@ -26,14 +19,20 @@ export default async function SellerStripeConnectPage() {
     redirect("/dashboard/seller");
   }
 
-  let status: ConnectStatus | null = null;
+  const c = await getServerDataContainer();
+  const connectRes = await c.stripeConnect.getStatus();
+
+  let status: StripeConnectStatus | null = null;
   let err: string | null = null;
-  const res = await authedServerFetch("/stripe-connect/status");
-  if (res.ok) {
-    const body = (await res.json()) as { data: ConnectStatus };
-    status = body.data;
+  if (connectRes.ok) {
+    status = connectRes.data;
   } else {
-    err = `Could not load Stripe status (${res.status}).`;
+    const messages: Record<string, string> = {
+      unauthorized: "Your session has expired. Please sign in again.",
+      not_connected: "No Stripe Connect account found for this entity.",
+      server_error: "Could not load Stripe Connect status. Please try again later.",
+    };
+    err = messages[connectRes.error] ?? "Could not load Stripe Connect status.";
   }
 
   return (
@@ -45,7 +44,7 @@ export default async function SellerStripeConnectPage() {
       />
 
       {err ? (
-        <p className="font-body text-sm text-error">{err}</p>
+        <DashboardErrorAlert message={err} />
       ) : status ? (
         <div className="space-y-4 rounded-md border border-outline-variant/20 bg-surface-container-low/40 p-6">
           <dl className="grid gap-2 font-body text-sm">

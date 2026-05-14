@@ -1,10 +1,10 @@
 import { AddressesBoard } from "@/components/dashboard/addresses-board";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
-import { redirect } from "next/navigation";
 
 export default async function AddressSettingsPage({
   searchParams,
@@ -13,11 +13,14 @@ export default async function AddressSettingsPage({
 }) {
   const sp = await searchParams;
   const err = sp.error ? decodeURIComponent(sp.error) : null;
-  const res = await authedServerFetch("/users/me/addresses");
-  if (res.status === 401) redirect("/login?next=/dashboard/settings/addresses&auth=required");
-  const addresses: ProfileAddressRow[] = res.ok
-    ? ((await res.json()) as { data: ProfileAddressRow[] }).data
-    : [];
+
+  await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/addresses",
+  });
+
+  const c = await getServerDataContainer();
+  const addresses = await c.addresses.listMine().catch(() => [] as ProfileAddressRow[]);
 
   return (
     <DashboardPage className="space-y-8">

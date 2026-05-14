@@ -1,22 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { parseNotificationPreference } from "@/lib/data/http/parse";
-import type { NotificationPreference } from "@auction/types";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
-
-async function loadPrefs(): Promise<NotificationPreference | null> {
-  try {
-    const res = await authedServerFetch("/users/me/preferences/notifications");
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data: unknown };
-    return parseNotificationPreference(json.data);
-  } catch {
-    return null;
-  }
-}
 
 export default async function NotificationSettingsPage({
   searchParams,
@@ -26,7 +14,14 @@ export default async function NotificationSettingsPage({
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const saved = sp.saved === "1";
-  const prefs = await loadPrefs();
+
+  await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/notifications",
+  });
+
+  const c = await getServerDataContainer();
+  const prefs = await c.notificationPreferences.getMine();
 
   if (!prefs) {
     return (

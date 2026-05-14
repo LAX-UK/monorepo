@@ -104,6 +104,8 @@ export interface ILotRepository {
 
 export interface ISaleRepository {
   findById(id: string): Promise<Sale | null>;
+  /** Batch fetch by ids — returns only the rows that exist (order not guaranteed). */
+  findByIds(ids: string[]): Promise<Sale[]>;
   create(input: CreateSaleInput): Promise<Sale>;
   list(filter: ListSalesFilter): Promise<Sale[]>;
   /** Sales that may need status sync after lot transitions. */
