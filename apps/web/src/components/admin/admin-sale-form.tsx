@@ -2,7 +2,7 @@
 
 import { SaleDocumentsSection } from "@/components/admin/sale-form/sale-documents-section";
 import { CategoryPicker } from "@/components/forms/category-picker";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
@@ -229,7 +229,7 @@ export function AdminSaleForm({
                 <LabelCaps>Cover images</LabelCaps>
               </FormLabel>
               <FormControl>
-                <UploadField
+                <ImageUploadField
                   kind="sale_cover"
                   multiple
                   maxFiles={6}

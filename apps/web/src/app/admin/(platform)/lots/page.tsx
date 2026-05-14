@@ -54,9 +54,12 @@ export default async function AdminAuctionsPage({
     ...(sort ? { sort } : {}),
   });
 
-  const [lotResult, artists, salesRows, categoryReader] = await Promise.allSettled([
+  const [lotResult, artistListResult, salesRows, categoryReader] = await Promise.allSettled([
     lotsListController.fetch(query),
-    getAdminArtistList({ includeArchived: false }).catch(() => []),
+    getAdminArtistList({ includeArchived: false, limit: 500 }).catch(() => ({
+      rows: [],
+      total: 0,
+    })),
     getAdminSalesList({ limit: 200 }).catch(() => []),
     getServerCategoryReader()
       .then((r) => r.tree())
@@ -70,7 +73,7 @@ export default async function AdminAuctionsPage({
         ? lotResult.reason.message
         : "Could not load lots."
       : null;
-  const artistOptions = artists.status === "fulfilled" ? artists.value : [];
+  const artistOptions = artistListResult.status === "fulfilled" ? artistListResult.value.rows : [];
   const saleOptions = salesRows.status === "fulfilled" ? salesRows.value.map((r) => r.sale) : [];
   const categories = categoryReader.status === "fulfilled" ? categoryReader.value : [];
 

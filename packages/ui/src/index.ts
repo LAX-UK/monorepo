@@ -120,6 +120,8 @@ export { PaginationFooter } from "./components/ui/pagination-footer.js";
 export type { PaginationFooterProps } from "./components/ui/pagination-footer.js";
 export { TableSkeleton } from "./components/ui/table-skeleton.js";
 export type { TableSkeletonProps } from "./components/ui/table-skeleton.js";
+export { AlphabetJumpBar } from "./components/ui/alphabet-jump-bar.js";
+export type { AlphabetJumpBarProps, LetterFacet } from "./components/ui/alphabet-jump-bar.js";
 export { StatusBadge, statusBadgeVariants } from "./components/ui/status-badge.js";
 export type { StatusBadgeProps } from "./components/ui/status-badge.js";
 export { Sparkline } from "./components/ui/sparkline.js";

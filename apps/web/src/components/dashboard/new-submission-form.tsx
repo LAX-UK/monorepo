@@ -1,7 +1,7 @@
 "use client";
 
 import { CategoryPicker } from "@/components/forms/category-picker";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
@@ -235,7 +235,7 @@ export function NewSubmissionForm({ categories }: Props) {
                   <LabelCaps>Images</LabelCaps>
                 </FormLabel>
                 <FormControl>
-                  <UploadField
+                  <ImageUploadField
                     kind="submission_image"
                     multiple
                     maxFiles={20}

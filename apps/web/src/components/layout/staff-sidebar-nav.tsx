@@ -47,11 +47,13 @@ function groupBadgeTotal(g: StaffNavGroupSpec): number {
 export function StaffSidebarNav({
   user,
   pendingSubmissionCount,
+  pendingArtistCount = 0,
   labelsHidden,
   onNavigate,
 }: {
   user: SessionUser;
   pendingSubmissionCount: number;
+  pendingArtistCount?: number;
   labelsHidden: boolean;
   onNavigate?: () => void;
 }) {
@@ -60,13 +62,20 @@ export function StaffSidebarNav({
   const staffRole = user.staffRole as UserStaffRole | null | undefined;
 
   const groups = useMemo(
-    () => getStaffNavGroups(role, pendingSubmissionCount, staffRole ?? null),
-    [role, pendingSubmissionCount, staffRole],
+    () => getStaffNavGroups(role, pendingSubmissionCount, staffRole ?? null, pendingArtistCount),
+    [role, pendingSubmissionCount, pendingArtistCount, staffRole],
   );
 
   const activeGroupId = useMemo(
-    () => getStaffNavActiveGroupId(pathname, role, staffRole ?? null, pendingSubmissionCount),
-    [pathname, role, staffRole, pendingSubmissionCount],
+    () =>
+      getStaffNavActiveGroupId(
+        pathname,
+        role,
+        staffRole ?? null,
+        pendingSubmissionCount,
+        pendingArtistCount,
+      ),
+    [pathname, role, staffRole, pendingSubmissionCount, pendingArtistCount],
   );
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
