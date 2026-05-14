@@ -35,7 +35,7 @@ export class PushNotificationChannel implements INotificationChannel {
     const pushPayload: PushPayload = {
       title: payload.title,
       body: payload.message,
-      url: payload.lotId ? `/artwork/${payload.lotId}` : undefined,
+      url: payload.lotId ? `/lot/${payload.lotId}` : undefined,
     };
     for (const sub of subs) {
       const ok = await this.sender.send(sub.endpoint, sub.p256dh, sub.auth, pushPayload);

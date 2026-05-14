@@ -1,12 +1,15 @@
-import type { LotTimerState } from "@/components/lot-timer";
+import { maskPaddleFromBidderId } from "@/components/sections/artwork/artwork-view-models";
 import {
   type CountdownTier,
   countdownTier,
   formatCountdownAriaLabel,
 } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   estimateLine: string | null;
@@ -14,11 +17,8 @@ type Props = {
   bidCount: number;
   /** When set, show reserve met / not met next to the current-bid label. */
   reservePrice: string | null;
-  /** Lot timer state derived from `classifyLotTimerState` upstream — drives the
-   * banner switch between "Closing" (live), "Opens in" (scheduled), and
-   * "Closed/Cancelled" (terminal).
-   */
-  timerState: LotTimerState;
+  /** Unified lifecycle from `classifyLotLifecycle` — drives banners. */
+  lifecycle: LotLifecycle;
   /** Pre-formatted clock text (HH:MM:SS or `Nd HH:MM:SS`) sized to the timer state. */
   countdownClock: string;
   /** e.g. "Apr 22, 2025, 4:00 PM" — anchor instant in viewer-local time. */
@@ -29,25 +29,32 @@ type Props = {
   endAtIso: string;
   /** ISO-8601 instant of scheduled open (for `<time dateTime>` on opens-in banner). */
   startAtIso?: string;
+  /** Signed-in user — used for "You won" vs hammer copy on `endedSold`. */
+  currentUserId?: string | null;
+  /** Placed under scheduled opens banner — e.g. watchlist toggle. */
+  scheduledNotifySlot?: ReactNode;
+  /** Shown when lifecycle is `endedNoSale` — e.g. watchlist for relist interest. */
+  endedNoSaleNotifySlot?: ReactNode;
 };
 
 /** Three-row bidding header:
  * Row 1 — Estimate · Current bid (with optional reserve badge)
- * Row 2 — State-aware banner: Closing (red, live) / Opens in (amber, scheduled) /
- * Closed (muted, terminal). Pulse + urgency tier are derived from the
- * relevant `msLeft`.
+ * Row 2 — State-aware banner from `LotLifecycle`.
  */
 export function LotInfoStack({
   estimateLine,
   currentPrice,
   bidCount,
   reservePrice,
-  timerState,
+  lifecycle,
   countdownClock,
   saleEndLocalLabel,
   saleStartLocalLabel,
   endAtIso,
   startAtIso,
+  currentUserId = null,
+  scheduledNotifySlot,
+  endedNoSaleNotifySlot,
 }: Props) {
   const hasReserve = reservePrice != null && reservePrice !== "";
   const reserveMet = hasReserve
@@ -84,13 +91,17 @@ export function LotInfoStack({
           </span>
         </div>
       </div>
-      <TimerBanner
-        timerState={timerState}
+      <LifecycleBanner
+        lifecycle={lifecycle}
+        currentPrice={currentPrice}
+        currentUserId={currentUserId}
         countdownClock={countdownClock}
         endAtIso={endAtIso}
         startAtIso={startAtIso ?? endAtIso}
         saleEndLocalLabel={saleEndLocalLabel}
         saleStartLocalLabel={saleStartLocalLabel ?? saleEndLocalLabel}
+        scheduledNotifySlot={scheduledNotifySlot}
+        endedNoSaleNotifySlot={endedNoSaleNotifySlot}
       />
     </div>
   );
@@ -117,53 +128,94 @@ function InfoRow({
   );
 }
 
-type TimerBannerProps = {
-  timerState: LotTimerState;
+type LifecycleBannerProps = {
+  lifecycle: LotLifecycle;
+  currentPrice: string;
+  currentUserId: string | null;
   countdownClock: string;
   endAtIso: string;
   startAtIso: string;
   saleEndLocalLabel: string;
   saleStartLocalLabel: string;
+  scheduledNotifySlot?: ReactNode;
+  endedNoSaleNotifySlot?: ReactNode;
 };
 
-function TimerBanner({
-  timerState,
+function LifecycleBanner({
+  lifecycle,
+  currentPrice,
+  currentUserId,
   countdownClock,
   endAtIso,
   startAtIso,
   saleEndLocalLabel,
   saleStartLocalLabel,
-}: TimerBannerProps) {
-  switch (timerState.kind) {
-    case "live": {
-      const tier = countdownTier(timerState.msLeft);
+  scheduledNotifySlot,
+  endedNoSaleNotifySlot,
+}: LifecycleBannerProps) {
+  switch (lifecycle.kind) {
+    case "live":
+    case "extended": {
+      const ms = lifecycle.msLeft ?? 0;
+      const tier = countdownTier(ms);
       return (
         <ClosingBanner
           tier={tier}
           countdownClock={countdownClock}
           endAtIso={endAtIso}
-          msLeft={timerState.msLeft}
+          msLeft={ms}
           saleEndLocalLabel={saleEndLocalLabel}
+          extended={lifecycle.kind === "extended"}
         />
       );
     }
-    case "opensSoon":
+    case "scheduled":
       return (
         <OpensInBanner
           countdownClock={countdownClock}
           startAtIso={startAtIso}
-          msLeft={timerState.msLeft}
+          msLeft={lifecycle.msLeft ?? 0}
           saleStartLocalLabel={saleStartLocalLabel}
+          notifySlot={scheduledNotifySlot}
         />
       );
-    case "closed":
-      return <TerminalBanner label="Closed" detail={`Auction closed ${saleEndLocalLabel}`} />;
+    case "endedSold":
+      return (
+        <EndedSoldBanner
+          hammer={formatMoney(currentPrice)}
+          winnerId={lifecycle.winnerId ?? null}
+          currentUserId={currentUserId}
+          saleEndLocalLabel={saleEndLocalLabel}
+        />
+      );
+    case "endedNoSale":
+      return (
+        <div className="mt-4 space-y-3">
+          <TerminalBanner
+            label="No sale"
+            detail="Reserve was not met — this lot closed without a winning bid."
+          />
+          {endedNoSaleNotifySlot ? (
+            <div className="rounded-lg border border-outline-variant/30 bg-surface-container-high/40 px-4 py-3 dark:bg-surface-container-high/20">
+              <p className="mb-2 font-body text-xs text-on-surface-variant">
+                Want a second chance? Save the lot — we&apos;ll email you if it is relisted.
+              </p>
+              {endedNoSaleNotifySlot}
+            </div>
+          ) : null}
+        </div>
+      );
     case "cancelled":
       return <TerminalBanner label="Cancelled" detail="This lot was cancelled." />;
-    case "unknown":
-      return null;
-    default:
-      return null;
+    case "withdrawn":
+      return <TerminalBanner label="Withdrawn" detail="This lot was withdrawn from the sale." />;
+    case "preLaunch":
+      return (
+        <TerminalBanner
+          label="Preview"
+          detail="Catalogue preview — online bidding opens when the sale is published."
+        />
+      );
   }
 }
 
@@ -173,12 +225,14 @@ function ClosingBanner({
   endAtIso,
   msLeft,
   saleEndLocalLabel,
+  extended,
 }: {
   tier: CountdownTier;
   countdownClock: string;
   endAtIso: string;
   msLeft: number;
   saleEndLocalLabel: string;
+  extended: boolean;
 }) {
   const rowHighlight = tier === "critical";
   return (
@@ -189,7 +243,7 @@ function ClosingBanner({
       )}
     >
       <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-error">
-        Closing in
+        {extended ? "Extended · closing in" : "Closing in"}
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-2">
         <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-error" aria-hidden />
@@ -201,7 +255,12 @@ function ClosingBanner({
           {countdownClock}
         </time>
       </div>
-      <p className="sr-only">Closes {saleEndLocalLabel}</p>
+      <p className="sr-only">
+        Closes {saleEndLocalLabel}.{" "}
+        {extended
+          ? "Closing time was extended because a bid arrived near the original end time."
+          : "Anti-snipe may extend closing time if bids arrive near the end."}
+      </p>
     </div>
   );
 }
@@ -211,31 +270,90 @@ function OpensInBanner({
   startAtIso,
   msLeft,
   saleStartLocalLabel,
+  notifySlot,
 }: {
   countdownClock: string;
   startAtIso: string;
   msLeft: number;
   saleStartLocalLabel: string;
+  notifySlot?: ReactNode;
 }) {
   return (
-    <div className="mt-4 flex flex-row items-center gap-2 rounded-lg border border-lot-orange/30 bg-lot-orange/10 px-4 py-3">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-lot-orange">
-        Opens in
-      </span>
-      <div className="ml-auto flex min-w-0 items-center gap-2">
-        <Clock className="size-3.5 shrink-0 text-lot-orange" aria-hidden />
-        <time
-          dateTime={startAtIso}
-          aria-label={`Opens in ${countdownClock}`}
-          className="min-w-0 text-xl font-bold tabular-nums leading-5 text-lot-orange"
-        >
-          {countdownClock}
-        </time>
+    <div className="mt-4 flex flex-col gap-3 rounded-lg border border-lot-orange/30 bg-lot-orange/10 px-4 py-3">
+      <div className="flex flex-row items-center gap-2">
+        <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-lot-orange">
+          Opens in
+        </span>
+        <div className="ml-auto flex min-w-0 items-center gap-2">
+          <Clock className="size-3.5 shrink-0 text-lot-orange" aria-hidden />
+          <time
+            dateTime={startAtIso}
+            aria-label={`Opens in ${countdownClock}`}
+            className="min-w-0 text-xl font-bold tabular-nums leading-5 text-lot-orange"
+          >
+            {countdownClock}
+          </time>
+        </div>
       </div>
       <p className="sr-only">
         Bidding opens {saleStartLocalLabel}. {Math.max(0, Math.floor(msLeft / 1000))} seconds
         remaining.
       </p>
+      {notifySlot ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-lot-orange/25 pt-3">
+          <p className="w-full font-body text-xs text-lot-orange/90">
+            Get a reminder before the room opens — no payment until you bid.
+          </p>
+          {notifySlot}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EndedSoldBanner({
+  hammer,
+  winnerId,
+  currentUserId,
+  saleEndLocalLabel,
+}: {
+  hammer: string;
+  winnerId: string | null;
+  currentUserId: string | null;
+  saleEndLocalLabel: string;
+}) {
+  const youWon = Boolean(currentUserId && winnerId && currentUserId === winnerId);
+  const paddle = winnerId ? maskPaddleFromBidderId(winnerId) : null;
+
+  return (
+    <div className="mt-4 space-y-2 rounded-lg border border-primary/25 bg-primary-container/10 px-4 py-3 ring-1 ring-primary/15 dark:bg-primary/10">
+      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+        Sold
+      </span>
+      {youWon ? (
+        <div className="space-y-2">
+          <p className="font-body text-sm font-medium text-on-surface">
+            You won this lot — hammer {hammer}.
+          </p>
+          <Link
+            href="/dashboard/payments"
+            className="inline-flex font-body text-sm font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            View invoices
+          </Link>
+        </div>
+      ) : (
+        <p className="font-body text-sm text-on-surface">
+          Hammer {hammer}
+          {paddle ? (
+            <>
+              {" "}
+              · sold to <span className="font-medium tabular-nums">{paddle}</span>
+            </>
+          ) : null}
+          . <span className="text-on-surface-variant">Closed {saleEndLocalLabel}.</span>
+        </p>
+      )}
     </div>
   );
 }

@@ -151,6 +151,7 @@ export function LotMoreFromRail({
                           lotId={c.id}
                           initialWatching={watchedLotIds.includes(c.id)}
                           isAuthenticated={isAuthenticated}
+                          loginNextPath={c.href}
                           appearance="outlined-block"
                         />
                       </div>

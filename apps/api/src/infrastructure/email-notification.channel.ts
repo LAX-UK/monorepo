@@ -106,7 +106,7 @@ export class EmailNotificationChannel implements INotificationChannel {
 
   private lotUrl(lotId?: string): string {
     const base = this.apiBaseUrl.replace(/\/$/, "");
-    return lotId ? `${base}/artwork/${encodeURIComponent(lotId)}` : base;
+    return lotId ? `${base}/lot/${encodeURIComponent(lotId)}` : base;
   }
 
   private unsubscribeUrl(userId: string, type: string): string {

@@ -13,6 +13,8 @@ type Props = {
   lotStatus: Lot["status"];
   loginNextPath: string;
   kycBidGate?: BidPolicyContext["kycBidGate"];
+  /** Aligns gate copy with `classifyLotLifecycle` (preview, scheduled, terminal, etc.). */
+  biddingLifecycle?: BidPolicyContext["biddingLifecycle"];
   policies?: readonly BidPolicy[];
   children: (ctx: { decision: BidPolicyDecision }) => ReactNode;
 };
@@ -23,12 +25,13 @@ export function BidGate({
   lotStatus,
   loginNextPath,
   kycBidGate = null,
+  biddingLifecycle = null,
   policies = defaultBidPolicies,
   children,
 }: Props) {
   const ctx: BidPolicyContext = useMemo(
-    () => ({ user, lot, lotStatus, loginNextPath, kycBidGate }),
-    [user, lot, lotStatus, loginNextPath, kycBidGate],
+    () => ({ user, lot, lotStatus, loginNextPath, kycBidGate, biddingLifecycle }),
+    [user, lot, lotStatus, loginNextPath, kycBidGate, biddingLifecycle],
   );
 
   const decision = useMemo(() => evaluateBidPolicies(policies, ctx), [policies, ctx]);
