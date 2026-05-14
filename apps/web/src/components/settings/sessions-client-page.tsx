@@ -1,13 +1,15 @@
 "use client";
 
-import type { SessionRow } from "@/app/dashboard/settings/sessions/page";
 import { ReauthDialog, useReauthGate } from "@/components/auth/reauth-gate";
+import type { UserSessionRow } from "@/lib/data/user-session-row";
+import {
+  deleteSession as apiDeleteSession,
+  revokeAllSessions,
+} from "@/lib/services/client/sessions.api";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 
 function formatUA(ua: string | null | undefined): string {
   if (ua == null || typeof ua !== "string") return "Unknown device";
@@ -25,7 +27,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export function SessionsClientPage({ sessions }: { sessions: SessionRow[] }) {
+export function SessionsClientPage({ sessions }: { sessions: UserSessionRow[] }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -38,18 +40,14 @@ export function SessionsClientPage({ sessions }: { sessions: SessionRow[] }) {
 
   async function deleteSession(id: string) {
     setRevoking(id);
-    const res = await fetch(`${apiBase}/users/me/sessions/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const result = await apiDeleteSession(id);
     setRevoking(null);
-    if (res.status === 403) {
-      await reauth.prompt();
-      return deleteSession(id);
-    }
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-      notify.error(typeof body.message === "string" ? body.message : "Could not revoke session.");
+    if (!result.ok) {
+      if (result.error === "forbidden") {
+        await reauth.prompt();
+        return deleteSession(id);
+      }
+      notify.error("Could not revoke session. Please try again.");
       return;
     }
     notify.success("Session revoked.");
@@ -58,17 +56,14 @@ export function SessionsClientPage({ sessions }: { sessions: SessionRow[] }) {
 
   async function revokeAll() {
     setRevokingAll(true);
-    const res = await fetch(`${apiBase}/users/me/sessions/revoke-all`, {
-      method: "POST",
-      credentials: "include",
-    });
+    const result = await revokeAllSessions();
     setRevokingAll(false);
-    if (res.status === 403) {
-      await reauth.prompt();
-      return revokeAll();
-    }
-    if (!res.ok) {
-      notify.error("Could not revoke sessions.");
+    if (!result.ok) {
+      if (result.error === "forbidden") {
+        await reauth.prompt();
+        return revokeAll();
+      }
+      notify.error("Could not revoke sessions. Please try again.");
       return;
     }
     notify.success("All other sessions revoked. You may need to sign in on those devices.");

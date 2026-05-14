@@ -1,18 +1,19 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { AppearanceSettingsForm } from "@/components/settings/appearance-settings-form";
 import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { PageHeader } from "@auction/ui/components/page-header";
 import type { ThemePreference } from "@auction/validators";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Appearance" };
 
 export default async function AppearanceSettingsPage() {
-  const user = await getServerSessionUser();
-  if (!user) redirect("/login?next=/dashboard/settings/appearance&auth=required");
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/settings/appearance",
+  });
 
   const initialTheme: ThemePreference = user.uiPreferences?.theme ?? "system";
 

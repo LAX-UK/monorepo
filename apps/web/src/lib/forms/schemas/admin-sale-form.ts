@@ -1,5 +1,11 @@
+import type { BuyerPremiumTier } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
-import { createSaleSchema, updateSaleSchema } from "@auction/validators";
+import {
+  buyerPremiumTiersSchema,
+  createSaleSchema,
+  majorToMinor,
+  updateSaleSchema,
+} from "@auction/validators";
 import { z } from "zod";
 
 function parseCategoryId(cat: string): string | undefined {
@@ -7,6 +13,12 @@ function parseCategoryId(cat: string): string | undefined {
   if (!t || !/^[0-9a-f-]{36}$/i.test(t)) return undefined;
   return t;
 }
+
+/** One tier row in the admin sale form (hammer in major currency units, e.g. 500000 for £500k). */
+export const adminSaleTierRowSchema = z.object({
+  hammerThresholdMajor: z.string().max(32),
+  rate: z.string().max(16),
+});
 
 export const adminSaleFormValuesSchema = z.object({
   title: z.string().min(1, "Title is required").max(500),
@@ -28,10 +40,39 @@ export const adminSaleFormValuesSchema = z.object({
   endTime: z.string().min(1, "End is required"),
   previewStartTime: z.string(),
   buyerPremiumRate: z.string(),
+  /** Band rows; empty = flat rate only (`buyerPremiumRate`). */
+  buyerPremiumTiers: z.array(adminSaleTierRowSchema).max(16),
   terms: z.string().max(50_000),
 });
 
+export type AdminSaleTierRow = z.infer<typeof adminSaleTierRowSchema>;
+
 export type AdminSaleFormValues = z.infer<typeof adminSaleFormValuesSchema>;
+
+/**
+ * Map tier rows from the admin form to API `BuyerPremiumTier[]` or `null` when no bands.
+ * Rows with an empty `rate` are ignored. First row always uses threshold £0 (band floor).
+ */
+export function normalizeAdminFormTiersToApi(
+  rows: AdminSaleFormValues["buyerPremiumTiers"],
+): { ok: true; data: BuyerPremiumTier[] | null } | { ok: false; error: z.ZodError } {
+  const filtered = rows.filter((r) => r.rate.trim() !== "");
+  if (filtered.length === 0) {
+    return { ok: true, data: null };
+  }
+  const mapped: BuyerPremiumTier[] = filtered.map((r, index) => {
+    const majorRaw = index === 0 ? "0" : r.hammerThresholdMajor.trim() || "0";
+    return {
+      hammerThresholdMinor: majorToMinor(majorRaw),
+      rate: r.rate.trim(),
+    };
+  });
+  const parsed = buyerPremiumTiersSchema.safeParse(mapped);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error };
+  }
+  return { ok: true, data: parsed.data };
+}
 
 type LocationFormFieldKey =
   | "locationName"
@@ -84,6 +125,10 @@ function pickLocationUpdate(
 }
 
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
+  const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
+  if (!tiers.ok) {
+    return { success: false as const, error: tiers.error };
+  }
   const isOnsite = values.deliveryMode === "onsite";
   return createSaleSchema.safeParse({
     title: values.title.trim(),
@@ -99,11 +144,16 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
       ? new Date(values.previewStartTime)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
+    ...(tiers.data !== null ? { buyerPremiumTiers: tiers.data } : {}),
     terms: values.terms.trim() || undefined,
   });
 }
 
 export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
+  const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
+  if (!tiers.ok) {
+    return { success: false as const, error: tiers.error };
+  }
   const streamRaw = values.streamUrl.trim();
   const isOnsite = values.deliveryMode === "onsite";
   return updateSaleSchema.safeParse({
@@ -120,6 +170,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
       ? new Date(values.previewStartTime)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
+    buyerPremiumTiers: tiers.data,
     terms: values.terms.trim() || undefined,
   });
 }

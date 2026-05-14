@@ -1,28 +1,64 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
+import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
-import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
-import { getServerMyNotifications } from "@/lib/data/http/notifications.server";
-import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { getMySubmissions } from "@/lib/data/http/submissions.server";
+import type {
+  ArtistFollowRow,
+  BidWithLot,
+  WatchlistWithLotRow,
+} from "@/lib/data/http/dashboard.server";
+import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
 import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
+import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
 
+function sliceError(e: unknown, fallback: string): string {
+  return e instanceof Error ? e.message : fallback;
+}
+
+function takeSettled<T>(
+  result: PromiseSettledResult<T>,
+  fallback: T,
+  onReject: (message: string) => void,
+  userMessage: string,
+): T {
+  if (result.status === "fulfilled") return result.value;
+  onReject(sliceError(result.reason, userMessage));
+  return fallback;
+}
+
 async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean }) {
-  const user = await getServerSessionUser();
   const c = await getServerDataContainer();
 
-  let active: Awaited<ReturnType<typeof c.activeLots.listActivePreview>> = [];
-  let portfolio: Awaited<ReturnType<typeof c.portfolio.listMine>> = [];
-  let watchlist: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
-  let artistFollow: Awaited<ReturnType<typeof c.artistFollow.listMine>> = [];
-  let bidRows: Awaited<ReturnType<typeof c.bids.listMine>> = [];
-  let submissions: Awaited<ReturnType<typeof getMySubmissions>> = [];
+  const [
+    userR,
+    activeR,
+    portfolioR,
+    watchlistR,
+    artistFollowR,
+    bidsR,
+    submissionsR,
+    kycR,
+    orgR,
+    addressesR,
+    notificationsR,
+  ] = await Promise.allSettled([
+    c.session.getCurrent(),
+    c.activeLots.listActivePreview(8),
+    c.portfolio.listMine(),
+    c.watchlist.listMine(),
+    c.artistFollow.listMine(),
+    c.bids.listMine(),
+    c.submissions.listMine({ limit: 100 }),
+    c.kyc.getSummary(),
+    c.orgOnboarding.getResume(),
+    c.addresses.listMine(),
+    c.notifications.listMine({ limit: 12 }),
+  ]);
 
   const errors = {
     active: null as string | null,
@@ -33,54 +69,68 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     submissions: null as string | null,
   };
 
-  try {
-    active = await c.activeLots.listActivePreview(8);
-  } catch (e) {
-    active = [];
-    errors.active = e instanceof Error ? e.message : "Could not load live inventory.";
-  }
+  const user = userR.status === "fulfilled" ? userR.value : null;
 
-  try {
-    portfolio = await c.portfolio.listMine();
-  } catch (e) {
-    portfolio = [];
-    errors.portfolio = e instanceof Error ? e.message : "Could not load portfolio.";
-  }
+  const active: Lot[] = takeSettled(
+    activeR,
+    [],
+    (msg) => {
+      errors.active = msg;
+    },
+    "Could not load live inventory.",
+  );
 
-  try {
-    watchlist = await c.watchlist.listMine();
-  } catch (e) {
-    watchlist = [];
-    errors.watchlist = e instanceof Error ? e.message : "Could not load watchlist.";
-  }
+  const portfolio: PortfolioRow[] = takeSettled(
+    portfolioR,
+    [],
+    (msg) => {
+      errors.portfolio = msg;
+    },
+    "Could not load portfolio.",
+  );
 
-  try {
-    artistFollow = await c.artistFollow.listMine();
-  } catch (e) {
-    artistFollow = [];
-    errors.artistFollow = e instanceof Error ? e.message : "Could not load followed artists.";
-  }
+  const watchlist: WatchlistWithLotRow[] = takeSettled(
+    watchlistR,
+    [],
+    (msg) => {
+      errors.watchlist = msg;
+    },
+    "Could not load watchlist.",
+  );
 
-  try {
-    bidRows = await c.bids.listMine();
-  } catch (e) {
-    bidRows = [];
-    errors.bids = e instanceof Error ? e.message : "Could not load bids.";
-  }
+  const artistFollow: ArtistFollowRow[] = takeSettled(
+    artistFollowR,
+    [],
+    (msg) => {
+      errors.artistFollow = msg;
+    },
+    "Could not load followed artists.",
+  );
 
-  try {
-    submissions = await getMySubmissions({ limit: 100 });
-  } catch (e) {
-    submissions = [];
-    errors.submissions = e instanceof Error ? e.message : "Could not load submissions.";
-  }
+  const bidRows: BidWithLot[] = takeSettled(
+    bidsR,
+    [],
+    (msg) => {
+      errors.bids = msg;
+    },
+    "Could not load bids.",
+  );
 
-  const [kyc, orgOnboarding, addresses, notifications] = await Promise.all([
-    getServerKycStatusSummary().catch(() => null),
-    getServerOrgOnboardingResume().catch(() => null),
-    getServerMyAddresses().catch(() => []),
-    getServerMyNotifications({ limit: 12 }).catch(() => []),
-  ]);
+  const submissions: ItemSubmission[] = takeSettled(
+    submissionsR,
+    [],
+    (msg) => {
+      errors.submissions = msg;
+    },
+    "Could not load submissions.",
+  );
+
+  const kyc: KycStatusSummaryDto | null = kycR.status === "fulfilled" ? kycR.value : null;
+  const orgOnboarding: OrgOnboardingResumeVm | null =
+    orgR.status === "fulfilled" ? orgR.value : null;
+  const addresses: ProfileAddressRow[] = addressesR.status === "fulfilled" ? addressesR.value : [];
+  const notifications: UserNotification[] =
+    notificationsR.status === "fulfilled" ? notificationsR.value : [];
 
   const vm = buildDashboardOverviewVm({
     user,

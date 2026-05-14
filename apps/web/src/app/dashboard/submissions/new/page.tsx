@@ -1,6 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NewSubmissionForm } from "@/components/dashboard/new-submission-form";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 export default async function NewSubmissionPage({
@@ -10,8 +10,8 @@ export default async function NewSubmissionPage({
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const catReader = await getServerCategoryReader();
-  const categories = await catReader.tree();
+  const c = await getServerDataContainer();
+  const categories = await c.categories.tree();
 
   return (
     <DashboardPage className="mx-auto max-w-2xl space-y-6">

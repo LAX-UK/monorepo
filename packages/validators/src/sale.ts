@@ -1,6 +1,7 @@
 import { saleDeliveryModes, saleStatuses } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { z } from "zod";
+import { buyerPremiumTiersSchema } from "./buyer-premium.js";
 import { createNestedLotForSaleSchema } from "./lot.js";
 import { mediaReferenceSchema } from "./media.js";
 import { isUkPostcode, normalizeUkPostcode } from "./onsite-location.js";
@@ -87,6 +88,8 @@ const saleCreateBodySchema = z.object({
   endTime: z.coerce.date(),
   previewStartTime: z.coerce.date().optional(),
   buyerPremiumRate: buyerPremiumRateString.optional(),
+  /** Optional band-based premium tier override; see `buyer-premium.ts`. */
+  buyerPremiumTiers: buyerPremiumTiersSchema.nullable().optional(),
   terms: z.string().max(50_000).optional(),
   lots: z.array(createNestedLotForSaleSchema).max(500).optional(),
 });

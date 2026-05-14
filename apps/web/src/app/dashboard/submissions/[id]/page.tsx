@@ -4,8 +4,7 @@ import { SubmissionWorkflowActions } from "@/components/dashboard/submission-wor
 import { MediaImage } from "@/components/ui/media-image";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DisplayHeading } from "@/components/ui/typography";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getSubmissionForUser } from "@/lib/data/http/submissions.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
 import { lotPath } from "@/lib/seo/url";
 import Link from "next/link";
@@ -15,11 +14,9 @@ export default async function SubmissionDetailPage({
   params,
 }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const s = await getSubmissionForUser(id);
+  const c = await getServerDataContainer();
+  const [s, categories] = await Promise.all([c.submissions.getMineById(id), c.categories.tree()]);
   if (!s) notFound();
-
-  const catReader = await getServerCategoryReader();
-  const categories = await catReader.tree();
   const editable = s.status === "draft";
   const canSubmit = s.status === "draft";
   const canWithdraw = s.status === "draft" || s.status === "submitted";

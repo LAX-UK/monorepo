@@ -7,6 +7,7 @@ export * from "./sale.js";
 export * from "./sale-mode-policy.js";
 export * from "./stream-embed.js";
 export * from "./bid.js";
+export * from "./buyer-premium.js";
 export * from "./category.js";
 export * from "./notification.js";
 export * from "./payment.js";

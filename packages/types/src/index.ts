@@ -5,6 +5,7 @@ export * from "./artist.js";
 export * from "./payment.js";
 export * from "./notification.js";
 export * from "./bid.js";
+export * from "./buyer-premium.js";
 export * from "./socket.js";
 export * from "./user.js";
 export * from "./role-policy.js";

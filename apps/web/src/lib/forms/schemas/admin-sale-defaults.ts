@@ -23,6 +23,10 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
     endTime: toDatetimeLocalValue(sale.endTime),
     previewStartTime: sale.previewStartTime ? toDatetimeLocalValue(sale.previewStartTime) : "",
     buyerPremiumRate: sale.buyerPremiumRate,
+    buyerPremiumTiers: (sale.buyerPremiumTiers ?? []).map((t) => ({
+      hammerThresholdMajor: String(t.hammerThresholdMinor / 100),
+      rate: t.rate,
+    })),
     terms: sale.terms ?? "",
   };
 }
@@ -52,6 +56,7 @@ export function emptyAdminSaleFormValues(): AdminSaleFormValues {
     endTime: toDatetimeLocalValue(e),
     previewStartTime: "",
     buyerPremiumRate: "0.25",
+    buyerPremiumTiers: [],
     terms: "",
   };
 }

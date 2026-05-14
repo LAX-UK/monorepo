@@ -407,6 +407,13 @@
       "when": 1781500000000,
       "tag": "0059_user_ui_preference",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1781600000000,
+      "tag": "0060_buyer_premium_tiers",
+      "breakpoints": true
     }
   ]
 }

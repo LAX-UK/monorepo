@@ -57,6 +57,19 @@ export type Lot = {
   currentPrice: string;
   /** Decimal fraction, e.g. "0.25" for 25% buyer's premium on hammer. */
   buyerPremiumRate: string;
+  /**
+   * When present, server-computed hammer / premium / total in **major currency** (e.g. GBP)
+   * using `buildBuyerPremiumPolicy` (sale-level tiers override per-lot rate). Used by dashboard
+   * portfolio, checkout, and any client that must not duplicate premium math.
+   */
+  checkoutPricing?: {
+    hammerMajor: string;
+    premiumMajor: string;
+    totalMajor: string;
+    policyId: string;
+    /** Discriminant — avoids string-parsing on consumers. */
+    kind: "flat" | "tiered";
+  };
   /** Minimum raise over current price (English / buy-it-now paths). */
   minBidIncrement: string;
   /** Amount subtracted from current price each Dutch interval (optional; derived if null). */

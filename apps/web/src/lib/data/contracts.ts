@@ -79,6 +79,8 @@ export type SessionUser = {
   signupPersona?: "individual" | "organisation" | null;
   /** From GET /users/me when a self-serve account deletion has been requested. */
   deletionRequestedAt?: string | Date | null;
+  /** From GET /users/me — new address awaiting confirmation (email change flow). */
+  pendingNewEmail?: string | null;
   /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
   twoFactorEnabled?: boolean;
   /** From GET /users/me — synced UI preferences (colour scheme, etc.). */

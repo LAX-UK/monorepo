@@ -30,6 +30,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
@@ -133,10 +134,20 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
     }
     const presentedLots = await presentLotsImages(container.mediaUrlResolver, lots);
+    const saleIds = [
+      ...new Set(
+        presentedLots
+          .map((l) => l.saleId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
+    ];
+    const saleRows = await container.saleService.findByIds(saleIds);
+    const saleById = new Map(saleRows.map((s) => [s.id, s]));
     const data = presentedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
+      const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
       return {
-        lot: lotRow,
+        lot: { ...lotRow, checkoutPricing: computeLotCheckoutPricing(lotRow, sale) },
         payment: p ? { id: p.id, status: p.status } : null,
       };
     });

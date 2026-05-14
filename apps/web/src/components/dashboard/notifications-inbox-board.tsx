@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { Button } from "@/components/ui/button";
 import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
 import { notify } from "@/lib/ui/notify";
@@ -20,7 +21,7 @@ import {
 } from "./notifications/notification-presenters";
 import { NotificationRow } from "./notifications/notification-row";
 import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
-import { type InboxTab, useNotificationsInbox } from "./notifications/use-notifications-inbox";
+import { useNotificationsInbox } from "./notifications/use-notifications-inbox";
 
 const TYPE_CHIPS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "", label: "All types" },
@@ -46,7 +47,16 @@ function tabHref(pathname: string, params: URLSearchParams, tab: InboxTab): stri
   return qs ? `${pathname}?${qs}` : pathname;
 }
 
-export function NotificationsInboxBoard() {
+export function NotificationsInboxBoard({
+  initialPage,
+}: {
+  initialPage?: {
+    tab: InboxTab;
+    type: string;
+    items: UserNotification[];
+    hasMore: boolean;
+  };
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -87,6 +97,7 @@ export function NotificationsInboxBoard() {
     tab,
     type: typeFilter,
     onRealtimeArrival: announceArrival,
+    ...(initialPage ? { initialPage } : {}),
   });
 
   useEffect(() => {

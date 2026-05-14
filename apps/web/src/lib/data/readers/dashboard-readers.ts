@@ -1,12 +1,37 @@
+import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
+import type { ListLotsParams, SessionUser } from "@/lib/data/contracts";
 import type {
   ArtistFollowRow,
   BidWithLot,
   WatchlistListParams,
   WatchlistWithLotRow,
 } from "@/lib/data/http/dashboard.server";
-import type { MyPaymentRow, MyPaymentsListParams } from "@/lib/data/http/payments.server";
-import type { Lot } from "@auction/types";
-import type { PortfolioRow } from "@auction/types";
+import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
+import type { ListMyNotificationsParams } from "@/lib/data/http/notifications.server";
+import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+import type {
+  LotFulfilmentSnapshot,
+  MyPaymentRow,
+  MyPaymentsListParams,
+} from "@/lib/data/http/payments.server";
+import type { SaleWithLots } from "@/lib/data/http/sales.server";
+import type {
+  SellerPayoutListResult,
+  SellerPayoutPreviewResult,
+} from "@/lib/data/http/seller-payouts.server";
+import type { StripeConnectStatusLoadResult } from "@/lib/data/http/stripe-connect.server";
+import type { MySessionsLoadResult } from "@/lib/data/user-session-row";
+import type {
+  Category,
+  CategoryNode,
+  ItemSubmission,
+  ItemSubmissionStatus,
+  LegalEntitySummary,
+  Lot,
+  NotificationPreference,
+  PortfolioRow,
+  UserNotification,
+} from "@auction/types";
 
 /** ISP: read-only bids for dashboard surfaces */
 export type DashboardBidsReader = {
@@ -32,4 +57,75 @@ export type DashboardActiveLotsReader = {
 /** ISP: buyer-only payments view (no admin/seller endpoints leak in). */
 export type DashboardPaymentsReader = {
   listMine(params?: MyPaymentsListParams): Promise<MyPaymentRow[]>;
+  getLotFulfilmentForWinner(lotId: string): Promise<LotFulfilmentSnapshot | null>;
+};
+
+/** Sale + lots bundle for seller / marketing surfaces. */
+export type DashboardSalesReader = {
+  getWithLots(id: string): Promise<SaleWithLots | null>;
+};
+
+/** Entity-scoped seller payouts (`X-Legal-Entity-Id` on list + preview-next). */
+export type DashboardSellerPayoutsReader = {
+  listForLegalEntity(legalEntityId: string): Promise<SellerPayoutListResult>;
+  previewNextForLegalEntity(legalEntityId: string): Promise<SellerPayoutPreviewResult>;
+};
+
+/** Stripe Connect onboarding for the acting context (`GET /stripe-connect/status`). */
+export type DashboardStripeConnectReader = {
+  getStatus(): Promise<StripeConnectStatusLoadResult>;
+};
+
+/** Current session user (Better Auth / hc `users.me`). */
+export type DashboardSessionReader = {
+  getCurrent(): Promise<SessionUser | null>;
+};
+
+/** KYC status summary for dashboard chrome. */
+export type DashboardKycReader = {
+  getSummary(): Promise<KycStatusSummaryDto | null>;
+};
+
+export type DashboardNotificationsReader = {
+  listMine(params?: ListMyNotificationsParams): Promise<UserNotification[]>;
+};
+
+export type DashboardAddressesReader = {
+  listMine(): Promise<ProfileAddressRow[]>;
+};
+
+export type DashboardLegalEntitiesReader = {
+  listMine(): Promise<LegalEntitySummary[]>;
+};
+
+export type DashboardNotificationPreferencesReader = {
+  getMine(): Promise<NotificationPreference | null>;
+};
+
+export type DashboardSessionsReader = {
+  listMine(): Promise<MySessionsLoadResult>;
+};
+
+export type DashboardSubmissionsReader = {
+  listMine(params?: {
+    status?: ItemSubmissionStatus;
+    limit?: number;
+    offset?: number;
+  }): Promise<ItemSubmission[]>;
+  getMineById(id: string): Promise<ItemSubmission | null>;
+};
+
+export type DashboardOrgOnboardingReader = {
+  getResume(): Promise<OrgOnboardingResumeVm | null>;
+};
+
+export type DashboardCategoriesReader = {
+  list(): Promise<Category[]>;
+  tree(): Promise<CategoryNode[]>;
+};
+
+/** Single-lot read for checkout / deep links (winner flows). */
+export type DashboardLotReader = {
+  getById(id: string): Promise<Lot | null>;
+  list(params: ListLotsParams): Promise<Lot[]>;
 };

@@ -1,4 +1,4 @@
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { fetchLegalEntityPayoutStatementPdf } from "@/lib/data/http/payout-statement-proxy.server";
 import { NextResponse } from "next/server";
 
 /** Proxies to the API PDF route so dashboard URLs match
@@ -9,10 +9,7 @@ export async function GET(
   context: { params: Promise<{ legalEntityId: string; payoutId: string }> },
 ) {
   const { legalEntityId, payoutId } = await context.params;
-  const res = await authedServerFetch(
-    `/legal-entities/${encodeURIComponent(legalEntityId)}/payouts/${encodeURIComponent(payoutId)}/statement.pdf`,
-    { redirect: "manual", cache: "no-store" },
-  );
+  const res = await fetchLegalEntityPayoutStatementPdf(legalEntityId, payoutId);
 
   if (res.status === 301 || res.status === 302) {
     const loc = res.headers.get("location");
