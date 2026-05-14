@@ -356,3 +356,11 @@ variable "next_public_csp_report_uri" {
   default     = ""
   description = "Optional CSP violation report endpoint (e.g. https://o123.ingest.sentry.io/api/456/security/?sentry_key=…)."
 }
+
+# --- Analytics (Google Tag Manager) ---
+
+variable "next_public_gtm_id" {
+  type        = string
+  default     = ""
+  description = "Google Tag Manager container ID (e.g. GTM-W6K4N67Z). GA4 is configured inside GTM. Empty disables analytics."
+}
