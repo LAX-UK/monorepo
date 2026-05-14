@@ -28,3 +28,20 @@ export async function stampReauthWithPassword(opts: {
   if (updated.length === 0) return "no_session";
   return "ok";
 }
+
+/** After first-time password setup on an OAuth account, mark this session as step-up fresh. */
+export async function stampSessionPasswordProofNow(opts: {
+  authDb: Database;
+  userId: string;
+  sessionTokenFromCookie: string | null;
+}): Promise<"ok" | "no_session"> {
+  if (!opts.sessionTokenFromCookie) return "no_session";
+  const now = new Date();
+  const updated = await opts.authDb
+    .update(session)
+    .set({ lastPasswordAuthAt: now, updatedAt: now })
+    .where(and(eq(session.userId, opts.userId), eq(session.token, opts.sessionTokenFromCookie)))
+    .returning({ id: session.id });
+  if (updated.length === 0) return "no_session";
+  return "ok";
+}
