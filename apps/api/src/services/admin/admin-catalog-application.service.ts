@@ -6,6 +6,7 @@ import type {
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IAdminCatalogApplicationService } from "../interfaces/admin-routes.js";
+import type { ArtistSearchHit } from "../interfaces/artist-registry.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "../interfaces/category.js";
 
 export class AdminCatalogApplicationService implements IAdminCatalogApplicationService {
@@ -39,7 +40,15 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
   }
 
   listArtists(input: AdminArtistListOptions) {
-    return this.artistProfileService.list(input);
+    return this.artistProfileService.listForAdmin(input);
+  }
+
+  getArtistStats() {
+    return this.artistProfileService.adminArtistStats();
+  }
+
+  listArtistDuplicateCandidates(artistId: string): Promise<ArtistSearchHit[]> {
+    return this.artistProfileService.listDuplicateCandidates(artistId);
   }
 
   createArtist(adminUserId: string, body: AdminCatalogCreateArtistBody) {

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, count, desc, eq, ilike, isNotNull, or, type SQL } from "drizzle-orm";
+import { type SQL, and, count, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
@@ -21,7 +21,8 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     const q = filter.q?.trim();
     const clauses: SQL[] = [];
     if (q) {
-      clauses.push(or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`))!);
+      const searchClause = or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`));
+      if (searchClause) clauses.push(searchClause);
     }
     if (filter.role) {
       clauses.push(eq(user.role, filter.role));

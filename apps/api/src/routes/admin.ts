@@ -815,14 +815,27 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.get("/artists/stats", async (c) => {
+    const data = await container.admin.catalog.getArtistStats();
+    return c.json({ data });
+  });
+
   platform.get("/artists", zValidator("query", adminArtistListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.admin.catalog.listArtists({
       includeArchived: q.includeArchived,
+      archivedOnly: q.archivedOnly,
       ...(q.q ? { q: q.q } : {}),
       ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.kinds ? { kinds: q.kinds } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
+      ...(q.featured === true ? { featured: true } : {}),
+      ...(q.verified === true ? { verified: true } : {}),
+      linked: q.linked,
+      sort: q.sort,
+      limit: q.limit,
+      offset: q.offset,
     });
     return c.json({ data });
   });
@@ -832,6 +845,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.admin.catalog.createArtist(adminUserId, c.req.valid("json"));
     return c.json({ data }, 201);
   });
+
+  platform.get(
+    "/artists/:artistId/duplicates",
+    zValidator("param", artistIdParamSchema),
+    async (c) => {
+      const { artistId } = c.req.valid("param");
+      const data = await container.admin.catalog.listArtistDuplicateCandidates(artistId);
+      return c.json({ data });
+    },
+  );
 
   platform.get("/artists/:artistId", zValidator("param", artistIdParamSchema), async (c) => {
     const { artistId } = c.req.valid("param");

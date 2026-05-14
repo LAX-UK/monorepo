@@ -182,12 +182,14 @@ export function getAppShellNavItems(
   sessionUser: Pick<SessionUser, "role" | "staffRole">,
   pendingSubmissionCount = 0,
   clientWorkspace: ClientWorkspaceMode = "buying",
+  pendingArtistCount = 0,
 ): AppShellNavItem[] {
   if (shell === "client") return getClientNavItems(clientWorkspace);
   return getStaffNavItems(
     sessionUser.role as UserRole,
     sessionUser.staffRole ?? null,
     pendingSubmissionCount,
+    pendingArtistCount,
   );
 }
 

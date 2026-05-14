@@ -25,9 +25,6 @@ export type SaleCalendarCardVM = {
   resultsSummary?: { hammer?: string; total?: string };
 };
 
-/** @deprecated Use SaleCalendarCardVM */
-export type SaleCalendarRowVM = SaleCalendarCardVM;
-
 function formatTimeLine(start: Date, locale = "en-GB"): string {
   return new Intl.DateTimeFormat(locale, {
     hour: "numeric",
@@ -123,9 +120,6 @@ export function mapSaleToCalendarCardVM(
     ...(resultsSummary ? { resultsSummary } : {}),
   };
 }
-
-/** @deprecated Use mapSaleToCalendarCardVM */
-export const mapSaleToCalendarRowVM = mapSaleToCalendarCardVM;
 
 /** Featured hero card — `calendar.html` trending row (240px image). */
 export type FeaturedAuctionCardVM = {

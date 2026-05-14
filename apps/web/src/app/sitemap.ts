@@ -1,3 +1,8 @@
+import {
+  ARTIST_DIRECTORY_PRESETS,
+  DECADE_SEGMENTS,
+  NATIONALITY_SEGMENTS,
+} from "@/lib/artists/directory-presets";
 import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { fetchSalesForSitemap } from "@/lib/data/http/sales.server";
@@ -18,10 +23,11 @@ const STATIC_PATHS = [
   "/cookies",
   "/terms",
   "/shipping",
-  "/artist/featured",
   "/faq",
   "/sales",
 ] as const;
+
+const LETTER_SEGMENTS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["other"]);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
@@ -71,5 +77,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...sales, ...artists, ...lots];
+  // Directory slices: each canonical preset path is its own indexable page,
+  // so we surface them to crawlers. We use `now` as `lastModified` since the
+  // listing reflects whatever artists are currently approved — fine-grained
+  // per-slice timestamps would require aggregate queries we don't run yet.
+  // `ARTIST_DIRECTORY_PRESETS` already covers `/artists`, `/artists/featured`,
+  // `/artists/living`, `/artists/historical`, and the four kind paths, so we
+  // only spread it once and add letter + decade slices on top.
+  const directorySlices: MetadataRoute.Sitemap = [
+    ...ARTIST_DIRECTORY_PRESETS.map((p) => ({
+      url: `${base}${p.canonicalPath}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: p.id === "all" ? 0.7 : 0.6,
+    })),
+    ...NATIONALITY_SEGMENTS.map((n) => ({
+      url: `${base}/artists/nationality/${n.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.55,
+    })),
+    ...DECADE_SEGMENTS.map((decade) => ({
+      url: `${base}/artists/decade/${decade}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
+    ...LETTER_SEGMENTS.map((letter) => ({
+      url: `${base}/artists/letter/${letter}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
+  ];
+
+  return [...staticRoutes, ...sales, ...artists, ...directorySlices, ...lots];
 }

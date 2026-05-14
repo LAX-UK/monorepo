@@ -1,4 +1,5 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { publicArtistBrowseQuerySchema } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -97,6 +98,28 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
+  /** GET /artists/browse — paginated public directory with filters (additive; `/public` stays a flat array). */
+  r.get("/browse", zValidator("query", publicArtistBrowseQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const data = await container.artistProfileService.browsePublic({
+      limit: q.limit,
+      offset: q.offset,
+      ...(q.q ? { q: q.q } : {}),
+      ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.kinds && q.kinds.length > 0 ? { kinds: q.kinds } : {}),
+      ...(q.letter ? { letter: q.letter } : {}),
+      ...(q.living === true ? { living: true } : {}),
+      ...(q.historical === true ? { historical: true } : {}),
+      ...(q.nationality ? { nationality: q.nationality } : {}),
+      ...(q.featuredOnly === true ? { featuredOnly: true } : {}),
+      ...(q.featuredFirst === true ? { featuredFirst: true } : {}),
+      ...(q.decade ? { decade: q.decade } : {}),
+      ...(q.hasUpcoming === true ? { hasUpcoming: true } : {}),
+      sort: q.sort,
+    });
+    return c.json({ data });
+  });
+
   /** POST /artists/propose-matches — admin: surfaces exact + alias + fuzzy buckets. */
   r.post(
     "/propose-matches",
@@ -110,6 +133,17 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
       return c.json({ data: result });
     },
   );
+
+  /** GET /artists/:id/aliases-public — public list of aliases for an approved artist (used by profile hero). */
+  r.get("/:id/aliases-public", zValidator("param", idParam), async (c) => {
+    const { id } = c.req.valid("param");
+    const found = await container.artistRegistryService.findById(id);
+    if (!found || found.status !== "approved" || found.archived) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    const detail = await container.artistProfileService.getPublicDetail(id);
+    return c.json({ data: detail?.aliases ?? [] });
+  });
 
   r.get("/by-slug/:slug", optionalAuth, zValidator("param", slugParam), async (c) => {
     const { slug } = c.req.valid("param");

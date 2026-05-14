@@ -22,13 +22,14 @@ export default async function AdminSubmissionDetailPage({
   if (!s) notFound();
 
   const submitterLegalEntityId = s.legalEntityId ?? s.sellerId ?? null;
-  const [submitterEntity, artists, staffDocuments] = await Promise.all([
+  const [submitterEntity, artistList, staffDocuments] = await Promise.all([
     submitterLegalEntityId
       ? getAdminLegalEntityById(submitterLegalEntityId).catch(() => null)
       : Promise.resolve(null),
-    getAdminArtistList().catch(() => []),
+    getAdminArtistList({ limit: 500 }).catch(() => ({ rows: [], total: 0 })),
     getServerSubmissionDocuments(id),
   ]);
+  const artists = artistList.rows;
   const submitterDisplayName = submitterEntity?.displayName;
 
   const submissionRecord = (

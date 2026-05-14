@@ -3,7 +3,7 @@
 import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { SettingsTag } from "@/components/dashboard/settings-tag";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { updateProfileImageAction } from "@/lib/actions/profile";
@@ -127,7 +127,7 @@ function ProfileAvatarBlock({ initialImage }: { initialImage: string | null }) {
         Shown on your profile and bidding account.
       </p>
       <div className="mt-4 max-w-md">
-        <UploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
+        <ImageUploadField kind="avatar" maxFiles={1} value={value} onChange={persist} />
         {pending ? <p className="mt-2 font-body text-xs text-on-surface-variant">Saving…</p> : null}
       </div>
     </div>

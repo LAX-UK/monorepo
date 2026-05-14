@@ -83,7 +83,10 @@ function filterGroups(
     .filter((g) => g.items.length > 0);
 }
 
-function buildStaffNavGroupSpecs(pendingSubmissionCount: number): readonly StaffNavGroupSpec[] {
+function buildStaffNavGroupSpecs(
+  pendingSubmissionCount: number,
+  pendingArtistCount = 0,
+): readonly StaffNavGroupSpec[] {
   const submissions: StaffNavItemSpec =
     pendingSubmissionCount > 0
       ? {
@@ -156,6 +159,7 @@ function buildStaffNavGroupSpecs(pendingSubmissionCount: number): readonly Staff
           href: "/admin/artists",
           label: "Artists",
           icon: Brush,
+          ...(pendingArtistCount > 0 ? { badge: pendingArtistCount } : {}),
           requirement: "artist.read",
         },
         submissions,
@@ -364,8 +368,13 @@ export function getStaffNavGroups(
   role: UserRole,
   pendingSubmissionCount: number,
   staffRole?: UserStaffRole | null,
+  pendingArtistCount = 0,
 ): StaffNavGroupSpec[] {
-  return filterGroups(role, staffRole, buildStaffNavGroupSpecs(pendingSubmissionCount));
+  return filterGroups(
+    role,
+    staffRole,
+    buildStaffNavGroupSpecs(pendingSubmissionCount, pendingArtistCount),
+  );
 }
 
 /** Flat sidebar items (legacy / mobile bottom sheet). */
@@ -373,9 +382,10 @@ export function getStaffNavItems(
   role: UserRole,
   staffRole: UserStaffRole | null | undefined,
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
 ): AppShellNavItem[] {
-  return getStaffNavGroups(role, pendingSubmissionCount, staffRole).flatMap((g) =>
-    g.items.map((spec) => staffNavItemToAppShellItem(spec)),
+  return getStaffNavGroups(role, pendingSubmissionCount, staffRole, pendingArtistCount).flatMap(
+    (g) => g.items.map((spec) => staffNavItemToAppShellItem(spec)),
   );
 }
 
@@ -385,8 +395,14 @@ export function getStaffNavParentLabel(
   role: UserRole,
   staffRole: UserStaffRole | null | undefined,
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
 ): string | null {
-  const items = getStaffNavGroups(role, pendingSubmissionCount, staffRole).flatMap((g) => g.items);
+  const items = getStaffNavGroups(
+    role,
+    pendingSubmissionCount,
+    staffRole,
+    pendingArtistCount,
+  ).flatMap((g) => g.items);
   let best: { hrefLen: number; label: string } | null = null;
 
   for (const item of items) {
@@ -409,8 +425,9 @@ export function getStaffNavActiveGroupId(
   role: UserRole,
   staffRole: UserStaffRole | null | undefined,
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
 ): string | null {
-  const groups = getStaffNavGroups(role, pendingSubmissionCount, staffRole);
+  const groups = getStaffNavGroups(role, pendingSubmissionCount, staffRole, pendingArtistCount);
   let best: { score: number; groupId: string } | null = null;
 
   for (const g of groups) {

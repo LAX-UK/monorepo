@@ -3,7 +3,127 @@ import "server-only";
 import type { ArtistProfile, ArtistReader } from "@/lib/data/contracts";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { createMockArtistReader } from "@/lib/data/mock/artist";
+import type {
+  PublicArtistDirectoryFacets,
+  PublicArtistDirectoryResult,
+  PublicArtistDirectoryRow,
+} from "@auction/types";
 import { cache } from "react";
+
+export type PublicArtistBrowseParams = {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  letter?: string;
+  kind?: string;
+  kinds?: string;
+  living?: boolean;
+  historical?: boolean;
+  nationality?: string;
+  featuredOnly?: boolean;
+  featuredFirst?: boolean;
+  /** Decade slug (e.g. `1900s`, `pre-1800`) — filters by `birth_year`. */
+  decade?: string;
+  /** When true, only artists with at least one `active`/`scheduled` lot. */
+  hasUpcoming?: boolean;
+  sort?: "name_asc" | "popular" | "recent";
+};
+
+function emptyFacets(): PublicArtistDirectoryFacets {
+  return {
+    total: 0,
+    featured: 0,
+    living: 0,
+    historical: 0,
+    byKind: { artist: 0, maker: 0, brand: 0, marque: 0 },
+    hasUpcoming: 0,
+    topNationalities: [],
+    topDecades: [],
+    letters: [],
+  };
+}
+
+/** Paginated public directory (`GET /artists/browse`) for marketing pages.
+ * Returns `{ rows, total, facets }`; on failure returns an empty result with
+ * an empty facet bag so pages never need to special-case nulls. */
+export async function fetchPublicArtistBrowse(
+  params: PublicArtistBrowseParams = {},
+): Promise<PublicArtistDirectoryResult> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
+    return { rows: [], total: 0, facets: emptyFacets() };
+  }
+  const sp = new URLSearchParams();
+  sp.set("limit", String(params.limit ?? 24));
+  sp.set("offset", String(params.offset ?? 0));
+  if (params.q?.trim()) sp.set("q", params.q.trim());
+  if (params.letter?.trim()) sp.set("letter", params.letter.trim());
+  if (params.kind?.trim()) sp.set("kind", params.kind.trim());
+  if (params.kinds?.trim()) sp.set("kinds", params.kinds.trim());
+  if (params.living === true) sp.set("living", "true");
+  if (params.historical === true) sp.set("historical", "true");
+  if (params.nationality?.trim()) sp.set("nationality", params.nationality.trim());
+  if (params.featuredOnly === true) sp.set("featuredOnly", "true");
+  if (params.featuredFirst === true) sp.set("featuredFirst", "true");
+  if (params.decade?.trim()) sp.set("decade", params.decade.trim());
+  if (params.hasUpcoming === true) sp.set("hasUpcoming", "true");
+  if (params.sort) sp.set("sort", params.sort);
+  try {
+    const res = await fetch(`${getServerApiBase()}/artists/browse?${sp.toString()}`, {
+      next: { revalidate: 120 },
+    });
+    if (!res.ok) return { rows: [], total: 0, facets: emptyFacets() };
+    const body = (await res.json()) as {
+      data: {
+        rows: PublicArtistDirectoryRow[];
+        total: number;
+        facets?: PublicArtistDirectoryFacets;
+      };
+    };
+    return {
+      rows: body.data.rows ?? [],
+      total: body.data.total ?? 0,
+      facets: body.data.facets ?? emptyFacets(),
+    };
+  } catch {
+    return { rows: [], total: 0, facets: emptyFacets() };
+  }
+}
+
+/** Full registry artist (richer shape than the marketing `ArtistProfile`).
+ * Used by the public profile page so it can render the registry kind, dates,
+ * and merged status correctly. Returns `null` for any non-OK response so
+ * callers can fall through to the seller-fallback codepath. */
+export async function fetchRegistryArtistById(
+  artistId: string,
+): Promise<import("@auction/types").ArtistProfile | null> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return null;
+  try {
+    const res = await fetch(`${getServerApiBase()}/artists/${encodeURIComponent(artistId)}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data: import("@auction/types").ArtistProfile };
+    return body.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Public alias chips for the artist hero (`GET /artists/:id/aliases-public`). */
+export async function fetchPublicArtistAliases(artistId: string): Promise<string[]> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
+  try {
+    const res = await fetch(
+      `${getServerApiBase()}/artists/${encodeURIComponent(artistId)}/aliases-public`,
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return [];
+    const body = (await res.json()) as { data: string[] };
+    return body.data ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export function portraitForPublicArtist(image: string | null | undefined): string | null {
   const trimmed = image?.trim();

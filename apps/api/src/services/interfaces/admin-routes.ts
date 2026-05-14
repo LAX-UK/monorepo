@@ -1,5 +1,7 @@
 import type { EmailOutboxStatus } from "@auction/db/schema";
 import type {
+  AdminArtistListResult,
+  AdminArtistStats,
   AdminCategory,
   ArtistProfile,
   Category,
@@ -36,6 +38,7 @@ import type {
   AdminUserListResult,
 } from "./admin-user.js";
 import type { AdminAnalyticsDashboard, DateRange } from "./analytics.js";
+import type { ArtistSearchHit } from "./artist-registry.js";
 import type { AttentionItem } from "./attention-feed.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.js";
 import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
@@ -144,7 +147,9 @@ export interface IAdminCatalogApplicationService {
   updateCategory(categoryId: string, body: UpdateCategoryInput): Promise<Category>;
   archiveCategory(categoryId: string): Promise<Category>;
   deleteCategory(categoryId: string): Promise<void>;
-  listArtists(input: AdminArtistListOptions): Promise<ArtistProfile[]>;
+  listArtists(input: AdminArtistListOptions): Promise<AdminArtistListResult>;
+  getArtistStats(): Promise<AdminArtistStats>;
+  listArtistDuplicateCandidates(artistId: string): Promise<ArtistSearchHit[]>;
   createArtist(adminUserId: string, body: AdminCatalogCreateArtistBody): Promise<ArtistProfile>;
   getArtist(artistId: string): Promise<ArtistProfile | null>;
   updateArtist(artistId: string, body: AdminCatalogUpdateArtistBody): Promise<ArtistProfile>;

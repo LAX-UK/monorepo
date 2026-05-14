@@ -1,7 +1,7 @@
 "use client";
 
 import { SortableImageItem } from "@/components/admin/sortable-image-item";
-import { UploadField } from "@/components/forms/upload-field";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { type ReorderableImageEntry, useImageReorder } from "@/lib/forms/lot/use-image-reorder";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { DndContext, closestCenter } from "@dnd-kit/core";
@@ -38,7 +38,7 @@ export function LotImageManager({ value, onChange, maxFiles = 20 }: Props) {
   return (
     <div className="space-y-4">
       {remaining > 0 ? (
-        <UploadField
+        <ImageUploadField
           kind="lot_image"
           multiple
           maxFiles={remaining}
