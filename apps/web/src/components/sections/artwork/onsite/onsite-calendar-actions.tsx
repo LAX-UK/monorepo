@@ -1,6 +1,7 @@
 "use client";
 
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
+import { useClientOrigin } from "@/lib/dom/use-client-origin";
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -74,14 +75,19 @@ export function RequestViewingMailtoButton({
   subjectPrefix = "Viewing request",
   className,
 }: MailProps) {
+  // Empty during SSR + first client render so the rendered href matches across
+  // both passes; mount effect fills in the absolute origin afterwards.
+  const origin = useClientOrigin();
   const subject = encodeURIComponent(`${subjectPrefix}: ${sale.title} — ${lotTitle}`);
   const body = encodeURIComponent(
-    `I would like to arrange a viewing or phone bidding for:\n\nSale: ${sale.title}\nLot: ${lotTitle}\nSale page: ${typeof window !== "undefined" ? window.location.origin : ""}${salePath(sale)}\n\n`,
+    `I would like to arrange a viewing or phone bidding for:\n\nSale: ${sale.title}\nLot: ${lotTitle}\nSale page: ${origin}${salePath(sale)}\n\n`,
   );
   const href = `mailto:${SITE_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
   return (
     <Button type="button" variant="secondary" className={className} asChild>
-      <a href={href}>Request appointment</a>
+      <a href={href} suppressHydrationWarning>
+        Request appointment
+      </a>
     </Button>
   );
 }
