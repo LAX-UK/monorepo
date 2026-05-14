@@ -1,11 +1,13 @@
 "use client";
 
+import { StepUpDialog } from "@/components/auth/step-up/step-up-dialog";
 import { UnderlineInput } from "@/components/ui/input";
 import {
   cancelEmailChangeAction,
   requestEmailChangeAction,
 } from "@/lib/actions/request-email-change";
 import { AUTH_ERROR_MESSAGES, isAuthErrorCode } from "@/lib/auth/auth-error-code";
+import { actionResultToStepUpVoid, useStepUpCoordinator, withStepUp } from "@/lib/auth/step-up";
 import { maskEmail } from "@/lib/format/mask-email";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -32,6 +34,7 @@ export function ChangeEmailForm({
 }) {
   const router = useRouter();
   const [cancelPending, startCancel] = useTransition();
+  const coordinator = useStepUpCoordinator();
   const form = useForm<RequestEmailChangeInput>({
     resolver: zodResolver(requestEmailChangeSchema),
     defaultValues: { newEmail: "", confirmEmail: "" },
@@ -39,21 +42,22 @@ export function ChangeEmailForm({
 
   return (
     <>
+      <StepUpDialog coordinator={coordinator} />
       <Form {...form}>
         <form
           className="space-y-5"
           onSubmit={form.handleSubmit(async (values) => {
             form.clearErrors("root");
-            const result = await requestEmailChangeAction(values);
-            if (result.ok) {
+            const raw = await requestEmailChangeAction(values);
+            if (raw.ok) {
               notify.success("Confirmation links sent", {
                 description: `Confirm from ${maskEmail(currentEmail)} and from your new inbox — both are required.`,
               });
               form.reset();
               return;
             }
-            if (result.fieldErrors) {
-              for (const [key, messages] of Object.entries(result.fieldErrors)) {
+            if (raw.fieldErrors) {
+              for (const [key, messages] of Object.entries(raw.fieldErrors)) {
                 if (messages?.[0]) {
                   form.setError(key as FieldPath<RequestEmailChangeInput>, {
                     message: messages[0],
@@ -62,10 +66,37 @@ export function ChangeEmailForm({
               }
               return;
             }
+            if (
+              raw.errorCode === "recent_auth_required" ||
+              raw.errorCode === "credential_required"
+            ) {
+              const after = await withStepUp(
+                async () => actionResultToStepUpVoid(await requestEmailChangeAction(values)),
+                coordinator,
+              );
+              if (!after.ok) {
+                if (
+                  after.reason === "recent_auth_required" ||
+                  after.reason === "credential_required"
+                ) {
+                  return;
+                }
+                form.setError("root", {
+                  message: "Could not send confirmation. Please try again.",
+                });
+                notify.error("Could not send confirmation. Please try again.");
+                return;
+              }
+              notify.success("Confirmation links sent", {
+                description: `Confirm from ${maskEmail(currentEmail)} and from your new inbox — both are required.`,
+              });
+              form.reset();
+              return;
+            }
             const displayError =
-              result.errorCode && isAuthErrorCode(result.errorCode)
-                ? AUTH_ERROR_MESSAGES[result.errorCode]
-                : result.error;
+              raw.errorCode && isAuthErrorCode(raw.errorCode)
+                ? AUTH_ERROR_MESSAGES[raw.errorCode]
+                : raw.error;
             form.setError("root", { message: displayError });
             notify.error(displayError);
           })}
@@ -134,9 +165,15 @@ export function ChangeEmailForm({
             disabled={cancelPending}
             onClick={() => {
               startCancel(async () => {
-                const r = await cancelEmailChangeAction();
+                const r = await withStepUp(
+                  async () => actionResultToStepUpVoid(await cancelEmailChangeAction()),
+                  coordinator,
+                );
                 if (!r.ok) {
-                  notify.error(r.error);
+                  if (r.reason === "recent_auth_required" || r.reason === "credential_required") {
+                    return;
+                  }
+                  notify.error("Could not cancel email change. Please try again.");
                   return;
                 }
                 notify.success("Email change cancelled");
