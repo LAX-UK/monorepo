@@ -42,6 +42,7 @@ jobs:
       TF_VAR_verify_origin: "true"
       TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@v4
