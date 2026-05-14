@@ -56,6 +56,7 @@ export async function getServerHc(): Promise<RpcApp> {
       if (cookieHeader) headers.set("Cookie", cookieHeader);
       return fetch(input, {
         ...init,
+        cache: init?.cache ?? "no-store",
         headers,
         credentials: "include",
       });

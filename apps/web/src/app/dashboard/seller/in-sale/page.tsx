@@ -1,12 +1,12 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { Lot } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Card, CardContent } from "@auction/ui/components/card";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
@@ -165,7 +165,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   let lots: Lot[] = [];
   let fetchError: string | null = null;
   try {
-    lots = await c.lots.list({ sellerId: acting.id, limit: 100 });
+    lots = await c.sellerLots.list({ sellerId: acting.id, limit: 100 });
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Could not load your lots.";
   }
@@ -186,7 +186,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         );
 
   return (
-    <div className="screen w-full space-y-6">
+    <DashboardPage className="screen w-full space-y-6">
       <PageHeader
         title="Items in sale"
         description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
@@ -217,17 +217,15 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
       </div>
 
       {fetchError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load your lots</AlertTitle>
-          <AlertDescription>
-            {fetchError} Refresh the page or try again in a few minutes.
-          </AlertDescription>
-        </Alert>
+        <DashboardErrorAlert
+          title="Could not load your lots"
+          message={`${fetchError} Refresh the page or try again in a few minutes.`}
+        />
       ) : null}
 
       <section aria-live="polite" aria-busy="false">
         {!fetchError && allDisplay.length === 0 ? (
-          <EmptyState
+          <DashboardEmptyState
             title="No lots yet"
             description="Once your submissions are approved and added to a sale, they will appear here. Start by submitting your first work."
             action={
@@ -239,7 +237,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         ) : null}
 
         {!fetchError && allDisplay.length > 0 && filtered.length === 0 ? (
-          <EmptyState
+          <DashboardEmptyState
             title={rawQ ? "No lots match this search" : "No lots match this filter"}
             description={
               rawQ
@@ -262,6 +260,6 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
           </ul>
         ) : null}
       </section>
-    </div>
+    </DashboardPage>
   );
 }

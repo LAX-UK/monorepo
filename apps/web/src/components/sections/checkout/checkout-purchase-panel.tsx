@@ -89,22 +89,24 @@ export function CheckoutPurchasePanel({
 
   if (submitted) {
     return (
-      <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-8 py-10 text-center shadow-sm">
-        <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
-          Request received
-        </p>
-        <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
-        <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-          Your payment record has been created. When online checkout is enabled, you&apos;ll
-          complete payment here; until then our settlements team will follow up with wire or other
-          instructions.
-        </p>
-      </output>
+      <div id="checkout-complete-purchase" className="scroll-mt-28">
+        <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-8 py-10 text-center shadow-sm">
+          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+            Request received
+          </p>
+          <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
+          <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
+            Your payment record has been created. When online checkout is enabled, you&apos;ll
+            complete payment here; until then our settlements team will follow up with wire or other
+            instructions.
+          </p>
+        </output>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-10">
+    <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-10">
       <Card className="max-lg:sticky max-lg:top-4 max-lg:z-10 border border-outline-variant/15 bg-surface-container-low shadow-md max-lg:shadow-lg">
         <CardContent className="p-8 pt-8">
           <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
@@ -302,10 +304,9 @@ export function CheckoutPurchasePanel({
               </p>
             ) : null}
             <Button
-              id="checkout-complete-purchase"
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="h-auto min-h-11 w-full scroll-mt-28 py-5"
+              className="h-auto min-h-11 w-full py-5"
             >
               {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
             </Button>

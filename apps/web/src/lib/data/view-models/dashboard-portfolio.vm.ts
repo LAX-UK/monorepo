@@ -48,11 +48,14 @@ export type PortfolioAnalyticsVm = {
   categoryCounts: { id: string; count: number }[];
 };
 
-export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): PortfolioAnalyticsVm {
+export function buildPortfolioAnalytics(
+  rows: readonly PortfolioRow[],
+  options?: { now?: Date },
+): PortfolioAnalyticsVm {
   let totalSpent = 0;
   let outstanding = 0;
   const yearsSet = new Set<number>();
-  const yearUtc = new Date().getUTCFullYear();
+  const yearUtc = (options?.now ?? new Date()).getUTCFullYear();
   let wonThisYear = 0;
   const categoryCount = new Map<string, number>();
   for (const row of rows) {
@@ -88,13 +91,8 @@ export function toPortfolioLotCards(
     const a = row.lot;
     const img = a.images[0];
     const cp = a.checkoutPricing;
-    const hammer = Number.parseFloat(a.currentPrice);
-    const premium = cp
-      ? Number.parseFloat(cp.premiumMajor)
-      : Number.isFinite(hammer)
-        ? hammer * (Number.parseFloat(a.buyerPremiumRate) || 0)
-        : 0;
-    const total = cp ? Number.parseFloat(cp.totalMajor) : lotTotalMajorUnits(a);
+    const premium = cp ? Number.parseFloat(cp.premiumMajor) : Number.NaN;
+    const total = cp ? Number.parseFloat(cp.totalMajor) : Number.NaN;
     const settlementLabel = portfolioSettlementLabel(row);
     const settlementStageIndex =
       settlementLabel === "Paid" || settlementLabel === "Payment authorized"
@@ -112,7 +110,7 @@ export function toPortfolioLotCards(
       title: a.title,
       artistName,
       image: img ?? null,
-      hammerLabel: formatMoney(a.currentPrice),
+      hammerLabel: cp ? formatMoney(cp.hammerMajor) : formatMoney(a.currentPrice),
       premiumLabel: formatMoney((Number.isFinite(premium) ? premium : 0).toFixed(2)),
       totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2)) : "—",
       dueLabel: row.payment?.status === "captured" ? "Paid" : "Due now",

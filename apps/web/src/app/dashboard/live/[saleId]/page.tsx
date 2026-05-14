@@ -21,7 +21,7 @@ export default async function LiveSaleRoomPage({ params }: Props) {
         description="Use the marketing sale page for timed auctions today; hybrid clerk integrations will unlock this surface."
         action={
           <Button variant="default" asChild>
-            <Link href="/">Browse timed sales</Link>
+            <Link href="/search">Browse timed sales</Link>
           </Button>
         }
       />

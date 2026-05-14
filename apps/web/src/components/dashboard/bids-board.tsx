@@ -2,16 +2,15 @@
 
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
+import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { LotCardTimer } from "@/components/lot-timer";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import {
   Form,
   FormControl,
@@ -382,12 +381,7 @@ export function BidsBoard({
         }
       />
 
-      {fetchError ? (
-        <Alert variant="destructive" className="mb-8 rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not load bids</AlertTitle>
-          <AlertDescription>{fetchError}</AlertDescription>
-        </Alert>
-      ) : null}
+      {fetchError ? <DashboardErrorAlert title="Could not load bids" message={fetchError} /> : null}
 
       <DashboardSectionTabs
         ariaLabel="Bid status"
@@ -462,7 +456,7 @@ export function BidsBoard({
       />
 
       {currentRows.all.length === 0 ? (
-        <EmptyState
+        <DashboardEmptyState
           title={
             tab === "active"
               ? fetchError
@@ -484,13 +478,13 @@ export function BidsBoard({
           action={
             tab === "active" && !fetchError ? (
               <Button variant="primary" asChild>
-                <Link href="/">Browse auctions</Link>
+                <Link href="/search">Browse auctions</Link>
               </Button>
             ) : undefined
           }
         />
       ) : currentRows.filtered.length === 0 ? (
-        <EmptyState
+        <DashboardEmptyState
           title="No matches"
           description="Nothing in this tab matches your search. Clear the filter or try another title."
           action={

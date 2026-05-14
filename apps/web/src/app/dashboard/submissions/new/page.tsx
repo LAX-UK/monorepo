@@ -1,7 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NewSubmissionForm } from "@/components/dashboard/new-submission-form";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 export default async function NewSubmissionPage({
   searchParams,
@@ -15,12 +15,7 @@ export default async function NewSubmissionPage({
 
   return (
     <DashboardPage className="mx-auto max-w-2xl space-y-6">
-      {error ? (
-        <Alert variant="destructive" className="rounded-xl border-error/40 shadow-sm">
-          <AlertTitle>Could not save</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+      {error ? <DashboardErrorAlert title="Could not save" message={error} /> : null}
       <NewSubmissionForm categories={categories} />
     </DashboardPage>
   );

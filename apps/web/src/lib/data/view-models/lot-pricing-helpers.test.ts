@@ -50,18 +50,28 @@ describe("lotTotalMajorUnits", () => {
     expect(lotTotalMajorUnits(lot)).toBe(1250);
   });
 
-  it("falls back to hammer * (1 + rate) when checkoutPricing is absent", () => {
+  it("returns 0 when checkoutPricing is absent (BE-only totals)", () => {
     const lot = baseLot({ currentPrice: "200", buyerPremiumRate: "0.1" });
-    expect(lotTotalMajorUnits(lot)).toBeCloseTo(220);
+    expect(lotTotalMajorUnits(lot)).toBe(0);
   });
 });
 
 describe("portfolioRowTotalMajorUnits", () => {
   it("delegates to lotTotalMajorUnits", () => {
     const row: PortfolioRow = {
-      lot: baseLot({ currentPrice: "100", buyerPremiumRate: "0.2" }),
+      lot: baseLot({
+        currentPrice: "100",
+        buyerPremiumRate: "0.2",
+        checkoutPricing: {
+          hammerMajor: "100",
+          premiumMajor: "20",
+          totalMajor: "120",
+          policyId: "flat:test",
+          kind: "flat",
+        },
+      }),
       payment: null,
     };
-    expect(portfolioRowTotalMajorUnits(row)).toBeCloseTo(120);
+    expect(portfolioRowTotalMajorUnits(row)).toBe(120);
   });
 });

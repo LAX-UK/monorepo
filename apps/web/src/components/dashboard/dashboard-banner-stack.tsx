@@ -3,7 +3,6 @@ import "server-only";
 import {
   DASHBOARD_BANNER_PRIORITIES,
   type DashboardBannerCandidate,
-  selectTopDashboardBannerCandidates,
 } from "@/components/dashboard/dashboard-banner-priority";
 import {
   EntityStatusBanner,
@@ -13,11 +12,11 @@ import { KycVerificationBanner } from "@/components/dashboard/kyc-verification-b
 import { OrgOnboardingResumeBanner } from "@/components/dashboard/org-onboarding-resume-banner";
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
-import type { OrgOnboardingResumeVm } from "@/lib/data/http/org-onboarding.server";
+import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { LegalEntitySummary } from "@auction/types";
+import Link from "next/link";
 
-export { DASHBOARD_BANNER_PRIORITIES, selectTopDashboardBannerCandidates };
+export { DASHBOARD_BANNER_PRIORITIES };
 export type { DashboardBannerCandidate };
 
 function shouldOfferEmailStatusBanner(user: SessionUser): boolean {
@@ -35,7 +34,7 @@ type StackProps = {
   orgOnboardingResume: OrgOnboardingResumeVm | null;
 };
 
-/** Renders at most two dashboard alerts by priority; overflow is dropped (Phase A). */
+/** Renders dashboard alerts by priority; overflow links to settings. */
 export function DashboardBannerStack({
   user,
   acting,
@@ -76,13 +75,23 @@ export function DashboardBannerStack({
     });
   }
 
-  const chosen = selectTopDashboardBannerCandidates(candidates, 2);
+  const maxVisible = 6;
+  const sorted = [...candidates].sort((a, b) => b.priority - a.priority);
+  const chosen = sorted.slice(0, maxVisible);
+  const overflow = sorted.length - chosen.length;
 
   return (
     <div className="flex flex-col gap-3 empty:hidden" data-testid="dashboard-banner-stack">
       {chosen.map((c) => (
         <div key={c.id}>{c.node}</div>
       ))}
+      {overflow > 0 ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          <Link href="/dashboard/settings" className="font-medium text-primary underline">
+            +{overflow} more account alert{overflow === 1 ? "" : "s"}
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }
