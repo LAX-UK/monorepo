@@ -1,7 +1,10 @@
+import type { SaleCardCommon } from "@/components/sections/sales/card/types";
 import { formatMoney } from "@/lib/format-currency";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
+
+export type { SaleCardCommon } from "@/components/sections/sales/card/types";
 
 export type SaleCalendarCardVM = {
   id: string;
@@ -121,36 +124,22 @@ export function mapSaleToCalendarCardVM(
   };
 }
 
-/** Featured hero card — `calendar.html` trending row (240px image). */
-export type FeaturedAuctionCardVM = {
-  id: string;
-  href: string;
-  title: string;
-  coverImageUrl: string | null;
-  coverImageAlt: string;
+/** Featured hero card — `calendar.html` trending row. */
+export type FeaturedAuctionCardVM = SaleCardCommon & {
   auctionTypeLabel: string;
   /** Uppercase schedule line, e.g. "9–16 APRIL 2026 | 11:00 AM GMT". */
   dateLabel: string;
   locationLabel: string | null;
-  status: Sale["status"];
-  countdownEndIso?: string;
 };
 
-/** Browse row — horizontal list (435×300 image in mock). */
-export type SaleAuctionRowVM = {
-  id: string;
-  href: string;
+/** Browse row — horizontal list on large screens, stacked mobile-first. */
+export type SaleAuctionRowVM = SaleCardCommon & {
   lotsHref: string;
-  title: string;
-  coverImageUrl: string | null;
-  coverImageAlt: string;
   /** First line: bold segment + remainder, e.g. type "Online Auction " + "| 9–16 April …". */
   scheduleLead: string;
   scheduleRest: string;
   auctionTypeLine: string;
   itemsLabel: string;
-  status: Sale["status"];
-  countdownEndIso?: string;
   showRegisterButton: boolean;
 };
 

@@ -23,10 +23,10 @@ type Props = {
 
 export function SalesPrimaryTabs({ state }: Props) {
   return (
-    <div className="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="w-full overflow-x-auto scroll-pl-4 scroll-pr-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <nav
         aria-label="Calendar sections"
-        className="inline-flex min-w-full items-start gap-6 border-b border-[#D1D1D1] pb-0 sm:gap-10 lg:min-w-0 lg:gap-12"
+        className="inline-flex min-w-full items-start gap-5 border-b border-outline-variant pb-0 sm:gap-8 lg:min-w-0 lg:gap-12"
       >
         {TABS.map((t) => {
           const isActive = state.tab === t.id;
@@ -36,11 +36,11 @@ export function SalesPrimaryTabs({ state }: Props) {
               key={t.id}
               href={href}
               className={cn(
-                "shrink-0 whitespace-nowrap pb-1.5 font-body text-base font-semibold uppercase leading-5 text-[#1C170D] transition-colors duration-200 ease-out dark:text-on-surface lg:text-lg lg:leading-[21px]",
-                "border-b-[1.5px] border-transparent hover:text-[#050505] dark:hover:text-on-surface",
+                "snap-start inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap py-2 font-body text-base font-semibold uppercase leading-5 text-nav-text transition-colors duration-200 ease-out sm:pb-1.5 lg:text-lg lg:leading-[21px]",
+                "border-b-[1.5px] border-transparent hover:text-on-surface",
                 "motion-safe:transition-[color,border-color] motion-safe:duration-200",
-                isActive &&
-                  "border-black text-[#050505] dark:border-on-surface dark:text-on-surface",
+                "focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
+                isActive && "border-on-surface text-on-surface",
                 !isActive && "border-transparent",
               )}
               aria-current={isActive ? "page" : undefined}
