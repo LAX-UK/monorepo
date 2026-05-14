@@ -29,6 +29,7 @@ type Props = {
   user: SessionUser;
   role: AppShellRole;
   pendingSubmissionCount?: number;
+  pendingArtistCount?: number;
   onNavigate?: () => void;
   collapsible?: boolean;
   /** Collector vs seller workspace (client shell only). */
@@ -72,13 +73,20 @@ export function AppShellSidebar({
   user,
   role,
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
   onNavigate,
   collapsible = false,
   clientWorkspaceMode = "buying",
 }: Props) {
   const pathname = usePathname();
   const meta = appShellRoleMeta[role];
-  const items = getAppShellNavItems(role, user, pendingSubmissionCount, clientWorkspaceMode);
+  const items = getAppShellNavItems(
+    role,
+    user,
+    pendingSubmissionCount,
+    clientWorkspaceMode,
+    pendingArtistCount,
+  );
   const { collapsed, peeking } = useSidebarState();
   const labelsHidden = collapsible && collapsed && !peeking;
 
@@ -185,6 +193,7 @@ export function AppShellSidebar({
           <StaffSidebarNav
             user={user}
             pendingSubmissionCount={pendingSubmissionCount}
+            pendingArtistCount={pendingArtistCount}
             labelsHidden={labelsHidden}
             {...(onNavigate ? { onNavigate } : {})}
           />

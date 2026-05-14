@@ -31,7 +31,7 @@ const marketingSections: PaletteSection[] = [
       { id: "m-upcoming", href: "/", label: "Upcoming auctions", hint: "Home" },
       { id: "m-search", href: "/search", label: "Search lots" },
       { id: "m-archive", href: "/archive", label: "Past auctions" },
-      { id: "m-artists", href: "/artist/featured", label: "Featured artists" },
+      { id: "m-artists", href: "/artists", label: "Browse artists" },
     ],
   },
 ];
@@ -70,9 +70,15 @@ const dashboardSellingSections: PaletteSection[] = [
 function buildStaffAdminPaletteSections(
   sessionUser: SessionUser,
   pendingSubmissionCount: number,
+  pendingArtistCount = 0,
 ): PaletteSection[] {
   const role = sessionUser.role as UserRole;
-  const groups = getStaffNavGroups(role, pendingSubmissionCount, sessionUser.staffRole ?? null);
+  const groups = getStaffNavGroups(
+    role,
+    pendingSubmissionCount,
+    sessionUser.staffRole ?? null,
+    pendingArtistCount,
+  );
   const fromNav: PaletteSection[] = groups.map((g) => ({
     id: g.id,
     heading: g.title,
@@ -87,6 +93,23 @@ function buildStaffAdminPaletteSections(
     heading: "Shortcuts",
     items: [
       { id: "sn-new-lot", href: "/admin/lots/new", label: "New lot" },
+      { id: "sn-new-artist", href: "/admin/artists/new", label: "New artist" },
+      ...(pendingArtistCount > 0
+        ? [
+            {
+              id: "sn-pending-artists",
+              href: "/admin/artists?status=pending",
+              label: "Pending artists",
+              hint: `${pendingArtistCount} pending`,
+            } satisfies PaletteItem,
+          ]
+        : [
+            {
+              id: "sn-pending-artists",
+              href: "/admin/artists?status=pending",
+              label: "Pending artists",
+            } satisfies PaletteItem,
+          ]),
       { id: "sn-gallery", href: "/", label: "Exit to gallery", hint: "Marketing site" },
     ],
   };
@@ -116,6 +139,7 @@ function buildVisibleSections(
   sessionUser?: SessionUser | null,
   clientWorkspaceMode: ClientWorkspaceMode = "buying",
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
@@ -123,7 +147,7 @@ function buildVisibleSections(
         ? dashboardSellingSections
         : hideLiveBiddingItems(dashboardBuyingSections)
       : variant === "admin" && sessionUser
-        ? buildStaffAdminPaletteSections(sessionUser, pendingSubmissionCount)
+        ? buildStaffAdminPaletteSections(sessionUser, pendingSubmissionCount, pendingArtistCount)
         : variant === "admin"
           ? []
           : marketingSections;
@@ -155,9 +179,9 @@ function buildVisibleSections(
           label: `Lots list · title contains "${q}"`,
         },
         {
-          id: "action-admin-users-q",
-          href: `/admin/users?q=${encodeURIComponent(q)}`,
-          label: `Users · search "${q}"`,
+          id: "action-admin-artists-q",
+          href: `/admin/artists?q=${encodeURIComponent(q)}`,
+          label: `Artists · search "${q}"`,
         },
       );
       const maybeUuid =
@@ -211,6 +235,7 @@ type Props = {
   clientWorkspaceMode?: ClientWorkspaceMode;
   /** Submission badge count for staff nav parity with sidebar (optional). */
   pendingSubmissionCount?: number;
+  pendingArtistCount?: number;
 };
 
 export function CommandPalette({
@@ -218,6 +243,7 @@ export function CommandPalette({
   sessionUser = null,
   clientWorkspaceMode = "buying",
   pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -236,8 +262,9 @@ export function CommandPalette({
         sessionUser,
         clientWorkspaceMode,
         pendingSubmissionCount,
+        pendingArtistCount,
       ),
-    [variant, query, sessionUser, clientWorkspaceMode, pendingSubmissionCount],
+    [variant, query, sessionUser, clientWorkspaceMode, pendingSubmissionCount, pendingArtistCount],
   );
   const flatItems = useMemo(() => flattenItems(visibleSections), [visibleSections]);
 

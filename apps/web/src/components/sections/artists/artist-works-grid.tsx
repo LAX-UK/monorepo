@@ -38,11 +38,11 @@ const ALL_FILTER: WorkFilterOption = { label: "All", value: "all", matches: () =
 const FILTERS: WorkFilterOption[] = [
   ALL_FILTER,
   {
-    label: "Live",
+    label: "Upcoming",
     value: "live",
     matches: (lot) => lot.status === "active" || lot.status === "scheduled",
   },
-  { label: "Past", value: "past", matches: (lot) => lot.status === "ended" },
+  { label: "Past results", value: "past", matches: (lot) => lot.status === "ended" },
 ];
 
 const STATUS_DISPLAY: Record<LotStatus, LotStatusDisplay> = {
@@ -161,7 +161,11 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
 }
 
 export function ArtistWorksGrid({ lots, currentUserId }: Props) {
-  const [filter, setFilter] = useState<WorkFilter>("all");
+  const initial: WorkFilter = useMemo(() => {
+    const hasUpcoming = lots.some((l) => l.status === "active" || l.status === "scheduled");
+    return hasUpcoming ? "live" : "all";
+  }, [lots]);
+  const [filter, setFilter] = useState<WorkFilter>(initial);
   const visibleLots = useMemo(() => lots.filter(getFilter(filter).matches), [filter, lots]);
 
   return (
@@ -171,7 +175,7 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
           id="artist-works-heading"
           className="font-headline text-2xl font-semibold tracking-tight text-on-surface"
         >
-          Selected works
+          Lots
         </h2>
         <WorkFilterControls value={filter} onChange={setFilter} />
       </div>

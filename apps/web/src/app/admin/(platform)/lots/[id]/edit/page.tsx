@@ -18,13 +18,14 @@ export default async function AdminEditAuctionPage({
   params,
 }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [auction, categories, users, artists, lotDocuments] = await Promise.all([
+  const [auction, categories, users, artistList, lotDocuments] = await Promise.all([
     getAdminLotById(id).catch(() => null),
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
-    getAdminArtistList(),
+    getAdminArtistList({ includeArchived: false, limit: 500 }),
     getServerLotDocuments(id),
   ]);
+  const artists = artistList.rows;
   if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled") {
     redirect(`/admin/lots/${id}`);

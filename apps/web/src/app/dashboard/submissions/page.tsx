@@ -3,9 +3,9 @@ import { DashboardErrorAlert, DashboardSkeleton } from "@/components/dashboard/p
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { SubmissionListFilterValues } from "@/lib/forms/submission/submission-form-schema";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { PageHeader } from "@auction/ui/components/page-header";
+import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";

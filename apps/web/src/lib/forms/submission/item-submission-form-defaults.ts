@@ -1,5 +1,5 @@
 import type { CategoryNode, ItemSubmission } from "@auction/types";
-import type { NewSubmissionFormValues } from "./submission-form-schema";
+import type { ItemSubmissionFormValues as NewSubmissionFormValues } from "@auction/validators";
 
 export type SubmissionCategoryOption = CategoryNode;
 

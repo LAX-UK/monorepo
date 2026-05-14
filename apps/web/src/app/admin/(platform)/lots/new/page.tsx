@@ -38,11 +38,12 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
     cloneDefaults = { ...cloneDefaults, auctionType: "english" };
   }
 
-  const [categories, users, artists] = await Promise.all([
+  const [categories, users, artistList] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminUserList({ limit: 100 }),
-    getAdminArtistList(),
+    getAdminArtistList({ includeArchived: false, limit: 500 }),
   ]);
+  const artists = artistList.rows;
 
   return (
     <AdminEntityFormShell
