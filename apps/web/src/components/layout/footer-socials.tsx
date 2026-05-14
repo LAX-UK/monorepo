@@ -46,7 +46,8 @@ function SocialIconLinkedIn({ className = "" }: { className?: string }) {
   );
 }
 
-const socialClass = "h-6 w-6 text-brand-800 transition-opacity hover:opacity-70";
+const socialClass =
+  "h-6 w-6 text-brand-800 transition-opacity hover:opacity-70 dark:text-on-surface";
 
 export function FooterSocials() {
   return (

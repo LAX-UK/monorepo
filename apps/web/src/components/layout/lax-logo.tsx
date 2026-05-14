@@ -55,9 +55,8 @@ export function LaxLogo({
           width={imageWidth}
           height={imageHeight}
           className={cn(
-            "h-auto w-auto motion-reduce:transition-none",
+            "h-auto w-auto motion-reduce:transition-none dark:brightness-0 dark:invert",
             imgMax,
-            variant === "header" && "dark:brightness-0 dark:invert",
           )}
           priority={variant === "header"}
         />

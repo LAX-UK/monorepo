@@ -13,14 +13,25 @@ const VIEW_ALL_HREF = "/search";
 
 type Props = {
   lots: EditorsPickLotCardVM[];
+  isAuthenticated: boolean;
+  watchedLotIds: readonly string[];
+  loginNextPath?: string;
 };
 
 type CarouselProps = {
   lots: EditorsPickLotCardVM[];
+  isAuthenticated: boolean;
+  watchedLotIds: readonly string[];
+  loginNextPath: string;
 };
 
 /** Scroll strip + overflow affordances; remounted when `lots` identity changes (parent key). */
-function EditorsPicksCarousel({ lots }: CarouselProps) {
+function EditorsPicksCarousel({
+  lots,
+  isAuthenticated,
+  watchedLotIds,
+  loginNextPath,
+}: CarouselProps) {
   const scrollerRef = useRef<HTMLUListElement>(null);
   const reduceMotion = useReducedMotion();
   const [canScrollEnd, setCanScrollEnd] = useState(false);
@@ -61,7 +72,13 @@ function EditorsPicksCarousel({ lots }: CarouselProps) {
       >
         {lots.map((lot, index) => (
           <li key={lot.id} className="w-[min(100vw-4rem,280px)] shrink-0 snap-start sm:w-[280px]">
-            <EditorsPickMarketingCard lot={lot} index={index} />
+            <EditorsPickMarketingCard
+              lot={lot}
+              index={index}
+              isAuthenticated={isAuthenticated}
+              watchedLotIds={watchedLotIds}
+              loginNextPath={loginNextPath}
+            />
           </li>
         ))}
       </ul>
@@ -82,7 +99,12 @@ function EditorsPicksCarousel({ lots }: CarouselProps) {
   );
 }
 
-export function EditorsPicksMarketingClient({ lots }: Props) {
+export function EditorsPicksMarketingClient({
+  lots,
+  isAuthenticated,
+  watchedLotIds,
+  loginNextPath = "/",
+}: Props) {
   const stripKey = lots.map((l) => l.id).join(",");
 
   return (
@@ -120,7 +142,13 @@ export function EditorsPicksMarketingClient({ lots }: Props) {
           </Button>
         </div>
 
-        <EditorsPicksCarousel key={stripKey} lots={lots} />
+        <EditorsPicksCarousel
+          key={stripKey}
+          lots={lots}
+          isAuthenticated={isAuthenticated}
+          watchedLotIds={watchedLotIds}
+          loginNextPath={loginNextPath}
+        />
       </div>
     </section>
   );

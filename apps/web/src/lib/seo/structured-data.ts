@@ -77,6 +77,36 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
   };
 }
 
+/** Home page root document (pairs with `breadcrumbJsonLd` via optional `@id` link). */
+export function webPageJsonLd(opts: {
+  url: string;
+  name: string;
+  description?: string;
+  breadcrumbId?: string;
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    url: opts.url,
+    name: opts.name,
+    ...(opts.description ? { description: opts.description } : {}),
+    ...(opts.breadcrumbId ? { breadcrumb: { "@id": opts.breadcrumbId } } : {}),
+  };
+}
+
+/** `ItemList` of `Event` entries for upcoming sales on the marketing home page. */
+export function homeUpcomingItemListJsonLd(sales: Sale[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: sales.map((sale, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: saleEventJsonLd(sale),
+    })),
+  };
+}
+
 export function faqPageJsonLd(
   items: { question: string; answer: string }[],
 ): Record<string, unknown> {
@@ -213,11 +243,15 @@ export function itemListJsonLd(items: { name: string; url: string }[]): Record<s
   };
 }
 
-export function breadcrumbJsonLd(items: { name: string; path: string }[]): Record<string, unknown> {
+export function breadcrumbJsonLd(
+  items: { name: string; path: string }[],
+  opts?: { graphId?: string },
+): Record<string, unknown> {
   const base = getSiteUrl();
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+    ...(opts?.graphId ? { "@id": opts.graphId } : {}),
     itemListElement: items.map((item, i) => ({
       "@type": "ListItem",
       position: i + 1,
