@@ -8,6 +8,7 @@ import {
 } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Privacy Notice",
@@ -388,17 +389,22 @@ export default function PrivacyPage() {
           cookies are used only where permitted and, where required, with consent.
         </p>
         <p>
-          <strong>Current deployment (pre-production readiness review):</strong> the public
-          marketing site and buyer dashboard do not load third-party advertising or analytics
-          scripts (for example Google Analytics or Meta Pixel). Authentication uses first-party
-          session cookies; error monitoring may use Sentry in accordance with our subprocessors
-          list. If optional marketing cookies are introduced later, we will add an explicit consent
-          control and update this notice.
+          On the public marketing site and buyer dashboard, optional analytics may be loaded via{" "}
+          <strong>Google Tag Manager</strong> (container <code>GTM-W6K4N67Z</code>) when you choose
+          to allow analytics cookies. Measurement (for example <strong>Google Analytics 4</strong>{" "}
+          property <code>G-DMM13MHQDY</code>) is configured inside that container. Optional
+          marketing tags configured in GTM only run when you allow marketing cookies. We use{" "}
+          <strong>Google Consent Mode</strong> so tags respect your choices. Authentication uses
+          first-party session cookies; error monitoring may use Sentry in accordance with our
+          subprocessors list.
         </p>
         <p>
-          You can manage cookie preferences through your browser settings, dashboard preferences, or
-          any cookie controls made available on the platform. For more information, please see our
-          Cookie Policy.
+          You can manage cookie preferences through the in-site banner and{" "}
+          <Link href="/cookies" className="text-primary underline-offset-4 hover:underline">
+            Cookie policy
+          </Link>
+          , through the <strong>Cookie preferences</strong> link in the site footer, through your
+          browser settings, and through dashboard preferences where applicable.
         </p>
 
         <LegalH2>8. Marketing Preferences</LegalH2>

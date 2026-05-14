@@ -123,11 +123,13 @@ services:
         NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS: ${NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS:-true}
         NEXT_PUBLIC_SETTLEMENTS_EMAIL: ${NEXT_PUBLIC_SETTLEMENTS_EMAIL:-}
         NEXT_PUBLIC_SETTLEMENTS_PHONE: ${NEXT_PUBLIC_SETTLEMENTS_PHONE:-}
+        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID:-}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: "3000"
       INTERNAL_API_URL: http://api:3001
+      NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID:-}
     depends_on:
       api:
         condition: service_healthy
