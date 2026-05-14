@@ -11,6 +11,7 @@ type WatchlistHeartProps = {
   /** Lot title for accessible label. */
   lotTitle?: string;
   className?: string;
+  disabled?: boolean;
 };
 
 /** F4 — Watchlist heart toggle with bump animation on click.
@@ -20,13 +21,20 @@ type WatchlistHeartProps = {
  * - Caller wires `pressed`/`onChange` to a backend mutation; this component
  *   is a presentational toggle only (SRP).
  */
-export function WatchlistHeart({ pressed, onChange, lotTitle, className }: WatchlistHeartProps) {
+export function WatchlistHeart({
+  pressed,
+  onChange,
+  lotTitle,
+  className,
+  disabled = false,
+}: WatchlistHeartProps) {
   const [animKey, setAnimKey] = React.useState<number>(0);
   const isPressed = Boolean(pressed);
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) return;
     setAnimKey((k) => k + 1);
     onChange?.(!isPressed);
   }
@@ -39,10 +47,12 @@ export function WatchlistHeart({ pressed, onChange, lotTitle, className }: Watch
     <button
       type="button"
       onClick={handleClick}
+      disabled={disabled}
       aria-pressed={isPressed}
       aria-label={label}
       className={cn(
         "inline-flex size-9 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-sm transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none",
+        disabled && "cursor-wait opacity-60",
         className,
       )}
     >
