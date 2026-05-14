@@ -369,7 +369,7 @@ export async function adminCancelLotInSaleResultAction(
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${sid}`);
   revalidatePath("/admin/lots");
-  revalidatePath(`/artwork/${lid}`);
+  revalidatePath(`/lot/${lid}`);
   revalidatePath("/", "layout");
   return actionSuccess();
 }
@@ -393,7 +393,7 @@ export async function adminSetLotStatusResultAction(
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${sid}`);
   revalidatePath("/admin/lots");
-  revalidatePath(`/artwork/${lid}`);
+  revalidatePath(`/lot/${lid}`);
   revalidatePath("/", "layout");
   return actionSuccess();
 }

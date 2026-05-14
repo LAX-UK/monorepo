@@ -10,15 +10,25 @@ import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tab
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
+import { LotStatePill } from "@/components/sections/artwork/online/lot-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import type { ReactNode } from "react";
+
+type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
 
 type Props = {
   auction: Lot;
+  saleForLifecycle: SalePick;
+  /** Draft sale / draft lot catalogue ribbon */
+  showPreviewRibbon?: boolean;
+  /** Optional shimmer when sale siblings are still loading */
+  isSaleQueueLoading?: boolean;
+  /** Align first client tick of `LotStatePill` with server `classifyLotLifecycle`. */
+  serverClockMs?: number;
   sessionHeader: AuctionSessionHeaderVM;
   queueCurrent: LotQueueCardVM;
   queueUpNext: LotQueueCardVM | null;
@@ -37,6 +47,10 @@ type Props = {
 
 export function ArtworkOnlineLayout({
   auction,
+  saleForLifecycle,
+  showPreviewRibbon = false,
+  isSaleQueueLoading = false,
+  serverClockMs,
   sessionHeader,
   queueCurrent,
   queueUpNext,
@@ -51,17 +65,37 @@ export function ArtworkOnlineLayout({
   bidPanel,
   bidPanelTop,
 }: Props) {
-  const isLive = auction.status === "active";
+  const lifecycleLot = {
+    id: auction.id,
+    status: auction.status,
+    startTime: auction.startTime,
+    endTime: auction.endTime,
+    winnerId: auction.winnerId,
+    reservePrice: auction.reservePrice,
+    currentPrice: auction.currentPrice,
+  };
 
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
       <h1 id="lot-heading" className="sr-only">
         {auction.title}
       </h1>
+      {showPreviewRibbon ? (
+        <div className="border-b border-lot-orange/30 bg-lot-orange/10 px-4 py-2 text-center font-body text-sm font-medium text-lot-orange">
+          Catalogue preview — bidding opens when the sale is published.
+        </div>
+      ) : null}
       <div className="mx-auto max-w-[1440px] px-4 pb-20 pt-6 sm:px-6 md:px-8">
         <div className="mt-0 lg:mt-2">
           <AuctionSessionHeader
             vm={sessionHeader}
+            stateSlot={
+              <LotStatePill
+                lot={lifecycleLot}
+                sale={saleForLifecycle}
+                {...(serverClockMs !== undefined ? { initialNowMs: serverClockMs } : {})}
+              />
+            }
             rightSlot={<LatencyBadgeContainer lotId={auction.id} />}
           />
         </div>
@@ -71,7 +105,10 @@ export function ArtworkOnlineLayout({
             current={queueCurrent}
             upNext={queueUpNext}
             queue={queueRest}
-            isLive={isLive}
+            lifecycleLot={lifecycleLot}
+            saleForLifecycle={saleForLifecycle}
+            isSaleQueueLoading={isSaleQueueLoading}
+            {...(serverClockMs !== undefined ? { statePillInitialNowMs: serverClockMs } : {})}
           />
           <div className="min-w-0 flex-1">
             <LotImageArea lot={auction} />

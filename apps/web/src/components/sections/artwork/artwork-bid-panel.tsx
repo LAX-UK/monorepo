@@ -4,6 +4,7 @@ import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
 import { classifyLotTimerState } from "@/components/lot-timer";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
+import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import type { BidDisplayStatus } from "@/components/sections/artwork/bid-display-status-banner";
 import { BidForm } from "@/components/sections/artwork/bid-form";
@@ -14,18 +15,20 @@ import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-st
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
+import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/http/kyc.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import { notify } from "@/lib/ui/notify";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn } from "@auction/ui";
 import { ArrowUpToLine, CircleAlert } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
   auction: Lot;
@@ -34,10 +37,14 @@ type Props = {
   sessionUser: SessionUser | null;
   summarySeed: LotSummarySeedVM;
   initialUserMaxAuto: string | null;
+  /** Watchlist state for scheduled / no-sale notify CTAs in `LotInfoStack`. */
+  initialWatching?: boolean;
   loginNextPath?: string;
   /** When true, omit estimate/timer stack (e.g. online layout shows it in the queue sidebar). */
   omitPricingHeader?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
+  /** Parent sale (when known) for pre-launch / draft-sale catalogue messaging. */
+  saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
 };
 
 const HISTORY_CAP = 20;
@@ -52,11 +59,14 @@ export function ArtworkBidPanel({
   sessionUser,
   summarySeed,
   initialUserMaxAuto,
+  initialWatching = false,
   loginNextPath,
   omitPricingHeader = false,
   kycSummary = null,
+  saleForLifecycle = null,
 }: Props) {
   const { bidWriter } = useLotPorts();
+  const onlineLifecycle = useOnlineLotLifecycle();
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
   const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
   const startTimeMs = useMemo(() => new Date(auction.startTime).getTime(), [auction.startTime]);
@@ -76,6 +86,8 @@ export function ArtworkBidPanel({
   const [autoBidOpen, setAutoBidOpen] = useState(() =>
     Boolean(initialUserMaxAuto && initialUserMaxAuto.trim() !== ""),
   );
+  const endTimeRef = useRef(endTime);
+  endTimeRef.current = endTime;
 
   const triggerPriceFlash = useCallback(() => {
     setPriceFlash(true);
@@ -100,6 +112,7 @@ export function ArtworkBidPanel({
       setCurrentPrice(e.currentPrice);
       setLeadingBidderId(e.bidderId);
       triggerPriceFlash();
+      onlineLifecycle?.setExtendedDeltaMs(null);
       pushHistory({
         id: e.bidId,
         bidderId: e.bidderId,
@@ -118,15 +131,32 @@ export function ArtworkBidPanel({
     },
     onLotExtended: (payload) => {
       const p = payload as { newEndTime?: string };
-      if (p?.newEndTime) {
-        setEndTime(new Date(p.newEndTime).getTime());
+      if (!p?.newEndTime) return;
+      const newMs = new Date(p.newEndTime).getTime();
+      const prev = endTimeRef.current;
+      const delta = Math.max(0, newMs - prev);
+      setEndTime(newMs);
+      if (delta > 0) {
+        onlineLifecycle?.setExtendedDeltaMs(delta);
+        notify.info("Closing time extended", {
+          id: `lot-extend-${auction.id}`,
+          description: `Anti-snipe added ${Math.round(delta / 1000)}s to the clock.`,
+          duration: 7000,
+        });
       }
     },
     onLotEnded: (p) => {
       setLotStatus("ended");
       setCurrentPrice(p.currentPrice);
       setLeadingBidderId(p.winnerId ?? null);
-      setEndedBanner(p.noSale ? "This lot has ended (no sale)." : "This lot has ended.");
+      const noSale = Boolean(p.noSale) || !p.winnerId;
+      if (noSale) {
+        setEndedBanner("Reserve not met — this lot passed unsold.");
+      } else if (sessionUser?.id && p.winnerId === sessionUser.id) {
+        setEndedBanner("You won this lot — complete checkout from your dashboard.");
+      } else {
+        setEndedBanner("This lot has sold — thank you for participating.");
+      }
     },
   });
 
@@ -182,12 +212,47 @@ export function ArtworkBidPanel({
     [lotStatus, startTimeMs, endTime, now],
   );
 
+  const lifecycleLot = useMemo(
+    () => ({
+      id: auction.id,
+      status: lotStatus,
+      startTime: new Date(startTimeMs),
+      endTime: new Date(endTime),
+      winnerId: lotStatus === "ended" ? leadingBidderId : auction.winnerId,
+      reservePrice: auction.reservePrice,
+      currentPrice,
+    }),
+    [
+      auction.id,
+      auction.winnerId,
+      auction.reservePrice,
+      lotStatus,
+      startTimeMs,
+      endTime,
+      currentPrice,
+      leadingBidderId,
+    ],
+  );
+
+  const lifecycle = useMemo(
+    () =>
+      classifyLotLifecycle(lifecycleLot, saleForLifecycle, now, {
+        recentlyExtended: Boolean(
+          onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
+        ),
+      }),
+    [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs],
+  );
+
   const countdownClock = useMemo(() => {
-    if (timerState.kind === "live" || timerState.kind === "opensSoon") {
-      return formatCountdownForDisplay(timerState.msLeft);
+    if (
+      lifecycle.msLeft != null &&
+      (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
+    ) {
+      return formatCountdownForDisplay(lifecycle.msLeft);
     }
     return remainingLabel;
-  }, [timerState, remainingLabel]);
+  }, [lifecycle, remainingLabel]);
 
   const ownLot = Boolean(sessionUser?.id && sessionUser.id === auction.sellerId);
 
@@ -288,7 +353,7 @@ export function ArtworkBidPanel({
     });
   }, []);
 
-  const live = lotStatus === "active";
+  const biddingLive = lotStatus === "active";
   const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
   const englishOnlySurfaceLock =
@@ -303,6 +368,7 @@ export function ArtworkBidPanel({
       lotStatus={lotStatus}
       loginNextPath={loginNext}
       kycBidGate={kycSummary?.requiresKyc ? { requiresKyc: true } : null}
+      biddingLifecycle={{ kind: lifecycle.kind }}
     >
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
@@ -313,16 +379,47 @@ export function ArtworkBidPanel({
                 currentPrice={currentPrice}
                 bidCount={history.length}
                 reservePrice={auction.reservePrice}
-                timerState={timerState}
+                lifecycle={lifecycle}
                 countdownClock={countdownClock}
                 saleEndLocalLabel={saleEndLocalLabel}
                 saleStartLocalLabel={saleStartLocalLabel}
                 endAtIso={new Date(endTime).toISOString()}
                 startAtIso={new Date(startTimeMs).toISOString()}
+                currentUserId={sessionUser?.id ?? null}
+                scheduledNotifySlot={
+                  lifecycle.kind === "scheduled" ? (
+                    <ArtworkWatchToggle
+                      lotId={auction.id}
+                      initialWatching={initialWatching}
+                      isAuthenticated={Boolean(sessionUser)}
+                      loginNextPath={loginNext}
+                      marketingCta="notifyWhenOpens"
+                    />
+                  ) : null
+                }
+                endedNoSaleNotifySlot={
+                  lifecycle.kind === "endedNoSale" ? (
+                    <ArtworkWatchToggle
+                      lotId={auction.id}
+                      initialWatching={initialWatching}
+                      isAuthenticated={Boolean(sessionUser)}
+                      loginNextPath={loginNext}
+                      marketingCta="notifyIfRelisted"
+                    />
+                  ) : null
+                }
               />
             )}
 
             <div className="mt-6">
+              {onlineLifecycle?.extendedByMs != null && onlineLifecycle.extendedByMs > 0 ? (
+                <p
+                  className="mb-3 inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-widest text-amber-900 dark:text-amber-200"
+                  aria-live="polite"
+                >
+                  Extended +{Math.max(1, Math.round(onlineLifecycle.extendedByMs / 1000))}s
+                </p>
+              ) : null}
               <LotHighestBidderBanner status={bannerStatus} endedBanner={endedBanner} />
             </div>
 
@@ -438,7 +535,7 @@ export function ArtworkBidPanel({
                   <span className="font-medium text-on-surface">
                     {formatMoney(minNumeric.toFixed(2))}
                   </span>
-                  {live ? (
+                  {biddingLive ? (
                     <>
                       {" "}
                       · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price
@@ -456,7 +553,7 @@ export function ArtworkBidPanel({
 
           {!englishOnlySurfaceLock ? (
             <BidStickyMobileBar
-              live={live}
+              live={biddingLive}
               decision={decision}
               loginNextPath={loginNext}
               step={step}
