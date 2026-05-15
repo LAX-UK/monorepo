@@ -152,3 +152,20 @@ export async function startKycForOrganisationOnboardingAction(
   if (!url) return { ok: false, error: "Verification link unavailable." };
   return { ok: true, url };
 }
+
+/** Label for onboarding chrome when resuming an existing draft (`entityId` in the URL). */
+export async function getOrganisationOnboardingDisplayNameAction(
+  entityId: string,
+): Promise<{ ok: true; displayName: string } | { ok: false }> {
+  const res = await authedServerFetch(`/legal-entities/${entityId}`, {
+    headers: entityHeaders(entityId),
+    cache: "no-store",
+  });
+  if (!res.ok) return { ok: false };
+  const body = (await res.json().catch(() => ({}))) as {
+    data?: { displayName?: string };
+  };
+  const displayName = body.data?.displayName?.trim();
+  if (!displayName) return { ok: false };
+  return { ok: true, displayName };
+}

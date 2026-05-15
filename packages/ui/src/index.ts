@@ -131,7 +131,11 @@ export type { KpiTileProps, KpiTileTone } from "./components/ui/kpi-tile.js";
 export { Toolbar } from "./components/ui/toolbar.js";
 export type { ToolbarProps } from "./components/ui/toolbar.js";
 export { SectionNav } from "./components/ui/section-nav.js";
-export type { SectionNavItem, SectionNavProps } from "./components/ui/section-nav.js";
+export type {
+  SectionNavItem,
+  SectionNavLinkRenderProps,
+  SectionNavProps,
+} from "./components/ui/section-nav.js";
 export { PageSkeleton } from "./components/ui/page-skeleton.js";
 export type { PageSkeletonProps, PageSkeletonVariant } from "./components/ui/page-skeleton.js";
 export { DrawerDetail } from "./components/ui/drawer-detail.js";
