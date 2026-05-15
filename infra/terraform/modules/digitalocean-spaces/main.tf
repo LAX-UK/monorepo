@@ -53,3 +53,44 @@ resource "digitalocean_spaces_bucket_cors_configuration" "this" {
     max_age_seconds = 3000
   }
 }
+
+# Whitelist of image-only prefixes that are safe to expose via the public CDN.
+# Document prefixes (legal-entity-documents, lot-documents, sale-documents,
+# submission-documents) deliberately stay private and are accessed only via
+# presigned URLs — see apps/api/src/services/upload.policy.ts.
+locals {
+  public_image_prefixes = [
+    "seed",
+    "uploads/pending/avatar",
+    "uploads/pending/submissions",
+    "uploads/pending/lots",
+    "uploads/pending/sales",
+    "uploads/pending/artists",
+    "uploads/pending/categories",
+  ]
+}
+
+resource "digitalocean_spaces_bucket_policy" "public_read" {
+  region = digitalocean_spaces_bucket.this.region
+  bucket = digitalocean_spaces_bucket.this.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadImagePrefixes"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = ["s3:GetObject"]
+        Resource  = [for p in local.public_image_prefixes : "arn:aws:s3:::${digitalocean_spaces_bucket.this.name}/${p}/*"]
+      },
+    ]
+  })
+}
+
+# CDN endpoint in front of the bucket. The DNS layer (CloudFlare) CNAMEs the
+# media subdomain (proxied) to this endpoint, providing edge caching plus a
+# DO-managed wildcard certificate at the origin.
+resource "digitalocean_cdn" "this" {
+  origin = "${digitalocean_spaces_bucket.this.name}.${digitalocean_spaces_bucket.this.region}.digitaloceanspaces.com"
+  ttl    = 3600
+}
