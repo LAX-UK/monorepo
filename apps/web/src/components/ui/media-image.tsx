@@ -1,6 +1,7 @@
 "use client";
 
 import { MediaPlaceholder, type MediaPlaceholderProps } from "@/components/ui/media-placeholder";
+import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { cn } from "@auction/ui";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -34,7 +35,7 @@ export function MediaImage({
   onClick,
   placeholderClassName,
 }: MediaImageProps) {
-  const normalizedSrc = src?.trim() || null;
+  const normalizedSrc = resolveMediaSrc(src);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     normalizedSrc ? "loading" : "error",
   );
