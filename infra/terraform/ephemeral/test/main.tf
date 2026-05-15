@@ -1,6 +1,6 @@
 locals {
-  environment = "test"
-  region      = "lon1"
+  environment          = "test"
+  region               = "lon1"
   redis_region         = "lon1"
   branch               = "main"
   cookie_domain        = ".lax.bid"
@@ -9,7 +9,7 @@ locals {
   api_public_url       = "https://test-api.lax.bid"
   web_origin           = "https://test.lax.bid"
   ws_public_url        = "wss://test-ws.lax.bid"
-  media_public_url     = "https://test-media.lax.bid"
+  media_public_url     = "https://lax-media.lon1.cdn.digitaloceanspaces.com"
 
   domain = {
     web   = "test.lax.bid"
@@ -46,7 +46,7 @@ locals {
   effective_wordpress_secret         = var.wordpress_webhook_secret != "" ? var.wordpress_webhook_secret : "pending-wordpress-webhook-secret"
   effective_email_unsubscribe_secret = var.email_unsubscribe_secret != "" ? var.email_unsubscribe_secret : random_password.email_unsubscribe_secret.result
   # Auto-generate a stable cron secret if one is not supplied via TF_VAR_cron_internal_secret.
-  effective_cron_internal_secret     = var.cron_internal_secret != "" ? var.cron_internal_secret : random_password.cron_internal_secret.result
+  effective_cron_internal_secret = var.cron_internal_secret != "" ? var.cron_internal_secret : random_password.cron_internal_secret.result
 
   common_secret_env = [
     { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
