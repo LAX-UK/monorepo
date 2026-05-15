@@ -18,6 +18,7 @@ function category(overrides: Partial<Category>): Category {
     archived: false,
     sortOrder: 0,
     parentId: null,
+    heroImageKey: null,
     ...overrides,
   };
 }
