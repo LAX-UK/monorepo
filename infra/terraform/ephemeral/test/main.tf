@@ -150,6 +150,7 @@ locals {
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_MEDIA_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "NEXT_PUBLIC_TURNSTILE_SITE_KEY", value = var.turnstile_site_key, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
