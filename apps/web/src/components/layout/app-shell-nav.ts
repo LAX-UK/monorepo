@@ -7,8 +7,10 @@ import { staffRoleToShellLayout } from "@auction/types";
 import {
   Bell,
   Brush,
+  Building2,
   CreditCard,
   Heart,
+  Inbox,
   Layers,
   LayoutGrid,
   Menu,
@@ -17,7 +19,6 @@ import {
   Store,
   TrendingUp,
   Upload,
-  Users,
   WalletCards,
 } from "lucide-react";
 
@@ -79,6 +80,20 @@ export function getClientBuyingNavItems(): AppShellNavItem[] {
     { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
     { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
     { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
+    {
+      id: "organisations",
+      label: "Organisations",
+      href: "/dashboard/organisations",
+      icon: Building2,
+      match: exactOrNested("/dashboard/organisations"),
+    },
+    {
+      id: "invitations",
+      label: "Invitations",
+      href: "/dashboard/invitations",
+      icon: Inbox,
+      match: exactOrNested("/dashboard/invitations"),
+    },
     { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     {
       id: "settings",
@@ -126,10 +141,18 @@ export function getClientSellingNavItems(): AppShellNavItem[] {
       icon: Brush,
     },
     {
-      id: "team",
-      label: "Team",
-      href: "/dashboard/team",
-      icon: Users,
+      id: "organisations",
+      label: "Organisations",
+      href: "/dashboard/organisations",
+      icon: Building2,
+      match: exactOrNested("/dashboard/organisations"),
+    },
+    {
+      id: "invitations",
+      label: "Invitations",
+      href: "/dashboard/invitations",
+      icon: Inbox,
+      match: exactOrNested("/dashboard/invitations"),
     },
     { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     {
@@ -212,6 +235,8 @@ export function getRouteLabel(
   if (pathname.includes("/edit")) return "Edit";
   if (pathname.includes("/checkout")) return "Checkout";
   if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live sale";
+  if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
+  if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
   return "Detail";
 }
 
@@ -226,7 +251,9 @@ export function getRouteParentLabel(
   if (shell === "client" && pathname.startsWith("/dashboard/seller"))
     return clientWorkspace === "selling" ? "Selling" : null;
   if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
-  if (shell === "client" && pathname.startsWith("/dashboard/team")) return "Team";
+  if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
+  if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
+  if (shell === "client" && pathname.startsWith("/dashboard/team")) return "Organisations";
   if (shell !== "client" && pathname.startsWith("/admin")) {
     const u = sessionUser ?? {
       role: "staff" as UserRole,

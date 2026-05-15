@@ -10,6 +10,7 @@ import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { apiBaseUrl } from "@/lib/auth/api-base";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
@@ -35,6 +36,11 @@ export function SignUpForm({ inviteToken }: Props) {
     onTurnstileToken,
     onTurnstileExpire,
   } = useSignUpController(controllerOpts);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    void rememberPendingEntityInviteAction(inviteToken);
+  }, [inviteToken]);
 
   useEffect(() => {
     if (!inviteToken) return;

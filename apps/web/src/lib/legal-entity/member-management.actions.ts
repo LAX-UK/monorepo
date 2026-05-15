@@ -1,6 +1,7 @@
 "use server";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
@@ -51,7 +52,9 @@ export async function inviteMemberAction(
   if (!res.ok) {
     return { ok: false, error: (body as { error?: string }).error ?? "invite_failed" };
   }
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/invitations");
+  revalidatePath("/dashboard/invitations");
   return {
     ok: true,
     data: (body as { data: { memberId: string | null; invitationToken: string | null } }).data,
@@ -72,7 +75,9 @@ export async function updateMemberRoleAction(
     const body = (await res.json()) as { error?: string };
     return { ok: false, error: body.error ?? "update_failed" };
   }
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/invitations");
+  revalidatePath("/dashboard/invitations");
   return { ok: true };
 }
 
@@ -96,7 +101,9 @@ export async function removeMemberAction(
     const body = (await res.json()) as { error?: string };
     return { ok: false, error: body.error ?? "remove_failed" };
   }
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/invitations");
+  revalidatePath("/dashboard/invitations");
   return { ok: true };
 }
 
@@ -114,7 +121,9 @@ export async function transferPrimaryAdminAction(
     const body = (await res.json()) as { error?: string };
     return { ok: false, error: body.error ?? "transfer_failed" };
   }
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/invitations");
+  revalidatePath("/dashboard/invitations");
   return { ok: true };
 }
 
@@ -130,8 +139,14 @@ export async function acceptInvitationAction(
   if (!res.ok) {
     return { ok: false, error: (body as { error?: string }).error ?? "accept_failed" };
   }
+  const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
+  await switchActingLegalEntity(legalEntityId);
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/invitations");
+  revalidatePath("/dashboard/invitations");
+  revalidatePath("/", "layout");
   return {
     ok: true,
-    data: { legalEntityId: (body as { data: { legalEntityId: string } }).data.legalEntityId },
+    data: { legalEntityId },
   };
 }

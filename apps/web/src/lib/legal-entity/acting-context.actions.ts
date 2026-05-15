@@ -80,6 +80,8 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
       ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     revalidatePath("/", "layout");
+    revalidatePath("/dashboard/organisations");
+    revalidatePath("/dashboard/invitations");
     return { ok: true };
   }
 
@@ -98,6 +100,8 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
     ...(cookieDomain ? { domain: cookieDomain } : {}),
   });
   revalidatePath("/", "layout");
+  revalidatePath("/dashboard/organisations");
+  revalidatePath("/dashboard/invitations");
   return { ok: true };
 }
 

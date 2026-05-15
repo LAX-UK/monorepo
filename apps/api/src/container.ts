@@ -26,6 +26,7 @@ import { RedisNotificationSender } from "./infrastructure/redis-notification.sen
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
 import { SentryErrorReporter } from "./infrastructure/sentry-error.reporter.js";
+import { createTransactionalMailer } from "./infrastructure/transactional-mailer.js";
 import { DrizzleUserProfilePersister } from "./infrastructure/user-profile.persister.js";
 import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
@@ -65,6 +66,7 @@ import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-paym
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.repository.js";
 import { DrizzlePayoutRepository } from "./repositories/drizzle-payout.repository.js";
+import { DrizzlePendingInvitationsReader } from "./repositories/drizzle-pending-invitations.reader.js";
 import { DrizzleProfileRepository } from "./repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "./repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "./repositories/drizzle-repository.factory.js";
@@ -115,6 +117,7 @@ import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IConditionReportService } from "./services/interfaces/condition-report.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
+import type { IInvitationLifecycleService } from "./services/interfaces/invitation-lifecycle.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
 import type { IKycRepository } from "./services/interfaces/kyc-repository.js";
@@ -128,14 +131,17 @@ import type { IOrganizationOnboardingService } from "./services/interfaces/organ
 import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
 import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
 import type { IPayoutService } from "./services/interfaces/payout.js";
+import type { IPendingInvitationsReader } from "./services/interfaces/pending-invitations-reader.js";
 import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IPushSender } from "./services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
 import type { IStripeConnectService } from "./services/interfaces/stripe-connect.js";
+import type { ITransactionalMailer } from "./services/interfaces/transactional-mail.js";
 import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
+import { InvitationLifecycleService } from "./services/invitation-lifecycle.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
@@ -149,6 +155,7 @@ import { LotNotificationCoordinator } from "./services/lot-notification-coordina
 import { LotService } from "./services/lot.service.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
 import { MemberManagementService } from "./services/member-management.service.js";
+import { EmailMembershipInviteNotifier } from "./services/membership-invite-notifier.js";
 import { NotificationQueryService } from "./services/notification-query.service.js";
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
@@ -276,8 +283,14 @@ export type Container = {
   artistRegistryService: IArtistRegistryService;
   /** Stripe Connect Express. */
   stripeConnectService: IStripeConnectService;
-  /** legal entity member management (invites, role changes, transfers). */
+  /** legal entity member management (role changes, transfers, removes). */
   memberManagementService: IMemberManagementService;
+  /** Pending entity-scoped invitations for the current user's email (inbox). */
+  pendingInvitationsReader: IPendingInvitationsReader;
+  /** Entity invite create / accept / decline. */
+  invitationLifecycleService: IInvitationLifecycleService;
+  /** Outbound transactional mail (invite emails, etc.). */
+  transactionalMailer: ITransactionalMailer;
   /** payout aggregation + admin settlement controls. */
   payoutRepository: IPayoutRepository;
   payoutService: IPayoutService;
@@ -414,6 +427,17 @@ export function createContainer(env: Env): Container {
   const memberManagementService: IMemberManagementService = new MemberManagementService(
     db,
     domainEventPublisher,
+  );
+  const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
+  const membershipInviteNotifier = new EmailMembershipInviteNotifier(transactionalMailer);
+  const pendingInvitationsReader: IPendingInvitationsReader = new DrizzlePendingInvitationsReader(
+    db,
+  );
+  const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
+    db,
+    domainEventPublisher,
+    membershipInviteNotifier,
+    env.WEB_ORIGIN,
   );
   const payoutRepository: IPayoutRepository = new DrizzlePayoutRepository(db);
   const payoutService: IPayoutService = new PayoutService(
@@ -927,6 +951,9 @@ export function createContainer(env: Env): Container {
     artistRegistryService,
     stripeConnectService,
     memberManagementService,
+    pendingInvitationsReader,
+    invitationLifecycleService,
+    transactionalMailer,
     payoutRepository,
     payoutService,
     objectStorage,

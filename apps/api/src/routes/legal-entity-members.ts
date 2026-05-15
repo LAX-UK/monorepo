@@ -37,6 +37,8 @@ function permissionErrorStatus(code: string): 400 | 403 | 404 | 409 {
     case "target_member_not_found":
     case "invitation_not_found":
       return 404;
+    case "invitation_email_mismatch":
+      return 403;
     default:
       return 400;
   }
@@ -73,7 +75,7 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const body = c.req.valid("json");
       try {
-        const result = await container.memberManagementService.inviteMember(
+        const result = await container.invitationLifecycleService.invite(
           userId,
           ctx.legalEntityId,
           body,
@@ -237,15 +239,18 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
   r.post("/invitations/accept", requireAuth, zValidator("json", acceptBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
-    try {
-      const result = await container.memberManagementService.acceptInvite(userId, body.token);
-      return c.json({ data: result }, 201);
-    } catch (err) {
-      if (err instanceof MemberPermissionError) {
-        return c.json({ error: err.code }, permissionErrorStatus(err.code));
-      }
-      throw err;
+    const u = await container.userService.getById(userId);
+    if (!u) {
+      return c.json({ error: "user_not_found" }, 404);
     }
+    const result = await container.invitationLifecycleService.accept(userId, u.email, body.token);
+    if (!result.ok) {
+      return c.json({ error: result.code }, permissionErrorStatus(result.code));
+    }
+    if (result.kind !== "accepted") {
+      return c.json({ error: "unexpected_invitation_outcome" }, 500);
+    }
+    return c.json({ data: { legalEntityId: result.legalEntityId, member: result.member } }, 201);
   });
 
   return r;

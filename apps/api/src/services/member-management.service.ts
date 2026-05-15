@@ -1,14 +1,11 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
-import { legalEntityMember, user, userInvitation } from "@auction/db/schema";
+import { legalEntityMember, user } from "@auction/db/schema";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { DrizzleBidRepository } from "../repositories/drizzle-bid.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import {
-  type AcceptInviteResult,
   type IMemberManagementService,
-  type InviteMemberInput,
   MemberPermissionError,
   type MemberWithUser,
   type UpdateMemberRoleInput,
@@ -29,16 +26,6 @@ function rowToMember(row: typeof legalEntityMember.$inferSelect): LegalEntityMem
     removedAt: row.removedAt ?? null,
     createdAt: row.createdAt,
   };
-}
-
-function hashToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
-function addDays(d: Date, days: number): Date {
-  const x = new Date(d);
-  x.setUTCDate(x.getUTCDate() + days);
-  return x;
 }
 
 export class MemberManagementService implements IMemberManagementService {
@@ -96,169 +83,6 @@ export class MemberManagementService implements IMemberManagementService {
       ...rowToMember(r.member),
       user: { ...r.user, image: r.user.image ?? null },
     }));
-  }
-
-  async inviteMember(actingUserId: string, legalEntityId: string, input: InviteMemberInput) {
-    await this.assertActorIsAdmin(actingUserId, legalEntityId);
-    const email = input.email.trim().toLowerCase();
-
-    return await this.db.transaction(async (tx) => {
-      const existingUserRows = await tx
-        .select({ id: user.id })
-        .from(user)
-        .where(eq(user.email, email))
-        .limit(1);
-      const existingUser = existingUserRows[0];
-
-      if (existingUser) {
-        // Check for an active membership already.
-        const existingMember = await tx
-          .select({ id: legalEntityMember.id })
-          .from(legalEntityMember)
-          .where(
-            and(
-              eq(legalEntityMember.legalEntityId, legalEntityId),
-              eq(legalEntityMember.userId, existingUser.id),
-              isNull(legalEntityMember.removedAt),
-            ),
-          )
-          .limit(1);
-        if (existingMember.length > 0) {
-          throw new MemberPermissionError("already_a_member");
-        }
-
-        const [created] = await tx
-          .insert(legalEntityMember)
-          .values({
-            legalEntityId,
-            userId: existingUser.id,
-            role: input.role,
-            isPrimaryAdmin: false,
-            invitedByUserId: actingUserId,
-            invitedAt: new Date(),
-            // Existing users skip the email round-trip and get added as
-            // accepted immediately. The dashboard surfaces the new entity in
-            // their switcher.
-            acceptedAt: new Date(),
-          })
-          .returning({ id: legalEntityMember.id });
-        await this.domainEventPublisher.publish(tx, {
-          aggregateType: "legal_entity",
-          aggregateId: legalEntityId,
-          eventType: "legal_entity.member_accepted",
-          payload: {
-            member_user_id: existingUser.id,
-            role: input.role,
-            via: "direct_add_existing_user",
-          },
-          actorUserId: actingUserId,
-          actingLegalEntityId: legalEntityId,
-          schemaVersion: 1,
-          producer: "apps/api",
-        });
-        return {
-          memberId: created?.id ?? null,
-          invitationToken: null,
-        };
-      }
-
-      // No existing user: create an entity-scoped invitation.
-      const id = randomUUID();
-      const token = randomBytes(32).toString("base64url");
-      const tokenHash = hashToken(token);
-      const expiresAt = addDays(new Date(), 7);
-      await tx.insert(userInvitation).values({
-        id,
-        email,
-        targetRole: "client",
-        tokenHash,
-        status: "pending",
-        expiresAt,
-        acceptedAt: null,
-        acceptedUserId: null,
-        targetLegalEntityId: legalEntityId,
-        targetLegalEntityMemberRole: input.role,
-        createdByUserId: actingUserId,
-      });
-      await this.domainEventPublisher.publish(tx, {
-        aggregateType: "legal_entity",
-        aggregateId: legalEntityId,
-        eventType: "legal_entity.member_invited",
-        payload: {
-          invitation_id: id,
-          email,
-          role: input.role,
-        },
-        actorUserId: actingUserId,
-        actingLegalEntityId: legalEntityId,
-        schemaVersion: 1,
-        producer: "apps/api",
-      });
-      return { memberId: null, invitationToken: token };
-    });
-  }
-
-  async acceptInvite(userId: string, token: string): Promise<AcceptInviteResult> {
-    const tokenHash = hashToken(token);
-    return await this.db.transaction(async (tx) => {
-      const rows = await tx
-        .select()
-        .from(userInvitation)
-        .where(eq(userInvitation.tokenHash, tokenHash))
-        .limit(1);
-      const invite = rows[0];
-      if (!invite) throw new MemberPermissionError("invitation_not_found");
-      if (invite.status !== "pending") {
-        throw new MemberPermissionError("invitation_not_pending");
-      }
-      if (invite.expiresAt.getTime() < Date.now()) {
-        throw new MemberPermissionError("invitation_expired");
-      }
-      if (!invite.targetLegalEntityId || !invite.targetLegalEntityMemberRole) {
-        throw new MemberPermissionError("invitation_not_entity_scoped");
-      }
-
-      const [member] = await tx
-        .insert(legalEntityMember)
-        .values({
-          legalEntityId: invite.targetLegalEntityId,
-          userId,
-          role: invite.targetLegalEntityMemberRole as LegalEntityMemberRole,
-          isPrimaryAdmin: false,
-          invitedByUserId: invite.createdByUserId,
-          invitedAt: invite.createdAt,
-          acceptedAt: new Date(),
-        })
-        .returning();
-      if (!member) throw new MemberPermissionError("member_create_failed");
-
-      await tx
-        .update(userInvitation)
-        .set({
-          status: "accepted",
-          acceptedAt: new Date(),
-          acceptedUserId: userId,
-          updatedAt: new Date(),
-        })
-        .where(eq(userInvitation.id, invite.id));
-
-      await this.domainEventPublisher.publish(tx, {
-        aggregateType: "legal_entity",
-        aggregateId: invite.targetLegalEntityId,
-        eventType: "legal_entity.member_accepted",
-        payload: {
-          member_user_id: userId,
-          role: member.role,
-          via: "invitation_token",
-        },
-        actorUserId: userId,
-        actingLegalEntityId: invite.targetLegalEntityId,
-        schemaVersion: 1,
-        producer: "apps/api",
-      });
-
-      return { legalEntityId: invite.targetLegalEntityId, member: rowToMember(member) };
-    });
   }
 
   async updateRole(

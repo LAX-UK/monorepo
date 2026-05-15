@@ -1,9 +1,8 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getServerDataContainer } from "@/lib/data/container.server";
-import type { LegalEntityStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import {
   Card,
   CardContent,
@@ -25,10 +24,6 @@ export default async function AccountSettingsPage({
     shell: "client",
     loginNext: "/dashboard/settings/account",
   });
-
-  const c = await getServerDataContainer();
-  const memberships = await c.legalEntities.listMine().catch(() => []);
-  const organisations = memberships.filter((m) => m.kind === "organisation");
 
   return (
     <DashboardPage>
@@ -83,75 +78,22 @@ export default async function AccountSettingsPage({
           <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             Organisations
           </CardTitle>
-          <CardDescription>Galleries, dealers, and estates you belong to.</CardDescription>
+          <CardDescription>
+            Manage galleries, dealers, and estates you belong to — invites, members, and onboarding
+            continue in one place.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {organisations.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">
-              You don&apos;t belong to any organisations yet.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {organisations.map((o) => (
-                <li
-                  key={o.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant/20 px-3 py-2"
-                >
-                  <span className="font-medium text-on-surface">{o.displayName}</span>
-                  <StatusBadge variant={orgStatusVariant(o.status)}>
-                    {orgStatusLabel(o.status)}
-                  </StatusBadge>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/onboarding/organisation?fresh=1"
-            className="inline-flex text-sm font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            Add a gallery, dealer, or estate
-          </Link>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Button asChild variant="cta" size="sm">
+            <Link href="/dashboard/organisations">Open Organisations</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/onboarding/organisation?fresh=1">Register organisation</Link>
+          </Button>
         </CardContent>
       </Card>
     </DashboardPage>
   );
-}
-
-function orgStatusLabel(status: LegalEntityStatus): string {
-  switch (status) {
-    case "lead":
-      return "Setup";
-    case "docs_requested":
-      return "Docs requested";
-    case "docs_received":
-      return "Docs received";
-    case "under_review":
-      return "Under review";
-    case "connect_pending":
-      return "Connect pending";
-    case "approved":
-      return "Approved";
-    case "restricted":
-      return "Restricted";
-    case "rejected":
-      return "Rejected";
-    case "archived":
-      return "Archived";
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
-}
-
-function orgStatusVariant(
-  status: LegalEntityStatus,
-): "success" | "danger" | "warning" | "neutral" | "info" {
-  if (status === "approved") return "success";
-  if (status === "rejected" || status === "restricted") return "danger";
-  if (status === "archived") return "neutral";
-  if (status === "lead" || status === "docs_requested") return "warning";
-  return "info";
 }
 
 function statusLabel(status: string | undefined, verified: boolean | undefined): string {
