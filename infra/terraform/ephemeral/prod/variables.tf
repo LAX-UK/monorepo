@@ -263,14 +263,14 @@ variable "admin_email_address" {
 
 # --- Xero (optional OAuth; all three must be set together in app env) ---
 variable "xero_client_id" {
-  type        = string
-  default     = ""
-  sensitive   = true
+  type      = string
+  default   = ""
+  sensitive = true
 }
 variable "xero_client_secret" {
-  type        = string
-  default     = ""
-  sensitive   = true
+  type      = string
+  default   = ""
+  sensitive = true
 }
 variable "xero_redirect_uri" {
   type        = string
@@ -278,9 +278,9 @@ variable "xero_redirect_uri" {
   description = "OAuth redirect URI registered in Xero (e.g. https://api.lax.bid/admin/integrations/xero/callback)."
 }
 variable "xero_webhook_key" {
-  type        = string
-  default     = ""
-  sensitive   = true
+  type      = string
+  default   = ""
+  sensitive = true
 }
 variable "xero_default_revenue_account_code" {
   type    = string
