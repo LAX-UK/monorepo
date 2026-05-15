@@ -1,3 +1,4 @@
+import { declineLegalEntityInvitationBodySchema } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -9,6 +10,22 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),
 });
+
+const invitationIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+function invitationOutcomeStatus(code: string): 400 | 403 | 404 {
+  switch (code) {
+    case "invitation_not_found":
+    case "member_not_found":
+      return 404;
+    case "invitation_email_mismatch":
+      return 403;
+    default:
+      return 400;
+  }
+}
 
 export function createLegalEntityRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -24,6 +41,73 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     const memberships = await container.legalEntityRepository.listActiveMembershipsForUser(userId);
     return c.json({ data: memberships });
   });
+
+  /** GET /legal-entities/invitations/mine — pending entity invites for the user's email. */
+  r.get("/invitations/mine", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const u = await container.userService.getById(userId);
+    if (!u) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    const data = await container.pendingInvitationsReader.listForEmail(u.email, new Date());
+    return c.json({ data });
+  });
+
+  /** POST /legal-entities/invitations/:id/accept */
+  r.post(
+    "/invitations/:id/accept",
+    requireAuth,
+    zValidator("param", invitationIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const u = await container.userService.getById(userId);
+      if (!u) {
+        return c.json({ error: "user_not_found" }, 404);
+      }
+      const result = await container.invitationLifecycleService.acceptById(userId, u.email, id);
+      if (!result.ok) {
+        return c.json({ error: result.code }, invitationOutcomeStatus(result.code));
+      }
+      if (result.kind !== "accepted") {
+        return c.json({ error: "unexpected_invitation_outcome" }, 500);
+      }
+      return c.json({ data: { legalEntityId: result.legalEntityId, member: result.member } }, 201);
+    },
+  );
+
+  /** POST /legal-entities/invitations/:id/decline */
+  r.post(
+    "/invitations/:id/decline",
+    requireAuth,
+    zValidator("param", invitationIdParamSchema),
+    zValidator("json", declineLegalEntityInvitationBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const u = await container.userService.getById(userId);
+      if (!u) {
+        return c.json({ error: "user_not_found" }, 404);
+      }
+      const result = await container.invitationLifecycleService.decline(
+        userId,
+        u.email,
+        id,
+        body.reason ?? null,
+      );
+      if (!result.ok) {
+        const status =
+          result.code === "invitation_not_found"
+            ? 404
+            : result.code === "invitation_email_mismatch"
+              ? 403
+              : 400;
+        return c.json({ error: result.code }, status);
+      }
+      return c.json({ data: { declined: true } });
+    },
+  );
 
   /** GET /legal-entities/:id — full legal entity row.
    * Caller must be an active member; non-members get 403 (not 404, to avoid

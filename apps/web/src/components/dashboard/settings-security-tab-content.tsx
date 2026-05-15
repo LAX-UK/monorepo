@@ -5,8 +5,8 @@ import { AutoClearQueryParams } from "@/components/dashboard/auto-clear-query-pa
 import { SettingsConnectedAccounts } from "@/components/dashboard/settings-connected-accounts";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
-import type { LegalEntityStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import {
   Card,
   CardContent,
@@ -26,50 +26,12 @@ export type SettingsSecurityTabProps = {
   };
   hasPendingEmailChange: boolean;
   deletionRequestedAt: Date | null;
-  organisations: Array<{ id: string; displayName: string; status: LegalEntityStatus }>;
   emailChanged?: boolean;
   /** Set to "google" or "apple" after a successful link redirect; renders a one-shot banner. */
   linkedProvider?: "google" | "apple" | null;
   /** True when /auth/setup-password just succeeded; renders a one-shot banner. */
   passwordJustSet?: boolean;
 };
-
-function orgStatusLabel(status: LegalEntityStatus): string {
-  switch (status) {
-    case "lead":
-      return "Setup";
-    case "docs_requested":
-      return "Docs requested";
-    case "docs_received":
-      return "Docs received";
-    case "under_review":
-      return "Under review";
-    case "connect_pending":
-      return "Connect pending";
-    case "approved":
-      return "Approved";
-    case "restricted":
-      return "Restricted";
-    case "rejected":
-      return "Rejected";
-    case "archived":
-      return "Archived";
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
-}
-
-function orgStatusVariant(
-  status: LegalEntityStatus,
-): "success" | "danger" | "warning" | "neutral" | "info" {
-  if (status === "approved") return "success";
-  if (status === "rejected" || status === "restricted") return "danger";
-  if (status === "archived") return "neutral";
-  if (status === "lead" || status === "docs_requested") return "warning";
-  return "info";
-}
 
 function statusLabel(status: string | undefined, verified: boolean | undefined): string {
   if (status === "bounced") return "Bounced";
@@ -92,7 +54,6 @@ export function SettingsSecurityTabContent({
   user,
   hasPendingEmailChange,
   deletionRequestedAt,
-  organisations,
   emailChanged,
   linkedProvider,
   passwordJustSet,
@@ -182,33 +143,16 @@ export function SettingsSecurityTabContent({
       <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Organisations" titleAs="h3" eyebrow bordered={false}>
           <p className="font-body text-sm text-on-surface-variant">
-            Galleries, dealers, and estates you belong to.
+            Invites, membership, and onboarding for galleries, dealers, and estates.
           </p>
-          {organisations.length === 0 ? (
-            <p className="mt-3 text-sm text-on-surface-variant">
-              You don&apos;t belong to any organisations yet.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {organisations.map((o) => (
-                <li
-                  key={o.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant/20 px-3 py-2"
-                >
-                  <span className="font-medium text-on-surface">{o.displayName}</span>
-                  <StatusBadge variant={orgStatusVariant(o.status)}>
-                    {orgStatusLabel(o.status)}
-                  </StatusBadge>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/onboarding/organisation?fresh=1"
-            className="mt-4 inline-flex text-sm font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            Add a gallery, dealer, or estate
-          </Link>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button asChild variant="cta" size="sm">
+              <Link href="/dashboard/organisations">Open Organisations</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/onboarding/organisation?fresh=1">Register organisation</Link>
+            </Button>
+          </div>
         </SettingsSection>
       </div>
 

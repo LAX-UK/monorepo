@@ -2,12 +2,14 @@ import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyEmailSuccessRedirect } from "@/components/auth/verify-email-success-redirect";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
 import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
+import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invite.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Verify email",
@@ -17,7 +19,13 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; email?: string; next?: string; persona?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    email?: string;
+    next?: string;
+    persona?: string;
+    invite?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const error = typeof sp.error === "string" ? sp.error : "";
@@ -25,7 +33,17 @@ export default async function VerifyEmailPage({
   const queryNext = typeof sp.next === "string" ? sp.next : null;
   const queryPersona = typeof sp.persona === "string" ? sp.persona : null;
 
+  const queryInvite = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : null;
+
   const sessionUser = await getServerSessionUser();
+
+  if (!error && sessionUser?.id) {
+    const consumed = await tryConsumePendingInviteAfterVerify(queryInvite);
+    if (consumed) {
+      redirect(consumed.redirectTo);
+    }
+  }
+
   const destination = resolvePostVerifyDestination({
     requestedNext: queryNext,
     queryPersona,

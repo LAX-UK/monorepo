@@ -14,11 +14,6 @@ export type InviteMemberInput = {
   role: LegalEntityMemberRole;
 };
 
-export type AcceptInviteResult = {
-  legalEntityId: string;
-  member: LegalEntityMember;
-};
-
 export type UpdateMemberRoleInput = {
   role: LegalEntityMemberRole;
 };
@@ -35,22 +30,6 @@ export class MemberPermissionError extends Error {
 export interface IMemberManagementService {
   /** List active members for a legal entity (used by the team UI). */
   listMembers(legalEntityId: string): Promise<MemberWithUser[]>;
-
-  /** Invite a user by email. Existing user → membership row created
-   * immediately with `accepted_at = null`; non-existent user → an invitation
-   * is created via `InvitationService` and the email sent.
-   * * `actingUserId` must be an owner / admin of the entity.
-   */
-  inviteMember(
-    actingUserId: string,
-    legalEntityId: string,
-    input: InviteMemberInput,
-  ): Promise<{ memberId: string | null; invitationToken: string | null }>;
-
-  /** Accept a pending invitation. Returns the resulting active member row.
-   * Used by the dashboard accept-invite page after sign-up.
-   */
-  acceptInvite(userId: string, token: string): Promise<AcceptInviteResult>;
 
   /** Owner / admin only. Cannot demote a primary admin without a transfer. */
   updateRole(

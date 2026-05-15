@@ -117,9 +117,17 @@
       "types": "./dist/components/ui/toolbar.d.ts",
       "default": "./dist/components/ui/toolbar.js"
     },
+    "./components/section-header": {
+      "types": "./dist/components/ui/section-header.d.ts",
+      "default": "./dist/components/ui/section-header.js"
+    },
     "./components/section-nav": {
       "types": "./dist/components/ui/section-nav.d.ts",
       "default": "./dist/components/ui/section-nav.js"
+    },
+    "./components/stat-strip": {
+      "types": "./dist/components/ui/stat-strip.d.ts",
+      "default": "./dist/components/ui/stat-strip.js"
     },
     "./components/page-skeleton": {
       "types": "./dist/components/ui/page-skeleton.d.ts",
@@ -200,6 +208,10 @@
     "./components/command": {
       "types": "./dist/components/ui/command.d.ts",
       "default": "./dist/components/ui/command.js"
+    },
+    "./components/timeline-stages": {
+      "types": "./dist/components/ui/timeline-stages.d.ts",
+      "default": "./dist/components/ui/timeline-stages.js"
     },
     "./components/calendar": {
       "types": "./dist/components/ui/calendar.d.ts",
