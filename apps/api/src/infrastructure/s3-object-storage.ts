@@ -33,6 +33,10 @@ export class S3ObjectStorage implements IObjectStorage {
         accessKeyId: cfg.accessKeyId,
         secretAccessKey: cfg.secretAccessKey,
       },
+      // AWS SDK v3 enables CRC32 checksums by default. DigitalOcean Spaces
+      // does not support the x-amz-checksum-* headers and returns 400.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
   }
 

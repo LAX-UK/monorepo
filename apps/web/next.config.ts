@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      // DigitalOcean Spaces: direct endpoint and CDN edge
+      {
+        protocol: "https",
+        hostname: "*.digitaloceanspaces.com",
+        pathname: "/**",
+      },
     ],
   },
   experimental: {
