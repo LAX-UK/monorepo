@@ -2,16 +2,42 @@
 
 import { AdminArtistsBulkBar } from "@/components/admin/admin-artists-bulk-bar";
 import { useTableDensity } from "@/components/layout/density-provider";
-import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { TableScroll } from "@/components/ui/table-scroll";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { AdminArtistListRow } from "@auction/types";
-import { Badge, DataTable, EmptyState, EntityTableShell, InlineActionMenu } from "@auction/ui";
+import { Badge, DataTable, EntityTableShell, InlineActionMenu } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+
+function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
+  const router = useRouter();
+  return (
+    <InlineActionMenu
+      label={`Actions for ${row.displayName}`}
+      items={[
+        {
+          type: "item",
+          label: "View",
+          onSelect: () => router.push(`/admin/artists/${row.id}`),
+        },
+        {
+          type: "item",
+          label: "Edit",
+          onSelect: () => router.push(`/admin/artists/${row.id}/edit`),
+        },
+        {
+          type: "item",
+          label: "Copy ID",
+          onSelect: () => void navigator.clipboard.writeText(row.id),
+        },
+      ]}
+    />
+  );
+}
 
 function artistColumns(
   selected: Set<string>,
@@ -155,32 +181,7 @@ function artistColumns(
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <InlineActionMenu
-          label={`Actions for ${row.original.displayName}`}
-          items={[
-            {
-              type: "item",
-              label: "View",
-              onSelect: () => {
-                window.location.href = `/admin/artists/${row.original.id}`;
-              },
-            },
-            {
-              type: "item",
-              label: "Edit",
-              onSelect: () => {
-                window.location.href = `/admin/artists/${row.original.id}/edit`;
-              },
-            },
-            {
-              type: "item",
-              label: "Copy ID",
-              onSelect: () => void navigator.clipboard.writeText(row.original.id),
-            },
-          ]}
-        />
-      ),
+      cell: ({ row }) => <ArtistActionMenu row={row.original} />,
       enableSorting: false,
     },
   ];
@@ -189,11 +190,11 @@ function artistColumns(
 type Props = {
   artists: AdminArtistListRow[];
   searchQuery?: string | undefined;
-  hasFilters?: boolean | undefined;
 };
 
-export function AdminArtistsBoard({ artists, hasFilters }: Props) {
+export function AdminArtistsBoard({ artists }: Props) {
   const { density } = useTableDensity();
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const pageIds = useMemo(() => artists.map((a) => a.id), [artists]);
 
@@ -225,27 +226,7 @@ export function AdminArtistsBoard({ artists, hasFilters }: Props) {
   );
 
   if (artists.length === 0) {
-    return (
-      <EmptyState
-        title={hasFilters ? "No matching artists" : "No artists yet"}
-        description={
-          hasFilters
-            ? "Clear the search or filters to broaden the list."
-            : "Create canonical profiles before assigning artist attribution to lots."
-        }
-        action={
-          hasFilters ? (
-            <Button variant="secondary" asChild>
-              <Link href="/admin/artists">Clear filters</Link>
-            </Button>
-          ) : (
-            <Button variant="primary" asChild>
-              <Link href="/admin/artists/new">New artist</Link>
-            </Button>
-          )
-        }
-      />
-    );
+    return null;
   }
 
   const selectedIds = artists.filter((a) => selected.has(a.id)).map((a) => a.id);
@@ -314,14 +295,14 @@ export function AdminArtistsBoard({ artists, hasFilters }: Props) {
                               type: "item",
                               label: "View",
                               onSelect: () => {
-                                window.location.href = `/admin/artists/${a.id}`;
+                                router.push(`/admin/artists/${a.id}`);
                               },
                             },
                             {
                               type: "item",
                               label: "Edit",
                               onSelect: () => {
-                                window.location.href = `/admin/artists/${a.id}/edit`;
+                                router.push(`/admin/artists/${a.id}/edit`);
                               },
                             },
                             {

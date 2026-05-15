@@ -263,6 +263,50 @@ export class SaleService {
     return ok({ sale: updatedSale, lots: updatedLots });
   }
 
+  /** Revert a scheduled sale (and its scheduled lots) back to draft.
+   *  Guard: only allowed when the sale is `scheduled` and all lots are still `scheduled`
+   *  (i.e. no lot has gone active or ended yet — meaning no bids have been placed). */
+  async unpublish(
+    _userId: string,
+    userRole: string,
+    saleId: string,
+    userStaffRole?: string | null,
+  ): Promise<Result<Sale, LotError | AuthzError>> {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can unpublish sales", 403));
+    }
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) return err(new LotError("Sale not found", 404));
+    if (sale.status !== "scheduled") {
+      return err(
+        new LotError("Only scheduled sales can be reverted to draft (no active or ended sales)"),
+      );
+    }
+    const lots = await this.lotRepo.findBySaleId(saleId);
+    const hasStartedLot = lots.some((l) => l.status !== "scheduled" && l.status !== "draft");
+    if (hasStartedLot) {
+      return err(
+        new LotError(
+          "Cannot revert to draft: at least one lot is active, ended, or cancelled. Cancel the sale instead.",
+        ),
+      );
+    }
+    for (const l of lots) {
+      await this.jobScheduler?.cancelLotJobs(l.id);
+      await this.lotRepo.updateStatus(l.id, "draft");
+    }
+    await this.saleRepo.updateStatus(saleId, "draft");
+    const updated = await this.saleRepo.findById(saleId);
+    if (!updated) return err(new LotError("Sale not found", 404));
+    return ok(updated);
+  }
+
   async cancel(
     _userId: string,
     userRole: string,

@@ -19,8 +19,30 @@ import {
 } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+
+function LotActionMenu({ row }: { row: AdminLotTableRow }) {
+  const router = useRouter();
+  return (
+    <InlineActionMenu
+      label={`Actions for ${row.title}`}
+      items={[
+        {
+          type: "item",
+          label: "Open detail",
+          onSelect: () => router.push(`/admin/lots/${row.id}`),
+        },
+        {
+          type: "item",
+          label: "Copy lot ID",
+          onSelect: () => void navigator.clipboard.writeText(row.id),
+        },
+      ]}
+    />
+  );
+}
 
 function LotsLayoutToggle({
   searchQuery,
@@ -112,27 +134,7 @@ function lotColumns(): ColumnDef<AdminLotTableRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <InlineActionMenu
-          label={`Actions for ${row.original.title}`}
-          items={[
-            {
-              type: "item",
-              label: "Open detail",
-              onSelect: () => {
-                window.location.href = `/admin/lots/${row.original.id}`;
-              },
-            },
-            {
-              type: "item",
-              label: "Copy lot ID",
-              onSelect: () => {
-                void navigator.clipboard.writeText(row.original.id);
-              },
-            },
-          ]}
-        />
-      ),
+      cell: ({ row }) => <LotActionMenu row={row.original} />,
       enableSorting: false,
     },
   ];
@@ -243,23 +245,7 @@ export function AdminLotsBoard({
                       </StatusBadge>
                     </div>
                   </div>
-                  <InlineActionMenu
-                    label={`Actions for ${r.title}`}
-                    items={[
-                      {
-                        type: "item",
-                        label: "Open detail",
-                        onSelect: () => {
-                          window.location.href = `/admin/lots/${r.id}`;
-                        },
-                      },
-                      {
-                        type: "item",
-                        label: "Copy ID",
-                        onSelect: () => void navigator.clipboard.writeText(r.id),
-                      },
-                    ]}
-                  />
+                  <LotActionMenu row={r} />
                 </div>
               </li>
             ))}

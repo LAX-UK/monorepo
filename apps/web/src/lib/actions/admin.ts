@@ -353,6 +353,28 @@ const mergeArtistPhraseSchema = z.object({
   confirmationPhrase: z.string().min(1).max(500),
 });
 
+export async function adminReviewArtistResultAction(
+  artistId: string,
+  input: { decision: "approved" | "rejected"; reviewNotes?: string; rejectionReason?: string },
+): Promise<ActionResult<void>> {
+  const res = await authedServerFetch(`/artists/${encodeURIComponent(artistId)}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    return actionFailure(
+      payload.error ?? payload.message ?? "Could not submit review",
+      undefined,
+      res.status,
+    );
+  }
+  revalidatePath(`/admin/artists/${artistId}`);
+  revalidatePath("/admin/artists");
+  return actionSuccess();
+}
+
 export async function adminMergeArtistResultAction(
   fromArtistId: string,
   input: z.infer<typeof mergeArtistPhraseSchema>,
@@ -516,6 +538,26 @@ export async function adminCancelLotResultAction(
     return actionFailure(r.message, undefined, r.status);
   }
   revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${id}`);
+  return actionSuccess();
+}
+
+export async function adminApproveWithdrawalRequestResultAction(
+  lotId: string,
+): Promise<ActionResult<void>> {
+  const id = lotId.trim();
+  if (!id) return actionFailure("Missing lot ID");
+  const res = await authedServerFetch(
+    `/admin/lots/${encodeURIComponent(id)}/approve-withdrawal-request`,
+    {
+      method: "POST",
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Request failed" }));
+    return actionFailure((body as { error?: string }).error ?? "Failed to approve withdrawal");
+  }
+  revalidatePath("/admin/lots/withdrawals");
   revalidatePath(`/admin/lots/${id}`);
   return actionSuccess();
 }

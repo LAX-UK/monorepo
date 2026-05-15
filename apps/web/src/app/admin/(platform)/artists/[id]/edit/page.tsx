@@ -16,19 +16,24 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
   ]);
   if (!artist) notFound();
 
-  const mergedNotice =
-    artist.status === "merged_into" && artist.mergedIntoArtistId ? (
-      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-on-surface">
-        This profile is marked <strong>merged</strong>. Canonical work should happen on the{" "}
+  const isMerged = artist.status === "merged_into";
+
+  const mergedNotice = isMerged ? (
+    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-on-surface">
+      <p className="font-semibold">This profile has been merged into another artist.</p>
+      <p className="mt-1 text-on-surface-variant">
+        This form is read-only. All catalogue work should happen on the surviving profile.
+      </p>
+      {artist.mergedIntoArtistId ? (
         <Link
           href={`/admin/artists/${artist.mergedIntoArtistId}`}
-          className="font-medium text-primary hover:underline"
+          className="mt-2 inline-flex items-center gap-1 font-medium text-primary hover:underline"
         >
-          surviving artist
+          View merge target →
         </Link>
-        . The form below may be locked down by policy; prefer the surviving profile for edits.
-      </div>
-    ) : null;
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <AdminEntityFormShell
@@ -51,11 +56,12 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
           <AdminArtistForm
             mode="edit"
             artistId={artist.id}
+            readOnly={isMerged}
             defaultValues={{
               displayName: artist.displayName,
               slug: artist.slug,
               kind: artist.kind ?? "artist",
-              status: artist.status === "merged_into" ? "approved" : (artist.status ?? "approved"),
+              status: artist.status ?? "approved",
               portraitUrl: artist.portraitUrl ?? "",
               heroImageUrl: artist.heroImageUrl ?? "",
               shortBio: artist.shortBio ?? "",

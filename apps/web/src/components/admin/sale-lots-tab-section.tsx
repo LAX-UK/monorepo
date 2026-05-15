@@ -1,36 +1,35 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { DisplayHeading } from "@/components/ui/typography";
 import {
   adminAttachLotToSaleResultAction,
   adminCancelLotInSaleResultAction,
-  adminCancelSaleResultAction,
   adminDetachLotFromSaleResultAction,
-  adminMarkSaleEndedResultAction,
-  adminPublishSaleResultAction,
   adminSetLotStatusResultAction,
 } from "@/lib/actions/admin-sales";
+import { lotStatusLabel, lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import type { ActionResult } from "@/lib/forms/form-result";
-import { salePath } from "@/lib/seo/url";
 import { notify } from "@/lib/ui/notify";
 import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
+import { StatusBadge } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-type LotRow = { id: string; title: string; lotNumber: number | null; status: LotStatus };
+export type SaleLotsTabLotRow = {
+  id: string;
+  title: string;
+  lotNumber: number | null;
+  status: LotStatus;
+};
 
 type Props = {
   saleId: string;
-  saleTitle: string;
   saleStatus: SaleStatus;
   deliveryMode: SaleDeliveryMode;
   canEdit: boolean;
-  canPublish: boolean;
-  canCancel: boolean;
-  canMarkOnsiteEnded: boolean;
-  lots: LotRow[];
+  lots: SaleLotsTabLotRow[];
   draftOrphans: { id: string; title: string }[];
 };
 
@@ -43,20 +42,17 @@ const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
   voided: [],
 };
 
-export function AdminSaleDetailActions({
+export function SaleLotsTabSection({
   saleId,
-  saleTitle,
   saleStatus,
   deliveryMode,
   canEdit,
-  canPublish,
-  canCancel,
-  canMarkOnsiteEnded,
   lots,
   draftOrphans,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const isOnsite = deliveryMode === "onsite";
 
   const run = (fn: () => Promise<ActionResult<void>>) => {
     startTransition(() => {
@@ -72,72 +68,18 @@ export function AdminSaleDetailActions({
     });
   };
 
-  const isOnsite = deliveryMode === "onsite";
-
   return (
-    <>
-      <div className="flex flex-wrap gap-3">
-        {canEdit ? (
-          <Link
-            href={`/admin/sales/${saleId}/edit`}
-            className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
-          >
-            Edit draft
-          </Link>
-        ) : null}
-        {canPublish ? (
-          <Button
-            type="button"
-            disabled={pending}
-            onClick={() => run(() => adminPublishSaleResultAction(saleId))}
-          >
-            Publish
-          </Button>
-        ) : null}
-        {canMarkOnsiteEnded ? (
-          <Button
-            type="button"
-            disabled={pending}
-            variant="secondary"
-            onClick={() => {
-              if (!confirm("End this onsite sale and all of its remaining lots?")) return;
-              run(() => adminMarkSaleEndedResultAction(saleId));
-            }}
-          >
-            Mark onsite sale ended
-          </Button>
-        ) : null}
-        {canCancel ? (
-          <Button
-            type="button"
-            disabled={pending}
-            variant="secondary"
-            onClick={() => {
-              if (!confirm("Cancel the entire sale and remaining lots?")) return;
-              run(() => adminCancelSaleResultAction(saleId));
-            }}
-          >
-            Cancel sale
-          </Button>
-        ) : null}
-        <Link
-          href={salePath({ id: saleId, title: saleTitle })}
-          className="font-label text-xs font-bold uppercase tracking-widest text-primary underline"
-        >
-          View on site
-        </Link>
-      </div>
-
+    <div className="space-y-10">
       <div>
-        <DisplayHeading as="h2" className="text-2xl">
+        <DisplayHeading as="h2" className="text-xl">
           Catalog lots
         </DisplayHeading>
-        <p className="mt-1 font-body text-xs text-on-surface-variant">
+        <p className="mt-1 font-body text-sm text-on-surface-variant">
           {isOnsite
-            ? "Onsite lots inherit the auction's start/end window."
+            ? "Onsite lots inherit the sale's start/end window."
             : "Online lots run on their own schedule and accept bids when active."}
         </p>
-        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-sm border border-outline-variant/15">
+        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/15 bg-surface-container-lowest/40">
           {lots.map((l) => {
             const transitions = LOT_TRANSITION_OPTIONS[l.status];
             return (
@@ -145,18 +87,30 @@ export function AdminSaleDetailActions({
                 key={l.id}
                 className="flex flex-wrap items-center justify-between gap-4 px-4 py-3"
               >
-                <div>
-                  <p className="font-headline text-base">{l.title}</p>
-                  <p className="text-xs text-on-surface-variant">
-                    Lot #{l.lotNumber ?? "—"} · {l.status}
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/lots/${l.id}`}
+                    className="font-headline text-base text-on-surface hover:text-primary"
+                  >
+                    {l.title}
+                  </Link>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
+                    <span>Lot #{l.lotNumber ?? "—"}</span>
+                    <StatusBadge variant={lotStatusToBadgeVariant(l.status)}>
+                      {lotStatusLabel[l.status] ?? l.status}
+                    </StatusBadge>
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/lots/${l.id}`}>Open</Link>
+                  </Button>
                   {canEdit ? (
                     <Button
                       type="button"
-                      disabled={pending}
+                      size="sm"
                       variant="secondary"
+                      disabled={pending}
                       onClick={() => run(() => adminDetachLotFromSaleResultAction(saleId, l.id))}
                     >
                       Detach
@@ -167,8 +121,9 @@ export function AdminSaleDetailActions({
                   saleStatus !== "cancelled" ? (
                     <Button
                       type="button"
-                      disabled={pending}
+                      size="sm"
                       variant="secondary"
+                      disabled={pending}
                       onClick={() => {
                         if (!confirm(`Cancel lot "${l.title}"?`)) return;
                         run(() => adminCancelLotInSaleResultAction(saleId, l.id));
@@ -183,8 +138,9 @@ export function AdminSaleDetailActions({
                       <Button
                         key={next}
                         type="button"
-                        disabled={pending}
+                        size="sm"
                         variant="secondary"
+                        disabled={pending}
                         onClick={() => {
                           if (!confirm(`Mark lot "${l.title}" as ${next}?`)) return;
                           run(() => adminSetLotStatusResultAction(saleId, l.id, next));
@@ -198,14 +154,17 @@ export function AdminSaleDetailActions({
             );
           })}
         </ul>
+        {lots.length === 0 ? (
+          <p className="mt-3 font-body text-sm text-on-surface-variant">No lots attached yet.</p>
+        ) : null}
       </div>
 
       {canEdit && draftOrphans.length > 0 ? (
         <div>
-          <DisplayHeading as="h2" className="text-2xl">
+          <DisplayHeading as="h2" className="text-xl">
             Attach draft lot
           </DisplayHeading>
-          <p className="mt-2 text-sm text-on-surface-variant">
+          <p className="mt-2 font-body text-sm text-on-surface-variant">
             Standalone draft lots only.{" "}
             {isOnsite
               ? "Their schedule will inherit the sale window."
@@ -215,11 +174,12 @@ export function AdminSaleDetailActions({
             {draftOrphans.map((l) => (
               <li
                 key={l.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant/15 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-lowest/40 px-4 py-3"
               >
                 <span className="font-body text-sm">{l.title}</span>
                 <Button
                   type="button"
+                  size="sm"
                   disabled={pending}
                   variant="secondary"
                   onClick={() => run(() => adminAttachLotToSaleResultAction(saleId, l.id))}
@@ -231,6 +191,6 @@ export function AdminSaleDetailActions({
           </ul>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

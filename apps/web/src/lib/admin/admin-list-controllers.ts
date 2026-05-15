@@ -248,8 +248,8 @@ export const submissionsListController: IAdminListController<ItemSubmission, Sub
       };
       if (q.status !== undefined) p.status = q.status;
       if (q.q !== undefined && q.q !== "") p.q = q.q;
-      const rows = await getAdminSubmissions(p);
-      return { rows, offset: q.offset, limit: q.limit };
+      const { rows, total } = await getAdminSubmissions(p);
+      return { rows, offset: q.offset, limit: q.limit, total };
     },
   };
 
@@ -436,8 +436,9 @@ export const categoriesListController: IAdminListController<AdminCategory, Categ
     return { ...base, includeArchived };
   },
   async fetch(q) {
-    const rows = await getAdminCategoryList({ includeArchived: Boolean(q.includeArchived) });
-    return { rows, offset: q.offset, limit: q.limit };
+    const all = await getAdminCategoryList({ includeArchived: Boolean(q.includeArchived) });
+    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
+    return { rows, offset: q.offset, limit: q.limit, total };
   },
 };
 

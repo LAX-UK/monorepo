@@ -110,19 +110,33 @@ function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined 
   return { hammerMajor, premiumMajor, totalMajor, policyId, kind };
 }
 
+function nullableString(v: unknown): string | null {
+  return v == null || v === "" ? null : String(v);
+}
+
+function parseStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? (v as unknown[]).map(String) : [];
+}
+
 export function parseLot(raw: unknown): Lot {
   const o = raw as Record<string, unknown>;
   const checkoutPricing = parseCheckoutPricing(o.checkoutPricing);
   return {
     id: String(o.id),
-    saleId: o.saleId == null || o.saleId === "" ? null : String(o.saleId),
+    saleId: nullableString(o.saleId),
     lotNumber:
       o.lotNumber == null || o.lotNumber === ""
         ? null
         : typeof o.lotNumber === "number"
           ? o.lotNumber
           : Number.parseInt(String(o.lotNumber), 10),
-    sellerId: String(o.sellerId),
+    ...(o.sellerId != null && o.sellerId !== "" ? { sellerId: String(o.sellerId) } : {}),
+    ...(o.sellerLegalEntityId != null && o.sellerLegalEntityId !== ""
+      ? { sellerLegalEntityId: String(o.sellerLegalEntityId) }
+      : {}),
+    artistId: o.artistId == null ? null : String(o.artistId),
+    artistReviewRequired: Boolean(o.artistReviewRequired),
+    categoryIds: parseStringArray(o.categoryIds),
     title: String(o.title),
     description: o.description == null ? null : String(o.description),
     medium: o.medium == null || o.medium === "" ? null : String(o.medium),
