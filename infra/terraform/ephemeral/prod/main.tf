@@ -1,6 +1,6 @@
 locals {
-  environment = "prod"
-  region      = "lon1"
+  environment          = "prod"
+  region               = "lon1"
   redis_region         = "lon1"
   cookie_domain        = ".lax.bid"
   cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"
@@ -8,7 +8,7 @@ locals {
   api_public_url       = "https://api.lax.bid"
   web_origin           = "https://lax.bid"
   ws_public_url        = "wss://ws.lax.bid"
-  media_public_url     = "https://media.lax.bid"
+  media_public_url     = "https://lax-media.lon1.cdn.digitaloceanspaces.com"
 
   domain = {
     web   = "lax.bid"
