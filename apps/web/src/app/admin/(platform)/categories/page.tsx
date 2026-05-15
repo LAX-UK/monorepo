@@ -31,7 +31,7 @@ export default async function AdminCategoriesPage({
   try {
     const result = await categoriesListController.fetch(query);
     categories = result.rows;
-    total = result.total;
+    total = result.total ?? 0;
   } catch (e) {
     listError = e instanceof Error ? e.message : "Could not load categories.";
   }

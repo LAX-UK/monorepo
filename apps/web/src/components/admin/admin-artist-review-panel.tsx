@@ -26,7 +26,7 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
 
   const isPending = currentStatus === "pending" || currentStatus === undefined;
 
-  if (!isPending && currentStatus !== "pending") {
+  if (!isPending) {
     return (
       <Card>
         <CardHeader>
@@ -46,11 +46,18 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
   function submit(d: "approved" | "rejected") {
     setDecision(d);
     startTransition(async () => {
-      const result = await adminReviewArtistResultAction(artistId, {
-        decision: d,
-        reviewNotes: notes.trim() || undefined,
-        rejectionReason: d === "rejected" ? rejectionReason.trim() || undefined : undefined,
-      });
+      const input: {
+        decision: "approved" | "rejected";
+        reviewNotes?: string;
+        rejectionReason?: string;
+      } = { decision: d };
+      const trimmedNotes = notes.trim();
+      if (trimmedNotes) input.reviewNotes = trimmedNotes;
+      if (d === "rejected") {
+        const rr = rejectionReason.trim();
+        if (rr) input.rejectionReason = rr;
+      }
+      const result = await adminReviewArtistResultAction(artistId, input);
       if (result.ok) {
         notify.success(d === "approved" ? "Artist approved" : "Artist rejected");
         router.refresh();

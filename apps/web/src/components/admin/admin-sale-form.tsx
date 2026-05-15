@@ -306,7 +306,9 @@ export function AdminSaleForm({
                 </FormLabel>
                 <RhfSelect
                   value={field.value}
-                  onValueChange={isDraft ? field.onChange : undefined}
+                  onValueChange={(v) => {
+                    if (isDraft) field.onChange(v);
+                  }}
                   onBlur={field.onBlur}
                   disabled={!isDraft}
                   options={saleDeliveryModes.map((m) => ({
