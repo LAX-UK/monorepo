@@ -30,6 +30,17 @@ const nextConfig: NextConfig = {
         hostname: "*.digitaloceanspaces.com",
         pathname: "/**",
       },
+      // Custom media CDN domain (Cloudflare → DO Spaces CDN)
+      {
+        protocol: "https",
+        hostname: "media.lax.bid",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "test-media.lax.bid",
+        pathname: "/**",
+      },
     ],
   },
   experimental: {
