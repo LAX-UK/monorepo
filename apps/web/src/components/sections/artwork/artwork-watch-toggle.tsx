@@ -20,7 +20,7 @@ type Props = {
 };
 
 const lotBtnClass =
-  "box-border inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
+  "box-border inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-3 sm:px-6 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
 
 export function ArtworkWatchToggle({
   lotId,
@@ -66,10 +66,10 @@ export function ArtworkWatchToggle({
       return (
         <Link
           href={loginHref}
-          className={`${lotBtnClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
+          className={`${lotBtnClass} whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
         >
           <LogIn className="size-4 shrink-0" aria-hidden />
-          {signInLabel}
+          <span className="truncate">{signInLabel}</span>
         </Link>
       );
     }
