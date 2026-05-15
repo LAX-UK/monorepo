@@ -87,10 +87,22 @@ resource "digitalocean_spaces_bucket_policy" "public_read" {
   })
 }
 
-# CDN endpoint in front of the bucket. The DNS layer (CloudFlare) CNAMEs the
-# media subdomain (proxied) to this endpoint, providing edge caching plus a
-# DO-managed wildcard certificate at the origin.
+# Let's Encrypt certificate for the custom domain (if configured).
+# DNS must point directly to DO (not proxied through Cloudflare) for validation.
+resource "digitalocean_certificate" "cdn" {
+  count = var.cdn_custom_domain != "" ? 1 : 0
+
+  name    = "${var.bucket_name}-cdn-cert"
+  type    = "lets_encrypt"
+  domains = [var.cdn_custom_domain]
+}
+
+# CDN endpoint in front of the bucket.
 resource "digitalocean_cdn" "this" {
   origin = "${digitalocean_spaces_bucket.this.name}.${digitalocean_spaces_bucket.this.region}.digitaloceanspaces.com"
   ttl    = 3600
+
+  # Custom domain with Let's Encrypt cert (if configured).
+  custom_domain  = var.cdn_custom_domain != "" ? var.cdn_custom_domain : null
+  certificate_id = var.cdn_custom_domain != "" ? digitalocean_certificate.cdn[0].id : null
 }
