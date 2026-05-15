@@ -24,21 +24,16 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
-      // DigitalOcean Spaces: direct endpoint and CDN edge
+      // DigitalOcean Spaces: direct endpoint
       {
         protocol: "https",
         hostname: "*.digitaloceanspaces.com",
         pathname: "/**",
       },
-      // Custom media CDN domain (Cloudflare → DO Spaces CDN)
+      // DigitalOcean Spaces CDN (bucket.region.cdn.digitaloceanspaces.com)
       {
         protocol: "https",
-        hostname: "media.lax.bid",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "test-media.lax.bid",
+        hostname: "lax-media.lon1.cdn.digitaloceanspaces.com",
         pathname: "/**",
       },
     ],
