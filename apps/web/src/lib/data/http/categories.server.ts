@@ -13,6 +13,10 @@ function parseCategory(raw: unknown): Category {
     archived: Boolean(o.archived ?? false),
     sortOrder: Number(o.sortOrder ?? 0),
     parentId: o.parentId == null ? null : String(o.parentId),
+    heroImageKey:
+      o.heroImageKey == null || o.heroImageKey === ""
+        ? null
+        : String(o.heroImageKey),
   };
 }
 
