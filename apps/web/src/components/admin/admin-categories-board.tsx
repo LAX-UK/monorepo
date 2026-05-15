@@ -137,12 +137,13 @@ function CategoryTreeRow({
               <ChevronRight className="size-3.5 text-on-surface-variant" aria-hidden />
             ) : null}
             <Link
-              href={`/admin/categories/${node.id}/edit`}
+              href={`/admin/categories/${node.id}`}
               className="truncate font-headline text-base text-on-surface hover:text-primary"
             >
               {node.name}
             </Link>
             {node.archived ? <Badge variant="secondary">Archived</Badge> : null}
+            {node.heroImageKey ? <Badge variant="outline">Has hero</Badge> : null}
           </div>
           <p className="mt-1 truncate font-label text-[11px] uppercase tracking-wide text-on-surface-variant">
             /{node.slug} · order {node.sortOrder}

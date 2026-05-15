@@ -1,7 +1,10 @@
+import { AdminArtistDuplicatesTable } from "@/components/admin/admin-artist-duplicates-table";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
+import { AdminArtistReviewPanel } from "@/components/admin/admin-artist-review-panel";
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
-import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
+import { artistStatusLabel, artistStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import {
   getAdminArtistById,
@@ -9,7 +12,8 @@ import {
   getAdminLotList,
 } from "@/lib/data/http/admin.server";
 import { artistPath } from "@/lib/seo/url";
-import { Badge } from "@auction/ui";
+import type { ArtistStatus } from "@auction/types";
+import { Badge, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
 import Link from "next/link";
@@ -31,20 +35,19 @@ export default async function AdminArtistDetailPage({
     deathYear: artist.deathYear,
   });
   const life = lifeRaw === "—" ? null : lifeRaw;
-  const st = artist.status ? artistStatusLabel(artist.status) : null;
   const publicHref = artistPath({ id: artist.id, name: artist.displayName });
+  const registryStatus: ArtistStatus = artist.status ?? "pending";
 
   const mergedBanner =
     artist.status === "merged_into" && artist.mergedIntoArtistId ? (
       <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low/40 p-4 text-sm text-on-surface">
-        This profile was merged into{" "}
+        This profile was merged. All catalogue work should happen on the surviving profile.{" "}
         <Link
           href={`/admin/artists/${artist.mergedIntoArtistId}`}
           className="font-medium text-primary hover:underline"
         >
-          {artist.mergedIntoArtistId}
+          View surviving artist →
         </Link>
-        . Prefer the surviving profile for edits and catalogue work.
       </div>
     ) : null;
 
@@ -66,21 +69,9 @@ export default async function AdminArtistDetailPage({
           {artist.kind ? (
             <Badge variant="secondary">{artistKindMeta(artist.kind).badge}</Badge>
           ) : null}
-          {st ? (
-            <Badge
-              variant={
-                st.tone === "success"
-                  ? "default"
-                  : st.tone === "warning"
-                    ? "secondary"
-                    : st.tone === "danger"
-                      ? "destructive"
-                      : "outline"
-              }
-            >
-              {st.label}
-            </Badge>
-          ) : null}
+          <StatusBadge variant={artistStatusToBadgeVariant(registryStatus)}>
+            {artistStatusLabel[registryStatus]}
+          </StatusBadge>
         </div>
       }
       actions={
@@ -93,95 +84,91 @@ export default async function AdminArtistDetailPage({
               Public profile
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/audit/timeline">Audit timeline</Link>
-          </Button>
         </div>
       }
     >
-      {mergedBanner}
+      <Tabs defaultValue="overview">
+        <TabsList className="mb-6 flex flex-wrap gap-1">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="lots">Lots {lots.length > 0 ? `(${lots.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="duplicates">
+            Duplicates {dupes.length > 0 ? `(${dupes.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-lg">Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
-          <p>
-            <span className="font-medium text-on-surface">Slug</span>
-            <br />
-            <span className="font-mono text-xs">/{artist.slug}</span>
-          </p>
-          <p>
-            <span className="font-medium text-on-surface">Nationality</span>
-            <br />
-            {artist.nationality?.trim() || "—"}
-          </p>
-          <p>
-            <span className="font-medium text-on-surface">Featured / verified</span>
-            <br />
-            {artist.featured ? "Featured" : "Not featured"}
-            {" · "}
-            {artist.verified ? "Verified" : "Not verified"}
-          </p>
-          <p>
-            <span className="font-medium text-on-surface">Archived</span>
-            <br />
-            {artist.archived ? "Yes" : "No"}
-          </p>
-        </CardContent>
-      </Card>
+        <TabsContent value="overview" className="space-y-6">
+          {mergedBanner}
 
-      <section className="space-y-3" id="lots">
-        <h2 className="font-display text-xl font-semibold tracking-tight">Lots</h2>
-        <p className="text-sm text-on-surface-variant">
-          Read-only FK attribution. Reassign from each lot&apos;s edit screen.
-        </p>
-        <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
-      </section>
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display text-lg">Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
+              <p>
+                <span className="font-medium text-on-surface">Slug</span>
+                <br />
+                <span className="font-mono text-xs">/{artist.slug}</span>
+              </p>
+              <p>
+                <span className="font-medium text-on-surface">Nationality</span>
+                <br />
+                {artist.nationality?.trim() || "—"}
+              </p>
+              <p>
+                <span className="font-medium text-on-surface">Featured / verified</span>
+                <br />
+                {artist.featured ? "Featured" : "Not featured"}
+                {" · "}
+                {artist.verified ? "Verified" : "Not verified"}
+              </p>
+              <p>
+                <span className="font-medium text-on-surface">Archived</span>
+                <br />
+                {artist.archived ? "Yes" : "No"}
+              </p>
+            </CardContent>
+          </Card>
 
-      <section className="space-y-3" id="duplicates">
-        <h2 className="font-display text-xl font-semibold tracking-tight">Duplicates & merge</h2>
-        <p className="text-sm text-on-surface-variant">
-          Server-suggested candidates with similar names. Merging moves aliases and lots to the
-          surviving profile.
-        </p>
-        {dupes.length === 0 ? (
-          <p className="rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
-            No duplicate candidates returned for this profile.
+          {artist.status === "pending" ? (
+            <AdminArtistReviewPanel artistId={artist.id} currentStatus={artist.status} />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="lots" className="space-y-3">
+          <p className="text-sm text-on-surface-variant">
+            Read-only FK attribution. Reassign from each lot&apos;s edit screen.
           </p>
-        ) : (
-          <div className="overflow-hidden rounded-md border border-outline-variant/30">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-container-lowest text-left font-label text-xs uppercase tracking-wide text-on-surface-variant">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Kind</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2 text-right">Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dupes.map((d) => (
-                  <tr key={d.id} className="border-t border-outline-variant/15">
-                    <td className="px-4 py-2 font-medium text-on-surface">{d.displayName}</td>
-                    <td className="px-4 py-2 text-on-surface-variant">{d.kind}</td>
-                    <td className="px-4 py-2 text-on-surface-variant">{d.status}</td>
-                    <td className="px-4 py-2 text-right">
-                      <Link
-                        href={`/admin/artists/${d.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
-      </section>
+          <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
+        </TabsContent>
+
+        <TabsContent value="duplicates" className="space-y-4">
+          <p className="text-sm text-on-surface-variant">
+            Server-suggested candidates with similar names. Merging moves aliases and lots to the
+            surviving profile.
+          </p>
+          {dupes.length === 0 ? (
+            <p className="rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
+              No duplicate candidates returned for this profile.
+            </p>
+          ) : (
+            <AdminArtistDuplicatesTable rows={dupes} />
+          )}
+          <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-3">
+          <p className="font-body text-sm text-on-surface-variant">
+            Domain events for aggregate <span className="font-mono">artist / {artist.id}</span>.
+          </p>
+          <Link
+            href={`/admin/audit/timeline?aggregateType=artist&aggregateId=${artist.id}`}
+            className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          >
+            Open audit timeline ↗
+          </Link>
+        </TabsContent>
+      </Tabs>
     </AdminEntityDetailShell>
   );
 }

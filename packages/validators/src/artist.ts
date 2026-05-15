@@ -19,7 +19,7 @@ const optionalUrl = z
 
 export const artistKindEnum = z.enum(["artist", "maker", "brand", "marque"]);
 
-export const artistAdminStatusEnum = z.enum(["pending", "approved", "rejected"]);
+export const artistAdminStatusEnum = z.enum(["pending", "approved", "rejected", "merged_into"]);
 
 export const artistIdParamSchema = z.object({
   artistId: z.string().uuid(),

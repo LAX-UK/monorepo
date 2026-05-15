@@ -19,6 +19,7 @@ export interface IAdminSaleService {
   create(input: CreateSaleInput): Promise<ServiceResult<{ id: string }>>;
   update(id: string, input: UpdateSaleInput): Promise<ServiceResult<Record<string, unknown>>>;
   publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
+  unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
   attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
   detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;

@@ -9,17 +9,16 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
-export type ReorderableImageEntry = {
-  key: string;
-  alt: string;
-};
+export type KeyEntry = { key: string };
 
-export function useImageReorder({
+export type ReorderableImageEntry = KeyEntry & { alt: string };
+
+export function useImageReorder<T extends KeyEntry>({
   value,
   onChange,
 }: {
-  value: ReorderableImageEntry[];
-  onChange: (next: ReorderableImageEntry[]) => void;
+  value: T[];
+  onChange: (next: T[]) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

@@ -2,6 +2,7 @@
 
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
@@ -50,23 +51,14 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
       cell: ({ row }) => <SubmissionStatusBadge status={row.original.status} />,
     },
     {
-      id: "open",
+      id: "actions",
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/admin/submissions/${row.original.id}`}>View</Link>
           </Button>
-          {row.original.status === "submitted" ? (
-            <>
-              <Button size="sm" asChild>
-                <Link href={`/admin/submissions/${row.original.id}`}>Approve</Link>
-              </Button>
-              <Button variant="destructive" size="sm" asChild>
-                <Link href={`/admin/submissions/${row.original.id}`}>Reject</Link>
-              </Button>
-            </>
-          ) : null}
+          <SubmissionInlineActions submissionId={row.original.id} status={row.original.status} />
         </div>
       ),
       enableSorting: false,
@@ -105,16 +97,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/admin/submissions/${r.id}`}>View</Link>
             </Button>
-            {r.status === "submitted" ? (
-              <>
-                <Button size="sm" asChild>
-                  <Link href={`/admin/submissions/${r.id}`}>Approve</Link>
-                </Button>
-                <Button variant="destructive" size="sm" asChild>
-                  <Link href={`/admin/submissions/${r.id}`}>Reject</Link>
-                </Button>
-              </>
-            ) : null}
+            <SubmissionInlineActions submissionId={r.id} status={r.status} />
           </div>
         </li>
       ))}

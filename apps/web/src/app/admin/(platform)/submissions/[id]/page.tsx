@@ -10,7 +10,6 @@ import { getAdminArtistList, getAdminLegalEntityById } from "@/lib/data/http/adm
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
 import { ReviewSplitPane } from "@auction/ui";
-import { Card, CardContent } from "@auction/ui/components/card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -107,7 +106,17 @@ export default async function AdminSubmissionDetailPage({
         </Link>
       }
       title={s.title}
-      actions={<SubmissionStatusBadge status={s.status} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <SubmissionStatusBadge status={s.status} />
+          <Link
+            href={`/admin/audit/timeline?aggregateType=item_submission&aggregateId=${id}`}
+            className="font-label text-xs uppercase tracking-widest text-secondary hover:text-primary hover:underline"
+          >
+            Audit ↗
+          </Link>
+        </div>
+      }
     >
       <ReviewSplitPane
         recordTitle="Intake"
@@ -125,35 +134,6 @@ export default async function AdminSubmissionDetailPage({
             {submissionRecord}
             <SubmissionMetadataSummary submission={s} />
             <SubmissionDocumentsSection submissionId={id} initialDocuments={staffDocuments} />
-            <section aria-labelledby="submission-workflow-heading" className="space-y-3">
-              <h3 id="submission-workflow-heading" className="sr-only">
-                Specialist workflow
-              </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Card className="border-outline-variant/15 bg-surface-container-low/40">
-                  <CardContent className="space-y-2 p-4">
-                    <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
-                      Assignment
-                    </p>
-                    <p className="font-body text-sm text-on-surface-variant">
-                      Specialist assignee & due date post when submission_workflow tables ship
-                      (Phase 1.3).
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card className="border-outline-variant/15 bg-surface-container-low/40">
-                  <CardContent className="space-y-2 p-4">
-                    <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
-                      Conversation
-                    </p>
-                    <p className="font-body text-sm text-on-surface-variant">
-                      Request-more-information threads and attachments will replace ad-hoc email
-                      once messaging lands.
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
           </div>
         }
         decision={decision}

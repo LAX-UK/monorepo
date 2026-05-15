@@ -219,6 +219,18 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data: data[0] });
   });
 
+  r.post("/:id/unpublish", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    const staffRole = c.get("userStaffRole") ?? null;
+    const { id } = c.req.valid("param");
+    const result = await container.saleService.unpublish(userId, role, id, staffRole);
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+    }
+    return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
+  });
+
   r.post(
     "/:id/cancel",
     requireAuth,

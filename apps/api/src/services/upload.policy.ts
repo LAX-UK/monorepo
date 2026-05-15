@@ -12,6 +12,7 @@ export const uploadKinds = [
   "sale_document",
   "submission_document",
   "artist_image",
+  "category_image",
 ] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
@@ -67,6 +68,11 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/artists",
   },
+  category_image: {
+    maxBytes: 10 * 1024 * 1024,
+    allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/categories",
+  },
 };
 
 export function isUploadKind(value: string): value is UploadKind {
@@ -112,6 +118,7 @@ export function canUploadKind(
         roleHasCapability(role, "catalogue.write", staffRole)
       );
     case "artist_image":
+    case "category_image":
       return (
         roleHasCapability(role, "platform.admin.full", staffRole) ||
         roleHasCapability(role, "auction.manage", staffRole) ||

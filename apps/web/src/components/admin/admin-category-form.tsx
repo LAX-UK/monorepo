@@ -1,5 +1,7 @@
 "use client";
 
+import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
+import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import {
@@ -11,6 +13,14 @@ import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@auction/ui/components/command";
+import {
   Form,
   FormControl,
   FormField,
@@ -18,6 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Textarea } from "@auction/ui/components/textarea";
 import {
   adminCategoryFormSchema,
@@ -25,8 +36,9 @@ import {
   adminUpdateCategoryBodySchema,
 } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
@@ -42,10 +54,19 @@ type Props = {
 export function AdminCategoryForm({ mode, categoryId, categories, defaultValues }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [parentPopoverOpen, setParentPopoverOpen] = useState(false);
+
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(adminCategoryFormSchema),
     defaultValues,
   });
+
+  const eligibleParents = categories.filter((c) => c.id !== categoryId && !c.archived);
+
+  function getParentLabel(id: string | null | undefined): string {
+    if (!id) return "No parent";
+    return eligibleParents.find((c) => c.id === id)?.name ?? "Unknown";
+  }
 
   return (
     <Form {...form}>
@@ -72,150 +93,244 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
           });
         })}
       >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Name</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput placeholder="Contemporary Art" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Slug</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  placeholder="Auto-generated from name"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <p className="text-xs text-on-surface-variant">
-                Leave blank to generate a unique public slug.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="parentId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Parent category</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <select
-                  value={field.value ?? ""}
-                  onChange={(event) => field.onChange(event.target.value || null)}
-                  onBlur={field.onBlur}
-                  className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-                >
-                  <option value="">No parent</option>
-                  {categories
-                    .filter((category) => category.id !== categoryId)
-                    .map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                        {category.archived ? " (archived)" : ""}
-                      </option>
-                    ))}
-                </select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="sortOrder"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Sort order</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  type="number"
-                  min={0}
-                  max={10000}
-                  placeholder="0"
-                  {...field}
-                  value={field.value ?? 0}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {mode === "edit" ? (
+        <CatalogFormSection
+          title="Identity"
+          description="Display name and URL slug."
+          collapsible={false}
+        >
           <FormField
             control={form.control}
-            name="archived"
+            name="name"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-outline-variant/40 p-4">
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Name</LabelCaps>
+                </FormLabel>
                 <FormControl>
-                  <Checkbox
-                    checked={field.value === true}
-                    onCheckedChange={(v) => field.onChange(v === true)}
-                  />
+                  <UnderlineInput placeholder="Contemporary Art" {...field} />
                 </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="font-body text-sm font-medium text-on-surface">
-                    Archived
-                  </FormLabel>
-                  <p className="font-body text-xs text-on-surface-variant">
-                    Archived categories stay in history but are hidden from default pickers.
-                  </p>
-                </div>
+                <FormMessage />
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="slug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Slug</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <UnderlineInput
+                    placeholder="Auto-generated from name"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <p className="text-xs text-on-surface-variant">
+                  Leave blank to generate a unique public slug.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CatalogFormSection>
+
+        <CatalogFormSection
+          title="Hierarchy"
+          description="Parent category and ordering among siblings."
+          collapsible={false}
+        >
+          <FormField
+            control={form.control}
+            name="parentId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Parent category</LabelCaps>
+                </FormLabel>
+                <div className="flex items-center gap-2">
+                  <Popover open={parentPopoverOpen} onOpenChange={setParentPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="min-h-11 w-full justify-between font-normal"
+                      >
+                        <span className="truncate">{getParentLabel(field.value)}</span>
+                        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search categories…" />
+                        <CommandList>
+                          <CommandEmpty>No categories found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="__none__"
+                              onSelect={() => {
+                                field.onChange(null);
+                                setParentPopoverOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 size-4 ${!field.value ? "opacity-100" : "opacity-0"}`}
+                              />
+                              No parent
+                            </CommandItem>
+                            {eligibleParents.map((c) => (
+                              <CommandItem
+                                key={c.id}
+                                value={c.name}
+                                onSelect={() => {
+                                  field.onChange(c.id);
+                                  setParentPopoverOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 size-4 ${field.value === c.id ? "opacity-100" : "opacity-0"}`}
+                                />
+                                {c.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {field.value ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => field.onChange(null)}
+                    >
+                      <X className="size-4" />
+                      <span className="sr-only">Clear parent</span>
+                    </Button>
+                  ) : null}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="sortOrder"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Sort order</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <UnderlineInput
+                    type="number"
+                    min={0}
+                    max={10000}
+                    placeholder="0"
+                    {...field}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CatalogFormSection>
+
+        <CatalogFormSection
+          title="Hero image"
+          description="Optional banner for the public category page."
+          collapsible={false}
+        >
+          <FormField
+            control={form.control}
+            name="heroImageKey"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Hero image</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <ImageUploadField
+                    kind="category_image"
+                    value={field.value ? [field.value] : []}
+                    onChange={(keys) => field.onChange(keys[0] ?? null)}
+                  />
+                </FormControl>
+                <p className="text-xs text-on-surface-variant">
+                  Optional banner image displayed on the category landing page.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CatalogFormSection>
+
+        {mode === "edit" ? (
+          <CatalogFormSection
+            title="Status"
+            description="Archive without deleting."
+            collapsible={false}
+          >
+            <FormField
+              control={form.control}
+              name="archived"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-outline-variant/40 p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value === true}
+                      onCheckedChange={(v) => field.onChange(v === true)}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="mb-2 block">
+                      <LabelCaps>Archived</LabelCaps>
+                    </FormLabel>
+                    <p className="font-body text-xs text-on-surface-variant">
+                      Archived categories stay in history but are hidden from default pickers.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+          </CatalogFormSection>
         ) : null}
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Description</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  rows={5}
-                  placeholder="Internal description or public category copy"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <CatalogFormSection title="Description" collapsible={false}>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Description</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    rows={5}
+                    placeholder="Internal description or public category copy"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CatalogFormSection>
 
         <div className="flex flex-wrap justify-end gap-3">
           <Button variant="outline" type="button" onClick={() => router.push("/admin/categories")}>
             Cancel
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving..." : mode === "create" ? "Create category" : "Save changes"}
+            {pending ? "Saving…" : mode === "create" ? "Create category" : "Save changes"}
           </Button>
         </div>
       </form>

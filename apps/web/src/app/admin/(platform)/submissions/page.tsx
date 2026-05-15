@@ -42,20 +42,26 @@ export default async function AdminSubmissionsPage({
 
   let loadError: string | null = null;
   let rows: Awaited<ReturnType<typeof submissionsListController.fetch>>["rows"] = [];
+  let total = 0;
   try {
     const result = await submissionsListController.fetch(query);
     rows = result.rows;
+    total = result.total ?? rows.length;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
-  const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => ({
-    id: s.id,
-    title: s.title,
-    sellerPreview: `Seller ${(s.sellerId ?? s.legalEntityId ?? "").slice(0, 8)}…`,
-    status: s.status,
-    createdAtLabel: s.createdAt.toLocaleString(),
-  }));
+  const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => {
+    const entityId = s.legalEntityId ?? s.sellerId ?? "";
+    const sellerPreview = entityId ? `ID: ${entityId.slice(0, 8)}…` : "Unknown seller";
+    return {
+      id: s.id,
+      title: s.title,
+      sellerPreview,
+      status: s.status,
+      createdAtLabel: s.createdAt.toLocaleString(),
+    };
+  });
 
   const clearTitleHref = buildListHref("/admin/submissions", sp, {
     ...(query.status !== undefined ? { status: query.status } : { status: "" }),
@@ -83,7 +89,6 @@ export default async function AdminSubmissionsPage({
 
   const filters = (
     <div className="flex w-full flex-col gap-4">
-      {statusChipsRow}
       <Suspense
         fallback={
           <div
@@ -98,10 +103,11 @@ export default async function AdminSubmissionsPage({
   );
 
   const pagination =
-    !loadError && (query.offset > 0 || rows.length === query.limit) ? (
+    !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
       <PaginationFooter
         offset={query.offset}
         limit={query.limit}
+        total={total}
         countOnPage={rows.length}
         prevHref={
           query.offset > 0
@@ -111,7 +117,7 @@ export default async function AdminSubmissionsPage({
             : null
         }
         nextHref={
-          rows.length === query.limit
+          query.offset + rows.length < total
             ? buildListHref("/admin/submissions", sp, {
                 offset: query.offset + query.limit,
               })
@@ -130,22 +136,31 @@ export default async function AdminSubmissionsPage({
 
   const hasFilters = Boolean(query.status !== undefined || initialQ);
 
+  const activeStatusLabel =
+    statusChips.find((c) => c.value === query.status)?.label.toLowerCase() ?? null;
+
   const emptyNoQuery =
     !loadError && rows.length === 0 && !initialQ ? (
       <EmptyState
-        title="No submissions"
-        description="Nothing matches this filter yet, or the intake queue is empty."
+        title={
+          query.status !== undefined ? `No ${activeStatusLabel} submissions` : "No submissions"
+        }
+        description={
+          query.status !== undefined
+            ? `There are no submissions with status "${activeStatusLabel}" matching your filters.`
+            : "The intake queue is empty."
+        }
       />
     ) : null;
 
   const emptyTitleOnly =
     !loadError && initialQ && rows.length === 0 ? (
       <EmptyState
-        title="No title matches"
-        description="Nothing in the current list matches that title. Try another phrase or clear the title filter."
+        title="No matches"
+        description={`No submissions match "${initialQ}"${query.status !== undefined ? ` with status "${activeStatusLabel}"` : ""}. Try another search term or clear the filter.`}
         action={
           <Button variant="secondary" asChild>
-            <Link href={clearTitleHref}>Clear title search</Link>
+            <Link href={clearTitleHref}>Clear search</Link>
           </Button>
         }
       />
@@ -163,6 +178,7 @@ export default async function AdminSubmissionsPage({
       hasFilters={hasFilters}
       resetHref="/admin/submissions"
       errorAlert={errorAlert}
+      chips={statusChipsRow}
       filters={filters}
       view={view}
       empty={

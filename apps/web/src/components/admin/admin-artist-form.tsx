@@ -34,9 +34,17 @@ type Props = {
   defaultValues: ArtistFormValues;
   /** From URL `?scenario=historical` or `maker-seller` */
   initialScenario?: ArtistScenario | null;
+  /** When true all fields are disabled (e.g. merged artist) */
+  readOnly?: boolean;
 };
 
-export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario = null }: Props) {
+export function AdminArtistForm({
+  mode,
+  artistId,
+  defaultValues,
+  initialScenario = null,
+  readOnly = false,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const form = useForm<ArtistFormValues>({
@@ -136,7 +144,11 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                   description="Who this catalogue profile represents when they sell their own work."
                   defaultOpen
                 >
-                  <UserLinkSection control={form.control} disabled={pending} emphasize />
+                  <UserLinkSection
+                    control={form.control}
+                    disabled={pending || readOnly}
+                    emphasize
+                  />
                 </ArtistFormSection>
               ) : null}
 
@@ -145,7 +157,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Public name, URL slug, and place."
                 defaultOpen
               >
-                <IdentitySection control={form.control} disabled={pending} />
+                <IdentitySection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               <ArtistFormSection
@@ -153,7 +165,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Optional years for biographical context."
                 defaultOpen={false}
               >
-                <LifespanSection control={form.control} disabled={pending} />
+                <LifespanSection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               <ArtistFormSection
@@ -161,7 +173,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Copy shown on the public artist profile."
                 defaultOpen
               >
-                <BiographySection control={form.control} disabled={pending} />
+                <BiographySection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               <ArtistFormSection
@@ -169,7 +181,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Portrait, hero, and website links."
                 defaultOpen={false}
               >
-                <MediaSection control={form.control} disabled={pending} />
+                <MediaSection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               <ArtistFormSection
@@ -177,7 +189,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Taxonomy and lifecycle for the registry."
                 defaultOpen
               >
-                <CatalogueSection control={form.control} disabled={pending} />
+                <CatalogueSection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               {activeScenario === "historical" ? (
@@ -186,7 +198,11 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                   description="Rarely needed for external profiles; use maker–seller path when the seller is the maker."
                   defaultOpen={false}
                 >
-                  <UserLinkSection control={form.control} disabled={pending} emphasize={false} />
+                  <UserLinkSection
+                    control={form.control}
+                    disabled={pending || readOnly}
+                    emphasize={false}
+                  />
                 </ArtistFormSection>
               ) : null}
 
@@ -195,7 +211,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 description="Featured, verified, and archive flags."
                 defaultOpen={false}
               >
-                <FlagsSection control={form.control} disabled={pending} />
+                <FlagsSection control={form.control} disabled={pending || readOnly} />
               </ArtistFormSection>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -206,7 +222,7 @@ export function AdminArtistForm({ mode, artistId, defaultValues, initialScenario
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending || readOnly}>
                   {pending ? "Saving..." : mode === "create" ? "Create artist" : "Save artist"}
                 </Button>
               </div>

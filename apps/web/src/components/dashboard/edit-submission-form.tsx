@@ -1,7 +1,7 @@
 "use client";
 
 import { CategoryPicker } from "@/components/forms/category-picker";
-import { ImageUploadField } from "@/components/forms/image-upload-field";
+import { ImageGalleryManager } from "@/components/forms/image-gallery-manager";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
@@ -225,13 +225,18 @@ export function EditSubmissionForm({ submissionId, initialValues, categories }: 
               <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
                 <LabelCaps>Images</LabelCaps>
               </FormLabel>
+              <p className="mb-2 font-body text-xs text-on-surface-variant">
+                First image is shown as the primary catalog image when this submission is approved.
+              </p>
               <FormControl>
-                <ImageUploadField
+                <ImageGalleryManager
                   kind="submission_image"
-                  multiple
-                  maxFiles={20}
+                  label="Submission image"
                   value={field.value}
                   onChange={field.onChange}
+                  maxFiles={20}
+                  emptyTitle="No submission images yet"
+                  emptyDescription="Upload photos, then drag to reorder. The first image is the primary catalog image."
                 />
               </FormControl>
               <FormMessage />
