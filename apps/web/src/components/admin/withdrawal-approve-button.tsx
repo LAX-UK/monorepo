@@ -15,7 +15,7 @@ export function WithdrawalApproveButton({ lotId }: Props) {
   return (
     <Button
       type="button"
-      variant="primary"
+      variant="default"
       size="sm"
       disabled={pending}
       onClick={() => {

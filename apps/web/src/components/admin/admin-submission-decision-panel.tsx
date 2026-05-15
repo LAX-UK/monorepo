@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
-import { rejectSubmissionBodySchema } from "@auction/validators";
+import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -28,10 +28,7 @@ import { z } from "zod";
 
 const approveFormSchema = z.object({
   reviewNotes: z.string().max(5000),
-  artistId: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.string().uuid().nullable().optional(),
-  ),
+  artistId: z.string().uuid().nullable().optional(),
 });
 type ApproveFormValues = z.infer<typeof approveFormSchema>;
 
@@ -115,10 +112,11 @@ export function AdminSubmissionDecisionPanel({
               onSubmit={approveForm.handleSubmit((values) => {
                 startTransition(() => {
                   void (async () => {
-                    const r = await adminApproveSubmissionResultAction(submissionId, {
-                      reviewNotes: values.reviewNotes.trim() || undefined,
-                      ...(values.artistId ? { artistId: values.artistId } : {}),
-                    });
+                    const body: z.infer<typeof approveSubmissionBodySchema> = {};
+                    const trimmed = values.reviewNotes.trim();
+                    if (trimmed) body.reviewNotes = trimmed;
+                    if (values.artistId) body.artistId = values.artistId;
+                    const r = await adminApproveSubmissionResultAction(submissionId, body);
                     if (r.ok) {
                       notify.success("Approved — draft lot created");
                       if (r.data?.lotId) {
