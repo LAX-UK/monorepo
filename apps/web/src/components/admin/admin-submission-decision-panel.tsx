@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
-import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
+import { type ApproveSubmissionBody, rejectSubmissionBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -112,7 +112,7 @@ export function AdminSubmissionDecisionPanel({
               onSubmit={approveForm.handleSubmit((values) => {
                 startTransition(() => {
                   void (async () => {
-                    const body: z.infer<typeof approveSubmissionBodySchema> = {};
+                    const body: ApproveSubmissionBody = {};
                     const trimmed = values.reviewNotes.trim();
                     if (trimmed) body.reviewNotes = trimmed;
                     if (values.artistId) body.artistId = values.artistId;
