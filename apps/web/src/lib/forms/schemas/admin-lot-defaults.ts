@@ -10,13 +10,22 @@ export function toDatetimeLocalValue(d: Date): string {
 }
 
 export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
+  const categoryIds =
+    auction.categoryIds && auction.categoryIds.length > 0
+      ? auction.categoryIds
+      : auction.categoryId
+        ? [auction.categoryId]
+        : [];
   return {
     title: auction.title,
     description: auction.description ?? "",
     medium: auction.medium ?? "",
     dimensions: auction.dimensions ?? "",
-    sellerId: auction.sellerId ?? auction.sellerLegalEntityId ?? "",
-    categoryId: auction.categoryId,
+    sellerLegalEntityId: auction.sellerLegalEntityId ?? "",
+    sellerDisplayName: undefined,
+    categoryIds,
+    saleId: auction.saleId ?? null,
+    lotNumber: auction.lotNumber ?? null,
     auctionType: auction.auctionType,
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice ?? "",
@@ -43,8 +52,11 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     description: "",
     medium: "",
     dimensions: "",
-    sellerId: "",
-    categoryId: "",
+    sellerLegalEntityId: "",
+    sellerDisplayName: undefined,
+    categoryIds: [],
+    saleId: null,
+    lotNumber: null,
     auctionType: "english",
     startingPrice: "0.00",
     reservePrice: "",

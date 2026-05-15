@@ -89,14 +89,14 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const { data } = await container.itemSubmissionService.listSubmissionsForAdminApi({
+      const { data, total } = await container.itemSubmissionService.listSubmissionsForAdminApi({
         status: q.status,
         legalEntityId: q.sellerId,
         q: q.q,
         limit: q.limit,
         offset: q.offset,
       });
-      return c.json({ data });
+      return c.json({ data, total });
     },
   );
 

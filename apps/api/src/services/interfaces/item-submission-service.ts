@@ -73,7 +73,9 @@ export interface IItemSubmissionService {
     legalEntityId: string,
     f: ListSubmissionsFilter,
   ): Promise<{ data: ItemSubmission[] }>;
-  listSubmissionsForAdminApi(f: ListSubmissionsFilter): Promise<{ data: ItemSubmission[] }>;
+  listSubmissionsForAdminApi(
+    f: ListSubmissionsFilter,
+  ): Promise<{ data: ItemSubmission[]; total: number }>;
   getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;

@@ -80,6 +80,7 @@ function parseAdminCategory(raw: unknown): AdminCategory {
     archived: Boolean(o.archived ?? false),
     sortOrder: Number(o.sortOrder ?? 0),
     parentId: o.parentId == null ? null : String(o.parentId),
+    heroImageKey: o.heroImageKey == null ? null : String(o.heroImageKey),
     usage: {
       lots,
       sales,
@@ -1057,6 +1058,29 @@ export type LotArtistBackfillReviewTask = {
   payload: Record<string, unknown>;
   createdAt: Date;
 };
+
+export type LotWithdrawalRequestTask = {
+  id: string;
+  kind: string;
+  status: string;
+  targetLotId: string | null;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+};
+
+export async function getLotWithdrawalRequests(): Promise<LotWithdrawalRequestTask[]> {
+  const res = await authedServerFetch("/admin/lots/withdrawal-requests");
+  if (!res.ok) throw new Error(`Failed to load withdrawal requests: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return body.data.map((row) => ({
+    id: String(row.id ?? ""),
+    kind: String(row.kind ?? ""),
+    status: String(row.status ?? ""),
+    targetLotId: row.targetLotId == null ? null : String(row.targetLotId),
+    payload: (row.payload as Record<string, unknown>) ?? {},
+    createdAt: new Date(String(row.createdAt ?? "")),
+  }));
+}
 
 export async function getLotArtistBackfillReviewTasks(): Promise<LotArtistBackfillReviewTask[]> {
   const res = await authedServerFetch("/admin/lots/artist-backfill-review");

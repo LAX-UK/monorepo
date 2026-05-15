@@ -17,16 +17,6 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   if (!bundle) notFound();
   const { sale } = bundle;
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
-  if (sale.status !== "draft") {
-    return (
-      <AdminEntityFormShell title="Edit sale" maxWidthClassName="max-w-xl">
-        <p className="text-on-surface-variant">Only draft sales can be edited.</p>
-        <Link href={`/admin/sales/${id}`} className="text-primary underline">
-          Back to sale
-        </Link>
-      </AdminEntityFormShell>
-    );
-  }
 
   const saleDocuments = await getServerSaleDocuments(id);
 
@@ -45,6 +35,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
       <AdminSaleForm
         mode="edit"
         saleId={id}
+        saleStatus={sale.status}
         defaultValues={saleToAdminSaleFormValues(sale)}
         categories={categories}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}

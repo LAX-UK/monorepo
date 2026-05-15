@@ -49,6 +49,12 @@ export class AdminSaleService implements IAdminSaleService {
     });
   }
 
+  async unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(`/sales/${encodeURIComponent(id)}/unpublish`, {
+      method: "POST",
+    });
+  }
+
   async cancel(id: string, _body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(`/sales/${encodeURIComponent(id)}/cancel`, {
       method: "POST",

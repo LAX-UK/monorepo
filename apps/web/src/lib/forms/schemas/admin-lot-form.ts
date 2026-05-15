@@ -16,8 +16,19 @@ export const adminLotFormValuesSchema = zod.object({
   description: optionalStr,
   medium: optionalStr,
   dimensions: optionalStr,
-  sellerId: zod.string().min(1, "Choose a seller").max(191),
-  categoryId: zod.string().uuid("Category must be a valid UUID"),
+  /** Legal entity id — replaces legacy user-based sellerId. */
+  sellerLegalEntityId: zod.string().uuid("Choose a seller legal entity"),
+  /** Display label for the picker chip (not sent to API). */
+  sellerDisplayName: zod.string().optional(),
+  categoryIds: zod
+    .array(zod.string().uuid())
+    .min(1, "Choose at least one category")
+    .max(8, "Choose no more than 8 categories"),
+  saleId: zod.string().uuid().nullable().optional(),
+  lotNumber: zod
+    .union([zod.coerce.number().int().positive(), zod.literal("")])
+    .nullable()
+    .optional(),
   auctionType: zod.enum(lotAuctionTypes),
   startingPrice: zod.string().min(1),
   reservePrice: optionalStr,
@@ -36,13 +47,17 @@ export const adminLotFormValuesSchema = zod.object({
 export type AdminLotFormValues = zod.infer<typeof adminLotFormValuesSchema>;
 
 function buildCreateLotRaw(v: AdminLotFormValues) {
+  const lotNumberRaw =
+    v.lotNumber !== null && v.lotNumber !== undefined && v.lotNumber !== ""
+      ? Number(v.lotNumber)
+      : undefined;
   return {
     title: v.title.trim(),
     description: (v.description && String(v.description).trim()) || undefined,
     medium: (v.medium && String(v.medium).trim()) || undefined,
     dimensions: (v.dimensions && String(v.dimensions).trim()) || undefined,
-    sellerId: v.sellerId.trim(),
-    categoryId: v.categoryId,
+    sellerLegalEntityId: v.sellerLegalEntityId.trim(),
+    categoryIds: v.categoryIds,
     auctionType: v.auctionType,
     startingPrice: v.startingPrice.trim(),
     reservePrice: (v.reservePrice && String(v.reservePrice).trim()) || undefined,
@@ -58,6 +73,8 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
     images: v.images.length > 0 ? v.images : undefined,
     startTime: new Date(v.startTime),
     endTime: new Date(v.endTime),
+    ...(v.saleId !== undefined ? { saleId: v.saleId } : {}),
+    ...(lotNumberRaw !== undefined ? { lotNumber: lotNumberRaw } : {}),
     ...(v.artistId !== undefined ? { artistId: v.artistId } : {}),
   } satisfies z.input<typeof createLotSchema>;
 }

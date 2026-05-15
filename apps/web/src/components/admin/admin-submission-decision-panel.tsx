@@ -1,7 +1,6 @@
 "use client";
 
 import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
-import { Button } from "@/components/ui/button";
 import { LabelCaps } from "@/components/ui/typography";
 import {
   adminApproveSubmissionResultAction,
@@ -10,6 +9,7 @@ import {
 } from "@/lib/actions/admin-submissions";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistKind, ArtistProfile, ItemSubmissionStatus } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -28,6 +28,10 @@ import { z } from "zod";
 
 const approveFormSchema = z.object({
   reviewNotes: z.string().max(5000),
+  artistId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().uuid().nullable().optional(),
+  ),
 });
 type ApproveFormValues = z.infer<typeof approveFormSchema>;
 
@@ -53,12 +57,11 @@ export function AdminSubmissionDecisionPanel({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const [createSeed, setCreateSeed] = useState<string | null>(null);
 
   const approveForm = useForm<ApproveFormValues>({
     resolver: zodResolver(approveFormSchema),
-    defaultValues: { reviewNotes: "" },
+    defaultValues: { reviewNotes: "", artistId: null },
   });
 
   const rejectForm = useForm<RejectFormValues>({
@@ -114,7 +117,7 @@ export function AdminSubmissionDecisionPanel({
                   void (async () => {
                     const r = await adminApproveSubmissionResultAction(submissionId, {
                       reviewNotes: values.reviewNotes.trim() || undefined,
-                      ...(selectedArtistId ? { artistId: selectedArtistId } : {}),
+                      ...(values.artistId ? { artistId: values.artistId } : {}),
                     });
                     if (r.ok) {
                       notify.success("Approved — draft lot created");
@@ -144,15 +147,26 @@ export function AdminSubmissionDecisionPanel({
                     </button>
                   ) : null}
                 </div>
-                <ArtistPicker
-                  value={selectedArtistId}
-                  onChange={(id) => {
-                    setSelectedArtistId(id);
-                    setCreateSeed(null);
-                  }}
-                  selected={chipFromId(selectedArtistId)}
-                  {...(createSeed ? { createInitialName: createSeed } : {})}
-                  helpText="Required before publish but can be left blank to attach later. Inline-creating an artist here defaults to status=approved."
+                <FormField
+                  control={approveForm.control}
+                  name="artistId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ArtistPicker
+                          value={field.value ?? null}
+                          onChange={(id) => {
+                            field.onChange(id ?? null);
+                            setCreateSeed(null);
+                          }}
+                          selected={chipFromId(field.value ?? null)}
+                          {...(createSeed ? { createInitialName: createSeed } : {})}
+                          helpText="Required before publish but can be left blank to attach later. Inline-creating an artist here defaults to status=approved."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
               <FormField

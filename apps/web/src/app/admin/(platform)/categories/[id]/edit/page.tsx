@@ -56,6 +56,7 @@ export default async function EditAdminCategoryPage({
                 parentId: category.parentId,
                 sortOrder: category.sortOrder,
                 archived: category.archived,
+                heroImageKey: category.heroImageKey ?? null,
               }}
             />
           </CardContent>

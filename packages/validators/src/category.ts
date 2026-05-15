@@ -31,6 +31,7 @@ export const adminCreateCategoryBodySchema = z.object({
   description: optionalText,
   parentId: z.string().uuid().nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).max(10_000).optional(),
+  heroImageKey: z.string().max(500).nullable().optional(),
 });
 
 /** Admin category form (create + edit) — `archived` is only sent on update. */

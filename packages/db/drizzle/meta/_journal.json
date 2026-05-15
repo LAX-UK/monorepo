@@ -421,6 +421,13 @@
       "when": 1781700000000,
       "tag": "0061_entity_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1781800000000,
+      "tag": "0062_category_hero_image",
+      "breakpoints": true
     }
   ]
 }

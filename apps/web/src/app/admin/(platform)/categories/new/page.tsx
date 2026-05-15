@@ -32,6 +32,7 @@ export default async function NewAdminCategoryPage() {
               parentId: null,
               sortOrder: 0,
               archived: false,
+              heroImageKey: null,
             }}
           />
         </CardContent>
