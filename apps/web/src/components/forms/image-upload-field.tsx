@@ -12,7 +12,8 @@ export type ImageUploadKind =
   | "submission_image"
   | "lot_image"
   | "sale_cover"
-  | "artist_image";
+  | "artist_image"
+  | "category_image";
 
 type ImageUploadFieldProps = {
   kind: ImageUploadKind;
@@ -45,6 +46,8 @@ function placeholderLabel(kind: ImageUploadKind): string {
       return "Lot artwork";
     case "artist_image":
       return "Artist image";
+    case "category_image":
+      return "Category hero";
   }
 }
 

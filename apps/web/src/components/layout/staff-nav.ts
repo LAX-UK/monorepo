@@ -163,6 +163,14 @@ function buildStaffNavGroupSpecs(
           requirement: "artist.read",
         },
         submissions,
+        {
+          id: "lot-withdrawals",
+          href: "/admin/lots/withdrawals",
+          label: "Withdrawal requests",
+          icon: AlertTriangle,
+          match: (pathname) => pathname.startsWith("/admin/lots/withdrawals"),
+          requirement: "auction.manage" as const,
+        },
       ],
     },
     {

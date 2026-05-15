@@ -278,6 +278,23 @@ export async function adminPublishSaleResultAction(saleId: string): Promise<Acti
   return actionSuccess();
 }
 
+export async function adminUnpublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const id = saleId.trim();
+  if (!id) {
+    return actionFailure("Missing sale");
+  }
+  const { adminSales } = getWriteContainer();
+  const r = await adminSales.unpublish(id);
+  if (!r.ok) {
+    return actionFailure(r.message, undefined, r.status);
+  }
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${id}`);
+  revalidatePath("/admin/lots");
+  revalidatePath("/");
+  return actionSuccess();
+}
+
 export async function adminCancelSaleResultAction(saleId: string): Promise<ActionResult<void>> {
   const id = saleId.trim();
   if (!id) {

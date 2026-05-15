@@ -5,7 +5,7 @@ import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-s
 import {
   getAdminArtistList,
   getAdminLotById,
-  getAdminUserList,
+  getAdminSalesList,
 } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
@@ -14,18 +14,17 @@ import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults"
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-export default async function AdminEditAuctionPage({
-  params,
-}: { params: Promise<{ id: string }> }) {
+export default async function AdminEditLotPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [auction, categories, users, artistList, lotDocuments] = await Promise.all([
+  const [auction, categories, salesRows, artistList, lotDocuments] = await Promise.all([
     getAdminLotById(id).catch(() => null),
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminUserList({ limit: 100 }),
+    getAdminSalesList({ limit: 200 }).catch(() => []),
     getAdminArtistList({ includeArchived: false, limit: 500 }),
     getServerLotDocuments(id),
   ]);
   const artists = artistList.rows;
+  const sales = salesRows.map((r) => r.sale);
   if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled") {
     redirect(`/admin/lots/${id}`);
@@ -58,7 +57,7 @@ export default async function AdminEditAuctionPage({
           lotId={id}
           defaultValues={lotToAdminLotFormValues(auction)}
           categories={categories}
-          sellers={users.rows}
+          sales={sales}
           artists={artists}
           englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         />

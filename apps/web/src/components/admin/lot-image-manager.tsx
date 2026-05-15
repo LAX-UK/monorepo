@@ -2,7 +2,7 @@
 
 import { SortableImageItem } from "@/components/admin/sortable-image-item";
 import { ImageUploadField } from "@/components/forms/image-upload-field";
-import { type ReorderableImageEntry, useImageReorder } from "@/lib/forms/lot/use-image-reorder";
+import { type ReorderableImageEntry, useImageReorder } from "@/lib/forms/image/use-image-reorder";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";

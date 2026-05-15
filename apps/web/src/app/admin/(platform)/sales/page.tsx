@@ -23,6 +23,15 @@ const statuses: (SaleStatus | "all")[] = [
   "cancelled",
 ];
 
+const saleStatusChipLabel: Record<SaleStatus | "all", string> = {
+  all: "All",
+  draft: "Draft",
+  scheduled: "Scheduled",
+  active: "Live",
+  ended: "Ended",
+  cancelled: "Cancelled",
+};
+
 export default async function AdminSalesPage({
   searchParams,
 }: {
@@ -62,7 +71,7 @@ export default async function AdminSalesPage({
         });
         return {
           id: s,
-          label: s,
+          label: saleStatusChipLabel[s],
           href,
           active: (s === "all" && !sp.status) || sp.status === s,
         };
@@ -93,19 +102,45 @@ export default async function AdminSalesPage({
       />
     ) : null;
 
+  const hasListFilters = Boolean(statusFilter || q);
+
+  const empty =
+    !err && rows.length === 0 ? (
+      <EmptyState
+        title={hasListFilters ? "No matching sales" : "No sales yet"}
+        description={
+          hasListFilters
+            ? "Try another search keyword or clear the status filter."
+            : "Create a sale to group lots for a session or season."
+        }
+        action={
+          hasListFilters ? (
+            <Button variant="secondary" asChild>
+              <Link href="/admin/sales">Clear filters</Link>
+            </Button>
+          ) : (
+            <Button variant="primary" asChild>
+              <Link href="/admin/sales/new">
+                <Plus className="size-4" aria-hidden />
+                New sale
+              </Link>
+            </Button>
+          )
+        }
+      />
+    ) : null;
+
   return (
     <AdminListPage
       title="Sales"
       description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
       primaryAction={
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" asChild>
-            <Link href="/admin/sales/new">
-              <Plus className="size-4" aria-hidden />
-              New sale
-            </Link>
-          </Button>
-        </div>
+        <Button variant="primary" asChild>
+          <Link href="/admin/sales/new">
+            <Plus className="size-4" aria-hidden />
+            New sale
+          </Link>
+        </Button>
       }
       hasFilters={Boolean(statusFilter || q)}
       resetHref="/admin/sales"
@@ -157,22 +192,7 @@ export default async function AdminSalesPage({
           </Suspense>
         ) : null
       }
-      empty={
-        !err && rows.length === 0 ? (
-          <EmptyState
-            title="No sales yet"
-            description="Create a sale to group lots for a session or season."
-            action={
-              <Button variant="primary" asChild>
-                <Link href="/admin/sales/new">
-                  <Plus className="size-4" aria-hidden />
-                  New sale
-                </Link>
-              </Button>
-            }
-          />
-        ) : null
-      }
+      empty={empty}
       pagination={pagination}
     />
   );

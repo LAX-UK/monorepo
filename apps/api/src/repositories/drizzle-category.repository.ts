@@ -17,6 +17,7 @@ function mapCategory(r: typeof category.$inferSelect): Category {
     archived: r.archived,
     sortOrder: r.sortOrder,
     parentId: r.parentId,
+    heroImageKey: r.heroImageKey ?? null,
   };
 }
 
@@ -57,6 +58,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
         description: input.description ?? null,
         parentId: input.parentId ?? null,
         sortOrder: input.sortOrder ?? 0,
+        heroImageKey: input.heroImageKey ?? null,
       })
       .returning();
     if (!row) throw new Error("Category create failed");
@@ -76,6 +78,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
         ...(input.parentId !== undefined ? { parentId: input.parentId ?? null } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         ...(input.archived !== undefined ? { archived: input.archived } : {}),
+        ...(input.heroImageKey !== undefined ? { heroImageKey: input.heroImageKey ?? null } : {}),
       })
       .where(eq(category.id, id))
       .returning();

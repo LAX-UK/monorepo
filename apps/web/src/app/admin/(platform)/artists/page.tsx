@@ -9,6 +9,7 @@ import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { PaginationFooter, StatTile } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -99,6 +100,14 @@ export default async function AdminArtistsPage({
     active: activePreset === id,
   }));
 
+  const inputCls =
+    "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const selectCls =
+    "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface";
+  const labelCapsCls = "font-label text-[10px] uppercase tracking-widest text-secondary";
+
+  const chips = <FilterChipRow chips={presetChips} label="Artist presets" />;
+
   const filters = (
     <div className="space-y-6">
       {statsStrip ? (
@@ -112,30 +121,21 @@ export default async function AdminArtistsPage({
         </div>
       ) : null}
 
-      <FilterChipRow chips={presetChips} label="Artist presets" />
-
       <form method="get" action="/admin/artists" className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Search
-          </span>
+          <span className={labelCapsCls}>Search</span>
           <input
             name="q"
             type="search"
             defaultValue={q ?? ""}
             placeholder="Name or slug…"
-            className="h-10 w-48 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 md:w-56"
+            className={`${inputCls} w-48 md:w-56`}
           />
         </label>
+
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Status
-          </span>
-          <select
-            name="status"
-            defaultValue={query.status ?? ""}
-            className="h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface"
-          >
+          <span className={labelCapsCls}>Status</span>
+          <select name="status" defaultValue={query.status ?? ""} className={selectCls}>
             <option value="">Any</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
@@ -143,15 +143,10 @@ export default async function AdminArtistsPage({
             <option value="merged_into">Merged</option>
           </select>
         </label>
+
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Kind
-          </span>
-          <select
-            name="kind"
-            defaultValue={query.kind ?? ""}
-            className="h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface"
-          >
+          <span className={labelCapsCls}>Kind</span>
+          <select name="kind" defaultValue={query.kind ?? ""} className={selectCls}>
             <option value="">Any</option>
             <option value="artist">Artist</option>
             <option value="maker">Maker</option>
@@ -159,98 +154,49 @@ export default async function AdminArtistsPage({
             <option value="marque">Marque</option>
           </select>
         </label>
+
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Kinds (CSV)
-          </span>
-          <input
-            name="kinds"
-            type="text"
-            defaultValue={query.kinds ?? ""}
-            placeholder="brand,marque"
-            className="h-10 w-36 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Linked
-          </span>
-          <select
-            name="linked"
-            defaultValue={query.linked === "any" ? "" : (query.linked ?? "")}
-            className="h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface"
-          >
-            <option value="">Any</option>
-            <option value="yes">Has owner</option>
-            <option value="no">No owner</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Sort
-          </span>
-          <select
-            name="sort"
-            defaultValue={query.sort ?? "name_asc"}
-            className="h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface"
-          >
+          <span className={labelCapsCls}>Sort</span>
+          <select name="sort" defaultValue={query.sort ?? "name_asc"} className={selectCls}>
             <option value="name_asc">Name A–Z</option>
             <option value="popular">Most lots</option>
             <option value="recent">Recently updated</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
-            Owner user ID
-          </span>
-          <input
-            name="ownerUserId"
-            type="text"
-            defaultValue={query.ownerUserId ?? ""}
-            placeholder="UUID…"
-            className="h-10 w-44 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-mono text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </label>
-        <label className="flex items-center gap-2 pb-1">
-          <input
-            type="checkbox"
-            name="featured"
-            value="true"
-            defaultChecked={query.featured === true}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Featured</span>
-        </label>
-        <label className="flex items-center gap-2 pb-1">
-          <input
-            type="checkbox"
-            name="verified"
-            value="true"
-            defaultChecked={query.verified === true}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Verified</span>
-        </label>
-        <label className="flex items-center gap-2 pb-1">
-          <input
-            type="checkbox"
-            name="includeArchived"
-            value="true"
-            defaultChecked={query.includeArchived}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Include archived</span>
-        </label>
-        <label className="flex items-center gap-2 pb-1">
-          <input
-            type="checkbox"
-            name="archivedOnly"
-            value="true"
-            defaultChecked={query.archivedOnly}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Archived only</span>
-        </label>
+
+        <div className="flex flex-wrap items-end gap-4 pb-0.5">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="featured"
+              value="true"
+              defaultChecked={query.featured === true}
+              className="size-4 rounded border-outline-variant accent-primary"
+            />
+            <span className="font-body text-sm text-on-surface-variant">Featured</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="verified"
+              value="true"
+              defaultChecked={query.verified === true}
+              className="size-4 rounded border-outline-variant accent-primary"
+            />
+            <span className="font-body text-sm text-on-surface-variant">Verified</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="includeArchived"
+              value="true"
+              defaultChecked={query.includeArchived}
+              className="size-4 rounded border-outline-variant accent-primary"
+            />
+            <span className="font-body text-sm text-on-surface-variant">Include archived</span>
+          </label>
+        </div>
+
         <button
           type="submit"
           className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-widest text-on-primary transition-colors hover:bg-primary/90"
@@ -269,13 +215,54 @@ export default async function AdminArtistsPage({
       </Alert>
     ) : null;
 
-  const view = !loadError ? (
-    artists.length === 0 && total > 0 ? (
-      <p className="font-body text-sm text-on-surface-variant">No rows on this page.</p>
-    ) : (
-      <AdminArtistsBoard artists={artists} searchQuery={q} hasFilters={hasFilters} />
-    )
-  ) : null;
+  const view =
+    !loadError && artists.length > 0 ? (
+      <AdminArtistsBoard artists={artists} searchQuery={q} />
+    ) : null;
+
+  const empty =
+    !loadError && artists.length === 0 ? (
+      total === 0 ? (
+        <EmptyState
+          title={hasFilters ? "No matching artists" : "No artists yet"}
+          description={
+            hasFilters
+              ? "Clear the search or filters to broaden the list."
+              : "Create canonical profiles before assigning artist attribution to lots."
+          }
+          action={
+            hasFilters ? (
+              <Button variant="secondary" asChild>
+                <Link href="/admin/artists">Clear filters</Link>
+              </Button>
+            ) : (
+              <Button variant="primary" asChild>
+                <Link href="/admin/artists/new">
+                  <Plus className="size-4" aria-hidden />
+                  New artist
+                </Link>
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <EmptyState
+          title="No rows on this page"
+          description="Try the previous page or clear filters — results may have shifted."
+          action={
+            <Button variant="secondary" asChild>
+              <Link
+                href={buildListHref("/admin/artists", sp, {
+                  offset: Math.max(0, query.offset - query.limit),
+                })}
+              >
+                Previous page
+              </Link>
+            </Button>
+          }
+        />
+      )
+    ) : null;
 
   const pagination =
     !loadError && total > 0 && (query.offset > 0 || query.offset + artists.length < total) ? (
@@ -314,8 +301,10 @@ export default async function AdminArtistsPage({
       hasFilters={hasFilters}
       resetHref="/admin/artists"
       errorAlert={errorAlert}
+      chips={chips}
       filters={filters}
       view={view}
+      empty={empty}
       pagination={pagination}
     />
   );
