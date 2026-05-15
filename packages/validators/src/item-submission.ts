@@ -136,6 +136,8 @@ export const approveSubmissionBodySchema = z
     }
   });
 
+export type ApproveSubmissionBody = z.infer<typeof approveSubmissionBodySchema>;
+
 export const rejectSubmissionBodySchema = z.object({
   rejectionReason: z.string().min(1).max(2000),
   reviewNotes: z.string().max(5000).optional(),
