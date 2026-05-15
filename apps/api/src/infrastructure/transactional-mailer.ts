@@ -1,16 +1,15 @@
 import type { Env } from "../env.js";
 import type {
   ITransactionalMailer,
-  InviteEmailInput,
+  TransactionalMailPayload,
 } from "../services/interfaces/transactional-mail.js";
 
 class ConsoleTransactionalMailer implements ITransactionalMailer {
-  async sendInviteEmail(input: InviteEmailInput): Promise<void> {
-    // Local/dev behavior: visible, provider-agnostic, and safe by default.
-    console.info("[mail:invite]", {
+  async send(input: TransactionalMailPayload): Promise<void> {
+    console.info("[mail]", {
       to: input.to,
-      targetRole: input.targetRole,
-      inviteLink: input.inviteLink,
+      subject: input.subject,
+      meta: input.meta ?? null,
     });
   }
 }
@@ -21,23 +20,21 @@ class WebhookTransactionalMailer implements ITransactionalMailer {
     private readonly from: string | undefined,
   ) {}
 
-  async sendInviteEmail(input: InviteEmailInput): Promise<void> {
-    const subject = `You're invited to LAX (${input.targetRole})`;
-    const text = `You've been invited to create an account on LAX.\n\nSign up here:\n${input.inviteLink}\n`;
+  async send(input: TransactionalMailPayload): Promise<void> {
     const res = await fetch(this.webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         to: input.to,
         from: this.from ?? null,
-        subject,
-        text,
-        meta: { kind: "invite", targetRole: input.targetRole },
+        subject: input.subject,
+        text: input.text,
+        meta: input.meta ?? {},
       }),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      throw new Error(`Invite email webhook failed (${res.status}): ${body}`);
+      throw new Error(`Transactional mail webhook failed (${res.status}): ${body}`);
     }
   }
 }

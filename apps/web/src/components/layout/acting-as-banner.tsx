@@ -17,6 +17,8 @@ type Props = {
   className?: string;
   /** When set (e.g. dashboard layout), avoids a duplicate `/legal-entities/me` fetch. */
   prefetchedActingContext?: ResolvedActingContext;
+  /** Pending org invites for the user's email (switcher badge). */
+  pendingInvitesCount?: number;
 };
 
 /** Renders the acting-context switcher in the header chrome.
@@ -31,6 +33,7 @@ export async function ActingAsBanner({
   userStaffRole,
   className,
   prefetchedActingContext,
+  pendingInvitesCount = 0,
 }: Props) {
   const { acting, memberships } =
     prefetchedActingContext ?? (await resolveActingContext(userRole, userStaffRole ?? null));
@@ -40,7 +43,11 @@ export async function ActingAsBanner({
 
   return (
     <div className={`relative inline-flex items-center gap-2 ${className ?? ""}`}>
-      <LegalEntitySwitcher acting={acting} memberships={memberships} />
+      <LegalEntitySwitcher
+        acting={acting}
+        memberships={memberships}
+        pendingInvitesCount={pendingInvitesCount}
+      />
       <ActingAsTooltip initiallyVisible={showTooltip} />
     </div>
   );

@@ -33,7 +33,14 @@ function copyForStatus(acting: LegalEntitySummary): {
         body: (
           <>
             We need documents from you.{" "}
-            <Link className="font-medium underline underline-offset-2" href="/dashboard/team">
+            <Link
+              className="font-medium underline underline-offset-2"
+              href={
+                kind === "organisation"
+                  ? `/dashboard/organisations/${acting.id}/documents`
+                  : "/dashboard/organisations"
+              }
+            >
               Upload now
             </Link>
           </>
@@ -53,7 +60,11 @@ function copyForStatus(acting: LegalEntitySummary): {
             Stripe verification in progress.{" "}
             <Link
               className="font-medium underline underline-offset-2"
-              href={kind === "individual" ? "/dashboard/seller/connect" : "/dashboard/team"}
+              href={
+                kind === "individual"
+                  ? "/dashboard/seller/connect"
+                  : `/dashboard/organisations/${acting.id}/connect`
+              }
             >
               Continue setup
             </Link>

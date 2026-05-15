@@ -6,6 +6,7 @@ import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -28,9 +29,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
-  const [kycSummary, orgOnboardingResume] = await Promise.all([
+  const pendingGw = createPendingInvitationsGateway();
+  const [kycSummary, orgOnboardingResume, pendingInvites] = await Promise.all([
     c.kyc.getSummary().catch(() => null),
     c.orgOnboarding.getResume().catch(() => null),
+    pendingGw.listMine().catch(() => []),
   ]);
 
   const jar = await cookies();
@@ -50,6 +53,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           userRole={user.role}
           userStaffRole={user.staffRole ?? null}
           prefetchedActingContext={actingContext}
+          pendingInvitesCount={pendingInvites.length}
         />
       }
     >

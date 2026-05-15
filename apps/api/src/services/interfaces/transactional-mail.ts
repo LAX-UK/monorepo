@@ -1,9 +1,11 @@
-export type InviteEmailInput = {
+/** Primitive outbound mail payload (OCP: new notification kinds extend callers, not this shape). */
+export type TransactionalMailPayload = {
   to: string;
-  inviteLink: string;
-  targetRole: string;
+  subject: string;
+  text: string;
+  meta?: Record<string, unknown>;
 };
 
 export interface ITransactionalMailer {
-  sendInviteEmail(input: InviteEmailInput): Promise<void>;
+  send(input: TransactionalMailPayload): Promise<void>;
 }
