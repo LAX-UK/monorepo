@@ -8,8 +8,35 @@ import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge }
 import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+
+function SaleActionMenu({ row }: { row: AdminSaleBoardRow }) {
+  const router = useRouter();
+  return (
+    <InlineActionMenu
+      label={`Actions for ${row.title}`}
+      items={[
+        {
+          type: "item",
+          label: "Manage",
+          onSelect: () => router.push(`/admin/sales/${row.saleId}`),
+        },
+        {
+          type: "item",
+          label: "View on site",
+          onSelect: () => window.open(salePath({ id: row.saleId, title: row.title }), "_blank"),
+        },
+        {
+          type: "item",
+          label: "Copy sale ID",
+          onSelect: () => void navigator.clipboard.writeText(row.saleId),
+        },
+      ]}
+    />
+  );
+}
 
 export type AdminSaleBoardRow = {
   saleId: string;
@@ -63,37 +90,7 @@ function saleColumns(): ColumnDef<AdminSaleBoardRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <InlineActionMenu
-          label={`Actions for ${row.original.title}`}
-          items={[
-            {
-              type: "item",
-              label: "Manage",
-              onSelect: () => {
-                window.location.href = `/admin/sales/${row.original.saleId}`;
-              },
-            },
-            {
-              type: "item",
-              label: "View on site",
-              onSelect: () => {
-                window.location.href = salePath({
-                  id: row.original.saleId,
-                  title: row.original.title,
-                });
-              },
-            },
-            {
-              type: "item",
-              label: "Copy sale ID",
-              onSelect: () => {
-                void navigator.clipboard.writeText(row.original.saleId);
-              },
-            },
-          ]}
-        />
-      ),
+      cell: ({ row }) => <SaleActionMenu row={row.original} />,
       enableSorting: false,
     },
   ];
@@ -140,25 +137,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
           </div>
           <div className="mt-3 flex items-center justify-between gap-2">
             <Sparkline values={r.sparklineValues} width={96} height={28} tone="lot-orange" />
-            <InlineActionMenu
-              label={`Actions for ${r.title}`}
-              items={[
-                {
-                  type: "item",
-                  label: "Manage",
-                  onSelect: () => {
-                    window.location.href = `/admin/sales/${r.saleId}`;
-                  },
-                },
-                {
-                  type: "item",
-                  label: "View on site",
-                  onSelect: () => {
-                    window.location.href = salePath({ id: r.saleId, title: r.title });
-                  },
-                },
-              ]}
-            />
+            <SaleActionMenu row={r} />
           </div>
         </li>
       ))}

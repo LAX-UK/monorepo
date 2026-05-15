@@ -29,7 +29,7 @@ const statuses: (LotStatus | "all")[] = [
 type LotSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc" | "sellerAsc";
 const VALID_SORTS: LotSort[] = ["createdDesc", "endingAsc", "hammerDesc", "endedDesc", "sellerAsc"];
 
-export default async function AdminAuctionsPage({
+export default async function AdminLotsPage({
   searchParams,
 }: {
   searchParams: Promise<{

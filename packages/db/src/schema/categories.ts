@@ -20,6 +20,7 @@ export const category = pgTable(
     parentId: uuid("parent_id").references((): AnyPgColumn => category.id, {
       onDelete: "set null",
     }),
+    heroImageKey: text("hero_image_key"),
   },
   (table) => [
     index("category_archived_idx").on(table.archived),

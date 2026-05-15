@@ -3,7 +3,7 @@ import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import {
   getAdminArtistList,
   getAdminLotById,
-  getAdminUserList,
+  getAdminSalesList,
 } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -15,7 +15,7 @@ import Link from "next/link";
 
 type PageProps = { searchParams: Promise<{ fromLot?: string }> };
 
-export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
+export default async function AdminNewLotPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const fromLotId = (sp.fromLot ?? "").trim();
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
@@ -38,12 +38,13 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
     cloneDefaults = { ...cloneDefaults, auctionType: "english" };
   }
 
-  const [categories, users, artistList] = await Promise.all([
+  const [categories, salesRows, artistList] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminUserList({ limit: 100 }),
+    getAdminSalesList({ limit: 200 }).catch(() => []),
     getAdminArtistList({ includeArchived: false, limit: 500 }),
   ]);
   const artists = artistList.rows;
+  const sales = salesRows.map((r) => r.sale);
 
   return (
     <AdminEntityFormShell
@@ -52,10 +53,10 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
           href="/admin/lots"
           className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
         >
-          ← Auctions
+          ← Lots
         </Link>
       }
-      title="New auction"
+      title="New lot"
       description={
         fromLotId
           ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
@@ -66,7 +67,7 @@ export default async function AdminNewAuctionPage({ searchParams }: PageProps) {
         mode="create"
         defaultValues={cloneDefaults}
         categories={categories}
-        sellers={users.rows}
+        sales={sales}
         artists={artists}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
       />

@@ -3,11 +3,12 @@
 import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import type { DocumentUploadKind } from "@/components/forms/document-upload-field";
 import type { ActionResult } from "@/lib/forms/form-result";
+import { notify } from "@/lib/ui/notify";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function uploadKindForEntity(entityKind: DocumentEntityKind): DocumentUploadKind {
   switch (entityKind) {
@@ -47,17 +48,20 @@ export function DocumentAttachmentManager<TKind extends string>({
   const [label, setLabel] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+
+  // Re-sync when the server revalidates and passes fresh initialDocuments
+  useEffect(() => {
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
 
   const uploadKind = useMemo(() => uploadKindForEntity(entityKind), [entityKind]);
 
   async function attach() {
     if (!pendingId) {
-      setMessage("Upload a file first");
+      notify.warning("Upload a file first");
       return;
     }
     setBusy(true);
-    setMessage(null);
     const res = await actions.attach({
       uploadObjectId: pendingId,
       kind,
@@ -65,30 +69,30 @@ export function DocumentAttachmentManager<TKind extends string>({
     });
     setBusy(false);
     if (!res.ok) {
-      setMessage(res.error);
+      notify.error("Attach failed", { description: res.error });
       return;
     }
     if (res.data === undefined) {
-      setMessage("Invalid response");
+      notify.error("Attach failed", { description: "Invalid server response" });
       return;
     }
     const created = res.data;
     setDocuments((prev) => [...prev, created]);
     setPendingId(null);
     setLabel("");
-    setMessage("Attached");
+    notify.success("Document attached");
   }
 
   async function remove(documentId: string) {
     setBusy(true);
-    setMessage(null);
     const res = await actions.remove(documentId);
     setBusy(false);
     if (!res.ok) {
-      setMessage(res.error);
+      notify.error("Remove failed", { description: res.error });
       return;
     }
     setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+    notify.success("Document removed");
   }
 
   return (
@@ -170,7 +174,6 @@ export function DocumentAttachmentManager<TKind extends string>({
         <Button type="button" disabled={busy || !pendingId} onClick={() => void attach()}>
           Attach to record
         </Button>
-        {message ? <p className="font-body text-xs text-on-surface-variant">{message}</p> : null}
       </div>
     </div>
   );

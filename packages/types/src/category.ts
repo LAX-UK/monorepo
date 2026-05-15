@@ -6,6 +6,7 @@ export type Category = {
   archived: boolean;
   sortOrder: number;
   parentId: string | null;
+  heroImageKey: string | null;
 };
 
 export type CategoryNode = Category & {

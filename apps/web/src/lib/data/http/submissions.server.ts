@@ -37,7 +37,7 @@ export async function getAdminSubmissions(
     limit?: number;
     offset?: number;
   } = {},
-): Promise<ItemSubmission[]> {
+): Promise<{ rows: ItemSubmission[]; total: number }> {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 50));
   qs.set("offset", String(params.offset ?? 0));
@@ -46,8 +46,11 @@ export async function getAdminSubmissions(
   if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/submissions?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load admin submissions: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseItemSubmission);
+  const body = (await res.json()) as { data: unknown[]; total?: number };
+  return {
+    rows: body.data.map(parseItemSubmission),
+    total: Number(body.total ?? body.data.length),
+  };
 }
 
 export async function getAdminSubmissionById(id: string): Promise<ItemSubmission | null> {
