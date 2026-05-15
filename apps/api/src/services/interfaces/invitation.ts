@@ -10,6 +10,8 @@ export type InvitationRow = {
   expiresAt: Date;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
+  targetLegalEntityId: string | null;
+  targetLegalEntityMemberRole: string | null;
   createdByUserId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -25,6 +27,8 @@ export type InvitationInsert = {
   expiresAt: Date;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
+  targetLegalEntityId?: string | null;
+  targetLegalEntityMemberRole?: string | null;
   createdByUserId: string;
 };
 

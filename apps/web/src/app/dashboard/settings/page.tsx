@@ -41,11 +41,7 @@ export default async function SettingsIndexPage({
   });
 
   const c = await getServerDataContainer();
-  const [addresses, memberships] = await Promise.all([
-    c.addresses.listMine().catch(() => [] as ProfileAddressRow[]),
-    c.legalEntities.listMine().catch(() => []),
-  ]);
-  const organisations = memberships.filter((m) => m.kind === "organisation");
+  const addresses = await c.addresses.listMine().catch(() => [] as ProfileAddressRow[]);
 
   const deletionRequestedAt = me.deletionRequestedAt ? new Date(me.deletionRequestedAt) : null;
 
@@ -78,7 +74,6 @@ export default async function SettingsIndexPage({
           }}
           hasPendingEmailChange={Boolean(me.pendingNewEmail)}
           deletionRequestedAt={deletionRequestedAt}
-          organisations={organisations}
           emailChanged={sp.changed === "1"}
           linkedProvider={linkedProvider}
           passwordJustSet={passwordJustSet}

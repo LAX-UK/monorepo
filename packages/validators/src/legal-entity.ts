@@ -60,6 +60,14 @@ export const inviteLegalEntityMemberSchema = z.object({
 
 export type InviteLegalEntityMemberInput = z.infer<typeof inviteLegalEntityMemberSchema>;
 
+export const declineLegalEntityInvitationBodySchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+export type DeclineLegalEntityInvitationBody = z.infer<
+  typeof declineLegalEntityInvitationBodySchema
+>;
+
 /** Update Member Role Input */
 export const updateLegalEntityMemberRoleSchema = z.object({
   role: z.enum(legalEntityMemberRoles),

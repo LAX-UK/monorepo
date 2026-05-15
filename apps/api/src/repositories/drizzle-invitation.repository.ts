@@ -20,6 +20,8 @@ function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
     expiresAt: r.expiresAt,
     acceptedAt: r.acceptedAt ?? null,
     acceptedUserId: r.acceptedUserId ?? null,
+    targetLegalEntityId: r.targetLegalEntityId ?? null,
+    targetLegalEntityMemberRole: r.targetLegalEntityMemberRole ?? null,
     createdByUserId: r.createdByUserId,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -35,6 +37,8 @@ function mapSummary(r: {
   expiresAt: Date;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
+  targetLegalEntityId: string | null;
+  targetLegalEntityMemberRole: string | null;
   createdByUserId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +52,8 @@ function mapSummary(r: {
     expiresAt: r.expiresAt,
     acceptedAt: r.acceptedAt ?? null,
     acceptedUserId: r.acceptedUserId ?? null,
+    targetLegalEntityId: r.targetLegalEntityId ?? null,
+    targetLegalEntityMemberRole: r.targetLegalEntityMemberRole ?? null,
     createdByUserId: r.createdByUserId,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -68,6 +74,8 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       expiresAt: row.expiresAt,
       acceptedAt: row.acceptedAt,
       acceptedUserId: row.acceptedUserId,
+      targetLegalEntityId: row.targetLegalEntityId ?? null,
+      targetLegalEntityMemberRole: row.targetLegalEntityMemberRole ?? null,
       createdByUserId: row.createdByUserId,
     });
   }
@@ -101,6 +109,8 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         expiresAt: userInvitation.expiresAt,
         acceptedAt: userInvitation.acceptedAt,
         acceptedUserId: userInvitation.acceptedUserId,
+        targetLegalEntityId: userInvitation.targetLegalEntityId,
+        targetLegalEntityMemberRole: userInvitation.targetLegalEntityMemberRole,
         createdByUserId: userInvitation.createdByUserId,
         createdAt: userInvitation.createdAt,
         updatedAt: userInvitation.updatedAt,
