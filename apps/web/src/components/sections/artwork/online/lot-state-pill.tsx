@@ -23,6 +23,10 @@ type Props = {
   className?: string;
   /** Smaller typography for sidebar mirror */
   compact?: boolean;
+  /** Hide countdown entirely. */
+  suppressCountdown?: boolean;
+  /** Hide countdown below `lg` (mobile sticky bar owns the timer). */
+  hideCountdownOnMobile?: boolean;
   /** First `Date.now()` tick (e.g. from server render) so pill matches SSR lifecycle. */
   initialNowMs?: number;
 };
@@ -43,7 +47,15 @@ function toneClasses(tone: LifecycleBadgeTone): string {
 }
 
 /** Live-updating pill + short countdown for scheduled / live / extended. */
-export function LotStatePill({ lot, sale, className, compact, initialNowMs }: Props) {
+export function LotStatePill({
+  lot,
+  sale,
+  className,
+  compact,
+  suppressCountdown = false,
+  hideCountdownOnMobile = false,
+  initialNowMs,
+}: Props) {
   // When server passes `initialNowMs`, SSR and CSR start aligned. Otherwise fall
   // back to `null` until mount to avoid a hydration mismatch on the countdown text.
   const [now, setNow] = useState<number | null>(() => initialNowMs ?? null);
@@ -86,11 +98,12 @@ export function LotStatePill({ lot, sale, className, compact, initialNowMs }: Pr
         ) : null}
         <span>{badge.label}</span>
       </span>
-      {countdown ? (
+      {countdown && !suppressCountdown ? (
         <span
           className={cn(
             "font-body tabular-nums text-on-surface-variant",
             compact ? "text-xs" : "text-sm",
+            hideCountdownOnMobile && "hidden lg:inline",
           )}
           suppressHydrationWarning
         >
