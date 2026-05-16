@@ -212,6 +212,7 @@ export default async function ArtworkPage({ params }: PageProps) {
         initialWatching={watching}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
+        mobilePricingStrip
         kycSummary={kycSummary}
         saleForLifecycle={saleLifecyclePick}
       />

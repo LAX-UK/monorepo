@@ -12,6 +12,7 @@ import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history"
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
 import { LotHighestBidderBanner } from "@/components/sections/artwork/redesign/lot-highest-bidder-banner";
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
+import { LotMobilePricingStrip } from "@/components/sections/artwork/redesign/lot-mobile-pricing-strip";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
@@ -42,6 +43,8 @@ type Props = {
   loginNextPath?: string;
   /** When true, omit estimate/timer stack (e.g. online layout shows it in the queue sidebar). */
   omitPricingHeader?: boolean;
+  /** Show compact pricing strip on mobile when `omitPricingHeader` is true. */
+  mobilePricingStrip?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
   /** Parent sale (when known) for pre-launch / draft-sale catalogue messaging. */
   saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
@@ -62,6 +65,7 @@ export function ArtworkBidPanel({
   initialWatching = false,
   loginNextPath,
   omitPricingHeader = false,
+  mobilePricingStrip = false,
   kycSummary = null,
   saleForLifecycle = null,
 }: Props) {
@@ -164,6 +168,19 @@ export function ArtworkBidPanel({
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("bid-interactive-anchor");
+    if (!el || !onlineLifecycle || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onlineLifecycle.setBidCardInView(entry?.isIntersecting ?? false);
+      },
+      { root: null, rootMargin: "0px 0px -80px 0px", threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onlineLifecycle]);
 
   useEffect(() => {
     if (!bidSuccess) return;
@@ -361,6 +378,19 @@ export function ArtworkBidPanel({
     auction.auctionType !== "english" &&
     auction.auctionType !== "buy_it_now";
 
+  const supportsAutoBid = auction.auctionType === "english" || auction.auctionType === "buy_it_now";
+  const autoBidEligible =
+    !englishOnlySurfaceLock &&
+    supportsAutoBid &&
+    (lifecycle.kind === "live" || lifecycle.kind === "extended");
+  const showAutoBidExplainer =
+    !englishOnlySurfaceLock &&
+    supportsAutoBid &&
+    !autoBidEligible &&
+    (lifecycle.kind === "scheduled" || lifecycle.kind === "preLaunch");
+
+  const bidCardInView = onlineLifecycle?.bidCardInView ?? true;
+
   return (
     <BidGate
       user={sessionUser}
@@ -373,6 +403,14 @@ export function ArtworkBidPanel({
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
           <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
+            {omitPricingHeader && mobilePricingStrip ? (
+              <LotMobilePricingStrip
+                seed={summarySeed}
+                currentPrice={currentPrice}
+                minNextBid={minNumeric.toFixed(2)}
+                lotNumber={auction.lotNumber}
+              />
+            ) : null}
             {omitPricingHeader ? null : (
               <LotInfoStack
                 estimateLine={summarySeed.estimateLine}
@@ -430,8 +468,7 @@ export function ArtworkBidPanel({
               </p>
             ) : null}
 
-            {!englishOnlySurfaceLock &&
-            (auction.auctionType === "english" || auction.auctionType === "buy_it_now") ? (
+            {autoBidEligible ? (
               <>
                 <TooltipProvider delayDuration={200}>
                   <details
@@ -479,6 +516,11 @@ export function ArtworkBidPanel({
                   OR enter bid manually
                 </p>
               </>
+            ) : showAutoBidExplainer ? (
+              <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
+                Auto-bid opens when this lot goes live
+                {countdownClock ? ` in ${countdownClock}` : ""}.
+              </p>
             ) : null}
 
             {!englishOnlySurfaceLock ? (
@@ -564,6 +606,7 @@ export function ArtworkBidPanel({
               msRemaining={endTime - now}
               timerState={timerState}
               countdownClock={countdownClock}
+              compact={bidCardInView}
             />
           ) : null}
         </div>
