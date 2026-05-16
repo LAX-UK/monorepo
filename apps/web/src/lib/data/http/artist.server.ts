@@ -71,16 +71,21 @@ export async function fetchPublicArtistBrowse(
     const res = await fetch(`${getServerApiBase()}/artists/browse?${sp.toString()}`, {
       next: { revalidate: 120 },
     });
-    if (!res.ok) return { rows: [], total: 0, facets: emptyFacets() };
+    if (!res.ok) {
+      return { rows: [], total: 0, facets: emptyFacets() };
+    }
     const body = (await res.json()) as {
-      data: {
-        rows: PublicArtistDirectoryRow[];
-        total: number;
+      data?: {
+        rows?: PublicArtistDirectoryRow[];
+        total?: number;
         facets?: PublicArtistDirectoryFacets;
       };
     };
+    if (!body.data || !Array.isArray(body.data.rows)) {
+      return { rows: [], total: 0, facets: emptyFacets() };
+    }
     return {
-      rows: body.data.rows ?? [],
+      rows: body.data.rows,
       total: body.data.total ?? 0,
       facets: body.data.facets ?? emptyFacets(),
     };
