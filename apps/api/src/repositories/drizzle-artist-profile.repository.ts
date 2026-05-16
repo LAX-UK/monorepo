@@ -105,9 +105,11 @@ const aliasCountExpr = sql<number>`(select count(*)::int from ${artistAlias} whe
 
 /** Extract the leading 4-digit year from `birth_year` text using a Postgres regex.
  * Returns `NULL` when no year prefix is present. Reused by decade filter + facets. */
-const birthYearExpr = sql<
-  number | null
->`nullif(substring(coalesce(${artistProfile.birthYear},'') from '^\\d{4}'), '')::int`;
+const birthYearExpr = sql<number | null>`case
+  when substring(coalesce(${artistProfile.birthYear}, '') from '^\\d{4}') ~ '^\\d{4}$'
+  then substring(${artistProfile.birthYear} from '^\\d{4}')::int
+  else null
+end`;
 
 /** Build a `where` clause that filters artists into a decade slug. Returns `null`
  * when the slug isn't recognised so callers can skip filter merge. */

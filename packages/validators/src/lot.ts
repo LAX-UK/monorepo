@@ -74,8 +74,8 @@ export const listLotsQuerySchema = z.object({
     .refine((arr) => arr == null || arr.every((x) => z.string().uuid().safeParse(x).success), {
       message: "Invalid category ID in categoryIds",
     }),
-  sellerId: z.string().optional(),
-  winnerId: z.string().optional(),
+  sellerId: z.string().uuid().optional(),
+  winnerId: z.string().uuid().optional(),
   saleId: z.string().uuid().optional(),
   artistId: z.string().uuid().optional(),
   endYear: z.coerce.number().int().min(1970).max(2100).optional(),
