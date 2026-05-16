@@ -159,5 +159,9 @@ export const publicArtistBrowseQuerySchema = z.object({
     .optional(),
   /** When true, only artists with at least one `active` or `scheduled` lot. */
   hasUpcoming: z.coerce.boolean().optional(),
-  sort: z.enum(["name_asc", "popular", "recent"]).optional().default("name_asc"),
+  sort: z
+    .union([z.enum(["name_asc", "popular", "recent"]), z.literal("")])
+    .optional()
+    .transform((v) => (v === "" ? undefined : v))
+    .pipe(z.enum(["name_asc", "popular", "recent"]).optional().default("name_asc")),
 });

@@ -42,11 +42,11 @@ export function LotDetailsInline({
         </h2>
       )}
       {lot.description ? (
-        <p className="whitespace-pre-wrap text-sm leading-[150%] text-[#191919] dark:text-brand-500">
+        <p className="whitespace-pre-wrap text-sm leading-[150%] text-[#191919] dark:text-on-surface">
           {lot.description}
         </p>
       ) : null}
-      <ul className="space-y-2 text-sm text-[#191919] dark:text-brand-500">
+      <ul className="space-y-2 text-sm text-[#191919] dark:text-on-surface-variant">
         {specParts.length > 0 ? (
           <li>
             {specParts.map((p, i) => (

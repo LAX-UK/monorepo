@@ -57,6 +57,10 @@ const addAliasSchema = z.object({
 const idParam = z.object({ id: z.string().uuid() });
 const slugParam = z.object({ slug: z.string().min(1).max(120) });
 
+/** Only match UUID path segments so static routes (`browse`, `public`, …) are never captured. */
+const artistIdSegment =
+  ":id{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}";
+
 export function createArtistRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -120,6 +124,12 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data });
   });
 
+  r.get("/check-name", zValidator("query", checkNameSchema), async (c) => {
+    const { displayName } = c.req.valid("query");
+    const result = await container.artistRegistryService.checkNameAvailability(displayName);
+    return c.json({ data: result });
+  });
+
   /** POST /artists/propose-matches — admin: surfaces exact + alias + fuzzy buckets. */
   r.post(
     "/propose-matches",
@@ -135,7 +145,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
   );
 
   /** GET /artists/:id/aliases-public — public list of aliases for an approved artist (used by profile hero). */
-  r.get("/:id/aliases-public", zValidator("param", idParam), async (c) => {
+  r.get(`/${artistIdSegment}/aliases-public`, zValidator("param", idParam), async (c) => {
     const { id } = c.req.valid("param");
     const found = await container.artistRegistryService.findById(id);
     if (!found || found.status !== "approved" || found.archived) {
@@ -157,13 +167,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data: found });
   });
 
-  r.get("/check-name", zValidator("query", checkNameSchema), async (c) => {
-    const { displayName } = c.req.valid("query");
-    const result = await container.artistRegistryService.checkNameAvailability(displayName);
-    return c.json({ data: result });
-  });
-
-  r.get("/:id", optionalAuth, zValidator("param", idParam), async (c) => {
+  r.get(`/${artistIdSegment}`, optionalAuth, zValidator("param", idParam), async (c) => {
     const { id } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
@@ -194,7 +198,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
 
   /** POST /artists/:id/aliases — add an alias to an existing artist. */
   r.post(
-    "/:id/aliases",
+    `/${artistIdSegment}/aliases`,
     requireAuth,
     requireArtistReview,
     zValidator("param", idParam),
@@ -217,7 +221,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
    * artist via `intoArtistId`; the URL param is the artist being merged.
    */
   r.post(
-    "/:id/merge",
+    `/${artistIdSegment}/merge`,
     requireAuth,
     requireArtistMerge,
     zValidator("param", idParam),
@@ -251,7 +255,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
 
   /** POST /artists/:id/review — admin: approve or reject a pending artist. */
   r.post(
-    "/:id/review",
+    `/${artistIdSegment}/review`,
     requireAuth,
     requireArtistReview,
     zValidator("param", idParam),

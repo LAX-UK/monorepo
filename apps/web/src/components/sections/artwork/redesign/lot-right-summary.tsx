@@ -23,9 +23,7 @@ export function LotRightSummary({ seed, children }: Props) {
   return (
     <div className="flex w-full max-w-[480px] flex-col gap-7">
       <div className="flex flex-col gap-2.5">
-        {seed.kicker ? (
-          <p className="text-base leading-4 text-on-surface dark:text-brand-500">{seed.kicker}</p>
-        ) : null}
+        {seed.kicker ? <p className="text-base leading-4 text-on-surface">{seed.kicker}</p> : null}
         <h1
           id="lot-heading"
           className="text-3xl font-semibold leading-tight text-on-surface dark:text-on-surface"
@@ -44,7 +42,7 @@ export function LotRightSummary({ seed, children }: Props) {
           <div className="min-w-0 flex flex-1 items-center gap-2">
             <Link
               href={seed.sellerHref}
-              className="min-w-0 truncate border-b border-transparent text-base font-medium text-on-surface transition-colors hover:border-primary hover:text-primary dark:text-brand-500"
+              className="min-w-0 truncate border-b border-transparent text-base font-medium text-on-surface transition-colors hover:border-primary hover:text-primary"
             >
               {seed.sellerName}
             </Link>

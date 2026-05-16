@@ -6,17 +6,23 @@ import {
 } from "@/components/sections/artwork/artwork-view-models";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { BidFeedEntry } from "@/components/sections/artwork/onsite/bid-feed-entry";
+import { getLiveFeedHeaderMeta } from "@/components/sections/artwork/onsite/live-feed-header";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
+import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import { cn } from "@auction/ui";
-import { Eye, Gavel } from "lucide-react";
+import { Gavel } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-function formatWatchingLabel(count: number): string {
-  if (count >= 1000) {
-    return `${Math.floor(count / 1000)}k watching`;
+function statusDotClass(tone: "live" | "upcoming" | "ended"): string {
+  switch (tone) {
+    case "live":
+      return "bg-red-500";
+    case "upcoming":
+      return "bg-lot-orange";
+    case "ended":
+      return "bg-on-surface-variant/60";
   }
-  return `${count} watching`;
 }
 
 type Props = {
@@ -26,6 +32,9 @@ type Props = {
   className?: string;
   headerMode?: "bids" | "watching" | "none";
   watcherCount?: number | null;
+  /** Unified lifecycle — drives header label when `headerMode` is `watching`. */
+  lifecycleKind?: LotLifecycleKind;
+  countdownClock?: string;
   listMaxHeightClass?: string;
 };
 
@@ -36,6 +45,8 @@ export function LiveBidFeed({
   className,
   headerMode = "bids",
   watcherCount = null,
+  lifecycleKind = "preLaunch",
+  countdownClock = "",
   listMaxHeightClass = "max-h-[min(55vh,520px)]",
 }: Props) {
   const [entries, setEntries] = useState<BidHistoryEntry[]>(initialHistory);
@@ -75,6 +86,15 @@ export function LiveBidFeed({
 
   const showHeader = headerMode !== "none";
 
+  const watchingHeader = useMemo(
+    () =>
+      getLiveFeedHeaderMeta(lifecycleKind, {
+        countdownClock,
+        watcherCount,
+      }),
+    [lifecycleKind, countdownClock, watcherCount],
+  );
+
   return (
     <div className={cn("flex w-full flex-col overflow-hidden lg:max-w-[440px]", className)}>
       <div className="h-4 shrink-0 rounded-t-lg bg-gradient-to-r from-surface-container-high to-surface-container-low dark:from-surface-container-high dark:to-surface-container-low" />
@@ -82,25 +102,20 @@ export function LiveBidFeed({
         {showHeader ? (
           <div className="flex min-h-6 flex-wrap items-center gap-2">
             <h2 className="flex-1 font-body text-xl font-medium text-[#050505] dark:text-on-surface">
-              Live Feed
+              {headerMode === "watching" ? watchingHeader.title : "Live Feed"}
             </h2>
             {headerMode === "watching" ? (
-              watcherCount != null ? (
-                <div className="flex items-center gap-2 rounded-full px-2 py-0.5">
-                  <Eye className="size-4 text-[#191919] dark:text-on-surface-variant" aria-hidden />
-                  <span className="font-body text-xs font-medium text-[#191919] dark:text-on-surface-variant">
-                    {formatWatchingLabel(watcherCount)}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 font-body text-xs font-medium text-[#191919] dark:text-on-surface-variant">
-                  <span
-                    className="size-2 shrink-0 rounded-full bg-red-500 motion-safe:animate-pulse motion-reduce:animate-none"
-                    aria-hidden
-                  />
-                  <span>Live now</span>
-                </div>
-              )
+              <div className="flex items-center gap-2 font-body text-xs font-medium text-[#191919] dark:text-on-surface-variant">
+                <span
+                  className={cn(
+                    "size-2 shrink-0 rounded-full",
+                    statusDotClass(watchingHeader.tone),
+                    watchingHeader.pulse && "motion-safe:animate-pulse motion-reduce:animate-none",
+                  )}
+                  aria-hidden
+                />
+                <span>{watchingHeader.statusLabel}</span>
+              </div>
             ) : (
               <div className="flex items-center gap-2 rounded-full px-2 py-0.5">
                 <Gavel className="size-4 text-[#191919] dark:text-on-surface-variant" aria-hidden />

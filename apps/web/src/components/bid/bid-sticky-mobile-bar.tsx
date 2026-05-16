@@ -25,6 +25,8 @@ type Props = {
   timerState: LotTimerState;
   /** Pre-formatted clock for the countdown (HH:MM:SS or `Nd HH:MM:SS`). */
   countdownClock: string;
+  /** Slim bar (countdown only) when bid card is in view. */
+  compact?: boolean;
 };
 
 export function BidStickyMobileBar({
@@ -39,6 +41,7 @@ export function BidStickyMobileBar({
   msRemaining,
   timerState,
   countdownClock,
+  compact = false,
 }: Props) {
   if (timerState.kind === "opensSoon") {
     return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
@@ -47,6 +50,22 @@ export function BidStickyMobileBar({
     return <ClosedBar terminalLabel={timerState.kind === "closed" ? "Closed" : "Cancelled"} />;
   }
   if (!live) return null;
+
+  if (compact) {
+    const closeUrgent = countdownTier(msRemaining) !== "normal";
+    return (
+      <MarketingStickyBidBar>
+        <p
+          className={cn(
+            "w-full text-center font-label text-xs font-semibold uppercase tracking-wider tabular-nums",
+            closeUrgent ? "text-error" : "text-on-surface-variant",
+          )}
+        >
+          Closes {countdownClock || remainingLabel}
+        </p>
+      </MarketingStickyBidBar>
+    );
+  }
 
   const next = encodeURIComponent(loginNextPath);
   const closeUrgent = countdownTier(msRemaining) !== "normal";

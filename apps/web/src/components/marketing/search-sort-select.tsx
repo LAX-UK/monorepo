@@ -10,7 +10,7 @@ import {
 } from "@auction/ui/components/select";
 import { usePathname, useSearchParams } from "next/navigation";
 
-const SORT_OPTIONS = [
+export const SORT_OPTIONS = [
   { value: "endingAsc", label: "Ending soon" },
   { value: "createdDesc", label: "Newest" },
   { value: "hammerDesc", label: "Price · High to low" },
@@ -42,7 +42,7 @@ export function SearchSortSelect({ value }: { value: SearchSortValue }) {
     >
       <SelectTrigger
         aria-label="Sort results"
-        className="h-auto min-h-[44px] w-full min-w-[11rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary sm:w-auto"
+        className="h-9 min-h-9 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary"
       >
         <SelectValue />
       </SelectTrigger>

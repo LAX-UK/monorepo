@@ -118,7 +118,7 @@ export function LotMoreFromRail({
                       <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
                         {c.title}
                       </p>
-                      <p className="mt-1 text-sm font-light text-[#191919] dark:text-brand-500">
+                      <p className="mt-1 text-sm font-light text-[#191919] dark:text-on-surface-variant">
                         {c.artistOrSellerName}
                       </p>
                     </div>

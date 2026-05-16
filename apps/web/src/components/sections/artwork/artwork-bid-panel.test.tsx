@@ -20,6 +20,15 @@ vi.mock("@/lib/context/lot-ports", () => ({
   }),
 }));
 
+vi.mock("@/lib/context/online-lot-lifecycle", () => ({
+  useOnlineLotLifecycle: () => ({
+    extendedByMs: null,
+    setExtendedDeltaMs: vi.fn(),
+    bidCardInView: true,
+    setBidCardInView: vi.fn(),
+  }),
+}));
+
 const lot = (sellerId: string): Lot => ({
   id: "lot-x",
   saleId: null,
@@ -101,5 +110,61 @@ describe("ArtworkBidPanel", () => {
       />,
     );
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
+  });
+
+  it("hides Set auto bid when lot is scheduled", () => {
+    const scheduled = {
+      ...lot("other-seller"),
+      status: "scheduled" as const,
+      startTime: new Date(Date.now() + 86_400_000),
+    };
+    render(
+      <ArtworkBidPanel
+        auction={scheduled}
+        initialHistory={[]}
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialUserMaxAuto={null}
+      />,
+    );
+    expect(screen.queryByText(/set auto bid/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/auto-bid opens when this lot goes live/i)).toBeInTheDocument();
+  });
+
+  it("shows Set auto bid when lot is active and live", () => {
+    render(
+      <ArtworkBidPanel
+        auction={lot("other-seller")}
+        initialHistory={[]}
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialUserMaxAuto={null}
+      />,
+    );
+    expect(screen.getByText(/set auto bid/i)).toBeInTheDocument();
   });
 });
