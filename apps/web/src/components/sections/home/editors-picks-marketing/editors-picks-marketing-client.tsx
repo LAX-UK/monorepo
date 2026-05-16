@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { DisplayHeading } from "@auction/ui";
@@ -89,7 +90,7 @@ function EditorsPicksCarousel({
         <button
           type="button"
           onClick={scrollForward}
-          className="pointer-events-auto absolute right-0 top-[170px] z-[2] hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#D1D1D1] bg-white text-[#050505] shadow-sm outline-offset-2 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex dark:border-outline dark:bg-surface-container-low dark:text-on-surface dark:hover:bg-surface-container"
+          className="pointer-events-auto absolute right-0 top-[170px] z-[2] hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface shadow-sm outline-offset-2 hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex dark:bg-surface-container-low dark:hover:bg-surface-container"
           aria-label="Scroll to see more editor's picks"
         >
           <ChevronRight className="size-5 shrink-0" aria-hidden />
@@ -113,34 +114,35 @@ export function EditorsPicksMarketingClient({
       aria-labelledby="home-editors-picks-heading"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
-        <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex max-w-[720px] flex-col gap-2">
+        <MarketingSectionHeader
+          heading={
             <DisplayHeading
               as="h2"
               id="home-editors-picks-heading"
-              className="text-[40px] font-semibold leading-[60px] text-[#050505] dark:text-on-surface"
+              size="section"
+              className="font-semibold text-on-surface"
             >
               Editor&apos;s Picks
             </DisplayHeading>
-            <p className="font-headline text-2xl font-normal leading-9 text-[#757575] dark:text-on-surface-variant">
-              Hand-selected pieces by LAX specialists
-            </p>
-          </div>
-          <Button
-            variant="chevron"
-            asChild
-            className="h-auto shrink-0 border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
-          >
-            <Link
-              href={VIEW_ALL_HREF}
-              className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-[#050505] dark:text-on-surface"
+          }
+          subtitle="Hand-selected pieces by LAX specialists"
+          action={
+            <Button
+              variant="chevron"
+              asChild
+              className="h-auto shrink-0 border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
             >
-              View All
-              <span className="sr-only"> lots and catalogue</span>
-              <ChevronRight className="size-5 shrink-0" aria-hidden />
-            </Link>
-          </Button>
-        </div>
+              <Link
+                href={VIEW_ALL_HREF}
+                className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
+              >
+                View All
+                <span className="sr-only"> lots and catalogue</span>
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
 
         <EditorsPicksCarousel
           key={stripKey}

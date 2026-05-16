@@ -28,7 +28,7 @@ const primary = [
   },
   {
     href: "/dashboard/settings/appearance",
-    label: "Appearance",
+    label: "Appearance & layout",
     match: (pathname: string, _tab: string | null) =>
       pathname === "/dashboard/settings/appearance" ||
       pathname.startsWith("/dashboard/settings/appearance/"),

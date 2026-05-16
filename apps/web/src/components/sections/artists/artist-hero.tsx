@@ -1,5 +1,6 @@
 import { ArtistBioReadMore } from "@/components/sections/artists/artist-bio-read-more";
 import { MediaImage } from "@/components/ui/media-image";
+import { DisplayHeading, LabelCaps } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type ArtistHeroVM = {
@@ -38,18 +39,18 @@ export function ArtistHero({ vm, actions }: Props) {
         </div>
       </div>
       <div className="flex flex-col items-start gap-8 px-0 py-8 md:px-10 md:py-16 lg:px-14 lg:py-20">
-        {vm.featured ? (
-          <span className="font-label text-xs uppercase tracking-[0.3em] text-primary">
-            Featured artist
-          </span>
-        ) : null}
-        <h1 className="font-headline text-[clamp(3rem,6vw,6rem)] font-semibold leading-[0.95] tracking-tighter text-on-surface">
+        {vm.featured ? <LabelCaps className="text-primary">Featured artist</LabelCaps> : null}
+        <DisplayHeading
+          as="h1"
+          size="lg"
+          className="font-semibold leading-[0.95] tracking-tighter [font-size:clamp(3rem,6vw,6rem)]"
+        >
           {vm.name.split(" ").map((w, i) => (
             <span key={`${i}-${w}`} className="block">
               {w}
             </span>
           ))}
-        </h1>
+        </DisplayHeading>
         {vm.tagline ? (
           <p className="max-w-[420px] font-headline text-lg font-light italic leading-relaxed text-on-surface-variant">
             &ldquo;{vm.tagline}&rdquo;

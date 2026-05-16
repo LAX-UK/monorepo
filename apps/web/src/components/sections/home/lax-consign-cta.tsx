@@ -1,6 +1,7 @@
+import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { CONSIGN_COPY } from "@/components/sections/home/home-copy";
 import { RevealInView } from "@/components/ui/reveal";
-import { DisplayHeading } from "@auction/ui";
+import { LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -17,19 +18,19 @@ export function LaxConsignCTA() {
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col items-start gap-6 md:gap-8 lg:flex-row lg:items-center lg:gap-16">
         <RevealInView variant="fadeUp" className="flex-1">
-          <p className="mb-3 font-label text-xs font-semibold uppercase leading-4 tracking-[0.18em] text-primary">
-            {CONSIGN_COPY.kicker}
-          </p>
-          <DisplayHeading
-            id="consign-heading"
-            as="h2"
-            className="font-headline text-4xl font-semibold leading-[1.1] text-on-surface md:text-[44px]"
-          >
-            {CONSIGN_COPY.title}
-          </DisplayHeading>
-          <p className="mt-4 max-w-[640px] font-body text-lg leading-7 text-on-surface-variant">
-            {CONSIGN_COPY.body}
-          </p>
+          <MarketingPromoCta
+            as="div"
+            headingId="consign-heading"
+            className="border-0 bg-transparent p-0 shadow-none md:p-0"
+            eyebrow={<LabelCaps className="text-primary">{CONSIGN_COPY.kicker}</LabelCaps>}
+            title={CONSIGN_COPY.title}
+            titleClassName="text-4xl font-semibold leading-[1.1] md:text-[44px]"
+            description={
+              <p className="max-w-[640px] font-body text-lg leading-7 text-on-surface-variant">
+                {CONSIGN_COPY.body}
+              </p>
+            }
+          />
         </RevealInView>
         <RevealInView variant="fadeUp" delayMs={120} className="lg:shrink-0">
           <div className="flex flex-col items-start gap-3">

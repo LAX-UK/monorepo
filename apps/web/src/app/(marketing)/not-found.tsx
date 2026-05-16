@@ -1,4 +1,10 @@
 import { SegmentNotFound } from "@/components/marketing/segment-not-found";
+import { metadataForNotFound } from "@/lib/seo/metadata-factory";
+
+export const metadata = metadataForNotFound(
+  "Page not found",
+  "The page you requested may have moved or never existed.",
+);
 
 export default function MarketingNotFound() {
   return (

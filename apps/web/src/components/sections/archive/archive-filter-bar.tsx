@@ -69,6 +69,7 @@ export function ArchiveFilterBar({ categories }: Props) {
             <FilterChip
               pressed={year === "all"}
               pending={pending}
+              aria-current={year === "all" ? "true" : undefined}
               onClick={() => setParams({ year: "all" })}
             >
               All time
@@ -78,6 +79,7 @@ export function ArchiveFilterBar({ categories }: Props) {
                 key={y}
                 pressed={year === String(y)}
                 pending={pending}
+                aria-current={year === String(y) ? "true" : undefined}
                 onClick={() => setParams({ year: String(y) })}
               >
                 {y}
@@ -94,6 +96,7 @@ export function ArchiveFilterBar({ categories }: Props) {
             <FilterChip
               pressed={categoryId === ""}
               pending={pending}
+              aria-current={categoryId === "" ? "true" : undefined}
               onClick={() => setParams({ categoryId: "" })}
             >
               All media
@@ -103,6 +106,7 @@ export function ArchiveFilterBar({ categories }: Props) {
                 key={c.id}
                 pressed={categoryId === c.id}
                 pending={pending}
+                aria-current={categoryId === c.id ? "true" : undefined}
                 onClick={() => setParams({ categoryId: c.id })}
               >
                 {c.name}

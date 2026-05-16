@@ -1,13 +1,20 @@
+import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
+import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
 import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
+import { SalesCalendarGrid } from "@/components/sections/sales/sales-calendar-grid";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
 import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import {
   mapSaleToAuctionRowVM,
+  mapSaleToCalendarGridCardVM,
   mapSaleToFeaturedAuctionCardVM,
 } from "@/components/sections/sales/sales-view-models";
+import { firstString } from "@/lib/admin/admin-list-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
@@ -25,12 +32,13 @@ import {
   parseYear,
 } from "@/lib/marketing/sales-calendar-params";
 import { parseSalesCategoryId } from "@/lib/marketing/sales-filters";
+import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
-import { Button, EmptyState, SectionCta } from "@auction/ui";
+import { Button, SectionCta } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -95,6 +103,17 @@ export default async function SalesListPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+  const session = await getServerSessionUser();
+
+  const salesLayoutResolved = await resolveMarketingLayoutView({
+    routeKey: "sales",
+    category: "sales",
+    urlView: firstString(sp.view),
+    user: session,
+    fallback: "list",
+  });
+  const calendarView: "grid" | "list" = salesLayoutResolved === "list" ? "list" : "grid";
+
   const categories = await getServerCategoryReader()
     .then((r) => r.list())
     .catch(() => []);
@@ -113,6 +132,7 @@ export default async function SalesListPage({
     deliveryMode,
     location,
     sort,
+    view: calendarView,
     ...(categoryId ? { categoryId } : {}),
     ...(month != null ? { month } : {}),
     ...(year != null ? { year } : {}),
@@ -157,7 +177,6 @@ export default async function SalesListPage({
     ...(maxPrice != null ? { maxPrice } : {}),
   });
 
-  const session = await getServerSessionUser();
   const base = getSiteUrl();
   const crumbLd = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -187,6 +206,11 @@ export default async function SalesListPage({
       showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
     }),
   );
+  const gridVms = filteredSales.map(({ sale, lots }) =>
+    mapSaleToCalendarGridCardVM(sale, lots, {
+      showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
+    }),
+  );
 
   return (
     <main
@@ -202,7 +226,7 @@ export default async function SalesListPage({
         </script>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-8">
+      <div className="mx-auto w-full max-w-[var(--container-max,1440px)] px-4 sm:px-6 md:px-8 lg:px-8">
         <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
             <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
@@ -220,8 +244,8 @@ export default async function SalesListPage({
               ) : null}
 
               {tab === "privateSales" ? (
-                <EmptyState
-                  className="border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                <MarketingEmptyState
+                  variant="marketing"
                   title="Private sales"
                   description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
                   action={
@@ -233,8 +257,8 @@ export default async function SalesListPage({
               ) : null}
 
               {tab === "artists" ? (
-                <EmptyState
-                  className="border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                <MarketingEmptyState
+                  variant="marketing"
                   title="Artists"
                   description="Public artist profiles are coming soon. Explore auctions and lots in the meantime."
                   action={
@@ -275,6 +299,20 @@ export default async function SalesListPage({
                   categories={categories}
                   years={yearOptions}
                 >
+                  <MarketingListToolbar
+                    className="mb-4 rounded-lg border border-outline-variant/20 bg-white/80 dark:bg-surface-container-low/40"
+                    countLabel={`${filteredSales.length} sale${filteredSales.length === 1 ? "" : "s"}`}
+                    trailing={
+                      <>
+                        <CopyCatalogLinkButton />
+                        <CatalogViewSwitcher
+                          routeKey="sales"
+                          value={calendarView === "list" ? "list" : "grid"}
+                          supportedModes={["grid", "list"]}
+                        />
+                      </>
+                    }
+                  />
                   {!session ? (
                     <SectionCta
                       className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
@@ -294,13 +332,15 @@ export default async function SalesListPage({
                   ) : null}
 
                   {filteredSales.length === 0 && !err ? (
-                    <EmptyState
-                      className="border border-dashed border-outline-variant/30 bg-white dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                    <MarketingEmptyState
+                      variant="marketing"
                       title="No sales match this filter"
                       description="Try another tab or adjust filters in the sidebar."
                     />
+                  ) : calendarView === "grid" ? (
+                    <SalesCalendarGrid vms={gridVms} />
                   ) : (
-                    <SalesAuctionList rows={rowVms} />
+                    <SalesAuctionList rows={rowVms} className="gap-2 sm:gap-2 lg:gap-3" />
                   )}
                 </SalesCalendarBrowse>
               ) : null}

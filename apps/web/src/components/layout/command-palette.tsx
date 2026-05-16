@@ -2,6 +2,7 @@
 
 import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
+import { KbdHintMuted } from "@/components/marketing/kbd-hint";
 import type { SessionUser } from "@/lib/data/contracts";
 import { showLiveBiddingNav } from "@/lib/feature-flags";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
@@ -399,11 +400,7 @@ export function CommandPalette({
             <span className="hidden font-mono text-xs text-on-surface-variant sm:inline">Esc</span>
           </div>
           <p className="mb-3 font-body text-sm text-on-surface-variant">
-            Jump to a page. Open anytime with{" "}
-            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-xs">
-              {isMac ? "⌘" : "Ctrl"}+K
-            </kbd>
-            .
+            Jump to a page. Open anytime with <KbdHintMuted>{isMac ? "⌘" : "Ctrl"}+K</KbdHintMuted>.
           </p>
           <div className="mb-4">
             <label htmlFor="palette-query" className="sr-only">

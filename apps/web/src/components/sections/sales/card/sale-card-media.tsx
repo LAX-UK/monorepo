@@ -1,4 +1,4 @@
-import { SaleLiveBadge } from "@/components/sections/sales/card/sale-live-badge";
+import { SaleStatusBadge } from "@/components/marketing/sale-status-badge";
 import type { SaleCardMediaProps } from "@/components/sections/sales/card/types";
 import { MediaImage } from "@/components/ui/media-image";
 import { cn } from "@auction/ui";
@@ -35,7 +35,7 @@ export function SaleCardMedia({
       {scrimClassName ? (
         <div className={cn("pointer-events-none absolute inset-0", scrimClassName)} aria-hidden />
       ) : null}
-      {isLive && countdownEndIso ? <SaleLiveBadge countdownEndIso={countdownEndIso} /> : null}
+      {isLive && countdownEndIso ? <SaleStatusBadge countdownEndIso={countdownEndIso} /> : null}
     </>
   );
 

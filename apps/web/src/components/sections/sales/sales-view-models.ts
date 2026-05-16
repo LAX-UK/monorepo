@@ -143,6 +143,13 @@ export type SaleAuctionRowVM = SaleCardCommon & {
   showRegisterButton: boolean;
 };
 
+/** Calendar browse grid tile — compact card with items + register parity vs row view. */
+export type CalendarGridCardVM = FeaturedAuctionCardVM & {
+  itemsLabel: string;
+  lotsHref: string;
+  showRegisterButton: boolean;
+};
+
 function formatDateRangeHyphenCase(start: Date, end: Date, locale = "en-GB"): string {
   const startDay = start.getDate();
   const endDay = end.getDate();
@@ -206,6 +213,23 @@ export function mapSaleToFeaturedAuctionCardVM(
     locationLabel: base.locationLabel,
     status: base.status,
     ...(base.countdownEndIso ? { countdownEndIso: base.countdownEndIso } : {}),
+  };
+}
+
+export function mapSaleToCalendarGridCardVM(
+  sale: Sale,
+  lots: Lot[],
+  opts: { showRegisterButton: boolean },
+  listLocale = "en-GB",
+): CalendarGridCardVM {
+  const featured = mapSaleToFeaturedAuctionCardVM(sale, lots, listLocale);
+  const n = lots.length;
+  const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
+  return {
+    ...featured,
+    itemsLabel,
+    lotsHref: salePath(sale),
+    showRegisterButton: opts.showRegisterButton,
   };
 }
 

@@ -8,6 +8,8 @@ import { LaxPrivateSaleHighlightsMarketing } from "@/components/sections/home/pr
 import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
 import { LaxUpcomingAuctionsMarketing } from "@/components/sections/home/upcoming-auctions-marketing/lax-upcoming-auctions-marketing";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
@@ -28,8 +30,35 @@ export const metadata: Metadata = metadataForStatic({
 
 export const revalidate = 60;
 
-async function MarketingHomeContent() {
-  const data = await getHomeData();
+function firstString(v: string | string[] | undefined): string | undefined {
+  if (v === undefined) return undefined;
+  return typeof v === "string" ? v : v[0];
+}
+
+async function MarketingHomeContent({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const [data, session] = await Promise.all([getHomeData(), getServerSessionUser()]);
+  const urlView = firstString(sp.view);
+  const [layoutView, urgencyLayoutView] = await Promise.all([
+    resolveMarketingLayoutView({
+      routeKey: "home-upcoming",
+      category: "sales",
+      urlView,
+      user: session,
+      fallback: "grid",
+    }),
+    resolveMarketingLayoutView({
+      routeKey: "home-urgency",
+      category: "lots",
+      urlView,
+      user: session,
+      fallback: "grid",
+    }),
+  ]);
   const {
     heroState,
     jsonLdListFallback,
@@ -80,12 +109,17 @@ async function MarketingHomeContent() {
         <LaxUrgencySection
           variant={urgencySection.variant}
           items={urgencySection.lots}
+          layoutView={urgencyLayoutView}
           isAuthenticated={isAuthenticated}
           watchedLotIds={watchedLotIds}
           loginNextPath="/"
         />
       ) : null}
-      <LaxUpcomingAuctionsMarketing tiles={upcomingAuctionTiles} />
+      <LaxUpcomingAuctionsMarketing
+        tiles={upcomingAuctionTiles}
+        layoutView={layoutView}
+        isAuthenticated={isAuthenticated}
+      />
       <LaxEditorsPicksMarketing
         lots={editorsPickLots}
         isAuthenticated={isAuthenticated}
@@ -99,11 +133,15 @@ async function MarketingHomeContent() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
       <Suspense fallback={<HomeSkeleton />}>
-        <MarketingHomeContent />
+        <MarketingHomeContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

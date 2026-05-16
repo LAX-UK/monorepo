@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/pnpm-lock.yaml"]
+    "ignore": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.next/**",
+      "**/pnpm-lock.yaml",
+      "**/.terraform/**"
+    ]
   },
   "formatter": {
     "indentStyle": "space",
@@ -42,5 +48,17 @@
       "quoteStyle": "double",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": ["packages/ui/src/components/ui/view-switcher.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    }
+  ]
 }

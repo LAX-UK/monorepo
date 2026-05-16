@@ -1,5 +1,6 @@
 import "server-only";
 
+import { lotsEndingSoon, nextUpcomingLots } from "@/components/sections/home/home-urgency-helpers";
 import {
   type EditorsPickLotCardVM,
   type HeroLotVM,
@@ -51,9 +52,14 @@ function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
   return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
 }
 
+function jsonLdListEntriesFromLotCardVMs(vms: LotCardVM[]): HomeJsonLdListEntry[] {
+  return vms.map((l) => ({ title: l.title, href: l.href }));
+}
+
 export type HomeUrgencySection =
   | { variant: "endingSoon"; lots: LotCardVM[] }
   | { variant: "liveNow"; lots: LotCardVM[] }
+  | { variant: "upcoming"; lots: LotCardVM[] }
   | { variant: "none"; lots: LotCardVM[] };
 
 export type HomePageData = {
@@ -106,8 +112,6 @@ async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<HomeSaleL
   }));
 }
 
-const ENDING_SOON_WINDOW_MS = 100 * 60 * 60 * 1000;
-
 /** Prefer lots past the editor’s-picks window; fall back to the tail so thin
  * catalogues still surface a distinct row when possible. */
 function pickPrivateSaleHighlightLots(lots: Lot[]): Lot[] {
@@ -115,24 +119,6 @@ function pickPrivateSaleHighlightLots(lots: Lot[]): Lot[] {
   const fromOffset = lots.slice(12, 15);
   if (fromOffset.length > 0) return fromOffset;
   return lots.slice(-Math.min(HOME_PRIVATE_HIGHLIGHTS_LIMIT, lots.length));
-}
-
-function lotsEndingSoon(lots: Lot[]): Lot[] {
-  const now = Date.now();
-  const endingSoon: Lot[] = [];
-  for (const lot of lots) {
-    const end =
-      lot.endTime instanceof Date ? lot.endTime.getTime() : Date.parse(String(lot.endTime));
-    if (
-      lot.status === "active" &&
-      Number.isFinite(end) &&
-      end - now > 0 &&
-      end - now <= ENDING_SOON_WINDOW_MS
-    ) {
-      endingSoon.push(lot);
-    }
-  }
-  return endingSoon;
 }
 
 function liveNowLots(lots: Lot[], excludeLotId: string | null): Lot[] {
@@ -151,6 +137,7 @@ function buildUrgencySection(
   upcoming: Lot[],
   featuredLot: Lot | null,
   endingSoonWithoutHero: Lot[],
+  scheduledLots: Lot[],
 ): HomeUrgencySection {
   if (endingSoonWithoutHero.length > 0) {
     return {
@@ -165,6 +152,13 @@ function buildUrgencySection(
       lots: toEndingSoonLotCardVMs(live),
     };
   }
+  const upcomingLots = nextUpcomingLots(scheduledLots, HOME_ENDING_SOON_LIMIT);
+  if (upcomingLots.length > 0) {
+    return {
+      variant: "upcoming",
+      lots: toEndingSoonLotCardVMs(upcomingLots),
+    };
+  }
   return { variant: "none", lots: [] };
 }
 
@@ -177,6 +171,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const watchedLotIds = Array.from(watchedSet);
 
   let upcoming: Lot[] = [];
+  let scheduledLots: Lot[] = [];
   let salesRows: HomeSaleListRow[] = [];
   try {
     const filtered: ListLotsParams = {
@@ -184,7 +179,12 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       status: "active",
       sort: "endingAsc",
     };
-    upcoming = await fetchHomeLots(filtered);
+    const [activeLots, scheduled] = await Promise.all([
+      fetchHomeLots(filtered),
+      fetchHomeLots({ limit: 12, status: "scheduled" }),
+    ]);
+    scheduledLots = scheduled;
+    upcoming = activeLots;
     if (upcoming.length === 0) {
       upcoming = await fetchHomeLots({ limit: 12, sort: "endingAsc" });
     }
@@ -217,10 +217,16 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const upcomingAfterHero = upcoming.filter(
     (l) => l.id !== featuredLot?.id && !endingSoonRowIds.has(l.id),
   );
-  const jsonLdListFallback = jsonLdListEntriesFromLots(
-    upcomingAfterHero.slice(0, HOME_UPCOMING_LIMIT),
+  const urgencySection = buildUrgencySection(
+    upcoming,
+    featuredLot,
+    endingSoonWithoutHero,
+    scheduledLots,
   );
-  const urgencySection = buildUrgencySection(upcoming, featuredLot, endingSoonWithoutHero);
+  const jsonLdListFallback =
+    urgencySection.variant === "upcoming" && urgencySection.lots.length > 0
+      ? jsonLdListEntriesFromLotCardVMs(urgencySection.lots)
+      : jsonLdListEntriesFromLots(upcomingAfterHero.slice(0, HOME_UPCOMING_LIMIT));
 
   const upcomingSales = salesRows.slice(0, HOME_UPCOMING_LIMIT).map((r) => r.sale);
   const upcomingAuctionTiles = toHomeUpcomingAuctionTileVMs(salesRows).slice(

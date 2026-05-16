@@ -83,8 +83,15 @@ export type SessionUser = {
   pendingNewEmail?: string | null;
   /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
   twoFactorEnabled?: boolean;
-  /** From GET /users/me — synced UI preferences (colour scheme, etc.). */
-  uiPreferences?: { theme: "light" | "dark" | "system" };
+  /** From GET /users/me — synced UI preferences (theme, catalogue layout defaults, density). */
+  uiPreferences?: {
+    theme: "light" | "dark" | "system";
+    viewLotsDefault?: "grid" | "card" | "list" | "auto";
+    viewArtistsDefault?: "grid" | "card" | "list" | "auto";
+    viewSalesDefault?: "grid" | "card" | "list" | "auto";
+    density?: "comfortable" | "compact";
+    viewSync?: boolean;
+  };
 };
 export interface SessionReader {
   getSession(): Promise<SessionUser | null>;

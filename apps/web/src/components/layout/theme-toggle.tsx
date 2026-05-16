@@ -1,10 +1,9 @@
 "use client";
 
-import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
+import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -19,7 +18,6 @@ function readDomDark(): boolean {
 export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { blendWithHero } = useSiteHeaderChrome();
 
   useEffect(() => {
     setIsDark(readDomDark());
@@ -78,22 +76,17 @@ export function ThemeToggle() {
   }, []);
 
   return (
-    <Button
+    <ChromeIconButton
       ref={buttonRef}
-      type="button"
-      variant="ghost"
-      size="icon"
+      label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       onClick={toggle}
-      className={cn(
-        "min-h-[44px] min-w-[44px] transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-        blendWithHero
-          ? "text-white hover:bg-white/10 hover:text-white dark:text-on-surface-variant dark:hover:bg-surface-container-low dark:hover:text-on-surface"
-          : "text-secondary hover:bg-surface-container-low hover:text-primary",
-      )}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       aria-pressed={isDark}
+      className={cn(
+        "transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+        "text-secondary hover:bg-surface-container-low hover:text-primary",
+      )}
     >
       {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
-    </Button>
+    </ChromeIconButton>
   );
 }

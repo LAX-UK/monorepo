@@ -1,9 +1,11 @@
+import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
+import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { ArchiveFilterBar } from "@/components/sections/archive/archive-filter-bar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
-import {
-  type ArchiveLotVM,
-  PastAuctionsGrid,
-} from "@/components/sections/archive/past-auctions-grid";
+import { CatalogArchiveView } from "@/components/sections/archive/catalog-archive-view";
+import type { ArchiveLotVM } from "@/components/sections/archive/catalog-archive-views";
+import { PastAuctionsEmpty } from "@/components/sections/archive/past-auctions-grid";
 import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
 import { buildArchivePageQuery } from "@/lib/archive/build-archive-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
@@ -11,6 +13,8 @@ import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/ht
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
+import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
+import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { lotPath } from "@/lib/seo/url";
@@ -48,6 +52,11 @@ function filtersFallback() {
   );
 }
 
+function firstString(v: string | string[] | undefined): string | undefined {
+  if (v === undefined) return undefined;
+  return typeof v === "string" ? v : v[0];
+}
+
 export default async function ArchivePage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const q = buildArchivePageQuery(sp);
@@ -66,6 +75,14 @@ export default async function ArchivePage({ searchParams }: PageProps) {
       getServerSessionUser(),
     ]);
     const currentUserId = session?.id ?? null;
+
+    const layoutView: CatalogLayoutView = await resolveMarketingLayoutView({
+      routeKey: "archive",
+      category: "lots",
+      urlView: firstString(sp.view),
+      user: session,
+      fallback: "grid",
+    });
 
     categories = await catReader.list();
     const [summary, count, list] = await Promise.all([
@@ -125,7 +142,24 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={categories} />
         </Suspense>
-        <PastAuctionsGrid items={items} currentUserId={currentUserId} />
+
+        <MarketingListToolbar
+          className="mb-8"
+          countLabel={`${totalCount} lot${totalCount === 1 ? "" : "s"}`}
+          trailing={
+            <>
+              <CopyCatalogLinkButton />
+              <CatalogViewSwitcher routeKey="archive" value={layoutView} />
+            </>
+          }
+        />
+
+        {items.length === 0 ? (
+          <PastAuctionsEmpty />
+        ) : (
+          <CatalogArchiveView view={layoutView} items={items} currentUserId={currentUserId} />
+        )}
+
         <Suspense fallback={null}>
           <ArchivePagination page={q.page} totalPages={totalPages} />
         </Suspense>

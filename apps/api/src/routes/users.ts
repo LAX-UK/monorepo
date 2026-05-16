@@ -441,6 +441,12 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
+  r.post("/me/preferences/ui/reset-layout", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const data = await container.uiPreferenceService.resetLayoutDefaults(userId);
+    return c.json({ data });
+  });
+
   r.post(
     "/me/push-subscription",
     requireAuth,

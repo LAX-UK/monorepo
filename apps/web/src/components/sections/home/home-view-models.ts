@@ -136,6 +136,8 @@ export type HomeUpcomingAuctionTileVM = {
   isLive?: boolean;
   /** Sale starts within the next 7 days and is not yet active. */
   startsSoon?: boolean;
+  /** Live sale end time for `SaleCardMedia` countdown (active sales only). */
+  countdownEndIso?: string;
 };
 
 /** Figma “Editor’s Picks” horizontal lot card (image + estimate + CTA). */
@@ -308,6 +310,8 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
   const isLive = sale.status === "active";
   const startsSoon =
     !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
+  const countdownEndIso =
+    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
   return {
     id: sale.id,
     href: salePath(sale),
@@ -321,6 +325,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     status: sale.status,
     ...(isLive ? { isLive: true } : {}),
     ...(startsSoon ? { startsSoon: true } : {}),
+    ...(countdownEndIso !== undefined ? { countdownEndIso } : {}),
   };
 }
 

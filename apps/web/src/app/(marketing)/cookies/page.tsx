@@ -1,6 +1,7 @@
 import { LegalH2, LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SITE_NAME } from "@/lib/brand";
+import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -21,6 +22,14 @@ const toc = [
 export default function CookiesPage() {
   return (
     <PolicyHubLayout>
+      <script type="application/ld+json" suppressHydrationWarning>
+        {policyHubPageJsonLd({
+          path: "/cookies",
+          breadcrumbName: "Cookie policy",
+          pageName: "Cookie policy",
+          description: `How ${SITE_NAME} uses cookies, Google Tag Manager, and Google Analytics with consent controls.`,
+        })}
+      </script>
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}

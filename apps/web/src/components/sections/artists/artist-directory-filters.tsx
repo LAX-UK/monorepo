@@ -37,8 +37,7 @@ export function ArtistDirectoryFilters({
   className,
 }: Props) {
   return (
-    <aside
-      aria-label="Filters"
+    <div
       className={cn(
         "space-y-7 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto",
         className,
@@ -135,6 +134,6 @@ export function ArtistDirectoryFilters({
           </ul>
         </section>
       ) : null}
-    </aside>
+    </div>
   );
 }
