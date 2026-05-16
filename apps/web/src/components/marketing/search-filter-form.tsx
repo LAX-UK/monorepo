@@ -18,10 +18,13 @@ export function SearchFilterForm({
   initialQ,
   sort,
   categoryId,
+  view,
 }: {
   initialQ: string;
   sort: string;
   categoryId?: string | undefined;
+  /** Preserved across submit (catalogue layout). */
+  view?: string | undefined;
 }) {
   const router = useRouter();
   const form = useForm<SearchFilterValues>({
@@ -39,6 +42,9 @@ export function SearchFilterForm({
           if (sort !== "endingAsc") params.set("sort", sort);
           if (categoryId) params.set("categoryId", categoryId);
           if (values.q.trim()) params.set("q", values.q.trim());
+          if (view && (view === "grid" || view === "card" || view === "list")) {
+            params.set("view", view);
+          }
           router.push(`/search?${params.toString()}`);
         })}
         noValidate

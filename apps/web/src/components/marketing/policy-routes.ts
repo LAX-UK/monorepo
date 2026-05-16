@@ -1,5 +1,6 @@
 export const policyRoutes = [
   { href: "/about", label: "About", sidebarLabel: "About" },
+  { href: "/legal", label: "Legal", sidebarLabel: "Legal hub" },
   { href: "/buy", label: "Buy", sidebarLabel: "Buying at LAX.BID" },
   { href: "/sell", label: "Sell", sidebarLabel: "Selling with LAX.BID" },
   { href: "/contact", label: "Contact", sidebarLabel: "Contact" },

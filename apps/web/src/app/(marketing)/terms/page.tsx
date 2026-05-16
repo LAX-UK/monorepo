@@ -7,6 +7,7 @@ import {
   SITE_NAME,
   SITE_UK_VAT_RATE,
 } from "@/lib/brand";
+import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -439,6 +440,15 @@ function TermsContent({ section }: { section: TermsSection }) {
 export default function TermsPage() {
   return (
     <PolicyHubLayout>
+      <script type="application/ld+json" suppressHydrationWarning>
+        {policyHubPageJsonLd({
+          path: "/terms",
+          breadcrumbName: "Conditions of Business",
+          pageName: "LAX.BID — Conditions of Business",
+          description:
+            "Conditions of Business governing auctions, private sales, bidding, and consignments on LAX.BID by London Art Exchange.",
+        })}
+      </script>
       <LegalPage
         title="LAX.BID — Conditions of Business"
         toc={[...toc]}

@@ -1,4 +1,6 @@
+import { AuthContentReveal } from "@/components/auth/auth-content-reveal";
 import { LaxLogo } from "@/components/layout/lax-logo";
+import { DisplayHeading } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
@@ -27,16 +29,18 @@ export function AuthLayout({ children, title, description, backgroundSrc }: Auth
       <div className="relative mx-auto flex w-full max-w-[var(--auth-column,528px)] flex-col items-center gap-12 px-6 pb-20 pt-16 md:pt-20">
         <LaxLogo variant="auth" className="shrink-0" />
         <div className="flex flex-col items-center gap-3 text-center">
-          <h1 className="font-headline text-3xl font-semibold uppercase tracking-tight text-on-surface">
+          <DisplayHeading as="h1" size="section" className="font-semibold uppercase tracking-tight">
             {title}
-          </h1>
+          </DisplayHeading>
           {description ? (
             <p className="max-w-md font-body text-sm leading-6 text-on-surface-variant">
               {description}
             </p>
           ) : null}
         </div>
-        <div className="w-full">{children}</div>
+        <div className="w-full">
+          <AuthContentReveal>{children}</AuthContentReveal>
+        </div>
       </div>
     </div>
   );

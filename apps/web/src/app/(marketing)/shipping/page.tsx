@@ -7,6 +7,7 @@ import {
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
 } from "@/lib/brand";
+import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -20,6 +21,15 @@ export const metadata: Metadata = metadataForStatic({
 export default function ShippingPage() {
   return (
     <PolicyHubLayout>
+      <script type="application/ld+json" suppressHydrationWarning>
+        {policyHubPageJsonLd({
+          path: "/shipping",
+          breadcrumbName: "Shipping & Logistics",
+          pageName: "Shipping & Logistics",
+          description:
+            "Shipping, collection, insurance, and logistics information for lots purchased through LAX.BID by London Art Exchange.",
+        })}
+      </script>
       <LegalPage
         title="Shipping & Logistics"
         lastUpdated="21 April 2026"

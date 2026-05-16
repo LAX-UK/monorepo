@@ -1,0 +1,26 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "pnpm --filter @auction/web start -- -p 3030 -H 127.0.0.1",
+      "url": [
+        "http://127.0.0.1:3030/",
+        "http://127.0.0.1:3030/sales",
+        "http://127.0.0.1:3030/archive",
+        "http://127.0.0.1:3030/artists"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "budgetsPath": "./budgets.json"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0.8 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["warn", { "maxNumericValue": 300 }]
+      }
+    }
+  }
+}

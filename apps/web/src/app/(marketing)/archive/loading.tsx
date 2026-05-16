@@ -1,4 +1,9 @@
-export default function ArchiveLoading() {
+import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
+
+export default async function ArchiveLoading() {
+  const view = await readSkeletonView("archive", "grid");
+
   return (
     <main
       id="main-content"
@@ -12,15 +17,7 @@ export default function ArchiveLoading() {
           <div className="h-4 w-48 rounded bg-surface-container-high" />
         </div>
         <div className="h-24 rounded-md bg-surface-container-high" />
-        <div className="grid grid-cols-1 gap-x-12 gap-y-16 md:grid-cols-2 lg:grid-cols-3">
-          {(["a", "b", "c", "d", "e", "f"] as const).map((k) => (
-            <div key={k} className="space-y-4">
-              <div className="aspect-4/5 rounded-lg bg-surface-container-high" />
-              <div className="h-4 w-3/4 rounded bg-surface-container-high" />
-              <div className="h-3 w-1/2 rounded bg-surface-container-high" />
-            </div>
-          ))}
-        </div>
+        <MarketingListSkeleton view={view} className="gap-x-12 gap-y-16" />
         <div className="flex justify-center gap-4">
           <div className="h-10 w-24 rounded bg-surface-container-high" />
           <div className="h-10 w-24 rounded bg-surface-container-high" />

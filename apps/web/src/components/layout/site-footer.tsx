@@ -8,7 +8,9 @@ import {
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
+import { FOOTER_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { siteCopyrightLine } from "@/lib/brand";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 type SiteFooterProps = {
@@ -24,12 +26,11 @@ export function SiteFooter({
 }: SiteFooterProps = {}) {
   const linkClass =
     "font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary";
-  const headingClass =
-    "font-label text-base font-bold uppercase leading-6 tracking-normal text-on-surface";
+  const headingClass = FOOTER_NAV_LABEL_CLASSES;
 
   return (
     <footer className="w-full bg-footer-bg">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-12 px-10 py-12 md:px-20 md:py-12">
+      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-12 px-10 py-12 md:px-20 md:py-12">
         <div className="flex flex-wrap items-center justify-between gap-8">
           <LaxLogo variant="footer" />
           {tagline ? (
@@ -66,9 +67,9 @@ export function SiteFooter({
             <ul className="flex flex-col gap-4">
               {serviceLinks.map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className={linkClass}>
+                  <Link href={l.href} className={linkClass}>
                     {l.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

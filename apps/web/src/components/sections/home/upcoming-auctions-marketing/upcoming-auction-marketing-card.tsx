@@ -1,69 +1,119 @@
+import { SaleScheduleBadges } from "@/components/marketing/sale-status-badge";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
-import { MediaImage } from "@/components/ui/media-image";
+import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
+import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
+import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
+import {
+  SALE_CARD_SHELL_CLASSNAME,
+  SaleCardShell,
+} from "@/components/sections/sales/card/sale-card-shell";
+import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
+import type { SaleAction } from "@/components/sections/sales/card/types";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 
 type Props = {
   tile: HomeUpcomingAuctionTileVM;
+  variant: "grid" | "list";
+  isAuthenticated: boolean;
 };
 
-export function UpcomingAuctionMarketingCard({ tile }: Props) {
+function buildActions(tile: HomeUpcomingAuctionTileVM, isAuthenticated: boolean): SaleAction[] {
+  const actions: SaleAction[] = [];
+  if (!isAuthenticated && (tile.status === "scheduled" || tile.status === "active")) {
+    actions.push({
+      id: "register",
+      label: "Register to bid",
+      href: "/register",
+      variant: "outline",
+    });
+  }
+  actions.push({
+    id: "lots",
+    label: "View lots",
+    href: tile.href,
+    variant: "cta",
+  });
+  return actions;
+}
+
+export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }: Props) {
   const itemsLabel = tile.lotCount === 1 ? "1 Item" : `${tile.lotCount} Items`;
+  const isLive = Boolean(tile.isLive);
+  const mediaCommon = {
+    href: tile.href,
+    coverImageUrl: tile.coverImageUrl,
+    coverImageAlt: tile.coverImageAlt,
+    isLive,
+    ...(tile.countdownEndIso != null ? { countdownEndIso: tile.countdownEndIso } : {}),
+  };
+
+  if (variant === "grid") {
+    return (
+      <article className="flex h-full min-w-0 flex-col">
+        <Link
+          href={tile.href}
+          className={cn(
+            SALE_CARD_SHELL_CLASSNAME,
+            "flex h-full min-h-0 flex-col gap-3 motion-safe:ease-out",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg",
+          )}
+        >
+          <SaleCardMedia
+            {...mediaCommon}
+            linkMode="none"
+            layout="featured"
+            imageRoundedClassName="rounded"
+            scrimClassName="rounded bg-black/20"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <SaleScheduleBadges
+              isLive={Boolean(tile.isLive)}
+              startsSoon={Boolean(tile.startsSoon)}
+            />
+            <p className="font-body text-sm uppercase leading-snug text-on-surface-variant">
+              <span className="font-medium text-on-surface">{tile.auctionKindLabel}</span>
+              <span className="font-normal"> | {tile.dateLabel}</span>
+            </p>
+            <SaleCardTitle mode="embedded" title={tile.title} />
+            <SaleCardMeta itemsLabel={itemsLabel} />
+          </div>
+        </Link>
+      </article>
+    );
+  }
 
   return (
-    <article className="flex h-full min-w-0 w-full flex-col items-start gap-4 bg-white py-4 sm:gap-6 sm:py-6 sm:flex-row dark:bg-surface-container-low">
-      <Link
-        href={tile.href}
-        className="group relative block aspect-[220/150] w-full shrink-0 overflow-hidden rounded-sm bg-surface-container-high outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:w-[clamp(200px,40%,280px)] sm:max-w-[280px] sm:self-start dark:bg-surface-container-high"
-        aria-labelledby={`auction-title-${tile.id}`}
-      >
-        <MediaImage
-          src={tile.coverImageUrl}
-          alt={tile.coverImageAlt}
-          label="Auction cover"
-          className="size-full"
-          imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-          sizes="(max-width: 639px) 100vw, (max-width: 1023px) min(40vw, 280px), 280px"
+    <SaleCardShell className="p-3 sm:p-5 lg:p-6">
+      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-stretch lg:gap-6">
+        <SaleCardMedia
+          {...mediaCommon}
+          linkMode="area"
+          layout="calendarRow"
+          sizes="(max-width: 1024px) 100vw, 420px"
+          className="max-h-[11rem] sm:max-h-none"
         />
-      </Link>
-      <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 sm:h-full sm:justify-between sm:px-0">
-        <div className="flex flex-col gap-3">
-          {(tile.isLive || tile.startsSoon) && (
-            <div className="flex flex-wrap items-center gap-2">
-              {tile.isLive ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 font-label text-[10px] font-semibold uppercase tracking-[0.08em] text-red-900 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-100">
-                  <span
-                    className="size-1.5 shrink-0 rounded-full bg-red-600 motion-safe:animate-pulse"
-                    aria-hidden
-                  />
-                  Live
-                </span>
-              ) : null}
-              {tile.startsSoon && !tile.isLive ? (
-                <span className="inline-flex items-center rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 font-label text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-800 dark:border-outline dark:bg-surface-container-high dark:text-on-surface-variant">
-                  Starts soon
-                </span>
-              ) : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-6 lg:gap-8">
+          <div className="flex flex-col gap-4">
+            <SaleScheduleBadges
+              isLive={Boolean(tile.isLive)}
+              startsSoon={Boolean(tile.startsSoon)}
+            />
+            <div className="flex flex-col gap-3">
+              <p className="font-body text-xs font-medium uppercase leading-snug text-on-surface-variant sm:text-sm">
+                <span className="font-semibold text-on-surface">{tile.auctionKindLabel}</span>
+                <span className="font-normal"> | {tile.dateLabel}</span>
+              </p>
+              <p className="font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm">
+                {itemsLabel}
+              </p>
             </div>
-          )}
-          <p className="font-body text-sm uppercase leading-4 text-[#191919] dark:text-on-surface-variant">
-            <span className="font-medium">{tile.auctionKindLabel}</span>
-            <span className="font-normal"> | {tile.dateLabel}</span>
-          </p>
-          <div className="flex flex-col gap-1">
-            <h3
-              id={`auction-title-${tile.id}`}
-              className="line-clamp-2 font-headline text-base font-semibold leading-6 text-[#050505] sm:min-h-[3rem] dark:text-on-surface"
-            >
-              <Link href={tile.href} className="underline-offset-4 hover:underline">
-                {tile.title}
-              </Link>
-            </h3>
-            <p className="font-body text-sm font-normal uppercase leading-4 text-[#191919] dark:text-on-surface-variant">
-              {itemsLabel}
-            </p>
+            <SaleCardTitle href={tile.href} title={tile.title} />
           </div>
+          <SaleCardActions actions={buildActions(tile, isAuthenticated)} />
         </div>
       </div>
-    </article>
+    </SaleCardShell>
   );
 }

@@ -1,5 +1,5 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
-import { LotCardTimer } from "@/components/lot-timer";
+import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -82,7 +82,7 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                       </span>
                     </span>
                     <span className="justify-self-start sm:justify-self-end">
-                      <LotCardTimer
+                      <LotStatusTimer
                         status={lot.status}
                         startTime={lot.startTime.toISOString()}
                         endTime={lot.endTime.toISOString()}

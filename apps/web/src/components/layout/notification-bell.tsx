@@ -1,6 +1,7 @@
 "use client";
 
-import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
+import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
@@ -15,7 +16,6 @@ import { useCallback, useRef, useState } from "react";
 const MENU_ID = "notification-menu";
 
 export function NotificationBell() {
-  const { blendWithHero } = useSiteHeaderChrome();
   const [open, setOpen] = useState(false);
   const { items, setItems, loaded, unread } = useUnreadNotifications();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -63,18 +63,12 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={wrapRef}>
-      <Button
+      <ChromeIconButton
         ref={triggerRef}
-        type="button"
-        variant="ghost"
-        size="icon"
+        label="Notifications"
         className={cn(
-          "relative min-h-[44px] min-w-[44px] transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-          blendWithHero
-            ? "text-white hover:bg-white/10 hover:text-white dark:text-on-surface-variant dark:hover:bg-surface-container-low dark:hover:text-on-surface"
-            : "text-secondary hover:bg-surface-container-low hover:text-primary",
+          "relative text-secondary transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none hover:bg-surface-container-low hover:text-primary",
         )}
-        aria-label="Notifications"
         aria-expanded={open}
         aria-controls={MENU_ID}
         onClick={() => setOpen((o) => !o)}
@@ -85,12 +79,12 @@ export function NotificationBell() {
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
-      </Button>
+      </ChromeIconButton>
       {open ? (
-        <section
+        <ChromePopoverPanel
           id={MENU_ID}
           aria-label="Recent notifications"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-lg border border-outline-variant/15 bg-surface-container-lowest py-2 shadow-lg"
+          className="w-[min(100vw-2rem,22rem)] border-outline-variant/15 bg-surface-container-lowest shadow-lg"
         >
           {unread > 0 ? (
             <div className="flex justify-end border-b border-outline-variant/10 px-4 py-2">
@@ -161,7 +155,7 @@ export function NotificationBell() {
               Open dashboard
             </Link>
           </div>
-        </section>
+        </ChromePopoverPanel>
       ) : null}
     </div>
   );
