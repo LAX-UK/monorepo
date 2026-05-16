@@ -13,6 +13,9 @@ type Ctx = {
   sale: SalePick;
   extendedByMs: number | null;
   setExtendedDeltaMs: (deltaMs: number | null) => void;
+  /** Mobile sticky coordination: bid card intersects viewport. */
+  bidCardInView: boolean;
+  setBidCardInView: (inView: boolean) => void;
 };
 
 const OnlineLotLifecycleContext = createContext<Ctx | null>(null);
@@ -25,14 +28,22 @@ type ProviderProps = {
 
 export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProps) {
   const [extendedByMs, setExtendedByMs] = useState<number | null>(null);
+  const [bidCardInView, setBidCardInView] = useState(true);
 
   const setExtendedDeltaMs = useCallback((deltaMs: number | null) => {
     setExtendedByMs(deltaMs);
   }, []);
 
   const value = useMemo(
-    () => ({ lot, sale, extendedByMs, setExtendedDeltaMs }),
-    [lot, sale, extendedByMs, setExtendedDeltaMs],
+    () => ({
+      lot,
+      sale,
+      extendedByMs,
+      setExtendedDeltaMs,
+      bidCardInView,
+      setBidCardInView,
+    }),
+    [lot, sale, extendedByMs, setExtendedDeltaMs, bidCardInView],
   );
 
   return (

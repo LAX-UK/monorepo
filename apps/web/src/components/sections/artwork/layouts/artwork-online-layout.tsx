@@ -10,7 +10,7 @@ import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tab
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
-import { LotStatePill } from "@/components/sections/artwork/online/lot-state-pill";
+import { LotSessionStatePill } from "@/components/sections/artwork/online/lot-session-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
@@ -90,7 +90,7 @@ export function ArtworkOnlineLayout({
           <AuctionSessionHeader
             vm={sessionHeader}
             stateSlot={
-              <LotStatePill
+              <LotSessionStatePill
                 lot={lifecycleLot}
                 sale={saleForLifecycle}
                 {...(serverClockMs !== undefined ? { initialNowMs: serverClockMs } : {})}
@@ -100,23 +100,21 @@ export function ArtworkOnlineLayout({
           />
         </div>
 
-        <div className="mt-6 flex flex-col gap-8 lg:mt-8 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)] lg:items-start lg:gap-6 xl:gap-8">
           <LotQueueSidebar
             current={queueCurrent}
             upNext={queueUpNext}
             queue={queueRest}
-            lifecycleLot={lifecycleLot}
-            saleForLifecycle={saleForLifecycle}
             isSaleQueueLoading={isSaleQueueLoading}
-            {...(serverClockMs !== undefined ? { statePillInitialNowMs: serverClockMs } : {})}
+            className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2"
           />
-          <div className="min-w-0 flex-1">
+          <div className="order-1 min-w-0 lg:col-start-2 lg:row-start-1">
             <LotImageArea lot={auction} />
-            <div className="mx-auto mt-8 w-full max-w-[640px] lg:max-w-[786px]">
-              <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
-            </div>
           </div>
-          <div className="w-full min-w-0 pb-6 lg:max-w-[440px] lg:shrink-0 lg:pb-24 xl:pl-2">
+          <div className="order-3 mx-auto w-full max-w-[640px] lg:col-start-2 lg:row-start-2 lg:max-w-[786px]">
+            <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
+          </div>
+          <div className="order-2 w-full min-w-0 pb-6 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:pb-24 xl:pl-2">
             {bidPanelTop ? <div className="mb-4">{bidPanelTop}</div> : null}
             <BidPanelTabs bidPanel={bidPanel} videoPanel={<OnlineVideoStreamPanel />} />
             <div className="mt-6">
