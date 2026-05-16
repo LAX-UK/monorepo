@@ -1,6 +1,6 @@
 "use client";
 
-import { LotCardTimer } from "@/components/lot-timer";
+import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
@@ -97,7 +97,7 @@ function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<Wat
       header: "Closes",
       cell: ({ row }) =>
         row.original.status === "active" || row.original.status === "scheduled" ? (
-          <LotCardTimer
+          <LotStatusTimer
             status={row.original.status}
             startTime={row.original.startTime}
             endTime={row.original.endTime}

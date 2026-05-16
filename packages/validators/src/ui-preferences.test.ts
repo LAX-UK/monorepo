@@ -14,13 +14,18 @@ describe("themeSchema", () => {
 });
 
 describe("uiPreferencePatchSchema", () => {
-  it("accepts a valid patch", () => {
+  it("accepts theme-only patch", () => {
     const r = uiPreferencePatchSchema.safeParse({ theme: "system" });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.theme).toBe("system");
   });
 
-  it("rejects missing theme", () => {
+  it("accepts single layout field", () => {
+    const r = uiPreferencePatchSchema.safeParse({ viewLotsDefault: "grid" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects empty patch", () => {
     expect(uiPreferencePatchSchema.safeParse({}).success).toBe(false);
   });
 });

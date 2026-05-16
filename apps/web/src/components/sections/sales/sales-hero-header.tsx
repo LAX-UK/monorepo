@@ -1,25 +1,24 @@
-import { BodyText, DisplayHeading } from "@auction/ui";
+import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
+import { DisplayHeading } from "@auction/ui";
 
 const SUBTITLE =
   "Explore upcoming auctions and browse past results from London, featuring the best of Modern & Contemporary Art, Design, and luxury.";
 
-/** Hero title + blurb — `calendar.html` (max 1376px row, gap 12px). */
+/** Calendar rail — title + blurb via `MarketingPageHero`. */
 export function SalesHeroHeader() {
   return (
-    <header className="w-full max-w-[1376px]">
-      <div className="flex flex-col items-start gap-3 lg:flex-row lg:gap-3">
-        <div className="relative min-h-[48px] min-w-0 flex-1 lg:min-h-[60px] lg:shrink-0">
-          <DisplayHeading
-            as="h1"
-            className="text-2xl font-semibold leading-tight tracking-tight text-on-surface motion-safe:transition-opacity motion-safe:duration-500 sm:text-3xl sm:leading-snug lg:text-[40px] lg:leading-[60px]"
-          >
-            Calendar
-          </DisplayHeading>
-        </div>
-        <BodyText className="w-full max-w-none text-base font-normal leading-relaxed text-on-surface-variant motion-safe:transition-opacity motion-safe:duration-500 sm:text-lg sm:leading-relaxed lg:max-w-[900px] lg:text-2xl lg:leading-[32.4px] dark:text-on-surface/70">
+    <MarketingPageHero
+      title={
+        <DisplayHeading as="h1" size="section" className="font-semibold">
+          Calendar
+        </DisplayHeading>
+      }
+      className="!max-w-[var(--container-inner,1376px)] !px-0"
+      description={
+        <div className="max-w-none font-body text-base font-normal leading-relaxed text-on-surface-variant sm:text-lg sm:leading-relaxed lg:max-w-[900px] lg:text-2xl lg:leading-[32.4px] dark:text-on-surface/70">
           {SUBTITLE}
-        </BodyText>
-      </div>
-    </header>
+        </div>
+      }
+    />
   );
 }

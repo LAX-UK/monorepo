@@ -2,7 +2,7 @@
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { megaMenuSectionActive } from "@/components/layout/header-nav-config";
-import { useSiteHeaderChrome } from "@/components/layout/site-header-chrome-context";
+import { MEGA_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -31,7 +31,6 @@ export function HeaderMegaNav({
   logo,
   trailing,
 }: HeaderMegaNavProps) {
-  const { blendWithHero } = useSiteHeaderChrome();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   /** Extra horizontal offset so mega menu links sit under the active nav trigger (px). */
   const [menuContentShiftPx, setMenuContentShiftPx] = useState(0);
@@ -263,21 +262,13 @@ export function HeaderMegaNav({
                       triggerRefs.current[index] = el;
                     }}
                     className={cn(
-                      "group h-auto gap-1 rounded-none border-b-2 border-transparent px-0 pb-1 font-label text-sm font-medium uppercase leading-[21px] hover:bg-transparent motion-reduce:transition-none",
-                      blendWithHero
-                        ? active || open
-                          ? "text-white dark:text-on-surface"
-                          : "text-white/85 hover:text-white dark:text-nav-text dark:hover:text-on-surface"
-                        : active || open
-                          ? "text-brand-900 dark:text-on-surface"
-                          : "text-nav-text hover:text-brand-900 dark:hover:text-on-surface",
+                      `group h-auto gap-1 rounded-none border-b-2 border-transparent px-0 pb-1 ${MEGA_NAV_LABEL_CLASSES} hover:bg-transparent motion-reduce:transition-none`,
+                      active || open
+                        ? "text-brand-900 dark:text-on-surface"
+                        : "text-nav-text hover:text-brand-900 dark:hover:text-on-surface",
                       open
-                        ? blendWithHero
-                          ? "border-white dark:border-on-surface"
-                          : "border-brand-900 dark:border-on-surface"
-                        : blendWithHero
-                          ? "border-transparent hover:border-white/35 dark:hover:border-on-surface/40"
-                          : "border-transparent hover:border-brand-900/40 dark:hover:border-on-surface/40",
+                        ? "border-brand-900 dark:border-on-surface"
+                        : "border-transparent hover:border-brand-900/40 dark:hover:border-on-surface/40",
                     )}
                     aria-current={active ? "page" : undefined}
                     aria-haspopup="true"
@@ -296,10 +287,7 @@ export function HeaderMegaNav({
                     <span>{item.label}</span>
                     <ChevronDown
                       className={cn(
-                        "text-base! transition-[transform,color] duration-200 motion-reduce:transition-none",
-                        blendWithHero
-                          ? "text-white/90 dark:text-nav-text"
-                          : "text-brand-900 dark:text-on-surface",
+                        "text-base! text-brand-900 transition-[transform,color] duration-200 motion-reduce:transition-none dark:text-on-surface",
                         open ? "rotate-180" : "rotate-0",
                       )}
                       aria-hidden

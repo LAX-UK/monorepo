@@ -4,14 +4,22 @@ import { useSyncExternalStore } from "react";
 
 const query = "(min-width: 1024px)";
 
+function matchMediaOrNull(): MediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return null;
+  }
+  return window.matchMedia(query);
+}
+
 function subscribe(onStoreChange: () => void) {
-  const mq = window.matchMedia(query);
+  const mq = matchMediaOrNull();
+  if (!mq) return () => {};
   mq.addEventListener("change", onStoreChange);
   return () => mq.removeEventListener("change", onStoreChange);
 }
 
 function getSnapshot() {
-  return window.matchMedia(query).matches;
+  return matchMediaOrNull()?.matches ?? false;
 }
 
 function getServerSnapshot() {

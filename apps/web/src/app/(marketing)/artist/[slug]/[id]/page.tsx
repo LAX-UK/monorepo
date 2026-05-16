@@ -1,5 +1,6 @@
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
+import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
@@ -148,29 +149,18 @@ export default async function ArtistPage({ params }: PageProps) {
     return (
       <main
         id="main-content"
-        className="mx-auto max-w-[1920px] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
+        className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>
-        <nav
-          aria-label="Breadcrumb"
+        <MarketingBreadcrumb
           className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
-        >
-          <ol className="flex flex-wrap items-center gap-2">
-            <li>
-              <Link href="/" className="transition-colors hover:text-primary">
-                Gallery
-              </Link>
-            </li>
-            <li aria-hidden className="text-outline-variant">
-              /
-            </li>
-            <li className="text-on-surface" aria-current="page">
-              {user.name}
-            </li>
-          </ol>
-        </nav>
+          items={[
+            { label: "Home", href: "/" },
+            { label: user.name, current: true },
+          ]}
+        />
         <ArtistHero
           vm={{
             id,
@@ -366,39 +356,21 @@ export default async function ArtistPage({ params }: PageProps) {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[1920px] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
+      className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
       {shouldNoIndex(registry) ? <meta name="robots" content="noindex,follow" /> : null}
 
-      <nav
-        aria-label="Breadcrumb"
+      <MarketingBreadcrumb
         className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
-      >
-        <ol className="flex flex-wrap items-center gap-2">
-          <li>
-            <Link href="/" className="transition-colors hover:text-primary">
-              Gallery
-            </Link>
-          </li>
-          <li aria-hidden className="text-outline-variant">
-            /
-          </li>
-          <li>
-            <Link href="/artists" className="transition-colors hover:text-primary">
-              Artists
-            </Link>
-          </li>
-          <li aria-hidden className="text-outline-variant">
-            /
-          </li>
-          <li className="text-on-surface" aria-current="page">
-            {artist.name}
-          </li>
-        </ol>
-      </nav>
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Artists", href: "/artists" },
+          { label: artist.name, current: true },
+        ]}
+      />
       <ArtistHero
         vm={{
           id,

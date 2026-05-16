@@ -1,10 +1,10 @@
 "use client";
 
 import type { LotTimerState } from "@/components/lot-timer";
+import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { countdownTier } from "@/lib/format-countdown";
 import { cn } from "@auction/ui";
-import { StickyBidBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -109,7 +109,7 @@ export function BidStickyMobileBar({
   }
 
   return (
-    <StickyBidBar className="lg:hidden">
+    <MarketingStickyBidBar>
       <div className="min-w-0">
         <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
           Current bid
@@ -129,7 +129,7 @@ export function BidStickyMobileBar({
         </p>
       </div>
       {right}
-    </StickyBidBar>
+    </MarketingStickyBidBar>
   );
 }
 
@@ -142,7 +142,7 @@ function UpcomingBar({
 }: { countdownClock: string; loginNextPath: string }) {
   const next = encodeURIComponent(loginNextPath);
   return (
-    <StickyBidBar className="lg:hidden">
+    <MarketingStickyBidBar>
       <div className="min-w-0">
         <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-lot-orange">
           Opens in
@@ -157,13 +157,13 @@ function UpcomingBar({
       >
         Register
       </Link>
-    </StickyBidBar>
+    </MarketingStickyBidBar>
   );
 }
 
 function ClosedBar({ terminalLabel }: { terminalLabel: "Closed" | "Cancelled" }) {
   return (
-    <StickyBidBar className="lg:hidden">
+    <MarketingStickyBidBar>
       <div className="min-w-0">
         <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
           Auction
@@ -173,6 +173,6 @@ function ClosedBar({ terminalLabel }: { terminalLabel: "Closed" | "Cancelled" })
       <span className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
         Bidding ended
       </span>
-    </StickyBidBar>
+    </MarketingStickyBidBar>
   );
 }

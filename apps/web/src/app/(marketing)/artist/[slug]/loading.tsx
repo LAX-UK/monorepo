@@ -2,7 +2,7 @@ export default function ArtistLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[1920px] bg-surface px-6 pb-24 pt-[var(--section-pt)] md:px-16"
+      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-24 pt-[var(--section-pt)] md:px-16"
       aria-busy="true"
       aria-label="Loading artist"
     >
@@ -17,7 +17,7 @@ export default function ArtistLoading() {
             <div className="h-32 w-full rounded bg-surface-container-high" />
           </div>
         </div>
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {(["a", "b", "c"] as const).map((k) => (
             <li key={k} className="space-y-3">
               <div className="aspect-[4/5] rounded bg-surface-container-high" />

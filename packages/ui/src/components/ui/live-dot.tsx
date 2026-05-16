@@ -7,13 +7,13 @@ type LiveDotProps = {
 };
 
 const outer = {
-  sm: "h-[14px] w-[14px]",
-  md: "h-[19.51px] w-[19.51px]",
+  sm: "size-3.5",
+  md: "size-5",
 } as const;
 
 const inner = {
-  sm: "h-2 w-2",
-  md: "h-2.5 w-2.5",
+  sm: "size-2",
+  md: "size-2.5",
 } as const;
 
 export function LiveDot({ className = "", size = "md" }: LiveDotProps) {

@@ -3,13 +3,14 @@
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
 import { MediaImage } from "@/components/ui/media-image";
 import { RevealOnMount } from "@/components/ui/reveal";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { DisplayHeading, LabelCaps, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 
-const AUTO_MS = 7000;
+const AUTO_MS = 11_000;
 
 type Props = {
   slides: HeroSaleSlideVM[];
@@ -64,7 +65,10 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       aria-label="Upcoming salerooms"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: carousel must receive focus for ArrowLeft/ArrowRight
       tabIndex={0}
-      className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+      className={cn(
+        "relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)]",
+        FOCUS_RING,
+      )}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -76,6 +80,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       <div className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
         <RevealOnMount
           key={current.id}
+          variant="wipeZoom"
           className="absolute inset-0 overflow-hidden"
           innerClassName="absolute inset-0"
         >
@@ -111,7 +116,8 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
               </LabelCaps>
               <DisplayHeading
                 as="h1"
-                className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
+                size="lg"
+                className="font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
               >
                 {current.title}
               </DisplayHeading>
@@ -161,6 +167,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
                     aria-label={`Slide ${i + 1} of ${n}`}
                     className={cn(
                       "h-2.5 w-2.5 min-w-0 rounded-full p-0 hover:bg-transparent motion-reduce:transition-none",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
                       i === index ? "bg-brand-100" : "bg-brand-400/50 hover:bg-brand-300",
                     )}
                     onClick={() => setIndex(i)}

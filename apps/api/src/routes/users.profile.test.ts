@@ -35,8 +35,16 @@ function appWithGetProfile(row: ProfileMeRow | null) {
   const container = {
     profileService,
     uiPreferenceService: {
-      getForUser: vi.fn().mockResolvedValue({ theme: "system" }),
+      getForUser: vi.fn().mockResolvedValue({
+        theme: "system",
+        viewLotsDefault: "auto",
+        viewArtistsDefault: "auto",
+        viewSalesDefault: "auto",
+        density: "comfortable",
+        viewSync: false,
+      }),
       patch: vi.fn(),
+      resetLayoutDefaults: vi.fn(),
     },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     mediaUrlResolver: {
@@ -56,10 +64,17 @@ describe("GET /users/me", () => {
     const res = await app.request("/users/me");
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { twoFactorEnabled: boolean; uiPreferences: { theme: string } };
+      data: { twoFactorEnabled: boolean; uiPreferences: Record<string, unknown> };
     };
     expect(body.data.twoFactorEnabled).toBe(false);
-    expect(body.data.uiPreferences).toEqual({ theme: "system" });
+    expect(body.data.uiPreferences).toEqual({
+      theme: "system",
+      viewLotsDefault: "auto",
+      viewArtistsDefault: "auto",
+      viewSalesDefault: "auto",
+      density: "comfortable",
+      viewSync: false,
+    });
   });
 
   it("includes twoFactorEnabled true", async () => {
@@ -67,10 +82,17 @@ describe("GET /users/me", () => {
     const res = await app.request("/users/me");
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { twoFactorEnabled: boolean; uiPreferences: { theme: string } };
+      data: { twoFactorEnabled: boolean; uiPreferences: Record<string, unknown> };
     };
     expect(body.data.twoFactorEnabled).toBe(true);
-    expect(body.data.uiPreferences).toEqual({ theme: "system" });
+    expect(body.data.uiPreferences).toEqual({
+      theme: "system",
+      viewLotsDefault: "auto",
+      viewArtistsDefault: "auto",
+      viewSalesDefault: "auto",
+      density: "comfortable",
+      viewSync: false,
+    });
   });
 });
 
