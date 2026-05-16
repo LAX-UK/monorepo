@@ -6,12 +6,13 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 export type MarketingListToolbarProps = {
   /** Result count or context line (e.g. "24 lots"). */
   countLabel?: string;
+  /** Desktop-only inline filters (`hidden` below `md`). */
   filters?: ReactNode;
   sort?: ReactNode;
   /** View switcher, copy link, etc. */
   trailing?: ReactNode;
-  /** Optional mobile-only slot (e.g. filter sheet trigger + sheet). */
-  mobileExtras?: ReactNode;
+  /** Mobile-only filter sheet trigger (`md:hidden`). */
+  mobileFilterTrigger?: ReactNode;
   className?: string;
 };
 
@@ -21,15 +22,16 @@ export function MarketingListToolbar({
   filters,
   sort,
   trailing,
-  mobileExtras,
+  mobileFilterTrigger,
   className,
 }: MarketingListToolbarProps) {
+  const hideFiltersOnMobile = Boolean(mobileFilterTrigger);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
@@ -58,21 +60,32 @@ export function MarketingListToolbar({
           className,
         )}
       >
-        <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 py-3 md:px-8">
-          {mobileExtras ? <div className="mb-3 flex md:hidden">{mobileExtras}</div> : null}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-y-3">
+        <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 py-2 md:px-8 md:py-3">
+          <div className="flex h-12 min-h-12 items-center gap-2 overflow-hidden md:h-14 md:min-h-14 md:gap-3">
             {countLabel ? (
-              <p className="min-w-0 max-w-full truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-widest text-on-surface-variant tabular-nums sm:max-w-[260px]">
+              <p className="max-w-[7.5rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-widest text-on-surface-variant tabular-nums sm:max-w-[10rem]">
                 {countLabel}
               </p>
             ) : null}
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{filters}</div>
-            <div className="flex flex-wrap items-center gap-2">{sort}</div>
-            {trailing ? (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:flex-none sm:gap-3">
-                {trailing}
+            {mobileFilterTrigger ? (
+              <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
+            ) : null}
+            {filters ? (
+              <div
+                className={cn(
+                  "min-w-0 flex-1 md:items-center",
+                  hideFiltersOnMobile ? "hidden md:flex" : "flex",
+                )}
+              >
+                {filters}
               </div>
             ) : null}
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {sort ? <div className="shrink-0">{sort}</div> : null}
+              {trailing ? (
+                <div className="flex shrink-0 items-center gap-2 md:gap-3">{trailing}</div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

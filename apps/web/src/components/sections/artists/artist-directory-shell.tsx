@@ -1,5 +1,6 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
+import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
@@ -388,14 +389,10 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               className="mb-6 -mx-4 rounded-none border-x-0 md:-mx-6"
               countLabel={countLabel}
               sort={
-                <div
-                  role="tablist"
-                  aria-label="Sort artists"
-                  className="flex flex-wrap items-center gap-2"
-                >
+                <MarketingChipStrip aria-label="Sort artists">
                   <span
                     aria-hidden
-                    className="mr-1 font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+                    className="mr-1 shrink-0 snap-start font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
                   >
                     Sort
                   </span>
@@ -414,7 +411,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                         aria-selected={active}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-widest ring-1 transition-colors",
+                          "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-widest ring-1 transition-colors",
                           active
                             ? "bg-primary text-on-primary ring-primary"
                             : "bg-surface-container-low text-on-surface-variant ring-outline-variant/20 hover:bg-surface-container-high/80 hover:text-on-surface",
@@ -424,7 +421,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                       </Link>
                     );
                   })}
-                </div>
+                </MarketingChipStrip>
               }
               trailing={
                 <>

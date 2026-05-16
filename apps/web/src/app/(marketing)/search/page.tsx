@@ -1,8 +1,5 @@
 import { CatalogLotView } from "@/components/marketing/catalog-lot-view";
-import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
-import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { SearchActiveFilters } from "@/components/marketing/search-active-filters";
 import {
@@ -10,21 +7,22 @@ import {
   SearchResultsShell,
 } from "@/components/marketing/search-catalog-client";
 import { SearchFilterForm } from "@/components/marketing/search-filter-form";
+import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
-import { SearchSortSelect, type SearchSortValue } from "@/components/marketing/search-sort-select";
+import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
+import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
-import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import { SectionCta } from "@auction/ui";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -67,22 +65,6 @@ function firstString(v: string | string[] | undefined): string | undefined {
 function parseSort(v: string | undefined): SearchSortValue {
   if (v === "createdDesc" || v === "hammerDesc" || v === "endingAsc") return v;
   return "endingAsc";
-}
-
-function buildSearchQs(opts: {
-  offset: number;
-  q: string;
-  sort: string;
-  categoryId?: string;
-  view: CatalogLayoutView;
-}): string {
-  const p = new URLSearchParams();
-  p.set("offset", String(opts.offset));
-  if (opts.q.trim()) p.set("q", opts.q.trim());
-  if (opts.sort !== "endingAsc") p.set("sort", opts.sort);
-  if (opts.categoryId) p.set("categoryId", opts.categoryId);
-  p.set("view", opts.view);
-  return p.toString();
 }
 
 function resultSummaryLabel(trimmed: string, count: number, hasNext: boolean): string {
@@ -174,6 +156,17 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   const popularCategories = categories.slice(0, 6);
   const countLabel = loadError ? undefined : `${filtered.length}${hasNext ? "+" : ""} lots`;
+  const activeFilterCount = countSearchActiveFilters({
+    q: trimmed,
+    ...(categoryId ? { categoryId } : {}),
+    sort,
+  });
+  const resultCountLabel =
+    filtered.length === 0
+      ? "Show results"
+      : hasNext
+        ? `Show ${filtered.length}+ results`
+        : `Show ${filtered.length} results`;
 
   return (
     <SearchCatalogPendingProvider>
@@ -196,70 +189,29 @@ export default async function SearchPage({ searchParams }: PageProps) {
         />
 
         <div className="mx-auto max-w-[var(--container-max,1440px)] px-6 md:px-16">
-          <SearchActiveFilters categories={categories} sort={sort} />
+          <div className="mb-6 hidden md:block">
+            <SearchFilterForm
+              variant="hero"
+              initialQ={String(q)}
+              sort={sort}
+              categoryId={categoryId}
+              view={layoutView}
+            />
+          </div>
 
-          <MarketingListToolbar
+          <SearchPageToolbar
             {...(countLabel ? { countLabel } : {})}
-            filters={
-              <div className="flex min-w-0 flex-1 flex-col gap-4">
-                <SearchFilterForm
-                  initialQ={String(q)}
-                  sort={sort}
-                  categoryId={categoryId}
-                  view={layoutView}
-                />
-                {categories.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/search?${buildSearchQs({ offset: 0, q: trimmed, sort, view: layoutView })}`}
-                      scroll={false}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider",
-                        !categoryId
-                          ? "border-primary bg-primary/10 text-on-surface"
-                          : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40",
-                      )}
-                      aria-current={!categoryId ? "page" : undefined}
-                    >
-                      All
-                    </Link>
-                    {categories.map((c) => {
-                      const active = categoryId === c.id;
-                      return (
-                        <Link
-                          key={c.id}
-                          href={`/search?${buildSearchQs({
-                            offset: 0,
-                            q: trimmed,
-                            sort,
-                            categoryId: c.id,
-                            view: layoutView,
-                          })}`}
-                          scroll={false}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider",
-                            active
-                              ? "border-primary bg-primary/10 text-on-surface"
-                              : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40",
-                          )}
-                          aria-current={active ? "page" : undefined}
-                        >
-                          {c.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            }
-            sort={<SearchSortSelect value={sort} />}
-            trailing={
-              <>
-                <CopyCatalogLinkButton />
-                <CatalogViewSwitcher routeKey="search" value={layoutView} />
-              </>
-            }
+            activeCount={activeFilterCount}
+            initialQ={String(q)}
+            sort={sort}
+            categoryId={categoryId}
+            layoutView={layoutView}
+            categories={categories}
+            trimmed={trimmed}
+            resultCountLabel={resultCountLabel}
           />
+
+          <SearchActiveFilters categories={categories} sort={sort} />
 
           <SearchResultsShell>
             {loadError ? (

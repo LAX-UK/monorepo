@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { useSearchCatalogPending } from "@/components/marketing/search-catalog-client";
 import { type SearchSortValue, sortLabel } from "@/components/marketing/search-sort-select";
 import type { Category } from "@auction/types";
@@ -62,12 +63,10 @@ export function SearchActiveFilters({
   if (chips.length === 0) return null;
 
   return (
-    <div
-      className={cn(
-        "mb-6 flex flex-wrap items-center gap-2",
-        pending && "opacity-70 motion-safe:transition-opacity",
-      )}
+    <MarketingChipStrip
+      wrapOnDesktop
       aria-label="Active filters"
+      className={cn("mb-4 md:mb-6", pending && "opacity-70 motion-safe:transition-opacity")}
     >
       {chips.map((chip) => (
         <button
@@ -90,6 +89,6 @@ export function SearchActiveFilters({
       >
         Clear all
       </button>
-    </div>
+    </MarketingChipStrip>
   );
 }
