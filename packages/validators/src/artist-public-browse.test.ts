@@ -11,4 +11,9 @@ describe("publicArtistBrowseQuerySchema", () => {
     const r = publicArtistBrowseQuerySchema.parse({ kinds: "artist,invalid,brand" });
     expect(r.kinds).toEqual(["artist", "brand"]);
   });
+
+  it("treats empty sort as name_asc default", () => {
+    const r = publicArtistBrowseQuerySchema.parse({ sort: "" });
+    expect(r.sort).toBe("name_asc");
+  });
 });
