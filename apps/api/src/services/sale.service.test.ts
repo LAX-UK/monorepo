@@ -1,9 +1,43 @@
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { LotError } from "../lib/errors.js";
+import { AuthzError, LotError } from "../lib/errors.js";
+import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { SaleService } from "./sale.service.js";
+
+function baseSale(overrides: Partial<Sale> = {}): Sale {
+  return {
+    id: "s1",
+    title: "Evening",
+    description: null,
+    coverImages: ["old-key.jpg"],
+    categoryId: null,
+    deliveryMode: "onsite",
+    streamUrl: null,
+    locationName: null,
+    locationAddress: null,
+    locationMapUrl: null,
+    locationAddressLine1: null,
+    locationAddressLine2: null,
+    locationCity: null,
+    locationCounty: null,
+    locationPostcode: null,
+    locationCountry: null,
+    status: "scheduled",
+    startTime: new Date(Date.now() + 86_400_000),
+    endTime: new Date(Date.now() + 172_800_000),
+    previewStartTime: null,
+    buyerPremiumRate: "0.25",
+    buyerPremiumTiers: null,
+    terms: null,
+    createdBy: "admin-1",
+    createdByLegalEntityId: "admin-1",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
 
 describe("SaleService.create", () => {
   it("creates sale then nested lots with saleId", async () => {
@@ -195,6 +229,118 @@ describe("SaleService.create", () => {
       }),
     ).rejects.toThrow(LotError);
     expect(lotCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("SaleService.updateDraft", () => {
+  it("allows coverImages-only patch on scheduled sale for catalogue.write staff", async () => {
+    const sale = baseSale({ status: "scheduled", coverImages: ["old.jpg"] });
+    const updated = { ...sale, coverImages: ["new.jpg"] };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const imageCleanup = { enqueueRemovedMany } as unknown as ImageCleanupService;
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+      imageCleanup,
+    });
+
+    const result = await svc.updateDraft("staff", sale.id, { coverImages: ["new.jpg"] }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: ["new.jpg"] });
+    expect(enqueueRemovedMany).toHaveBeenCalledWith(["old.jpg"], ["new.jpg"]);
+  });
+
+  it("clears coverImages with empty array on scheduled sale", async () => {
+    const sale = baseSale({ status: "scheduled", coverImages: ["old.jpg"] });
+    const updated = { ...sale, coverImages: [] };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+    });
+
+    const result = await svc.updateDraft("staff", sale.id, { coverImages: [] }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: [] });
+    expect(enqueueRemovedMany).toHaveBeenCalledWith(["old.jpg"], []);
+  });
+
+  it("on scheduled sale only persists coverImages when full form patch is sent", async () => {
+    const sale = baseSale({ status: "scheduled", title: "Original", coverImages: ["old.jpg"] });
+    const updated = { ...sale, coverImages: ["new.jpg"] };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+    });
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { coverImages: ["new.jpg"], title: "Renamed" },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: ["new.jpg"] });
+  });
+
+  it("rejects scheduled sale patch without coverImages", async () => {
+    const sale = baseSale({ status: "scheduled" });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+    });
+
+    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, "catalogue_manager");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) return;
+    expect(result.error.message).toBe("Only draft sales can be edited");
+    expect(saleRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects catalogue.write staff without auction.manage when patch is not image-only", async () => {
+    const sale = baseSale({ status: "draft" });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+    });
+
+    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, "staff_viewer");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) return;
+    expect(result.error).toBeInstanceOf(AuthzError);
   });
 });
 

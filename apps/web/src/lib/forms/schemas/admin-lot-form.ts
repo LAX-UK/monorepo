@@ -46,7 +46,7 @@ export const adminLotFormValuesSchema = zod.object({
 
 export type AdminLotFormValues = zod.infer<typeof adminLotFormValuesSchema>;
 
-function buildCreateLotRaw(v: AdminLotFormValues) {
+function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }) {
   const lotNumberRaw =
     v.lotNumber !== null && v.lotNumber !== undefined && v.lotNumber !== ""
       ? Number(v.lotNumber)
@@ -70,7 +70,7 @@ function buildCreateLotRaw(v: AdminLotFormValues) {
       v.dutchDecrementIntervalMs && String(v.dutchDecrementIntervalMs).trim()
         ? Number.parseInt(String(v.dutchDecrementIntervalMs).trim(), 10)
         : undefined,
-    images: v.images.length > 0 ? v.images : undefined,
+    images: opts?.forUpdate ? v.images : v.images.length > 0 ? v.images : undefined,
     startTime: new Date(v.startTime),
     endTime: new Date(v.endTime),
     ...(v.saleId !== undefined ? { saleId: v.saleId } : {}),
@@ -98,7 +98,7 @@ export function formValuesToCreateLotInput(v: AdminLotFormValues): CreateLotInpu
 }
 
 export function safeParseUpdateLotFromForm(v: AdminLotFormValues) {
-  const createParsed = createLotSchema.safeParse(buildCreateLotRaw(v));
+  const createParsed = createLotSchema.safeParse(buildCreateLotRaw(v, { forUpdate: true }));
   if (!createParsed.success) {
     return createParsed;
   }

@@ -160,7 +160,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
-    coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
+    coverImages: values.coverImages,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,
