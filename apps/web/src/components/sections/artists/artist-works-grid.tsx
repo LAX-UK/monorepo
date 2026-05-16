@@ -53,7 +53,7 @@ function WorkFilterControls({
   onChange: (value: WorkFilter) => void;
 }) {
   return (
-    <div className="flex gap-2" aria-label="Work filters">
+    <div className="flex flex-wrap gap-2" aria-label="Work filters">
       {FILTERS.map((item) => {
         const selected = value === item.value;
         return (
