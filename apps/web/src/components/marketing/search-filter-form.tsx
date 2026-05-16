@@ -19,12 +19,19 @@ export function SearchFilterForm({
   sort,
   categoryId,
   view,
+  variant = "default",
+  onSubmitted,
+  formId,
 }: {
   initialQ: string;
   sort: string;
   categoryId?: string | undefined;
   /** Preserved across submit (catalogue layout). */
   view?: string | undefined;
+  /** `hero` / `sheet` drop outer margin; `sheet` hides the inline submit (use sheet Apply). */
+  variant?: "default" | "hero" | "sheet";
+  onSubmitted?: () => void;
+  formId?: string;
 }) {
   const router = useRouter();
   const form = useForm<SearchFilterValues>({
@@ -32,20 +39,30 @@ export function SearchFilterForm({
     defaultValues: { q: initialQ },
   });
 
+  const isSheet = variant === "sheet";
+  const showSubmit = !isSheet;
+
   return (
     <Form {...form}>
       <form
-        className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end"
+        id={formId}
+        className={
+          variant === "default"
+            ? "mb-6 flex flex-col gap-3 sm:flex-row sm:items-end"
+            : "flex flex-col gap-3 sm:flex-row sm:items-end"
+        }
         onSubmit={form.handleSubmit((values) => {
           const params = new URLSearchParams();
           params.set("offset", "0");
           if (sort !== "endingAsc") params.set("sort", sort);
           if (categoryId) params.set("categoryId", categoryId);
-          if (values.q.trim()) params.set("q", values.q.trim());
+          const qTrim = values.q.trim();
+          if (qTrim) params.set("q", qTrim);
           if (view && (view === "grid" || view === "card" || view === "list")) {
             params.set("view", view);
           }
           router.push(`/search?${params.toString()}`);
+          onSubmitted?.();
         })}
         noValidate
       >
@@ -72,9 +89,11 @@ export function SearchFilterForm({
             </FormItem>
           )}
         />
-        <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
-          Search
-        </Button>
+        {showSubmit ? (
+          <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
+            Search
+          </Button>
+        ) : null}
       </form>
     </Form>
   );

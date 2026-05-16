@@ -1,6 +1,7 @@
 "use client";
 
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
@@ -79,11 +80,10 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
         <MarketingListToolbar
           countLabel={countLabel}
           filters={
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <MarketingChipStrip aria-label="Filter auctions" className="min-w-0">
               <div
-                className="inline-flex h-8 items-center gap-1 rounded-lg bg-surface-container-high p-1 outline outline-1 outline-outline-variant/50 -outline-offset-1 dark:outline-outline/40"
+                className="inline-flex h-8 shrink-0 snap-start items-center gap-1 rounded-lg bg-surface-container-high p-1 outline outline-1 outline-outline-variant/50 -outline-offset-1 dark:outline-outline/40"
                 role="tablist"
-                aria-label="Filter auctions"
               >
                 {FILTERS.map((f) => {
                   const selected = filter === f.id;
@@ -105,28 +105,30 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                   );
                 })}
               </div>
+            </MarketingChipStrip>
+          }
+          trailing={
+            <>
               <CatalogViewSwitcher
                 routeKey="home-upcoming"
                 value={switcherValue}
                 supportedModes={["grid", "list"]}
               />
-            </div>
-          }
-          trailing={
-            <Button
-              variant="chevron"
-              asChild
-              className="h-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
-            >
-              <Link
-                href="/sales"
-                className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
+              <Button
+                variant="chevron"
+                asChild
+                className="h-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
               >
-                View All
-                <span className="sr-only"> auctions and sales</span>
-                <ChevronRight className="size-5 shrink-0" aria-hidden />
-              </Link>
-            </Button>
+                <Link
+                  href="/sales"
+                  className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
+                >
+                  View All
+                  <span className="sr-only"> auctions and sales</span>
+                  <ChevronRight className="size-5 shrink-0" aria-hidden />
+                </Link>
+              </Button>
+            </>
           }
         />
 
