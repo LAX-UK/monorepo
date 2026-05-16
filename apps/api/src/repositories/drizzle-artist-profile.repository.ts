@@ -367,18 +367,20 @@ export class DrizzleArtistProfileRepository {
       .from(artistProfile)
       .where(baseWhere);
 
+    const letterBucketExpr = sql<string>`case
+      when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[a-z]' then lower(left(trim(${artistProfile.displayName}), 1))
+      when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[0-9]' then '#'
+      else 'other'
+    end`;
+
     const letterRows = await this.db
       .select({
-        bucket: sql<string>`case
-          when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[a-z]' then lower(left(trim(${artistProfile.displayName}), 1))
-          when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[0-9]' then '#'
-          else 'other'
-        end`,
+        bucket: letterBucketExpr,
         n: sql<number>`count(*)::int`,
       })
       .from(artistProfile)
       .where(baseWhere)
-      .groupBy(sql`bucket`);
+      .groupBy(letterBucketExpr);
 
     const letters = letterRows.map((r) => ({
       letter: String(r.bucket),
@@ -406,19 +408,21 @@ export class DrizzleArtistProfileRepository {
     /** Decades grouped on the floor of birthYear / 10, with a single "pre-1800"
      * bucket so the rail doesn't sprawl. We return the top 8 by count so the
      * UI stays compact. */
+    const decadeBucketExpr = sql<string>`case
+      when ${birthYearExpr} is null then null
+      when ${birthYearExpr} < 1800 then 'pre-1800'
+      else (floor(${birthYearExpr} / 10) * 10)::int::text || 's'
+    end`;
+
     const decadeRows = await this.db
       .select({
-        bucket: sql<string>`case
-          when ${birthYearExpr} is null then null
-          when ${birthYearExpr} < 1800 then 'pre-1800'
-          else (floor(${birthYearExpr} / 10) * 10)::int::text || 's'
-        end`,
+        bucket: decadeBucketExpr,
         n: sql<number>`count(*)::int`,
       })
       .from(artistProfile)
       .where(and(baseWhere, isNotNull(artistProfile.birthYear)))
-      .groupBy(sql`bucket`)
-      .orderBy(sql`bucket`);
+      .groupBy(decadeBucketExpr)
+      .orderBy(decadeBucketExpr);
 
     const topDecades = decadeRows
       .map((r) => {
