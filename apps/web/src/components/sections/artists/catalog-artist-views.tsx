@@ -1,12 +1,12 @@
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { ArtistDirectoryCard } from "@/components/sections/artists/artist-directory-card";
+import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import { artistPath } from "@/lib/seo/url";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { cn } from "@auction/ui";
-import Image from "next/image";
 import Link from "next/link";
 
 export function ArtistBrowseGrid({
@@ -62,37 +62,18 @@ export function ArtistBrowseCard({
             key={artist.id}
             className="group relative list-none overflow-hidden rounded-xl border border-outline-variant/15 bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md"
           >
-            <div className="absolute right-3 top-3 z-10">
-              <ArtistWatchHeart
-                artistId={artist.id}
-                artistName={artist.displayName}
-                initialWatching={watchSet.has(artist.id)}
-                isAuthenticated={isAuthenticated}
-                loginNextPath={href}
-              />
-            </div>
             <Link
               href={href}
               className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2"
               aria-label={`View ${artist.displayName}`}
             >
               <div className={cn("relative bg-surface-container-low", heroAspect)}>
-                {artist.portraitUrl ? (
-                  <Image
-                    src={artist.portraitUrl}
-                    alt={isBrand ? "" : altText}
-                    fill
-                    className="object-cover transition duration-500 group-hover:scale-[1.02]"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                ) : (
-                  <div
-                    className="flex h-full min-h-[12rem] items-center justify-center font-headline text-6xl text-on-surface-variant/30"
-                    aria-hidden
-                  >
-                    {artist.displayName.slice(0, 1)}
-                  </div>
-                )}
+                <MediaImage
+                  src={artist.portraitUrl}
+                  alt={isBrand ? "" : altText}
+                  label={isBrand ? artist.displayName : "Artist portrait"}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
                 <div className="absolute left-3 top-3 flex flex-wrap gap-1">
                   {artist.featured ? <Badge>Featured</Badge> : null}
                   {artist.verified ? <Badge variant="secondary">Verified</Badge> : null}
@@ -101,6 +82,15 @@ export function ArtistBrowseCard({
                       {kindBadge}
                     </Badge>
                   ) : null}
+                </div>
+                <div className="pointer-events-auto absolute bottom-3 right-3 z-10">
+                  <ArtistWatchHeart
+                    artistId={artist.id}
+                    artistName={artist.displayName}
+                    initialWatching={watchSet.has(artist.id)}
+                    isAuthenticated={isAuthenticated}
+                    loginNextPath={href}
+                  />
                 </div>
               </div>
               <div className="space-y-2 p-5">
@@ -168,19 +158,13 @@ export function ArtistBrowseList({
               className="flex items-center gap-4 p-4 pr-12 transition-colors hover:bg-surface-container-low/50 sm:px-5 sm:pr-14"
             >
               <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-surface-container-low sm:size-14">
-                {a.portraitUrl ? (
-                  <Image
-                    src={a.portraitUrl}
-                    alt={`Portrait of ${a.displayName}`}
-                    fill
-                    className="object-cover"
-                    sizes="56px"
-                  />
-                ) : (
-                  <span className="flex size-full items-center justify-center font-headline text-lg text-on-surface-variant">
-                    {a.displayName.slice(0, 1)}
-                  </span>
-                )}
+                <MediaImage
+                  src={a.portraitUrl}
+                  alt={`Portrait of ${a.displayName}`}
+                  label={a.displayName.slice(0, 1).toUpperCase()}
+                  shape="circle"
+                  sizes="56px"
+                />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-headline text-base text-on-surface sm:text-lg">

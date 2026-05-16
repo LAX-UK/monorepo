@@ -1,5 +1,5 @@
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 describe("MarketingListToolbar", () => {
@@ -23,6 +23,20 @@ describe("MarketingListToolbar", () => {
 
     const sticky = container.querySelector(".sticky");
     expect(sticky).not.toBeNull();
+  });
+
+  it("renders a second mobile row for trailing when mobileFilterTrigger and trailing are set", () => {
+    render(
+      <MarketingListToolbar
+        countLabel="24 lots"
+        mobileFilterTrigger={<button type="button">Filters</button>}
+        trailing={<span data-testid="view-switcher">View</span>}
+      />,
+    );
+
+    const mobileRow = screen.getByTestId("mobile-trailing-row");
+    expect(mobileRow).toBeInTheDocument();
+    expect(within(mobileRow).getByTestId("view-switcher")).toBeInTheDocument();
   });
 
   it("shows filters on mobile when no mobileFilterTrigger", () => {
