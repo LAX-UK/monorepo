@@ -6,6 +6,7 @@ import {
   SITE_NAME,
   SITE_SUPPORT_EMAIL,
 } from "@/lib/brand";
+import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -213,6 +214,15 @@ function BulletList({ items }: { items: readonly string[] }) {
 export default function PrivacyPage() {
   return (
     <PolicyHubLayout>
+      <script type="application/ld+json" suppressHydrationWarning>
+        {policyHubPageJsonLd({
+          path: "/privacy",
+          breadcrumbName: "Privacy Notice",
+          pageName: "Privacy notice",
+          description:
+            "Privacy Notice for LAX.BID by London Art Exchange and how personal data is collected, used, and protected.",
+        })}
+      </script>
       <LegalPage
         title="Privacy notice"
         toc={[...toc]}

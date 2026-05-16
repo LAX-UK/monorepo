@@ -3,7 +3,7 @@
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
-import { LotCardTimer } from "@/components/lot-timer";
+import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
@@ -146,7 +146,7 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
         if (!lot || lot.status !== "active")
           return <span className="text-on-surface-variant">—</span>;
         return (
-          <LotCardTimer
+          <LotStatusTimer
             status={lot.status}
             startTime={lot.startTime.toISOString()}
             endTime={lot.endTime.toISOString()}

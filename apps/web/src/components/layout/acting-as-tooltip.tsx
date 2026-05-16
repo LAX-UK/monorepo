@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { dismissActingContextTooltip } from "@/lib/legal-entity/acting-context.actions";
+import { Button } from "@auction/ui/components/button";
 import { useState, useTransition } from "react";
 
 type Props = {

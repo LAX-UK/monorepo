@@ -23,7 +23,7 @@ function parseMs(s: string | null): number | null {
  * When `now` is null (SSR / first paint), only status-derived states are returned — no `msLeft`.
  */
 export function classifyLotTimerState(i: LotTimerInputs, now: number | null): LotTimerState {
-  if (i.status === "cancelled") return { kind: "cancelled" };
+  if (i.status === "cancelled" || i.status === "voided") return { kind: "cancelled" };
 
   if (now == null) {
     if (i.status === "ended") return { kind: "closed" };

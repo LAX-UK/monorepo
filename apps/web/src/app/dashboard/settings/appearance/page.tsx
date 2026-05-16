@@ -1,13 +1,16 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { AppearanceSettingsForm } from "@/components/settings/appearance-settings-form";
+import {
+  AppearanceLayoutPreferencesForm,
+  type AppearancePreferencesSnapshot,
+} from "@/components/settings/appearance-layout-preferences-form";
 import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { PageHeader } from "@auction/ui/components/page-header";
-import type { ThemePreference } from "@auction/validators";
+import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Appearance" };
+export const metadata: Metadata = { title: "Appearance & layout" };
 
 export default async function AppearanceSettingsPage() {
   const user = await requireAuthenticatedUser({
@@ -15,27 +18,27 @@ export default async function AppearanceSettingsPage() {
     loginNext: "/dashboard/settings/appearance",
   });
 
-  const initialTheme: ThemePreference = user.uiPreferences?.theme ?? "system";
+  const p = user.uiPreferences;
+  const initial: AppearancePreferencesSnapshot = {
+    theme: (p?.theme ?? "system") as ThemePreference,
+    viewLotsDefault: (p?.viewLotsDefault ?? "auto") as LayoutViewDefault,
+    viewArtistsDefault: (p?.viewArtistsDefault ?? "auto") as LayoutViewDefault,
+    viewSalesDefault: (p?.viewSalesDefault ?? "auto") as LayoutViewDefault,
+    density: (p?.density ?? "comfortable") as DensityPreference,
+    viewSync: p?.viewSync ?? false,
+  };
 
   return (
     <DashboardPage className="mx-auto max-w-xl space-y-8">
       <PageHeader
-        title="Appearance"
-        description="Colour scheme and motion preferences for your account."
+        title="Appearance & layout"
+        description="Theme, catalogue defaults, and dashboard density. Changes save automatically."
         className="border-0 pb-0"
       />
-      <section className="space-y-3" aria-labelledby="theme-heading">
-        <h2
-          id="theme-heading"
-          className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant"
-        >
-          Colour scheme
-        </h2>
-        <AppearanceSettingsForm initialTheme={initialTheme} />
-      </section>
+      <AppearanceLayoutPreferencesForm initial={initial} />
       <ReduceMotionCard />
       <p className="text-sm text-on-surface-variant">
-        Quick toggle is also in the site header.{" "}
+        Quick theme toggle is also in the site header.{" "}
         <Link
           href="/dashboard/settings/account"
           className="text-primary underline-offset-4 hover:underline"

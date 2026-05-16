@@ -1,20 +1,12 @@
+import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { Skeleton } from "@auction/ui";
 
 const CHIP_KEYS = ["chip-a", "chip-b", "chip-c", "chip-d", "chip-e"];
 const RAIL_KEYS = ["rail-a", "rail-b", "rail-c", "rail-d"];
-const CARD_KEYS = [
-  "card-a",
-  "card-b",
-  "card-c",
-  "card-d",
-  "card-e",
-  "card-f",
-  "card-g",
-  "card-h",
-  "card-i",
-];
 
-export default function PublicArtistsDirectoryLoading() {
+export default async function PublicArtistsDirectoryLoading() {
+  const view = await readSkeletonView("artists", "grid");
   return (
     <main id="main-content" className="pt-[var(--header-height)]">
       <section className="border-b border-outline-variant/15 bg-surface-container-lowest/40 px-6 py-14 md:px-12">
@@ -38,21 +30,9 @@ export default function PublicArtistsDirectoryLoading() {
               <Skeleton key={k} className="h-7 w-full" />
             ))}
           </div>
-          <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {CARD_KEYS.map((k) => (
-              <li
-                key={k}
-                className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface"
-              >
-                <Skeleton className="aspect-[4/5] w-full" />
-                <div className="space-y-2 p-4">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="min-w-0">
+            <MarketingListSkeleton view={view} count={9} />
+          </div>
         </div>
       </section>
     </main>

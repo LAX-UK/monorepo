@@ -428,6 +428,13 @@
       "when": 1781800000000,
       "tag": "0062_category_hero_image",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0063_user_ui_preference_layout",
+      "breakpoints": true
     }
   ]
 }

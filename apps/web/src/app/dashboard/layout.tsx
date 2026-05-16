@@ -38,7 +38,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const jar = await cookies();
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
-  const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
+  const fromUserDensity =
+    user.uiPreferences?.density === "compact"
+      ? "compact"
+      : user.uiPreferences?.density === "comfortable"
+        ? "normal"
+        : null;
+  const cookieDensity =
+    fromUserDensity ?? parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
   return (
     <AppShell

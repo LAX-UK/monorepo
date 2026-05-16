@@ -152,6 +152,8 @@ export { FilterChip } from "./components/ui/filter-chip.js";
 export type { FilterChipProps } from "./components/ui/filter-chip.js";
 export { SegmentToggle } from "./components/ui/segment-toggle.js";
 export type { SegmentToggleOption, SegmentToggleProps } from "./components/ui/segment-toggle.js";
+export { ViewSwitcher } from "./components/ui/view-switcher.js";
+export type { CatalogLayoutView, ViewSwitcherProps } from "./components/ui/view-switcher.js";
 export { MarketingPagination } from "./components/ui/marketing-pagination.js";
 export type {
   MarketingPaginationPage,

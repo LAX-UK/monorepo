@@ -1,3 +1,4 @@
+import { NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
 import { linkIsCurrent } from "@/lib/nav/is-current";
 
@@ -70,5 +71,4 @@ export function navItemActive(pathname: string, href: string): boolean {
   return linkIsCurrent(pathname, href);
 }
 
-export const linkTop =
-  "font-label text-sm font-medium uppercase leading-[21px] text-nav-text transition-colors hover:text-brand-900";
+export const linkTop = NAV_LABEL_CLASSES;

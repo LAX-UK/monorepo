@@ -8,6 +8,7 @@ const baseState: CalendarSalesUrlState = {
   deliveryMode: "all",
   location: "all",
   sort: "startAsc",
+  view: "grid",
 };
 
 describe("SalesPrimaryTabs", () => {

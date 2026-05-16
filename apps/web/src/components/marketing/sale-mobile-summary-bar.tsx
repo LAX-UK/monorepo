@@ -1,6 +1,7 @@
 "use client";
 
-import { Countdown, StickyBidBar } from "@auction/ui";
+import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
+import { Countdown } from "@auction/ui";
 import Link from "next/link";
 
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
 export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCount }: Props) {
   if (status === "ended" || status === "cancelled") {
     return (
-      <StickyBidBar className="lg:hidden" innerClassName="max-w-screen-2xl">
+      <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
         <div className="min-w-0">
           <p className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
             Sale {status === "ended" ? "ended" : "cancelled"}
@@ -31,7 +32,7 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
         >
           View results
         </Link>
-      </StickyBidBar>
+      </MarketingStickyBidBar>
     );
   }
 
@@ -42,7 +43,7 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
   const ctaLabel = isUpcoming ? "Register" : "View lots";
 
   return (
-    <StickyBidBar className="lg:hidden" innerClassName="max-w-screen-2xl">
+    <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
       <div className="min-w-0">
         <p className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
           {kicker}
@@ -65,6 +66,6 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
       >
         {ctaLabel}
       </Link>
-    </StickyBidBar>
+    </MarketingStickyBidBar>
   );
 }

@@ -62,6 +62,24 @@ export function metadataForStatic(opts: {
   };
 }
 
+/** Faceted listing pages (search, future faceted catalog) — `noIndex` mirrors thin-URL hygiene. */
+export function metadataForListing(opts: {
+  title: string;
+  description: string;
+  path: string;
+  noIndex?: boolean;
+}): Metadata {
+  const base = metadataForStatic({
+    title: opts.title,
+    description: opts.description,
+    path: opts.path,
+  });
+  if (opts.noIndex) {
+    return { ...base, robots: { index: false, follow: true } };
+  }
+  return base;
+}
+
 /** Sale catalog page */
 export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">): Metadata {
   const base = getSiteUrl();

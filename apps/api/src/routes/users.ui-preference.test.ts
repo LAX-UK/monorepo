@@ -61,3 +61,40 @@ describe("PATCH /users/me/preferences/ui", () => {
     expect(uiPreferenceService.patch).toHaveBeenCalledWith("u1", { theme: "light" });
   });
 });
+
+describe("POST /users/me/preferences/ui/reset-layout", () => {
+  it("returns reset layout projection", async () => {
+    const now = new Date();
+    const row = {
+      userId: "u1",
+      theme: "dark" as const,
+      viewLotsDefault: "auto" as const,
+      viewArtistsDefault: "auto" as const,
+      viewSalesDefault: "auto" as const,
+      density: "comfortable" as const,
+      viewSync: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const uiPreferenceService = {
+      getForUser: vi.fn(),
+      patch: vi.fn(),
+      resetLayoutDefaults: vi.fn().mockResolvedValue(row),
+    };
+    const app = new Hono();
+    const container = {
+      uiPreferenceService,
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+    };
+    app.route("/users", createUserRoutes(container, authenticator));
+
+    const res = await app.request("/users/me/preferences/ui/reset-layout", { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { viewLotsDefault: string } };
+    expect(body.data.viewLotsDefault).toBe("auto");
+    expect(uiPreferenceService.resetLayoutDefaults).toHaveBeenCalledWith("u1");
+  });
+});

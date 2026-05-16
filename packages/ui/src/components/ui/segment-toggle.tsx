@@ -13,6 +13,8 @@ export type SegmentToggleProps<TValue extends string> = {
   onValueChange: (value: TValue) => void;
   "aria-label": string;
   className?: string;
+  /** When set, all segments are non-interactive. */
+  disabled?: boolean;
 };
 
 export function SegmentToggle<TValue extends string>({
@@ -21,6 +23,7 @@ export function SegmentToggle<TValue extends string>({
   onValueChange,
   "aria-label": ariaLabel,
   className,
+  disabled: toggleDisabled,
 }: SegmentToggleProps<TValue>) {
   return (
     <div
@@ -37,7 +40,7 @@ export function SegmentToggle<TValue extends string>({
             key={option.value}
             type="button"
             aria-pressed={selected}
-            disabled={option.disabled}
+            disabled={Boolean(toggleDisabled || option.disabled)}
             onClick={() => onValueChange(option.value)}
             className={cn(
               "min-h-8 rounded-full px-3 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50",
