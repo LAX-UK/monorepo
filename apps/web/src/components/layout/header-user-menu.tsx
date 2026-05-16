@@ -1,5 +1,6 @@
 "use client";
 
+import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel";
 import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
@@ -13,7 +14,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { type AppShellRole, appShellRoleMeta, sessionUserToShellRole } from "./app-shell-nav";
 import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
-import { useSiteHeaderChrome } from "./site-header-chrome-context";
 
 const MENU_ID = "header-account-menu";
 
@@ -36,7 +36,6 @@ type HeaderUserMenuProps = {
 };
 
 export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
-  const { blendWithHero } = useSiteHeaderChrome();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -110,9 +109,7 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         variant="ghost"
         className={cn(
           "h-auto max-w-[200px] justify-start gap-2 py-1 pl-1 pr-2 text-left transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-          blendWithHero
-            ? "hover:bg-white/10 dark:hover:bg-surface-container-low"
-            : "hover:bg-page-bg dark:hover:bg-surface-container-low",
+          "hover:bg-page-bg dark:hover:bg-surface-container-low",
         )}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -131,20 +128,14 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         />
         <span
           className={cn(
-            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight sm:inline",
-            blendWithHero
-              ? "text-white dark:text-on-surface"
-              : "text-brand-900 dark:text-on-surface",
+            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight text-brand-900 sm:inline dark:text-on-surface",
           )}
         >
           {displayName}
         </span>
         <ChevronDown
           className={cn(
-            "shrink-0 text-base! transition-transform duration-200 motion-reduce:transition-none",
-            blendWithHero
-              ? "text-white dark:text-on-surface"
-              : "text-brand-900 dark:text-on-surface",
+            "shrink-0 text-base! text-brand-900 transition-transform duration-200 motion-reduce:transition-none dark:text-on-surface",
             open ? "rotate-180" : "",
           )}
           aria-hidden
@@ -152,12 +143,12 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
       </Button>
 
       {open ? (
-        <div
+        <ChromePopoverPanel
           ref={panelRef}
           id={MENU_ID}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,16rem)] rounded-lg border border-nav-border bg-surface py-2 shadow-sm motion-reduce:shadow-none motion-reduce:transition-none dark:border-outline-variant/20"
+          className="w-[min(100vw-2rem,16rem)]"
           onKeyDown={onPanelKeyDown}
         >
           <div className="border-b border-nav-border px-3 py-2 dark:border-outline-variant/15">
@@ -196,7 +187,7 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
               className="block w-full px-3 py-2.5 text-left font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:text-on-surface dark:hover:bg-surface-container-low"
             />
           </div>
-        </div>
+        </ChromePopoverPanel>
       ) : null}
     </div>
   );

@@ -2,7 +2,7 @@ import { PRIVATE_SALE_COPY } from "@/components/sections/home/home-copy";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
 import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
-import { cn } from "@auction/ui";
+import { DisplayHeading, cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -21,20 +21,22 @@ export function PrivateSaleHighlightsMarketing({
   return (
     <section
       aria-labelledby="private-sale-heading"
-      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-6 pt-[var(--section-spacing)] md:px-10 lg:px-14"
+      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-[var(--section-spacing)] md:px-10 lg:px-14"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-14">
         <div className="flex max-w-[640px] flex-col gap-6">
           <RevealInView variant="fadeUp">
-            <h2
+            <DisplayHeading
+              as="h2"
               id="private-sale-heading"
-              className="font-headline text-[40px] font-semibold leading-[1.15] tracking-normal text-[#050505] dark:text-on-surface"
+              size="section"
+              className="font-semibold text-on-surface"
             >
               {PRIVATE_SALE_COPY.heading}
-            </h2>
+            </DisplayHeading>
           </RevealInView>
           <RevealInView variant="fadeUp" delayMs={60}>
-            <p className="font-body text-[20px] font-normal leading-[1.4] text-[#474747] dark:text-on-surface-variant">
+            <p className="font-body text-[20px] font-normal leading-[1.4] text-on-surface-variant">
               {PRIVATE_SALE_COPY.subtitle}
             </p>
           </RevealInView>

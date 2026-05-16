@@ -10,11 +10,12 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:visual-update": "playwright install chromium && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/marketing-pages-visual.spec.ts --update-snapshots --workers=1"
   },
   "dependencies": {
-    "@auction/branding": "workspace:*",
     "@auction/api": "workspace:*",
+    "@auction/branding": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/ui": "workspace:*",
     "@auction/validators": "workspace:*",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.10.1",
     "@playwright/test": "1.52.0",
     "@tailwindcss/oxide-wasm32-wasi": "4.2.2",
     "@tailwindcss/postcss": "^4.2.2",

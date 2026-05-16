@@ -7,7 +7,7 @@ function assertNever(x: never): never {
 }
 
 const PILL_BASE =
-  "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-sm border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
+  "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
 
 const SHELL_LIVE =
   "border-transparent bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";

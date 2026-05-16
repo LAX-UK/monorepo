@@ -1,7 +1,8 @@
+import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
+import { lotStatusMarketingShortLabel } from "@/lib/marketing/lot-status-labels";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
 import Link from "next/link";
 
 type Props = {
@@ -19,7 +20,7 @@ export function SalesNewLotsGrid({ lots }: Props) {
   }
 
   return (
-    <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
       {lots.map((lot, index) => (
         <li key={lot.id}>
           <article className="group flex flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
@@ -33,15 +34,20 @@ export function SalesNewLotsGrid({ lots }: Props) {
                 label="Lot image"
                 className="absolute inset-0 size-full"
                 imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 priority={index < 3}
               />
             </Link>
             <div className="flex flex-col gap-2 p-4">
               <div className="flex items-center justify-between gap-2">
-                <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                  {lot.status}
-                </StatusBadge>
+                <LotStatusBadge
+                  status={lot.status}
+                  startTime={
+                    lot.startTime instanceof Date ? lot.startTime.toISOString() : lot.startTime
+                  }
+                  endTime={lot.endTime instanceof Date ? lot.endTime.toISOString() : lot.endTime}
+                  closingShort={lotStatusMarketingShortLabel(lot.status)}
+                />
               </div>
               <Link
                 href={lotPath(lot)}

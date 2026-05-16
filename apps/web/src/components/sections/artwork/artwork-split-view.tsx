@@ -56,7 +56,7 @@ export function ArtworkSplitView({
 }: Props) {
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
-      <div className="mx-auto max-w-[1440px] px-4 pb-20 pt-6 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-20 pt-6 sm:px-6 md:px-8">
         <div className="flex min-h-10 flex-wrap items-center justify-between gap-3">
           <LotBreadcrumbTabs vm={heroVM} />
           <LotNavArrows vm={heroVM} />

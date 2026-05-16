@@ -297,6 +297,33 @@ export function breadcrumbJsonLd(
   };
 }
 
+/** Breadcrumb + WebPage + Organization for long-form pages inside `PolicyHubLayout`. */
+export function policyHubPageJsonLd(opts: {
+  path: string;
+  breadcrumbName: string;
+  pageName: string;
+  description: string;
+}): string {
+  const base = getSiteUrl();
+  const path = opts.path.startsWith("/") ? opts.path : `/${opts.path}`;
+  const url = `${base}${path}`;
+  const breadcrumbId = `${url}#breadcrumb`;
+  const crumbs = breadcrumbJsonLd(
+    [
+      { name: "Home", path: "/" },
+      { name: opts.breadcrumbName, path },
+    ],
+    { graphId: breadcrumbId },
+  );
+  const page = webPageJsonLd({
+    url,
+    name: opts.pageName,
+    description: opts.description,
+    breadcrumbId,
+  });
+  return jsonLdScript(crumbs, page, organizationJsonLd());
+}
+
 /** Safe inline JSON-LD for `<script type="application/ld+json">` (escapes `<`). */
 export function jsonLdScript(...items: Array<Record<string, unknown> | null | undefined>): string {
   const payload = items.filter(Boolean) as Record<string, unknown>[];

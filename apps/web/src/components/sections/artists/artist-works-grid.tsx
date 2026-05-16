@@ -4,8 +4,9 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { lotCatalogStatusPresentation } from "@/lib/marketing/lot-catalog-status";
 import { lotPath } from "@/lib/seo/url";
-import type { Lot, LotStatus } from "@auction/types";
+import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -21,11 +22,6 @@ type WorkFilterOption = {
   label: string;
   value: WorkFilter;
   matches: (lot: Lot) => boolean;
-};
-
-type LotStatusDisplay = {
-  label: string;
-  className: string;
 };
 
 type LotCatalogCardProps = {
@@ -44,15 +40,6 @@ const FILTERS: WorkFilterOption[] = [
   },
   { label: "Past results", value: "past", matches: (lot) => lot.status === "ended" },
 ];
-
-const STATUS_DISPLAY: Record<LotStatus, LotStatusDisplay> = {
-  active: { label: "live", className: "text-live-red" },
-  cancelled: { label: "past", className: "text-brand-300" },
-  draft: { label: "upcoming", className: "text-brand-300" },
-  ended: { label: "past", className: "text-brand-300" },
-  scheduled: { label: "upcoming", className: "text-lot-orange" },
-  voided: { label: "voided", className: "text-brand-300" },
-};
 
 function getFilter(filter: WorkFilter) {
   return FILTERS.find((item) => item.value === filter) ?? ALL_FILTER;
@@ -111,7 +98,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   const img = lot.images[0];
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
-  const status = STATUS_DISPLAY[lot.status];
+  const status = lotCatalogStatusPresentation(lot.status);
   const yearMedium = lotYearMedium(lot);
 
   return (
@@ -182,7 +169,7 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
       {visibleLots.length === 0 ? (
         <WorksEmptyState />
       ) : (
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {visibleLots.map((lot) => (
             <LotCatalogCard key={lot.id} lot={lot} currentUserId={currentUserId} />
           ))}

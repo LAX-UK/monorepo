@@ -23,7 +23,7 @@ export function PolicyHubLayout({ children }: Props) {
         aria-label="Policy pages"
         className="border-b border-outline-variant/40 px-4 pt-6 sm:px-6 md:px-12"
       >
-        <div className="no-scrollbar flex max-w-[1440px] snap-x gap-0 overflow-x-auto">
+        <div className="no-scrollbar flex max-w-[var(--container-max,1440px)] snap-x gap-0 overflow-x-auto">
           {policyRoutes.map((route) => {
             const active = isActive(pathname, route.href);
             return (

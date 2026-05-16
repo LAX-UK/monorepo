@@ -6,6 +6,7 @@ import {
   SITE_COMPANY_NAME,
   SITE_NAME,
 } from "@/lib/brand";
+import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -19,6 +20,15 @@ export const metadata: Metadata = metadataForStatic({
 export default function AboutPage() {
   return (
     <PolicyHubLayout>
+      <script type="application/ld+json" suppressHydrationWarning>
+        {policyHubPageJsonLd({
+          path: "/about",
+          breadcrumbName: "About",
+          pageName: "About LAX.BID",
+          description:
+            "Learn about LAX.BID, the dedicated auction platform of London Art Exchange.",
+        })}
+      </script>
       <LegalPage
         title="About LAX.BID"
         lastUpdated="21 April 2026"

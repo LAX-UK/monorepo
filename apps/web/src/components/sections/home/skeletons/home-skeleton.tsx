@@ -14,7 +14,7 @@ export function HomeSkeleton() {
       </div>
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-6 py-12 md:px-10 lg:px-14">
         <Skeleton className="mb-8 h-10 w-64" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {["a", "b", "c", "d", "e", "f"].map((slot) => (
             <Skeleton key={slot} className="aspect-[3/4] w-full rounded-sm shimmer-sweep" />
           ))}
@@ -49,6 +49,7 @@ export function HomeSkeleton() {
           </div>
           <Skeleton className="h-6 w-28 rounded-sm shimmer-sweep" />
         </div>
+        <Skeleton className="mb-6 h-14 w-full rounded-sm border border-outline-variant/20 shimmer-sweep" />
         <div className="flex gap-4 overflow-hidden pb-2">
           {["e1", "e2", "e3"].map((slot) => (
             <div key={slot} className="flex w-[280px] shrink-0 flex-col gap-4">

@@ -1,19 +1,19 @@
+import { MarketingLoadMore } from "@/components/marketing/marketing-load-more";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
+import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
   mapSaleToRelatedVM,
 } from "@/components/sections/saleroom/mappers";
-import { SaleroomCatalogHeading } from "@/components/sections/saleroom/saleroom-catalog-heading";
-import { SaleroomCatalogToolbar } from "@/components/sections/saleroom/saleroom-catalog-toolbar";
+import { SaleroomCatalogLotsByView } from "@/components/sections/saleroom/saleroom-catalog-lots-by-view";
+import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
-import { SaleroomLotsGrid } from "@/components/sections/saleroom/saleroom-lots-grid";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
-import { SaleroomPaginator } from "@/components/sections/saleroom/saleroom-paginator";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
@@ -25,6 +25,8 @@ import {
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
+import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
@@ -63,6 +65,8 @@ function canonicalSalePathWithQuery(sale: Sale, sp: Record<string, string | stri
   const qs = new URLSearchParams();
   const page = firstString(sp.page);
   if (page) qs.set("page", page);
+  const view = parseUrlLayoutView(firstString(sp.view));
+  if (view) qs.set("view", view);
   const q = qs.toString();
   const path = salePath(sale);
   return q ? `${path}?${q}` : path;
@@ -156,6 +160,16 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     : null;
   const mySaleRegs = session ? await getServerSaleMyRegistrations(id).catch(() => []) : [];
 
+  const layoutViewRaw = await resolveMarketingLayoutView({
+    routeKey: "sales-lot",
+    category: "lots",
+    urlView: firstString(sp.view),
+    user: session,
+    fallback: "grid",
+  });
+  /** Saleroom catalogue supports grid + list only (`card` maps to grid). */
+  const layoutView = layoutViewRaw === "card" ? "grid" : layoutViewRaw;
+
   const base = getSiteUrl();
   const viewerUserId = session?.id ?? null;
   const basePath = salePath(bundle.sale);
@@ -184,6 +198,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     statusFilterRaw === "live" || statusFilterRaw === "upcoming" || statusFilterRaw === "ended"
       ? statusFilterRaw
       : null;
+
+  const preservedQuery: Array<[string, string]> = [["view", layoutView]];
+  if (statusFilter) preservedQuery.push(["status", statusFilter]);
 
   const accumulatedLotIds = new Set<string>();
   const lotVMs = lotsPage.items
@@ -275,41 +292,54 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      <section id="catalog" className="mx-auto max-w-[1440px] px-4 pb-0 pt-14 sm:px-6 md:px-8">
-        <SaleroomCatalogHeading totalLots={lotsPage.total} />
-        <SaleroomCatalogToolbar basePath={basePath} />
-        <SaleroomLotsGrid
+      <section
+        id="catalog"
+        className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-0 pt-14 sm:px-6 md:px-8"
+      >
+        <SaleroomCatalogToolbarRow
+          basePath={basePath}
+          layoutView={layoutView}
+          totalLots={lotsPage.total}
+          countLabel={
+            statusFilter && lotVMs.length !== lotsPage.total
+              ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
+              : `${lotsPage.total} lots`
+          }
+        />
+        <SaleroomCatalogLotsByView
+          view={layoutView}
           lots={lotVMs}
-          renderActions={(lot) => (
-            <SaleroomLotActions
+          renderCorner={(lot) => (
+            <MarketingWatchlistHeart
               lotId={lot.id}
-              lotHref={lot.href}
-              isAuthenticated={isAuthenticated}
+              lotTitle={lot.title}
               initialWatching={lot.viewerIsWatching}
-              compact
+              isAuthenticated={isAuthenticated}
+              loginNextPath={lot.href}
             />
           )}
+          renderActions={(lot) => <SaleroomLotActions lotHref={lot.href} />}
         />
-        <SaleroomPaginator
+        <MarketingLoadMore
           shown={shownLots}
           total={lotsPage.total}
           page={pageNum}
           pageSize={CATALOG_PAGE_SIZE}
           basePath={basePath}
-          preservedQuery={[]}
+          preservedQuery={preservedQuery}
           showLoadAll={!isCatalogLoadAll}
         />
       </section>
 
       <section
-        className="mx-auto max-w-[1440px] px-4 pb-0 pt-16 sm:px-6 md:px-8"
+        className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-0 pt-16 sm:px-6 md:px-8"
         aria-label="Additional sale information"
       >
         <SaleroomOverviewPanel overview={overviewVM} />
       </section>
 
       {relatedVMs.length > 0 ? (
-        <section className="mx-auto mt-20 max-w-[1440px] px-4 sm:px-6 md:px-8">
+        <section className="mx-auto mt-20 max-w-[var(--container-max,1440px)] px-4 sm:px-6 md:px-8">
           <SaleroomRelatedAuctions related={relatedVMs} />
         </section>
       ) : null}

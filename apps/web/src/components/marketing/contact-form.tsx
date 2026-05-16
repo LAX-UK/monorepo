@@ -1,6 +1,7 @@
 "use client";
 
 import { submitContactFormResult } from "@/app/(marketing)/contact/actions";
+import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { contactFormValuesSchema } from "@/lib/contact/contact-input";
 import { useActionForm } from "@/lib/forms/use-action-form";
@@ -34,6 +35,15 @@ type ContactFormProps = {
   nameMode?: "split" | "single";
 };
 
+const underlineField =
+  "font-body text-base placeholder:text-on-surface-variant/55 focus-visible:shadow-none";
+
+const labelClass =
+  "mb-1 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-on-surface-variant";
+
+const messageField =
+  "min-h-[8rem] w-full resize-y rounded-none border-0 border-b-2 border-outline/40 bg-transparent py-3 font-body text-sm text-on-surface shadow-none transition-colors placeholder:text-on-surface-variant/55 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-0";
+
 export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
@@ -63,14 +73,9 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
     );
   }
 
-  const fieldClass =
-    "w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-  const labelClass =
-    "mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-brand-300";
-
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="mt-6 max-w-[520px] space-y-5" noValidate>
+      <form onSubmit={onSubmit} className="mt-6 max-w-[520px] space-y-6" noValidate>
         {rootError ? (
           <p
             className="rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 text-sm text-error"
@@ -93,7 +98,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
         />
 
         {nameMode === "split" ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="firstName"
@@ -103,10 +108,10 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                     First name
                   </FormLabel>
                   <FormControl>
-                    <Input
+                    <UnderlineInput
                       id="contact-first-name"
                       maxLength={120}
-                      className={fieldClass}
+                      className={underlineField}
                       autoComplete="given-name"
                       {...field}
                     />
@@ -124,10 +129,10 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                     Last name
                   </FormLabel>
                   <FormControl>
-                    <Input
+                    <UnderlineInput
                       id="contact-last-name"
                       maxLength={120}
-                      className={fieldClass}
+                      className={underlineField}
                       autoComplete="family-name"
                       {...field}
                     />
@@ -147,10 +152,10 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                   Name
                 </FormLabel>
                 <FormControl>
-                  <Input
+                  <UnderlineInput
                     id="contact-name"
                     maxLength={120}
-                    className={fieldClass}
+                    className={underlineField}
                     autoComplete="name"
                     {...field}
                   />
@@ -170,11 +175,11 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                 Email
               </FormLabel>
               <FormControl>
-                <Input
+                <UnderlineInput
                   id="contact-email"
                   type="email"
                   inputMode="email"
-                  className={fieldClass}
+                  className={underlineField}
                   autoComplete="email"
                   {...field}
                 />
@@ -197,7 +202,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
                 options={topics.map((t) => ({ value: t.value, label: t.label }))}
-                triggerClassName="min-h-11 w-full rounded-sm border border-outline-variant bg-surface px-4 py-3 font-body text-sm"
+                triggerClassName="min-h-11 w-full rounded-none border-0 border-b-2 border-outline/40 bg-transparent px-0 py-3 font-body text-sm text-on-surface shadow-none focus-visible:ring-0"
               />
               <FormMessage />
             </FormItem>
@@ -213,7 +218,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                 Message
               </FormLabel>
               <FormControl>
-                <Textarea id="contact-message" rows={5} className={fieldClass} {...field} />
+                <Textarea id="contact-message" rows={5} className={messageField} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

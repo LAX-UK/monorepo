@@ -53,7 +53,7 @@ export function SaleroomCatalogToolbar({ basePath }: Props) {
   ];
 
   return (
-    <nav aria-label="Catalog filters" className="mb-6 flex flex-wrap items-center gap-2">
+    <nav aria-label="Catalog filters" className="flex flex-wrap items-center gap-2">
       {chips.map((c) => {
         const isActive = active === c.value;
         return (

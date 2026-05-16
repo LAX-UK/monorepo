@@ -13,4 +13,10 @@ export class UiPrefsService implements IUiPrefsService {
       body: JSON.stringify(prefs),
     });
   }
+
+  async postResetLayout(): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>("/users/me/preferences/ui/reset-layout", {
+      method: "POST",
+    });
+  }
 }

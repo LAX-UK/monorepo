@@ -1,15 +1,20 @@
+import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
-import { DisplayHeading, SectionHeader } from "@auction/ui";
+import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { UrgencyLotCard } from "./urgency-lot-card";
+import { UrgencyLotRow } from "./urgency-lot-row";
 
-export type UrgencySectionVariant = "endingSoon" | "liveNow";
+export type UrgencySectionVariant = "endingSoon" | "liveNow" | "upcoming";
 
 type Props = {
   variant: UrgencySectionVariant;
   items: LotCardVM[];
+  layoutView: CatalogLayoutView;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath?: string;
@@ -28,43 +33,68 @@ const COPY = {
     headingId: "home-live-now-heading",
     srAction: "live lots accepting bids",
   },
+  upcoming: {
+    heading: "Upcoming Lots",
+    viewAllHref: "/search?status=scheduled",
+    headingId: "home-upcoming-lots-heading",
+    srAction: "lots scheduled to open soon",
+  },
 } as const;
 
-function UrgencySectionHeader({ variant }: { variant: UrgencySectionVariant }) {
+function urgencySwitcherValue(v: CatalogLayoutView): CatalogLayoutView {
+  return v === "list" ? "list" : "grid";
+}
+
+function UrgencySectionHeader({
+  variant,
+  switcherValue,
+}: {
+  variant: UrgencySectionVariant;
+  switcherValue: CatalogLayoutView;
+}) {
   const c = COPY[variant];
   return (
-    <SectionHeader
+    <MarketingSectionHeader
       heading={
         <DisplayHeading
           as="h2"
           id={c.headingId}
-          className="text-[40px] font-semibold leading-[60px] text-[#050505] dark:text-on-surface"
+          size="section"
+          className="font-semibold text-on-surface"
         >
           {c.heading}
         </DisplayHeading>
       }
       action={
-        <Button variant="chevron" asChild>
-          <Link href={c.viewAllHref} className="inline-flex items-center gap-[11px] py-[18px]">
-            <span className="text-center text-base font-semibold leading-6 tracking-[0.05em] text-[#050505] dark:text-on-surface">
-              View all
-            </span>
-            <span className="sr-only"> {c.srAction}</span>
-            <ChevronRight className="size-5 shrink-0" aria-hidden />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <CatalogViewSwitcher
+            routeKey="home-urgency"
+            value={switcherValue}
+            supportedModes={["grid", "list"]}
+          />
+          <Button variant="chevron" asChild>
+            <Link href={c.viewAllHref} className="inline-flex items-center gap-[11px] py-[18px]">
+              <span className="text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface">
+                View all
+              </span>
+              <span className="sr-only"> {c.srAction}</span>
+              <ChevronRight className="size-5 shrink-0" aria-hidden />
+            </Link>
+          </Button>
+        </div>
       }
     />
   );
 }
 
 /**
- * Urgency strip after the hero: “Ending Soon” when lots close within 100h, else “Live Now”
- * when any active lots exist. Data shaping lives in `getHomeData`.
+ * Urgency strip after the hero: “Ending Soon” (lots ending within 24h), else “Live Now”
+ * when active lots exist, else “Upcoming Lots” from scheduled inventory. Data shaping lives in `getHomeData`.
  */
 export function LaxUrgencySection({
   variant,
   items,
+  layoutView,
   isAuthenticated,
   watchedLotIds,
   loginNextPath = "/",
@@ -72,6 +102,8 @@ export function LaxUrgencySection({
   if (items.length === 0) return null;
 
   const headingId = COPY[variant].headingId;
+  const switcherValue = urgencySwitcherValue(layoutView);
+  const isList = switcherValue === "list";
 
   return (
     <section
@@ -79,19 +111,35 @@ export function LaxUrgencySection({
       className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-10 md:px-10 lg:px-14"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
-        <UrgencySectionHeader variant={variant} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 lg:gap-8">
-          {items.map((item, index) => (
-            <UrgencyLotCard
-              key={item.id}
-              item={item}
-              index={index}
-              isAuthenticated={isAuthenticated}
-              watchedLotIds={watchedLotIds}
-              loginNextPath={loginNextPath}
-            />
-          ))}
-        </div>
+        <UrgencySectionHeader variant={variant} switcherValue={switcherValue} />
+        {isList ? (
+          <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4">
+            {items.map((item) => (
+              <li key={item.id}>
+                <UrgencyLotRow
+                  variant={variant}
+                  item={item}
+                  isAuthenticated={isAuthenticated}
+                  watchedLotIds={watchedLotIds}
+                  loginNextPath={loginNextPath}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-4 lg:gap-8">
+            {items.map((item, index) => (
+              <UrgencyLotCard
+                key={item.id}
+                item={item}
+                index={index}
+                isAuthenticated={isAuthenticated}
+                watchedLotIds={watchedLotIds}
+                loginNextPath={loginNextPath}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

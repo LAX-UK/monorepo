@@ -23,6 +23,8 @@ export type CalendarSalesUrlParams = {
   year?: number;
   minPrice?: number;
   maxPrice?: number;
+  /** Catalogue layout for calendar browse (grid = default card rows, list = compact). */
+  view?: "grid" | "list";
 };
 
 function firstString(v: string | string[] | undefined): string | undefined {
@@ -112,6 +114,7 @@ export type CalendarSalesUrlState = {
   year?: number;
   minPrice?: number;
   maxPrice?: number;
+  view: "grid" | "list";
 };
 
 /** Patch type allows explicit `undefined` to clear keys (exactOptionalPropertyTypes). */
@@ -159,6 +162,7 @@ export function calendarSalesHref(params: CalendarSalesUrlParams): string {
   if (params.year != null) q.set("year", String(params.year));
   if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
   if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
+  if (params.view === "list") q.set("view", "list");
   const qs = q.toString();
   return qs ? `/sales?${qs}` : "/sales";
 }
