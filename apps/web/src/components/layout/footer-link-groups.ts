@@ -1,4 +1,5 @@
 import type { FooterLink } from "@/components/layout/footer-column";
+import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 
 /** Existing legacy groupings — kept exported so any future page can recompose
  * the historical layout without reaching back into the footer component.
@@ -28,9 +29,9 @@ export const policyLinks: FooterLink[] = [
  * but old groupings stay exported for callers that prefer them.
  */
 export const auctionsLinks: FooterLink[] = [
-  { href: "/", label: "Upcoming" },
+  { href: calendarSalesHref({ tab: "upcoming" }), label: "Upcoming" },
   { href: "/archive", label: "Past auctions" },
-  { href: "/artist/featured", label: "Artists" },
+  { href: "/artists", label: "Artists" },
   { href: "/search", label: "Search" },
 ];
 

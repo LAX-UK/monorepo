@@ -6,6 +6,7 @@ import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { ArtistDirectoryFilters } from "@/components/sections/artists/artist-directory-filters";
+import { ArtistFiltersSheet } from "@/components/sections/artists/artist-filters-sheet";
 import { ArtistsDirectoryHero } from "@/components/sections/artists/artists-directory-hero";
 import { ArtistsDirectoryPagination } from "@/components/sections/artists/artists-directory-pagination";
 import { CatalogArtistView } from "@/components/sections/artists/catalog-artist-view";
@@ -275,6 +276,23 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     return artistDirectoryWithQuery(`/artists/nationality/${slug}`, {}, carry);
   };
 
+  const nationalityLinks =
+    facets.topNationalities.length > 0
+      ? [
+          {
+            label: "Any",
+            href: buildNationalityHref(null),
+            active: !nationality,
+          },
+          ...facets.topNationalities.map((n) => ({
+            label: n.value,
+            href: buildNationalityHref(n.value),
+            count: n.count,
+            active: nationality?.toLowerCase() === n.value.toLowerCase(),
+          })),
+        ]
+      : undefined;
+
   const segChips = presetChips(preset.id, sp, layoutView);
 
   const baseUrl = getSiteUrl();
@@ -347,8 +365,18 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
   const countLabel =
     total > 0 ? `Showing ${rangeStart}–${rangeEnd} of ${total}` : "No artists match these filters.";
 
+  const activeFilterCount =
+    (q ? 1 : 0) +
+    (nationalityFromQuery && !nationalityIsLocked ? 1 : 0) +
+    (decadeFromQuery && !decadeIsLocked ? 1 : 0) +
+    (hasUpcoming ? 1 : 0) +
+    (sort !== "name_asc" ? 1 : 0);
+
+  const resultCountLabel =
+    total > 0 ? `Show ${total} artist${total === 1 ? "" : "s"}` : "Show results";
+
   return (
-    <main id="main-content" className="pt-[var(--header-height)]">
+    <main id="main-content" className="overflow-x-clip pt-[var(--header-height)]">
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdScript(crumbsLd)}
       </script>
@@ -369,59 +397,73 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
         letterBar={letterBar}
       />
 
-      <section className="mx-auto max-w-7xl px-6 py-12 md:px-12">
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-12">
         <link rel="canonical" href={canonicalUrl} />
 
         <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
-          <MarketingFilterSidebar aria-label="Artist directory filters">
-            <ArtistDirectoryFilters
-              groups={filterGroups}
-              nationalities={facets.topNationalities}
-              buildNationalityHref={buildNationalityHref}
-              activeNationality={nationality ?? null}
-              clearHref={preset.canonicalPath}
-              hasFilters={hasUserFilters}
-            />
-          </MarketingFilterSidebar>
+          <div className="hidden lg:block">
+            <MarketingFilterSidebar aria-label="Artist directory filters">
+              <ArtistDirectoryFilters
+                groups={filterGroups}
+                {...(nationalityLinks !== undefined ? { nationalityLinks } : {})}
+                clearHref={preset.canonicalPath}
+                hasFilters={hasUserFilters}
+              />
+            </MarketingFilterSidebar>
+          </div>
 
           <div className="min-w-0">
             <MarketingListToolbar
-              className="mb-6 -mx-4 rounded-none border-x-0 md:-mx-6"
+              className="mb-6 rounded-none border-x-0"
               countLabel={countLabel}
+              mobileFilterTrigger={
+                <ArtistFiltersSheet
+                  activeCount={activeFilterCount}
+                  canonicalPath={preset.canonicalPath}
+                  sort={sort}
+                  groups={filterGroups}
+                  {...(nationalityLinks !== undefined ? { nationalityLinks } : {})}
+                  clearHref={preset.canonicalPath}
+                  hasFilters={hasUserFilters}
+                  resultCountLabel={resultCountLabel}
+                />
+              }
               sort={
-                <MarketingChipStrip aria-label="Sort artists">
-                  <span
-                    aria-hidden
-                    className="mr-1 shrink-0 snap-start font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
-                  >
-                    Sort
-                  </span>
-                  {SORT_OPTIONS.map((o) => {
-                    const active = (sort as SortValue) === o.value;
-                    const href = artistDirectoryWithQuery(preset.canonicalPath, sp, {
-                      sort: o.value === "name_asc" ? null : o.value,
-                      offset: null,
-                      view: layoutView,
-                    });
-                    return (
-                      <Link
-                        key={o.value}
-                        href={href}
-                        role="tab"
-                        aria-selected={active}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-widest ring-1 transition-colors",
-                          active
-                            ? "bg-primary text-on-primary ring-primary"
-                            : "bg-surface-container-low text-on-surface-variant ring-outline-variant/20 hover:bg-surface-container-high/80 hover:text-on-surface",
-                        )}
-                      >
-                        {o.label}
-                      </Link>
-                    );
-                  })}
-                </MarketingChipStrip>
+                <div className="hidden md:block">
+                  <MarketingChipStrip aria-label="Sort artists">
+                    <span
+                      aria-hidden
+                      className="mr-1 shrink-0 snap-start font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+                    >
+                      Sort
+                    </span>
+                    {SORT_OPTIONS.map((o) => {
+                      const active = (sort as SortValue) === o.value;
+                      const href = artistDirectoryWithQuery(preset.canonicalPath, sp, {
+                        sort: o.value === "name_asc" ? null : o.value,
+                        offset: null,
+                        view: layoutView,
+                      });
+                      return (
+                        <Link
+                          key={o.value}
+                          href={href}
+                          role="tab"
+                          aria-selected={active}
+                          aria-current={active ? "page" : undefined}
+                          className={cn(
+                            "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-widest ring-1 transition-colors",
+                            active
+                              ? "bg-primary text-on-primary ring-primary"
+                              : "bg-surface-container-low text-on-surface-variant ring-outline-variant/20 hover:bg-surface-container-high/80 hover:text-on-surface",
+                          )}
+                        >
+                          {o.label}
+                        </Link>
+                      );
+                    })}
+                  </MarketingChipStrip>
+                </div>
               }
               trailing={
                 <>

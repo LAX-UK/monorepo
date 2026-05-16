@@ -24,6 +24,8 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 type SheetContentProps = React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
+  /** Optional class names for the overlay (e.g. z-index above site chrome). */
+  overlayClassName?: string;
 };
 
 const sheetSideClasses: Record<NonNullable<SheetContentProps["side"]>, string> = {
@@ -36,9 +38,9 @@ const sheetSideClasses: Record<NonNullable<SheetContentProps["side"]>, string> =
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, overlayClassName, children, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(

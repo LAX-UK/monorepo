@@ -1,11 +1,11 @@
 import { ArtistCardGrid } from "@/components/marketing/artist-card";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
+import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import { artistPath } from "@/lib/seo/url";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -31,7 +31,7 @@ export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props
     <ArtistCardGrid
       href={href}
       aria-label={`View ${artist.displayName}`}
-      cornerAction={
+      portraitOverlay={
         <ArtistWatchHeart
           artistId={artist.id}
           artistName={artist.displayName}
@@ -41,29 +41,22 @@ export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props
         />
       }
       portrait={
-        artist.portraitUrl ? (
-          <Image
-            src={artist.portraitUrl}
-            alt={isBrand ? "" : altText}
-            fill
-            className="object-cover transition duration-500 group-hover:scale-[1.02]"
-            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 25vw"
-          />
-        ) : (
-          <div
-            className="flex h-full items-center justify-center font-headline text-5xl text-on-surface-variant/30"
-            aria-hidden
-          >
-            {artist.displayName.slice(0, 1)}
-          </div>
-        )
+        <MediaImage
+          src={artist.portraitUrl}
+          alt={isBrand ? "" : altText}
+          label={isBrand ? artist.displayName : "Artist portrait"}
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 25vw"
+        />
       }
       badges={
         <>
           {artist.featured ? <Badge>Featured</Badge> : null}
           {artist.verified ? <Badge variant="secondary">Verified</Badge> : null}
           {kindBadge ? (
-            <Badge variant="outline" className="bg-surface/85 backdrop-blur-sm">
+            <Badge
+              variant="outline"
+              className="hidden bg-surface/85 backdrop-blur-sm md:inline-flex"
+            >
               {kindBadge}
             </Badge>
           ) : null}
@@ -81,7 +74,7 @@ export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props
       }
       bio={
         artist.shortBio?.trim() ? (
-          <p className="mt-1 line-clamp-2 font-body text-sm text-on-surface-variant">
+          <p className="mt-1 hidden line-clamp-2 font-body text-sm text-on-surface-variant md:block">
             {artist.shortBio}
           </p>
         ) : null
@@ -97,7 +90,7 @@ export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props
           </Link>
           <Link
             href={href}
-            className="font-label text-[length:var(--text-label-1)] uppercase tracking-widest text-on-surface-variant hover:text-primary hover:underline"
+            className="hidden font-label text-[length:var(--text-label-1)] uppercase tracking-widest text-on-surface-variant hover:text-primary hover:underline sm:inline"
             aria-label={`View profile for ${artist.displayName}`}
           >
             View profile

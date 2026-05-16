@@ -57,7 +57,7 @@ export default function BuyPage() {
           </Link>
           . Artist pages and lot detail pages include estimates, images, provenance notes, and
           condition information where available; you can also explore{" "}
-          <Link href="/artist/featured" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/artists" className="text-primary underline-offset-4 hover:underline">
             featured artists
           </Link>
           .
