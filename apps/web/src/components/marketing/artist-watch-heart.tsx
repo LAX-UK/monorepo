@@ -4,6 +4,7 @@ import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
+import { cn } from "@auction/ui";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -69,13 +70,15 @@ export function ArtistWatchHeart({
       aria-pressed={watching}
       aria-label={label}
       title={label}
-      className={`inline-flex size-9 items-center justify-center rounded-full backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
+      className={cn(
+        "inline-flex size-9 items-center justify-center rounded-full backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
         watching
-          ? "bg-primary text-on-primary hover:bg-primary/90"
-          : "bg-surface/80 text-on-surface hover:bg-surface"
-      } ${busy ? "opacity-60" : ""}`}
+          ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface"
+          : "bg-surface/80 text-on-surface hover:bg-surface",
+        busy && "opacity-60",
+      )}
     >
-      <Heart className={`size-4 ${watching ? "fill-current" : ""}`} aria-hidden strokeWidth={2} />
+      <Heart className={cn("size-4", watching && "fill-current")} aria-hidden strokeWidth={2} />
     </button>
   );
 }

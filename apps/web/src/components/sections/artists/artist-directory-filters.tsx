@@ -1,8 +1,7 @@
-import type { PublicArtistDirectoryFacets } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
-type FilterLink = {
+export type ArtistDirectoryFilterLink = {
   label: string;
   href: string;
   count?: number | undefined;
@@ -11,17 +10,15 @@ type FilterLink = {
 
 type Props = {
   /** Section heading + groups of filter links. Server-rendered, no JS. */
-  groups: Array<{ id: string; title: string; links: FilterLink[] }>;
-  /** Top nationalities, rendered as a separate compact list. */
-  nationalities?: PublicArtistDirectoryFacets["topNationalities"];
-  /** Per-nationality URL builder (path-segment routes pass query, not segment). */
-  buildNationalityHref?: (value: string | null) => string;
-  /** Currently active nationality filter (null when not set). */
-  activeNationality?: string | null;
+  groups: Array<{ id: string; title: string; links: ArtistDirectoryFilterLink[] }>;
+  /** Pre-built nationality facet links (includes "Any"). */
+  nationalityLinks?: ArtistDirectoryFilterLink[];
   /** Builder for the "Clear all filters" link target. */
   clearHref?: string;
   /** Whether any user filter is currently applied (for showing the Clear link). */
   hasFilters?: boolean;
+  /** Called when a filter link is activated (e.g. close mobile sheet). */
+  onLinkClick?: () => void;
   className?: string;
 };
 
@@ -29,13 +26,14 @@ type Props = {
  * a real `<a href>` so filters work without JS and stay crawlable. */
 export function ArtistDirectoryFilters({
   groups,
-  nationalities,
-  buildNationalityHref,
-  activeNationality,
+  nationalityLinks,
   clearHref,
   hasFilters,
+  onLinkClick,
   className,
 }: Props) {
+  const linkClickProps = onLinkClick ? { onClick: onLinkClick } : {};
+
   return (
     <div
       className={cn(
@@ -47,6 +45,7 @@ export function ArtistDirectoryFilters({
         <div>
           <Link
             href={clearHref}
+            {...linkClickProps}
             className="inline-flex items-center font-label text-[11px] uppercase tracking-widest text-primary hover:underline"
           >
             Clear all filters
@@ -66,6 +65,7 @@ export function ArtistDirectoryFilters({
               <li key={link.label}>
                 <Link
                   href={link.href}
+                  {...linkClickProps}
                   aria-current={link.active ? "page" : undefined}
                   className={cn(
                     "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
@@ -86,7 +86,7 @@ export function ArtistDirectoryFilters({
           </ul>
         </section>
       ))}
-      {nationalities && nationalities.length > 0 && buildNationalityHref ? (
+      {nationalityLinks && nationalityLinks.length > 0 ? (
         <section aria-labelledby="filter-nationality">
           <h3
             id="filter-nationality"
@@ -95,42 +95,28 @@ export function ArtistDirectoryFilters({
             Top nationalities
           </h3>
           <ul className="space-y-1">
-            <li>
-              <Link
-                href={buildNationalityHref(null)}
-                aria-current={!activeNationality ? "page" : undefined}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm",
-                  !activeNationality
-                    ? "bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                )}
-              >
-                <span>Any</span>
-              </Link>
-            </li>
-            {nationalities.map((n) => {
-              const active = activeNationality?.toLowerCase() === n.value.toLowerCase();
-              return (
-                <li key={n.value}>
-                  <Link
-                    href={buildNationalityHref(n.value)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                    )}
-                  >
-                    <span>{n.value}</span>
+            {nationalityLinks.map((link) => (
+              <li key={link.label}>
+                <Link
+                  href={link.href}
+                  {...linkClickProps}
+                  aria-current={link.active ? "page" : undefined}
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
+                    link.active
+                      ? "bg-primary/10 text-primary"
+                      : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                  )}
+                >
+                  <span>{link.label}</span>
+                  {typeof link.count === "number" ? (
                     <span className="font-mono text-[10px] tabular-nums text-on-surface-variant/80">
-                      {n.count}
+                      {link.count}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  ) : null}
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}

@@ -36,7 +36,7 @@ export function megaMenuSectionActive(
   searchParams: Pick<URLSearchParams, "get"> | null,
 ): boolean {
   if (section.id === "artists") {
-    return pathname.startsWith("/artist");
+    return pathname.startsWith("/artists") || pathname.startsWith("/artist/");
   }
   if (section.id === "buy") {
     return pathname.startsWith("/search");
@@ -61,7 +61,9 @@ export function megaMenuSectionActive(
 }
 
 export function navItemActive(pathname: string, href: string): boolean {
-  if (href === "/artist/featured") return pathname.startsWith("/artist");
+  if (href === "/artists" || href.startsWith("/artists/")) {
+    return pathname.startsWith("/artists") || pathname.startsWith("/artist/");
+  }
   if (href.startsWith("/sales")) return pathname.startsWith("/sales");
   if (href.startsWith("/search")) return pathname.startsWith("/search");
   if (href.startsWith("/dashboard/seller")) return pathname.startsWith("/dashboard/seller");
