@@ -17,6 +17,7 @@ import {
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
+import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import {
   presentLotsImages,
@@ -457,19 +458,23 @@ export class SaleService {
     patch: UpdateSaleBody,
     userStaffRole?: string | null,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can edit sales", 403));
+    const role = userRole as UserRole;
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        new AuthzError("Only staff with auction.manage or catalogue.write can edit sales", 403),
+      );
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
+
     if (sale.status !== "draft") {
-      return err(new LotError("Only draft sales can be edited"));
+      if (patch.coverImages === undefined) {
+        return err(new LotError("Only draft sales can be edited"));
+      }
+      const updated = await this.saleRepo.update(saleId, { coverImages: patch.coverImages });
+      await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+      return ok(updated);
     }
     const nextStart = patch.startTime ?? sale.startTime;
     const nextEnd = patch.endTime ?? sale.endTime;

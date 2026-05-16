@@ -13,6 +13,7 @@ import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
@@ -213,13 +214,21 @@ export class LotService {
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const role = normalizeUserRoleOrClient(userRole);
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
-      return err(new AuthzError("Only staff with auction.manage can edit lots", 403));
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        new AuthzError("Only staff with auction.manage or catalogue.write can edit lots", 403),
+      );
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
+
     if (a.status !== "draft") {
-      return err(new LotError("Only draft lots can be edited"));
+      if (input.images === undefined) {
+        return err(new LotError("Only draft lots can be edited"));
+      }
+      const updated = await this.lotRepo.update(lotId, { images: input.images });
+      await this.imageCleanup?.enqueueRemovedMany(a.images, input.images);
+      return ok(updated);
     }
     const nextStart = input.startTime ?? a.startTime;
     const nextEnd = input.endTime ?? a.endTime;

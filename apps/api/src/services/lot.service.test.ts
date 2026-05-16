@@ -2,6 +2,7 @@ import type { Bid, CreateLotInput, LegalEntity, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
+import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
@@ -92,6 +93,85 @@ function createSut(overrides: { lot?: Partial<Lot> } = {}) {
   });
   return { svc, findById, updateMarketingDetails };
 }
+
+describe("LotService.update", () => {
+  it("allows images-only patch on active lot for catalogue.write staff", async () => {
+    const lot: Lot = { ...baseLot, status: "active", images: ["old.jpg"] };
+    const updated: Lot = { ...lot, images: ["new.jpg"] };
+    const update = vi.fn().mockResolvedValue(updated);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      update,
+    } as unknown as ILotRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+    });
+
+    const result = await svc.update("staff", lotId, { images: ["new.jpg"] }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, { images: ["new.jpg"] });
+    expect(enqueueRemovedMany).toHaveBeenCalledWith(["old.jpg"], ["new.jpg"]);
+  });
+
+  it("clears images with empty array on active lot", async () => {
+    const lot: Lot = { ...baseLot, status: "active", images: ["old.jpg"] };
+    const updated: Lot = { ...lot, images: [] };
+    const update = vi.fn().mockResolvedValue(updated);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      update,
+    } as unknown as ILotRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+    });
+
+    const result = await svc.update("staff", lotId, { images: [] }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, { images: [] });
+    expect(enqueueRemovedMany).toHaveBeenCalledWith(["old.jpg"], []);
+  });
+
+  it("on active lot only persists images when full form patch is sent", async () => {
+    const lot: Lot = { ...baseLot, status: "active", images: ["old.jpg"] };
+    const updated: Lot = { ...lot, images: ["new.jpg"] };
+    const update = vi.fn().mockResolvedValue(updated);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      update,
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update(
+      "staff",
+      lotId,
+      { images: ["new.jpg"], title: "Renamed" },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, { images: ["new.jpg"] });
+  });
+});
 
 describe("LotService.updateMarketingDetails", () => {
   it("returns 403 for non-admin", async () => {
