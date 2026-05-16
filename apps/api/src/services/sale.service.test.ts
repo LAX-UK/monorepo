@@ -249,7 +249,12 @@ describe("SaleService.updateDraft", () => {
       imageCleanup,
     });
 
-    const result = await svc.updateDraft("staff", sale.id, { coverImages: ["new.jpg"] }, "catalogue_manager");
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { coverImages: ["new.jpg"] },
+      "catalogue_manager",
+    );
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: ["new.jpg"] });
@@ -271,7 +276,12 @@ describe("SaleService.updateDraft", () => {
       imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
     });
 
-    const result = await svc.updateDraft("staff", sale.id, { coverImages: [] }, "catalogue_manager");
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { coverImages: [] },
+      "catalogue_manager",
+    );
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: [] });
@@ -316,7 +326,12 @@ describe("SaleService.updateDraft", () => {
       jobScheduler: null,
     });
 
-    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, "catalogue_manager");
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { title: "Renamed" },
+      "catalogue_manager",
+    );
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
