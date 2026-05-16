@@ -25,6 +25,7 @@ export function MarketingListToolbar({
   mobileFilterTrigger,
   className,
 }: MarketingListToolbarProps) {
+  const stackTrailingOnMobile = Boolean(mobileFilterTrigger && trailing);
   const hideFiltersOnMobile = Boolean(mobileFilterTrigger);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -61,31 +62,48 @@ export function MarketingListToolbar({
         )}
       >
         <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 py-2 md:px-8 md:py-3">
-          <div className="flex h-12 min-h-12 items-center gap-2 overflow-hidden md:h-14 md:min-h-14 md:gap-3">
-            {countLabel ? (
-              <p className="max-w-[7.5rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-widest text-on-surface-variant tabular-nums sm:max-w-[10rem]">
-                {countLabel}
-              </p>
-            ) : null}
-            {mobileFilterTrigger ? (
-              <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
-            ) : null}
-            {filters ? (
+          <div className="flex flex-col gap-2 md:gap-0">
+            <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
+              {countLabel ? (
+                <p className="max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-widest text-on-surface-variant tabular-nums sm:max-w-[10rem]">
+                  {countLabel}
+                </p>
+              ) : null}
+              {mobileFilterTrigger ? (
+                <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
+              ) : null}
+              {filters ? (
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 md:items-center",
+                    hideFiltersOnMobile ? "hidden md:flex" : "flex",
+                  )}
+                >
+                  {filters}
+                </div>
+              ) : null}
+              <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+                {sort ? <div className="shrink-0">{sort}</div> : null}
+                {trailing ? (
+                  <div
+                    className={cn(
+                      "flex shrink-0 items-center gap-2 md:gap-3",
+                      stackTrailingOnMobile && "hidden md:flex",
+                    )}
+                  >
+                    {trailing}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {stackTrailingOnMobile ? (
               <div
-                className={cn(
-                  "min-w-0 flex-1 md:items-center",
-                  hideFiltersOnMobile ? "hidden md:flex" : "flex",
-                )}
+                data-testid="mobile-trailing-row"
+                className="flex items-center justify-end gap-2 border-t border-outline-variant/10 pt-2 md:hidden"
               >
-                {filters}
+                {trailing}
               </div>
             ) : null}
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {sort ? <div className="shrink-0">{sort}</div> : null}
-              {trailing ? (
-                <div className="flex shrink-0 items-center gap-2 md:gap-3">{trailing}</div>
-              ) : null}
-            </div>
           </div>
         </div>
       </div>

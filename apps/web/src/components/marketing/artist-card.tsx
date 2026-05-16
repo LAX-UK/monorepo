@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 export type ArtistCardGridProps = {
   href: string;
   "aria-label": string;
-  cornerAction: ReactNode;
+  /** Watch / follow control overlaid on the portrait (bottom-right). */
+  portraitOverlay: ReactNode;
   portrait: ReactNode;
   badges: ReactNode;
   title: ReactNode;
@@ -16,11 +17,11 @@ export type ArtistCardGridProps = {
   className?: string;
 };
 
-/** Directory `4/5` portrait tile — watch heart in `cornerAction`, badges top-left. */
+/** Directory `4/5` portrait tile — watch heart in `portraitOverlay`, badges top-left. */
 export function ArtistCardGrid({
   href,
   "aria-label": ariaLabel,
-  cornerAction,
+  portraitOverlay,
   portrait,
   badges,
   title,
@@ -36,7 +37,6 @@ export function ArtistCardGrid({
         className,
       )}
     >
-      <div className="absolute right-3 top-3 z-10">{cornerAction}</div>
       <MarketingLinkCard
         href={href}
         aria-label={ariaLabel}
@@ -46,6 +46,9 @@ export function ArtistCardGrid({
           {portrait}
           <div className="pointer-events-none absolute left-3 top-3 z-[1] flex flex-wrap gap-1">
             {badges}
+          </div>
+          <div className="pointer-events-auto absolute bottom-3 right-3 z-10">
+            {portraitOverlay}
           </div>
         </div>
         <div className="flex flex-1 flex-col gap-1 p-3 md:p-4">

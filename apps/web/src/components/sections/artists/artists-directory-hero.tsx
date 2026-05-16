@@ -39,8 +39,14 @@ export function ArtistsDirectoryHero({
           { label: preset.heroTitle, current: true as const },
         ] as const);
 
+  const letterJumpLabel = (
+    <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+      Jump to letter
+    </p>
+  );
+
   return (
-    <section className="border-b border-outline-variant/15 bg-surface-container-lowest/40 px-6 py-14 md:px-12">
+    <section className="border-b border-outline-variant/15 bg-surface-container-lowest/40 px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-14">
       <MarketingPageShell variant="inner" className="!max-w-7xl !px-0">
         <MarketingBreadcrumb
           items={[...breadcrumbItems]}
@@ -56,7 +62,7 @@ export function ArtistsDirectoryHero({
         <form
           method="get"
           action={preset.canonicalPath}
-          className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end"
+          className="mt-6 flex items-end gap-2 sm:mt-8"
         >
           {sort !== "name_asc" ? <input type="hidden" name="sort" value={sort} /> : null}
           <input type="hidden" name="view" value={layoutView} />
@@ -72,15 +78,19 @@ export function ArtistsDirectoryHero({
               name="q"
               defaultValue={q ?? ""}
               placeholder="Name or keyword…"
-              className="h-12 rounded-md border border-outline-variant bg-surface px-4 font-body text-on-surface shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-11 min-h-11 rounded-md border border-outline-variant bg-surface px-4 font-body text-on-surface shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 sm:h-12"
             />
           </label>
-          <Button type="submit" className="h-12 shrink-0 px-8">
+          <Button type="submit" className="h-11 shrink-0 px-5 sm:h-12 sm:px-8">
             Search
           </Button>
         </form>
 
-        <div role="tablist" aria-label="Artist scenario" className="mt-6 flex flex-wrap gap-2">
+        <div
+          role="tablist"
+          aria-label="Artist scenario"
+          className="mt-5 flex flex-wrap gap-1.5 md:mt-6 md:gap-2"
+        >
           {segChips.map((c) => (
             <Link
               key={c.id}
@@ -88,7 +98,7 @@ export function ArtistsDirectoryHero({
               role="tab"
               aria-selected={c.active}
               className={cn(
-                "rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors",
+                "rounded-full px-3 py-1.5 font-label text-xs uppercase tracking-widest ring-1 transition-colors md:px-4 md:py-2",
                 c.active
                   ? "bg-primary text-on-primary ring-primary"
                   : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
@@ -99,10 +109,14 @@ export function ArtistsDirectoryHero({
           ))}
         </div>
 
-        <div className="mt-6">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+        <details className="mt-5 md:hidden">
+          <summary className="cursor-pointer font-label text-[10px] uppercase tracking-widest text-on-surface-variant marker:content-none [&::-webkit-details-marker]:hidden">
             Jump to letter
-          </p>
+          </summary>
+          <div className="mt-3">{letterBar}</div>
+        </details>
+        <div className="mt-6 hidden md:block">
+          {letterJumpLabel}
           {letterBar}
         </div>
       </MarketingPageShell>
