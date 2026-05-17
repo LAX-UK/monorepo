@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AuthzError, missingCatalogueCapabilityError } from "./errors.js";
-import { authzErrorJsonBody, missingCapabilityBody } from "./forbidden-response.js";
+import {
+  authzErrorJsonBody,
+  missingCapabilityBody,
+  originBlockedBody,
+} from "./forbidden-response.js";
 
 describe("forbidden-response", () => {
   it("missingCapabilityBody returns structured envelope", () => {
@@ -27,5 +31,9 @@ describe("forbidden-response", () => {
 
   it("authzErrorJsonBody falls back to message-only for plain AuthzError", () => {
     expect(authzErrorJsonBody(new AuthzError("Forbidden", 403))).toEqual({ error: "Forbidden" });
+  });
+
+  it("originBlockedBody includes origin_blocked code", () => {
+    expect(originBlockedBody()).toEqual({ error: "Forbidden", code: "origin_blocked" });
   });
 });

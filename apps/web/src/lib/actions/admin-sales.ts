@@ -1,6 +1,6 @@
 "use server";
 
-import { readApiMissingCapabilityMeta } from "@/lib/actions/_utils";
+import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -255,7 +255,7 @@ export async function adminUpdateSaleResultAction(
   const { adminSales } = getWriteContainer();
   const r = await adminSales.update(id, parsed.data);
   if (!r.ok) {
-    const meta = readApiMissingCapabilityMeta(r.body);
+    const meta = readApiActionErrorMeta(r.body);
     return actionFailure(r.message, undefined, r.status, r.code, meta);
   }
   revalidatePath("/admin/sales");
