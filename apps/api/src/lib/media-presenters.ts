@@ -25,6 +25,34 @@ export async function presentSaleImages(
   return { ...row, coverImages: await resolver.resolveMany(row.coverImages) };
 }
 
+/** Admin edit: keep raw storage keys and expose resolved URLs for thumbnails. */
+export type SaleAdminImages = Sale & {
+  coverImagePresentedUrls: string[];
+};
+
+export async function presentSaleAdminImages(
+  resolver: MediaUrlResolver | undefined,
+  row: Sale,
+): Promise<SaleAdminImages> {
+  const keys = row.coverImages;
+  const coverImagePresentedUrls = resolver ? await resolver.resolveMany(keys) : keys.map((k) => k);
+  return { ...row, coverImages: keys, coverImagePresentedUrls };
+}
+
+/** Admin edit: keep raw storage keys and expose resolved URLs for thumbnails. */
+export type LotAdminImages = Lot & {
+  imagePresentedUrls: string[];
+};
+
+export async function presentLotAdminImages(
+  resolver: MediaUrlResolver | undefined,
+  row: Lot,
+): Promise<LotAdminImages> {
+  const keys = row.images;
+  const imagePresentedUrls = resolver ? await resolver.resolveMany(keys) : keys.map((k) => k);
+  return { ...row, images: keys, imagePresentedUrls };
+}
+
 export async function presentSalesWithLotsImages(
   resolver: MediaUrlResolver | undefined,
   rows: { sale: Sale; lots: Lot[] }[],

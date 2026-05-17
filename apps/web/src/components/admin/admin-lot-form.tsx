@@ -139,19 +139,25 @@ export function AdminLotForm({
               }
               const r = await adminCreateLotResultAction(api.data);
               if (r.ok) {
-                if (r.data?.id) {
+                const newId = r.data?.id;
+                if (newId) {
                   const alts = await adminUpdateLotMarketingDetailsResultAction(
-                    r.data.id,
+                    newId,
                     formValuesToImageAltsPatch(values),
                   );
                   if (!alts.ok) {
-                    notify.error("Draft created, but image alt text could not be saved", {
+                    notify.warning("Draft created, but image alt text could not be saved", {
                       description: alts.error,
                     });
                   }
                 }
                 notify.success("Draft created");
-                router.push(`/admin/lots/${r.data?.id}`);
+                if (newId) {
+                  router.push(`/admin/lots/${newId}`);
+                } else {
+                  notify.warning("Draft created but id was missing — open it from the lots list.");
+                  router.push("/admin/lots");
+                }
                 return;
               }
               notify.error(r.error);
@@ -176,12 +182,12 @@ export function AdminLotForm({
                 formValuesToImageAltsPatch(values),
               );
               if (!alts.ok) {
-                notify.error("Lot saved, but image alt text could not be saved", {
+                notify.warning("Lot saved, but image alt text could not be saved", {
                   description: alts.error,
                 });
-                return;
+              } else {
+                notify.success("Saved");
               }
-              notify.success("Saved");
               router.push(`/admin/lots/${lotId}`);
               return;
             }

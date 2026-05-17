@@ -14,7 +14,7 @@ import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
-import { AuthzError, LotError } from "../lib/errors.js";
+import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
@@ -216,7 +216,11 @@ export class LotService {
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
     if (!canManageCatalogue(role, staff)) {
       return err(
-        new AuthzError("Only staff with auction.manage or catalogue.write can edit lots", 403),
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can edit lots",
+          role,
+          staff,
+        ),
       );
     }
     const a = await this.lotRepo.findById(lotId);

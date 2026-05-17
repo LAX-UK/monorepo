@@ -288,9 +288,9 @@ describe("SaleService.updateDraft", () => {
     expect(enqueueRemovedMany).toHaveBeenCalledWith(["old.jpg"], []);
   });
 
-  it("on scheduled sale only persists coverImages when full form patch is sent", async () => {
+  it("on scheduled sale persists allowed catalogue fields from patch", async () => {
     const sale = baseSale({ status: "scheduled", title: "Original", coverImages: ["old.jpg"] });
-    const updated = { ...sale, coverImages: ["new.jpg"] };
+    const updated = { ...sale, coverImages: ["new.jpg"], title: "Renamed" };
     const saleRepo: ISaleRepository = {
       findById: vi.fn().mockResolvedValue(sale),
       update: vi.fn().mockResolvedValue(updated),
@@ -311,10 +311,37 @@ describe("SaleService.updateDraft", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: ["new.jpg"] });
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, {
+      coverImages: ["new.jpg"],
+      title: "Renamed",
+    });
   });
 
-  it("rejects scheduled sale patch without coverImages", async () => {
+  it("allows title-only patch on scheduled sale", async () => {
+    const sale = baseSale({ status: "scheduled", title: "Original" });
+    const updated = { ...sale, title: "Renamed" };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService({
+      saleRepo,
+      lotRepo: {} as ILotRepository,
+      jobScheduler: null,
+    });
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { title: "Renamed" },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { title: "Renamed" });
+  });
+
+  it("rejects scheduled sale patch with only disallowed fields", async () => {
     const sale = baseSale({ status: "scheduled" });
     const saleRepo: ISaleRepository = {
       findById: vi.fn().mockResolvedValue(sale),
@@ -329,7 +356,7 @@ describe("SaleService.updateDraft", () => {
     const result = await svc.updateDraft(
       "staff",
       sale.id,
-      { title: "Renamed" },
+      { startTime: new Date("2030-01-02T12:00:00Z") },
       "catalogue_manager",
     );
 

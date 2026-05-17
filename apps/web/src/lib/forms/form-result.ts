@@ -12,8 +12,10 @@ export type ActionResult<T = void> =
       error: string;
       fieldErrors?: FieldErrorMap;
       status?: number;
-      /** Machine-readable API error code when present (e.g. `connect_required`). */
+      /** Machine-readable API error code when present (e.g. `connect_required`, `missing_capability`). */
       errorCode?: string;
+      /** Structured API payload (e.g. missing_capability actor/required). */
+      meta?: Record<string, unknown>;
     };
 
 export function actionSuccess<T = void>(data?: T): ActionResult<T> {
@@ -25,6 +27,7 @@ export function actionFailure(
   fieldErrors?: FieldErrorMap,
   status?: number,
   errorCode?: string,
+  meta?: Record<string, unknown>,
 ): ActionResult<never> {
   return {
     ok: false,
@@ -32,6 +35,7 @@ export function actionFailure(
     ...(fieldErrors !== undefined ? { fieldErrors } : {}),
     ...(status !== undefined ? { status } : {}),
     ...(errorCode !== undefined ? { errorCode } : {}),
+    ...(meta !== undefined ? { meta } : {}),
   };
 }
 

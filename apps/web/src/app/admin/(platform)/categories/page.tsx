@@ -2,9 +2,8 @@ import { AdminCategoriesBoard } from "@/components/admin/admin-categories-board"
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { Button } from "@/components/ui/button";
-import { categoriesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import { PaginationFooter } from "@auction/ui";
+import { getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Plus } from "lucide-react";
@@ -22,16 +21,12 @@ export default async function AdminCategoriesPage({
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const query = categoriesListController.parseQuery(sp);
-
-  let categories: Awaited<ReturnType<typeof categoriesListController.fetch>>["rows"] = [];
-  let total = 0;
+  const includeArchived = (sp.includeArchived ?? "").trim() === "true";
+  let categories: Awaited<ReturnType<typeof getAdminCategoryList>> = [];
   let listError: string | null = null;
 
   try {
-    const result = await categoriesListController.fetch(query);
-    categories = result.rows;
-    total = result.total ?? 0;
+    categories = await getAdminCategoryList({ includeArchived });
   } catch (e) {
     listError = e instanceof Error ? e.message : "Could not load categories.";
   }
@@ -44,13 +39,13 @@ export default async function AdminCategoriesPage({
           id: "active",
           label: "Active",
           href: buildListHref("/admin/categories", sp, { includeArchived: "", offset: 0 }),
-          active: !query.includeArchived,
+          active: !includeArchived,
         },
         {
           id: "archived",
           label: "Include archived",
           href: buildListHref("/admin/categories", sp, { includeArchived: "true", offset: 0 }),
-          active: Boolean(query.includeArchived),
+          active: includeArchived,
         },
       ]}
     />
@@ -58,8 +53,7 @@ export default async function AdminCategoriesPage({
 
   const filters = (
     <p className="max-w-xl font-body text-sm text-on-surface-variant">
-      Use the chips to include archived categories. Pagination applies to the flat list window
-      before the tree is built.
+      The full category tree is loaded at once so parent/child relationships stay intact.
     </p>
   );
 
@@ -90,28 +84,6 @@ export default async function AdminCategoriesPage({
   const view =
     !listError && categories.length > 0 ? <AdminCategoriesBoard categories={categories} /> : null;
 
-  const pagination =
-    !listError && categories.length > 0 ? (
-      <PaginationFooter
-        offset={query.offset}
-        limit={query.limit}
-        total={total}
-        countOnPage={categories.length}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/categories", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + categories.length < total
-            ? buildListHref("/admin/categories", sp, { offset: query.offset + query.limit })
-            : null
-        }
-      />
-    ) : null;
-
   return (
     <AdminListPage
       title="Categories"
@@ -127,11 +99,11 @@ export default async function AdminCategoriesPage({
       errorAlert={errorAlert}
       chips={chips}
       filters={filters}
-      hasFilters={Boolean(query.includeArchived)}
+      hasFilters={includeArchived}
       resetHref={buildListHref("/admin/categories", {}, { includeArchived: "", offset: 0 })}
       view={view}
       empty={empty}
-      pagination={pagination}
+      pagination={null}
     />
   );
 }

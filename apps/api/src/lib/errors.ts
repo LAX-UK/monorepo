@@ -24,14 +24,48 @@ export class LotError extends Error {
   }
 }
 
+import type { RoleCapability, UserRole, UserStaffRole } from "@auction/types";
+
+export type AuthzErrorMeta = {
+  code?: string;
+  required?: RoleCapability[];
+  actor?: { role: UserRole | string; staffRole: UserStaffRole | string | null };
+};
+
 export class AuthzError extends Error {
+  readonly code?: string;
+  readonly required?: RoleCapability[];
+  readonly actor?: AuthzErrorMeta["actor"];
+
   constructor(
     message: string,
     readonly status: number = 403,
+    meta?: AuthzErrorMeta,
   ) {
     super(message);
     this.name = "AuthzError";
+    if (meta?.code !== undefined) this.code = meta.code;
+    if (meta?.required !== undefined) this.required = meta.required;
+    if (meta?.actor !== undefined) this.actor = meta.actor;
   }
+}
+
+/** Catalogue write paths: auction.manage OR catalogue.write (matches {@link canManageCatalogue}). */
+export const CATALOGUE_WRITE_CAPABILITIES = [
+  "auction.manage",
+  "catalogue.write",
+] as const satisfies readonly RoleCapability[];
+
+export function missingCatalogueCapabilityError(
+  message: string,
+  role: UserRole | string,
+  staffRole?: UserStaffRole | string | null,
+): AuthzError {
+  return new AuthzError(message, 403, {
+    code: "missing_capability",
+    required: [...CATALOGUE_WRITE_CAPABILITIES],
+    actor: { role, staffRole: staffRole ?? null },
+  });
 }
 
 export class CategoryError extends Error {

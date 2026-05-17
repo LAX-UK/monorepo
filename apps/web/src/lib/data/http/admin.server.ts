@@ -399,13 +399,24 @@ export async function getAdminSalesList(
   }));
 }
 
-export async function getAdminSaleById(id: string): Promise<AdminSaleListRow | null> {
-  const res = await authedServerFetch(`/sales/${encodeURIComponent(id)}`);
+export type AdminSaleDetailRow = AdminSaleListRow & {
+  sale: AdminSaleListRow["sale"] & {
+    coverImagePresentedUrls?: string[];
+  };
+};
+
+export async function getAdminSaleById(id: string): Promise<AdminSaleDetailRow | null> {
+  const res = await authedServerFetch(`/sales/${encodeURIComponent(id)}/catalog-admin`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] } };
+  const saleRaw = body.data.sale as Record<string, unknown>;
+  const coverImagePresentedUrls = Array.isArray(saleRaw.coverImagePresentedUrls)
+    ? (saleRaw.coverImagePresentedUrls as unknown[]).map(String)
+    : undefined;
+  const sale = parseSale(saleRaw);
   return {
-    sale: parseSale(body.data.sale),
+    sale: coverImagePresentedUrls !== undefined ? { ...sale, coverImagePresentedUrls } : sale,
     lots: body.data.lots.map(parseLot),
   };
 }
