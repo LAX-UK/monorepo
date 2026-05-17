@@ -260,7 +260,7 @@ export function AdminSaleForm({
                     value={field.value}
                     onChange={field.onChange}
                     maxFiles={20}
-                    disabled={!isDraft || pending}
+                    disabled={pending}
                     previewUrlByKey={previewUrlByKey}
                     emptyTitle="No cover images yet"
                     emptyDescription="Upload cover images, then drag to reorder. The first image is the primary cover."
