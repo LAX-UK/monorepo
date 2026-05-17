@@ -19,7 +19,7 @@ import {
   safeParseUpdatePublishedSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { missingCapabilityNotifyMessage } from "@/lib/ui/missing-capability-message";
+import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import { type CategoryNode, type EntityDocument, saleDeliveryModes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -170,7 +170,13 @@ export function AdminSaleForm({
                 }
                 return;
               }
-              notify.error(missingCapabilityNotifyMessage(r.error, r.meta));
+              notify.error(
+                actionFailureNotifyMessage(r.error, {
+                  status: r.status,
+                  errorCode: r.errorCode,
+                  meta: r.meta,
+                }),
+              );
               return;
             }
             if (!saleId) {
@@ -193,7 +199,13 @@ export function AdminSaleForm({
               router.push(`/admin/sales/${saleId}`);
               return;
             }
-            notify.error(missingCapabilityNotifyMessage(r.error, r.meta));
+            notify.error(
+              actionFailureNotifyMessage(r.error, {
+                status: r.status,
+                errorCode: r.errorCode,
+                meta: r.meta,
+              }),
+            );
           });
         })}
       >

@@ -1,5 +1,7 @@
 import "server-only";
+import { CONSENT_COOKIE_NAME, parseConsentCookie } from "@/lib/analytics/consent/cookie";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
+import { buildAuthedSsrHeaders } from "@/lib/data/http/server-request-headers";
 import { cookies } from "next/headers";
 
 /** When INTERNAL_API_URL uses 127.0.0.1 but NEXT_PUBLIC_API_URL uses localhost (or vice versa),
@@ -46,14 +48,19 @@ export function getServerApiBase(): string {
 
 export async function getServerHc(): Promise<RpcApp> {
   const jar = await cookies();
-  const cookieHeader = jar
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
+  const consentRaw = jar.get(CONSENT_COOKIE_NAME)?.value;
+  const consentSnapshot = consentRaw ? parseConsentCookie(consentRaw) : null;
+
   return hcAsRpcApp(getServerApiBase(), {
-    fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-      const headers = new Headers(init?.headers as HeadersInit | undefined);
-      if (cookieHeader) headers.set("Cookie", cookieHeader);
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const headerOpts: Parameters<typeof buildAuthedSsrHeaders>[0] = {
+        skipActingLegalEntityHeader: true,
+        consent: consentSnapshot,
+      };
+      if (init?.headers !== undefined) {
+        headerOpts.init = init.headers;
+      }
+      const headers = await buildAuthedSsrHeaders(headerOpts);
       return fetch(input, {
         ...init,
         cache: init?.cache ?? "no-store",
