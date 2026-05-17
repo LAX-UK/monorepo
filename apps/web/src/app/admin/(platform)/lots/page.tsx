@@ -1,11 +1,12 @@
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
-import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
+import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { LotFilterForm } from "@/components/admin/lot-filter-form";
 import { Button } from "@/components/ui/button";
 import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
 import { getAdminArtistList, getAdminSalesList } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import type { LotStatus } from "@auction/types";
@@ -99,7 +100,16 @@ export default async function AdminLotsPage({
     title: a.title,
     auctionType: a.auctionType,
     status: a.status,
-    endTimeLabel: a.endTime.toISOString().slice(0, 16).replace("T", " "),
+    endTimeIso: a.endTime.toISOString(),
+    endTimeLabel: a.endTime.toLocaleString("en-GB", {
+      timeZone: "Europe/London",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
     currentPrice: a.currentPrice,
   }));
 
@@ -118,7 +128,7 @@ export default async function AdminLotsPage({
               });
         return {
           id: s,
-          label: s,
+          label: s === "all" ? "All" : (lotStatusLabel[s] ?? s),
           href,
           active: (s === "all" && !sp.status) || sp.status === s,
         };

@@ -110,7 +110,11 @@ export function AdminArtistForm({
                   : { ok: false as const, error: "Missing artist" };
             if (result.ok) {
               notify.success(mode === "create" ? "Artist created" : "Artist saved");
-              router.push("/admin/artists");
+              if (mode === "edit" && artistId) {
+                router.push(`/admin/artists/${artistId}`);
+              } else {
+                router.push("/admin/artists");
+              }
               router.refresh();
               return;
             }

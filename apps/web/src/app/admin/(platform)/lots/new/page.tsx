@@ -38,13 +38,18 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
     cloneDefaults = { ...cloneDefaults, auctionType: "english" };
   }
 
-  const [categories, salesRows, artistList] = await Promise.all([
+  const [categoriesResult, salesResult, artistResult] = await Promise.allSettled([
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminSalesList({ limit: 200 }).catch(() => []),
+    getAdminSalesList({ limit: 200 }),
     getAdminArtistList({ includeArchived: false, limit: 500 }),
   ]);
-  const artists = artistList.rows;
-  const sales = salesRows.map((r) => r.sale);
+  const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+  const sales = salesResult.status === "fulfilled" ? salesResult.value.map((r) => r.sale) : [];
+  const artists = artistResult.status === "fulfilled" ? artistResult.value.rows : [];
+  const loadWarnings: string[] = [];
+  if (categoriesResult.status === "rejected") loadWarnings.push("category tree");
+  if (salesResult.status === "rejected") loadWarnings.push("sales list");
+  if (artistResult.status === "rejected") loadWarnings.push("artist list");
 
   return (
     <AdminEntityFormShell
@@ -60,7 +65,9 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
       description={
         fromLotId
           ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
-          : undefined
+          : loadWarnings.length > 0
+            ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
+            : undefined
       }
     >
       <AdminLotForm
