@@ -135,6 +135,16 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   /** Backwards-compatible readiness alias for older deploy health checks. */
   app.get("/health", (c) => c.redirect("/health/ready", 307));
 
+  app.get("/system/health/upload-validation", async (c) => {
+    try {
+      const workers = await container.uploadValidationQueue.getWorkers();
+      const count = workers.length;
+      return c.json({ ok: count > 0, workers: count });
+    } catch {
+      return c.json({ ok: false, workers: 0 });
+    }
+  });
+
   app.get("/metrics", requireAuth, requirePlatformAdmin, async (c) => {
     const [activeRow] = await container.db
       .select({ n: sql<number>`count(*)::int` })

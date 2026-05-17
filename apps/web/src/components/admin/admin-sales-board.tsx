@@ -5,12 +5,11 @@ import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
 import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
-import { Input } from "@auction/ui/components/input";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 function SaleActionMenu({ row }: { row: AdminSaleBoardRow }) {
   const router = useRouter();
@@ -104,19 +103,11 @@ type Props = {
 
 export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
   const { density } = useTableDensity();
-  const [q, setQ] = useState("");
-
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((r) => r.title.toLowerCase().includes(needle));
-  }, [rows, q]);
-
   const columns = useMemo(() => saleColumns(), []);
 
   const cards = (
     <ul className="space-y-3">
-      {filtered.map((r) => (
+      {rows.map((r) => (
         <li
           key={r.saleId}
           className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
@@ -149,29 +140,12 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
       responsiveMode="auto"
       density={density}
       filters={statusChips ?? null}
-      search={
-        <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
-          <label
-            htmlFor="admin-sales-q"
-            className="font-label text-xs uppercase tracking-widest text-secondary"
-          >
-            Filter title
-          </label>
-          <Input
-            id="admin-sales-q"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Type to filter loaded rows…"
-            className="min-h-11 text-base md:text-sm"
-          />
-        </div>
-      }
       toolbarEnd={toolbarEnd}
       table={
         <DataTable
           columns={columns}
-          data={filtered}
-          emptyMessage="No sales match this filter."
+          data={rows}
+          emptyMessage="No sales on this page."
           density={density}
         />
       }

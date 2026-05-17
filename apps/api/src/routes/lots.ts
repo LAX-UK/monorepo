@@ -23,6 +23,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
 import { type AuthzError, LotError } from "../lib/errors.js";
+import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
@@ -91,7 +92,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
     const result = await container.lotService.bulkPublishOrCancel(userId, role, ids, op, staff);
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
     const { attempted, failed, errors } = result.value;
     return c.json({
@@ -154,7 +155,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const result = await container.lotService.cancel(userId, role, id, staff);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
@@ -172,7 +173,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const result = await container.lotService.update(role, id, body, staff);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
@@ -190,7 +191,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const result = await container.lotService.updateMarketingDetails(role, id, body, staff);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
@@ -310,7 +311,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
     const result = await container.lotService.create(userId, body);
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
     return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) }, 201);
   });

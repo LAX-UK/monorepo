@@ -17,7 +17,9 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
-import { LotError } from "../lib/errors.js";
+import { canManageCatalogue } from "../lib/catalogue-auth.js";
+import { CATALOGUE_WRITE_CAPABILITIES, LotError } from "../lib/errors.js";
+import { respondMissingCapability, serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import {
   presentLotImages,
@@ -100,6 +102,23 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     const detail = await container.saleService.getSaleDetailForPublicApi(id, userId);
+    if (!detail) return c.json({ error: "Not found" }, 404);
+    return c.json(detail);
+  });
+
+  r.get("/:id/catalog-admin", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    if (!canManageCatalogue(role, staff)) {
+      return respondMissingCapability(c, {
+        message:
+          "Only staff with auction.manage or catalogue.write can view catalogue admin detail",
+        required: [...CATALOGUE_WRITE_CAPABILITIES],
+        actor: { role, staffRole: staff },
+      });
+    }
+    const { id } = c.req.valid("param");
+    const detail = await container.saleService.getSaleDetailForCatalogAdmin(id);
     if (!detail) return c.json({ error: "Not found" }, 404);
     return c.json(detail);
   });
@@ -200,7 +219,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const patch = c.req.valid("json");
       const result = await container.saleService.updateDraft(role, id, patch, staffRole);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
     },
@@ -213,7 +232,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const { id } = c.req.valid("param");
     const result = await container.saleService.publish(userId, role, id, staffRole);
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
     const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
     return c.json({ data: data[0] });
@@ -226,7 +245,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const { id } = c.req.valid("param");
     const result = await container.saleService.unpublish(userId, role, id, staffRole);
     if (result.isErr()) {
-      return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
     return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
   });
@@ -243,7 +262,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const { id } = c.req.valid("param");
       const result = await container.saleService.cancel(userId, role, id, staffRole);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
     },
@@ -261,7 +280,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const body = c.req.valid("json");
       const result = await container.saleService.addLot(role, id, body, staffRole);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json(
         { data: await presentLotImages(container.mediaUrlResolver, result.value) },
@@ -280,7 +299,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const { id, lotId } = c.req.valid("param");
       const result = await container.saleService.attachExistingLot(role, id, lotId, staffRole);
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
@@ -319,7 +338,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         staffRole,
       );
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
       return c.json({ data: data[0] });
@@ -344,7 +363,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         staffRole,
       );
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },
@@ -369,7 +388,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         staffRole,
       );
       if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
     },

@@ -4,7 +4,10 @@ import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
-import { saleToAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
+import {
+  buildCoverImagePreviewMap,
+  saleToAdminSaleFormValues,
+} from "@/lib/forms/schemas/admin-sale-defaults";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -19,6 +22,12 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   const saleDocuments = await getServerSaleDocuments(id);
+  const previewUrlByKey = buildCoverImagePreviewMap(
+    sale.coverImages,
+    "coverImagePresentedUrls" in sale
+      ? (sale as { coverImagePresentedUrls?: string[] }).coverImagePresentedUrls
+      : undefined,
+  );
 
   return (
     <AdminEntityFormShell
@@ -40,6 +49,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         categories={categories}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         initialSaleDocuments={saleDocuments}
+        previewUrlByKey={previewUrlByKey}
       />
     </AdminEntityFormShell>
   );

@@ -2,6 +2,21 @@ import type { Sale } from "@auction/types";
 import { toDatetimeLocalValue } from "./admin-lot-defaults";
 import type { AdminSaleFormValues } from "./admin-sale-form";
 
+export type SaleWithPresentedCovers = Sale & { coverImagePresentedUrls?: string[] };
+
+/** Maps storage keys to resolved thumbnail URLs for admin image fields. */
+export function buildCoverImagePreviewMap(
+  coverImages: string[],
+  coverImagePresentedUrls: string[] = [],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  coverImages.forEach((key, i) => {
+    const url = coverImagePresentedUrls[i];
+    if (url) map[key] = url;
+  });
+  return map;
+}
+
 export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
   return {
     title: sale.title,

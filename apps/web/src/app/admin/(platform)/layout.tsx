@@ -1,3 +1,5 @@
+import { StaleStaffSessionBanner } from "@/components/admin/stale-staff-session-banner";
+import { UploadValidationDevBanner } from "@/components/admin/upload-validation-dev-banner";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { redirect } from "next/navigation";
@@ -12,5 +14,11 @@ export default async function AdminPlatformLayout({ children }: { children: Reac
   if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/admin/payments");
   }
-  return children;
+  return (
+    <>
+      <StaleStaffSessionBanner />
+      <UploadValidationDevBanner />
+      {children}
+    </>
+  );
 }

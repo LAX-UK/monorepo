@@ -17,7 +17,6 @@ const ARTIST_STATUS_OPTIONS: ReadonlyArray<{ value: ArtistStatus; label: string 
   { value: "approved", label: "Approved (visible to public)" },
   { value: "pending", label: "Pending review" },
   { value: "rejected", label: "Rejected (hidden)" },
-  { value: "merged_into", label: "Merged into another artist (read-only)" },
 ];
 
 export function CatalogueSection({ control, disabled = false }: ArtistFormSectionProps) {

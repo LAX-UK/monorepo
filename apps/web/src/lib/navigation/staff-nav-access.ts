@@ -35,3 +35,23 @@ export const CMS_ACCESS: CapabilityRequirement = {
 export const CONDITION_REPORTS_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "specialist.appraise", "platform.admin.full"],
 };
+
+export const LOTS_ACCESS: CapabilityRequirement = {
+  anyOf: ["catalogue.write", "auction.manage", "platform.admin.full"],
+};
+
+export const SALES_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "platform.admin.full"],
+};
+
+export const ARTISTS_ACCESS: CapabilityRequirement = {
+  anyOf: ["artist.read", "artist.review", "catalogue.write", "platform.admin.full"],
+};
+
+export const CATEGORIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["catalogue.write", "platform.admin.full"],
+};
+
+export const SALEROOM_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "platform.admin.full"],
+};

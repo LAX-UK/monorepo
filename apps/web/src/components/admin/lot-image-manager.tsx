@@ -13,9 +13,10 @@ type Props = {
   value: LotImageEntry[];
   onChange: (next: LotImageEntry[]) => void;
   maxFiles?: number;
+  disabled?: boolean;
 };
 
-export function LotImageManager({ value, onChange, maxFiles = 20 }: Props) {
+export function LotImageManager({ value, onChange, maxFiles = 20, disabled = false }: Props) {
   const { sensors, onDragEnd } = useImageReorder({ value, onChange });
   const remaining = Math.max(0, maxFiles - value.length);
 
@@ -42,6 +43,7 @@ export function LotImageManager({ value, onChange, maxFiles = 20 }: Props) {
           kind="lot_image"
           multiple
           maxFiles={remaining}
+          disabled={disabled}
           value={[]}
           onChange={(uploaded) => {
             const nextUploads = uploaded

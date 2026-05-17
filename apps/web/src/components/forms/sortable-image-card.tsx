@@ -10,6 +10,8 @@ import type { ReactNode } from "react";
 export type SortableImageCardProps = {
   /** Stable id for dnd-kit and image key/URL */
   id: string;
+  /** Resolved thumbnail URL; defaults to `id` when omitted. */
+  src?: string;
   index: number;
   /** Shown on MediaImage `label` */
   label: string;
@@ -25,6 +27,7 @@ export type SortableImageCardProps = {
 
 export function SortableImageCard({
   id,
+  src,
   index,
   label,
   imageAlt,
@@ -51,7 +54,7 @@ export function SortableImageCard({
     >
       <div className="relative overflow-hidden rounded-lg bg-surface-container-high">
         <MediaImage
-          src={id}
+          src={src ?? id}
           alt={imageAlt}
           label={label}
           aspect={[1, 1]}

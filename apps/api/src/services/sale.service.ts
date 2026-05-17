@@ -18,9 +18,10 @@ import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
-import { AuthzError, LotError } from "../lib/errors.js";
+import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import {
   presentLotsImages,
+  presentSaleAdminImages,
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
@@ -103,6 +104,17 @@ export class SaleService {
     if (!sale) return null;
     const lots = await this.lotRepo.findBySaleId(id);
     return { sale, lots };
+  }
+
+  /** Staff catalogue edit: raw storage keys plus parallel resolved URLs for thumbnails. */
+  async getSaleDetailForCatalogAdmin(saleId: string): Promise<{
+    data: { sale: Awaited<ReturnType<typeof presentSaleAdminImages>>; lots: Lot[] };
+  } | null> {
+    const bundle = await this.getByIdWithLots(saleId);
+    if (!bundle) return null;
+    const sale = await presentSaleAdminImages(this.mediaUrlResolver, bundle.sale);
+    const lots = await presentLotsImages(this.mediaUrlResolver, bundle.lots);
+    return { data: { sale, lots } };
   }
 
   /** Public sale detail: bundle, follow flag, resolved media URLs. */
@@ -462,18 +474,28 @@ export class SaleService {
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
     if (!canManageCatalogue(role, staff)) {
       return err(
-        new AuthzError("Only staff with auction.manage or catalogue.write can edit sales", 403),
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can edit sales",
+          role,
+          staff,
+        ),
       );
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
 
     if (sale.status !== "draft") {
-      if (patch.coverImages === undefined) {
+      const publishedPatch: Partial<CreateSaleInput> = {};
+      if (patch.coverImages !== undefined) publishedPatch.coverImages = patch.coverImages;
+      if (patch.title !== undefined) publishedPatch.title = patch.title;
+      if (patch.description !== undefined) publishedPatch.description = patch.description;
+      if (Object.keys(publishedPatch).length === 0) {
         return err(new LotError("Only draft sales can be edited"));
       }
-      const updated = await this.saleRepo.update(saleId, { coverImages: patch.coverImages });
-      await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+      const updated = await this.saleRepo.update(saleId, publishedPatch);
+      if (patch.coverImages !== undefined) {
+        await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+      }
       return ok(updated);
     }
     const nextStart = patch.startTime ?? sale.startTime;
