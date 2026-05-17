@@ -22,6 +22,16 @@ export function readApiMissingCapabilityMeta(body: unknown): Record<string, unkn
   };
 }
 
+/** Reads structured API error metadata for server-action `meta` (capability, origin, session). */
+export function readApiActionErrorMeta(body: unknown): Record<string, unknown> | undefined {
+  const code = readApiErrorCode(body);
+  if (!code) return undefined;
+  if (code === "missing_capability") return readApiMissingCapabilityMeta(body);
+  if (code === "origin_blocked") return { code: "origin_blocked" };
+  if (code === "session_required") return { code: "session_required" };
+  return { code };
+}
+
 /** Reads `{ code: string }` from JSON error bodies (e.g. lot publish `connect_required`). */
 export function readApiErrorCode(body: unknown): string | undefined {
   if (

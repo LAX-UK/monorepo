@@ -14,6 +14,19 @@ export type MissingCapabilityBody = {
   actor: MissingCapabilityActor;
 };
 
+export type OriginBlockedBody = {
+  error: string;
+  code: "origin_blocked";
+};
+
+export function originBlockedBody(message = "Forbidden"): OriginBlockedBody {
+  return { error: message, code: "origin_blocked" };
+}
+
+export function respondOriginBlocked(c: Context, message = "Forbidden") {
+  return c.json(originBlockedBody(message), 403);
+}
+
 export function missingCapabilityBody(
   message: string,
   required: RoleCapability[],

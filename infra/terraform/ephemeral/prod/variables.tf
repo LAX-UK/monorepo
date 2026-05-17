@@ -341,6 +341,12 @@ variable "verify_origin" {
   }
 }
 
+variable "ssr_trusted_origins" {
+  type        = string
+  default     = ""
+  description = "Optional comma-separated extra origins trusted by verify-origin for SSR server-side requests (e.g. when DO App Platform internal routing differs from WEB_ORIGIN). Empty means only WEB_ORIGIN is trusted."
+}
+
 variable "csp_enforce" {
   type        = string
   default     = "0"

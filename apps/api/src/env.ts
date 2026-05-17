@@ -60,6 +60,16 @@ const envSchema = z
         .filter((s) => s.length > 0);
       return parts.length > 0 ? parts : undefined;
     }, z.array(z.string().url()).optional()),
+    /** Extra origins allowed for verify-origin (SSR may send a different host than WEB_ORIGIN). */
+    SSR_TRUSTED_ORIGINS: z.preprocess((val) => {
+      if (val === undefined || val === "" || val == null) return undefined;
+      if (typeof val !== "string") return undefined;
+      const parts = val
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return parts.length > 0 ? parts : undefined;
+    }, z.array(z.string().url()).optional()),
     JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     /** Same 32-byte DEK as the auth issuer (64 hex or base64). Required in NODE_ENV=production. */
     AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
