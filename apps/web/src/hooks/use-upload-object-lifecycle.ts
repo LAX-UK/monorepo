@@ -27,6 +27,21 @@ export type ConfirmedUpload = {
   publicUrl: string;
 };
 
+export type UploadValidationOutcome =
+  | { kind: "active"; upload: ConfirmedUpload }
+  | { kind: "still_validating"; status: string }
+  | { kind: "rejected"; reason: string }
+  | { kind: "timeout" };
+
+const DEFAULT_VALIDATION_TIMEOUT_MS = 60_000;
+
+function uploadValidationTimeoutMs(): number {
+  const raw = process.env.NEXT_PUBLIC_UPLOAD_VALIDATION_TIMEOUT_MS;
+  if (!raw) return DEFAULT_VALIDATION_TIMEOUT_MS;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 5_000 ? n : DEFAULT_VALIDATION_TIMEOUT_MS;
+}
+
 async function errorFromResponse(response: Response, fallback: string): Promise<string> {
   const body = await response.json().catch(() => null);
   if (body && typeof body === "object" && typeof (body as { error?: unknown }).error === "string") {
@@ -35,8 +50,11 @@ async function errorFromResponse(response: Response, fallback: string): Promise<
   return fallback;
 }
 
-async function waitForActiveUpload(base: string, uploadId: string): Promise<ConfirmedUpload> {
-  const deadline = Date.now() + 30_000;
+async function waitForActiveUpload(
+  base: string,
+  uploadId: string,
+): Promise<UploadValidationOutcome> {
+  const deadline = Date.now() + uploadValidationTimeoutMs();
   while (Date.now() < deadline) {
     const res = await fetch(`${base}/uploads/${encodeURIComponent(uploadId)}`, {
       credentials: "include",
@@ -45,17 +63,40 @@ async function waitForActiveUpload(base: string, uploadId: string): Promise<Conf
     const body = (await res.json()) as UploadStatusResponse;
     if (body.data.status === "active" && body.data.publicUrl) {
       return {
-        uploadObjectId: body.data.id,
-        key: body.data.key,
-        publicUrl: body.data.publicUrl,
+        kind: "active",
+        upload: {
+          uploadObjectId: body.data.id,
+          key: body.data.key,
+          publicUrl: body.data.publicUrl,
+        },
       };
     }
     if (body.data.status === "rejected") {
-      throw new Error(body.data.rejectionReason ?? "Upload rejected");
+      return {
+        kind: "rejected",
+        reason: body.data.rejectionReason ?? "Upload rejected",
+      };
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (body.data.status === "uploaded" || body.data.status === "pending") {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      continue;
+    }
+    return { kind: "still_validating", status: body.data.status };
   }
-  throw new Error("Upload validation timed out");
+  return { kind: "timeout" };
+}
+
+export function uploadValidationErrorMessage(outcome: UploadValidationOutcome): string {
+  switch (outcome.kind) {
+    case "rejected":
+      return outcome.reason;
+    case "timeout":
+      return "Upload validation timed out. Ensure the validate-upload worker is running, then retry.";
+    case "still_validating":
+      return `Upload still validating (status: ${outcome.status})`;
+    default:
+      return "Upload failed";
+  }
 }
 
 export function useUploadObjectLifecycle() {
@@ -84,7 +125,10 @@ export function useUploadObjectLifecycle() {
       body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
     });
     if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
-    return waitForActiveUpload(base, presignBody.data.uploadId);
+
+    const outcome = await waitForActiveUpload(base, presignBody.data.uploadId);
+    if (outcome.kind === "active") return outcome.upload;
+    throw new Error(uploadValidationErrorMessage(outcome));
   }
 
   return { uploadFile };

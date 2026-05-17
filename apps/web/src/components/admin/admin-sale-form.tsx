@@ -16,8 +16,10 @@ import {
   adminSaleFormValuesSchema,
   normalizeAdminFormTiersToApi,
   safeParseCreateSaleFromForm,
+  safeParseUpdatePublishedSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
+import { missingCapabilityNotifyMessage } from "@/lib/ui/missing-capability-message";
 import { notify } from "@/lib/ui/notify";
 import { type CategoryNode, type EntityDocument, saleDeliveryModes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -54,6 +56,8 @@ type Props = {
   englishOnlyAuctionsLocked?: boolean;
   /** Staff-attached sale documents (edit mode). */
   initialSaleDocuments?: EntityDocument[];
+  /** Resolved cover URLs keyed by storage key (edit mode). */
+  previewUrlByKey?: Record<string, string>;
 };
 
 function zodIssuePathForForm(path: (string | number)[]): (string | number)[] {
@@ -83,6 +87,7 @@ export function AdminSaleForm({
   categories,
   englishOnlyAuctionsLocked = false,
   initialSaleDocuments = [],
+  previewUrlByKey = {},
 }: Props) {
   const isDraft = mode === "create" || !saleStatus || saleStatus === "draft";
   const [pending, startTransition] = useTransition();
@@ -157,17 +162,24 @@ export function AdminSaleForm({
               const r = await adminCreateSaleResultAction(api.data);
               if (r.ok) {
                 notify.success("Draft sale created");
-                if (r.data?.id) router.push(`/admin/sales/${r.data.id}`);
+                if (r.data?.id) {
+                  router.push(`/admin/sales/${r.data.id}`);
+                } else {
+                  notify.warning("Sale created but id was missing — open it from the sales list.");
+                  router.push("/admin/sales");
+                }
                 return;
               }
-              notify.error(r.error);
+              notify.error(missingCapabilityNotifyMessage(r.error, r.meta));
               return;
             }
             if (!saleId) {
               notify.error("Missing sale");
               return;
             }
-            const api = safeParseUpdateSaleFromForm(values);
+            const api = isDraft
+              ? safeParseUpdateSaleFromForm(values)
+              : safeParseUpdatePublishedSaleFromForm(values);
             if (!api.success) {
               for (const iss of api.error.issues) {
                 applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
@@ -181,7 +193,7 @@ export function AdminSaleForm({
               router.push(`/admin/sales/${saleId}`);
               return;
             }
-            notify.error(r.error);
+            notify.error(missingCapabilityNotifyMessage(r.error, r.meta));
           });
         })}
       >
@@ -248,6 +260,8 @@ export function AdminSaleForm({
                     value={field.value}
                     onChange={field.onChange}
                     maxFiles={20}
+                    disabled={!isDraft || pending}
+                    previewUrlByKey={previewUrlByKey}
                     emptyTitle="No cover images yet"
                     emptyDescription="Upload cover images, then drag to reorder. The first image is the primary cover."
                   />
@@ -286,8 +300,8 @@ export function AdminSaleForm({
         {!isDraft ? (
           <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 font-body text-sm text-on-surface-variant">
             <strong className="text-warning">Read-only fields:</strong> Schedule, delivery mode, and
-            buyer premium are locked after publish. Title, description, images, documents, and
-            marketing copy are still editable.
+            buyer premium are locked after publish. Title, description, and cover images are still
+            editable.
           </div>
         ) : null}
 
@@ -663,7 +677,8 @@ export function AdminSaleForm({
                 <FormControl>
                   <Input
                     type="datetime-local"
-                    className="min-h-11 py-3 font-body text-sm"
+                    className="min-h-11 py-3 font-body text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!isDraft}
                     {...field}
                   />
                 </FormControl>
@@ -715,6 +730,7 @@ export function AdminSaleForm({
                 type="button"
                 variant="outline"
                 size="sm"
+                disabled={!isDraft}
                 onClick={() => append({ hammerThresholdMajor: "0", rate: "" })}
               >
                 Add tier bands
@@ -739,6 +755,7 @@ export function AdminSaleForm({
                               <FormControl>
                                 <UnderlineInput
                                   placeholder="e.g. 500000 for £500k"
+                                  disabled={!isDraft}
                                   {...tierField}
                                 />
                               </FormControl>
@@ -755,7 +772,7 @@ export function AdminSaleForm({
                         <FormItem className="min-w-[120px] flex-1">
                           <FormLabel className="text-xs">Rate (0–1)</FormLabel>
                           <FormControl>
-                            <UnderlineInput placeholder="0.15" {...tierField} />
+                            <UnderlineInput placeholder="0.15" disabled={!isDraft} {...tierField} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -766,6 +783,7 @@ export function AdminSaleForm({
                       variant="ghost"
                       size="sm"
                       className="shrink-0 text-error"
+                      disabled={!isDraft}
                       onClick={() => remove(index)}
                     >
                       Remove
@@ -778,7 +796,7 @@ export function AdminSaleForm({
                     variant="outline"
                     size="sm"
                     onClick={() => append({ hammerThresholdMajor: "", rate: "" })}
-                    disabled={fields.length >= 16}
+                    disabled={!isDraft || fields.length >= 16}
                   >
                     Add band
                   </Button>
@@ -786,6 +804,7 @@ export function AdminSaleForm({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    disabled={!isDraft}
                     onClick={() => form.setValue("buyerPremiumTiers", [])}
                   >
                     Remove all bands

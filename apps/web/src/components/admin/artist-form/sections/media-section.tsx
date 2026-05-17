@@ -25,6 +25,7 @@ export function MediaSection({ control, disabled = false }: ArtistFormSectionPro
                 kind="artist_image"
                 multiple={false}
                 maxFiles={1}
+                disabled={disabled}
                 value={field.value ? [field.value] : []}
                 onChange={(next) => field.onChange(next[0] ?? "")}
               />
@@ -44,6 +45,7 @@ export function MediaSection({ control, disabled = false }: ArtistFormSectionPro
                 kind="artist_image"
                 multiple={false}
                 maxFiles={1}
+                disabled={disabled}
                 value={field.value ? [field.value] : []}
                 onChange={(next) => field.onChange(next[0] ?? "")}
               />
