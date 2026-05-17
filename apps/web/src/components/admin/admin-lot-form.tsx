@@ -20,6 +20,7 @@ import {
   safeParseCreateLotFromForm,
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
+import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import {
   type ArtistProfile,
@@ -160,7 +161,13 @@ export function AdminLotForm({
                 }
                 return;
               }
-              notify.error(r.error);
+              notify.error(
+                actionFailureNotifyMessage(r.error, {
+                  status: r.status,
+                  errorCode: r.errorCode,
+                  meta: r.meta,
+                }),
+              );
               return;
             }
             if (!lotId) {
@@ -191,7 +198,13 @@ export function AdminLotForm({
               router.push(`/admin/lots/${lotId}`);
               return;
             }
-            notify.error(r.error);
+            notify.error(
+              actionFailureNotifyMessage(r.error, {
+                status: r.status,
+                errorCode: r.errorCode,
+                meta: r.meta,
+              }),
+            );
           });
         })}
       >

@@ -1,22 +1,14 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import {
+  type AuthedServerFetchInit,
+  authedServerFetch as authedServerFetchImpl,
+} from "@/lib/data/http/authed-server-fetch";
 
-import { getServerApiBase } from "./hc-server";
-
-/** Cookie-authenticated fetch to the API from Server Components / server actions. */
+/** Back-compat wrapper: cookie + Origin, without acting legal-entity header. */
 export async function authedServerFetch(path: string, init?: RequestInit): Promise<Response> {
-  const jar = await cookies();
-  const cookie = jar
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-  const headers = new Headers(init?.headers);
-  if (cookie) headers.set("Cookie", cookie);
-  return fetch(`${getServerApiBase()}${path}`, {
+  return authedServerFetchImpl(path, {
     ...init,
-    cache: init?.cache ?? "no-store",
-    headers,
-    credentials: "include",
-  });
+    skipActingLegalEntityHeader: true,
+  } satisfies AuthedServerFetchInit);
 }

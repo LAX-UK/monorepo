@@ -1,4 +1,5 @@
 import { createMiddleware } from "hono/factory";
+import { respondOriginBlocked } from "../lib/forbidden-response.js";
 
 /** When VERIFY_ORIGIN=true, mutating browser requests must send Origin/Referer matching WEB_ORIGIN. */
 export function createVerifyOriginMiddleware(webOrigins: string[], enabled: boolean) {
@@ -26,7 +27,7 @@ export function createVerifyOriginMiddleware(webOrigins: string[], enabled: bool
     // Match the actual Better Auth session cookie names (with or without __Secure- prefix).
     const hasSessionCookie = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/.test(cookie);
     if (!origin && hasSessionCookie) {
-      return c.json({ error: "Forbidden" }, 403);
+      return respondOriginBlocked(c);
     }
     if (!origin) {
       await next();
@@ -34,7 +35,7 @@ export function createVerifyOriginMiddleware(webOrigins: string[], enabled: bool
     }
     const allowed = webOrigins.some((w) => origin === w || origin.startsWith(`${w}/`));
     if (!allowed) {
-      return c.json({ error: "Forbidden" }, 403);
+      return respondOriginBlocked(c);
     }
     await next();
   });

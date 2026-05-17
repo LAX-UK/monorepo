@@ -1,5 +1,6 @@
 "use server";
 
+import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -498,7 +499,8 @@ export async function adminUpdateLotResultAction(
   const { adminLots } = getWriteContainer();
   const r = await adminLots.update(id, parsed.data);
   if (!r.ok) {
-    return actionFailure(r.message, undefined, r.status);
+    const meta = readApiActionErrorMeta(r.body);
+    return actionFailure(r.message, undefined, r.status, r.code, meta);
   }
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);

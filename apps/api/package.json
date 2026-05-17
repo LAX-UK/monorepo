@@ -17,7 +17,7 @@
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
-    "lint": "biome check . && node scripts/check-org-routes-dip.mjs",
+    "lint": "biome check . && node scripts/check-org-routes-dip.mjs && node scripts/check-error-status.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "check:admin-dip": "node scripts/check-admin-routes-dip.mjs",

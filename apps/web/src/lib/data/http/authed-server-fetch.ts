@@ -1,8 +1,6 @@
 import "server-only";
 
-import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
-import { cookies } from "next/headers";
+import { buildAuthedSsrHeaders } from "@/lib/data/http/server-request-headers";
 import { getServerApiBase } from "./hc-server";
 
 export type AuthedServerFetchInit = RequestInit & {
@@ -14,34 +12,22 @@ export type AuthedServerFetchInit = RequestInit & {
 
 /** Cookie-authenticated `fetch` for Server Components and Server Actions.
  *
- * By default forwards `X-Legal-Entity-Id` from the acting-entity cookie so API
- * routes using strict `requireLegalEntityContext` (e.g. `/payouts`,
- * `/stripe-connect/*`, `/legal-entities/members`) receive a membership-valid
- * header. Dashboard pages that must target a specific entity should keep using
- * {@link import("./authed-fetch.server").authedServerFetch} with an explicit
- * header, or pass {@link AuthedServerFetchInit.skipActingLegalEntityHeader} here.
- *
- * Forwards session role + staff role so impersonation validation matches API rules.
+ * Forwards session cookies, SSR `Origin` (for API verify-origin), and by default
+ * `X-Legal-Entity-Id` from the acting-entity cookie.
  */
 export async function authedServerFetch(
   path: string,
   init?: AuthedServerFetchInit,
 ): Promise<Response> {
   const { skipActingLegalEntityHeader, ...fetchInit } = init ?? {};
-  const jar = await cookies();
-  const cookie = jar
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-  const headers = new Headers(fetchInit.headers);
-  if (cookie) headers.set("Cookie", cookie);
-  if (!skipActingLegalEntityHeader) {
-    const user = await getServerSessionUser();
-    const acting = await getActingLegalEntityHeader(user?.role ?? null, user?.staffRole ?? null);
-    for (const [k, v] of Object.entries(acting)) {
-      if (!headers.has(k)) headers.set(k, v);
-    }
+  const headerOpts: Parameters<typeof buildAuthedSsrHeaders>[0] = {};
+  if (skipActingLegalEntityHeader !== undefined) {
+    headerOpts.skipActingLegalEntityHeader = skipActingLegalEntityHeader;
   }
+  if (fetchInit.headers !== undefined) {
+    headerOpts.init = fetchInit.headers;
+  }
+  const headers = await buildAuthedSsrHeaders(headerOpts);
   return fetch(`${getServerApiBase()}${path}`, {
     ...fetchInit,
     cache: fetchInit.cache ?? "no-store",
