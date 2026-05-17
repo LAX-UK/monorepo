@@ -150,6 +150,15 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   });
 }
 
+/** Minimal patch for published sales (title, description, cover images only). */
+export function safeParseUpdatePublishedSaleFromForm(values: AdminSaleFormValues) {
+  return updateSaleSchema.safeParse({
+    title: values.title.trim() || undefined,
+    description: values.description.trim() || undefined,
+    coverImages: values.coverImages,
+  });
+}
+
 export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
   const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
   if (!tiers.ok) {

@@ -1,8 +1,10 @@
 "use client";
 
+import { UploadItem } from "@/components/forms/upload-item";
 import { MediaImage } from "@/components/ui/media-image";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
-import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
+import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRef, useState } from "react";
 
@@ -15,23 +17,17 @@ export type ImageUploadKind =
   | "artist_image"
   | "category_image";
 
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+
 type ImageUploadFieldProps = {
   kind: ImageUploadKind;
   multiple?: boolean;
   maxFiles?: number;
   value: string[];
   onChange: (next: string[]) => void;
-};
-
-type UploadItem = {
-  fileName: string;
-  status: "uploading" | "validating" | "done" | "error";
-  message?: string;
-};
-
-type UploadedImage = {
-  value: string;
-  previewUrl: string;
+  disabled?: boolean;
+  /** Map storage key → resolved URL for thumbnails (admin edit of seeded media). */
+  previewUrlByKey?: Record<string, string>;
 };
 
 function placeholderLabel(kind: ImageUploadKind): string {
@@ -51,70 +47,77 @@ function placeholderLabel(kind: ImageUploadKind): string {
   }
 }
 
+function dropzoneAriaLabel(kind: ImageUploadKind): string {
+  switch (kind) {
+    case "lot_image":
+      return "Upload lot images";
+    case "sale_cover":
+      return "Upload sale cover images";
+    case "artist_image":
+      return "Upload artist images";
+    case "category_image":
+      return "Upload category hero image";
+    case "avatar":
+      return "Upload profile photo";
+    case "submission_image":
+      return "Upload submission images";
+  }
+}
+
 export function ImageUploadField({
   kind,
   multiple = false,
   maxFiles = multiple ? 20 : 1,
   value,
   onChange,
+  disabled = false,
+  previewUrlByKey = {},
 }: ImageUploadFieldProps) {
-  const { uploadFile } = useUploadObjectLifecycle();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [items, setItems] = useState<UploadItem[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
   const label = placeholderLabel(kind);
   const isAvatar = kind === "avatar";
 
-  async function uploadFiles(files: FileList | File[]) {
-    const fileArray = Array.from(files).slice(0, Math.max(0, maxFiles - value.length));
-    if (fileArray.length === 0) return;
-    let nextValue = value;
-
-    for (const file of fileArray) {
-      setItems((prev) => [...prev, { fileName: file.name, status: "uploading" }]);
-      try {
-        const uploaded = await uploadOneFile(file, kind, uploadFile);
-        setPreviewUrls((prev) => ({ ...prev, [uploaded.value]: uploaded.previewUrl }));
-        nextValue = multiple ? [...nextValue, uploaded.value] : [uploaded.value];
-        onChange(nextValue);
-        setItems((prev) =>
-          prev.map((item) =>
-            item.fileName === file.name ? { ...item, status: "done", message: "Uploaded" } : item,
-          ),
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed";
-        setItems((prev) =>
-          prev.map((item) =>
-            item.fileName === file.name ? { ...item, status: "error", message } : item,
-          ),
-        );
-      }
-    }
-  }
+  const { items, uploadFiles, retry } = useUploadGallery({
+    kind,
+    value,
+    onChange,
+    maxFiles,
+    onError: (message) => notify.error("Upload failed", { description: message }),
+  });
 
   function removeAt(index: number) {
+    if (disabled) return;
     onChange(value.filter((_, i) => i !== index));
+  }
+
+  function displaySrc(key: string): string {
+    return previewUrlByKey[key] ?? key;
   }
 
   return (
     <div className="space-y-3">
       <button
         type="button"
+        disabled={disabled}
+        aria-label={dropzoneAriaLabel(kind)}
         className={`w-full rounded-lg border border-dashed p-6 text-left transition ${
-          dragging
-            ? "border-primary bg-primary-container/20"
-            : "border-outline-variant bg-surface-container-lowest"
+          disabled
+            ? "cursor-not-allowed opacity-60"
+            : dragging
+              ? "border-primary bg-primary-container/20"
+              : "border-outline-variant bg-surface-container-lowest"
         }`}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !disabled && inputRef.current?.click()}
         onDragEnter={(event) => {
+          if (disabled) return;
           event.preventDefault();
           setDragging(true);
         }}
         onDragOver={(event) => event.preventDefault()}
         onDragLeave={() => setDragging(false)}
         onDrop={(event) => {
+          if (disabled) return;
           event.preventDefault();
           setDragging(false);
           void uploadFiles(event.dataTransfer.files);
@@ -124,14 +127,15 @@ export function ImageUploadField({
           Upload images
         </span>
         <span className="mt-2 block font-body text-sm text-on-surface-variant">
-          Drop files here or click to choose. JPEG, PNG, and WebP are supported.
+          Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
         </span>
       </button>
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={IMAGE_ACCEPT}
         multiple={multiple}
+        disabled={disabled}
         className="hidden"
         onChange={(event) => {
           if (event.target.files) void uploadFiles(event.target.files);
@@ -143,7 +147,7 @@ export function ImageUploadField({
           {value.map((urlOrKey, index) => (
             <div key={urlOrKey} className="rounded-md border border-outline-variant/30 p-2">
               <MediaImage
-                src={previewUrls[urlOrKey] ?? urlOrKey}
+                src={displaySrc(urlOrKey)}
                 alt={label}
                 label={label}
                 shape={isAvatar ? "circle" : "rect"}
@@ -154,6 +158,7 @@ export function ImageUploadField({
                 type="button"
                 variant="ghost"
                 className="mt-2 h-auto px-2 py-1 text-xs"
+                disabled={disabled}
                 onClick={() => removeAt(index)}
               >
                 Remove
@@ -170,23 +175,16 @@ export function ImageUploadField({
         />
       )}
       {items.length > 0 ? (
-        <ul className="space-y-1 font-body text-xs text-on-surface-variant">
-          {items.map((item, index) => (
-            <li key={`${item.fileName}-${index}`}>
-              {item.fileName}: {item.message ?? item.status}
-            </li>
+        <ul className="space-y-2" aria-live="polite">
+          {items.map((item) => (
+            <UploadItem
+              key={item.id}
+              item={item}
+              {...(disabled ? {} : { onRetry: (fileName: string) => void retry(fileName) })}
+            />
           ))}
         </ul>
       ) : null}
     </div>
   );
-}
-
-async function uploadOneFile(
-  file: File,
-  kind: ImageUploadKind,
-  uploadFile: ReturnType<typeof useUploadObjectLifecycle>["uploadFile"],
-): Promise<UploadedImage> {
-  const out = await uploadFile(file, kind);
-  return { value: out.key, previewUrl: out.publicUrl };
 }

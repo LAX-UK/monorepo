@@ -1,5 +1,6 @@
 "use client";
 
+import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import {
   adminArchiveCategoryResultAction,
   adminDeleteCategoryResultAction,
@@ -20,6 +21,11 @@ type Props = {
 };
 
 type CategoryNode = AdminCategory & { children: CategoryNode[] };
+
+type PendingAction = {
+  category: AdminCategory;
+  action: "archive" | "delete";
+};
 
 function buildTree(categories: AdminCategory[]): CategoryNode[] {
   const nodes = new Map<string, CategoryNode>();
@@ -45,6 +51,7 @@ export function AdminCategoriesBoard({ categories }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<PendingAction | null>(null);
   const [pending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -66,6 +73,7 @@ export function AdminCategoriesBoard({ categories }: Props) {
           ? await adminArchiveCategoryResultAction(category.id)
           : await adminDeleteCategoryResultAction(category.id);
       setPendingId(null);
+      setConfirmAction(null);
       if (result.ok) {
         notify.success(action === "archive" ? "Category archived" : "Category deleted");
         router.refresh();
@@ -88,6 +96,7 @@ export function AdminCategoriesBoard({ categories }: Props) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search categories"
+          aria-label="Search categories"
           className="min-h-11 md:max-w-xs"
         />
       </CardHeader>
@@ -103,13 +112,34 @@ export function AdminCategoriesBoard({ categories }: Props) {
                 key={node.id}
                 node={node}
                 depth={0}
-                pending={pending && pendingId === node.id}
-                onAction={runAction}
+                pending={pending}
+                pendingId={pendingId}
+                onRequestAction={(category, action) => setConfirmAction({ category, action })}
               />
             ))}
           </ul>
         )}
       </CardContent>
+      {confirmAction ? (
+        <TypedConfirmationDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setConfirmAction(null);
+          }}
+          title={
+            confirmAction.action === "archive" ? "Archive this category?" : "Delete this category?"
+          }
+          description={
+            confirmAction.action === "archive"
+              ? "Archived categories stay in the tree but are hidden from new assignments."
+              : "This permanently removes an unused category. This cannot be undone."
+          }
+          actionLabel={confirmAction.action === "archive" ? "Archive" : "Delete"}
+          confirmationPhrase={confirmAction.category.slug}
+          severity={confirmAction.action === "delete" ? "danger" : "warning"}
+          onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -118,13 +148,17 @@ function CategoryTreeRow({
   node,
   depth,
   pending,
-  onAction,
+  pendingId,
+  onRequestAction,
 }: {
   node: CategoryNode;
   depth: number;
   pending: boolean;
-  onAction: (category: AdminCategory, action: "archive" | "delete") => void;
+  pendingId: string | null;
+  onRequestAction: (category: AdminCategory, action: "archive" | "delete") => void;
 }) {
+  const rowPending = pending && pendingId === node.id;
+
   return (
     <li>
       <div
@@ -153,7 +187,7 @@ function CategoryTreeRow({
             submissions.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 md:justify-end">
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/categories/${node.id}/edit`}>
               <Pencil className="size-3.5" aria-hidden />
@@ -165,8 +199,8 @@ function CategoryTreeRow({
               type="button"
               variant="outline"
               size="sm"
-              disabled={pending}
-              onClick={() => onAction(node, "archive")}
+              disabled={rowPending}
+              onClick={() => onRequestAction(node, "archive")}
             >
               <Archive className="size-3.5" aria-hidden />
               Archive
@@ -177,13 +211,17 @@ function CategoryTreeRow({
               type="button"
               variant="outline"
               size="sm"
-              disabled={pending}
-              onClick={() => onAction(node, "delete")}
+              disabled={rowPending}
+              onClick={() => onRequestAction(node, "delete")}
             >
               <Trash2 className="size-3.5" aria-hidden />
               Delete
             </Button>
-          ) : null}
+          ) : (
+            <Badge variant="outline" className="font-body text-[10px] font-normal normal-case">
+              Delete hidden — in use ({node.usage.total})
+            </Badge>
+          )}
         </div>
       </div>
       {node.children.length > 0 ? (
@@ -194,7 +232,8 @@ function CategoryTreeRow({
               node={child}
               depth={depth + 1}
               pending={pending}
-              onAction={onAction}
+              pendingId={pendingId}
+              onRequestAction={onRequestAction}
             />
           ))}
         </ul>

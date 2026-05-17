@@ -1,15 +1,16 @@
 "use client";
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
-import type { AdminLotTableRow } from "@/components/admin/admin-lots-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
+import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
 import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
+import type { LotStatus } from "@auction/types";
 import {
   DataTable,
   EmptyState,
@@ -17,11 +18,22 @@ import {
   InlineActionMenu,
   StatusBadge,
 } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+
+export type AdminLotTableRow = {
+  id: string;
+  title: string;
+  auctionType: string;
+  status: LotStatus;
+  endTimeIso: string;
+  endTimeLabel: string;
+  currentPrice: string;
+};
 
 function LotActionMenu({ row }: { row: AdminLotTableRow }) {
   const router = useRouter();
@@ -113,7 +125,7 @@ function lotColumns(): ColumnDef<AdminLotTableRow>[] {
       header: "Status",
       cell: ({ row }) => (
         <StatusBadge variant={lotStatusToBadgeVariant(row.original.status)}>
-          {row.original.status}
+          {lotStatusLabel[row.original.status] ?? row.original.status}
         </StatusBadge>
       ),
     },
@@ -121,7 +133,9 @@ function lotColumns(): ColumnDef<AdminLotTableRow>[] {
       accessorKey: "endTimeLabel",
       header: "Ends",
       cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">{row.original.endTimeLabel}</span>
+        <time dateTime={row.original.endTimeIso} className="text-xs text-on-surface-variant">
+          {row.original.endTimeLabel}
+        </time>
       ),
     },
     {
@@ -170,7 +184,12 @@ export function AdminLotsBoard({
   if (viewPipeline) {
     return (
       <div className="space-y-8">
-        {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
+        {listError || urlError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Could not load lots</AlertTitle>
+            <AlertDescription>{listError ?? urlError}</AlertDescription>
+          </Alert>
+        ) : null}
         <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
         {fullLots.length === 0 && !listError ? (
           <EmptyState
