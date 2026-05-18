@@ -1,5 +1,6 @@
 "use client";
 
+import { trackSearch } from "@/lib/analytics/events";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
@@ -57,7 +58,10 @@ export function SearchFilterForm({
           if (sort !== "endingAsc") params.set("sort", sort);
           if (categoryId) params.set("categoryId", categoryId);
           const qTrim = values.q.trim();
-          if (qTrim) params.set("q", qTrim);
+          if (qTrim) {
+            trackSearch(qTrim);
+            params.set("q", qTrim);
+          }
           if (view && (view === "grid" || view === "card" || view === "list")) {
             params.set("view", view);
           }
@@ -73,7 +77,7 @@ export function SearchFilterForm({
             <FormItem className="min-w-0 flex-1">
               <label
                 htmlFor="search-q"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
                 Keywords
               </label>

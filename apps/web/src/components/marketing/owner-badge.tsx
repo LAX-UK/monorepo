@@ -8,7 +8,7 @@ export function OwnerBadge({ owned, className = "" }: Props) {
   if (!owned) return null;
   return (
     <span
-      className={`inline-flex shrink-0 rounded-md bg-surface/95 px-2 py-1 font-label text-[0.6rem] font-bold uppercase tracking-widest text-primary shadow-sm ring-1 ring-primary/25 ${className}`}
+      className={`inline-flex shrink-0 rounded-md bg-surface/95 px-2 py-1 font-label text-[0.6rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary shadow-sm ring-1 ring-primary/25 ${className}`}
       aria-label="Your listing"
     >
       Your listing

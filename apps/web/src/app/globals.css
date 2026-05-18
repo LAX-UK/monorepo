@@ -80,6 +80,15 @@
   --color-inverse-primary: #e9c176;
   --color-background: #f9f9f9;
 
+  /* Shell semantic borders — prefer over border-outline-variant/NN in dashboard + admin */
+  --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 15%, transparent);
+  --color-border-soft: color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+  /** Positive KPI / delta accent (maps to lot-orange light, emerald dark via utilities) */
+  --color-delta-positive: var(--color-lot-orange);
+  --color-accent-buying: var(--color-primary);
+  --color-accent-selling: var(--color-lot-orange);
+  --color-accent-live: var(--color-live-red);
+
   /* shadcn/ui variable bridge — maps shadcn new-york tokens to existing Material-like tokens.
      Keep these as var() references so dark-mode overrides on the source tokens flow through.
      See packages/ui/src/components/ui/* for consumers (bg-primary, border, ring, popover, etc.). */
@@ -122,10 +131,12 @@
 
   --radius-DEFAULT: 0.125rem;
   --radius-md: 0.375rem;
-  --radius-lg: 0.25rem;
+  --radius-lg: 0.5rem;
   --radius-xl: 0.5rem;
   --radius-2xl: 0.75rem;
-  --radius-full: 0.75rem;
+  --radius-pill: 9999px;
+  /** @deprecated Use --radius-pill or Tailwind rounded-full */
+  --radius-full: 9999px;
 
   /* Micro type scale — chips, eyebrows, kbd hints (marketing chrome + cards) */
   --text-label-1: 0.625rem;
@@ -147,6 +158,8 @@
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
   --motion-duration-xl: 900ms;
+  --motion-duration-2xl: 1600ms;
+  --motion-duration-pulse: 1600ms;
   --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
@@ -176,7 +189,17 @@
   --text-display-sm: clamp(1.5rem, 1.4vw + 0.9rem, 1.875rem);
   --text-title-section: 2.5rem;
   --text-legal-h2: 1.125rem;
-  --text-label-caps-tracking: 0.3em;
+  --text-label-caps-tracking: 0.22em;
+  --text-label-caps-tracking-tight: 0.18em;
+  /* Mobile-first shell */
+  --tap-target-min: 44px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --header-height-mobile: 56px;
+  --header-height-shell: 52px;
+  --bottom-nav-height: 64px;
+  --shell-gutter-sm: 1rem;
+  --shell-gutter-md: 2rem;
+  --shell-gutter-lg: 3.5rem;
 }
 
 /* lg — utility bar + gap-6 + mega row + py-3 (matches `lg:` in site-header). */
@@ -316,12 +339,51 @@
 }
 
 .screen {
-  animation: dashboard-fade-in 0.25s ease both;
+  animation: dashboard-fade-in var(--motion-duration-sm) var(--motion-ease-decelerate) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .screen {
     animation: none;
+  }
+  .lift-row,
+  .tick-value,
+  .section-enter {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dashboard UX v3 motion grammar */
+.lift-row {
+  transition-property: transform, box-shadow;
+  transition-duration: var(--motion-duration-sm, 200ms);
+  transition-timing-function: var(--motion-ease-standard, ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lift-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  }
+}
+
+.tick-value {
+  animation: bidPriceBump 0.45s ease-out;
+}
+
+.section-enter {
+  animation: section-enter var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate) both;
+}
+
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -529,7 +591,7 @@ html.dark {
 }
 
 .live-dot-pulse {
-  animation: pulse-dot 1.6s ease-in-out infinite;
+  animation: pulse-dot var(--motion-duration-pulse) var(--motion-ease-standard) infinite;
 }
 
 .fade-up,
@@ -558,11 +620,12 @@ html.dark {
 }
 
 .wipe-in {
-  animation: wipe-in var(--motion-duration-xl, 900ms) 300ms var(--motion-ease-emphasize) both;
+  animation: wipe-in var(--motion-duration-xl) var(--motion-duration-md)
+    var(--motion-ease-emphasize) both;
 }
 
 .zoom-bg {
-  animation: zoom-bg 1800ms var(--motion-ease-emphasize) both;
+  animation: zoom-bg var(--motion-duration-2xl) var(--motion-ease-emphasize) both;
 }
 
 .tick-in {
@@ -594,7 +657,7 @@ html.dark {
     rgba(255, 255, 255, 0.08) 50%,
     transparent 100%
   );
-  animation: shimmer-sweep 1400ms var(--motion-ease-standard) infinite;
+  animation: shimmer-sweep var(--motion-duration-xl) var(--motion-ease-standard) infinite;
 }
 
 /* Gold border pulse (F3b) — emitted on a card when a new bid lands. Caller
@@ -705,7 +768,7 @@ html.dark {
 
 .reveal--zoom[data-revealed="true"] > .reveal__inner,
 .reveal--wipeZoom[data-revealed="true"] > .reveal__inner {
-  animation: revealZoomIn 1600ms var(--motion-ease-emphasize) forwards;
+  animation: revealZoomIn var(--motion-duration-2xl) var(--motion-ease-emphasize) forwards;
   animation-delay: var(--reveal-delay, 0ms);
 }
 
@@ -806,7 +869,7 @@ html.dark {
 }
 
 .animate-artwork-bid-flash {
-  animation: artwork-bid-flash 600ms ease-out;
+  animation: artwork-bid-flash var(--motion-duration-md) var(--motion-ease-decelerate);
 }
 
 @keyframes artwork-slide-up-fade {
@@ -821,7 +884,7 @@ html.dark {
 }
 
 .animate-artwork-slide-up-fade {
-  animation: artwork-slide-up-fade 320ms ease-out forwards;
+  animation: artwork-slide-up-fade var(--motion-duration-md) var(--motion-ease-decelerate) forwards;
   opacity: 0;
 }
 

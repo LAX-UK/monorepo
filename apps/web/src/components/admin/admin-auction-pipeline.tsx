@@ -23,9 +23,9 @@ export function AdminAuctionPipeline({ auctions }: Props) {
           return (
             <div
               key={status}
-              className="w-56 flex-shrink-0 rounded-sm border border-outline-variant/20 bg-surface-container-low/60 p-3"
+              className="w-56 flex-shrink-0 rounded-sm border border-border-hairline bg-surface-container-low/60 p-3"
             >
-              <h3 className="mb-3 border-b border-outline-variant/15 pb-2 font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h3 className="mb-3 border-b border-border-hairline pb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 {status}
                 <span className="ml-2 tabular-nums text-on-surface">({list.length})</span>
               </h3>

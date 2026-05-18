@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { renderWithViewer } from "@/test/render-with-viewer";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PublishLotButton } from "./publish-lot-button";
 
@@ -12,12 +13,12 @@ vi.mock("next/navigation", () => ({
 
 describe("PublishLotButton", () => {
   it("renders publish control", () => {
-    render(<PublishLotButton lotId="lot-1" sellerLegalEntityId={null} />);
+    renderWithViewer(<PublishLotButton lotId="lot-1" sellerLegalEntityId={null} />);
     expect(screen.getByRole("button", { name: "Publish" })).toBeInTheDocument();
   });
 
   it("keeps publish enabled independently of cancel flow", () => {
-    render(<PublishLotButton lotId="lot-1" sellerLegalEntityId={null} />);
+    renderWithViewer(<PublishLotButton lotId="lot-1" sellerLegalEntityId={null} />);
     const publish = screen.getByRole("button", { name: "Publish" });
     fireEvent.click(publish);
     expect(publish).toBeInTheDocument();

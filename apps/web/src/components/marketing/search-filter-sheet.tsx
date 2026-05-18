@@ -70,7 +70,7 @@ export function SearchFilterSheet({
         />
         {categories.length > 0 ? (
           <div>
-            <p className="mb-3 font-label text-xs uppercase tracking-widest text-secondary">
+            <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Category
             </p>
             <SearchCategoryChips

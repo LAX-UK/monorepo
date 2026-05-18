@@ -1,3 +1,7 @@
+import {
+  DashboardComplianceStrip,
+  DashboardComplianceStripSkeleton,
+} from "@/components/dashboard/dashboard-compliance-strip";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { PortfolioAnalyticsCard } from "@/components/dashboard/portfolio-analytics-card";
 import {
@@ -11,6 +15,8 @@ import {
   DashboardErrorAlert,
   DashboardSection,
 } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { Button } from "@/components/ui/button";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -19,8 +25,9 @@ import {
   filterPortfolioRows,
   toPortfolioLotCards,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Inbox } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 const PAYMENT_VALUES: ReadonlyArray<PortfolioFilterValue> = [
   "all",
@@ -73,11 +80,15 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   return (
     <DashboardPage className="space-y-8">
       <PortfolioNoticeToast />
-      <PageHeader
+      <DashboardPageHeader
+        meta="Buying"
         title="Private Collection"
         description="Lots where you are the winning bidder after the hammer fell."
-        className="mb-0 border-0 pb-0"
       />
+
+      <Suspense fallback={<DashboardComplianceStripSkeleton />}>
+        <DashboardComplianceStrip loginNext="/dashboard/portfolio" />
+      </Suspense>
 
       {fetchError ? (
         <DashboardErrorAlert
@@ -87,26 +98,28 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
       ) : null}
 
       {!fetchError && analytics.totalRows > 0 ? (
-        <DashboardSection id="portfolio-analytics" title="At a glance">
-          <PortfolioAnalyticsCard analytics={analytics} />
-        </DashboardSection>
+        <PortfolioAnalyticsCard analytics={analytics} />
       ) : null}
 
       {!fetchError ? (
-        <DashboardSection id="portfolio-filters" title="Filter your collection">
-          <PortfolioFilters
-            initialQ={sp.q ?? ""}
-            payment={payment}
-            year={year}
-            years={analytics.years}
-          />
-        </DashboardSection>
+        <DashboardToolbar
+          search={
+            <PortfolioFilters
+              initialQ={sp.q ?? ""}
+              payment={payment}
+              year={year}
+              years={analytics.years}
+            />
+          }
+        />
       ) : null}
 
       {!fetchError ? (
         <DashboardSection id="portfolio-grid" title="Acquired works">
           {filtered.length === 0 ? (
             <DashboardEmptyState
+              variant={!qRaw && payment === "all" && year == null ? "hero" : "quiet"}
+              icon={!qRaw && payment === "all" && year == null ? <Inbox aria-hidden /> : undefined}
               title={
                 qRaw || payment !== "all" || year != null ? "No matches" : "No acquired works yet"
               }

@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import {
   adminCancelSaleResultAction,
   adminMarkSaleEndedResultAction,
@@ -66,49 +67,44 @@ export function AdminSaleHeaderActions({
         </Button>
       ) : null}
       {canUnpublish ? (
-        <Button
-          type="button"
+        <ConfirmActionButton
           size="sm"
           variant="secondary"
           disabled={pending}
-          onClick={() => {
-            if (
-              !confirm("Revert this sale to draft? All scheduled lots will also revert to draft.")
-            )
-              return;
-            run(() => adminUnpublishSaleResultAction(saleId));
-          }}
+          confirmTitle="Revert sale to draft?"
+          confirmBody="All scheduled lots will also revert to draft."
+          confirmLabel="Revert to draft"
+          onConfirmed={() => run(() => adminUnpublishSaleResultAction(saleId))}
         >
           Revert to draft
-        </Button>
+        </ConfirmActionButton>
       ) : null}
       {canMarkOnsiteEnded ? (
-        <Button
-          type="button"
+        <ConfirmActionButton
           size="sm"
           variant="secondary"
           disabled={pending}
-          onClick={() => {
-            if (!confirm("End this onsite sale and all of its remaining lots?")) return;
-            run(() => adminMarkSaleEndedResultAction(saleId));
-          }}
+          tone="warning"
+          confirmTitle="End onsite sale?"
+          confirmBody="This will end the sale and all remaining lots."
+          confirmLabel="Mark ended"
+          onConfirmed={() => run(() => adminMarkSaleEndedResultAction(saleId))}
         >
           Mark onsite sale ended
-        </Button>
+        </ConfirmActionButton>
       ) : null}
       {canCancel ? (
-        <Button
-          type="button"
+        <ConfirmActionButton
           size="sm"
           variant="secondary"
           disabled={pending}
-          onClick={() => {
-            if (!confirm("Cancel the entire sale and remaining lots?")) return;
-            run(() => adminCancelSaleResultAction(saleId));
-          }}
+          confirmTitle="Cancel entire sale?"
+          confirmBody="This cancels the sale and remaining lots."
+          confirmLabel="Cancel sale"
+          onConfirmed={() => run(() => adminCancelSaleResultAction(saleId))}
         >
           Cancel sale
-        </Button>
+        </ConfirmActionButton>
       ) : null}
       <Button variant="ghost" size="sm" asChild>
         <Link href={salePath({ id: saleId, title: saleTitle })} target="_blank" rel="noreferrer">

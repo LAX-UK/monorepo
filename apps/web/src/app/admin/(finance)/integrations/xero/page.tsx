@@ -49,9 +49,9 @@ export default async function AdminXeroIntegrationPage({
       ) : null}
 
       {status ? (
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
+            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 OAuth configured
               </dt>
@@ -62,7 +62,7 @@ export default async function AdminXeroIntegrationPage({
                 <p className="mt-1 text-xs text-on-surface-variant">Set XERO_* env on API.</p>
               ) : null}
             </div>
-            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
+            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 Connected
               </dt>
@@ -71,7 +71,7 @@ export default async function AdminXeroIntegrationPage({
               </dd>
             </div>
             {status.tenantName ? (
-              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
+              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Organisation
                 </dt>
@@ -79,7 +79,7 @@ export default async function AdminXeroIntegrationPage({
               </div>
             ) : null}
             {status.tokenExpiresAt || status.expiresAt ? (
-              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4">
+              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Token expiry (UTC)
                 </dt>
@@ -88,7 +88,7 @@ export default async function AdminXeroIntegrationPage({
                 </dd>
               </div>
             ) : null}
-            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-low/35 p-4 sm:col-span-2">
+            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 Webhook URL
               </dt>

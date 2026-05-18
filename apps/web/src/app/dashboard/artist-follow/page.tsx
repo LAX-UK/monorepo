@@ -1,15 +1,15 @@
 import { ArtistFollowCard } from "@/components/dashboard/artist-follow-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import {
   DashboardEmptyState,
   DashboardErrorAlert,
   DashboardSection,
 } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Button } from "@auction/ui/components/button";
-import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 function fallbackArtistName(artistId: string): string {
@@ -34,15 +34,16 @@ export default async function ArtistFollowPage() {
 
   return (
     <DashboardPage>
-      <PageHeader
+      <DashboardPageHeader
+        meta="Buying"
         title="Followed artists"
         description="Jump to artist profiles you watch for new catalog drops."
-        className="border-0 pb-0"
       />
 
-      <DashboardSectionTabs
+      <SectionTabsNav
+        variant="underline"
         ariaLabel="Watchlist sections"
-        className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3"
+        className="rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
         items={[
           { href: "/dashboard/watchlist", label: "Lots" },
           { href: "/dashboard/artist-follow", label: "Artists", isActive: true },

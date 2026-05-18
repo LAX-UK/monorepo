@@ -25,7 +25,7 @@ export function SessionCard({
       className={
         view.isCurrent
           ? "flex items-start justify-between gap-4 rounded-xl border-2 border-primary/35 bg-surface-container-lowest p-4 ring-1 ring-primary/20"
-          : "flex items-start justify-between gap-4 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4"
+          : "flex items-start justify-between gap-4 rounded-xl border border-border-hairline bg-surface-container-lowest p-4"
       }
     >
       <div className="min-w-0 flex-1 space-y-1">
@@ -38,7 +38,7 @@ export function SessionCard({
             >
               {view.deviceLabel}
               {view.isCurrent ? (
-                <span className="ml-2 rounded-full bg-primary-container/50 px-2 py-0.5 font-label text-[10px] uppercase tracking-widest text-primary">
+                <span className="ml-2 rounded-full bg-primary-container/50 px-2 py-0.5 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                   This device
                 </span>
               ) : null}

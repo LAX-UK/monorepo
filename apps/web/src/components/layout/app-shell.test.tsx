@@ -1,3 +1,4 @@
+import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -83,7 +84,7 @@ const adminUser = {
 describe("AppShell", () => {
   it("renders public-site affordances for client dashboards", () => {
     render(
-      <AppShell user={clientUser} shellRole="client">
+      <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
         <p>Dashboard content</p>
       </AppShell>,
     );
@@ -100,12 +101,53 @@ describe("AppShell", () => {
 
   it("does not render public-site affordances for staff shells", () => {
     render(
-      <AppShell user={adminUser} shellRole="platform">
+      <AppShell user={adminUser} config={buildShellConfig({ user: adminUser, role: "platform" })}>
         <p>Admin content</p>
       </AppShell>,
     );
 
     expect(screen.queryByRole("link", { name: /view public lax site/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /browse lax\.bid/i })).not.toBeInTheDocument();
+  });
+
+  it("renders shell config slots in main landmark order", () => {
+    render(
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({
+          user: clientUser,
+          role: "client",
+          headerRightSlot: <span>Header action</span>,
+          topSlot: <p>Top notice</p>,
+          contextBanner: <p>Context banner</p>,
+        })}
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    const main = screen.getByRole("main");
+    expect(screen.getByText("Top notice")).toBeInTheDocument();
+    expect(screen.getByText("Context banner")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard content")).toBeInTheDocument();
+    expect(screen.getByText("Header action")).toBeInTheDocument();
+
+    const top = screen.getByText("Top notice");
+    const banner = screen.getByText("Context banner");
+    const content = screen.getByText("Dashboard content");
+    expect(main.compareDocumentPosition(top) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(top.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders client bottom tab bar from mobileNav", () => {
+    render(
+      <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    expect(
+      screen.getByRole("navigation", { name: /primary mobile dashboard navigation/i }),
+    ).toBeInTheDocument();
   });
 });

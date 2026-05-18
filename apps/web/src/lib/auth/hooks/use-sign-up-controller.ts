@@ -1,5 +1,6 @@
 "use client";
 
+import { trackSignUp } from "@/lib/analytics/events";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
@@ -55,6 +56,7 @@ export function useSignUpController(opts?: { inviteToken?: string; next?: string
     };
     const result = await run(turnstileToken ? { ...base, turnstileToken } : base);
     if (result.ok) {
+      trackSignUp();
       const params = new URLSearchParams({ persona: data.persona });
       const safe = opts?.next && isSafeNextPath(opts.next) ? opts.next : undefined;
       if (safe) params.set("next", safe);

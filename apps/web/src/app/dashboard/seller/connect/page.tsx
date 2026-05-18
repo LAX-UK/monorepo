@@ -1,10 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SellerConnectActions } from "./seller-connect-actions";
@@ -37,16 +38,16 @@ export default async function SellerStripeConnectPage() {
 
   return (
     <DashboardPage className="mx-auto max-w-2xl space-y-8">
-      <PageHeader
+      <DashboardPageHeader
+        meta="Selling"
         title="Stripe Connect"
         description="Complete payout verification so approved lots can be scheduled once finance enables Connect in production."
-        className="border-0 pb-0"
       />
 
       {err ? (
         <DashboardErrorAlert message={err} />
       ) : status ? (
-        <div className="space-y-4 rounded-md border border-outline-variant/20 bg-surface-container-low/40 p-6">
+        <Surface variant="section" padding="md" className="space-y-4">
           <dl className="grid gap-2 font-body text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-on-surface-variant">Account</dt>
@@ -89,7 +90,7 @@ export default async function SellerStripeConnectPage() {
           ) : (
             <SellerConnectActions ready={status.ready} />
           )}
-        </div>
+        </Surface>
       ) : null}
 
       <p className="font-body text-xs text-on-surface-variant">

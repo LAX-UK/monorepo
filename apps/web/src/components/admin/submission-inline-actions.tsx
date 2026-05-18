@@ -108,7 +108,7 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               approval.
             </p>
             <label htmlFor={approveNotesFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Internal notes (optional)
               </span>
               <Textarea
@@ -143,7 +143,7 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               <DialogTitle>Reject submission</DialogTitle>
             </DialogHeader>
             <label htmlFor={rejectReasonFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Rejection reason (required, shown to seller)
               </span>
               <Textarea
@@ -156,7 +156,7 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               />
             </label>
             <label htmlFor={rejectInternalNotesFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Internal notes (optional)
               </span>
               <Textarea
@@ -201,7 +201,7 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               approval.
             </p>
             <label htmlFor={approveNotesFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Internal notes (optional)
               </span>
               <Textarea
@@ -236,7 +236,7 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               <DialogTitle>Reject submission</DialogTitle>
             </DialogHeader>
             <label htmlFor={rejectReasonFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Rejection reason (required, shown to seller)
               </span>
               <Textarea

@@ -34,7 +34,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
       breadcrumbs={
         <Link
           href="/admin/users"
-          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Users
         </Link>
@@ -67,7 +67,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
         </TabsList>
         <TabsContent
           value="profile"
-          className="mt-6 space-y-8 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6"
+          className="mt-6 space-y-8 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6"
         >
           <dl className="grid gap-4 text-sm md:grid-cols-2">
             <div>
@@ -87,13 +87,15 @@ export default async function AdminUserDetailPage({ params }: Props) {
               </div>
             ) : null}
           </dl>
-          <div className="space-y-4 border-t border-outline-variant/15 pt-6">
-            <p className="font-label text-xs uppercase tracking-widest text-secondary">Role</p>
+          <div className="space-y-4 border-t border-border-hairline pt-6">
+            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Role
+            </p>
             <UserRoleAction userId={user.id} defaultRole={user.role as UserRole} layout="block" />
           </div>
           {user.role === "staff" && (
-            <div className="space-y-4 border-t border-outline-variant/15 pt-6">
-              <p className="font-label text-xs uppercase tracking-widest text-secondary">
+            <div className="space-y-4 border-t border-border-hairline pt-6">
+              <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Internal staff role
               </p>
               <p className="font-body text-xs text-on-surface-variant">
@@ -103,33 +105,33 @@ export default async function AdminUserDetailPage({ params }: Props) {
               <UserStaffRoleAction userId={user.id} defaultStaffRole={user.staffRole ?? null} />
             </div>
           )}
-          <div className="border-t border-outline-variant/15 pt-6">
+          <div className="border-t border-border-hairline pt-6">
             <UserSuspendAction userId={user.id} suspendedAt={user.suspendedAt} fullWidthButton />
           </div>
         </TabsContent>
         <TabsContent
           value="activity"
-          className="mt-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
+          className="mt-6 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
         >
           Bid history, submissions, watchlists, and notifications will hydrate from scoped admin
           APIs (Phase 1.4 backlog).
         </TabsContent>
         <TabsContent
           value="commerce"
-          className="mt-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
+          className="mt-6 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
         >
           Payments, invoices, and addresses surface once finance endpoints expose cross-links.
         </TabsContent>
         <TabsContent
           value="notes"
-          className="mt-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
+          className="mt-6 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6 font-body text-sm text-on-surface-variant"
         >
           Internal notes & tags require user_note / user_tag migrations before collaborative
           workflows unlock.
         </TabsContent>
         <TabsContent
           value="artists"
-          className="mt-6 space-y-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6"
+          className="mt-6 space-y-6 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-body text-sm text-on-surface-variant">
@@ -148,7 +150,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
           {linkedArtists.length === 0 ? (
             <p className="text-sm text-on-surface-variant">No linked artist profiles yet.</p>
           ) : (
-            <ul className="divide-y divide-outline-variant/20 rounded-lg border border-outline-variant/20 bg-surface-container-lowest">
+            <ul className="divide-y divide-outline-variant/20 rounded-lg border border-border-hairline bg-surface-container-lowest">
               {linkedArtists.map((a) => {
                 const kind = (a.kind ?? "artist") as ArtistKind;
                 const status = (a.status ?? "pending") as ArtistStatus;

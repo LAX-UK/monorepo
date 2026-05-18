@@ -57,7 +57,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <div className="flex items-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-low/50 px-3 py-2">
+      <div className="flex items-center gap-3 rounded-lg border border-border-hairline bg-surface-container-low/50 px-3 py-2">
         <Checkbox
           id="trust-device"
           checked={trustDevice}
@@ -83,7 +83,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                  <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                     Authenticator code
                   </FormLabel>
                   <FormControl>
@@ -126,7 +126,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                  <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                     Backup code
                   </FormLabel>
                   <FormControl>

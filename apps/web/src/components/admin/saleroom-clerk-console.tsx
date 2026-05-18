@@ -59,7 +59,9 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
       ) : null}
 
       <div className="rounded-lg border border-outline-variant/25 p-4">
-        <h2 className="font-label text-xs uppercase tracking-widest text-secondary">Session</h2>
+        <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Session
+        </h2>
         <p className="mt-1 font-body text-sm text-secondary">
           {saleTitle} · status: <span className="text-foreground">{status}</span>
           {currentLotId ? (
@@ -100,7 +102,9 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
       </div>
 
       <div className="rounded-lg border border-outline-variant/25 p-4">
-        <h2 className="font-label text-xs uppercase tracking-widest text-secondary">Advance</h2>
+        <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Advance
+        </h2>
         {lots.length === 0 ? (
           <p className="mt-2 font-body text-sm text-secondary">No lots on this sale yet.</p>
         ) : (
@@ -144,7 +148,7 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-outline-variant/25 p-4">
-          <h2 className="font-label text-xs uppercase tracking-widest text-secondary">
+          <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Recent events (DB)
           </h2>
           <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto font-mono text-xs text-secondary">
@@ -161,7 +165,7 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
           </ul>
         </div>
         <div className="rounded-lg border border-outline-variant/25 p-4">
-          <h2 className="font-label text-xs uppercase tracking-widest text-secondary">
+          <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Live feed (socket)
           </h2>
           <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto font-mono text-xs text-secondary">

@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@auction/ui/components/card";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import { Surface } from "@auction/ui/components/surface";
 import { Textarea } from "@auction/ui/components/textarea";
 import { ArrowRight, Send } from "lucide-react";
 import { useId, useMemo, useState } from "react";
@@ -56,93 +56,96 @@ export function ArtistChangeRequestForm({ recipient }: ArtistChangeRequestFormPr
   const submitDisabled = artistName.trim().length === 0 || details.trim().length < 8;
 
   return (
-    <Card className="border-outline-variant/15 bg-surface-container-lowest/80 shadow-sm">
-      <CardContent className="space-y-5 p-6" id={titleId}>
-        <header className="space-y-1">
-          <h2 className="font-headline text-lg font-semibold text-on-surface">Request a change</h2>
-          <p className="font-body text-sm text-on-surface-variant">
-            Send a structured request to the catalogue team. We&apos;ll reply once a specialist has
-            reviewed the update.
-          </p>
-        </header>
+    <Surface
+      variant="section"
+      padding="md"
+      className="space-y-5 border-border-hairline bg-surface-container-lowest/80 shadow-sm"
+      id={titleId}
+    >
+      <header className="space-y-1">
+        <h2 className="font-headline text-lg font-semibold text-on-surface">Request a change</h2>
+        <p className="font-body text-sm text-on-surface-variant">
+          Send a structured request to the catalogue team. We&apos;ll reply once a specialist has
+          reviewed the update.
+        </p>
+      </header>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor={artistId}>Artist / maker name</Label>
-            <Input
-              id={artistId}
-              value={artistName}
-              onChange={(event) => setArtistName(event.target.value)}
-              placeholder="e.g. Hossein Zenderoudi"
-              maxLength={120}
-              autoComplete="off"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={kindId}>What needs to change?</Label>
-            <select
-              id={kindId}
-              value={kind}
-              onChange={(event) => setKind(event.target.value as ChangeKind)}
-              className="h-11 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              {CHANGE_KIND_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="font-body text-xs text-on-surface-variant">
-              {CHANGE_KIND_OPTIONS.find((o) => o.value === kind)?.helper}
-            </p>
-          </div>
-        </div>
-
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor={detailsId}>Requested change</Label>
-          <Textarea
-            id={detailsId}
-            value={details}
-            onChange={(event) => setDetails(event.target.value)}
-            rows={4}
-            maxLength={2000}
-            placeholder="Describe the exact change — corrected text, new portrait link, attribution wording, etc."
+          <Label htmlFor={artistId}>Artist / maker name</Label>
+          <Input
+            id={artistId}
+            value={artistName}
+            onChange={(event) => setArtistName(event.target.value)}
+            placeholder="e.g. Hossein Zenderoudi"
+            maxLength={120}
+            autoComplete="off"
             required
           />
         </div>
-
         <div className="space-y-1.5">
-          <Label htmlFor={evidenceId}>Supporting evidence (optional)</Label>
-          <Textarea
-            id={evidenceId}
-            value={evidence}
-            onChange={(event) => setEvidence(event.target.value)}
-            rows={3}
-            maxLength={2000}
-            placeholder="Add gallery URLs, scholarly references, or any sources we can verify."
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" asChild={!submitDisabled} disabled={submitDisabled}>
-            {submitDisabled ? (
-              <span className="inline-flex items-center gap-2">
-                <Send className="size-4" aria-hidden /> Send request
-              </span>
-            ) : (
-              <a href={mailtoHref} className="inline-flex items-center gap-2">
-                <Send className="size-4" aria-hidden /> Send request{" "}
-                <ArrowRight className="size-4" aria-hidden />
-              </a>
-            )}
-          </Button>
+          <Label htmlFor={kindId}>What needs to change?</Label>
+          <select
+            id={kindId}
+            value={kind}
+            onChange={(event) => setKind(event.target.value as ChangeKind)}
+            className="h-11 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {CHANGE_KIND_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <p className="font-body text-xs text-on-surface-variant">
-            Submitting opens your email client with a pre-filled draft. We act on requests within 2
-            working days.
+            {CHANGE_KIND_OPTIONS.find((o) => o.value === kind)?.helper}
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={detailsId}>Requested change</Label>
+        <Textarea
+          id={detailsId}
+          value={details}
+          onChange={(event) => setDetails(event.target.value)}
+          rows={4}
+          maxLength={2000}
+          placeholder="Describe the exact change — corrected text, new portrait link, attribution wording, etc."
+          required
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={evidenceId}>Supporting evidence (optional)</Label>
+        <Textarea
+          id={evidenceId}
+          value={evidence}
+          onChange={(event) => setEvidence(event.target.value)}
+          rows={3}
+          maxLength={2000}
+          placeholder="Add gallery URLs, scholarly references, or any sources we can verify."
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="primary" asChild={!submitDisabled} disabled={submitDisabled}>
+          {submitDisabled ? (
+            <span className="inline-flex items-center gap-2">
+              <Send className="size-4" aria-hidden /> Send request
+            </span>
+          ) : (
+            <a href={mailtoHref} className="inline-flex items-center gap-2">
+              <Send className="size-4" aria-hidden /> Send request{" "}
+              <ArrowRight className="size-4" aria-hidden />
+            </a>
+          )}
+        </Button>
+        <p className="font-body text-xs text-on-surface-variant">
+          Submitting opens your email client with a pre-filled draft. We act on requests within 2
+          working days.
+        </p>
+      </div>
+    </Surface>
   );
 }

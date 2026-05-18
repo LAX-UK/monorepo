@@ -113,6 +113,10 @@
       "types": "./dist/components/ui/kpi-tile.d.ts",
       "default": "./dist/components/ui/kpi-tile.js"
     },
+    "./components/live-badge": {
+      "types": "./dist/components/ui/live-badge.d.ts",
+      "default": "./dist/components/ui/live-badge.js"
+    },
     "./components/toolbar": {
       "types": "./dist/components/ui/toolbar.d.ts",
       "default": "./dist/components/ui/toolbar.js"
@@ -216,6 +220,46 @@
     "./components/calendar": {
       "types": "./dist/components/ui/calendar.d.ts",
       "default": "./dist/components/ui/calendar.js"
+    },
+    "./components/surface": {
+      "types": "./dist/components/ui/surface.d.ts",
+      "default": "./dist/components/ui/surface.js"
+    },
+    "./components/list-row": {
+      "types": "./dist/components/ui/list-row.d.ts",
+      "default": "./dist/components/ui/list-row.js"
+    },
+    "./components/inset-group": {
+      "types": "./dist/components/ui/inset-group.d.ts",
+      "default": "./dist/components/ui/inset-group.js"
+    },
+    "./components/loading-button": {
+      "types": "./dist/components/ui/loading-button.d.ts",
+      "default": "./dist/components/ui/loading-button.js"
+    },
+    "./components/section-toc": {
+      "types": "./dist/components/ui/section-toc.d.ts",
+      "default": "./dist/components/ui/section-toc.js"
+    },
+    "./components/filter-row": {
+      "types": "./dist/components/ui/filter-row.d.ts",
+      "default": "./dist/components/ui/filter-row.js"
+    },
+    "./components/section-tabs": {
+      "types": "./dist/components/ui/section-tabs.d.ts",
+      "default": "./dist/components/ui/section-tabs.js"
+    },
+    "./components/confirm-dialog": {
+      "types": "./dist/components/ui/confirm-dialog.d.ts",
+      "default": "./dist/components/ui/confirm-dialog.js"
+    },
+    "./components/sticky-save-bar": {
+      "types": "./dist/components/ui/sticky-save-bar.d.ts",
+      "default": "./dist/components/ui/sticky-save-bar.js"
+    },
+    "./shell": {
+      "types": "./dist/shell/index.d.ts",
+      "default": "./dist/shell/index.js"
     }
   },
   "scripts": {

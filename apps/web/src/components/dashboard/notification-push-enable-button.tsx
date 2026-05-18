@@ -49,7 +49,7 @@ export function NotificationPushEnableButton({ saveDisabled = false }: { saveDis
         type="button"
         disabled={pushBusy || saveDisabled}
         onClick={() => void onEnablePush()}
-        className="h-auto rounded-md bg-primary px-4 py-3 font-label text-xs uppercase tracking-widest text-on-primary disabled:opacity-50"
+        className="h-auto rounded-md bg-primary px-4 py-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary disabled:opacity-50"
       >
         {pushBusy ? "Working…" : "Enable browser push"}
       </Button>

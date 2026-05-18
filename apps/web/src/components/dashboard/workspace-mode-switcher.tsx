@@ -66,7 +66,7 @@ export function WorkspaceModeSwitcher({ mode, hidden }: Props) {
           </SheetTrigger>
           <SheetContent side="bottom" className="border-outline-variant">
             <SheetHeader>
-              <SheetTitle className="font-label text-xs uppercase tracking-widest text-secondary">
+              <SheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Workspace
               </SheetTitle>
             </SheetHeader>

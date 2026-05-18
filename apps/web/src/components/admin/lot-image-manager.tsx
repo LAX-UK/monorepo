@@ -53,7 +53,7 @@ export function LotImageManager({ value, onChange, maxFiles = 20, disabled = fal
           }}
         />
       ) : (
-        <p className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4 font-body text-sm text-on-surface-variant">
+        <p className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 font-body text-sm text-on-surface-variant">
           Maximum of {maxFiles} lot images reached. Remove an image before uploading another.
         </p>
       )}

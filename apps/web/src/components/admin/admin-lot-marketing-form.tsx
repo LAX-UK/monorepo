@@ -51,7 +51,7 @@ export function AdminLotMarketingForm({ lotId, marketingDetails, artists, artist
     defaultValues: marketingDetailsToFormValues(marketingDetails),
   });
   return (
-    <div className="space-y-8 rounded-sm border border-outline-variant/20 bg-surface-container-lowest/40 p-6">
+    <div className="space-y-8 rounded-sm border border-border-hairline bg-surface-container-lowest/40 p-6">
       <div>
         <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
         <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Lot story</h2>
@@ -327,7 +327,7 @@ function ProvenanceListField({
       ) : null}
       <ul className="space-y-4">
         {fields.map((f, i) => (
-          <li key={f.id} className="space-y-3 rounded-lg border border-outline-variant/15 p-4">
+          <li key={f.id} className="space-y-3 rounded-lg border border-border-hairline p-4">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 space-y-2">
                 <FormField
@@ -417,7 +417,7 @@ function ExhibitionsListField({
       ) : null}
       <ul className="space-y-4">
         {fields.map((f, i) => (
-          <li key={f.id} className="space-y-3 rounded-lg border border-outline-variant/15 p-4">
+          <li key={f.id} className="space-y-3 rounded-lg border border-border-hairline p-4">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="grid gap-2 sm:grid-cols-2">

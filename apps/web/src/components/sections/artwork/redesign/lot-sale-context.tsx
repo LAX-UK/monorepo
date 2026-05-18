@@ -11,7 +11,7 @@ type Props = {
 /** Thin context row above the lot split: return to parent sale, title, size, end. */
 export function LotSaleContext({ backHref, title, lotCount, closesLabel }: Props) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant/20 pb-4 text-sm text-on-surface-variant">
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-hairline pb-4 text-sm text-on-surface-variant">
       <Link
         href={backHref}
         className="inline-flex min-w-0 max-w-full items-center gap-1 font-medium text-on-surface transition-colors hover:text-primary"

@@ -17,7 +17,7 @@ export function MarketingListSkeleton({ view, count = 9, className }: Props) {
     return (
       <div
         className={cn(
-          "-mx-4 max-w-none border-y border-outline-variant/15 bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-outline-variant/15",
+          "-mx-4 max-w-none border-y border-border-hairline bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-border-hairline",
           className,
         )}
       >

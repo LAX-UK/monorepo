@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { TimelineStages } from "@auction/ui";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -46,12 +46,14 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
     <>
       <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {items.map((row) => (
-          <li key={row.id}>
-            <Card
+          <li key={row.id} className="lift-row section-enter">
+            <Surface
+              variant="card"
+              padding="none"
               className={
                 isStacked
-                  ? "group flex h-full flex-col overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20"
-                  : "group grid h-full overflow-hidden border border-outline-variant/15 p-0 shadow-sm transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]"
+                  ? "group flex h-full flex-col overflow-hidden border border-border-hairline transition-colors hover:border-primary/25 hover:bg-surface-container-low/20"
+                  : "group grid h-full overflow-hidden border border-border-hairline transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]"
               }
             >
               <Link href={row.checkoutHref} className="block">
@@ -72,7 +74,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 </div>
               </Link>
               <div className="flex min-w-0 flex-col">
-                <CardHeader className="pb-2">
+                <div className="space-y-2 p-4 pb-2">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <StatusBadge
                       variant={row.paymentStatus === "captured" ? "success" : "warning"}
@@ -86,11 +88,11 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       </span>
                     ) : null}
                   </div>
-                  <CardTitle className="font-headline text-2xl font-light leading-tight group-hover:italic">
+                  <h3 className="font-headline text-2xl font-light leading-tight group-hover:italic">
                     <Link href={row.checkoutHref} className="underline-offset-4 hover:underline">
                       {row.title}
                     </Link>
-                  </CardTitle>
+                  </h3>
                   {row.artistName ? (
                     <p className="mt-1 font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
                       {row.artistName}
@@ -101,9 +103,9 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       {row.medium}
                     </p>
                   ) : null}
-                </CardHeader>
-                <CardContent className="flex-1 pb-2">
-                  <div className="grid grid-cols-3 gap-2 rounded-xl border border-outline-variant/15 bg-surface-container-low/45 p-3">
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-hairline bg-surface-container-low/45 p-3">
                     <div>
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Hammer
@@ -129,12 +131,12 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       </p>
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter className="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/10 pt-3">
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-hairline p-4 pt-3">
                   <Button
                     type="button"
                     variant="secondary"
-                    className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                    className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                     onClick={() => setOpenId(row.id)}
                   >
                     Details
@@ -142,7 +144,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                   {row.paymentStatus !== "captured" ? (
                     <Button
                       variant="primary"
-                      className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                      className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                       asChild
                     >
                       <Link href={row.checkoutHref}>Complete checkout</Link>
@@ -150,15 +152,15 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                   ) : (
                     <Button
                       variant="secondary"
-                      className="px-4 py-2 font-label text-xs uppercase tracking-widest"
+                      className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                       asChild
                     >
                       <Link href={row.checkoutHref}>View details</Link>
                     </Button>
                   )}
-                </CardFooter>
+                </div>
               </div>
-            </Card>
+            </Surface>
           </li>
         ))}
       </ul>
@@ -186,7 +188,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
             />
             {active.artistName ? (
               <p>
-                <span className="font-label text-xs uppercase tracking-widest text-on-surface">
+                <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                   Artist
                 </span>
                 <br />
@@ -195,7 +197,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
             ) : null}
             {active.medium ? (
               <p>
-                <span className="font-label text-xs uppercase tracking-widest text-on-surface">
+                <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                   Medium
                 </span>
                 <br />
@@ -204,7 +206,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
             ) : null}
             {active.dimensions ? (
               <p>
-                <span className="font-label text-xs uppercase tracking-widest text-on-surface">
+                <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                   Dimensions
                 </span>
                 <br />
@@ -213,7 +215,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
             ) : null}
             {active.paymentStatus ? (
               <p>
-                <span className="font-label text-xs uppercase tracking-widest text-on-surface">
+                <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                   Payment
                 </span>
                 <br />
@@ -221,7 +223,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
               </p>
             ) : null}
             <div className="space-y-2">
-              <span className="block font-label text-xs uppercase tracking-widest text-on-surface">
+              <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                 Paperwork
               </span>
               <ul className="space-y-1.5 text-sm">

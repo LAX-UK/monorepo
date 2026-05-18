@@ -27,8 +27,10 @@ export function AdminPaymentXeroPanel(p: Props) {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-outline-variant/15 bg-surface-container-low/40 p-4">
-      <p className="font-label text-[10px] uppercase tracking-widest text-secondary">Xero</p>
+    <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
+      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Xero
+      </p>
       {p.xeroInvoiceNumber ? (
         <p className="font-body text-sm text-on-surface">
           Invoice <span className="font-mono text-xs">{p.xeroInvoiceNumber}</span>

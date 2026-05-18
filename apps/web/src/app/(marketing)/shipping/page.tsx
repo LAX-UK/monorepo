@@ -78,7 +78,7 @@ export default function ShippingPage() {
         </p>
         <div className="overflow-x-auto rounded-sm border border-divider-soft">
           <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="bg-surface-container-low font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant">
+            <thead className="bg-surface-container-low font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               <tr>
                 <th className="px-4 py-3">Region</th>
                 <th className="px-4 py-3">Standard Shipping</th>

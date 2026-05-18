@@ -3,7 +3,7 @@
 import { defaultArtistWatchlistClient } from "@/lib/data/http/artist-watchlist.client";
 import { artistPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { Card, CardContent } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,34 +41,37 @@ export function ArtistFollowCard({ artistId, displayName }: Props) {
   if (hidden) return null;
 
   return (
-    <Card className="border-outline-variant/15 shadow-sm transition-colors hover:border-primary/25 hover:shadow-md">
-      <CardContent className="grid grid-cols-[1fr_auto] items-center gap-3 p-3 sm:p-4">
-        <Link
-          href={artistPath({ id: artistId, name: displayName })}
-          title={displayName}
-          className="min-w-0 truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline"
+    <Surface
+      variant="section"
+      padding="sm"
+      interactive
+      className="grid grid-cols-[1fr_auto] items-center gap-3 border-border-hairline shadow-sm hover:border-primary/25 hover:shadow-md"
+    >
+      <Link
+        href={artistPath({ id: artistId, name: displayName })}
+        title={displayName}
+        className="min-w-0 truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline"
+      >
+        {displayName}
+      </Link>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          onClick={unfollow}
+          disabled={isPending}
+          aria-label={`Unfollow ${displayName}`}
         >
-          {displayName}
-        </Link>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={unfollow}
-            disabled={isPending}
-            aria-label={`Unfollow ${displayName}`}
-          >
-            <X className="size-4" aria-hidden />
-            <span className="ml-1 hidden sm:inline">Unfollow</span>
-          </Button>
-        </div>
-        {error ? (
-          <p className="col-span-2 text-xs text-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
+          <X className="size-4" aria-hidden />
+          <span className="ml-1 hidden sm:inline">Unfollow</span>
+        </Button>
+      </div>
+      {error ? (
+        <p className="col-span-2 text-xs text-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </Surface>
   );
 }

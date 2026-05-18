@@ -40,7 +40,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
       ))}
       <Link
         href="/admin/audit/timeline"
-        className="rounded-full bg-surface-container-low px-3 py-1 font-label text-xs uppercase tracking-widest ring-1 ring-outline-variant/20 hover:bg-surface-container-high/80"
+        className="rounded-full bg-surface-container-low px-3 py-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 ring-outline-variant/20 hover:bg-surface-container-high/80"
       >
         Aggregate timeline
       </Link>
@@ -62,7 +62,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
       {quickFilters}
       <form method="get" action="/admin/audit/events" className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Event type prefix
           </span>
           <input
@@ -74,7 +74,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Limit
           </span>
           <input
@@ -88,7 +88,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
         </label>
         <button
           type="submit"
-          className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-widest text-on-primary transition-colors hover:bg-primary/90"
+          className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
         >
           Apply
         </button>

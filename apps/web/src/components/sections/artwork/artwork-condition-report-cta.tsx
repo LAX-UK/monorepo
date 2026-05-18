@@ -35,7 +35,7 @@ export function ArtworkConditionReportCta({
   if (!isAuthenticated) {
     return (
       <div className="rounded-md border border-outline-variant/30 bg-surface-container-low/50 p-3">
-        <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+        <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Condition report
         </p>
         <Button asChild variant="outline" size="sm" className="mt-2 min-h-9 w-full">
@@ -89,7 +89,7 @@ export function ArtworkConditionReportCta({
 
   return (
     <div className="rounded-md border border-outline-variant/30 bg-surface-container-low/50 p-3">
-      <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Condition report
       </p>
       <p className="mt-1 font-body text-xs text-secondary">

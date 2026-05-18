@@ -1,6 +1,7 @@
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { EntityList } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type AdminListPageProps = {
@@ -44,25 +45,29 @@ export function AdminListPage({
   const showToolbar = Boolean(filters || toolbarEnd);
   return (
     <AppScreen className={className ?? "space-y-6"}>
-      <PageHeader
+      <DashboardPageHeader
         title={title}
         {...(description ? { description } : {})}
         {...(meta ? { meta } : {})}
         {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(primaryAction ? { actions: primaryAction } : {})}
       />
-      {errorAlert}
       {chips}
-      {showToolbar ? (
-        <AdminListToolbar
-          filters={filters}
-          extra={toolbarEnd}
-          hasFilters={Boolean(hasFilters)}
-          resetHref={resetHref ?? ""}
-        />
-      ) : null}
       {bulkBar}
-      {view}
+      <EntityList
+        filters={
+          showToolbar ? (
+            <AdminListToolbar
+              filters={filters}
+              extra={toolbarEnd}
+              hasFilters={Boolean(hasFilters)}
+              resetHref={resetHref ?? ""}
+            />
+          ) : undefined
+        }
+        table={view}
+        {...(errorAlert ? { error: errorAlert } : {})}
+      />
       {empty}
       {pagination}
     </AppScreen>

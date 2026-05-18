@@ -1,6 +1,8 @@
-import type { KycVerification, UserKycStatus } from "@auction/types";
+import type { Database } from "@auction/db";
+import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
+import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import {
   type CreateKycSessionResult,
@@ -10,6 +12,7 @@ import {
   type KycStatusSummary,
   type KycWebhookHandleResult,
 } from "../interfaces/kyc-service.js";
+import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 
 function mapStripeStatus(
   s: Stripe.Identity.VerificationSession["status"],
@@ -83,6 +86,8 @@ export class StripeKycService implements IKycService {
   constructor(
     env: Env,
     private readonly repo: IKycRepository,
+    private readonly db: Database | null = null,
+    private readonly marketingEvents: IMarketingEventService | null = null,
   ) {
     this.webhookSecret = env.STRIPE_IDENTITY_WEBHOOK_SECRET;
     this.thresholdAmount = env.KYC_THRESHOLD_AMOUNT;
@@ -197,10 +202,37 @@ export class StripeKycService implements IKycService {
 
     let appliedUserKycUpdate = false;
     let shouldProgressIndividuals = false;
+    let marketingEventToEnqueue: MarketingEvent | undefined;
 
     if (isCurrentSession) {
+      const isApproval = decision.setStatus === "approved";
       if (decision.setStatus !== null) {
-        await this.repo.setUserKycStatus(existing.userId, decision.setStatus, decision.verifiedAt);
+        if (isApproval && this.db && this.marketingEvents && obj.status === "verified") {
+          marketingEventToEnqueue = {
+            name: "CompleteRegistration",
+            eventId: `kyc_approved_${existing.userId}`,
+            eventTime: nowUnixSeconds(),
+            actionSource: "system_generated",
+            userIdOrAnon: { kind: "user", userId: existing.userId },
+            consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
+            customData: { kycStatus: "approved" },
+          };
+          await this.db.transaction(async (tx) => {
+            await this.repo.setUserKycStatus(
+              existing.userId,
+              decision.setStatus!,
+              decision.verifiedAt,
+              tx,
+            );
+            await this.marketingEvents!.stage(marketingEventToEnqueue!, tx);
+          });
+        } else {
+          await this.repo.setUserKycStatus(
+            existing.userId,
+            decision.setStatus,
+            decision.verifiedAt,
+          );
+        }
         appliedUserKycUpdate = true;
       }
       if (decision.incrementRetry) {
@@ -219,7 +251,12 @@ export class StripeKycService implements IKycService {
       );
     }
 
-    return { verification: updated, appliedUserKycUpdate, shouldProgressIndividuals };
+    return {
+      verification: updated,
+      appliedUserKycUpdate,
+      shouldProgressIndividuals,
+      ...(marketingEventToEnqueue ? { marketingEventToEnqueue } : {}),
+    };
   }
 
   async enforceThreshold(userId: string): Promise<void> {

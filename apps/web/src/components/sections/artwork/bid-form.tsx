@@ -62,7 +62,7 @@ export function BidForm({
   return (
     <div className={cn("space-y-8", className)}>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+        <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Quick bid
         </span>
         <Button
@@ -70,7 +70,7 @@ export function BidForm({
           variant="secondary"
           size="sm"
           onClick={onUseMinimum}
-          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary ring-1 ring-outline-variant/15 hover:bg-surface-container"
+          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
           {auctionType === "dutch" ? `Accept ${formatMoney(minStr)}` : `Min ${formatMoney(minStr)}`}
         </Button>
@@ -85,7 +85,7 @@ export function BidForm({
                   variant="secondary"
                   size="sm"
                   onClick={() => onAmountChange(v.toFixed(2))}
-                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
+                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
                 >
                   {label}
                 </Button>
@@ -97,7 +97,7 @@ export function BidForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-auto font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:text-primary"
+            className="h-auto font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary"
             onClick={() => document.getElementById(amountInputId)?.focus()}
           >
             Enter custom
@@ -106,7 +106,7 @@ export function BidForm({
       </div>
       {amountFieldVariant === "hidden" ? null : amountFieldVariant === "stepper" ? (
         <div className="space-y-3">
-          <span className="block font-label text-xs uppercase tracking-widest text-on-surface-variant">
+          <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Enter bid amount (min. {formatMoney(minStr)})
           </span>
           <BidStepper
@@ -120,7 +120,7 @@ export function BidForm({
         <div>
           <label
             htmlFor={amountInputId}
-            className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+            className="mb-4 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
           >
             Enter bid amount (min. {formatMoney(minStr)})
           </label>
@@ -141,7 +141,7 @@ export function BidForm({
         <div>
           <label
             htmlFor="bid-max-auto"
-            className="mb-4 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+            className="mb-4 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
           >
             Set max auto-bid (optional)
           </label>

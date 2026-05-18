@@ -10,7 +10,7 @@ import type { UserRole } from "@auction/types";
 import {
   Button,
   DataTable,
-  EntityTableShell,
+  EntityList,
   InlineActionMenu,
   Sheet,
   SheetContent,
@@ -138,18 +138,20 @@ function UserDrawerContent({ u }: { u: AdminUserRow }) {
         </div>
       </dl>
 
-      <div className="space-y-4 border-t border-outline-variant/15 pt-4">
-        <p className="font-label text-xs uppercase tracking-widest text-secondary">Role</p>
+      <div className="space-y-4 border-t border-border-hairline pt-4">
+        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Role
+        </p>
         <UserRoleAction userId={u.id} defaultRole={u.role as UserRole} layout="block" />
       </div>
 
-      <div className="border-t border-outline-variant/15 pt-4">
+      <div className="border-t border-border-hairline pt-4">
         <Button variant="secondary" className="w-full font-label uppercase" asChild>
           <Link href={`/admin/users/${u.id}`}>Open full profile</Link>
         </Button>
       </div>
 
-      <div className="border-t border-outline-variant/15 pt-4">
+      <div className="border-t border-border-hairline pt-4">
         <UserSuspendAction userId={u.id} suspendedAt={u.suspendedAt} fullWidthButton />
       </div>
     </div>
@@ -189,7 +191,7 @@ export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Pro
       {filtered.map((u) => (
         <li
           key={u.id}
-          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
+          className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4"
         >
           <Button
             type="button"
@@ -233,14 +235,14 @@ export function AdminUsersBoard({ rows, kpis, roleChips, globalUserTotals }: Pro
         }
       />
 
-      <EntityTableShell
+      <EntityList
         responsiveMode="auto"
         filters={roleChips ?? null}
         search={
           <div className="grid w-full min-w-0 flex-1 gap-1 sm:max-w-md">
             <label
               htmlFor="admin-users-q"
-              className="font-label text-xs uppercase tracking-widest text-secondary"
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
             >
               Filter loaded rows
             </label>

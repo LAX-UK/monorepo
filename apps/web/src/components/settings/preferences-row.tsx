@@ -20,7 +20,7 @@ export function PreferencesRow({
   return (
     <div
       className={cn(
-        "flex min-h-14 flex-col gap-1 border-b border-outline-variant/15 px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        "flex min-h-14 flex-col gap-1 border-b border-border-hairline px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
         className,
       )}
     >
@@ -54,11 +54,11 @@ export function PreferencesSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-lowest",
+        "overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
         className,
       )}
     >
-      <h2 className="border-b border-outline-variant/15 bg-surface-container-low/40 px-4 py-2.5 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+      <h2 className="border-b border-border-hairline bg-surface-container-low/40 px-4 py-2.5 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
         {title}
       </h2>
       <div className="divide-y divide-outline-variant/10">{children}</div>

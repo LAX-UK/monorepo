@@ -76,7 +76,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             </p>
 
             <DashboardSection id="checkout-flow" title="Invoice and payment">
-              <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+              <div className="rounded-xl border border-border-hairline bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">
                 {!hasPricing ? (
                   <DashboardErrorAlert
                     title="Could not load checkout pricing"
@@ -99,7 +99,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                   <>
                     <nav
                       aria-label="Checkout steps"
-                      className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-widest"
+                      className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                     >
                       <span className="rounded-full border border-primary/35 bg-primary-container/45 px-4 py-1.5 text-primary shadow-sm">
                         1 · Invoice
@@ -119,6 +119,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       hammer={formatMoney(auction.currentPrice)}
                       buyerPremium={formatMoney(premium.toFixed(2))}
                       total={formatMoney(total.toFixed(2))}
+                      totalMinor={Math.round(total * 100)}
                       premiumPercentLabel={premiumPercentLabel}
                       addresses={addresses}
                     />
@@ -140,9 +141,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
       </div>
 
       {hasPricing ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-outline-variant/15 bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
           <div>
-            <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Total due
             </p>
             <p className="font-headline text-lg tabular-nums text-primary">
@@ -152,7 +153,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           <Button
             variant="cta"
             asChild
-            className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-widest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <Link href="#checkout-complete-purchase">Complete purchase</Link>
           </Button>

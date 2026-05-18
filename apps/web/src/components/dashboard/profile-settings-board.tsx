@@ -119,7 +119,7 @@ function ProfileAvatarBlock({ initialImage }: { initialImage: string | null }) {
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+    <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
       <p className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
         Profile photo
       </p>
@@ -138,7 +138,7 @@ function AddAddressBlock() {
   const { form, onSubmit, isSubmitting } = useCreateAddressController();
 
   return (
-    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low/30 p-5">
+    <div className="space-y-4 rounded-xl border border-border-hairline bg-surface-container-low/30 p-5">
       <h3 className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
         Add new address
       </h3>
@@ -314,7 +314,7 @@ export function ProfileSettingsBoard({
     <div className="space-y-10">
       <ProfileAvatarBlock initialImage={initialImage} />
 
-      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
         <SettingsSection title="Personal details" eyebrow bordered={false}>
           <div className="space-y-6">
             <PersonalNameBlock initialName={initialName} />
@@ -360,7 +360,7 @@ export function ProfileSettingsBoard({
             {addresses.map((a, index) => (
               <li
                 key={a.id}
-                className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+                className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
@@ -414,7 +414,7 @@ export function ProfileSettingsBoard({
           </Link>
         }
       >
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
               Mobile

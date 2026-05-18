@@ -45,7 +45,7 @@ function ProviderRow({
   return (
     <li
       {...(id ? { id } : {})}
-      className="flex flex-col gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex min-w-0 items-start gap-3">
         <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 ring-1 ring-outline-variant/30">
@@ -60,7 +60,7 @@ function ProviderRow({
           </div>
           <p className="mt-1 font-body text-sm text-on-surface-variant">{description}</p>
           {meta ? (
-            <p className="mt-1 font-label text-[11px] uppercase tracking-widest text-on-surface-variant/80">
+            <p className="mt-1 font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant/80">
               {meta}
             </p>
           ) : null}
@@ -100,7 +100,7 @@ function SetupPasswordInlineForm({ pending, onSubmit, onCancel }: SetupPasswordI
       <div className="flex flex-col gap-1">
         <label
           htmlFor="setup-password-new"
-          className="font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant"
+          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
         >
           New password
         </label>
@@ -122,7 +122,7 @@ function SetupPasswordInlineForm({ pending, onSubmit, onCancel }: SetupPasswordI
       <div className="flex flex-col gap-1">
         <label
           htmlFor="setup-password-confirm"
-          className="font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant"
+          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
         >
           Confirm password
         </label>
@@ -220,7 +220,7 @@ export function SettingsConnectedAccounts({
   };
 
   return (
-    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+    <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
       <SettingsSection
         title="Connected accounts"
         titleAs="h3"
@@ -266,7 +266,7 @@ export function SettingsConnectedAccounts({
         {loading || (error && state.totalMethods === 0) ? (
           <ul className="mt-4 space-y-3">
             {[0, 1, 2].map((i) => (
-              <li key={i} className="rounded-lg border border-outline-variant/15 p-4">
+              <li key={i} className="rounded-lg border border-border-hairline p-4">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="mt-2 h-3 w-3/4" />
               </li>
@@ -283,7 +283,7 @@ export function SettingsConnectedAccounts({
               meta={undefined}
               primaryAction={
                 state.hasPassword ? (
-                  <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                  <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                     Active
                   </span>
                 ) : showSetupForm ? null : (

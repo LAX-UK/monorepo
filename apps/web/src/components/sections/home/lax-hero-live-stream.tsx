@@ -109,7 +109,7 @@ function LaxHeroLiveSplitEmbed({ vm }: Props) {
             />
           </RevealOnMount>
         </div>
-        <div className="relative flex flex-1 flex-col justify-end border-t border-nav-border bg-hero-cream px-6 py-10 md:px-10 dark:border-outline-variant/15 dark:bg-surface-container-low">
+        <div className="relative flex flex-1 flex-col justify-end border-t border-nav-border bg-hero-cream px-6 py-10 md:px-10 dark:border-border-hairline dark:bg-surface-container-low">
           <div className="relative z-[1] flex max-w-[684px] flex-col gap-6">
             <LiveIndicatorRow
               tone="dark"

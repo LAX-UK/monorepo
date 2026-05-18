@@ -13,8 +13,8 @@ import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { type PayoutStatus, payoutStatuses } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Surface } from "@auction/ui/components/surface";
 
 const filters = ["all", ...payoutStatuses] as const;
 
@@ -116,8 +116,8 @@ export default async function AdminPayoutsPage({
 
   const filtersSlot = (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <Card>
-        <CardContent className="space-y-4 p-4">
+      <Surface variant="card">
+        <div className="space-y-4 p-4">
           <h2 className="font-heading text-lg">Run settlement</h2>
           <p className="text-sm text-on-surface-variant">
             Create a payout from captured payments that are not already linked to a payout line.
@@ -142,11 +142,11 @@ export default async function AdminPayoutsPage({
               Run settlement
             </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
-      <Card>
-        <CardContent className="space-y-4 p-4">
+      <Surface variant="card">
+        <div className="space-y-4 p-4">
           <h2 className="font-heading text-lg">Filters</h2>
           <form className="space-y-3" action="/admin/payouts" method="get">
             {query.status ? <input type="hidden" name="status" value={query.status} /> : null}
@@ -166,8 +166,8 @@ export default async function AdminPayoutsPage({
               Apply
             </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </section>
   );
 
@@ -224,8 +224,8 @@ export default async function AdminPayoutsPage({
           </p>
 
           {showSettlementReadiness ? (
-            <Card>
-              <CardContent className="space-y-3 p-4">
+            <Surface variant="card">
+              <div className="space-y-3 p-4">
                 <div>
                   <h2 className="font-heading text-lg">Settlement readiness</h2>
                   <p className="mt-1 text-sm text-on-surface-variant">
@@ -273,16 +273,16 @@ export default async function AdminPayoutsPage({
                     and every in-flight payout already has a transfer reference recorded.
                   </p>
                 ) : null}
-              </CardContent>
-            </Card>
+              </div>
+            </Surface>
           ) : null}
 
           {payouts.length > 0 ? (
             <ul className="space-y-3">
               {payouts.map((payout) => (
                 <li key={payout.id}>
-                  <Card>
-                    <CardContent className="space-y-4 p-4">
+                  <Surface variant="card">
+                    <div className="space-y-4 p-4">
                       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -443,8 +443,8 @@ export default async function AdminPayoutsPage({
                       </div>
 
                       <AdminPayoutReverseButton payoutId={payout.id} status={payout.status} />
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </Surface>
                 </li>
               ))}
             </ul>
@@ -472,11 +472,11 @@ export default async function AdminPayoutsPage({
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Surface variant="card">
+      <div className="p-4">
         <p className="text-xs uppercase tracking-wide text-on-surface-variant">{label}</p>
         <p className="mt-1 text-2xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

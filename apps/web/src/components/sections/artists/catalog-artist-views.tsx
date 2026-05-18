@@ -60,7 +60,7 @@ export function ArtistBrowseCard({
         return (
           <li
             key={artist.id}
-            className="group relative list-none overflow-hidden rounded-xl border border-outline-variant/15 bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md"
+            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md"
           >
             <Link
               href={href}
@@ -107,17 +107,17 @@ export function ArtistBrowseCard({
                 ) : null}
               </div>
             </Link>
-            <div className="flex items-center justify-between gap-3 border-t border-outline-variant/15 px-5 py-3">
+            <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-5 py-3">
               <Link
                 href={`${href}#works`}
-                className="font-label text-[10px] uppercase tracking-widest text-primary hover:underline"
+                className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
                 aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
               >
                 {lotsLabel}
               </Link>
               <Link
                 href={href}
-                className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary hover:underline"
+                className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline"
               >
                 View profile
               </Link>
@@ -139,7 +139,7 @@ export function ArtistBrowseList({
   isAuthenticated: boolean;
 }) {
   return (
-    <ul className="divide-y divide-outline-variant/15 rounded-xl border border-outline-variant/15 bg-surface-container-lowest">
+    <ul className="divide-y divide-outline-variant/15 rounded-xl border border-border-hairline bg-surface-container-lowest">
       {rows.map((a) => {
         const href = artistPath({ id: a.id, name: a.displayName });
         return (

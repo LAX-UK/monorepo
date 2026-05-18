@@ -41,6 +41,7 @@ export type PortfolioAnalyticsVm = {
   totalRows: number;
   totalSpentFormatted: string;
   outstandingFormatted: string;
+  hasOutstanding: boolean;
   wonThisYear: number;
   /** Sorted years available in the portfolio. Used for the year filter. */
   years: number[];
@@ -74,6 +75,7 @@ export function buildPortfolioAnalytics(
     totalRows: rows.length,
     totalSpentFormatted: formatMoney(totalSpent.toFixed(2)),
     outstandingFormatted: formatMoney(outstanding.toFixed(2)),
+    hasOutstanding: outstanding > 0,
     wonThisYear,
     years: Array.from(yearsSet).sort((a, b) => b - a),
     categoryCounts: Array.from(categoryCount.entries())
