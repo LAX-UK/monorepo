@@ -12,7 +12,7 @@ type TableProps = { children: ReactNode; className?: string };
 
 export function Table({ children, className = "" }: TableProps) {
   return (
-    <div className={cn("overflow-x-auto rounded-lg border border-outline-variant/15", className)}>
+    <div className={cn("overflow-x-auto rounded-lg border border-border-hairline", className)}>
       <table className="w-full min-w-lg border-collapse text-left text-sm">{children}</table>
     </div>
   );
@@ -20,7 +20,7 @@ export function Table({ children, className = "" }: TableProps) {
 
 export function TableHead({ children }: { children: ReactNode }) {
   return (
-    <UiTableThead className="bg-surface-container-low font-label text-xs uppercase tracking-widest text-secondary">
+    <UiTableThead className="bg-surface-container-low font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
       {children}
     </UiTableThead>
   );

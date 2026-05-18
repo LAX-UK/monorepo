@@ -109,7 +109,7 @@ export function LegalEntitySwitcher({ acting, memberships, pendingInvitesCount =
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">
-        <div className="border-b border-outline-variant/20 p-3">
+        <div className="border-b border-border-hairline p-3">
           <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
             Current context
           </p>
@@ -220,7 +220,7 @@ export function LegalEntitySwitcher({ acting, memberships, pendingInvitesCount =
             )}
           </CommandList>
         </Command>
-        <div className="rounded-b-lg border-t border-outline-variant/20 bg-surface-container-lowest/50 p-1">
+        <div className="rounded-b-lg border-t border-border-hairline bg-surface-container-lowest/50 p-1">
           {pendingInvitesCount > 0 ? (
             <Link
               href="/dashboard/invitations"

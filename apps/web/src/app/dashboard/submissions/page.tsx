@@ -1,10 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardErrorAlert, DashboardSkeleton } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
-import { PageHeader } from "@auction/ui/components/page-header";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -33,13 +33,33 @@ export default async function DashboardSubmissionsPage({
 
   const c = await getServerDataContainer();
   let rows: ItemSubmission[] = [];
+  let allForCounts: ItemSubmission[] = [];
   let loadError: string | null = null;
   try {
-    rows = await c.submissions.listMine(
-      status !== undefined ? { status, limit: 50, offset: 0 } : { limit: 50, offset: 0 },
-    );
+    const [filtered, all] = await Promise.all([
+      c.submissions.listMine(
+        status !== undefined ? { status, limit: 50, offset: 0 } : { limit: 50, offset: 0 },
+      ),
+      c.submissions.listMine({ limit: 100, offset: 0 }),
+    ]);
+    rows = filtered;
+    allForCounts = all;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
+  }
+
+  const statusCounts: Record<ItemSubmissionStatus | "all", number> = {
+    all: allForCounts.length,
+    draft: 0,
+    submitted: 0,
+    under_review: 0,
+    approved: 0,
+    rejected: 0,
+    withdrawn: 0,
+    converted: 0,
+  };
+  for (const s of allForCounts) {
+    statusCounts[s.status] += 1;
   }
 
   const mapped = rows.map((s) => ({
@@ -54,10 +74,10 @@ export default async function DashboardSubmissionsPage({
 
   return (
     <DashboardPage>
-      <PageHeader
+      <DashboardPageHeader
+        meta="Selling"
         title="Your submissions"
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
-        className="border-0 pb-0"
         actions={
           <Button variant="primary" asChild>
             <Link href="/dashboard/submissions/new">
@@ -80,6 +100,7 @@ export default async function DashboardSubmissionsPage({
             initialStatus={initialStatus}
             initialQ={initialQ}
             fetchedCount={mapped.length}
+            statusCounts={statusCounts}
           />
         </Suspense>
       )}

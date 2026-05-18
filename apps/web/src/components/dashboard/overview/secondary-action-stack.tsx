@@ -5,13 +5,7 @@ import {
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { BodyText, TimelineStages } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -26,54 +20,62 @@ export function SecondaryActionStack({
 
   return (
     <section className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+      <Surface
+        variant="section"
+        padding="md"
+        className="space-y-4 border-border-hairline bg-surface-container-lowest shadow-lg"
+      >
+        <div className="space-y-1">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Settlement path
-          </CardTitle>
-          <CardDescription>
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
             {firstSettlement
               ? `Invoice \u2192 Paid \u2192 Shipping \u2192 Delivered for "${firstSettlement.lot.title}".`
               : hasAcquired
                 ? "All acquired works are settled. View the full timeline in your collection."
                 : "Track payment, invoice, and delivery readiness as you win lots."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {firstSettlement ? (
-            <TimelineStages
-              activeIndex={settlementStageIndex(firstSettlement)}
-              stages={[
-                { id: "inv", label: "Invoice" },
-                { id: "pay", label: "Paid" },
-                { id: "ship", label: "Shipping" },
-                { id: "done", label: "Delivered" },
-              ]}
-            />
-          ) : (
-            <BodyText className="text-sm text-on-surface-variant">
-              {hasAcquired
-                ? "Every won lot has cleared the settlement queue."
-                : "Bid on live lots to start your collection."}
-            </BodyText>
-          )}
-          <Button variant="secondary" className="w-full justify-between" asChild>
-            <Link href="/dashboard/portfolio">
-              Open collection
-              <ChevronRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        {firstSettlement ? (
+          <TimelineStages
+            activeIndex={settlementStageIndex(firstSettlement)}
+            stages={[
+              { id: "inv", label: "Invoice" },
+              { id: "pay", label: "Paid" },
+              { id: "ship", label: "Shipping" },
+              { id: "done", label: "Delivered" },
+            ]}
+          />
+        ) : (
+          <BodyText className="text-sm text-on-surface-variant">
+            {hasAcquired
+              ? "Every won lot has cleared the settlement queue."
+              : "Bid on live lots to start your collection."}
+          </BodyText>
+        )}
+        <Button variant="secondary" className="w-full justify-between" asChild>
+          <Link href="/dashboard/portfolio">
+            Open collection
+            <ChevronRight className="size-4" aria-hidden />
+          </Link>
+        </Button>
+      </Surface>
 
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+      <Surface
+        variant="section"
+        padding="md"
+        className="space-y-4 border-border-hairline bg-surface-container-lowest shadow-lg"
+      >
+        <div className="space-y-1">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Account essentials
-          </CardTitle>
-          <CardDescription>Profile, alerts, bidding, and followed artists.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Profile, alerts, bidding, and followed artists.
+          </p>
+        </div>
+        <div className="space-y-2">
           {accountEssentialLinks.map((item) => (
             <Button key={item.href} variant="ghost" className="w-full justify-between" asChild>
               <Link href={item.href}>
@@ -87,26 +89,30 @@ export function SecondaryActionStack({
               Recent artist follow saved {firstArtist.createdAt.toLocaleDateString()}.
             </p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
-      <Card className="border-outline-variant/15 bg-surface-container-lowest shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+      <Surface
+        variant="section"
+        padding="md"
+        className="space-y-4 border-border-hairline bg-surface-container-lowest shadow-lg"
+      >
+        <div className="space-y-1">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Sell with LAX
-          </CardTitle>
-          <CardDescription>Submit items for specialist review and cataloguing.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <BodyText className="text-sm text-on-surface-variant">
-            Start with photos, provenance, and condition notes. Approved submissions become draft
-            catalog lots for scheduling.
-          </BodyText>
-          <Button className="w-full" asChild>
-            <Link href="/dashboard/submissions/new">Start a submission</Link>
-          </Button>
-        </CardContent>
-      </Card>
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Submit items for specialist review and cataloguing.
+          </p>
+        </div>
+        <BodyText className="text-sm text-on-surface-variant">
+          Start with photos, provenance, and condition notes. Approved submissions become draft
+          catalog lots for scheduling.
+        </BodyText>
+        <Button className="w-full" asChild>
+          <Link href="/dashboard/submissions/new">Start a submission</Link>
+        </Button>
+      </Surface>
     </section>
   );
 }

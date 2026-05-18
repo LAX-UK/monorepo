@@ -13,7 +13,7 @@ type LogoutButtonProps = Omit<
 };
 
 const defaultClassName =
-  "block w-full text-left font-label text-xs uppercase tracking-widest text-secondary transition-colors hover:text-on-surface hover:underline disabled:cursor-not-allowed disabled:opacity-50";
+  "block w-full text-left font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary transition-colors hover:text-on-surface hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 
 export function LogoutButton({
   onBeforeNavigate,

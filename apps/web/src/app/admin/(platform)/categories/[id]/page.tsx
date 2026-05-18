@@ -7,7 +7,7 @@ import {
 } from "@/lib/data/http/admin.server";
 import type { AdminCategory } from "@auction/types";
 import { Badge, Button, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -84,7 +84,7 @@ export default async function AdminCategoryDetailPage({
       breadcrumbs={
         <Link
           href="/admin/categories"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Categories
         </Link>
@@ -98,7 +98,7 @@ export default async function AdminCategoryDetailPage({
           ) : (
             <StatusBadge variant="success">Active</StatusBadge>
           )}
-          <span className="font-label text-xs uppercase tracking-widest text-secondary">
+          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             /{category.slug}
           </span>
         </div>
@@ -188,7 +188,7 @@ export default async function AdminCategoryDetailPage({
                 return (
                   <li key={c.id}>
                     <div
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-3"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/40 p-3"
                       style={{
                         marginLeft: rel > 1 ? `${Math.min((rel - 1) * 1.25, 4)}rem` : undefined,
                       }}
@@ -217,7 +217,7 @@ export default async function AdminCategoryDetailPage({
           {lots.length === 0 ? (
             <p className="text-sm text-on-surface-variant">No lots tagged with this category.</p>
           ) : (
-            <ul className="divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/15">
+            <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
               {lots.map((lot) => (
                 <li
                   key={lot.id}
@@ -250,7 +250,7 @@ export default async function AdminCategoryDetailPage({
             </p>
             <Link
               href={`/admin/audit/timeline?aggregateType=category&aggregateId=${id}`}
-              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-primary hover:underline"
+              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
             >
               Open audit timeline ↗
             </Link>
@@ -271,13 +271,15 @@ function InfoCard({
   className?: string;
 }) {
   return (
-    <Card className={`border-outline-variant/15 bg-surface-container-low/30 ${className ?? ""}`}>
-      <CardHeader className="pb-2 pt-4">
-        <CardTitle className="font-label text-[10px] uppercase tracking-widest text-secondary">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">{children}</CardContent>
-    </Card>
+    <Surface
+      variant="section"
+      padding="md"
+      className={`border-border-hairline bg-surface-container-low/30 ${className ?? ""}`}
+    >
+      <h3 className="pb-2 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        {title}
+      </h3>
+      <div className="pb-4">{children}</div>
+    </Surface>
   );
 }

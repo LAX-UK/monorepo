@@ -1,10 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 export default async function NotificationSettingsPage({
@@ -29,15 +30,11 @@ export default async function NotificationSettingsPage({
       <DashboardPage className="mx-auto max-w-3xl space-y-6">
         <Link
           href="/dashboard/notifications"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           Back to inbox
         </Link>
-        <PageHeader
-          title="Alert settings"
-          description="Choose which alerts you want in-app and via browser push."
-          className="border-0 pb-0"
-        />
+        <SettingsFormHeader title="Alert settings" />
         <p className="mt-2 font-body text-sm text-on-surface-variant">
           Could not load notification preferences. Try again in a moment.
         </p>
@@ -49,15 +46,11 @@ export default async function NotificationSettingsPage({
     <DashboardPage className="mx-auto max-w-3xl space-y-6">
       <Link
         href="/dashboard/notifications"
-        className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+        className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
       >
         Back to inbox
       </Link>
-      <PageHeader
-        title="Alert settings"
-        description="Choose which alerts you want in-app, via push, email, and WhatsApp."
-        className="border-0 pb-0"
-      />
+      <SettingsFormHeader title="Alert settings" />
 
       {saved ? (
         <Alert>
@@ -67,7 +60,9 @@ export default async function NotificationSettingsPage({
       ) : null}
       {error ? <DashboardErrorAlert title="Could not save" message={error} /> : null}
 
-      <NotificationPreferencesForm initial={prefs} />
+      <Surface variant="section" padding="md">
+        <NotificationPreferencesForm initial={prefs} />
+      </Surface>
     </DashboardPage>
   );
 }

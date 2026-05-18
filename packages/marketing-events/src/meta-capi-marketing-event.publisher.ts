@@ -71,10 +71,7 @@ export class MetaCapiMarketingEventPublisher implements IMarketingEventPublisher
           };
           return events.map(() => outcome);
         }
-        if (
-          typeof parsed.events_received === "number" &&
-          parsed.events_received < events.length
-        ) {
+        if (typeof parsed.events_received === "number" && parsed.events_received < events.length) {
           partialErrors = true;
         }
       } catch {

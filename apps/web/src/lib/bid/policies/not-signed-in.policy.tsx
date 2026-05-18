@@ -18,7 +18,7 @@ export const notSignedInPolicy: BidPolicy = {
           </p>
           <Link
             href={`/login?next=${next}`}
-            className="inline-flex w-full items-center justify-center bg-gradient-to-br from-primary to-primary-container py-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95"
+            className="inline-flex w-full items-center justify-center bg-gradient-to-br from-primary to-primary-container py-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-md transition-opacity hover:opacity-95"
           >
             Sign in to bid
           </Link>

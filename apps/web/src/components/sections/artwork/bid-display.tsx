@@ -55,11 +55,11 @@ export function BidDisplay({
       <div className="flex min-w-0 flex-col gap-6">
         <div className="min-w-0 overflow-hidden rounded-lg bg-surface-container-high/50 p-6 ring-1 ring-outline-variant/10">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="font-label text-xs uppercase tracking-widest text-secondary">
+            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Current high bid
             </span>
             {ownLot ? (
-              <span className="rounded-md bg-primary-container/30 px-2 py-0.5 font-label text-[0.65rem] font-bold uppercase tracking-widest text-primary ring-1 ring-primary/20">
+              <span className="rounded-md bg-primary-container/30 px-2 py-0.5 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary ring-1 ring-primary/20">
                 Your listing
               </span>
             ) : null}
@@ -90,17 +90,17 @@ export function BidDisplay({
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-error opacity-75 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-error" />
                 </span>
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-error">
+                <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-error">
                   Live
                 </span>
               </>
             ) : (
-              <span className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Schedule
               </span>
             )}
           </div>
-          <span className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary">
+          <span className="mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Time remaining
           </span>
           <span

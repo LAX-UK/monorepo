@@ -4,13 +4,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -61,17 +55,17 @@ export default async function AdminLegalEntitiesLookupPage({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Open entity</CardTitle>
-          <CardDescription>
+      <Surface variant="card" className="border-border-hairline">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Open entity</h3>
+          <p className="font-body text-sm text-on-surface-variant">
             Pick an entity from search results to open its admin detail page.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <AdminLegalEntityOpenForm />
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </AdminPanelPage>
   );
 }

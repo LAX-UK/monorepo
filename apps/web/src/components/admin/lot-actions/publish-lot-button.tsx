@@ -2,6 +2,7 @@
 
 import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { adminPublishLotResultAction } from "@/lib/actions/admin";
+import { Can } from "@/lib/auth/capabilities";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export function PublishLotButton({ lotId, sellerLegalEntityId, disabled }: Props
   const [connectRequired, setConnectRequired] = useState(false);
 
   return (
-    <>
+    <Can requirement="catalogue.write">
       {connectRequired ? (
         <AdminLotConnectRequiredBanner sellerLegalEntityId={sellerLegalEntityId} />
       ) : null}
@@ -44,10 +45,10 @@ export function PublishLotButton({ lotId, sellerLegalEntityId, disabled }: Props
             })();
           });
         }}
-        className="h-auto rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-primary shadow-sm hover:opacity-95 disabled:opacity-60"
+        className="h-auto rounded-md bg-gradient-to-br from-primary to-primary-container px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-sm hover:opacity-95 disabled:opacity-60"
       >
         Publish
       </Button>
-    </>
+    </Can>
   );
 }

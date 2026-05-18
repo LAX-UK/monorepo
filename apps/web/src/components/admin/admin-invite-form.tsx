@@ -82,7 +82,7 @@ export function AdminInviteForm() {
             name="email"
             render={({ field }) => (
               <FormItem className="grid min-w-0 flex-1 gap-1">
-                <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
+                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                   Email
                 </FormLabel>
                 <FormControl>
@@ -102,7 +102,7 @@ export function AdminInviteForm() {
             name="targetRole"
             render={({ field }) => (
               <FormItem className="grid min-w-0 gap-1 sm:w-56">
-                <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
+                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                   Role
                 </FormLabel>
                 <RhfSelect
@@ -122,7 +122,7 @@ export function AdminInviteForm() {
               name="targetStaffRole"
               render={({ field }) => (
                 <FormItem className="grid min-w-0 gap-1 sm:w-64">
-                  <FormLabel className="font-label text-xs uppercase tracking-widest text-secondary">
+                  <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Staff role
                   </FormLabel>
                   <RhfSelect
@@ -140,7 +140,7 @@ export function AdminInviteForm() {
           ) : null}
           <Button
             type="submit"
-            className="min-h-11 font-label text-xs uppercase tracking-widest"
+            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Sending…" : "Send"}

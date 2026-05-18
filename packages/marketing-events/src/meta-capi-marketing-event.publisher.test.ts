@@ -19,9 +19,9 @@ const baseEvent: ResolvedMarketingEvent = {
 
 describe("MetaCapiMarketingEventPublisher", () => {
   it("sends event_id, action_source, and test_event_code in payload", async () => {
-    const fetchFn = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ events_received: 1 }), { status: 200 }),
-    );
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ events_received: 1 }), { status: 200 }));
     const pub = new MetaCapiMarketingEventPublisher(
       "pixel-1",
       "token-1",

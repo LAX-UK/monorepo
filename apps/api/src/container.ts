@@ -25,7 +25,6 @@ import { CompositeAuthenticator } from "./infrastructure/composite-authenticator
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
-import { NoopMarketingEventOutboxRepository } from "./infrastructure/noop-marketing-event-outbox.repository.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
@@ -35,6 +34,7 @@ import { LocalDiskObjectStorage } from "./infrastructure/local-disk-object-stora
 import { NoOpErrorReporter } from "./infrastructure/no-op-error.reporter.js";
 import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
 import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js";
+import { NoopMarketingEventOutboxRepository } from "./infrastructure/noop-marketing-event-outbox.repository.js";
 import { NoopMarketingEventPublisher } from "./infrastructure/noop-marketing-event.publisher.js";
 import { NoopMarketingEventQueue } from "./infrastructure/noop-marketing-event.queue.js";
 import { PostgresClickIdStore } from "./infrastructure/postgres-click-id.store.js";
@@ -590,10 +590,7 @@ export function createContainer(env: Env): Container {
     : new NoopMarketingEventQueue();
   const marketingEventPublisher: IMarketingEventPublisher = marketingEnabled
     ? new CompositeMarketingEventPublisher(
-        new SgtmMarketingEventPublisher(
-          env.SGTM_ENDPOINT_URL!,
-          env.GA4_MEASUREMENT_ID!,
-        ),
+        new SgtmMarketingEventPublisher(env.SGTM_ENDPOINT_URL!, env.GA4_MEASUREMENT_ID!),
         new MetaCapiMarketingEventPublisher(
           env.META_PIXEL_ID!,
           env.META_CAPI_ACCESS_TOKEN!,

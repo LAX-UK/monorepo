@@ -7,7 +7,7 @@ export function OauthOnlyTip() {
   const { state, loading } = useConnectedAccounts();
   if (loading || state.hasPassword) return null;
   return (
-    <p className="rounded-lg border border-outline-variant/20 bg-surface-container-high/30 px-3 py-2 font-body text-xs text-on-surface-variant">
+    <p className="rounded-lg border border-border-hairline bg-surface-container-high/30 px-3 py-2 font-body text-xs text-on-surface-variant">
       <span className="font-medium text-on-surface">Tip:</span> Add a password under{" "}
       <Link
         href="/dashboard/settings?tab=security#password-setup"

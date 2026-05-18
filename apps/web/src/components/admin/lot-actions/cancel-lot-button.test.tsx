@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { renderWithViewer } from "@/test/render-with-viewer";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CancelLotButton } from "./cancel-lot-button";
 
@@ -12,7 +13,7 @@ vi.mock("next/navigation", () => ({
 
 describe("CancelLotButton", () => {
   it("requires typing the lot id before confirm", () => {
-    render(<CancelLotButton lotId="abc-lot-id" />);
+    renderWithViewer(<CancelLotButton lotId="abc-lot-id" />);
     fireEvent.click(screen.getByRole("button", { name: "Cancel auction" }));
     expect(screen.getByText(/abc-lot-id/)).toBeInTheDocument();
     const confirmButtons = screen.getAllByRole("button", { name: "Cancel auction" });

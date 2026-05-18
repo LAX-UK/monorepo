@@ -11,7 +11,6 @@ import {
   AccordionTrigger,
 } from "@auction/ui/components/accordion";
 import { Button } from "@auction/ui/components/button";
-import { Card } from "@auction/ui/components/card";
 import {
   Form,
   FormControl,
@@ -21,6 +20,8 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { LoadingButton } from "@auction/ui/components/loading-button";
+import { Surface } from "@auction/ui/components/surface";
 import { Switch } from "@auction/ui/components/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
 import { LabelCaps } from "@auction/ui/components/typography";
@@ -343,7 +344,7 @@ export function NotificationPreferencesForm({
         </section>
 
         <section>
-          <h2 className="font-label text-xs uppercase tracking-widest text-secondary">
+          <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Quiet hours (UTC)
           </h2>
           <p className="mt-2 font-body text-sm text-on-surface-variant">
@@ -388,9 +389,14 @@ export function NotificationPreferencesForm({
           </div>
         </section>
 
-        <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending}>
-          {pending ? "Saving…" : "Save preferences"}
-        </Button>
+        <LoadingButton
+          type="submit"
+          className="min-h-11 w-full sm:w-auto"
+          loading={pending}
+          loadingLabel="Saving…"
+        >
+          Save preferences
+        </LoadingButton>
       </form>
     </Form>
   );
@@ -402,11 +408,11 @@ function PreferencesMatrix({
   form: ReturnType<typeof useForm<NotificationPreferencesFormValues>>;
 }) {
   return (
-    <Card className="overflow-hidden p-0 shadow-none">
+    <Surface variant="inset" padding="none" className="overflow-hidden shadow-none">
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[640px] table-fixed" aria-label="Notification preferences">
           <thead>
-            <tr className="border-b border-outline-variant/15">
+            <tr className="border-b border-border-hairline">
               <th scope="col" className="w-[44%] px-5 py-3 text-left">
                 <LabelCaps>Event</LabelCaps>
               </th>
@@ -422,7 +428,7 @@ function PreferencesMatrix({
           </thead>
           <tbody>
             {events.map((event) => (
-              <tr key={event.id} className="border-b border-outline-variant/10 last:border-0">
+              <tr key={event.id} className="border-b border-border-hairline last:border-0">
                 <th scope="row" className="px-5 py-4 text-left align-middle">
                   <div className="font-body text-sm font-medium text-on-surface">{event.label}</div>
                   <p className="mt-1 font-body text-xs leading-5 text-on-surface-variant">
@@ -442,7 +448,7 @@ function PreferencesMatrix({
 
       <Accordion type="multiple" className="md:hidden">
         {events.map((event) => (
-          <AccordionItem key={event.id} value={event.id} className="border-outline-variant/10 px-4">
+          <AccordionItem key={event.id} value={event.id} className="border-border-hairline px-4">
             <AccordionTrigger className="hover:no-underline">
               <span>
                 <span className="block font-body text-sm font-medium text-on-surface">
@@ -469,7 +475,7 @@ function PreferencesMatrix({
           </AccordionItem>
         ))}
       </Accordion>
-    </Card>
+    </Surface>
   );
 }
 

@@ -10,7 +10,7 @@ type NotificationsSkeletonProps = {
 export function NotificationsSkeleton({ rows = 6 }: NotificationsSkeletonProps) {
   const items = Array.from({ length: Math.max(1, rows) }, (_, i) => i);
   return (
-    <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
       <ul
         aria-busy="true"
         aria-label="Loading notifications"

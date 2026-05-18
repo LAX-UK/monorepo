@@ -1,11 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import {
   AppearanceLayoutPreferencesForm,
   type AppearancePreferencesSnapshot,
 } from "@/components/settings/appearance-layout-preferences-form";
 import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { PageHeader } from "@auction/ui/components/page-header";
 import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -30,11 +30,7 @@ export default async function AppearanceSettingsPage() {
 
   return (
     <DashboardPage className="mx-auto max-w-xl space-y-8">
-      <PageHeader
-        title="Appearance & layout"
-        description="Theme, catalogue defaults, and dashboard density. Changes save automatically."
-        className="border-0 pb-0"
-      />
+      <SettingsFormHeader title="Appearance & layout" />
       <AppearanceLayoutPreferencesForm initial={initial} />
       <ReduceMotionCard />
       <p className="text-sm text-on-surface-variant">

@@ -44,7 +44,7 @@ export function TimelineStages({ stages, activeIndex, className }: TimelineStage
               className={cn(
                 "flex size-8 shrink-0 items-center justify-center rounded-full font-label text-xs font-bold",
                 done && "bg-primary text-on-primary",
-                active && "bg-lot-orange text-white ring-2 ring-lot-orange/40",
+                active && "bg-primary text-on-primary ring-2 ring-primary/30",
                 pending && "bg-surface-container-high text-on-surface-variant",
               )}
               aria-current={active ? "step" : undefined}

@@ -1,26 +1,18 @@
 "use client";
 
+import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
 import { AdminLiveBidActivity } from "@/components/admin/admin-live-bid-activity";
 import { AttentionList } from "@/components/dashboard/attention-list";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
 import type {
   AdminFinanceIssuesPayload,
   AdminTodayMetricsPayload,
 } from "@/lib/data/http/admin.server";
 import { LabelCaps } from "@auction/ui";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CompareDelta,
-  EntityTableShell,
-  PageHeader,
-  StatusBadge,
-  Button as UiButton,
-} from "@auction/ui";
+import { CompareDelta, EntityList, StatusBadge, Button as UiButton } from "@auction/ui";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -66,7 +58,7 @@ export function AdminOperationsHomeView({
 }: Props) {
   return (
     <div className="space-y-10">
-      <PageHeader
+      <DashboardPageHeader
         title="Operations"
         meta={<LabelCaps className="text-lot-orange">Admin · Cockpit</LabelCaps>}
         description="Live saleroom health, intake queue, settlements, and recent catalog movement."
@@ -80,7 +72,8 @@ export function AdminOperationsHomeView({
         }
       />
 
-      <KpiGrid
+      <KpiRow
+        variant="hero"
         columns={6}
         className="xl:grid-cols-3"
         tiles={[
@@ -126,153 +119,7 @@ export function AdminOperationsHomeView({
         ]}
       />
 
-      {financeIssues ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-outline-variant/15">
-            <CardHeader>
-              <CardTitle className="font-headline text-lg">Stripe Connect &amp; payouts</CardTitle>
-              <CardDescription>
-                Failed transfers, blocked scheduled payouts, and outstanding Stripe Connect
-                requirements.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
-              <Link
-                href="/admin/payouts?status=failed"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Failed payouts
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.failedPayoutCount}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open filtered list
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/payouts?status=scheduled"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Blocked scheduled payouts
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.staleBlockedScheduledPayoutCount}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Review scheduled payouts
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/legal-entities/stripe-connect-requirements"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Stripe Connect requirement issues
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.legalEntitiesWithStripeConnectRequirementsCount}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open entity list
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="border-outline-variant/15">
-            <CardHeader>
-              <CardTitle className="font-headline text-lg">Onboarding &amp; verification</CardTitle>
-              <CardDescription>
-                KYB/KYC queues with drill-down lists (docs received, artists, Identity sessions,
-                documents).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Link
-                href="/admin/onboarding-issues#entities-pending-review"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Entities pending review
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.entitiesPendingReviewCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open queue
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/onboarding-issues#artists-pending"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Artists pending approval
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.artistsPendingApprovalCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open queue
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/onboarding-issues#stale-identity"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Stale Identity sessions
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.staleIdentitySessionsCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open queue
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/onboarding-issues#documents-awaiting"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Documents awaiting review
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.documentsAwaitingReviewCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open queue
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-              <Link
-                href="/admin/onboarding-issues#stale-lead-orgs"
-                className="flex flex-col gap-1 rounded-md border border-outline-variant/15 bg-surface-container-low/40 p-4 transition-colors hover:bg-surface-container-high/50"
-              >
-                <span className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Stale lead organisations
-                </span>
-                <span className="font-headline text-3xl text-on-surface">
-                  {financeIssues.staleLeadOrganisationsCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open queue
-                  <ChevronRight className="size-4" aria-hidden />
-                </span>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
+      {financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <section
@@ -280,7 +127,7 @@ export function AdminOperationsHomeView({
             activeLotIds.length === 0 ? "space-y-4 lg:col-span-8" : "space-y-4 lg:col-span-7"
           }
         >
-          <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+          <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Needs your attention
           </h2>
           <AttentionList items={attention} />
@@ -291,24 +138,24 @@ export function AdminOperationsHomeView({
             activeLotIds.length === 0 ? "space-y-4 lg:col-span-4" : "space-y-4 lg:col-span-5"
           }
         >
-          <Card className="border-outline-variant/15">
-            <CardHeader>
-              <CardTitle className="font-headline text-lg">Live saleroom</CardTitle>
-              <CardDescription>Redis 1m counter plus room pulse on active lots.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AdminLiveBidActivity
-                initialBidsPerMinute={bidsPerMinute}
-                activeLotIds={activeLotIds}
-              />
-            </CardContent>
-          </Card>
+          <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
+            <div className="space-y-1">
+              <h3 className="font-headline text-lg font-semibold text-on-surface">Live saleroom</h3>
+              <p className="font-body text-sm text-on-surface-variant">
+                Redis 1m counter plus room pulse on active lots.
+              </p>
+            </div>
+            <AdminLiveBidActivity
+              initialBidsPerMinute={bidsPerMinute}
+              activeLotIds={activeLotIds}
+            />
+          </Surface>
         </aside>
       </div>
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+          <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Recent activity
           </h2>
           <Button variant="ctaLink" asChild>
@@ -318,12 +165,12 @@ export function AdminOperationsHomeView({
             </Link>
           </Button>
         </div>
-        <EntityTableShell
+        <EntityList
           responsiveMode="auto"
           table={
-            <div className="hidden overflow-x-auto rounded-md border border-outline-variant/15 md:block">
+            <div className="hidden overflow-x-auto rounded-md border border-border-hairline md:block">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-outline-variant/15 bg-surface-container-low/50 font-label text-xs uppercase tracking-wider text-on-surface-variant">
+                <thead className="border-b border-border-hairline bg-surface-container-low/50 font-label text-xs uppercase tracking-wider text-on-surface-variant">
                   <tr>
                     <th className="px-4 py-3">Title</th>
                     <th className="px-4 py-3">Status</th>
@@ -334,7 +181,7 @@ export function AdminOperationsHomeView({
                 </thead>
                 <tbody>
                   {activity.map((r) => (
-                    <tr key={r.id} className="border-b border-outline-variant/10">
+                    <tr key={r.id} className="border-b border-border-hairline">
                       <td className="px-4 py-3 font-medium text-on-surface">{r.title}</td>
                       <td className="px-4 py-3 text-on-surface-variant">
                         {r.statusLabel ? (
@@ -369,7 +216,7 @@ export function AdminOperationsHomeView({
                 <li key={r.id}>
                   <Link
                     href={r.href}
-                    className="flex min-h-11 flex-col gap-1 rounded-sm border border-outline-variant/15 bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
+                    className="flex min-h-11 flex-col gap-1 rounded-sm border border-border-hairline bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
                   >
                     <span className="font-headline text-sm text-on-surface">{r.title}</span>
                     {r.statusLabel || r.priceLabel || r.endsLabel ? (

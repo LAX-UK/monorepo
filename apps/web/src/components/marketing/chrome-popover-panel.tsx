@@ -12,7 +12,7 @@ export const ChromePopoverPanel = forwardRef<HTMLDivElement, ChromePopoverPanelP
       <div
         ref={ref}
         className={cn(
-          "absolute right-0 top-full z-50 mt-2 rounded-lg border border-nav-border bg-surface py-2 shadow-sm motion-reduce:shadow-none dark:border-outline-variant/20",
+          "absolute right-0 top-full z-50 mt-2 rounded-lg border border-nav-border bg-surface py-2 shadow-sm motion-reduce:shadow-none dark:border-border-hairline",
           className,
         )}
         {...rest}

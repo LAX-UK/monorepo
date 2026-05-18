@@ -1,5 +1,5 @@
 import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import type { ReactNode } from "react";
 
 export type AdminPanelPageProps = {
@@ -22,7 +22,7 @@ export function AdminPanelPage({
 }: AdminPanelPageProps) {
   return (
     <AppScreen className={className ?? "space-y-6"}>
-      <PageHeader
+      <DashboardPageHeader
         title={title}
         {...(description ? { description } : {})}
         {...(breadcrumbs ? { breadcrumbs } : {})}
