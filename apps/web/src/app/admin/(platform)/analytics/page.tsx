@@ -5,7 +5,7 @@ import {
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
 import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import {
   Table,
   TableBody,
@@ -87,7 +87,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         </Alert>
       ) : data ? (
         <>
-          <KpiGrid
+          <KpiRow
+            columns={4}
             tiles={[
               {
                 label: `GMV (${days}d)`,

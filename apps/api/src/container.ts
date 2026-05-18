@@ -22,8 +22,8 @@ import {
 } from "./infrastructure/bullmq-marketing-event.queue.js";
 import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
+import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
-import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
 import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
@@ -918,7 +918,7 @@ export function createContainer(env: Env): Container {
   const conveyorPipelineReader = new DrizzleConveyorPipelineReader(db);
 
   const httpErrorHandler = new ErrorHandlerService(
-    new DefaultErrorClassifier(),
+    new CompositeErrorClassifier(),
     new ConsoleErrorLogger(env),
     errorReporter,
     new JsonErrorResponseBuilder(),
