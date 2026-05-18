@@ -131,4 +131,10 @@ export interface IPayoutRepository {
    * Used for idempotency in webhook handlers.
    */
   lineExistsForSourceEvent(sourceEventId: string): Promise<boolean>;
+
+  /** Sum of existing refund payout lines for a payment, in PENCE (positive value).
+   * Used by the `charge.refunded` webhook to compute per-event refund delta
+   * because Stripe's `amount_refunded` field is cumulative across all refunds.
+   */
+  sumRefundLineCentsForPayment(paymentId: string): Promise<number>;
 }

@@ -4,6 +4,8 @@ import type { LegalEntity } from "@auction/types";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
+import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -45,11 +47,9 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
   };
 }
 
-function transferStatusFromEvent(eventType: string): "created" | "paid" | "failed" | "reversed" {
-  if (eventType === "transfer.paid") return "paid";
-  if (eventType === "transfer.failed") return "failed";
+function transferStatusFromEvent(eventType: string): "paid" | "reversed" {
   if (eventType === "transfer.reversed") return "reversed";
-  return "created";
+  return "paid";
 }
 
 function stripeFeeFromTransfer(transfer: Stripe.Transfer): string | undefined {
@@ -59,8 +59,10 @@ function stripeFeeFromTransfer(transfer: Stripe.Transfer): string | undefined {
   return typeof fee === "number" ? (fee / 100).toFixed(2) : undefined;
 }
 
+const TRANSFER_EVENT_TYPES = new Set(["transfer.created", "transfer.updated", "transfer.reversed"]);
+
 export class StripeConnectService implements IStripeConnectService {
-  private readonly stripe: Stripe | null;
+  private readonly stripeFactory: IStripeClientFactory;
   private readonly webhookSecret: string | undefined;
 
   constructor(
@@ -69,15 +71,23 @@ export class StripeConnectService implements IStripeConnectService {
     private readonly payoutService: IPayoutService,
     private readonly payoutRepository?: IPayoutRepository,
     private readonly domainEventPublisher?: DomainEventPublisher,
+    stripeFactory?: IStripeClientFactory,
   ) {
     this.webhookSecret = env.STRIPE_CONNECT_WEBHOOK_SECRET;
-    this.stripe = env.STRIPE_SECRET_KEY
-      ? new Stripe(env.STRIPE_SECRET_KEY, { typescript: true })
-      : null;
+    this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
+  }
+
+  private get stripe(): Stripe | null {
+    return this.stripeFactory.get();
   }
 
   isConfigured(): boolean {
     return this.stripe !== null;
+  }
+
+  private requireStripe(): Stripe {
+    if (!this.stripe) throw new StripeConnectNotConfiguredError();
+    return this.stripe;
   }
 
   private async loadEntity(id: string) {
@@ -107,7 +117,7 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   async ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
+    const stripe = this.requireStripe();
     const {
       entity: row,
       ownerEmail,
@@ -162,7 +172,9 @@ export class StripeConnectService implements IStripeConnectService {
             };
           })();
 
-    const account = await this.stripe.accounts.create(accountCreateParams);
+    const account = await stripe.accounts.create(accountCreateParams, {
+      idempotencyKey: `connect:account:${legalEntityId}`,
+    });
 
     const [updated] = await this.db
       .update(legalEntity)
@@ -209,12 +221,12 @@ export class StripeConnectService implements IStripeConnectService {
     returnUrl: string,
     refreshUrl: string,
   ): Promise<AccountLink> {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
+    const stripe = this.requireStripe();
     const row = await this.loadEntity(legalEntityId);
     if (!row.stripeConnectAccountId) {
       throw new Error("stripe_account_missing");
     }
-    const link = await this.stripe.accountLinks.create({
+    const link = await stripe.accountLinks.create({
       account: row.stripeConnectAccountId,
       type: "account_onboarding",
       return_url: returnUrl,
@@ -224,10 +236,10 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   async createDashboardLink(legalEntityId: string): Promise<AccountLink> {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
+    const stripe = this.requireStripe();
     const row = await this.loadEntity(legalEntityId);
     if (!row.stripeConnectAccountId) throw new Error("stripe_account_missing");
-    const link = await this.stripe.accounts.createLoginLink(row.stripeConnectAccountId);
+    const link = await stripe.accounts.createLoginLink(row.stripeConnectAccountId);
     // Login links expire in ~5 minutes; conservatively report 5 minutes.
     return { url: link.url, expiresAt: new Date(Date.now() + 5 * 60 * 1000) };
   }
@@ -242,43 +254,71 @@ export class StripeConnectService implements IStripeConnectService {
 
     const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
 
+    if (TRANSFER_EVENT_TYPES.has(event.type as string)) {
+      return this.handleTransferEvent(event);
+    }
+    return this.handleConnectedAccountEvent(event);
+  }
+
+  async handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
     if (event.type === "account.updated") {
-      const { claimed } = await tryClaimProcessedStripeEvent(this.db, event.id, "stripe_connect");
-      if (!claimed) {
-        return { processed: true };
-      }
       const account = event.data.object as Stripe.Account;
-      await this.applyAccountUpdate(account);
-      return { processed: true };
+      return this.db.transaction(async (tx) => {
+        const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
+        if (!claimed) {
+          return { processed: true };
+        }
+        await this.applyAccountUpdate(account, tx);
+        return { processed: true };
+      });
     }
     if (event.type === "capability.updated") {
-      // Capability updates also bubble through account.updated; refresh
-      // anyway in case Stripe sends only the capability event.
-      const { claimed } = await tryClaimProcessedStripeEvent(this.db, event.id, "stripe_connect");
+      const cap = event.data.object as Stripe.Capability;
+      const accountId = typeof cap.account === "string" ? cap.account : cap.account?.id;
+      if (!accountId) {
+        return { processed: false };
+      }
+      return this.db.transaction(async (tx) => {
+        const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
+        if (!claimed) {
+          return { processed: true };
+        }
+        const stripe = this.requireStripe();
+        const account = await stripe.accounts.retrieve(accountId);
+        await this.applyAccountUpdate(account, tx);
+        return { processed: true };
+      });
+    }
+    return { processed: false };
+  }
+
+  async handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
+    const eventType = event.type as string;
+    if (!TRANSFER_EVENT_TYPES.has(eventType)) {
+      return { processed: false };
+    }
+
+    const transfer = event.data.object as Stripe.Transfer;
+    const isReversal = eventType === "transfer.reversed";
+    // `transfer.updated` fires when description/metadata change on an already-
+    // settled transfer. We dedup the event but do not change payout status,
+    // so a late `transfer.updated` can never undo a prior `transfer.reversed`.
+    const isMetadataOnly = eventType === "transfer.updated";
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        "stripe_connect_transfer",
+      );
       if (!claimed) {
         return { processed: true };
       }
-      const cap = event.data.object as Stripe.Capability;
-      const accountId = typeof cap.account === "string" ? cap.account : cap.account?.id;
-      if (accountId) {
-        const account = await this.stripe.accounts.retrieve(accountId);
-        await this.applyAccountUpdate(account);
+
+      if (isMetadataOnly) {
         return { processed: true };
       }
-    }
-    const eventType = event.type as string;
-    if (
-      eventType === "transfer.created" ||
-      eventType === "transfer.updated" ||
-      eventType === "transfer.paid" ||
-      eventType === "transfer.failed" ||
-      eventType === "transfer.reversed"
-    ) {
-      if (eventType === "transfer.failed") {
-        recordMoneyPathEvent("stripe_connect_transfer_failed");
-      }
-      const transfer = event.data.object as Stripe.Transfer;
-      const isReversal = eventType === "transfer.reversed";
+
       const reconciled = await this.payoutService.reconcileStripeTransfer({
         stripeTransferId: transfer.id,
         payoutId: transfer.metadata?.payoutId,
@@ -294,11 +334,10 @@ export class StripeConnectService implements IStripeConnectService {
           : {}),
       });
       return { processed: reconciled !== null };
-    }
-    return { processed: false };
+    });
   }
 
-  private async applyAccountUpdate(account: Stripe.Account): Promise<void> {
+  private async applyAccountUpdate(account: Stripe.Account, db: Database = this.db): Promise<void> {
     const requirementsCurrentlyDue = (account.requirements?.currently_due ?? []) as string[];
     const disabledReason =
       typeof account.requirements?.disabled_reason === "string"
@@ -307,7 +346,7 @@ export class StripeConnectService implements IStripeConnectService {
     const chargesEnabled = Boolean(account.charges_enabled);
     const payoutsEnabled = Boolean(account.payouts_enabled);
 
-    const rows = await this.db
+    const rows = await db
       .select()
       .from(legalEntity)
       .where(eq(legalEntity.stripeConnectAccountId, account.id))
@@ -318,40 +357,38 @@ export class StripeConnectService implements IStripeConnectService {
     const isReady = chargesEnabled && payoutsEnabled && requirementsCurrentlyDue.length === 0;
     const nextStatus = isReady && row.status === "connect_pending" ? "approved" : row.status;
 
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(legalEntity)
-        .set({
-          stripeConnectChargesEnabled: chargesEnabled,
-          stripeConnectPayoutsEnabled: payoutsEnabled,
-          stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
-          stripeConnectDisabledReason: disabledReason,
-          ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(legalEntity.id, row.id));
+    await db
+      .update(legalEntity)
+      .set({
+        stripeConnectChargesEnabled: chargesEnabled,
+        stripeConnectPayoutsEnabled: payoutsEnabled,
+        stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
+        stripeConnectDisabledReason: disabledReason,
+        ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(legalEntity.id, row.id));
 
-      if (
-        this.domainEventPublisher &&
-        nextStatus === "approved" &&
-        row.status === "connect_pending"
-      ) {
-        await this.domainEventPublisher.publish(tx, {
-          aggregateType: "legal_entity",
-          aggregateId: row.id as string,
-          eventType: "legal_entity.lifecycle_progressed",
-          payload: {
-            kind: row.kind,
-            from_status: "connect_pending",
-            to_status: "approved",
-            reason: "stripe_connect_ready",
-            stripeAccountId: account.id,
-          },
-          actorUserId: null,
-          actingLegalEntityId: row.id as string,
-        });
-      }
-    });
+    if (
+      this.domainEventPublisher &&
+      nextStatus === "approved" &&
+      row.status === "connect_pending"
+    ) {
+      await this.domainEventPublisher.publish(db, {
+        aggregateType: "legal_entity",
+        aggregateId: row.id as string,
+        eventType: "legal_entity.lifecycle_progressed",
+        payload: {
+          kind: row.kind,
+          from_status: "connect_pending",
+          to_status: "approved",
+          reason: "stripe_connect_ready",
+          stripeAccountId: account.id,
+        },
+        actorUserId: null,
+        actingLegalEntityId: row.id as string,
+      });
+    }
   }
 
   /** Initiate a Stripe Connect transfer for a settled payout.
@@ -361,7 +398,8 @@ export class StripeConnectService implements IStripeConnectService {
     payoutId: string,
     opts?: { keepScheduledOnTransferFailure?: boolean },
   ): Promise<InitiateTransferResult> {
-    if (!this.stripe) {
+    const stripe = this.stripe;
+    if (!stripe) {
       return { ok: false, reason: "stripe_not_configured" };
     }
     if (!this.payoutRepository) {
@@ -452,15 +490,18 @@ export class StripeConnectService implements IStripeConnectService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const transfer = await this.stripe.transfers.create({
-          amount: amountCents,
-          currency: payout.currency.toLowerCase(),
-          destination: entity.stripeConnectAccountId,
-          metadata: {
-            payoutId: payout.id,
-            legalEntityId: payout.legalEntityId,
+        const transfer = await stripe.transfers.create(
+          {
+            amount: amountCents,
+            currency: payout.currency.toLowerCase(),
+            destination: entity.stripeConnectAccountId,
+            metadata: {
+              payoutId: payout.id,
+              legalEntityId: payout.legalEntityId,
+            },
           },
-        });
+          { idempotencyKey: `payout:transfer:${payoutId}` },
+        );
 
         await this.payoutRepository.updateStatus(payoutId, {
           status: "in_transit",
