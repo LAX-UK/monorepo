@@ -23,7 +23,7 @@ function mockDbWithPayment(paymentRow: {
   status: string;
   amount: string;
 }): Database {
-  return {
+  const tx = {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -36,6 +36,10 @@ function mockDbWithPayment(paymentRow: {
         where: vi.fn().mockResolvedValue(undefined),
       }),
     }),
+  } as unknown as Database;
+  return {
+    ...tx,
+    transaction: vi.fn(async (fn: (inner: Database) => Promise<unknown>) => fn(tx)),
   } as unknown as Database;
 }
 
@@ -79,7 +83,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
 
     expect(result).toEqual({ processed: true, action: "dispute_closed" });
     expect(tryClaimProcessedStripeEvent).toHaveBeenCalledWith(
-      db,
+      expect.objectContaining({ select: expect.any(Function) }),
       "evt_dispute_closed",
       "stripe_payment_webhook",
     );
@@ -95,7 +99,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       }),
     );
     expect(publisher.publish).toHaveBeenCalledWith(
-      db,
+      expect.objectContaining({ select: expect.any(Function) }),
       expect.objectContaining({
         eventType: "payment.dispute_closed",
       }),
@@ -180,6 +184,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
         legalEntityId: "00000000-0000-4000-8000-000000000001",
       }),
       insertLine: vi.fn().mockResolvedValue({ id: "line_1" }),
+      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
     } as unknown as IPayoutRepository;
     const publisher = {
       publish: vi.fn().mockResolvedValue(undefined),
@@ -208,5 +213,85 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       payment.stripePaymentIntentId,
       "ch_refunded_fixture",
     );
+  });
+});
+
+describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it("inserts a line for the delta when the second partial refund arrives", async () => {
+    vi.mocked(eq).mockClear();
+    const insertLine = vi.fn().mockResolvedValue({ id: "line_2" });
+    const payoutRepository = {
+      findOpenPayoutForEntity: vi.fn().mockResolvedValue({
+        id: "po_open",
+        legalEntityId: "00000000-0000-4000-8000-000000000001",
+      }),
+      insertLine,
+      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(3000),
+    } as unknown as IPayoutRepository;
+    const publisher = {
+      publish: vi.fn().mockResolvedValue(undefined),
+    } as unknown as DomainEventPublisher;
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "100.00",
+    });
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const event = { id: "evt_refund_partial_2", type: "charge.refunded" } as Stripe.Event;
+    const charge = {
+      id: "ch_partial",
+      amount: 10000,
+      amount_refunded: 5000,
+      currency: "gbp",
+    } as Stripe.Charge;
+
+    const result = await svc.handleChargeRefunded(event, charge);
+
+    expect(result).toEqual({ processed: true, action: "refund_received" });
+    expect(insertLine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: "-20.00",
+        kind: "refund",
+        sourceEventId: "evt_refund_partial_2",
+      }),
+    );
+  });
+
+  it("skips when cumulative amount_refunded already accounted for (replay or stale event)", async () => {
+    vi.mocked(eq).mockClear();
+    const insertLine = vi.fn().mockResolvedValue({ id: "line_dup" });
+    const payoutRepository = {
+      findOpenPayoutForEntity: vi.fn().mockResolvedValue({ id: "po_open" }),
+      insertLine,
+      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(5000),
+    } as unknown as IPayoutRepository;
+    const publisher = {
+      publish: vi.fn().mockResolvedValue(undefined),
+    } as unknown as DomainEventPublisher;
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "100.00",
+    });
+    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const event = { id: "evt_refund_stale", type: "charge.refunded" } as Stripe.Event;
+    const charge = {
+      id: "ch_stale",
+      amount: 10000,
+      amount_refunded: 5000,
+      currency: "gbp",
+    } as Stripe.Charge;
+
+    const result = await svc.handleChargeRefunded(event, charge);
+
+    expect(result.action).toBe("skipped");
+    expect(insertLine).not.toHaveBeenCalled();
   });
 });

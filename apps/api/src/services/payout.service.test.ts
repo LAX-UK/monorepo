@@ -35,6 +35,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     findOpenPayoutForEntity: vi.fn().mockResolvedValue(null),
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
     listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+    sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
@@ -326,14 +327,14 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     await expect(
       svc.reconcileStripeTransfer({
         stripeTransferId: "tr_missing",
-        status: "created",
+        status: "paid",
       }),
     ).resolves.toBeNull();
   });
 
-  it("uses payout metadata when present and marks transfer.created as in_transit", async () => {
+  it("uses payout metadata when present and marks transfer as paid (transfers complete synchronously)", async () => {
     const before = payout({ stripeTransferId: null, status: "scheduled" });
-    const after = payout({ stripeTransferId: "tr_1", status: "in_transit" });
+    const after = payout({ stripeTransferId: "tr_1", status: "paid" });
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(before),
       reconcileStripeTransfer: vi.fn().mockResolvedValue(after),
@@ -342,24 +343,24 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",
       payoutId: "po1",
-      status: "created",
+      status: "paid",
       stripeFee: "2.10",
     });
 
-    expect(result?.status).toBe("in_transit");
+    expect(result?.status).toBe("paid");
     expect(repo.findById).toHaveBeenCalledWith("po1");
     expect(repo.reconcileStripeTransfer).toHaveBeenCalledWith(
       "po1",
       expect.objectContaining({
         stripeTransferId: "tr_1",
-        status: "in_transit",
+        status: "paid",
         stripeFee: "2.10",
         failureReason: null,
       }),
     );
   });
 
-  it("looks up by transfer id and marks transfer.paid as paid", async () => {
+  it("looks up by transfer id when payoutId not provided", async () => {
     const occurredAt = new Date("2026-05-01T10:00:00Z");
     const before = payout({ stripeTransferId: "tr_paid", status: "in_transit" });
     const after = payout({ stripeTransferId: "tr_paid", status: "paid", processedAt: occurredAt });
