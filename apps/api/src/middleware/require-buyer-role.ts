@@ -37,12 +37,3 @@ export function createRequireBuyerRoleUnlessStaff(src: RoleSource = honoContextR
 }
 
 export const requireBuyerRoleUnlessStaff = createRequireBuyerRoleUnlessStaff();
-
-/** @deprecated Use {@link createRequireBuyerRoleUnlessStaff}. */
-export const createRequireBuyerRoleUnlessAdministrator = createRequireBuyerRoleUnlessStaff;
-
-/** @deprecated Use {@link requireBuyerRoleUnlessStaff}. */
-export const requireBuyerRoleUnlessAdministrator = requireBuyerRoleUnlessStaff;
-
-/** @deprecated Use {@link requireBuyerRoleUnlessStaff}. */
-export const requireBuyerRoleUnlessAdmin = requireBuyerRoleUnlessStaff;
