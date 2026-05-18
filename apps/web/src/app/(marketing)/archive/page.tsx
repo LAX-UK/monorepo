@@ -1,6 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
-import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { ArchiveFilterBar } from "@/components/sections/archive/archive-filter-bar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
@@ -147,12 +146,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         <MarketingListToolbar
           className="mb-8"
           countLabel={`${totalCount} lot${totalCount === 1 ? "" : "s"}`}
-          trailing={
-            <>
-              <CopyCatalogLinkButton />
-              <CatalogViewSwitcher routeKey="archive" value={layoutView} />
-            </>
-          }
+          trailing={<CatalogViewSwitcher routeKey="archive" value={layoutView} />}
         />
 
         <ViewItemListTracker
