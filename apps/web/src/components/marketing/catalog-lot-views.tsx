@@ -108,7 +108,7 @@ export function CatalogLotGridView({
               }
               meta={
                 <>
-                  <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-widest text-primary md:mt-2 md:text-xs">
+                  <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary md:mt-2 md:text-xs">
                     {formatMoney(a.currentPrice)}
                   </p>
                   {est ? (
@@ -180,7 +180,7 @@ export function CatalogLotCardView({
               }
               footer={
                 <div className="flex flex-wrap items-baseline justify-between gap-4 pt-2">
-                  <p className="font-label text-xs uppercase tracking-widest text-primary">
+                  <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                     {formatMoney(a.currentPrice)}
                   </p>
                   {est ? (
@@ -206,7 +206,7 @@ export function CatalogLotListView({
   loginNextPath,
 }: CatalogLotViewsProps) {
   return (
-    <div className="-mx-4 max-w-none border-y border-outline-variant/15 bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-outline-variant/15">
+    <div className="-mx-4 max-w-none border-y border-border-hairline bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-border-hairline">
       <ul className="divide-y divide-outline-variant/15 sm:rounded-xl">
         {lots.map((a) => {
           const img = a.images[0];

@@ -17,7 +17,7 @@ export function DeleteAccountForm() {
   const coordinator = useStepUpCoordinator();
 
   return (
-    <div className="space-y-3 rounded-lg border border-outline-variant/20 p-4">
+    <div className="space-y-3 rounded-lg border border-border-hairline p-4">
       <StepUpDialog coordinator={coordinator} />
       <p className="font-body text-sm text-on-surface-variant">
         Request account deletion. You must have no open buyer invoices, active seller lots, or
@@ -26,7 +26,7 @@ export function DeleteAccountForm() {
       </p>
       <label
         htmlFor="delete-account-confirm-phrase"
-        className="block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+        className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
       >
         Type {PHRASE} to confirm
       </label>

@@ -139,7 +139,7 @@ export function LotCardEditorialBold({
   return (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm",
+        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
         className,
       )}
     >
@@ -188,7 +188,7 @@ export function LotCardEditorialCalm({
   return (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm",
+        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
         className,
       )}
     >

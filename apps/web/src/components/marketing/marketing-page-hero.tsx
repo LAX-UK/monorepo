@@ -133,7 +133,9 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
     <header className={cn(MARKETING_PAGE_INNER, "flex flex-col gap-4 py-8 md:py-10", className)}>
       {breadcrumb ? <div className="text-sm text-on-surface-variant">{breadcrumb}</div> : null}
       {eyebrow ? (
-        <div className="text-[length:var(--text-label-3)] uppercase tracking-widest">{eyebrow}</div>
+        <div className="text-[length:var(--text-label-3)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+          {eyebrow}
+        </div>
       ) : null}
       <div className={cn("grid gap-6", media && "lg:grid-cols-[1fr_minmax(0,1fr)] lg:items-end")}>
         <div className="flex min-w-0 flex-col gap-3">

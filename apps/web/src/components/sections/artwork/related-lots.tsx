@@ -23,7 +23,7 @@ export function RelatedLots({
   if (related.length === 0) return null;
 
   return (
-    <section className="mt-24 border-t border-outline-variant/15 pt-16">
+    <section className="mt-24 border-t border-border-hairline pt-16">
       <h2 className="mb-10 font-headline text-2xl tracking-tight text-on-surface md:text-3xl">
         {heading}
       </h2>
@@ -53,7 +53,7 @@ export function RelatedLots({
                   <h3 className="font-headline text-lg font-light text-on-surface group-hover:italic">
                     {a.title}
                   </h3>
-                  <p className="mt-2 font-label text-xs uppercase tracking-widest text-primary">
+                  <p className="mt-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                     {formatMoney(a.currentPrice)}
                   </p>
                 </div>

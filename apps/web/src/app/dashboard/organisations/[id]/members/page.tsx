@@ -11,14 +11,8 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { SectionHeader } from "@auction/ui/components/section-header";
+import { Surface } from "@auction/ui/components/surface";
 import { notFound } from "next/navigation";
 
 const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
@@ -102,17 +96,15 @@ export default async function OrganisationMembersPage({
       )}
 
       {!missingSelfInList && viewerIsAdmin ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Invite someone</CardTitle>
-            <CardDescription>
+        <Surface variant="section" padding="md" className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-on-surface">Invite someone</h3>
+            <p className="font-body text-sm text-on-surface-variant">
               They&apos;ll receive an email invitation to join this organisation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <InviteMemberForm legalEntityId={acting.id} />
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          <InviteMemberForm legalEntityId={acting.id} />
+        </Surface>
       ) : null}
 
       <MemberList

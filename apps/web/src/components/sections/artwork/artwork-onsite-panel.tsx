@@ -32,13 +32,13 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
   return (
     <div className="min-w-0 max-w-[550px]">
       <div className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 shadow-[0_1px_0_rgba(0,0,0,0.04)] lg:p-7 dark:bg-surface-container-low/40">
-        <span className="inline-block rounded-full bg-secondary-container/40 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-widest text-on-secondary-container">
+        <span className="inline-block rounded-full bg-secondary-container/40 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-secondary-container">
           Onsite auction · catalog
         </span>
 
         <div className="mt-4 space-y-3">
           <div>
-            <p className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+            <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Estimate
             </p>
             <p className="mt-1 font-body text-lg text-on-surface">
@@ -47,7 +47,7 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
           </div>
           {auction.startingPrice ? (
             <div>
-              <p className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Opening price
               </p>
               <p className="mt-1 font-body text-lg text-on-surface">
@@ -59,7 +59,7 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
 
         <div className="mt-6 space-y-4">
           <div>
-            <h3 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+            <h3 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Auction event
             </h3>
             <p className="mt-1 font-body text-sm text-on-surface">
@@ -75,7 +75,7 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
             if (!showSection) return null;
             return (
               <div>
-                <h3 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+                <h3 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                   Location
                 </h3>
                 {sale.locationName ? (
@@ -95,7 +95,7 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
                     href={mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex font-label text-xs font-bold uppercase tracking-widest text-primary underline"
+                    className="mt-2 inline-flex font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline"
                     aria-label={
                       hasStructured ? "Get directions in Google Maps" : "Open venue location"
                     }
@@ -109,14 +109,14 @@ export function ArtworkOnsitePanel({ auction, sale, summarySeed }: Props) {
 
           {sale.streamUrl ? (
             <div>
-              <h3 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h3 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Live stream
               </h3>
               <a
                 href={sale.streamUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex font-label text-xs font-bold uppercase tracking-widest text-primary underline"
+                className="mt-1 inline-flex font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline"
               >
                 Watch live
               </a>

@@ -1,13 +1,14 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { formatMoney } from "@/lib/format-currency";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
-import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
 
@@ -186,10 +187,10 @@ export default async function SellerOverviewPage() {
 
   return (
     <DashboardPage className="space-y-8">
-      <PageHeader
+      <DashboardPageHeader
+        meta="Selling"
         title="Seller workspace"
         description="Track consignments from first submission through cataloguing, sale, and settlement."
-        className="border-0 pb-0"
       />
 
       {err ? <DashboardErrorAlert title="Could not load submissions" message={err} /> : null}
@@ -209,200 +210,190 @@ export default async function SellerOverviewPage() {
       ) : null}
 
       {!err && rows.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map((card) => (
-            <Link key={card.title} href={card.href} className="group block min-h-[8rem] rounded-xl">
-              <Card className="h-full border-outline-variant/15 bg-surface-container-lowest/80 ring-1 ring-outline-variant/10 transition-colors group-hover:border-primary/40 group-hover:ring-primary/20">
-                <CardContent className="flex h-full flex-col justify-between p-5">
-                  <div>
-                    <p className="font-label text-[10px] font-bold uppercase tracking-[0.25em] text-secondary">
-                      {card.title}
-                    </p>
-                    <p className="mt-3 font-headline text-4xl tabular-nums text-primary">
-                      {card.value}
-                    </p>
-                  </div>
-                  <p className="mt-4 font-body text-xs text-on-surface-variant">{card.hint}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <KpiRow
+          track="selling"
+          columns={4}
+          tiles={cards.map((card) => ({
+            id: card.title,
+            label: card.title,
+            value: String(card.value),
+            delta: card.hint,
+            semanticTone: card.value > 0 ? "emphasis" : "default",
+            trendSlot: (
+              <Link href={card.href} className="text-xs font-semibold text-primary hover:underline">
+                View
+              </Link>
+            ),
+          }))}
+        />
       ) : null}
 
       {!err && (upcomingSales.length > 0 || forecast.liveLots > 0) ? (
         <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          <Card className="border-outline-variant/15 bg-surface-container-lowest/80">
-            <CardContent className="space-y-4 p-5">
-              <header className="flex items-center gap-3">
-                <CalendarDays className="size-5 text-primary" aria-hidden />
-                <h2 className="font-headline text-lg font-semibold text-on-surface">
-                  Upcoming sales
-                </h2>
-              </header>
-              {upcomingSales.length === 0 ? (
-                <p className="font-body text-sm text-on-surface-variant">
-                  No live or scheduled lots yet — once specialists assign your work to a sale, it
-                  will appear here.
-                </p>
-              ) : (
-                <ul className="divide-y divide-outline-variant/15">
-                  {upcomingSales.map((row) => (
-                    <li key={row.saleId} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <Link
-                          href="/dashboard/seller/in-sale"
-                          className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                        >
-                          {row.saleTitle}
-                        </Link>
-                        <p className="text-xs text-on-surface-variant">
-                          {row.lotsInSale} of your lot
-                          {row.lotsInSale === 1 ? "" : "s"} · first close{" "}
-                          <time dateTime={row.scheduleIso}>{row.scheduleLabel}</time>
-                        </p>
-                      </div>
-                      <ArrowRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="border-outline-variant/15 bg-surface-container-lowest/80">
-            <CardContent className="space-y-4 p-5">
-              <header className="flex items-center gap-3">
-                <WalletCards className="size-5 text-primary" aria-hidden />
-                <h2 className="font-headline text-lg font-semibold text-on-surface">
-                  Payout forecast
-                </h2>
-              </header>
-              {forecast.liveLots === 0 ? (
-                <p className="font-body text-sm text-on-surface-variant">
-                  No live lots right now. The forecast updates once your submissions are scheduled
-                  into a sale.
-                </p>
-              ) : (
-                <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
-                      Reserved floor
-                    </dt>
-                    <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
-                      {formatMoney(forecast.reservedFloor)}
-                    </dd>
-                    <p className="mt-1 text-xs text-on-surface-variant">
-                      Hammer floor if every reserved lot just meets reserve.
-                    </p>
-                  </div>
-                  <div>
-                    <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
-                      Current best case
-                    </dt>
-                    <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
-                      {formatMoney(forecast.bestCaseHammer)}
-                    </dd>
-                    <p className="mt-1 text-xs text-on-surface-variant">
-                      Sum of current prices across {forecast.liveLots} live/scheduled lot
-                      {forecast.liveLots === 1 ? "" : "s"} · {forecast.lotsWithReserve} reserved.
-                    </p>
-                  </div>
-                </dl>
-              )}
-              <p className="font-body text-xs text-on-surface-variant">
-                Indicative only. Final payouts subtract platform fees, VAT, and Stripe transfer
-                charges — see{" "}
-                <Link
-                  href="/dashboard/seller/payouts"
-                  className="underline underline-offset-2 hover:text-on-surface"
-                >
-                  Sold &amp; payouts
-                </Link>
-                .
+          <Surface variant="quiet" padding="md" className="space-y-4">
+            <header className="flex items-center gap-3">
+              <CalendarDays className="size-5 text-primary" aria-hidden />
+              <h2 className="font-headline text-lg font-semibold text-on-surface">
+                Upcoming sales
+              </h2>
+            </header>
+            {upcomingSales.length === 0 ? (
+              <p className="font-body text-sm text-on-surface-variant">
+                No live or scheduled lots yet — once specialists assign your work to a sale, it will
+                appear here.
               </p>
-            </CardContent>
-          </Card>
+            ) : (
+              <ul className="divide-y divide-border-hairline">
+                {upcomingSales.map((row) => (
+                  <li key={row.saleId} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <Link
+                        href="/dashboard/seller/in-sale"
+                        className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      >
+                        {row.saleTitle}
+                      </Link>
+                      <p className="text-xs text-on-surface-variant">
+                        {row.lotsInSale} of your lot
+                        {row.lotsInSale === 1 ? "" : "s"} · first close{" "}
+                        <time dateTime={row.scheduleIso}>{row.scheduleLabel}</time>
+                      </p>
+                    </div>
+                    <ArrowRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Surface>
+          <Surface variant="quiet" padding="md" className="space-y-4">
+            <header className="flex items-center gap-3">
+              <WalletCards className="size-5 text-primary" aria-hidden />
+              <h2 className="font-headline text-lg font-semibold text-on-surface">
+                Payout forecast
+              </h2>
+            </header>
+            {forecast.liveLots === 0 ? (
+              <p className="font-body text-sm text-on-surface-variant">
+                No live lots right now. The forecast updates once your submissions are scheduled
+                into a sale.
+              </p>
+            ) : (
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                    Reserved floor
+                  </dt>
+                  <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                    {formatMoney(forecast.reservedFloor)}
+                  </dd>
+                  <p className="mt-1 text-xs text-on-surface-variant">
+                    Hammer floor if every reserved lot just meets reserve.
+                  </p>
+                </div>
+                <div>
+                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                    Current best case
+                  </dt>
+                  <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                    {formatMoney(forecast.bestCaseHammer)}
+                  </dd>
+                  <p className="mt-1 text-xs text-on-surface-variant">
+                    Sum of current prices across {forecast.liveLots} live/scheduled lot
+                    {forecast.liveLots === 1 ? "" : "s"} · {forecast.lotsWithReserve} reserved.
+                  </p>
+                </div>
+              </dl>
+            )}
+            <p className="font-body text-xs text-on-surface-variant">
+              Indicative only. Final payouts subtract platform fees, VAT, and Stripe transfer
+              charges — see{" "}
+              <Link
+                href="/dashboard/seller/payouts"
+                className="underline underline-offset-2 hover:text-on-surface"
+              >
+                Sold &amp; payouts
+              </Link>
+              .
+            </p>
+          </Surface>
         </section>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Card className="border-outline-variant/15 bg-surface-container-low/40">
-          <CardContent className="flex gap-4 p-5">
-            <FileStack className="size-10 shrink-0 text-primary" aria-hidden />
-            <div>
-              <p className="font-label text-xs uppercase tracking-widest text-secondary">
-                Submissions
-              </p>
-              <p className="mt-2 font-body text-sm text-on-surface-variant">
-                Upload imagery, provenance, and pricing expectations. Specialists reply in the
-                review queue.
-              </p>
-              <Link
-                href="/dashboard/submissions"
-                className="mt-3 inline-flex font-label text-xs uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-              >
-                Open submissions
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-outline-variant/15 bg-surface-container-low/40">
-          <CardContent className="flex gap-4 p-5">
-            <Layers className="size-10 shrink-0 text-primary" aria-hidden />
-            <div>
-              <p className="font-label text-xs uppercase tracking-widest text-secondary">
-                Items in sale
-              </p>
-              <p className="mt-2 font-body text-sm text-on-surface-variant">
-                Once converted, monitor catalogue status and public links without exposing bidder
-                identities.
-              </p>
-              <Link
-                href="/dashboard/seller/in-sale"
-                className="mt-3 inline-flex font-label text-xs uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-              >
-                View items
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-outline-variant/15 bg-surface-container-low/40">
-          <CardContent className="flex gap-4 p-5">
-            <WalletCards className="size-10 shrink-0 text-primary" aria-hidden />
-            <div>
-              <p className="font-label text-xs uppercase tracking-widest text-secondary">Payouts</p>
-              <p className="mt-2 font-body text-sm text-on-surface-variant">
-                Hammer, fees, and adjustments consolidate here as finance operations completes
-                wiring.
-              </p>
-              <Link
-                href="/dashboard/seller/payouts"
-                className="mt-3 inline-flex font-label text-xs uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-              >
-                View payouts
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <Surface variant="quiet" padding="md" className="flex gap-4">
+          <FileStack className="size-10 shrink-0 text-primary" aria-hidden />
+          <div>
+            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Submissions
+            </p>
+            <p className="mt-2 font-body text-sm text-on-surface-variant">
+              Upload imagery, provenance, and pricing expectations. Specialists reply in the review
+              queue.
+            </p>
+            <Link
+              href="/dashboard/submissions"
+              className="mt-3 inline-flex font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            >
+              Open submissions
+            </Link>
+          </div>
+        </Surface>
+        <Surface variant="quiet" padding="md" className="flex gap-4">
+          <Layers className="size-10 shrink-0 text-primary" aria-hidden />
+          <div>
+            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Items in sale
+            </p>
+            <p className="mt-2 font-body text-sm text-on-surface-variant">
+              Once converted, monitor catalogue status and public links without exposing bidder
+              identities.
+            </p>
+            <Link
+              href="/dashboard/seller/in-sale"
+              className="mt-3 inline-flex font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            >
+              View items
+            </Link>
+          </div>
+        </Surface>
+        <Surface variant="quiet" padding="md" className="flex gap-4">
+          <WalletCards className="size-10 shrink-0 text-primary" aria-hidden />
+          <div>
+            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Payouts
+            </p>
+            <p className="mt-2 font-body text-sm text-on-surface-variant">
+              Hammer, fees, and adjustments consolidate here as finance operations completes wiring.
+            </p>
+            <Link
+              href="/dashboard/seller/payouts"
+              className="mt-3 inline-flex font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            >
+              View payouts
+            </Link>
+          </div>
+        </Surface>
       </section>
 
-      <Card className="border-dashed border-primary/25 bg-primary-container/5">
-        <CardContent className="flex flex-wrap items-center gap-4 p-6">
-          <Sparkles className="size-8 text-primary" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="font-label text-xs uppercase tracking-widest text-primary">
-              Artist profile
-            </p>
-            <p className="mt-1 font-body text-sm text-on-surface-variant">
-              Opt in to manage portrait, biography, and attribution requests routed through admin
-              approval.
-            </p>
-          </div>
-          <Button variant="secondary" asChild>
-            <Link href="/dashboard/seller/artist">Artist profile (request changes)</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <Surface
+        variant="section"
+        padding="lg"
+        className="flex flex-wrap items-center gap-4 border-dashed border-primary/25 bg-primary-container/5"
+      >
+        <Sparkles className="size-8 text-primary" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+            Artist profile
+          </p>
+          <p className="mt-1 font-body text-sm text-on-surface-variant">
+            Opt in to manage portrait, biography, and attribution requests routed through admin
+            approval.
+          </p>
+        </div>
+        <Button variant="secondary" asChild>
+          <Link href="/dashboard/seller/artist">Artist profile (request changes)</Link>
+        </Button>
+      </Surface>
     </DashboardPage>
   );
 }

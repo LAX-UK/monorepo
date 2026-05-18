@@ -4,7 +4,7 @@ import { useTableDensity } from "@/components/layout/density-provider";
 import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
-import { DataTable, EntityTableShell, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
+import { DataTable, EntityList, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -110,7 +110,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
       {rows.map((r) => (
         <li
           key={r.saleId}
-          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
+          className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -120,7 +120,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
               >
                 {r.title}
               </Link>
-              <p className="mt-1 font-label text-[10px] uppercase tracking-widest text-secondary">
+              <p className="mt-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 {r.lotCount} lot{r.lotCount === 1 ? "" : "s"}
               </p>
             </div>
@@ -136,7 +136,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
   );
 
   return (
-    <EntityTableShell
+    <EntityList
       responsiveMode="auto"
       density={density}
       filters={statusChips ?? null}

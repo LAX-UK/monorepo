@@ -1,11 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { actionFailure } from "@/lib/forms/form-result";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default async function ConfirmEmailChangePage({
@@ -26,10 +26,9 @@ export default async function ConfirmEmailChangePage({
 
   return (
     <DashboardPage>
-      <PageHeader
+      <SettingsFormHeader
         title="Confirm email change"
         description="Finish updating your account email."
-        className="border-b border-outline-variant/20 pb-5"
       />
       {result.ok && result.data?.completed ? (
         <Alert>

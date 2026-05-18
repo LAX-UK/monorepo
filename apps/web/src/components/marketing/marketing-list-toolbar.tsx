@@ -55,7 +55,7 @@ export function MarketingListToolbar({
       <div
         data-scrolled={scrolled ? "true" : undefined}
         className={cn(
-          "sticky top-[var(--header-height,4rem)] z-30 border-b border-outline-variant/15 bg-surface/85 backdrop-blur-md motion-safe:transition-shadow motion-safe:duration-200",
+          "sticky top-[var(--header-height,4rem)] z-30 border-b border-border-hairline bg-surface/85 backdrop-blur-md motion-safe:transition-shadow motion-safe:duration-200",
           scrolled &&
             "shadow-[0_4px_12px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_12px_-12px_rgba(0,0,0,0.35)]",
           className,
@@ -65,7 +65,7 @@ export function MarketingListToolbar({
           <div className="flex flex-col gap-2 md:gap-0">
             <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
               {countLabel ? (
-                <p className="max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-widest text-on-surface-variant tabular-nums sm:max-w-[10rem]">
+                <p className="max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]">
                   {countLabel}
                 </p>
               ) : null}
@@ -99,7 +99,7 @@ export function MarketingListToolbar({
             {stackTrailingOnMobile ? (
               <div
                 data-testid="mobile-trailing-row"
-                className="flex items-center justify-end gap-2 border-t border-outline-variant/10 pt-2 md:hidden"
+                className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 md:hidden"
               >
                 {trailing}
               </div>

@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
@@ -288,6 +289,11 @@ export default async function SalesListPage({
                       }
                     />
                   ) : null}
+                  <ViewItemListTracker
+                    listId="sales_hub"
+                    listName="New lots"
+                    itemIds={newLots.map((l) => l.id)}
+                  />
                   <SalesNewLotsGrid lots={newLots} />
                 </div>
               ) : null}
@@ -300,7 +306,7 @@ export default async function SalesListPage({
                   years={yearOptions}
                 >
                   <MarketingListToolbar
-                    className="mb-4 rounded-lg border border-outline-variant/20 bg-white/80 dark:bg-surface-container-low/40"
+                    className="mb-4 rounded-lg border border-border-hairline bg-white/80 dark:bg-surface-container-low/40"
                     countLabel={`${filteredSales.length} sale${filteredSales.length === 1 ? "" : "s"}`}
                     trailing={
                       <>

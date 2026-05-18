@@ -1,8 +1,10 @@
 "use client";
 
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
-import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
+import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
@@ -20,9 +22,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Toolbar } from "@auction/ui/components/toolbar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, History } from "lucide-react";
@@ -181,7 +181,15 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
       header: "",
       cell: ({ row }) => {
         const a = row.original.lot;
-        if (a?.status !== "active") return null;
+        if (!a) return null;
+        if (row.original.statusLabel === "Won") {
+          return (
+            <Button variant="primary" asChild>
+              <Link href={`/dashboard/checkout/${a.id}`}>Settle now</Link>
+            </Button>
+          );
+        }
+        if (a.status !== "active") return null;
         return (
           <Button variant="primary" asChild>
             <Link href={lotPath(a)}>Re-bid</Link>
@@ -208,7 +216,7 @@ function BoardTable({
   );
   if (rows.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
       <DataTable columns={columns} data={rows} density="compact" />
     </div>
   );
@@ -363,10 +371,10 @@ export function BidsBoard({
 
   return (
     <div className="min-w-0 max-w-[var(--container-inner,1376px)]">
-      <PageHeader
+      <DashboardPageHeader
+        meta="Bidding"
         title="My Bids"
         description="Track active, won, and lost lots with your latest bid values."
-        className="border-0 pb-0"
         actions={
           <Button
             type="button"
@@ -383,9 +391,9 @@ export function BidsBoard({
 
       {fetchError ? <DashboardErrorAlert title="Could not load bids" message={fetchError} /> : null}
 
-      <DashboardSectionTabs
+      <SectionTabsNav
         ariaLabel="Bid status"
-        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3"
+        className="mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
         items={[
           {
             href: tabHref(pathname, "active", appliedQ),
@@ -408,8 +416,7 @@ export function BidsBoard({
         ]}
       />
 
-      <Toolbar
-        className="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm"
+      <DashboardToolbar
         search={
           <Form {...searchForm}>
             <form
@@ -425,7 +432,7 @@ export function BidsBoard({
                   <FormItem className="min-w-0 flex-1 space-y-2">
                     <FormLabel
                       htmlFor="bids-q"
-                      className="font-label text-xs uppercase tracking-widest text-secondary"
+                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
                     >
                       Filter by lot title
                     </FormLabel>

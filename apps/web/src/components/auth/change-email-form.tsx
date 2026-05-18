@@ -106,7 +106,7 @@ export function ChangeEmailForm({
             name="newEmail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                   New email
                 </FormLabel>
                 <FormControl>
@@ -126,7 +126,7 @@ export function ChangeEmailForm({
             name="confirmEmail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                   Confirm email
                 </FormLabel>
                 <FormControl>

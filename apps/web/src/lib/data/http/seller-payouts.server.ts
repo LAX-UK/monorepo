@@ -32,6 +32,17 @@ function classifyPayoutsError(status: number): PayoutsLoadError {
   return "server_error";
 }
 
+/** API JSON returns ISO strings; hydrate to `Date` for `Payout` consumers. */
+function parsePayoutFromApi(raw: Payout): Payout {
+  return {
+    ...raw,
+    periodStart: new Date(raw.periodStart),
+    periodEnd: new Date(raw.periodEnd),
+    processedAt: raw.processedAt ? new Date(raw.processedAt) : null,
+    createdAt: new Date(raw.createdAt),
+  };
+}
+
 /** `GET /payouts` with explicit `X-Legal-Entity-Id` (seller settlement list). */
 export async function getServerPayoutsListForLegalEntity(
   legalEntityId: string,
@@ -42,7 +53,7 @@ export async function getServerPayoutsListForLegalEntity(
   });
   if (!res.ok) return { ok: false, error: classifyPayoutsError(res.status) };
   const body = (await res.json()) as { data: Payout[] };
-  return { ok: true, payouts: body.data };
+  return { ok: true, payouts: body.data.map(parsePayoutFromApi) };
 }
 
 /** `GET /payouts/preview-next` with explicit `X-Legal-Entity-Id`. */

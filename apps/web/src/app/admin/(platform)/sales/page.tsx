@@ -160,7 +160,7 @@ export default async function AdminSalesPage({
           className="flex max-w-xl flex-wrap items-end gap-2"
         >
           <label className="block min-w-[12rem] flex-1">
-            <span className="mb-1 block font-label text-xs uppercase tracking-widest text-secondary">
+            <span className="mb-1 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Search titles
             </span>
             <input
@@ -180,7 +180,7 @@ export default async function AdminSalesPage({
       toolbarEnd={
         <Link
           href="/sales"
-          className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary underline-offset-4 hover:underline"
+          className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
         >
           Public sales
         </Link>

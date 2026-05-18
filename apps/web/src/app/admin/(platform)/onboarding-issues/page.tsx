@@ -1,13 +1,7 @@
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { getAdminOnboardingIssues } from "@/lib/data/http/admin.server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 export default async function AdminOnboardingIssuesPage() {
@@ -28,15 +22,19 @@ export default async function AdminOnboardingIssuesPage() {
         data ? (
           <div className="space-y-10">
             <section id="entities-pending-review" className="scroll-mt-24 space-y-3">
-              <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Legal entities pending review
               </h2>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">docs_received · under_review</CardTitle>
-                  <CardDescription>Open an entity to run lifecycle transitions.</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <Surface variant="card">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold text-on-surface">
+                    docs_received · under_review
+                  </h3>
+                  <p className="font-body text-sm text-on-surface-variant">
+                    Open an entity to run lifecycle transitions.
+                  </p>
+                </div>
+                <div>
                   {data.entitiesPendingReview.length === 0 ? (
                     <EmptyState title="Clear" description="No entities in these statuses." />
                   ) : (
@@ -60,16 +58,16 @@ export default async function AdminOnboardingIssuesPage() {
                       ))}
                     </ul>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </Surface>
             </section>
 
             <section id="artists-pending" className="scroll-mt-24 space-y-3">
-              <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Artists pending approval
               </h2>
-              <Card>
-                <CardContent className="p-4">
+              <Surface variant="card">
+                <div className="p-4">
                   {data.artistsPendingApproval.length === 0 ? (
                     <EmptyState title="Clear" description="No pending artists." />
                   ) : (
@@ -90,16 +88,16 @@ export default async function AdminOnboardingIssuesPage() {
                       ))}
                     </ul>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </Surface>
             </section>
 
             <section id="stale-identity" className="scroll-mt-24 space-y-3">
-              <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Stale Stripe Identity sessions (&gt; 48h, not verified)
               </h2>
-              <Card>
-                <CardContent className="p-4">
+              <Surface variant="card">
+                <div className="p-4">
                   {data.staleIdentitySessions.length === 0 ? (
                     <EmptyState title="Clear" description="No stale verification sessions." />
                   ) : (
@@ -124,16 +122,16 @@ export default async function AdminOnboardingIssuesPage() {
                       ))}
                     </ul>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </Surface>
             </section>
 
             <section id="stale-lead-orgs" className="scroll-mt-24 space-y-3">
-              <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Organisations stuck in lead (&gt; 7 days)
               </h2>
-              <Card>
-                <CardContent className="p-4">
+              <Surface variant="card">
+                <div className="p-4">
                   {data.staleLeadOrganisations.length === 0 ? (
                     <EmptyState title="Clear" description="No stale lead organisations." />
                   ) : (
@@ -157,16 +155,16 @@ export default async function AdminOnboardingIssuesPage() {
                       ))}
                     </ul>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </Surface>
             </section>
 
             <section id="documents-awaiting" className="scroll-mt-24 space-y-3">
-              <h2 className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Legal entity documents awaiting review
               </h2>
-              <Card>
-                <CardContent className="p-4">
+              <Surface variant="card">
+                <div className="p-4">
                   {data.documentsAwaitingReview.length === 0 ? (
                     <EmptyState title="Clear" description="No pending entity documents." />
                   ) : (
@@ -190,8 +188,8 @@ export default async function AdminOnboardingIssuesPage() {
                       ))}
                     </ul>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </Surface>
             </section>
           </div>
         ) : null

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChartRenderer } from "@/components/charts/chart-renderer";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 
 /** Serializable analytics payload (avoid importing `server-only` modules in client). */
 export type AdminAnalyticsChartsData = {
@@ -38,38 +38,32 @@ export function AdminAnalyticsCharts({ data }: Props) {
   return (
     <div className="@container min-w-0">
       <div className="grid grid-cols-1 gap-6 @[720px]:grid-cols-2">
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Revenue (series)</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Surface variant="card" className="border-border-hairline">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Revenue (series)</h3>
+          <div>
             <ChartRenderer kind="line" data={revenueLine} height={180} />
-          </CardContent>
-        </Card>
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Ended lots per day</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </Surface>
+        <Surface variant="card" className="border-border-hairline">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">
+            Ended lots per day
+          </h3>
+          <div>
             <ChartRenderer kind="bar" data={endedBars} height={180} />
-          </CardContent>
-        </Card>
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">New registrations</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </Surface>
+        <Surface variant="card" className="border-border-hairline">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">New registrations</h3>
+          <div>
             <ChartRenderer kind="bar" data={regBars} height={180} />
-          </CardContent>
-        </Card>
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Conversion</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </Surface>
+        <Surface variant="card" className="border-border-hairline">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Conversion</h3>
+          <div>
             <ChartRenderer kind="donut" data={donut} size={160} />
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       </div>
     </div>
   );

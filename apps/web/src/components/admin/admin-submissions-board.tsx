@@ -7,7 +7,7 @@ import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
-import { Button, DataTable, EntityTableShell } from "@auction/ui";
+import { Button, DataTable, EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -83,7 +83,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
       {rows.map((r) => (
         <li
           key={r.id}
-          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
+          className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4"
         >
           <Link href={`/admin/submissions/${r.id}`} className="block min-h-11">
             <p className="font-headline text-base text-on-surface">{r.title}</p>
@@ -106,7 +106,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
 
   return (
     <div className="space-y-4">
-      <EntityTableShell
+      <EntityList
         responsiveMode="auto"
         density={density}
         {...(filterForm ? { filters: filterForm } : {})}

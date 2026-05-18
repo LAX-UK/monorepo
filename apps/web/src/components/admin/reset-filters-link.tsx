@@ -12,7 +12,7 @@ export function ResetFiltersLink({ active, href }: Props) {
     <Button
       variant="ghost"
       asChild
-      className="min-h-11 font-label text-xs uppercase tracking-widest text-secondary"
+      className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
     >
       <Link href={href}>Reset filters</Link>
     </Button>

@@ -1,7 +1,7 @@
 import { AdminCategoryForm } from "@/components/admin/admin-category-form";
 import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminCategoryList } from "@/lib/data/http/admin.server";
-import { Card, CardContent } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 export default async function NewAdminCategoryPage() {
@@ -12,7 +12,7 @@ export default async function NewAdminCategoryPage() {
       breadcrumbs={
         <Link
           href="/admin/categories"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Categories
         </Link>
@@ -20,8 +20,8 @@ export default async function NewAdminCategoryPage() {
       title="New category"
       description="Create a category that staff can assign to sales, lots, and seller submissions."
     >
-      <Card>
-        <CardContent className="pt-6">
+      <Surface variant="card">
+        <div className="pt-6">
           <AdminCategoryForm
             mode="create"
             categories={categories}
@@ -35,8 +35,8 @@ export default async function NewAdminCategoryPage() {
               heroImageKey: null,
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </AdminEntityFormShell>
   );
 }

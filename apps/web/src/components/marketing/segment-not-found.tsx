@@ -38,14 +38,14 @@ export function SegmentNotFound({
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
           href={primaryHref}
-          className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container px-10 py-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-on-primary shadow-md transition-opacity hover:opacity-95"
+          className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container px-10 py-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-md transition-opacity hover:opacity-95"
         >
           {primaryLabel}
         </Link>
         {secondaryHref && secondaryLabel ? (
           <Link
             href={secondaryHref}
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[0.3em] text-on-surface transition-colors hover:bg-surface-container-low"
+            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
           >
             {secondaryLabel}
           </Link>

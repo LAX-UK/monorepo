@@ -14,7 +14,7 @@ export default function AdminSaleroomHubPage() {
         action={
           <Link
             href="/admin/sales"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-semibold uppercase tracking-widest text-on-primary"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary"
           >
             Go to sales
           </Link>

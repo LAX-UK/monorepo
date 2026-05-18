@@ -64,7 +64,7 @@ export function LotFilterForm({
 
       {/* Search */}
       <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Search
         </span>
         <input
@@ -79,7 +79,7 @@ export function LotFilterForm({
       {/* Artist */}
       {artists.length > 0 ? (
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Artist
           </span>
           <select name="artistId" defaultValue={artistId ?? ""} className={selectCls}>
@@ -96,7 +96,7 @@ export function LotFilterForm({
       {/* Sale */}
       {sales.length > 0 ? (
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Sale
           </span>
           <select name="saleId" defaultValue={saleId ?? ""} className={selectCls}>
@@ -113,7 +113,7 @@ export function LotFilterForm({
       {/* Category */}
       {flat.length > 0 ? (
         <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Category
           </span>
           <select name="categoryId" defaultValue={categoryId ?? ""} className={selectCls}>
@@ -130,7 +130,7 @@ export function LotFilterForm({
 
       {/* Sort */}
       <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Sort
         </span>
         <select name="sort" defaultValue={sort ?? ""} className={selectCls}>
@@ -145,7 +145,7 @@ export function LotFilterForm({
 
       <button
         type="submit"
-        className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-widest text-on-primary transition-colors hover:bg-primary/90"
+        className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
       >
         Apply
       </button>
@@ -153,7 +153,7 @@ export function LotFilterForm({
       {hasFilters ? (
         <a
           href={`/admin/lots${status ? `?status=${status}` : ""}${viewPipeline ? `${status ? "&" : "?"}view=pipeline` : ""}`}
-          className="flex h-10 items-center gap-1 rounded-md border border-outline-variant px-3 font-label text-xs uppercase tracking-widest text-secondary transition-colors hover:bg-surface-container-high"
+          className="flex h-10 items-center gap-1 rounded-md border border-outline-variant px-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary transition-colors hover:bg-surface-container-high"
           aria-label="Clear search filters"
         >
           <X className="size-3" aria-hidden />

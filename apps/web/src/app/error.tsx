@@ -33,7 +33,7 @@ export default function ErrorPage({
         </Button>
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-md border border-outline-variant/20 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[0.3em] text-on-surface transition-colors hover:bg-surface-container-low"
+          className="inline-flex items-center justify-center rounded-md border border-border-hairline bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
         >
           Back to gallery
         </Link>

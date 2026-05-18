@@ -1,11 +1,7 @@
 "use client";
 
 import { WorkspaceModeSwitcher } from "@/components/dashboard/workspace-mode-switcher";
-import {
-  type AppShellRole,
-  appShellRoleMeta,
-  getAppShellNavItems,
-} from "@/components/layout/app-shell-nav";
+import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
@@ -14,6 +10,8 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
+import { navEntriesToFlatItems, navEntriesToGroups } from "@/lib/shell/nav-adapters";
+import { useShellConfig } from "@/lib/shell/shell-config-context";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { UserRole } from "@auction/types";
 import { staffRoleDefaultDestination } from "@auction/types";
@@ -28,8 +26,6 @@ import { usePathname } from "next/navigation";
 type Props = {
   user: SessionUser;
   role: AppShellRole;
-  pendingSubmissionCount?: number;
-  pendingArtistCount?: number;
   onNavigate?: () => void;
   collapsible?: boolean;
   /** Collector vs seller workspace (client shell only). */
@@ -72,27 +68,21 @@ function CompactLogoutButton({
 export function AppShellSidebar({
   user,
   role,
-  pendingSubmissionCount = 0,
-  pendingArtistCount = 0,
   onNavigate,
   collapsible = false,
   clientWorkspaceMode = "buying",
 }: Props) {
   const pathname = usePathname();
+  const config = useShellConfig();
   const meta = appShellRoleMeta[role];
-  const items = getAppShellNavItems(
-    role,
-    user,
-    pendingSubmissionCount,
-    clientWorkspaceMode,
-    pendingArtistCount,
-  );
+  const clientNavItems = navEntriesToFlatItems(config.nav);
+  const staffNavGroups = navEntriesToGroups(config.nav);
   const { collapsed, peeking } = useSidebarState();
   const labelsHidden = collapsible && collapsed && !peeking;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-container-lowest">
-      <div className={cn("border-b border-outline-variant/30 px-3 py-5", !labelsHidden && "px-5")}>
+      <div className={cn("border-b border-border-hairline px-3 py-5", !labelsHidden && "px-5")}>
         <Link
           href={
             role === "client"
@@ -140,7 +130,7 @@ export function AppShellSidebar({
       >
         {role === "client" ? (
           <div className="space-y-1">
-            {items.map((item) => {
+            {clientNavItems.map((item) => {
               const active = item.match
                 ? item.match(pathname)
                 : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -154,10 +144,11 @@ export function AppShellSidebar({
                       aria-current={active ? "page" : undefined}
                       aria-label={item.label}
                       className={cn(
-                        "group relative flex min-h-10 items-center justify-center gap-3 rounded-md px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
+                        "group relative flex min-h-[var(--tap-target-min,44px)] items-center justify-center gap-3 rounded-md px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
                         !labelsHidden && "justify-start px-3",
                         "hover:bg-surface-container-high hover:text-on-surface",
-                        active && "bg-surface-container-high text-on-surface",
+                        active &&
+                          "border-l-2 border-accent-brand bg-primary-container/40 pl-[calc(0.5rem-2px)] text-on-primary-container",
                       )}
                     >
                       <Icon className="size-4 shrink-0" aria-hidden />
@@ -191,16 +182,14 @@ export function AppShellSidebar({
           </div>
         ) : (
           <StaffSidebarNav
-            user={user}
-            pendingSubmissionCount={pendingSubmissionCount}
-            pendingArtistCount={pendingArtistCount}
+            groups={staffNavGroups}
             labelsHidden={labelsHidden}
             {...(onNavigate ? { onNavigate } : {})}
           />
         )}
       </nav>
 
-      <div className="border-t border-outline-variant/30 p-3">
+      <div className="border-t border-border-hairline p-3">
         <div
           className={cn(
             "mb-3 flex min-w-0 items-center justify-center gap-3",

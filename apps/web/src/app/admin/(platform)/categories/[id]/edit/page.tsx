@@ -2,7 +2,7 @@ import { AdminCategoryForm } from "@/components/admin/admin-category-form";
 import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminCategoryById, getAdminCategoryList } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -27,7 +27,7 @@ export default async function EditAdminCategoryPage({
       breadcrumbs={
         <Link
           href="/admin/categories"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Categories
         </Link>
@@ -43,8 +43,8 @@ export default async function EditAdminCategoryPage({
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card>
-          <CardContent className="pt-6">
+        <Surface variant="card">
+          <div className="pt-6">
             <AdminCategoryForm
               mode="edit"
               categoryId={category.id}
@@ -59,14 +59,12 @@ export default async function EditAdminCategoryPage({
                 heroImageKey: category.heroImageKey ?? null,
               }}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Usage</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-on-surface-variant">
+        <Surface variant="card">
+          <h3 className="font-headline text-base font-semibold text-on-surface">Usage</h3>
+          <div className="space-y-3 text-sm text-on-surface-variant">
             <p>Lots: {category.usage.lots}</p>
             <p>Sales: {category.usage.sales}</p>
             <p>Submissions: {category.usage.submissions}</p>
@@ -76,8 +74,8 @@ export default async function EditAdminCategoryPage({
                 ? "Used categories should be archived to preserve catalog history."
                 : "Unused categories can be deleted from the category tree."}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       </div>
     </AdminEntityFormShell>
   );

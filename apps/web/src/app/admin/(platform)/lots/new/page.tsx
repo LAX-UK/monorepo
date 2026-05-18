@@ -56,7 +56,7 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
       breadcrumbs={
         <Link
           href="/admin/lots"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Lots
         </Link>

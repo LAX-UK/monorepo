@@ -17,7 +17,7 @@ export default async function SearchLoading() {
           <div className="h-4 w-full max-w-md rounded bg-surface-container-high" />
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="h-12 flex-1 rounded border-b-2 border-outline-variant/20 bg-surface-container-high/50" />
+          <div className="h-12 flex-1 rounded border-b-2 border-border-hairline bg-surface-container-high/50" />
           <div className="h-12 w-full rounded bg-surface-container-high sm:w-32" />
         </div>
         <MarketingListSkeleton view={view} />

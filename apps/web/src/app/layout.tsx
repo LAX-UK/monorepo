@@ -1,5 +1,7 @@
 import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
+import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
+import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
@@ -16,6 +18,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Montserrat, Poppins } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -92,6 +95,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             Skip to main content
           </a>
           <AnalyticsBootstrap nonce={nonce} />
+          <Suspense fallback={null}>
+            <AnalyticsPageView />
+          </Suspense>
+          <MarketingClickIdsSync />
           {children}
           <Toaster />
           <WebVitalsReporter />

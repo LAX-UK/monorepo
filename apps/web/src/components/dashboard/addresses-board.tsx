@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
@@ -10,13 +11,6 @@ import {
   updateAddressFromValuesAction,
 } from "@/lib/actions/profile";
 import { notify } from "@/lib/ui/notify";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -26,6 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Surface } from "@auction/ui/components/surface";
 import { createAddressBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -271,19 +266,21 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-sm border-outline-variant/20 shadow-none">
-        <CardHeader>
-          <CardTitle className="font-label text-xs uppercase tracking-[0.18em]">
+      <Surface variant="section" padding="md" className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             Saved addresses
-          </CardTitle>
-          <CardDescription>Manage shipping and invoice delivery addresses.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Manage shipping and invoice delivery addresses.
+          </p>
+        </div>
+        <div className="space-y-4">
           {addresses.length === 0 ? (
             <p className="font-body text-sm text-on-surface-variant">No addresses saved yet.</p>
           ) : (
             addresses.map((address) => (
-              <div key={address.id} className="rounded-sm border border-outline-variant/20 p-4">
+              <div key={address.id} className="rounded-sm border border-border-hairline p-4">
                 {editingId === address.id ? (
                   <AddressForm
                     initialValues={addressToForm(address)}
@@ -351,39 +348,37 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
                       >
                         Edit
                       </Button>
-                      <Button
+                      <ConfirmActionButton
                         type="button"
                         variant="destructive"
                         disabled={pending}
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              "Remove this address from your account? Invoices and shipping may still reference archived records.",
-                            )
-                          ) {
-                            return;
-                          }
-                          void run(async () => removeAddressAction(address.id), "Address removed");
-                        }}
+                        confirmTitle="Remove address"
+                        confirmBody="Remove this address from your account? Invoices and shipping may still reference archived records."
+                        confirmLabel="Remove"
+                        onConfirmed={() =>
+                          void run(async () => removeAddressAction(address.id), "Address removed")
+                        }
                       >
                         Remove
-                      </Button>
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 )}
               </div>
             ))
           )}
-        </CardContent>
-      </Card>
-      <Card className="rounded-sm border-outline-variant/20 shadow-none">
-        <CardHeader>
-          <CardTitle className="font-label text-xs uppercase tracking-[0.18em]">
+        </div>
+      </Surface>
+      <Surface variant="section" padding="md" className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             Add address
-          </CardTitle>
-          <CardDescription>Add a new shipping address to your account.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Add a new shipping address to your account.
+          </p>
+        </div>
+        <div className="space-y-4">
           <AddressForm
             initialValues={emptyAddress}
             pending={pending}
@@ -395,8 +390,8 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
               )
             }
           />
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </div>
   );
 }

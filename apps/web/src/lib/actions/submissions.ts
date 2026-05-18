@@ -93,7 +93,7 @@ function parseFormDataToUpdateInput(formData: FormData) {
  */
 export async function createSubmissionFromValuesAction(
   values: ItemSubmissionFormValues,
-): Promise<ActionResult<{ redirectTo: string }>> {
+): Promise<ActionResult<{ redirectTo: string; id: string }>> {
   const formParsed = itemSubmissionFormSchema.safeParse(values);
   if (!formParsed.success) {
     return actionFailure(
@@ -119,7 +119,10 @@ export async function createSubmissionFromValuesAction(
     return actionFailure(r.message, undefined, r.status);
   }
   revalidatePath("/dashboard/submissions");
-  return actionSuccess({ redirectTo: "/dashboard/submissions" });
+  return actionSuccess({
+    id: r.data.id,
+    redirectTo: `/dashboard/submissions/${r.data.id}`,
+  });
 }
 
 /** Back-compat: `FormData` (e.g. native forms, tests).

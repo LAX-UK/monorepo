@@ -85,7 +85,9 @@ export function SignUpForm({ inviteToken }: Props) {
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
           <span className="h-px flex-1 bg-outline-variant/40" />
-          <span className="font-footer-links text-xs uppercase tracking-[0.25em]">or</span>
+          <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+            or
+          </span>
           <span className="h-px flex-1 bg-outline-variant/40" />
         </div>
         <SocialSignInButtons next={next} />

@@ -38,7 +38,7 @@ export function AdminLotConnectRequiredBanner({ sellerLegalEntityId, detail }: P
           </p>
         )}
         {detail ? (
-          <p className="border-t border-outline-variant/20 pt-2 font-mono text-xs text-on-surface-variant">
+          <p className="border-t border-border-hairline pt-2 font-mono text-xs text-on-surface-variant">
             {detail}
           </p>
         ) : null}

@@ -389,11 +389,11 @@ export function CommandPalette({
           aria-hidden
           onClick={close}
         />
-        <div className="relative z-10 w-full max-w-lg rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4 shadow-2xl ring-1 ring-outline-variant/10">
-          <div className="mb-3 flex items-center justify-between gap-2 border-b border-outline-variant/15 pb-3">
+        <div className="relative z-10 w-full max-w-lg rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-2xl ring-1 ring-outline-variant/10">
+          <div className="mb-3 flex items-center justify-between gap-2 border-b border-border-hairline pb-3">
             <h2
               id={titleId}
-              className="font-label text-xs font-bold uppercase tracking-widest text-secondary"
+              className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
             >
               Quick go
             </h2>

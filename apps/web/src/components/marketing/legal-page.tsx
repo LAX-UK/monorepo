@@ -25,14 +25,14 @@ function renderKicker(kicker: Props["kicker"]): ReactNode {
   if (kicker === null) return null;
   if (kicker === undefined) {
     return (
-      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
         {SITE_NAME}
       </p>
     );
   }
   if (typeof kicker === "string") {
     return (
-      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
         {kicker}
       </p>
     );

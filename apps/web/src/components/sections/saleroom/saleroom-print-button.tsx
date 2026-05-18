@@ -39,7 +39,7 @@ export function SaleroomPrintButton({ appearance = "default" }: Props) {
       type="button"
       variant="outline"
       onClick={print}
-      className="h-auto min-h-11 rounded-full border-outline-variant/60 bg-transparent px-5 py-2.5 font-label text-xs font-bold uppercase tracking-widest text-on-surface hover:border-primary hover:bg-transparent hover:text-primary"
+      className="h-auto min-h-11 rounded-full border-outline-variant/60 bg-transparent px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary hover:bg-transparent hover:text-primary"
       aria-label="Print catalogue"
     >
       <Printer className="text-base" aria-hidden />

@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
 import type { ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository, WatchlistRow } from "./interfaces/watchlist.js";
@@ -21,14 +22,14 @@ export class WatchlistService {
     private readonly lots: ILotRepository,
   ) {}
 
-  async add(userId: string, lotId: string): Promise<WatchlistRow | null> {
+  async add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow | null> {
     const lot = await this.lots.findById(lotId);
     if (!lot) return null;
-    return this.watchlist.add(userId, lotId);
+    return this.watchlist.add(userId, lotId, conn);
   }
 
-  remove(userId: string, lotId: string): Promise<void> {
-    return this.watchlist.remove(userId, lotId);
+  remove(userId: string, lotId: string, conn?: Database): Promise<void> {
+    return this.watchlist.remove(userId, lotId, conn);
   }
 
   list(userId: string): Promise<WatchlistRow[]> {

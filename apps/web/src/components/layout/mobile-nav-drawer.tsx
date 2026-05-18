@@ -53,7 +53,7 @@ export function MobileNavDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("border-outline-variant/20 p-0 sm:p-0", drawerContentClass)}>
+      <DialogContent className={cn("border-border-hairline p-0 sm:p-0", drawerContentClass)}>
         <DialogTitle className="sr-only">Site navigation</DialogTitle>
         <DialogDescription className="sr-only">
           Main menu, search, account links, and theme

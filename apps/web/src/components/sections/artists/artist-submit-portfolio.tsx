@@ -10,7 +10,7 @@ const benefits = [
 
 export function ArtistSubmitPortfolio() {
   return (
-    <section className="border-t border-outline-variant/20 bg-surface-dim/30 px-8 py-32 md:px-20">
+    <section className="border-t border-border-hairline bg-surface-dim/30 px-8 py-32 md:px-20">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-16 md:flex-row">
         <div className="w-full md:w-1/2">
           <h2 className="mb-6 font-headline text-4xl text-on-surface md:text-5xl">

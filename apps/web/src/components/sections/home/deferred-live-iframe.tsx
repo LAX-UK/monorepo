@@ -68,7 +68,7 @@ export function DeferredLiveIframe({
           type="button"
           variant="outline"
           onClick={() => setPlay(true)}
-          className="h-auto rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold uppercase tracking-widest text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
+          className="h-auto rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
         >
           Watch live
         </Button>

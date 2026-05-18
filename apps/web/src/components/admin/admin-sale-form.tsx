@@ -32,6 +32,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { LoadingButton } from "@auction/ui/components/loading-button";
 import { Textarea } from "@auction/ui/components/textarea";
 import {
   buildBuyerPremiumPolicy,
@@ -590,7 +591,7 @@ export function AdminSaleForm({
 
                 {formattedPreviewAddress || previewMapUrl ? (
                   <div className="rounded-md border border-dashed border-outline-variant/40 bg-surface-container-lowest p-3">
-                    <p className="font-label text-[0.65rem] uppercase tracking-[0.25em] text-on-surface-variant">
+                    <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                       Live preview
                     </p>
                     {formattedPreviewAddress ? (
@@ -728,7 +729,7 @@ export function AdminSaleForm({
 
           <div className="space-y-4 rounded-md border border-outline-variant/30 bg-surface-container-low/40 p-4">
             <div>
-              <p className="font-label text-[0.65rem] uppercase tracking-[0.25em] text-on-surface-variant">
+              <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                 Buyer premium bands (optional)
               </p>
               <p className="mt-1 font-body text-xs text-on-surface-variant">
@@ -752,7 +753,7 @@ export function AdminSaleForm({
                 {fields.map((field, index) => (
                   <div
                     key={field.id}
-                    className="flex flex-wrap items-end gap-3 border-b border-outline-variant/15 pb-3 last:border-0 last:pb-0"
+                    className="flex flex-wrap items-end gap-3 border-b border-border-hairline pb-3 last:border-0 last:pb-0"
                   >
                     <div className="min-w-[160px] flex-1">
                       {index === 0 ? (
@@ -870,7 +871,7 @@ export function AdminSaleForm({
           </p>
         ) : null}
 
-        <div className="flex flex-col justify-end gap-3 border-t border-outline-variant/20 pt-6 sm:flex-row">
+        <div className="flex flex-col justify-end gap-3 border-t border-border-hairline pt-6 sm:flex-row">
           <Button
             type="button"
             variant="outline"
@@ -888,13 +889,14 @@ export function AdminSaleForm({
           >
             Cancel
           </Button>
-          <Button
+          <LoadingButton
             type="submit"
-            disabled={pending}
+            loading={pending}
+            loadingLabel="Saving…"
             className="min-h-11 w-full sm:min-w-40 sm:w-auto"
           >
-            {pending ? "Saving…" : mode === "create" ? "Create draft sale" : "Save"}
-          </Button>
+            {mode === "create" ? "Create draft sale" : "Save"}
+          </LoadingButton>
         </div>
       </form>
     </Form>

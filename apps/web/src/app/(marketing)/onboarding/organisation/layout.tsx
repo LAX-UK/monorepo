@@ -18,7 +18,7 @@ export default async function OrganisationOnboardingLayout({ children }: { child
 
   return (
     <main id="main-content" className="min-h-screen bg-surface">
-      <div className="border-b border-outline-variant/20 bg-surface-container-low/40 py-6">
+      <div className="border-b border-border-hairline bg-surface-container-low/40 py-6">
         <div className="container mx-auto max-w-6xl px-4">
           <h1 className="text-3xl font-semibold text-on-surface">Submit to LAX</h1>
           <p className="mt-2 max-w-2xl text-sm text-on-surface-variant">
