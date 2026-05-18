@@ -111,7 +111,7 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
                 className={
                   row.mine
                     ? "flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3"
-                    : "flex items-center justify-between gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-low/50 p-3"
+                    : "flex items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/50 p-3"
                 }
               >
                 <span className="flex min-w-0 items-center gap-3">

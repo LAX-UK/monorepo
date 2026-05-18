@@ -1,6 +1,7 @@
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
+import { AdminLotOverviewPanel } from "@/components/admin/admin-lot-overview-panel";
 import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
 import { LotImageTab } from "@/components/admin/lot-image-tab";
 import { lotStatusLabel, lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
@@ -9,7 +10,6 @@ import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import { StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -39,14 +39,10 @@ export default async function AdminLotDetailPage({
 
   return (
     <AdminEntityDetailShell
-      breadcrumbs={
-        <Link
-          href="/admin/lots"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-        >
-          ← Lots
-        </Link>
-      }
+      detailHeader
+      backHref="/admin/lots"
+      backLabel="Lots"
+      eyebrow="Catalogue lot"
       title={auction.title}
       meta={
         <StatusBadge variant={lotStatusToBadgeVariant(auction.status)}>
@@ -98,118 +94,10 @@ export default async function AdminLotDetailPage({
 
         {/* --- Overview tab --- */}
         <TabsContent value="overview">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <InfoCard title="Status">
-              <StatusBadge variant={lotStatusToBadgeVariant(auction.status)}>
-                {lotStatusLabel[auction.status] ?? auction.status}
-              </StatusBadge>
-            </InfoCard>
-
-            {auction.saleId ? (
-              <InfoCard title="Sale">
-                <Link
-                  href={`/admin/sales/${auction.saleId}`}
-                  className="font-medium text-primary hover:underline"
-                >
-                  View sale ↗
-                </Link>
-                {auction.lotNumber ? (
-                  <span className="ml-2 font-body text-xs text-on-surface-variant">
-                    Lot #{auction.lotNumber}
-                  </span>
-                ) : null}
-              </InfoCard>
-            ) : (
-              <InfoCard title="Sale">
-                <span className="text-on-surface-variant">Not assigned to a sale</span>
-              </InfoCard>
-            )}
-
-            <InfoCard title="Seller legal entity">
-              {auction.sellerLegalEntityId ? (
-                <Link
-                  href={`/admin/legal-entities/${auction.sellerLegalEntityId}`}
-                  className="font-mono text-sm text-primary hover:underline"
-                >
-                  {auction.sellerLegalEntityId.slice(0, 8)}…
-                </Link>
-              ) : (
-                <span className="text-on-surface-variant">Not set</span>
-              )}
-            </InfoCard>
-
-            <InfoCard title="Auction type">
-              <span className="capitalize">{auction.auctionType}</span>
-            </InfoCard>
-
-            <InfoCard title="Starting price">
-              <span className="tabular-nums">{auction.startingPrice}</span>
-              {auction.reservePrice ? (
-                <span className="ml-2 text-xs text-on-surface-variant">
-                  Reserve: {auction.reservePrice}
-                </span>
-              ) : null}
-            </InfoCard>
-
-            <InfoCard title="Current hammer">
-              <span className="tabular-nums font-semibold">{auction.currentPrice}</span>
-            </InfoCard>
-
-            <InfoCard title="Schedule">
-              <div className="space-y-0.5 font-body text-sm">
-                <p>
-                  <span className="text-on-surface-variant">Start:</span>{" "}
-                  {auction.startTime.toLocaleString()}
-                </p>
-                <p>
-                  <span className="text-on-surface-variant">End:</span>{" "}
-                  {auction.endTime.toLocaleString()}
-                </p>
-              </div>
-            </InfoCard>
-
-            <InfoCard title="Artist">
-              {auction.artistId ? (
-                <Link
-                  href={`/admin/artists/${auction.artistId}`}
-                  className="font-medium text-primary hover:underline"
-                >
-                  View artist ↗
-                </Link>
-              ) : (
-                <span className="text-on-surface-variant">Not assigned</span>
-              )}
-              {auction.artistReviewRequired ? (
-                <span className="ml-2 rounded bg-warning/10 px-1.5 py-0.5 font-label text-[10px] uppercase tracking-wider text-warning">
-                  Review required
-                </span>
-              ) : null}
-            </InfoCard>
-
-            {(auction.categoryIds?.length ?? 0) > 0 ? (
-              <InfoCard title="Categories">
-                <div className="flex flex-wrap gap-1">
-                  {(auction.categoryIds ?? []).map((cid) => (
-                    <span
-                      key={cid}
-                      className="rounded bg-surface-container-high px-2 py-0.5 font-mono text-xs text-on-surface-variant"
-                    >
-                      {cid.slice(0, 8)}…
-                    </span>
-                  ))}
-                </div>
-              </InfoCard>
-            ) : null}
-
-            {auction.medium || auction.dimensions ? (
-              <InfoCard title="Physical details">
-                {auction.medium ? <p className="text-sm">{auction.medium}</p> : null}
-                {auction.dimensions ? (
-                  <p className="text-xs text-on-surface-variant">{auction.dimensions}</p>
-                ) : null}
-              </InfoCard>
-            ) : null}
-          </div>
+          <AdminLotOverviewPanel
+            auction={auction}
+            imageAlts={imageAlts.filter(Boolean) as string[]}
+          />
         </TabsContent>
 
         {/* --- Images tab --- */}
@@ -234,7 +122,7 @@ export default async function AdminLotDetailPage({
               auction.status === "active" ? (
                 <Link
                   href={`/admin/lots/${id}/edit`}
-                  className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
                 >
                   Edit →
                 </Link>
@@ -242,7 +130,7 @@ export default async function AdminLotDetailPage({
             </div>
 
             {auction.marketingDetails?.conditionReport?.summary ? (
-              <div className="rounded-lg border border-outline-variant/20 p-4">
+              <div className="rounded-lg border border-border-hairline p-4">
                 <p className="mb-1 font-label text-[10px] uppercase tracking-wider text-secondary">
                   Condition summary
                 </p>
@@ -253,7 +141,7 @@ export default async function AdminLotDetailPage({
             ) : null}
 
             {auction.marketingDetails?.estimate ? (
-              <div className="rounded-lg border border-outline-variant/20 p-4">
+              <div className="rounded-lg border border-border-hairline p-4">
                 <p className="mb-1 font-label text-[10px] uppercase tracking-wider text-secondary">
                   Estimate
                 </p>
@@ -280,7 +168,7 @@ export default async function AdminLotDetailPage({
             </p>
             <Link
               href={`/admin/audit/timeline?aggregateType=lot&aggregateId=${id}`}
-              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-primary hover:underline"
+              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
             >
               Open audit timeline ↗
             </Link>
@@ -292,20 +180,20 @@ export default async function AdminLotDetailPage({
           {bids.length === 0 ? (
             <p className="text-sm text-on-surface-variant">No bids yet.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+            <div className="overflow-x-auto rounded-lg border border-border-hairline">
               <table className="w-full font-body text-sm">
                 <thead>
-                  <tr className="border-b border-outline-variant/20 bg-surface-container-low/40">
-                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                  <tr className="border-b border-border-hairline bg-surface-container-low/40">
+                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Amount
                     </th>
-                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Type
                     </th>
-                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Bidder
                     </th>
-                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                    <th className="px-4 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Placed
                     </th>
                   </tr>
@@ -314,7 +202,7 @@ export default async function AdminLotDetailPage({
                   {bids.map((b) => (
                     <tr
                       key={b.id}
-                      className={`border-b border-outline-variant/10 last:border-0 ${
+                      className={`border-b border-border-hairline last:border-0 ${
                         b.isWinning ? "bg-success/5" : ""
                       }`}
                     >
@@ -344,18 +232,5 @@ export default async function AdminLotDetailPage({
         </TabsContent>
       </Tabs>
     </AdminEntityDetailShell>
-  );
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Card className="border-outline-variant/15 bg-surface-container-low/30">
-      <CardHeader className="pb-2 pt-4">
-        <CardTitle className="font-label text-[10px] uppercase tracking-widest text-secondary">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">{children}</CardContent>
-    </Card>
   );
 }

@@ -182,7 +182,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           description="Browse live inventory by title, medium, and category. Save lots to your watchlist to track them from your dashboard."
           meta={
             !loadError ? (
-              <p className="font-label text-xs font-semibold uppercase tracking-widest text-primary">
+              <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                 {resultSummaryLabel(trimmed, filtered.length, hasNext)}
               </p>
             ) : null
@@ -246,7 +246,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                                 view: layoutView,
                               })}`}
                               scroll={false}
-                              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                             >
                               {c.name}
                             </Link>

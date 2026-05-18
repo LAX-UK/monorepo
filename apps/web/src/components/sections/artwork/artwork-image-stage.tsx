@@ -173,7 +173,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
                 size="sm"
                 data-lightbox-opener="true"
                 onClick={openLightbox}
-                className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
+                className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
               >
                 <Maximize2 className="size-4" aria-hidden />
                 Expand
@@ -260,7 +260,7 @@ export function ArtworkImageStage({ title, images, imageAlts }: Props) {
           ) : null}
           {hasMany ? (
             <p
-              className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 font-label text-xs font-semibold uppercase tracking-widest text-white/90 backdrop-blur-sm"
+              className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-white/90 backdrop-blur-sm"
               aria-hidden
             >
               {index + 1} / {images.length}

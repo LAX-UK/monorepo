@@ -85,10 +85,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           different account, or continue to your dashboard.
         </output>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-          <Button asChild variant="cta" size="lg" className="font-label uppercase tracking-widest">
+          <Button
+            asChild
+            variant="cta"
+            size="lg"
+            className="font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+          >
             <Link href="/dashboard">Continue to dashboard</Link>
           </Button>
-          <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high" />
+          <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
         </div>
       </div>
     );
@@ -117,10 +122,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           <span className="font-medium text-on-surface">{rawUser.email}</span>.
         </output>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-          <Button asChild variant="cta" size="lg" className="font-label uppercase tracking-widest">
+          <Button
+            asChild
+            variant="cta"
+            size="lg"
+            className="font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+          >
             <Link href={dest}>Continue</Link>
           </Button>
-          <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high" />
+          <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
         </div>
         {isSafeNextPath(next) ? (
           <p className="text-center font-footer-links text-xs text-on-surface-variant">
@@ -175,7 +185,9 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         <SocialSignInButtons next={next} />
         <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
           <span className="h-px flex-1 bg-outline-variant/40" />
-          <span className="font-footer-links text-xs uppercase tracking-[0.25em]">or</span>
+          <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+            or
+          </span>
           <span className="h-px flex-1 bg-outline-variant/40" />
         </div>
       </div>

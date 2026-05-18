@@ -3,13 +3,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntitiesWithStripeConnectRequirements } from "@/lib/data/http/admin.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -58,20 +52,22 @@ export default async function AdminStripeConnectRequirementsPage() {
         </p>
       ) : null}
 
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">{rows.length} entities</CardTitle>
-          <CardDescription>
+      <Surface variant="card" className="border-border-hairline">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">
+            {rows.length} entities
+          </h3>
+          <p className="font-body text-sm text-on-surface-variant">
             Open an entity to review verification status and Stripe fields in admin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           {rows.length === 0 ? (
             <p className="text-sm text-on-surface-variant">
               No entities with outstanding Stripe requirements.
             </p>
           ) : (
-            <ul className="divide-y divide-outline-variant/15 rounded-md border border-outline-variant/15">
+            <ul className="divide-y divide-outline-variant/15 rounded-md border border-border-hairline">
               {rows.map((r) => (
                 <li
                   key={r.id}
@@ -96,8 +92,8 @@ export default async function AdminStripeConnectRequirementsPage() {
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </AdminPanelPage>
   );
 }

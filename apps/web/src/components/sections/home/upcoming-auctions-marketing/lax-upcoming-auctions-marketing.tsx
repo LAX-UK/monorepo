@@ -47,7 +47,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
             }
           />
           <MarketingListToolbar
-            className="mb-2 rounded-lg border border-outline-variant/20 bg-white/80 dark:bg-surface-container-low/40"
+            className="mb-2 rounded-lg border border-border-hairline bg-white/80 dark:bg-surface-container-low/40"
             countLabel="0 auctions"
             trailing={
               <CatalogViewSwitcher

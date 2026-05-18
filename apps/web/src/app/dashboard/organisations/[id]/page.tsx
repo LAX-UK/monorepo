@@ -1,5 +1,12 @@
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
-import { statusLabel } from "@/components/organisations/labels";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
+import {
+  roleLabel,
+  statusBadgeVariant,
+  statusLabel,
+  subkindLabel,
+} from "@/components/organisations/labels";
 import { MembersAvatarStack } from "@/components/organisations/members-avatar-stack";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -10,18 +17,9 @@ import {
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
-import { KpiTile } from "@auction/ui/components/kpi-tile";
 import { SectionHeader } from "@auction/ui/components/section-header";
-import { StatStrip } from "@auction/ui/components/stat-strip";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -76,63 +74,103 @@ export default async function OrganisationOverviewPage({
         heading={<DisplayHeading as="h2">At a glance</DisplayHeading>}
       />
 
-      <StatStrip>
-        <KpiTile label="Status" value={statusLabel(status)} emphasize />
-        <KpiTile label="Members" value={String(memberCount)} />
-        <KpiTile
-          label="Stripe charges"
-          value={entity ? (entity.stripeConnectChargesEnabled ? "On" : "Off") : "—"}
-        />
-        <KpiTile
-          label="Stripe payouts"
-          value={entity ? (entity.stripeConnectPayoutsEnabled ? "On" : "Off") : "—"}
-        />
-        <KpiTile label="Connect reqs" value={String(reqDue)} />
-      </StatStrip>
+      <SplitDetailLayout
+        mediaSlot={
+          <Surface
+            variant="section"
+            padding="lg"
+            className="flex min-h-[200px] flex-col justify-end bg-gradient-to-br from-primary/20 via-lot-orange/10 to-surface-container-high"
+          >
+            <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+              {entity?.displayName ? "Organisation" : "Member"}
+            </p>
+            <h2 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
+              {entity?.displayName ?? member.displayName ?? "Organisation"}
+            </h2>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <StatusBadge variant={statusBadgeVariant(status)}>{statusLabel(status)}</StatusBadge>
+              <StatusBadge variant="neutral">{roleLabel(member.role)}</StatusBadge>
+              {entity?.subkind ? (
+                <StatusBadge variant="neutral">{subkindLabel(entity.subkind)}</StatusBadge>
+              ) : null}
+            </div>
+          </Surface>
+        }
+        metaSlot={
+          <KpiRow
+            columns={4}
+            className="xl:grid-cols-2 [&_section]:shadow-none"
+            tiles={[
+              {
+                id: "status",
+                label: "Status",
+                value: statusLabel(status),
+                semanticTone: "emphasis",
+                emphasize: true,
+              },
+              { id: "members", label: "Members", value: String(memberCount) },
+              {
+                id: "charges",
+                label: "Stripe charges",
+                value: entity ? (entity.stripeConnectChargesEnabled ? "On" : "Off") : "—",
+              },
+              {
+                id: "payouts",
+                label: "Stripe payouts",
+                value: entity ? (entity.stripeConnectPayoutsEnabled ? "On" : "Off") : "—",
+              },
+              {
+                id: "reqs",
+                label: "Connect reqs",
+                value: String(reqDue),
+                semanticTone: reqDue > 0 ? "warning" : "default",
+              },
+            ]}
+          />
+        }
+      />
 
       {resumeStep ? (
-        <Card className="border-l-4 border-l-primary shadow-lg">
-          <CardHeader>
+        <Surface variant="section" padding="md" className="space-y-4 border-l-4 border-l-primary">
+          <div className="space-y-1">
             <LabelCaps>Needs attention</LabelCaps>
-            <CardTitle className="font-headline text-xl tracking-tight">
+            <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Continue organisation setup
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
               Pick up where you left off — progress is saved to your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <TimelineStages stages={ONBOARD_TIMELINE} activeIndex={timelineIndex} />
-            <Button asChild variant="cta" size="sm">
-              <Link
-                href={`/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`}
-                prefetch
-              >
-                Continue setup
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          <TimelineStages stages={ONBOARD_TIMELINE} activeIndex={timelineIndex} />
+          <Button asChild variant="cta" size="sm">
+            <Link
+              href={`/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`}
+              prefetch
+            >
+              Continue setup
+            </Link>
+          </Button>
+        </Surface>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-lg tracking-tight">Onboarding</CardTitle>
-            <CardDescription>
+        <Surface variant="section" padding="md" className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="font-headline text-lg font-semibold tracking-tight text-on-surface">
+              Onboarding
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
               No open setup steps for this status. You can still open the flow to review or update
               information.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={`/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`}
-                prefetch
-              >
-                Open onboarding
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={`/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`}
+              prefetch
+            >
+              Open onboarding
+            </Link>
+          </Button>
+        </Surface>
       )}
 
       <DashboardSection

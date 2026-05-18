@@ -77,7 +77,7 @@ export function SearchFilterForm({
             <FormItem className="min-w-0 flex-1">
               <label
                 htmlFor="search-q"
-                className="mb-2 block font-label text-xs uppercase tracking-widest text-secondary"
+                className="mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
                 Keywords
               </label>

@@ -306,7 +306,7 @@ export default async function SalesListPage({
                   years={yearOptions}
                 >
                   <MarketingListToolbar
-                    className="mb-4 rounded-lg border border-outline-variant/20 bg-white/80 dark:bg-surface-container-low/40"
+                    className="mb-4 rounded-lg border border-border-hairline bg-white/80 dark:bg-surface-container-low/40"
                     countLabel={`${filteredSales.length} sale${filteredSales.length === 1 ? "" : "s"}`}
                     trailing={
                       <>

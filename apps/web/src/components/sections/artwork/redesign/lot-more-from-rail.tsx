@@ -42,7 +42,7 @@ export function LotMoreFromRail({
   const isCompact = density === "compact";
 
   return (
-    <section className="mt-20 w-full border-t border-outline-variant/10 pt-16">
+    <section className="mt-20 w-full border-t border-border-hairline pt-16">
       <div className="mb-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-base leading-4 text-[#474747] dark:text-brand-400">More from</p>

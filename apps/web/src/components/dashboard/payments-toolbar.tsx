@@ -25,6 +25,8 @@ type Props = {
   sort: PaymentsSort;
   year: number | null;
   years: readonly number[];
+  /** When true, omit outer chrome (parent `DashboardToolbar` provides it). */
+  embedded?: boolean;
 };
 
 const SORT_OPTIONS: Array<{ id: PaymentsSort; label: string }> = [
@@ -35,7 +37,7 @@ const SORT_OPTIONS: Array<{ id: PaymentsSort; label: string }> = [
 ];
 
 /** Search + sort + year filter row for the buyer payments page. */
-export function PaymentsToolbar({ initialQ, sort, year, years }: Props) {
+export function PaymentsToolbar({ initialQ, sort, year, years, embedded = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -70,7 +72,13 @@ export function PaymentsToolbar({ initialQ, sort, year, years }: Props) {
   );
 
   return (
-    <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm">
+    <div
+      className={
+        embedded
+          ? "space-y-3"
+          : "space-y-3 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm"
+      }
+    >
       <Form {...form}>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -83,7 +91,7 @@ export function PaymentsToolbar({ initialQ, sort, year, years }: Props) {
               <FormItem className="flex-1 space-y-2">
                 <FormLabel
                   htmlFor="payments-q"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
                 >
                   Search payments
                 </FormLabel>
@@ -106,7 +114,7 @@ export function PaymentsToolbar({ initialQ, sort, year, years }: Props) {
       </Form>
 
       <fieldset className="space-y-2">
-        <legend className="block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+        <legend className="block font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Sort by
         </legend>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -124,7 +132,7 @@ export function PaymentsToolbar({ initialQ, sort, year, years }: Props) {
 
       {years.length > 0 ? (
         <fieldset className="space-y-2">
-          <legend className="block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <legend className="block font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Year
           </legend>
           <div className="flex flex-wrap items-center gap-1.5">

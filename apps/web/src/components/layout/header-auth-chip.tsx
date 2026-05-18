@@ -130,7 +130,7 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
       <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400 dark:text-on-surface-variant">
         Account
       </p>
-      <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-outline-variant/15 dark:bg-surface-container-low">
+      <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-border-hairline dark:bg-surface-container-low">
         <p className="font-body text-sm font-medium text-brand-900 dark:text-on-surface">
           {user.name.trim() || "Signed in"}
         </p>
@@ -156,7 +156,7 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
       </ul>
       <LogoutButton
         onBeforeNavigate={onNavigate}
-        className="block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-outline-variant/15 dark:text-on-surface dark:hover:bg-surface-container-low"
+        className="block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-border-hairline dark:text-on-surface dark:hover:bg-surface-container-low"
       />
     </div>
   );

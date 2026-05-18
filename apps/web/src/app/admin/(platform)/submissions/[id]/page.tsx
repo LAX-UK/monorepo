@@ -33,9 +33,9 @@ export default async function AdminSubmissionDetailPage({
 
   const submissionRecord = (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-xl border border-outline-variant/15 bg-surface-container-low/40 p-6 font-body text-sm">
+      <div className="space-y-3 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6 font-body text-sm">
         <p>
-          <span className="font-label text-xs uppercase tracking-widest text-secondary">
+          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Seller
           </span>{" "}
           {s.sellerId}
@@ -48,7 +48,9 @@ export default async function AdminSubmissionDetailPage({
           Asking: {s.askingPrice ?? "—"} · Reserve: {s.reservePrice ?? "—"}
         </p>
         <div>
-          <p className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">Images</p>
+          <p className="mb-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Images
+          </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {(s.images.length ? s.images : [null]).map((src, index) => (
               <a
@@ -72,7 +74,7 @@ export default async function AdminSubmissionDetailPage({
         </div>
         {s.submitterNotes ? (
           <p>
-            <span className="font-label text-xs uppercase tracking-widest text-secondary">
+            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Seller notes
             </span>
             <br />
@@ -100,7 +102,7 @@ export default async function AdminSubmissionDetailPage({
       breadcrumbs={
         <Link
           href="/admin/submissions"
-          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Queue
         </Link>
@@ -111,7 +113,7 @@ export default async function AdminSubmissionDetailPage({
           <SubmissionStatusBadge status={s.status} />
           <Link
             href={`/admin/audit/timeline?aggregateType=item_submission&aggregateId=${id}`}
-            className="font-label text-xs uppercase tracking-widest text-secondary hover:text-primary hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:text-primary hover:underline"
           >
             Audit ↗
           </Link>
@@ -124,7 +126,7 @@ export default async function AdminSubmissionDetailPage({
         mobileStickyAction={
           <Link
             href="/admin/submissions"
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-outline-variant/20 bg-surface-container-low px-4 font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high/60"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border-hairline bg-surface-container-low px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high/60"
           >
             Back to queue
           </Link>

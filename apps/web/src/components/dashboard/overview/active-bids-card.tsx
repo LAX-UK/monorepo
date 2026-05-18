@@ -1,17 +1,11 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
-import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -25,13 +19,15 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
   const activeBidLots = vm.activeLots.filter((lot) => vm.activeLotBidHints[lot.id] !== "none");
 
   return (
-    <Card className="border-outline-variant/15 shadow-lg">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+    <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Active bids
-          </CardTitle>
-          <CardDescription>Lots where your latest bid is still in play.</CardDescription>
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Lots where your latest bid is still in play.
+          </p>
         </div>
         <Button variant="chevron" asChild>
           <Link href="/dashboard/bids" className="inline-flex items-center gap-1 text-xs">
@@ -39,8 +35,8 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
             <ChevronRight className="size-4" aria-hidden />
           </Link>
         </Button>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         {activeBidLots.length === 0 ? (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
             <span>No active bid positions right now. Browse live lots to place your next bid.</span>
@@ -74,7 +70,10 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                           {lot.title}
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-2">
-                          <span className="font-label text-xs uppercase tracking-wider text-primary">
+                          <span
+                            key={lot.currentPrice}
+                            className="tick-value font-label text-xs uppercase tracking-wider text-primary"
+                          >
                             {hint === "high" ? "My bid" : "Current"} {formatMoney(lot.currentPrice)}
                           </span>
                           {bidHintBadge(hint)}
@@ -82,7 +81,7 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                       </span>
                     </span>
                     <span className="justify-self-start sm:justify-self-end">
-                      <LotStatusTimer
+                      <LotStatusBadge
                         status={lot.status}
                         startTime={lot.startTime.toISOString()}
                         endTime={lot.endTime.toISOString()}
@@ -94,7 +93,7 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
             })}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

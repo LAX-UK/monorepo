@@ -1,17 +1,11 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { acceptInvitationAction } from "@/lib/legal-entity/member-management.actions";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Surface } from "@auction/ui/components/surface";
 import { LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -35,8 +29,8 @@ export default async function AcceptInvitationTokenPage({
       redirect(`/dashboard/organisations/${res.data.legalEntityId}?welcome=1`);
     }
     return (
-      <div className="mx-auto max-w-lg space-y-4 py-10">
-        <PageHeader title="Could not accept invitation" className="mb-0 border-0 pb-0" />
+      <DashboardPage className="mx-auto max-w-lg space-y-4">
+        <DashboardPageHeader meta="Invitation" title="Could not accept invitation" />
         <Alert variant="destructive">
           <AlertTitle>Something went wrong</AlertTitle>
           <AlertDescription>{res.error}</AlertDescription>
@@ -44,25 +38,29 @@ export default async function AcceptInvitationTokenPage({
         <Button asChild variant="outline">
           <Link href="/dashboard/invitations">Back to invitations</Link>
         </Button>
-      </div>
+      </DashboardPage>
     );
   }
 
   const next = encodeURIComponent(`/dashboard/invitations/accept/${encodeURIComponent(token)}`);
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 py-10">
-      <PageHeader
+    <DashboardPage className="mx-auto max-w-lg space-y-6">
+      <DashboardPageHeader
+        meta="Invitation"
         title="Accept invitation"
         description="Sign in or create an account with the invited email to join this organisation."
-        className="border-0 pb-0"
       />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Choose how to continue</CardTitle>
-          <CardDescription>Use the email address this invitation was sent to.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+      <Surface variant="section" padding="md" className="space-y-4">
+        <div>
+          <p className="font-headline text-base font-semibold text-on-surface">
+            Choose how to continue
+          </p>
+          <p className="mt-1 font-body text-sm text-on-surface-variant">
+            Use the email address this invitation was sent to.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <Button asChild variant="cta" className="h-auto min-h-24 flex-col gap-2 py-4">
             <Link href={`/register?invite=${encodeURIComponent(token)}`}>
               <UserPlus className="size-6" aria-hidden />
@@ -75,13 +73,11 @@ export default async function AcceptInvitationTokenPage({
               <span>Sign in</span>
             </Link>
           </Button>
-        </CardContent>
-        <CardFooter>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard/invitations">Back to invitations</Link>
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/dashboard/invitations">Back to invitations</Link>
+        </Button>
+      </Surface>
+    </DashboardPage>
   );
 }

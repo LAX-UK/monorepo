@@ -2,14 +2,14 @@
 
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { Button } from "@/components/ui/button";
 import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle, BulkActionBar, cn } from "@auction/ui";
 import { Button as ShadButton } from "@auction/ui/components/button";
-import { EmptyState } from "@auction/ui/components/empty-state";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -245,10 +245,10 @@ export function NotificationsInboxBoard({
     <DashboardPage
       className={cn("mx-auto max-w-5xl py-10", selected.size > 0 ? "pb-28 md:pb-10" : undefined)}
     >
-      <PageHeader
+      <DashboardPageHeader
+        meta="Buying"
         title="Notifications"
         description="Bids, wins, payments, and saved-lot updates. Live when you are online."
-        className="border-0 pb-0"
         actions={
           <Button type="button" variant="tertiary" asChild>
             <Link href="/dashboard/settings/notifications">Alert settings</Link>
@@ -277,7 +277,7 @@ export function NotificationsInboxBoard({
               onClick={() => setTypeFilter(chip.key)}
               aria-pressed={isActive}
               className={cn(
-                "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors",
+                "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
                 isActive
                   ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
                   : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
@@ -325,7 +325,7 @@ export function NotificationsInboxBoard({
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-body text-xs uppercase tracking-widest text-on-surface-variant">
+        <p className="font-body text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           {counterLine}
         </p>
         <ShadButton
@@ -334,7 +334,7 @@ export function NotificationsInboxBoard({
           size="sm"
           disabled={loading || unreadCount === 0}
           onClick={() => void handleMarkAllRead()}
-          className="gap-2 font-label text-xs uppercase tracking-widest text-primary hover:bg-primary/10"
+          className="gap-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-primary/10"
         >
           <CheckCheck className="size-3.5" aria-hidden />
           Mark all read
@@ -380,12 +380,12 @@ export function NotificationsInboxBoard({
             onClearType={() => setTypeFilter("")}
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
             {groups.map((group) => (
               <section key={group.band} aria-labelledby={`band-${group.band}`}>
                 <h2
                   id={`band-${group.band}`}
-                  className="sticky top-0 z-10 border-b border-outline-variant/15 bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant backdrop-blur"
+                  className="sticky top-0 z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
                 >
                   {group.band}
                 </h2>
@@ -445,7 +445,7 @@ type InboxEmptyStateProps = {
 function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps) {
   if (typeFilter) {
     return (
-      <EmptyState
+      <DashboardEmptyState
         title="Nothing matches that type"
         description="Try clearing the type filter to see all notifications in this tab."
         action={
@@ -458,7 +458,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
   }
   if (tab === "unread") {
     return (
-      <EmptyState
+      <DashboardEmptyState
         title="No unread notifications"
         description="You're up to date. Switch to All to see your full history."
         action={
@@ -471,7 +471,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
   }
   if (tab === "archived") {
     return (
-      <EmptyState
+      <DashboardEmptyState
         title="Nothing archived"
         description="Archived notifications appear here. Archive a row to move it out of the active inbox."
         action={
@@ -483,7 +483,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
     );
   }
   return (
-    <EmptyState
+    <DashboardEmptyState
       title="You're all caught up"
       description="We'll surface bids, wins, payments, and saved-lot updates here as they happen."
       action={

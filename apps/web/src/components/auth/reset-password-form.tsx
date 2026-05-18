@@ -26,7 +26,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           You&apos;re signed in as <span className="font-medium">{signedInEmail}</span>. If this
           reset is for a different account, sign out before saving your new password.
           <span className="mt-3 block">
-            <LogoutButton className="font-label text-xs uppercase tracking-widest text-brand-900 underline dark:text-primary" />
+            <LogoutButton className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-brand-900 underline dark:text-primary" />
           </span>
         </output>
       ) : null}

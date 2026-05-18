@@ -52,7 +52,7 @@ export function AppearanceSettingsForm({ initialTheme }: { initialTheme: ThemePr
           <div className="grid gap-1">
             <Label
               htmlFor={`theme-${o.value}`}
-              className="cursor-pointer font-label text-xs font-bold uppercase tracking-widest"
+              className="cursor-pointer font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
             >
               {o.label}
             </Label>

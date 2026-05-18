@@ -33,7 +33,7 @@ export function ArtistCardGrid({
   return (
     <li
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-xl border border-outline-variant/15 bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md",
+        "group relative flex flex-col overflow-hidden rounded-xl border border-border-hairline bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function ArtistCardGrid({
           {bio}
         </div>
       </MarketingLinkCard>
-      <div className="flex items-center justify-between gap-2 border-t border-outline-variant/15 px-3 py-2 md:gap-3 md:px-4 md:py-3">
+      <div className="flex items-center justify-between gap-2 border-t border-border-hairline px-3 py-2 md:gap-3 md:px-4 md:py-3">
         {footer}
       </div>
     </li>

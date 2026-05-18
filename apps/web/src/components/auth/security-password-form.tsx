@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { changePasswordAction } from "@/lib/actions/change-password";
 import { notify } from "@/lib/ui/notify";
@@ -12,6 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { LoadingButton } from "@auction/ui/components/loading-button";
 import { type PasswordChangeFormValues, passwordChangeFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldPath, useForm } from "react-hook-form";
@@ -59,7 +59,7 @@ export function SecurityPasswordForm() {
           name="currentPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+              <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                 Current password
               </FormLabel>
               <FormControl>
@@ -79,7 +79,7 @@ export function SecurityPasswordForm() {
           name="newPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+              <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                 New password
               </FormLabel>
               <FormControl>
@@ -99,7 +99,7 @@ export function SecurityPasswordForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+              <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                 Confirm new password
               </FormLabel>
               <FormControl>
@@ -119,14 +119,15 @@ export function SecurityPasswordForm() {
             {form.formState.errors.root.message}
           </p>
         ) : null}
-        <Button
+        <LoadingButton
           type="submit"
-          variant="primary"
+          variant="default"
           className="w-full"
-          disabled={form.formState.isSubmitting}
+          loading={form.formState.isSubmitting}
+          loadingLabel="Saving…"
         >
-          {form.formState.isSubmitting ? "Saving…" : "Update password"}
-        </Button>
+          Update password
+        </LoadingButton>
       </form>
     </Form>
   );

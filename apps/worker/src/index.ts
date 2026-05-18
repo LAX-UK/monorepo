@@ -32,10 +32,10 @@ import {
   processMarketingEventJob,
   runMarketingEventOutboxPoller,
 } from "./jobs/marketing-event-processor.js";
-import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
-import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
+import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
+import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
 import {
   type SendEmailJobData,
   enqueueStaleEmailOutboxRows,

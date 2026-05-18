@@ -81,7 +81,7 @@ export function NotificationRow({
   return (
     <li
       className={cn(
-        "group relative flex items-start gap-3 border-b border-outline-variant/10 px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container-high/40 focus-within:bg-surface-container-high/40",
+        "group relative flex items-start gap-3 border-b border-border-hairline px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container-high/40 focus-within:bg-surface-container-high/40",
         unread
           ? "border-l-2 border-l-primary/70 bg-primary-container/5"
           : "border-l-2 border-l-transparent",
@@ -151,7 +151,7 @@ export function NotificationRow({
         >
           {item.message}
         </p>
-        <p className="mt-1 font-label text-[11px] uppercase tracking-widest text-on-surface-variant/80">
+        <p className="mt-1 font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant/80">
           {label}
         </p>
       </div>

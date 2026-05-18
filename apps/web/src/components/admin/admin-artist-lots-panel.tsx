@@ -41,7 +41,7 @@ export function AdminArtistLotsPanel({ artistId, lots }: Props) {
         </thead>
         <tbody>
           {lots.map((lot) => (
-            <tr key={lot.id} className="border-t border-outline-variant/20">
+            <tr key={lot.id} className="border-t border-border-hairline">
               <td className="px-4 py-3">
                 <Link
                   href={`/admin/lots/${lot.id}`}
@@ -76,7 +76,7 @@ export function AdminArtistLotsPanel({ artistId, lots }: Props) {
           ))}
         </tbody>
       </table>
-      <p className="border-t border-outline-variant/20 bg-surface-container-lowest/50 px-4 py-2 text-xs text-on-surface-variant">
+      <p className="border-t border-border-hairline bg-surface-container-lowest/50 px-4 py-2 text-xs text-on-surface-variant">
         Showing the {lots.length} most recent lots. Use the catalogue to filter the full archive by
         artist (
         <code className="rounded bg-surface-container px-1 py-0.5">?artistId={artistId}</code>).

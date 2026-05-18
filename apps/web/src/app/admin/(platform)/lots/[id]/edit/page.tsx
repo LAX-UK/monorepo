@@ -2,6 +2,7 @@ import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell
 import { AdminLotForm } from "@/components/admin/admin-lot-form";
 import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
 import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
+import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
 import {
   getAdminArtistList,
   getAdminLotById,
@@ -11,7 +12,6 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export default async function AdminEditLotPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,12 +37,13 @@ export default async function AdminEditLotPage({ params }: { params: Promise<{ i
     <AdminEntityFormShell
       maxWidthClassName="max-w-3xl"
       breadcrumbs={
-        <Link
-          href={`/admin/lots/${id}`}
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-        >
-          ← Lot detail
-        </Link>
+        <Breadcrumbs
+          items={[
+            { label: "Lots", href: "/admin/lots" },
+            { label: auction.title, href: `/admin/lots/${id}` },
+          ]}
+          current="Edit"
+        />
       }
       title={isDraft ? "Edit draft" : "Edit catalog copy"}
       description={

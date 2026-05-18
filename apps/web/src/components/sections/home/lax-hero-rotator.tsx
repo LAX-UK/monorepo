@@ -135,7 +135,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-outline-variant/20 dark:text-on-surface"
+                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
                     aria-label="Previous saleroom"
                     onClick={() => go(-1)}
                   >
@@ -145,7 +145,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-outline-variant/20 dark:text-on-surface"
+                    className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
                     aria-label="Next saleroom"
                     onClick={() => go(1)}
                   >

@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { Button } from "@/components/ui/button";
 import {
   submitForReviewFromValuesAction,
@@ -26,7 +27,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
   return (
     <section
       aria-label="Submission actions"
-      className="flex flex-wrap gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm"
+      className="flex flex-wrap gap-3 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm"
     >
       {canSubmit ? (
         <Button
@@ -50,20 +51,16 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
         </Button>
       ) : null}
       {canWithdraw ? (
-        <Button
+        <ConfirmActionButton
           type="button"
           disabled={pending}
           variant="secondary"
-          onClick={() => {
+          confirmTitle="Withdraw submission"
+          confirmBody="Withdraw this submission? You can start a new submission later if needed."
+          confirmLabel="Withdraw"
+          onConfirmed={() => {
             startTransition(() => {
               void (async () => {
-                if (
-                  !window.confirm(
-                    "Withdraw this submission? You can start a new submission later if needed.",
-                  )
-                ) {
-                  return;
-                }
                 const r = await withdrawSubmissionFromValuesAction(submissionId);
                 if (r.ok) {
                   notify.success("Withdrawn");
@@ -76,7 +73,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
           }}
         >
           Withdraw
-        </Button>
+        </ConfirmActionButton>
       ) : null}
     </section>
   );

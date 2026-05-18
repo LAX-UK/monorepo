@@ -7,14 +7,8 @@ import { SettingsSection } from "@/components/dashboard/settings-section";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 export type SettingsSecurityTabProps = {
@@ -104,7 +98,7 @@ export function SettingsSecurityTabContent({
         </Alert>
       ) : null}
 
-      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Sign-in email" titleAs="h3" eyebrow bordered={false}>
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-body text-base text-on-surface">{user.email}</p>
@@ -115,7 +109,7 @@ export function SettingsSecurityTabContent({
         </SettingsSection>
       </div>
 
-      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Change email" titleAs="h3" eyebrow bordered={false}>
           <p className="font-body text-sm text-on-surface-variant">
             We send confirmation links to your current address and the new address — both must
@@ -130,7 +124,7 @@ export function SettingsSecurityTabContent({
         </SettingsSection>
       </div>
 
-      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Password" titleAs="h3" eyebrow bordered={false}>
           <SecurityPasswordForm />
         </SettingsSection>
@@ -140,7 +134,7 @@ export function SettingsSecurityTabContent({
 
       <TwoFactorStatusCard twoFactorEnabled={user.twoFactorEnabled === true} />
 
-      <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm">
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
         <SettingsSection title="Organisations" titleAs="h3" eyebrow bordered={false}>
           <p className="font-body text-sm text-on-surface-variant">
             Invites, membership, and onboarding for galleries, dealers, and estates.
@@ -157,15 +151,19 @@ export function SettingsSecurityTabContent({
       </div>
 
       {deletionRequestedAt ? null : (
-        <Card className="rounded-xl border border-destructive/30 shadow-sm">
-          <CardHeader>
-            <CardTitle className="font-headline text-base text-destructive">Danger zone</CardTitle>
-            <CardDescription>Irreversible after processing — see privacy policy.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DeleteAccountForm />
-          </CardContent>
-        </Card>
+        <Surface
+          variant="section"
+          padding="md"
+          className="space-y-4 border border-destructive/30 shadow-sm"
+        >
+          <div className="space-y-1">
+            <h2 className="font-headline text-base font-semibold text-destructive">Danger zone</h2>
+            <p className="font-body text-sm text-on-surface-variant">
+              Irreversible after processing — see privacy policy.
+            </p>
+          </div>
+          <DeleteAccountForm />
+        </Surface>
       )}
     </div>
   );

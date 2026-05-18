@@ -76,7 +76,7 @@ export function ArtworkWatchToggle({
     return (
       <Link
         href={loginHref}
-        className="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
+        className="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container"
       >
         <LogIn className="size-4 shrink-0" aria-hidden />
         {signInLabel}
@@ -131,7 +131,7 @@ export function ArtworkWatchToggle({
         disabled={busy}
         aria-pressed={watching}
         onClick={handleToggle}
-        className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-widest ${
+        className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
           watching
             ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"
             : "bg-surface-container-high text-on-surface hover:bg-surface-container"
