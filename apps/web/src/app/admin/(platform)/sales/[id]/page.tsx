@@ -12,7 +12,7 @@ import {
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import type { Lot, Sale } from "@auction/types";
 import { Button, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -76,15 +76,11 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
 
   return (
     <AdminEntityDetailShell
+      detailHeader
+      backHref="/admin/sales"
+      backLabel="Sales"
+      eyebrow="Sale"
       className="space-y-8"
-      breadcrumbs={
-        <Link
-          href="/admin/sales"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-        >
-          ← Sales
-        </Link>
-      }
       title={sale.title}
       description={
         sale.description
@@ -98,7 +94,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
           <StatusBadge variant={saleStatusToBadgeVariant(sale.status)}>
             {saleStatusLabel[sale.status] ?? sale.status}
           </StatusBadge>
-          <span className="font-label text-xs uppercase tracking-widest text-secondary">
+          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             {sale.deliveryMode} · {lots.length} lot{lots.length === 1 ? "" : "s"}
           </span>
         </div>
@@ -173,7 +169,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
                       href={sale.locationMapUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
                     >
                       Open map ↗
                     </Link>
@@ -203,7 +199,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
             <InfoCard title="Sale window">
               <dl className="space-y-2 font-body text-sm">
                 <div>
-                  <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Start
                   </dt>
                   <dd className="tabular-nums text-on-surface">
@@ -211,14 +207,14 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     End
                   </dt>
                   <dd className="tabular-nums text-on-surface">{sale.endTime.toLocaleString()}</dd>
                 </div>
                 {sale.previewStartTime ? (
                   <div>
-                    <dt className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                    <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Preview from
                     </dt>
                     <dd className="tabular-nums text-on-surface">
@@ -277,24 +273,24 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
               {registrations.length === 0 ? (
                 <p className="text-sm text-on-surface-variant">No registrations yet.</p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+                <div className="overflow-x-auto rounded-lg border border-border-hairline">
                   <table className="w-full min-w-[36rem] font-body text-sm">
                     <thead>
-                      <tr className="border-b border-outline-variant/20 bg-surface-container-low/40">
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                      <tr className="border-b border-border-hairline bg-surface-container-low/40">
+                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                           Bidder
                         </th>
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                           Status
                         </th>
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-widest text-secondary">
+                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                           Requested
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {registrations.slice(0, 50).map((r) => (
-                        <tr key={r.id} className="border-b border-outline-variant/10 last:border-0">
+                        <tr key={r.id} className="border-b border-border-hairline last:border-0">
                           <td className="px-3 py-2">
                             <span className="font-medium text-on-surface">
                               {r.buyerLegalEntityDisplayName ?? r.userName ?? r.userEmail ?? "—"}
@@ -328,7 +324,7 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
             </p>
             <Link
               href={`/admin/audit/timeline?aggregateType=sale&aggregateId=${id}`}
-              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-primary hover:underline"
+              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
             >
               Open audit timeline ↗
             </Link>
@@ -349,13 +345,15 @@ function InfoCard({
   className?: string;
 }) {
   return (
-    <Card className={`border-outline-variant/15 bg-surface-container-low/30 ${className ?? ""}`}>
-      <CardHeader className="pb-2 pt-4">
-        <CardTitle className="font-label text-[10px] uppercase tracking-widest text-secondary">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">{children}</CardContent>
-    </Card>
+    <Surface
+      variant="section"
+      padding="md"
+      className={`border-border-hairline bg-surface-container-low/30 ${className ?? ""}`}
+    >
+      <h3 className="pb-2 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        {title}
+      </h3>
+      <div className="pb-4">{children}</div>
+    </Surface>
   );
 }

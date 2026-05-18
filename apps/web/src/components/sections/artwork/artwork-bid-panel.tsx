@@ -452,7 +452,7 @@ export function ArtworkBidPanel({
             <div className="mt-6">
               {onlineLifecycle?.extendedByMs != null && onlineLifecycle.extendedByMs > 0 ? (
                 <p
-                  className="mb-3 inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-widest text-amber-900 dark:text-amber-200"
+                  className="mb-3 inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-amber-900 dark:text-amber-200"
                   aria-live="polite"
                 >
                   Extended +{Math.max(1, Math.round(onlineLifecycle.extendedByMs / 1000))}s

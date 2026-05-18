@@ -54,13 +54,13 @@ export function ArtistSpotlightHero({ artist }: Props) {
         <div className="flex flex-wrap items-center gap-8">
           <Link
             href={href}
-            className="bg-gradient-to-r from-primary to-primary-container px-10 py-4 font-label text-xs font-bold uppercase tracking-widest text-on-primary shadow-xl transition-all hover:shadow-primary/20"
+            className="bg-gradient-to-r from-primary to-primary-container px-10 py-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-xl transition-all hover:shadow-primary/20"
           >
             View collection
           </Link>
           <Link
             href={href}
-            className="border-b border-outline-variant pb-1 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:text-primary"
+            className="border-b border-outline-variant pb-1 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:text-primary"
           >
             Biography
           </Link>

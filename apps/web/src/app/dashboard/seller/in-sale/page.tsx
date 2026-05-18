@@ -1,16 +1,20 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { FilterRowNav } from "@/components/dashboard/filter-row-nav";
 import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { Lot } from "@auction/types";
-import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { buildInSaleKpiTiles } from "./in-sale-metrics";
 import {
   type InSaleDisplayRow,
   SELLER_LOT_FILTER_OPTIONS,
@@ -43,26 +47,16 @@ function badgeVariant(tone: InSaleDisplayRow["statusTone"]) {
 
 function FilterChips({ active }: { active: SellerLotStatusFilter }) {
   return (
-    <nav aria-label="Filter lots by status" className="flex flex-wrap gap-2">
-      {SELLER_LOT_FILTER_OPTIONS.map((opt) => {
-        const isActive = opt.value === active;
-        return (
-          <Link
-            key={opt.value}
-            href={inSaleFilterHref(PAGE_PATH, opt.value)}
-            scroll={false}
-            aria-current={isActive ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center rounded-full px-4 text-xs font-semibold uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-              isActive
-                ? "bg-primary text-on-primary"
-                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-            }`}
-          >
-            {opt.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <FilterRowNav
+      label="Filter lots by status"
+      scroll={false}
+      items={SELLER_LOT_FILTER_OPTIONS.map((opt) => ({
+        id: opt.value,
+        label: opt.label,
+        href: inSaleFilterHref(PAGE_PATH, opt.value),
+        active: opt.value === active,
+      }))}
+    />
   );
 }
 
@@ -76,7 +70,7 @@ function ReserveBadge({ row }: { row: InSaleDisplayRow }) {
   }
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
         row.reserveMet ? "bg-success/10 text-success" : "bg-error/10 text-error"
       }`}
     >
@@ -87,9 +81,9 @@ function ReserveBadge({ row }: { row: InSaleDisplayRow }) {
 
 function InSaleRowCard({ row }: { row: InSaleDisplayRow }) {
   return (
-    <li>
-      <Card>
-        <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
+    <li className="lift-row">
+      <Surface variant="card" padding="md">
+        <div className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
           <div className="font-mono text-xs text-on-surface-variant tabular-nums sm:min-w-12">
             {row.lotNumberLabel}
           </div>
@@ -129,8 +123,8 @@ function InSaleRowCard({ row }: { row: InSaleDisplayRow }) {
               {row.statusLabel}
             </StatusBadge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </li>
   );
 }
@@ -187,34 +181,40 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
 
   return (
     <DashboardPage className="screen w-full space-y-6">
-      <PageHeader
+      <DashboardPageHeader
+        meta="Selling"
         title="Items in sale"
         description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
-        className="border-0 pb-0"
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <FilterChips active={filter} />
-        <form
-          action={PAGE_PATH}
-          method="get"
-          aria-label="Filter lots by title"
-          className="flex flex-1 items-center gap-2 sm:max-w-sm"
-        >
-          {filter !== "live" ? <input type="hidden" name="status" value={filter} /> : null}
-          <label htmlFor="in-sale-q" className="sr-only">
-            Filter by lot or sale title
-          </label>
-          <input
-            id="in-sale-q"
-            name="q"
-            type="search"
-            defaultValue={rawQ}
-            placeholder="Search by lot or sale title"
-            className="h-10 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          />
-        </form>
-      </div>
+      {!fetchError && allDisplay.length > 0 ? (
+        <KpiRow track="selling" columns={4} tiles={buildInSaleKpiTiles(allDisplay)} />
+      ) : null}
+
+      <DashboardToolbar
+        chips={<FilterChips active={filter} />}
+        search={
+          <form
+            action={PAGE_PATH}
+            method="get"
+            aria-label="Filter lots by title"
+            className="flex w-full items-center gap-2"
+          >
+            {filter !== "live" ? <input type="hidden" name="status" value={filter} /> : null}
+            <label htmlFor="in-sale-q" className="sr-only">
+              Filter by lot or sale title
+            </label>
+            <input
+              id="in-sale-q"
+              name="q"
+              type="search"
+              defaultValue={rawQ}
+              placeholder="Search by lot or sale title"
+              className="h-10 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            />
+          </form>
+        }
+      />
 
       {fetchError ? (
         <DashboardErrorAlert

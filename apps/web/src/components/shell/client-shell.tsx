@@ -1,0 +1,73 @@
+"use client";
+
+import { AppShell } from "@/components/layout/app-shell";
+import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
+import type { ActingContext } from "@/lib/auth/capabilities";
+import type { SessionUser } from "@/lib/data/contracts";
+import type { DashboardDensity } from "@/lib/preferences/density";
+import { buildShellConfig } from "@/lib/shell/build-shell-config";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import { type ReactNode, useMemo } from "react";
+
+type Props = {
+  user: SessionUser;
+  clientWorkspaceMode?: ClientWorkspaceMode;
+  cookieDensity?: DashboardDensity | null;
+  hideEmailStatusBanner?: boolean;
+  /** @deprecated Use `headerRightSlot`. */
+  headerSlot?: ReactNode;
+  headerRightSlot?: ReactNode;
+  contextBanner?: ReactNode;
+  topSlot?: ReactNode;
+  acting?: ActingContext;
+  children: ReactNode;
+};
+
+/** Client dashboard shell adapter — builds ShellConfig and wires capabilities. */
+export function ClientShell({
+  user,
+  clientWorkspaceMode = "buying",
+  cookieDensity,
+  hideEmailStatusBanner,
+  headerSlot,
+  headerRightSlot,
+  contextBanner,
+  topSlot,
+  acting = { kind: "self" },
+  children,
+}: Props) {
+  const config = useMemo(
+    () =>
+      buildShellConfig({
+        user,
+        role: "client",
+        clientWorkspaceMode,
+        headerSlot,
+        headerRightSlot: headerRightSlot ?? headerSlot,
+        ...(contextBanner ? { contextBanner } : {}),
+        ...(topSlot ? { topSlot } : {}),
+        ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
+      }),
+    [
+      user,
+      clientWorkspaceMode,
+      headerSlot,
+      headerRightSlot,
+      contextBanner,
+      topSlot,
+      hideEmailStatusBanner,
+    ],
+  );
+
+  return (
+    <ViewerCapabilitiesProvider
+      user={user}
+      clientWorkspaceMode={clientWorkspaceMode}
+      acting={acting}
+    >
+      <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
+        {children}
+      </AppShell>
+    </ViewerCapabilitiesProvider>
+  );
+}

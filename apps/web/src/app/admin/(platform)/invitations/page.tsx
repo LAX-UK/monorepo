@@ -35,7 +35,7 @@ export default async function AdminInvitationsPage({
     ) : null;
 
   const inviteSection = (
-    <section className="mx-auto max-w-[640px] rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+    <section className="mx-auto max-w-[640px] rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
       <h2 className="font-headline text-lg text-on-surface">Send invite</h2>
       <p className="mt-1 text-sm text-on-surface-variant">
         Email and role are sent through the existing invitation action.

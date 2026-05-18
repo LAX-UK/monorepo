@@ -150,7 +150,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
           <AdminAnalyticsCharts data={toChartsData(data)} />
 
           <section>
-            <h2 className="mb-3 font-label text-xs uppercase tracking-widest text-secondary">
+            <h2 className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Conversion (ended with winner / ended)
             </h2>
             <TableScroll>

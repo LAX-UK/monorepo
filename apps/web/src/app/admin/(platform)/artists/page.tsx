@@ -104,7 +104,8 @@ export default async function AdminArtistsPage({
     "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
   const selectCls =
     "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface";
-  const labelCapsCls = "font-label text-[10px] uppercase tracking-widest text-secondary";
+  const labelCapsCls =
+    "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
   const chips = <FilterChipRow chips={presetChips} label="Artist presets" />;
 
@@ -199,7 +200,7 @@ export default async function AdminArtistsPage({
 
         <button
           type="submit"
-          className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-widest text-on-primary transition-colors hover:bg-primary/90"
+          className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
         >
           Apply
         </button>

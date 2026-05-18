@@ -433,7 +433,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                   <MarketingChipStrip aria-label="Sort artists">
                     <span
                       aria-hidden
-                      className="mr-1 shrink-0 snap-start font-label text-[10px] uppercase tracking-widest text-on-surface-variant"
+                      className="mr-1 shrink-0 snap-start font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
                     >
                       Sort
                     </span>
@@ -452,7 +452,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                           aria-selected={active}
                           aria-current={active ? "page" : undefined}
                           className={cn(
-                            "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-widest ring-1 transition-colors",
+                            "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
                             active
                               ? "bg-primary text-on-primary ring-primary"
                               : "bg-surface-container-low text-on-surface-variant ring-outline-variant/20 hover:bg-surface-container-high/80 hover:text-on-surface",

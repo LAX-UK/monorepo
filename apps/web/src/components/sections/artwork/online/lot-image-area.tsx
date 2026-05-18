@@ -16,7 +16,7 @@ export function LotImageArea({ lot, className }: Props) {
         className,
       )}
     >
-      <div className="mx-auto w-full max-w-[786px] overflow-hidden rounded-lg border border-outline-variant/20 bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/30">
+      <div className="mx-auto w-full max-w-[786px] overflow-hidden rounded-lg border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/30">
         <LotMediaBlock lot={lot} />
       </div>
     </div>

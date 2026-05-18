@@ -35,7 +35,7 @@ export default async function AdminAuditTimelinePage({
   const toolbarEnd = (
     <Link
       href="/admin/audit/events"
-      className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
     >
       ← Domain events feed
     </Link>
@@ -164,7 +164,7 @@ export default async function AdminAuditTimelinePage({
                 actor {r.actorUserId ?? "—"} · entity {r.actingLegalEntityId ?? "—"}
               </p>
               <details className="mt-2 rounded-md border border-outline-variant/30 bg-surface-container-low/50 p-3">
-                <summary className="cursor-pointer font-label text-xs uppercase tracking-widest text-primary">
+                <summary className="cursor-pointer font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                   Payload (redacted)
                 </summary>
                 <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-on-surface">

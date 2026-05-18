@@ -1,7 +1,7 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
-import { Card, CardContent } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
@@ -22,7 +22,7 @@ export default async function NewAdminArtistPage({
       breadcrumbs={
         <Link
           href="/admin/artists"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Artists
         </Link>
@@ -30,8 +30,8 @@ export default async function NewAdminArtistPage({
       title="New artist"
       description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
     >
-      <Card>
-        <CardContent className="pt-6">
+      <Surface variant="card">
+        <div className="pt-6">
           <AdminArtistForm
             mode="create"
             initialScenario={initialScenario}
@@ -56,8 +56,8 @@ export default async function NewAdminArtistPage({
               archived: false,
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </AdminEntityFormShell>
   );
 }

@@ -2,7 +2,6 @@
 
 import { updateBiddingPreferencesFromValuesAction } from "@/lib/actions/user-bidding-preferences";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -14,6 +13,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -83,7 +83,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
           });
         })}
       >
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-outline-variant/15 p-4">
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border-hairline p-4">
           <div className="min-w-0">
             <Label htmlFor="outbidInApp" className="text-on-surface">
               In-app outbid alerts
@@ -107,7 +107,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             )}
           />
         </div>
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-outline-variant/15 p-4">
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border-hairline p-4">
           <div className="min-w-0">
             <Label htmlFor="outbidPush" className="text-on-surface">
               Push outbid alerts
@@ -133,7 +133,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             )}
           />
         </div>
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-outline-variant/15 p-4">
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border-hairline p-4">
           <div className="min-w-0">
             <Label htmlFor="endingSoonPush" className="text-on-surface">
               Ending soon (push)
@@ -180,9 +180,14 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             )}
           />
         </div>
-        <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending}>
-          {pending ? "Saving…" : "Save preferences"}
-        </Button>
+        <LoadingButton
+          type="submit"
+          className="min-h-11 w-full sm:w-auto"
+          loading={pending}
+          loadingLabel="Saving…"
+        >
+          Save preferences
+        </LoadingButton>
       </form>
     </Form>
   );

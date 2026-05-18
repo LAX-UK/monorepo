@@ -3,7 +3,7 @@
 import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { AppShellSidebar } from "@/components/layout/app-shell-sidebar";
-import { ClientBottomNav } from "@/components/layout/client-bottom-nav";
+import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
@@ -13,7 +13,8 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { DashboardDensity } from "@/lib/preferences/density";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import type { ShellConfig } from "@/lib/shell/contracts";
+import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
@@ -30,30 +31,21 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type Props = {
   user: SessionUser;
-  shellRole: AppShellRole;
-  pendingSubmissionCount?: number;
-  pendingArtistCount?: number;
+  config: ShellConfig;
   children: ReactNode;
-  clientWorkspaceMode?: ClientWorkspaceMode;
   cookieDensity?: DashboardDensity | null;
-  /** When true, skip the inline email banner (e.g. dashboard uses `DashboardBannerStack`). */
-  hideEmailStatusBanner?: boolean;
-  /** Server-rendered slot rendered in the header next to the action buttons.
-   * Used for the legal-entity acting-context switcher .
-   */
-  headerSlot?: ReactNode;
 };
 
-function AppShellFrame({
-  user,
-  shellRole,
-  pendingSubmissionCount = 0,
-  pendingArtistCount = 0,
-  clientWorkspaceMode = "buying",
-  hideEmailStatusBanner = false,
-  children,
-  headerSlot,
-}: Props) {
+function AppShellFrame({ user, config, children }: Props) {
+  const shellRole = config.role as AppShellRole;
+  const pendingSubmissionCount = config.pendingSubmissionCount ?? 0;
+  const pendingArtistCount = config.pendingArtistCount ?? 0;
+  const clientWorkspaceMode = config.clientWorkspaceMode ?? "buying";
+  const hideEmailStatusBanner = config.hideEmailStatusBanner ?? false;
+  const headerLeftSlot = config.header.leftSlot;
+  const headerRightSlot = config.header.rightSlot;
+  const contextBanner = config.contextBanner;
+  const topSlot = config.topSlot;
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { density } = useDashboardDensity();
@@ -111,8 +103,6 @@ function AppShellFrame({
     <AppShellSidebar
       user={user}
       role={shellRole}
-      pendingSubmissionCount={pendingSubmissionCount}
-      pendingArtistCount={pendingArtistCount}
       onNavigate={() => setMobileOpen(false)}
       collapsible
       {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
@@ -122,8 +112,6 @@ function AppShellFrame({
     <AppShellSidebar
       user={user}
       role={shellRole}
-      pendingSubmissionCount={pendingSubmissionCount}
-      pendingArtistCount={pendingArtistCount}
       onNavigate={() => setMobileOpen(false)}
       {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
     />
@@ -180,7 +168,7 @@ function AppShellFrame({
       </Sheet>
 
       <div className="flex h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-4 md:px-8">
+        <header className="sticky top-0 z-30 flex h-[var(--header-height-shell,52px)] min-h-[var(--tap-target-min,44px)] shrink-0 items-center justify-between border-b border-border-soft bg-surface-container-lowest px-4 md:px-8 max-lg:min-h-[var(--header-height-mobile,56px)]">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
@@ -210,7 +198,8 @@ function AppShellFrame({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {headerSlot}
+            {headerRightSlot}
+            {headerLeftSlot}
             <Button
               type="button"
               variant="ghost"
@@ -235,32 +224,36 @@ function AppShellFrame({
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8 md:py-8",
-              "data-[density=compact]:md:px-6 data-[density=compact]:md:py-6",
+              "mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8 md:py-8 lg:px-14",
+              "data-[density=compact]:md:px-6 data-[density=compact]:md:py-6 data-[density=compact]:lg:px-10",
             )}
             data-density={density}
           >
+            {topSlot ? <div className="mb-6">{topSlot}</div> : null}
             {hideEmailStatusBanner ? null : <EmailStatusBanner user={user} />}
+            {contextBanner ? <div className="mb-6 space-y-4">{contextBanner}</div> : null}
             {children}
           </div>
         </main>
       </div>
-      {shellRole === "client" ? (
-        <ClientBottomNav clientWorkspaceMode={clientWorkspaceMode} />
-      ) : null}
+      {shellRole === "client" && config.mobileNav.length > 0 ? <BottomTabBar /> : null}
     </div>
   );
 }
 
-export function AppShell(props: Props) {
+export function AppShell({ user, config, children, cookieDensity }: Props) {
   return (
-    <TooltipProvider delayDuration={200}>
-      <DensityProvider cookieDensity={props.cookieDensity ?? null}>
-        <SidebarStateProvider>
-          <AppShellFrame {...props} />
-        </SidebarStateProvider>
-      </DensityProvider>
-    </TooltipProvider>
+    <ShellConfigProvider config={config}>
+      <TooltipProvider delayDuration={200}>
+        <DensityProvider cookieDensity={cookieDensity ?? null}>
+          <SidebarStateProvider>
+            <AppShellFrame user={user} config={config}>
+              {children}
+            </AppShellFrame>
+          </SidebarStateProvider>
+        </DensityProvider>
+      </TooltipProvider>
+    </ShellConfigProvider>
   );
 }
 
@@ -290,7 +283,12 @@ function SidebarEdgeHandle({
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">
-        {label} <span className="text-on-surface-variant">(⌘B)</span>
+        {label}{" "}
+        <span className="text-on-surface-variant">
+          {typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform)
+            ? "(⌘B)"
+            : "(Ctrl+B)"}
+        </span>
       </TooltipContent>
     </Tooltip>
   );

@@ -12,14 +12,8 @@ import type { LegalEntityStatus } from "@auction/types";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -80,7 +74,7 @@ export default async function AdminLegalEntityDetailPage({
       breadcrumbs={
         <Link
           href="/admin/legal-entities"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Legal entities
         </Link>
@@ -111,12 +105,14 @@ export default async function AdminLegalEntityDetailPage({
         </Alert>
       ) : null}
 
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Status</CardTitle>
-          <CardDescription>Verification state and identifiers.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Surface variant="card" className="border-border-hairline">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Status</h3>
+          <p className="font-body text-sm text-on-surface-variant">
+            Verification state and identifiers.
+          </p>
+        </div>
+        <div className="space-y-4">
           <StatusBadge variant={legalEntityStatusToBadgeVariant(entity.status)} size="md">
             {entity.status.replaceAll("_", " ")}
           </StatusBadge>
@@ -145,18 +141,18 @@ export default async function AdminLegalEntityDetailPage({
               <dd className="text-on-surface">{entity.updatedAt.toLocaleString("en-GB")}</dd>
             </div>
           </dl>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
       {simple.length > 0 ? (
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Lifecycle</CardTitle>
-            <CardDescription>
+        <Surface variant="card" className="border-border-hairline">
+          <div className="space-y-1">
+            <h3 className="font-headline text-lg font-semibold text-on-surface">Lifecycle</h3>
+            <p className="font-body text-sm text-on-surface-variant">
               Each action updates status and writes a domain event in one transaction.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div>
             <div className="flex flex-wrap gap-2">
               {simple.map((b) => (
                 <form key={b.op} action={legalEntityLifecycleSimpleAction}>
@@ -168,39 +164,39 @@ export default async function AdminLegalEntityDetailPage({
                 </form>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       ) : null}
 
       {canReject ? (
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Reject</CardTitle>
-            <CardDescription>
+        <Surface variant="card" className="border-border-hairline">
+          <div className="space-y-1">
+            <h3 className="font-headline text-lg font-semibold text-on-surface">Reject</h3>
+            <p className="font-body text-sm text-on-surface-variant">
               Sets status to rejected. Requires an audit reason (min. 3 characters) and typed
               confirmation <span className="font-mono text-on-surface">REJECT</span>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div>
             <LegalEntityRejectForm legalEntityId={entity.id} />
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       ) : null}
 
       {canArchive ? (
-        <Card className="border-outline-variant/15">
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Archive</CardTitle>
-            <CardDescription>
+        <Surface variant="card" className="border-border-hairline">
+          <div className="space-y-1">
+            <h3 className="font-headline text-lg font-semibold text-on-surface">Archive</h3>
+            <p className="font-body text-sm text-on-surface-variant">
               Permanent terminal state. You will confirm by typing{" "}
               <span className="font-mono text-on-surface">ARCHIVE {entity.displayName}</span>{" "}
               exactly.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div>
             <LegalEntityArchiveForm legalEntityId={entity.id} displayName={entity.displayName} />
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       ) : null}
     </AdminEntityDetailShell>
   );

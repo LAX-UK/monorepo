@@ -45,7 +45,7 @@ export function OnboardingProgressBar({ currentKey, entityId }: Props) {
                   "border-outline-variant/30 bg-surface-container-high text-on-surface",
                 !done &&
                   !active &&
-                  "border-outline-variant/20 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high",
+                  "border-border-hairline bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high",
               )}
             >
               <span

@@ -69,7 +69,7 @@ function MarketingQueryToastInner({
   return (
     <output
       className={cn(
-        "fixed bottom-6 left-1/2 z-[60] block w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-lg border border-outline-variant/20 bg-inverse-surface px-4 py-3 text-inverse-on-surface shadow-lg",
+        "fixed bottom-6 left-1/2 z-[60] block w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-lg border border-border-hairline bg-inverse-surface px-4 py-3 text-inverse-on-surface shadow-lg",
         className,
       )}
       aria-live="polite"

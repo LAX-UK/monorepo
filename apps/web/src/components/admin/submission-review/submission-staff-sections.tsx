@@ -30,8 +30,10 @@ export function SubmissionDocumentsSection(props: {
 export function SubmissionMetadataSummary(props: { submission: ItemSubmission }) {
   const s = props.submission;
   return (
-    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-4 font-body text-sm">
-      <h3 className="mb-3 font-label text-xs uppercase tracking-widest text-secondary">Metadata</h3>
+    <div className="rounded-xl border border-border-hairline bg-surface-container-low/30 p-4 font-body text-sm">
+      <h3 className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Metadata
+      </h3>
       <dl className="grid gap-2 sm:grid-cols-2">
         <div>
           <dt className="text-on-surface-variant">Year of work</dt>

@@ -60,7 +60,7 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
 
   if (fullWidth) {
     return (
-      <div className="flex flex-col gap-3 border-t border-outline-variant/15 pt-4">
+      <div className="flex flex-col gap-3 border-t border-border-hairline pt-4">
         {(status === "pending" || status === "authorized") && (
           <Button type="button" className="min-h-11 w-full" disabled={pending} onClick={runCapture}>
             Capture
@@ -86,7 +86,7 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
           type="button"
           size="sm"
           disabled={pending}
-          className="font-label text-xs uppercase tracking-widest disabled:opacity-50"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] disabled:opacity-50"
           onClick={runCapture}
         >
           Capture
@@ -97,7 +97,7 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
         variant="destructive"
         size="sm"
         disabled={pending}
-        className="font-label text-xs uppercase tracking-widest disabled:opacity-50"
+        className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] disabled:opacity-50"
         onClick={runRefund}
       >
         Refund
@@ -144,7 +144,7 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
             href={row.original.xeroOnlineInvoiceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
           >
             Invoice
           </a>

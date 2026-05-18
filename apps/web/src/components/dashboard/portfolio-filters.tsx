@@ -96,7 +96,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
   );
 
   return (
-    <div className="mb-8 space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm">
+    <div className="mb-8 space-y-4 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm">
       <Form {...form}>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -109,7 +109,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
               <FormItem className="flex-1 space-y-2">
                 <FormLabel
                   htmlFor="portfolio-q"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
                 >
                   Search collection
                 </FormLabel>
@@ -132,7 +132,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
       </Form>
 
       <fieldset className="space-y-2">
-        <legend className="block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+        <legend className="block font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Payment status
         </legend>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -150,7 +150,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
 
       {years.length > 0 ? (
         <fieldset className="space-y-2">
-          <legend className="block font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <legend className="block font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Acquired in
           </legend>
           <div className="flex flex-wrap items-center gap-1.5">

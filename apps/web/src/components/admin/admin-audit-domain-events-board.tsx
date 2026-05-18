@@ -3,7 +3,7 @@
 import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import { Button, DataTable, EntityTableShell } from "@auction/ui";
+import { Button, DataTable, EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -71,9 +71,9 @@ export function AdminAuditDomainEventsBoard({ rows }: { rows: AdminDomainEventRo
   const tableColumns = useMemo(() => columns(), []);
 
   return (
-    <EntityTableShell
+    <EntityList
       density={density}
-      responsiveMode="auto"
+      responsiveMode="scroll"
       table={
         <TableScroll>
           <DataTable columns={tableColumns} data={rows} getRowId={(r) => r.id} density={density} />

@@ -16,7 +16,7 @@ const variantClasses: Record<ReturnType<typeof submissionStatusToBadgeVariant>, 
 export function SubmissionStatusBadge({ status }: { status: ItemSubmissionStatus }) {
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 font-label text-[10px] font-bold uppercase tracking-widest ${variantClasses[submissionStatusToBadgeVariant(status)]}`}
+      className={`inline-flex rounded-full px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${variantClasses[submissionStatusToBadgeVariant(status)]}`}
     >
       {submissionStatusLabel[status]}
     </span>

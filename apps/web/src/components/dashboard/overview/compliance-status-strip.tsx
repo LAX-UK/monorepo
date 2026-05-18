@@ -27,7 +27,7 @@ type StatusPill = {
 };
 
 const TONE_CLASSES: Record<PillTone, string> = {
-  ok: "border-outline-variant/20 bg-surface-container-low/60 text-on-surface",
+  ok: "border-border-hairline bg-surface-container-low/60 text-on-surface",
   info: "border-primary/30 bg-primary/10 text-primary",
   warn: "border-lot-orange/35 bg-lot-orange/10 text-lot-orange",
   danger: "border-live-red/40 bg-live-red/10 text-live-red",
@@ -184,7 +184,7 @@ export function ComplianceStatusStrip({
     <nav
       aria-label="Account readiness"
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest/60 p-3 shadow-sm",
+        "flex flex-wrap items-center gap-2 rounded-2xl border border-border-hairline bg-surface-container-lowest/60 p-3 shadow-sm",
         className,
       )}
     >
@@ -200,7 +200,7 @@ export function ComplianceStatusStrip({
         >
           <span className={cn("size-2 rounded-full", TONE_DOT[pill.tone])} aria-hidden />
           <pill.icon className="size-3.5 opacity-80" aria-hidden />
-          <span className="font-label text-[10px] font-semibold uppercase tracking-widest opacity-80">
+          <span className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] opacity-80">
             {pill.label}
           </span>
           <span className="font-headline text-xs font-semibold">{pill.value}</span>

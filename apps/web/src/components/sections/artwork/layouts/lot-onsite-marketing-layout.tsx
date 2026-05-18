@@ -93,7 +93,7 @@ export function LotOnsiteMarketingLayout({
         {auction.title}
       </h1>
       <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-20 pt-6 sm:px-6 md:px-8">
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/20 bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
+        <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
           <div className="relative aspect-[21/9] min-h-[220px] w-full sm:min-h-[280px]">
             {heroImage ? (
               <MediaImage
@@ -109,7 +109,7 @@ export function LotOnsiteMarketingLayout({
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 sm:p-10 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-2">
-                <p className="font-label text-xs font-bold uppercase tracking-widest text-[#D1D1D1]">
+                <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-[#D1D1D1]">
                   In-gallery auction
                 </p>
                 <p className="font-body text-lg text-[#E8E8E8] sm:text-xl">{sale.title}</p>
@@ -147,13 +147,13 @@ export function LotOnsiteMarketingLayout({
             >
               <h2
                 id="lot-estimate-onsite"
-                className="font-label text-xs font-bold uppercase tracking-widest text-secondary"
+                className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
                 Catalogue
               </h2>
               <div className="mt-4 grid gap-6 sm:grid-cols-2">
                 <div>
-                  <p className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+                  <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Estimate
                   </p>
                   <p className="mt-1 font-body text-lg text-on-surface">
@@ -162,7 +162,7 @@ export function LotOnsiteMarketingLayout({
                 </div>
                 {auction.startingPrice ? (
                   <div>
-                    <p className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+                    <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Opening price
                     </p>
                     <p className="mt-1 font-body text-lg text-on-surface">
@@ -188,7 +188,7 @@ export function LotOnsiteMarketingLayout({
               <p className="mt-2 text-sm text-on-surface-variant">{SITE_BUSINESS_HOURS_LABEL}</p>
               <dl className="mt-4 space-y-2 text-sm text-on-surface">
                 <div>
-                  <dt className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+                  <dt className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Auction session
                   </dt>
                   <dd className="mt-1">
@@ -197,7 +197,7 @@ export function LotOnsiteMarketingLayout({
                 </div>
                 {previewLabel ? (
                   <div>
-                    <dt className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+                    <dt className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                       Preview from
                     </dt>
                     <dd className="mt-1">{previewLabel}</dd>
@@ -306,7 +306,7 @@ export function LotOnsiteMarketingLayout({
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-[calc(var(--header-height)+16px)]">
-            <div className="overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/40">
+            <div className="overflow-hidden rounded-2xl border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/40">
               <div className="relative aspect-square w-full max-w-[400px]">
                 {heroImage ? (
                   <MediaImage

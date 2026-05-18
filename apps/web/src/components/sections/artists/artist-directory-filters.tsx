@@ -46,7 +46,7 @@ export function ArtistDirectoryFilters({
           <Link
             href={clearHref}
             {...linkClickProps}
-            className="inline-flex items-center font-label text-[11px] uppercase tracking-widest text-primary hover:underline"
+            className="inline-flex items-center font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
           >
             Clear all filters
           </Link>

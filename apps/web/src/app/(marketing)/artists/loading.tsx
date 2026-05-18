@@ -9,7 +9,7 @@ export default async function PublicArtistsDirectoryLoading() {
   const view = await readSkeletonView("artists", "grid");
   return (
     <main id="main-content" className="pt-[var(--header-height)]">
-      <section className="border-b border-outline-variant/15 bg-surface-container-lowest/40 px-6 py-14 md:px-12">
+      <section className="border-b border-border-hairline bg-surface-container-lowest/40 px-6 py-14 md:px-12">
         <div className="mx-auto max-w-7xl">
           <Skeleton className="h-3 w-40" />
           <Skeleton className="mt-3 h-10 w-72" />

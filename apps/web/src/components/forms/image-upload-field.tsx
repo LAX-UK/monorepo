@@ -123,7 +123,7 @@ export function ImageUploadField({
           void uploadFiles(event.dataTransfer.files);
         }}
       >
-        <span className="block font-label text-xs uppercase tracking-[0.25em] text-secondary">
+        <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Upload images
         </span>
         <span className="mt-2 block font-body text-sm text-on-surface-variant">

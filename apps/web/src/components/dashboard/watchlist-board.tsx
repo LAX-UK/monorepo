@@ -192,7 +192,7 @@ export function WatchlistBoard({
     <div className="space-y-4">
       <Form {...searchForm}>
         <form
-          className="flex flex-col gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-end"
+          className="flex flex-col gap-3 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-end"
           onSubmit={(e) => e.preventDefault()}
         >
           <FormField
@@ -202,7 +202,7 @@ export function WatchlistBoard({
               <FormItem className="flex-1 space-y-2">
                 <FormLabel
                   htmlFor="watchlist-q"
-                  className="font-label text-xs uppercase tracking-widest text-secondary"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
                 >
                   Filter by lot title
                 </FormLabel>
@@ -249,7 +249,7 @@ export function WatchlistBoard({
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
         <DataTable
           columns={columns}
           data={filtered}
