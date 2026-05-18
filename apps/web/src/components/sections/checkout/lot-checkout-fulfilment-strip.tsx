@@ -131,7 +131,7 @@ export function LotCheckoutFulfilmentStrip({ fulfilment, lotId }: Props) {
     <div className="mb-8 flex flex-col gap-1 lg:mb-10" aria-live="polite">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-        <span className="font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+        <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
           {label}
         </span>
         {polling ? (

@@ -2,7 +2,7 @@ import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
-import { Card, CardContent } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -41,7 +41,7 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
       breadcrumbs={
         <Link
           href="/admin/artists"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Artists
         </Link>
@@ -51,8 +51,8 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
     >
       {mergedNotice}
 
-      <Card>
-        <CardContent className="pt-6">
+      <Surface variant="card">
+        <div className="pt-6">
           <AdminArtistForm
             mode="edit"
             artistId={artist.id}
@@ -78,8 +78,8 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
               archived: artist.archived,
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
       <section className="space-y-3">
         <h2 className="font-display text-xl font-semibold tracking-tight">Lots by this artist</h2>

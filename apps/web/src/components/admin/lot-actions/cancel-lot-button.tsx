@@ -2,6 +2,7 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminCancelLotResultAction } from "@/lib/actions/admin";
+import { Can } from "@/lib/auth/capabilities";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -18,13 +19,13 @@ export function CancelLotButton({ lotId, disabled }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <Can requirement="auction.manage">
       <Button
         type="button"
         variant="outline"
         disabled={disabled || pending}
         onClick={() => setOpen(true)}
-        className="h-auto rounded-md border border-error/40 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-error hover:bg-error/10 hover:text-error disabled:opacity-60"
+        className="h-auto rounded-md border border-error/40 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-error hover:bg-error/10 hover:text-error disabled:opacity-60"
       >
         Cancel auction
       </Button>
@@ -50,6 +51,6 @@ export function CancelLotButton({ lotId, disabled }: Props) {
           });
         }}
       />
-    </>
+    </Can>
   );
 }

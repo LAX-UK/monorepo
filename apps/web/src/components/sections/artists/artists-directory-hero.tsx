@@ -40,13 +40,13 @@ export function ArtistsDirectoryHero({
         ] as const);
 
   const letterJumpLabel = (
-    <p className="mb-2 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+    <p className="mb-2 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
       Jump to letter
     </p>
   );
 
   return (
-    <section className="border-b border-outline-variant/15 bg-surface-container-lowest/40 px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-14">
+    <section className="border-b border-border-hairline bg-surface-container-lowest/40 px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-14">
       <MarketingPageShell variant="inner" className="!max-w-7xl !px-0">
         <MarketingBreadcrumb
           items={[...breadcrumbItems]}
@@ -70,7 +70,7 @@ export function ArtistsDirectoryHero({
             <input type="hidden" name="nationality" value={nationalityFromQuery} />
           ) : null}
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="font-label text-[10px] uppercase tracking-widest text-secondary">
+            <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Search artists
             </span>
             <input
@@ -98,7 +98,7 @@ export function ArtistsDirectoryHero({
               role="tab"
               aria-selected={c.active}
               className={cn(
-                "rounded-full px-3 py-1.5 font-label text-xs uppercase tracking-widest ring-1 transition-colors md:px-4 md:py-2",
+                "rounded-full px-3 py-1.5 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors md:px-4 md:py-2",
                 c.active
                   ? "bg-primary text-on-primary ring-primary"
                   : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
@@ -110,7 +110,7 @@ export function ArtistsDirectoryHero({
         </div>
 
         <details className="mt-5 md:hidden">
-          <summary className="cursor-pointer font-label text-[10px] uppercase tracking-widest text-on-surface-variant marker:content-none [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant marker:content-none [&::-webkit-details-marker]:hidden">
             Jump to letter
           </summary>
           <div className="mt-3">{letterBar}</div>

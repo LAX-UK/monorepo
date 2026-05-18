@@ -46,7 +46,7 @@ export function PortfolioSearchBar({ initialQ }: { initialQ: string }) {
   return (
     <Form {...form}>
       <form
-        className="mb-8 flex flex-col gap-4 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-end"
+        className="mb-8 flex flex-col gap-4 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-end"
         onSubmit={form.handleSubmit(apply)}
       >
         <FormField
@@ -56,7 +56,7 @@ export function PortfolioSearchBar({ initialQ }: { initialQ: string }) {
             <FormItem className="flex-1 space-y-2">
               <FormLabel
                 htmlFor="portfolio-q"
-                className="font-label text-xs uppercase tracking-widest text-secondary"
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
                 Search collection
               </FormLabel>

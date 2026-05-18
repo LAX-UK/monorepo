@@ -1,6 +1,7 @@
 import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { cn } from "@auction/ui";
-import { PageHeader } from "@auction/ui/components/page-header";
 import type { ReactNode } from "react";
 
 export type AdminEntityDetailShellProps = {
@@ -12,6 +13,11 @@ export type AdminEntityDetailShellProps = {
   children: ReactNode;
   aside?: ReactNode;
   className?: string | undefined;
+  /** Use sticky `DashboardDetailHeader` (v3) instead of `DashboardPageHeader`. */
+  detailHeader?: boolean;
+  backHref?: string;
+  backLabel?: string;
+  eyebrow?: ReactNode;
 };
 
 export function AdminEntityDetailShell({
@@ -23,16 +29,33 @@ export function AdminEntityDetailShell({
   children,
   aside,
   className,
+  detailHeader = false,
+  backHref,
+  backLabel,
+  eyebrow,
 }: AdminEntityDetailShellProps) {
   return (
     <AppScreen className={className ?? "space-y-8"}>
-      <PageHeader
-        title={title}
-        {...(description ? { description } : {})}
-        {...(meta ? { meta } : {})}
-        {...(breadcrumbs ? { breadcrumbs } : {})}
-        {...(actions ? { actions } : {})}
-      />
+      {detailHeader ? (
+        <DashboardDetailHeader
+          sticky
+          title={title}
+          {...(description ? { description } : {})}
+          {...(backHref ? { backHref } : {})}
+          {...(backLabel ? { backLabel } : {})}
+          {...(eyebrow ? { eyebrow } : {})}
+          badges={meta}
+          actions={actions}
+        />
+      ) : (
+        <DashboardPageHeader
+          title={title}
+          {...(description ? { description } : {})}
+          {...(meta ? { meta } : {})}
+          {...(breadcrumbs ? { breadcrumbs } : {})}
+          {...(actions ? { actions } : {})}
+        />
+      )}
       <div
         className={cn(
           "mx-auto max-w-6xl gap-8",

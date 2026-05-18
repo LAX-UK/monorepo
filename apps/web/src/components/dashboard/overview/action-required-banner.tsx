@@ -10,10 +10,30 @@ import Link from "next/link";
 
 type ActionRequiredBannerProps = {
   row: SettlementRow | undefined;
+  /** `strip` — thin accent row inside overview hero band. */
+  variant?: "card" | "strip";
 };
 
-export function ActionRequiredBanner({ row }: ActionRequiredBannerProps) {
+export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBannerProps) {
   if (!row) return null;
+
+  if (variant === "strip") {
+    return (
+      <div className="flex flex-col gap-3 border-l-4 border-lot-orange bg-lot-orange/10 py-2 pl-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-lot-orange">
+            Action required
+          </p>
+          <p className="truncate font-headline text-sm font-semibold text-on-surface">
+            You won {row.lot.title} · {formatSettlementTotal(row)} due
+          </p>
+        </div>
+        <Button size="sm" className="shrink-0" asChild>
+          <Link href={`/dashboard/checkout/${row.lot.id}`}>Complete checkout</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-lot-orange/25 bg-lot-orange/10 shadow-md">

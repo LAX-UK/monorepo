@@ -351,7 +351,7 @@ export default async function ArtistPage({ params }: PageProps) {
               key={c.href}
               href={c.href}
               aria-label={c.aria}
-              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/40 hover:bg-surface-container-high hover:text-primary"
+              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:bg-surface-container-high hover:text-primary"
             >
               {c.label}
             </Link>
@@ -404,7 +404,7 @@ export default async function ArtistPage({ params }: PageProps) {
                   href={registry.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
                 >
                   Official website
                 </a>
@@ -420,7 +420,7 @@ export default async function ArtistPage({ params }: PageProps) {
               key={s.label}
               className="flex flex-col gap-2 px-0 md:border-r md:border-outline-variant/40 md:px-5 md:first:pl-0 md:last:border-r-0"
             >
-              <span className="mb-2 font-label text-[0.65rem] uppercase tracking-widest text-secondary">
+              <span className="mb-2 font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 {s.label}
               </span>
               <span className="font-headline text-3xl text-on-surface">{s.value}</span>
@@ -430,7 +430,7 @@ export default async function ArtistPage({ params }: PageProps) {
       ) : null}
       <section id="works">
         {sellerLots.length === 0 ? (
-          <p className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
+          <p className="rounded-xl border border-border-hairline bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
             No public lots for this profile yet. Browse{" "}
             <Link href="/" className="text-primary underline-offset-4 hover:underline">
               live salerooms
@@ -450,7 +450,7 @@ export default async function ArtistPage({ params }: PageProps) {
       </section>
       {related.length > 0 ? (
         <section
-          className="mt-16 border-t border-outline-variant/20 pt-12"
+          className="mt-16 border-t border-border-hairline pt-12"
           aria-labelledby="related-artists"
         >
           <h2 id="related-artists" className="mb-6 font-headline text-2xl text-on-surface">
@@ -461,7 +461,7 @@ export default async function ArtistPage({ params }: PageProps) {
               <li key={a.id}>
                 <Link
                   href={artistPath(a)}
-                  className="block rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4 transition hover:border-primary/40 hover:bg-surface-container-low"
+                  className="block rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 transition hover:border-primary/40 hover:bg-surface-container-low"
                 >
                   <p className="font-headline text-base text-on-surface">{a.name}</p>
                   {a.tagline ? (

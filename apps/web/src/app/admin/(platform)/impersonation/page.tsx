@@ -3,13 +3,7 @@ import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -47,17 +41,15 @@ export default async function AdminImpersonationPage() {
         </div>
       }
     >
-      <Card className="border-outline-variant/15">
-        <CardHeader>
-          <CardTitle className="font-headline text-lg">Start session</CardTitle>
-          <CardDescription>
+      <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Start session</h3>
+          <p className="font-body text-sm text-on-surface-variant">
             Choose an entity from search to start a support session.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AdminImpersonateForm />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <AdminImpersonateForm />
+      </Surface>
     </AdminPanelPage>
   );
 }

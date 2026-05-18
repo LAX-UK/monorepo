@@ -88,9 +88,7 @@ export class MetaCapiBatchCollector {
     }
 
     if (this.breaker) {
-      const hasRetryableFailure = outcomes.some(
-        (o) => o.status === "failed" && o.retryable,
-      );
+      const hasRetryableFailure = outcomes.some((o) => o.status === "failed" && o.retryable);
       if (hasRetryableFailure) {
         this.breaker.recordFailure(CAPI_BREAKER_KEY);
       }

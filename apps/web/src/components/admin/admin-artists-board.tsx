@@ -7,7 +7,7 @@ import { TableScroll } from "@/components/ui/table-scroll";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { AdminArtistListRow } from "@auction/types";
-import { Badge, DataTable, EntityTableShell, InlineActionMenu } from "@auction/ui";
+import { Badge, DataTable, EntityList, InlineActionMenu } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -233,7 +233,7 @@ export function AdminArtistsBoard({ artists }: Props) {
 
   return (
     <div className="space-y-4">
-      <EntityTableShell
+      <EntityList
         density={density}
         responsiveMode="auto"
         table={
@@ -253,7 +253,7 @@ export function AdminArtistsBoard({ artists }: Props) {
               return (
                 <li
                   key={a.id}
-                  className="rounded-lg border border-outline-variant/15 bg-surface-container-low/30 p-3"
+                  className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-3"
                 >
                   <div className="flex items-start gap-3">
                     <input

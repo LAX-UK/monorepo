@@ -1,10 +1,15 @@
+import {
+  DashboardComplianceStrip,
+  DashboardComplianceStripSkeleton,
+} from "@/components/dashboard/dashboard-compliance-strip";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { PaymentsToolbar } from "@/components/dashboard/payments-toolbar";
+import { PaymentsPageToolbar } from "@/components/dashboard/payments-page-toolbar";
 import {
   DashboardEmptyState,
   DashboardErrorAlert,
   DashboardSection,
 } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -18,16 +23,12 @@ import {
   toPaymentDisplayRows,
 } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
-import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
+import { CreditCard } from "lucide-react";
 import Link from "next/link";
-import {
-  PAYMENTS_STATUS_FILTER_OPTIONS,
-  type PaymentsStatusFilter,
-  parsePaymentsStatusFilter,
-  paymentsFilterHref,
-} from "./payments-status-filter";
+import { Suspense } from "react";
+import { parsePaymentsStatusFilter } from "./payments-status-filter";
 
 const PAGE_PATH = "/dashboard/payments";
 
@@ -46,35 +47,6 @@ function statusVariant(tone: PaymentDisplayRow["statusTone"]) {
     case "neutral":
       return "neutral" as const;
   }
-}
-
-function FilterChips({ active }: { active: PaymentsStatusFilter }) {
-  const chipBase =
-    "inline-flex min-h-10 items-center justify-center rounded-full border px-4 font-label text-xs font-medium uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-  const chipActive = "border-primary/35 bg-primary-container/45 text-primary shadow-sm";
-  const chipIdle =
-    "border-outline-variant/20 bg-surface-container-low text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface";
-  return (
-    <nav
-      aria-label="Filter payments by status"
-      className="flex flex-wrap gap-2 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-3 shadow-sm"
-    >
-      {PAYMENTS_STATUS_FILTER_OPTIONS.map((opt) => {
-        const isActive = opt.value === active;
-        return (
-          <Link
-            key={opt.value}
-            href={paymentsFilterHref(PAGE_PATH, opt.value)}
-            scroll={false}
-            aria-current={isActive ? "page" : undefined}
-            className={`${chipBase} ${isActive ? chipActive : chipIdle}`}
-          >
-            {opt.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
 }
 
 function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
@@ -104,9 +76,9 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
 
 function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
   return (
-    <li>
-      <Card className="border-outline-variant/15 shadow-sm transition-colors hover:border-primary/20">
-        <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
+    <li className="lift-row">
+      <Surface variant="card" padding="md" className="transition-colors hover:border-primary/20">
+        <div className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
           <Link
             href={lotPath({ id: row.lotId, title: row.lotTitle })}
             className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -137,14 +109,14 @@ function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
           <div className="flex justify-end sm:justify-center">
             <PrimaryActionCell row={row} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     </li>
   );
 }
 
 export default async function DashboardPaymentsPage({ searchParams }: PageProps) {
-  await requireAuthenticatedUser({
+  const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: PAGE_PATH,
   });
@@ -173,16 +145,24 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
 
   return (
     <DashboardPage>
-      <PageHeader
+      <DashboardPageHeader
+        meta="Buying"
         title="My payments"
         description="Invoices and receipts for lots you have won. Each row links to the lot and, when issued, the hosted invoice."
-        className="border-0 pb-0"
       />
 
-      <FilterChips active={filter} />
+      <Suspense fallback={<DashboardComplianceStripSkeleton />}>
+        <DashboardComplianceStrip user={user} loginNext={PAGE_PATH} />
+      </Suspense>
 
       {!fetchError ? (
-        <PaymentsToolbar initialQ={sp.q ?? ""} sort={sort} year={year} years={years} />
+        <PaymentsPageToolbar
+          filter={filter}
+          initialQ={sp.q ?? ""}
+          sort={sort}
+          year={year}
+          years={years}
+        />
       ) : null}
 
       {fetchError ? (
@@ -196,6 +176,8 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
         {!fetchError && displayRows.length === 0 ? (
           filter === "all" && !qLower && year == null ? (
             <DashboardEmptyState
+              variant="hero"
+              icon={<CreditCard aria-hidden />}
               title="No payments yet"
               description="Your purchases will appear here once you win a lot and an invoice is issued."
               action={

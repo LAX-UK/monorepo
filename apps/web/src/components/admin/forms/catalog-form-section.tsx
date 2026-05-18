@@ -36,7 +36,7 @@ export function CatalogFormSection({
   if (!collapsible) {
     return (
       <div className="rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40">
-        <div className="border-b border-outline-variant/20 px-4 py-3">
+        <div className="border-b border-border-hairline px-4 py-3">
           <span className="font-display text-base font-semibold tracking-tight text-on-surface">
             {title}
           </span>
@@ -74,10 +74,7 @@ export function CatalogFormSection({
           aria-hidden
         />
       </CollapsibleTrigger>
-      <CollapsibleContent
-        id={contentId}
-        className="border-t border-outline-variant/20 px-4 pb-4 pt-2"
-      >
+      <CollapsibleContent id={contentId} className="border-t border-border-hairline px-4 pb-4 pt-2">
         <div className="space-y-4 pt-2">{children}</div>
       </CollapsibleContent>
     </Collapsible>

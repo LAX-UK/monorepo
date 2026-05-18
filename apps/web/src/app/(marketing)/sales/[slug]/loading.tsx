@@ -18,7 +18,7 @@ export default async function SaleroomLoading() {
             <div className="h-4 w-full rounded bg-surface-container-high" />
             <div className="h-4 w-5/6 rounded bg-surface-container-high" />
           </div>
-          <div className="space-y-3 rounded border border-outline-variant/15 bg-surface-container-low/40 p-5">
+          <div className="space-y-3 rounded border border-border-hairline bg-surface-container-low/40 p-5">
             <div className="h-4 w-1/2 rounded bg-surface-container-high" />
             <div className="h-4 w-3/4 rounded bg-surface-container-high" />
             <div className="h-4 w-2/3 rounded bg-surface-container-high" />

@@ -3,14 +3,8 @@ import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overv
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -27,13 +21,13 @@ export function WatchlistPreviewCard({
   const items = vm.watchPreview.slice(0, tileCount).filter((row) => row.lot);
 
   return (
-    <Card className="border-outline-variant/15 shadow-lg">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+    <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Watchlist
-          </CardTitle>
-          <CardDescription>Saved lots you are tracking.</CardDescription>
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">Saved lots you are tracking.</p>
         </div>
         <Button variant="chevron" asChild>
           <Link href="/dashboard/watchlist" className="inline-flex items-center gap-1 text-xs">
@@ -41,8 +35,8 @@ export function WatchlistPreviewCard({
             <ChevronRight className="size-4" aria-hidden />
           </Link>
         </Button>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         {items.length === 0 ? (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
             <span>Save lots from artwork pages to build a personal watchlist.</span>
@@ -59,7 +53,7 @@ export function WatchlistPreviewCard({
                 <li key={row.watchlistId}>
                   <Link
                     href={lotPath(lot)}
-                    className="flex min-h-16 items-center gap-3 rounded-xl border border-outline-variant/15 bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high/50"
+                    className="flex min-h-16 items-center gap-3 rounded-xl border border-border-hairline bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high/50"
                   >
                     <LotThumbnail
                       src={lot.images[0]}
@@ -117,7 +111,7 @@ export function WatchlistPreviewCard({
             })}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

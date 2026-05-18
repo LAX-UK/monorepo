@@ -22,6 +22,7 @@ import { notify } from "@/lib/ui/notify";
 import type { ArtistKind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
+import { LoadingButton } from "@auction/ui/components/loading-button";
 import { adminCreateArtistBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -226,9 +227,14 @@ export function AdminArtistForm({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={pending || readOnly}>
-                  {pending ? "Saving..." : mode === "create" ? "Create artist" : "Save artist"}
-                </Button>
+                <LoadingButton
+                  type="submit"
+                  loading={pending}
+                  loadingLabel="Saving…"
+                  disabled={readOnly}
+                >
+                  {mode === "create" ? "Create artist" : "Save artist"}
+                </LoadingButton>
               </div>
             </div>
 

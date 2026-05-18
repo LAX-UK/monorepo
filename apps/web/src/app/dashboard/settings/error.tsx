@@ -32,7 +32,7 @@ export default function SettingsError({
           </Button>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-[0.3em] text-on-surface transition-colors hover:bg-surface-container-low"
+            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
           >
             Account settings
           </Link>

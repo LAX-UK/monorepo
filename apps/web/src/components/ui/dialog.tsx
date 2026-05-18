@@ -30,10 +30,10 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
       }}
     >
       <DialogContent
-        className="max-w-lg gap-0 border border-outline-variant/20 bg-surface-container-lowest p-0 text-on-surface shadow-xl"
+        className="max-w-lg gap-0 border border-border-hairline bg-surface-container-lowest p-0 text-on-surface shadow-xl"
         aria-labelledby={titleId}
       >
-        <DialogHeader className="border-b border-outline-variant/10 px-6 py-4 text-left">
+        <DialogHeader className="border-b border-border-hairline px-6 py-4 text-left">
           <DialogTitle
             id={titleId}
             className="font-headline text-2xl font-light tracking-tight text-on-surface"

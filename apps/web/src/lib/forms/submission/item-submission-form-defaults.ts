@@ -3,6 +3,25 @@ import type { ItemSubmissionFormValues as NewSubmissionFormValues } from "@aucti
 
 export type SubmissionCategoryOption = CategoryNode;
 
+export const EMPTY_SUBMISSION_FORM_VALUES: NewSubmissionFormValues = {
+  title: "",
+  description: "",
+  medium: "",
+  dimensions: "",
+  categoryIds: [],
+  images: [],
+  yearOfWork: "",
+  isSigned: false,
+  signatureNote: "",
+  edition: "",
+  conditionSelfReport: "",
+  provenance: [],
+  exhibitions: [],
+  askingPrice: "",
+  reservePrice: "",
+  submitterNotes: "",
+};
+
 export function itemSubmissionToFormValues(s: ItemSubmission): NewSubmissionFormValues {
   return {
     title: s.title,

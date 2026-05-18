@@ -4,6 +4,8 @@ import {
   DashboardErrorAlert,
   DashboardSection,
 } from "@/components/dashboard/primitives";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -11,9 +13,8 @@ import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import { Card, CardContent } from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
-import { ArrowRight, ShoppingBag } from "lucide-react";
+import { Surface } from "@auction/ui/components/surface";
+import { ArrowRight, Gavel, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -95,14 +96,16 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
 
   return (
     <DashboardPage className="space-y-6">
-      <PageHeader
+      <DashboardPageHeader
+        meta="Buying"
         title="Basket checkout"
         description="Review every lot in your basket. We currently process each lot through its own Xero invoice — basket-level invoicing is on the roadmap with finance."
-        className="border-0 pb-0"
       />
 
       {requestedIds.length === 0 && !hadRawButNoValidUuids ? (
         <DashboardEmptyState
+          variant="hero"
+          icon={<Gavel aria-hidden />}
           title="Your basket is empty"
           description="Add lots to a basket by visiting your collection and selecting multiple settlements, or open each checkout directly."
           action={
@@ -145,23 +148,28 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           id="basket-checkout"
           title={`${rows.length} ${rows.length === 1 ? "lot" : "lots"} ready for settlement`}
         >
-          <Card className="border-outline-variant/15 bg-surface-container-lowest/80 shadow-sm">
-            <CardContent className="space-y-5 p-6">
-              <header className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <ShoppingBag className="size-5 text-primary" aria-hidden />
-                  <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
-                    Basket
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
-                    Combined total
-                  </p>
-                  <p className="font-headline text-2xl tabular-nums text-primary">
-                    {formatMoney(grandTotal.toFixed(2))}
-                  </p>
-                </div>
+          <KpiRow
+            variant="hero"
+            columns={4}
+            className="xl:grid-cols-1"
+            aria-label="Basket total"
+            tiles={[
+              {
+                id: "total",
+                label: "Combined total",
+                value: formatMoney(grandTotal.toFixed(2)),
+                semanticTone: "emphasis",
+                icon: <ShoppingBag className="size-5" aria-hidden />,
+              },
+            ]}
+          />
+          <Surface variant="section" padding="md" className="mt-4">
+            <div className="space-y-5">
+              <header className="flex items-center gap-3">
+                <ShoppingBag className="size-5 text-primary" aria-hidden />
+                <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                  Basket
+                </p>
               </header>
               <ul className="divide-y divide-outline-variant/15">
                 {rows.map((row) => (
@@ -179,7 +187,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                         Lot total
                       </p>
                       <p className="font-headline text-base tabular-nums text-on-surface">
@@ -201,8 +209,8 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
                 We invoice and settle each lot individually for now. When finance enables basket
                 invoicing, payment will consolidate into a single Xero invoice from this screen.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </Surface>
         </DashboardSection>
       ) : null}
     </DashboardPage>

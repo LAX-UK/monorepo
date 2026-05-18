@@ -54,14 +54,14 @@ export function MarketingFilterSheet({
         side={side}
         overlayClassName="z-[60]"
         className={cn(
-          "z-[60] flex max-h-[min(90dvh,640px)] flex-col gap-0 border-outline-variant/20 bg-surface-container-lowest p-0",
+          "z-[60] flex max-h-[min(90dvh,640px)] flex-col gap-0 border-border-hairline bg-surface-container-lowest p-0",
           side === "bottom" && "h-[min(90dvh,640px)] rounded-t-2xl",
           side === "right" && "max-w-sm",
           className,
         )}
       >
-        <SheetHeader className="shrink-0 border-b border-outline-variant/15 px-6 py-4 pr-12 text-left">
-          <SheetTitle className="font-label text-xs font-semibold uppercase tracking-widest text-on-surface">
+        <SheetHeader className="shrink-0 border-b border-border-hairline px-6 py-4 pr-12 text-left">
+          <SheetTitle className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
             {title}
           </SheetTitle>
           <SheetDescription className="sr-only">
@@ -69,7 +69,7 @@ export function MarketingFilterSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
-        <SheetFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-outline-variant/15 px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-between">
+        <SheetFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border-hairline px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-between">
           {onReset ? (
             <button
               type="button"

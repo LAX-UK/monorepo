@@ -18,13 +18,13 @@ export function PastAuctionsEmpty() {
         <>
           <Link
             href="/search"
-            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary transition-opacity hover:opacity-80"
           >
             Browse all lots
           </Link>
           <Link
             href="/archive"
-            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary transition-opacity hover:opacity-80"
           >
             View full archive
           </Link>
@@ -33,7 +33,7 @@ export function PastAuctionsEmpty() {
           </span>
           <Link
             href="/"
-            className="inline-flex items-center justify-center font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant underline-offset-4 transition-colors hover:text-primary hover:underline"
+            className="inline-flex items-center justify-center font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant underline-offset-4 transition-colors hover:text-primary hover:underline"
           >
             Back to upcoming auctions
           </Link>

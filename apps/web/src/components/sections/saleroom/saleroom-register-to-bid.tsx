@@ -129,7 +129,7 @@ export function SaleroomRegisterToBid({
       onSubmit={(e) => void onSubmit(e)}
       className="flex w-full min-w-0 max-w-md flex-col gap-2 rounded-md border border-outline-variant/30 bg-surface-container-low/40 p-3 sm:max-w-sm"
     >
-      <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Register to bid
       </p>
       <label className="font-body text-xs text-secondary">

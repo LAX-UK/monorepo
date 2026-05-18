@@ -6,6 +6,7 @@ import {
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
+import { Can } from "@/lib/auth/capabilities";
 import { notify } from "@/lib/ui/notify";
 import { type UserRole, type UserStaffRole, userRoles, userStaffRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -48,8 +49,8 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
     });
   };
 
-  if (layout === "block") {
-    return (
+  const form =
+    layout === "block" ? (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={pending}>
           <SelectTrigger
@@ -75,37 +76,36 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
           Save role
         </Button>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={pending}>
-        <SelectTrigger
-          className="h-auto min-h-11 w-[min(100%,11rem)] px-2 py-1 font-body text-xs"
-          aria-label="User role"
+    ) : (
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={pending}>
+          <SelectTrigger
+            className="h-auto min-h-11 w-[min(100%,11rem)] px-2 py-1 font-body text-xs"
+            aria-label="User role"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {roleOptions.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="link"
+          disabled={pending}
+          className="h-auto min-h-11 px-0 py-0 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          onClick={runSave}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {roleOptions.map((r) => (
-            <SelectItem key={r} value={r}>
-              {r}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="link"
-        disabled={pending}
-        className="h-auto min-h-11 px-0 py-0 font-label text-[10px] uppercase tracking-widest text-primary underline-offset-2 hover:underline disabled:opacity-50"
-        onClick={runSave}
-      >
-        Save
-      </Button>
-    </div>
-  );
+          Save
+        </Button>
+      </div>
+    );
+
+  return <Can requirement="platform.admin.full">{form}</Can>;
 }
 
 const staffSelectValues = ["__none__", ...userStaffRoles] as const;
@@ -142,36 +142,38 @@ export function UserStaffRoleAction({ userId, defaultStaffRole }: UserStaffRoleA
   };
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <Select
-        value={staff}
-        onValueChange={(v) => setStaff(v as StaffSelectValue)}
-        disabled={pending}
-      >
-        <SelectTrigger
-          className="min-h-11 w-full font-body text-sm sm:flex-1"
-          aria-label="Internal staff role"
+    <Can requirement="platform.admin.full">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Select
+          value={staff}
+          onValueChange={(v) => setStaff(v as StaffSelectValue)}
+          disabled={pending}
         >
-          <SelectValue placeholder="Staff role" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">Default (legacy full)</SelectItem>
-          {userStaffRoles.map((r) => (
-            <SelectItem key={r} value={r}>
-              {r.replace(/_/g, " ")}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        disabled={pending}
-        className="min-h-11 w-full sm:w-auto"
-        onClick={runSave}
-      >
-        Save staff role
-      </Button>
-    </div>
+          <SelectTrigger
+            className="min-h-11 w-full font-body text-sm sm:flex-1"
+            aria-label="Internal staff role"
+          >
+            <SelectValue placeholder="Staff role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Default (legacy full)</SelectItem>
+            {userStaffRoles.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r.replace(/_/g, " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          disabled={pending}
+          className="min-h-11 w-full sm:w-auto"
+          onClick={runSave}
+        >
+          Save staff role
+        </Button>
+      </div>
+    </Can>
   );
 }
 
@@ -189,33 +191,29 @@ export function UserSuspendAction({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  if (suspendedAt) {
-    return (
-      <Button
-        type="button"
-        variant="secondary"
-        className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
-        disabled={pending}
-        onClick={() => {
-          startTransition(() => {
-            void (async () => {
-              const r = await adminUnsuspendUserResultAction(userId);
-              if (r.ok) {
-                notify.success("Unsuspended");
-                router.refresh();
-                return;
-              }
-              notify.error(r.error);
-            })();
-          });
-        }}
-      >
-        {fullWidthButton ? "Unsuspend account" : "Unsuspend"}
-      </Button>
-    );
-  }
-
-  return (
+  const button = suspendedAt ? (
+    <Button
+      type="button"
+      variant="secondary"
+      className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
+      disabled={pending}
+      onClick={() => {
+        startTransition(() => {
+          void (async () => {
+            const r = await adminUnsuspendUserResultAction(userId);
+            if (r.ok) {
+              notify.success("Unsuspended");
+              router.refresh();
+              return;
+            }
+            notify.error(r.error);
+          })();
+        });
+      }}
+    >
+      {fullWidthButton ? "Unsuspend account" : "Unsuspend"}
+    </Button>
+  ) : (
     <Button
       type="button"
       variant="destructive"
@@ -238,4 +236,6 @@ export function UserSuspendAction({
       {fullWidthButton ? "Suspend account" : "Suspend"}
     </Button>
   );
+
+  return <Can requirement="platform.admin.full">{button}</Can>;
 }

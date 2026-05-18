@@ -49,7 +49,7 @@ export function HomeSkeleton() {
           </div>
           <Skeleton className="h-6 w-28 rounded-sm shimmer-sweep" />
         </div>
-        <Skeleton className="mb-6 h-14 w-full rounded-sm border border-outline-variant/20 shimmer-sweep" />
+        <Skeleton className="mb-6 h-14 w-full rounded-sm border border-border-hairline shimmer-sweep" />
         <div className="flex gap-4 overflow-hidden pb-2">
           {["e1", "e2", "e3"].map((slot) => (
             <div key={slot} className="flex w-[280px] shrink-0 flex-col gap-4">

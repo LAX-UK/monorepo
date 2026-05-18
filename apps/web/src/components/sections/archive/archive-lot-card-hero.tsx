@@ -29,7 +29,7 @@ export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
       : `${a.status.replace(/_/g, " ")} · ${closingSeason(a.endTime)}`;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md">
+    <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md">
       <Link
         href={lotPath(a)}
         className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg"
@@ -49,7 +49,7 @@ export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
           />
           <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-6">
             <div className="min-w-0 flex-1">
-              <span className="mb-2 inline-block rounded-full border border-white/20 bg-black/35 px-2.5 py-0.5 font-label text-[0.65rem] font-semibold uppercase tracking-widest text-white/95 backdrop-blur-sm">
+              <span className="mb-2 inline-block rounded-full border border-white/20 bg-black/35 px-2.5 py-0.5 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-white/95 backdrop-blur-sm">
                 {chip}
               </span>
               <h3 className="font-headline text-2xl font-light leading-tight tracking-tight text-white drop-shadow-sm sm:text-3xl">
@@ -63,7 +63,7 @@ export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-start justify-between gap-4 border-t border-outline-variant/10 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-t border-border-hairline p-5 sm:p-6">
           <div className="min-w-0 space-y-1">
             {a.medium ? (
               <p className="line-clamp-2 font-body text-sm text-on-surface-variant">{a.medium}</p>
@@ -71,7 +71,7 @@ export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
             <p className="font-body text-sm text-on-surface-variant">{row.sellerName}</p>
           </div>
           <div className="text-right">
-            <p className="mb-1 font-label text-[0.65rem] font-semibold uppercase tracking-widest text-on-surface-variant">
+            <p className="mb-1 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               Hammer
             </p>
             <p className="font-headline text-2xl tabular-nums text-on-surface">

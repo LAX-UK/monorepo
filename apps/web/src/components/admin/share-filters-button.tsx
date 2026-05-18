@@ -9,7 +9,7 @@ export function ShareFiltersButton() {
     <Button
       type="button"
       variant="outline"
-      className="min-h-11 font-label text-xs uppercase tracking-widest"
+      className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
       onClick={() => {
         void navigator.clipboard.writeText(window.location.href);
         notify.success("Filter link copied");

@@ -1,6 +1,38 @@
 import type { ItemSubmissionFormValues } from "@auction/validators";
 
+/** Drop incomplete provenance / exhibition rows before Zod parse or API mapping. */
+export function sanitizeSubmissionFormValues(
+  values: ItemSubmissionFormValues,
+): ItemSubmissionFormValues {
+  return {
+    ...values,
+    provenance: cleanProvenance(values),
+    exhibitions: cleanExhibitions(values),
+  };
+}
+
+function cleanProvenance(values: ItemSubmissionFormValues) {
+  return values.provenance
+    .map((e) => ({
+      ...(e.period?.trim() ? { period: e.period.trim() } : {}),
+      note: e.note.trim(),
+    }))
+    .filter((e) => e.note.length > 0);
+}
+
+function cleanExhibitions(values: ItemSubmissionFormValues) {
+  return values.exhibitions
+    .map((e) => ({
+      ...(e.year?.trim() ? { year: e.year.trim() } : {}),
+      venue: e.venue.trim(),
+      ...(e.note?.trim() ? { note: e.note.trim() } : {}),
+    }))
+    .filter((e) => e.venue.length > 0);
+}
+
 export function formValuesToCreateItemSubmissionInput(values: ItemSubmissionFormValues) {
+  const provenance = cleanProvenance(values);
+  const exhibitions = cleanExhibitions(values);
   return {
     title: values.title.trim(),
     description: values.description.trim() || undefined,
@@ -12,8 +44,8 @@ export function formValuesToCreateItemSubmissionInput(values: ItemSubmissionForm
     signatureNote: values.signatureNote.trim() || undefined,
     edition: values.edition.trim() || undefined,
     conditionSelfReport: values.conditionSelfReport.trim() || undefined,
-    provenance: values.provenance.length > 0 ? values.provenance : undefined,
-    exhibitions: values.exhibitions.length > 0 ? values.exhibitions : undefined,
+    provenance: provenance.length > 0 ? provenance : undefined,
+    exhibitions: exhibitions.length > 0 ? exhibitions : undefined,
     askingPrice: values.askingPrice.trim() || undefined,
     reservePrice: values.reservePrice.trim() || undefined,
     categoryIds: values.categoryIds,

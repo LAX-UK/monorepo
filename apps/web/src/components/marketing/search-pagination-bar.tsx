@@ -23,7 +23,7 @@ export function SearchPaginationBar({
   const approxSuffix = hasNext ? "+" : "";
 
   return (
-    <div className="mt-12 space-y-6 border-t border-outline-variant/15 pt-10">
+    <div className="mt-12 space-y-6 border-t border-border-hairline pt-10">
       <p className="text-center font-body text-sm text-on-surface-variant">
         {resultCount === 0 ? (
           "No lots on this page"

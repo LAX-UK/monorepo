@@ -1,23 +1,18 @@
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
-import { ActionRequiredBanner } from "@/components/dashboard/overview/action-required-banner";
 import { ActiveBidsCard } from "@/components/dashboard/overview/active-bids-card";
-import { AttentionPanel } from "@/components/dashboard/overview/attention-panel";
 import { ComplianceStatusStrip } from "@/components/dashboard/overview/compliance-status-strip";
 import { DashboardOverviewLayout } from "@/components/dashboard/overview/dashboard-overview-layout";
 import { OverviewErrorsAlert } from "@/components/dashboard/overview/overview-errors-alert";
-import {
-  buildOverviewDescription,
-  buildOverviewKpiTiles,
-} from "@/components/dashboard/overview/overview-presenters";
-import { SecondaryActionStack } from "@/components/dashboard/overview/secondary-action-stack";
+import { OverviewHeroBand } from "@/components/dashboard/overview/overview-hero-band";
+import { buildOverviewDescription } from "@/components/dashboard/overview/overview-presenters";
+import { SellCtaBand } from "@/components/dashboard/overview/sell-cta-band";
 import { WatchlistPreviewCard } from "@/components/dashboard/overview/watchlist-preview-card";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { ActivityItem } from "@/lib/data/view-models/dashboard-activity.vm";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { Button } from "@auction/ui/components/button";
-import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 type Props = {
@@ -37,21 +32,16 @@ export function DashboardOverviewView({
   addressesCount = 0,
   activity = [],
 }: Props) {
-  const firstSettlement = vm.settlementsDue[0];
   return (
     <>
       <OverviewErrorsAlert errors={vm.errors} />
       <DashboardOverviewLayout
-        layout="stack"
+        layout="focal"
         slots={{
           header: (
-            <PageHeader
-              className="mb-0 border-0 pb-0"
-              meta={
-                <span className="font-label text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                  Your dashboard
-                </span>
-              }
+            <DashboardPageHeader
+              meta="Your dashboard"
+              titleScale="display"
               title={`Welcome back, ${vm.firstName}`}
               description={buildOverviewDescription(vm)}
               actions={
@@ -71,20 +61,11 @@ export function DashboardOverviewView({
               hideIdentityPill={kyc?.requiresKyc === true}
             />
           ),
-          banner: <ActionRequiredBanner row={firstSettlement} />,
-          attention: (
-            <AttentionPanel
-              vm={vm}
-              kyc={kyc}
-              orgOnboarding={orgOnboarding}
-              skipFirstSettlement={Boolean(firstSettlement)}
-            />
-          ),
-          kpis: <KpiGrid tiles={buildOverviewKpiTiles(vm)} />,
+          kpis: <OverviewHeroBand vm={vm} kyc={kyc} orgOnboarding={orgOnboarding} />,
           activity: <ActiveBidsCard vm={vm} />,
           activityFeed: <ActivityFeed items={activity} />,
           watchlist: <WatchlistPreviewCard vm={vm} variant="tile-grid" />,
-          secondary: <SecondaryActionStack vm={vm} />,
+          secondary: <SellCtaBand vm={vm} />,
         }}
       />
     </>

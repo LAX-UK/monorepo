@@ -72,7 +72,7 @@ export function ArchiveLotListView({
   currentUserId?: string | null;
 }) {
   return (
-    <div className="-mx-4 max-w-none border-y border-outline-variant/15 bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-outline-variant/15">
+    <div className="-mx-4 max-w-none border-y border-border-hairline bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-border-hairline">
       <ul className="divide-y divide-outline-variant/15 sm:rounded-xl">
         {items.map((row, i) => {
           const a = row.auction;

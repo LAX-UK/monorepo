@@ -133,7 +133,7 @@ export function UrgencyLotRow({
             )}
           </div>
 
-          <div className="flex flex-row items-center justify-end gap-3 border-t border-outline-variant/15 pt-3 lg:mt-0 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <div className="flex flex-row items-center justify-end gap-3 border-t border-border-hairline pt-3 lg:mt-0 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
             {isLg ? <MarketingWatchlistHeart {...watchlistProps} layout="inline" /> : null}
             <Link
               href={item.href}

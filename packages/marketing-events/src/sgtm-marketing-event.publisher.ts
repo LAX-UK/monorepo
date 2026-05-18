@@ -19,9 +19,7 @@ export class SgtmMarketingEventPublisher implements IMarketingEventPublisher {
 
   async publish(event: ResolvedMarketingEvent): Promise<PublishOutcome> {
     const base = this.endpointUrl.replace(/\/$/, "");
-    const secretParam = this.apiSecret
-      ? `&api_secret=${encodeURIComponent(this.apiSecret)}`
-      : "";
+    const secretParam = this.apiSecret ? `&api_secret=${encodeURIComponent(this.apiSecret)}` : "";
     const url = `${base}/g/collect?v=2&tid=${encodeURIComponent(this.measurementId)}${secretParam}`;
 
     const params: Record<string, string> = {

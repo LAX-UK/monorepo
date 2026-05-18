@@ -1,18 +1,36 @@
 import { SaleroomClerkConsole } from "@/components/admin/saleroom-clerk-console";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
+import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import {
   type AdminSaleroomSessionSnapshot,
   getAdminSaleById,
   getAdminSaleroomSession,
 } from "@/lib/data/http/admin.server";
-import { PageHeader } from "@auction/ui/components/page-header";
-import Link from "next/link";
+import { LiveBadge } from "@auction/ui/components/live-badge";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound } from "next/navigation";
 
 type Props = {
   params: Promise<{ saleId: string }>;
   searchParams: Promise<{ error?: string }>;
 };
+
+function saleroomStatusVariant(
+  status: string | undefined,
+): "live" | "success" | "neutral" | "warning" {
+  const s = (status ?? "").toLowerCase();
+  if (s === "live" || s === "active") return "live";
+  if (s === "ended" || s === "closed") return "success";
+  if (s === "paused") return "warning";
+  return "neutral";
+}
+
+function saleroomStatusLabel(snapshot: AdminSaleroomSessionSnapshot): string {
+  if (!snapshot.session) return "Not live";
+  const s = snapshot.session.status;
+  if (!s) return "Session";
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
+}
 
 export default async function AdminSaleroomSalePage({ params, searchParams }: Props) {
   const { saleId } = await params;
@@ -25,19 +43,28 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
     (): AdminSaleroomSessionSnapshot => ({ session: null, events: [] }),
   );
 
+  const statusLabel = saleroomStatusLabel(saleroom);
+
   return (
-    <AppScreen className="space-y-6">
-      <PageHeader
-        title={`Saleroom · ${saleRow.sale.title ?? saleId.slice(0, 8)}`}
-        description="Clerk controls: go live, advance the current lot, hammer or pass. Viewers in this sale room receive saleroom events over the socket."
-        className="border-0 pb-0"
-        actions={
-          <Link
-            href="/admin/saleroom"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-outline-variant/30 px-4 py-2 font-label text-xs uppercase tracking-widest"
-          >
-            Back to hub
-          </Link>
+    <AppScreen className="space-y-8">
+      <DashboardDetailHeader
+        sticky
+        track="live"
+        backHref="/admin/saleroom"
+        backLabel="Saleroom hub"
+        eyebrow="Saleroom clerk"
+        title={saleRow.sale.title ?? "Sale"}
+        description="Go live, advance lots, hammer or pass. Viewers receive saleroom events over the socket."
+        badges={
+          <>
+            {(saleroom.session?.status ?? "").toLowerCase() === "live" ||
+            (saleroom.session?.status ?? "").toLowerCase() === "active" ? (
+              <LiveBadge />
+            ) : null}
+            <StatusBadge variant={saleroomStatusVariant(saleroom.session?.status)} size="sm">
+              {statusLabel}
+            </StatusBadge>
+          </>
         }
       />
       <SaleroomClerkConsole

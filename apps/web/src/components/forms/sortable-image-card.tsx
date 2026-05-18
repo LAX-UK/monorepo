@@ -49,7 +49,7 @@ export function SortableImageCard({
         transition,
       }}
       className={`rounded-xl border bg-surface-container-lowest p-3 shadow-sm ${
-        isDragging ? "border-primary ring-2 ring-primary/20" : "border-outline-variant/20"
+        isDragging ? "border-primary ring-2 ring-primary/20" : "border-border-hairline"
       }`}
     >
       <div className="relative overflow-hidden rounded-lg bg-surface-container-high">
@@ -62,7 +62,7 @@ export function SortableImageCard({
         />
         <div className="absolute left-2 top-2 flex items-center gap-2">
           {primary ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 font-label text-[10px] font-bold uppercase tracking-widest text-on-primary">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary">
               <Star className="size-3" aria-hidden />
               Primary
             </span>

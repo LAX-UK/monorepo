@@ -11,13 +11,7 @@ import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
 import type { LotStatus } from "@auction/types";
-import {
-  DataTable,
-  EmptyState,
-  EntityTableShell,
-  InlineActionMenu,
-  StatusBadge,
-} from "@auction/ui";
+import { DataTable, EmptyState, EntityList, InlineActionMenu, StatusBadge } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -77,7 +71,7 @@ function LotsLayoutToggle({
       <legend className="sr-only">Layout</legend>
       <Link
         href={tableHref}
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors ${
           !viewPipeline
             ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
             : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
@@ -87,7 +81,7 @@ function LotsLayoutToggle({
       </Link>
       <Link
         href={pipelineHref}
-        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest ring-1 transition-colors ${
+        className={`min-h-11 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors ${
           viewPipeline
             ? "bg-surface-container-high text-on-surface ring-outline-variant/25"
             : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80"
@@ -211,7 +205,7 @@ export function AdminLotsBoard({
   return (
     <div className="space-y-8">
       {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
-      <EntityTableShell
+      <EntityList
         density={density}
         filters={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -244,7 +238,7 @@ export function AdminLotsBoard({
             {data.map((r) => (
               <li
                 key={r.id}
-                className="rounded-lg border border-outline-variant/15 bg-surface-container-low/30 p-3"
+                className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

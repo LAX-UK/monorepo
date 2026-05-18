@@ -44,7 +44,7 @@ export function BidFeedEntry({ entry, className }: Props) {
   return (
     <div
       className={cn(
-        "flex min-h-16 items-center gap-3 rounded-full border-b border-[#D1D1D1]/80 bg-[rgba(241,241,243,0.6)] py-3 pl-4 pr-[26px] transition-colors duration-200 motion-reduce:transition-none dark:border-outline-variant/20 dark:bg-surface-container-high/40",
+        "flex min-h-16 items-center gap-3 rounded-full border-b border-[#D1D1D1]/80 bg-[rgba(241,241,243,0.6)] py-3 pl-4 pr-[26px] transition-colors duration-200 motion-reduce:transition-none dark:border-border-hairline dark:bg-surface-container-high/40",
         className,
       )}
     >

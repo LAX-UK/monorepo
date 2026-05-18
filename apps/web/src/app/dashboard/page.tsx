@@ -1,4 +1,5 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
@@ -156,7 +157,7 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   });
 
   return (
-    <>
+    <DashboardPage>
       {orgSubmitted ? <OrgSubmittedAlert /> : null}
       <DashboardOverviewView
         vm={vm}
@@ -173,7 +174,7 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
         addressesCount={addresses.length}
         activity={activity}
       />
-    </>
+    </DashboardPage>
   );
 }
 

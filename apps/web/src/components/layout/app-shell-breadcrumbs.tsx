@@ -41,32 +41,32 @@ export function AppShellBreadcrumbs({
       aria-label="Dashboard breadcrumb"
       className="flex min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap font-label text-xs text-on-surface-variant"
     >
-      <span className="sr-only">
-        LAX {segments.map((segment) => `> ${segment.label}`).join(" ")}
-      </span>
       <span className="shrink-0">LAX</span>
-      {segments.map((segment, index) => (
-        <span
-          key={segment.key}
-          className={
-            segment.key === "parent"
-              ? "hidden min-w-0 items-center gap-1 md:inline-flex"
-              : "inline-flex min-w-0 shrink-0 items-center gap-1"
-          }
-          aria-hidden={segment.key === "parent" ? undefined : true}
-        >
-          <ChevronRight className="size-3 shrink-0" aria-hidden />
+      {segments.map((segment, index) => {
+        const isLast = index === segments.length - 1;
+        return (
           <span
+            key={segment.key}
             className={
-              index === segments.length - 1
-                ? "truncate font-semibold text-on-surface"
-                : "truncate font-medium text-on-surface-variant"
+              segment.key === "parent"
+                ? "hidden min-w-0 items-center gap-1 md:inline-flex"
+                : "inline-flex min-w-0 shrink-0 items-center gap-1"
             }
           >
-            {segment.label}
+            <ChevronRight className="size-3 shrink-0" aria-hidden />
+            <span
+              className={
+                isLast
+                  ? "truncate font-semibold text-on-surface"
+                  : "truncate font-medium text-on-surface-variant"
+              }
+              {...(isLast ? { "aria-current": "page" as const } : {})}
+            >
+              {segment.label}
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </nav>
   );
 }

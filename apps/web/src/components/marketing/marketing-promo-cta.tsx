@@ -40,7 +40,7 @@ export function MarketingPromoCta({
       id={id}
       {...sectionLabelledBy}
       className={cn(
-        "rounded-2xl border border-outline-variant/20 bg-surface-container-low/60 p-8 md:p-10",
+        "rounded-2xl border border-border-hairline bg-surface-container-low/60 p-8 md:p-10",
         className,
       )}
     >

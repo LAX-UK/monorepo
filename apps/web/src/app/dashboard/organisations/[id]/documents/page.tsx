@@ -4,16 +4,9 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import type { LegalEntity, LegalEntityDocument } from "@auction/types";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -49,21 +42,21 @@ export default async function OrganisationDocumentsPage({
         heading={<DisplayHeading as="h2">Documents</DisplayHeading>}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Verification files</CardTitle>
-          <CardDescription>
+      <Surface variant="section" padding="md" className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold text-on-surface">Verification files</h3>
+          <p className="font-body text-sm text-on-surface-variant">
             Upload or replace documents in the secure onboarding step. When the API returns a
             document list, it appears here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           {docs.length === 0 ? (
             <p className="text-sm text-on-surface-variant">
               No document rows returned for this organisation yet. Use onboarding to add KYB files.
             </p>
           ) : (
-            <ul className="divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/15">
+            <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
               {docs.map((doc) => (
                 <li
                   key={doc.id}
@@ -92,15 +85,15 @@ export default async function OrganisationDocumentsPage({
               ))}
             </ul>
           )}
-        </CardContent>
-        <CardFooter className="flex flex-wrap gap-2">
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="cta" size="sm">
             <Link href={href} prefetch>
               Upload more
             </Link>
           </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </Surface>
     </div>
   );
 }
