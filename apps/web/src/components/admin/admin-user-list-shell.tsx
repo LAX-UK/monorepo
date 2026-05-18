@@ -29,6 +29,8 @@ type Props = {
   buildColumns: (onOpen: (u: AdminUserRow) => void) => ColumnDef<AdminUserRow>[];
   bulkOperations: BulkOperation[];
   drawerTitle?: string;
+  kpiAriaLabel?: string;
+  emptyMessage?: string;
   renderDrawerOverview: (user: AdminUserRow) => ReactNode;
   renderDrawerActions?: (user: AdminUserRow) => ReactNode;
   renderMobileCard: (user: AdminUserRow, onOpen: () => void) => ReactNode;
@@ -42,6 +44,8 @@ export function AdminUserListShell({
   buildColumns,
   bulkOperations,
   drawerTitle = "User",
+  kpiAriaLabel = "Account summary",
+  emptyMessage = "No matching accounts.",
   renderDrawerOverview,
   renderDrawerActions,
   renderMobileCard,
@@ -62,7 +66,7 @@ export function AdminUserListShell({
 
   return (
     <>
-      <KpiRow className="mb-2" tiles={kpis} aria-label="Client summary" />
+      <KpiRow className="mb-2" tiles={kpis} aria-label={kpiAriaLabel} />
       <p className="mb-3 font-body text-xs text-on-surface-variant">
         Showing {rows.length} of {totalMatches} matching accounts on this page.
       </p>
@@ -73,7 +77,7 @@ export function AdminUserListShell({
           <DataTable
             columns={columns}
             data={rows}
-            emptyMessage="No users match this filter."
+            emptyMessage={emptyMessage}
             density="compact"
             enableRowSelection
             getRowId={(row) => row.id}

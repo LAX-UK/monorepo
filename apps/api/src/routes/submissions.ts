@@ -13,10 +13,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import {
-  requireBuyerRole,
-  requireBuyerRoleUnlessAdministrator,
-} from "../middleware/require-buyer-role.js";
+import { requireBuyerRole, requireBuyerRoleUnlessStaff } from "../middleware/require-buyer-role.js";
 import { requirePlatformAdmin } from "../middleware/require-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -126,7 +123,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.patch(
     "/:id",
     requireAuth,
-    requireBuyerRoleUnlessAdministrator,
+    requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
