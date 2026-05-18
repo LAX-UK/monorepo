@@ -213,6 +213,12 @@ variable "stripe_connect_webhook_secret" {
   sensitive   = true
   description = "Stripe Connect webhook signing secret (whsec_…)."
 }
+variable "stripe_transfers_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Stripe Transfers webhook signing secret (whsec_…) for platform transfer events."
+}
 variable "stripe_payments_webhook_secret" {
   type        = string
   default     = ""

@@ -2,6 +2,8 @@ import type { KycVerification, UserKycStatus } from "@auction/types";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
+import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import { KycRequiredError } from "../interfaces/kyc-service.js";
 import { StripeKycService } from "./stripe-kyc.service.js";
@@ -81,14 +83,18 @@ function verification(
   };
 }
 
+vi.mock("../../lib/stripe-processed-event.js", () => ({
+  tryClaimProcessedStripeEvent: vi.fn().mockResolvedValue({ claimed: true }),
+}));
+
 function injectStripeWebhookConstruct(svc: StripeKycService, event: Stripe.Event) {
-  (
-    svc as unknown as {
-      stripe: Pick<Stripe, "webhooks">;
-    }
-  ).stripe = {
+  const mockStripe = {
     webhooks: { constructEvent: vi.fn().mockReturnValue(event) },
   } as unknown as Stripe;
+  (svc as unknown as { stripeFactory: IStripeClientFactory }).stripeFactory = {
+    get: () => mockStripe,
+    require: () => mockStripe,
+  };
 }
 
 describe("StripeKycService.isConfigured", () => {
@@ -177,11 +183,7 @@ describe("StripeKycService.createSession", () => {
     const repo = makeRepo({});
     const env = baseEnv({ STRIPE_SECRET_KEY: "sk_test_dummy" });
     const svc = new StripeKycService(env, repo);
-    (
-      svc as unknown as {
-        stripe: Pick<Stripe, "identity">;
-      }
-    ).stripe = {
+    const mockStripe = {
       identity: {
         verificationSessions: {
           create: vi.fn().mockResolvedValue({
@@ -193,9 +195,17 @@ describe("StripeKycService.createSession", () => {
         },
       },
     } as unknown as Stripe;
+    (svc as unknown as { stripeFactory: IStripeClientFactory }).stripeFactory = {
+      get: () => mockStripe,
+      require: () => mockStripe,
+    };
 
     const result = await svc.createSession(USER_ID, "https://return.test");
 
+    expect(mockStripe.identity.verificationSessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { userId: USER_ID } }),
+      { idempotencyKey: `kyc:session:${USER_ID}` },
+    );
     expect(repo.createWithCurrentStripeSession).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: USER_ID,
@@ -282,7 +292,7 @@ describe("StripeKycService.handleWebhook", () => {
 
     await svc.handleWebhook("{}", "sig");
 
-    expect(repo.setUserKycStatus).toHaveBeenCalledWith(USER_ID, "rejected", null);
+    expect(repo.setUserKycStatus).toHaveBeenCalledWith(USER_ID, "rejected", null, undefined);
     expect(repo.incrementUserKycRetryCount).toHaveBeenCalledWith(USER_ID);
   });
 
@@ -311,7 +321,7 @@ describe("StripeKycService.handleWebhook", () => {
 
     await svc.handleWebhook("{}", "sig");
 
-    expect(repo.setUserKycStatus).toHaveBeenCalledWith(USER_ID, "rejected", null);
+    expect(repo.setUserKycStatus).toHaveBeenCalledWith(USER_ID, "rejected", null, undefined);
     expect(repo.incrementUserKycRetryCount).not.toHaveBeenCalled();
   });
 
@@ -342,7 +352,12 @@ describe("StripeKycService.handleWebhook", () => {
 
     const result = await svc.handleWebhook("{}", "sig");
 
-    expect(repo.setUserKycStatus).toHaveBeenCalledWith(USER_ID, "approved", expect.any(Date));
+    expect(repo.setUserKycStatus).toHaveBeenCalledWith(
+      USER_ID,
+      "approved",
+      expect.any(Date),
+      undefined,
+    );
     expect(result.shouldProgressIndividuals).toBe(true);
   });
 
@@ -403,6 +418,41 @@ describe("StripeKycService.handleWebhook", () => {
     expect(repo.setUserKycStatus).not.toHaveBeenCalled();
     expect(repo.incrementUserKycRetryCount).not.toHaveBeenCalled();
     expect(result.shouldProgressIndividuals).toBe(false);
+  });
+
+  it("does not apply user updates when event id was already processed", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValueOnce({ claimed: false });
+    const existing = verification({
+      id: "kv1",
+      status: "requires_input",
+      stripeVerificationSessionId: "vi_1",
+    });
+    const repo = makeRepo({
+      findByStripeSessionId: existing,
+      updateResult: { ...existing, status: "requires_input" },
+      getUserKycWebhookState: { currentKycSessionId: "vi_1", kycRetryCount: 0 },
+    });
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(db)),
+    };
+    const svc = new StripeKycService(envWithStripe, repo, db as never);
+    const event = {
+      id: "evt_kyc_dup",
+      type: "identity.verification_session.updated",
+      data: {
+        object: {
+          id: "vi_1",
+          status: "requires_input",
+          last_error: { code: "document_expired" },
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await svc.handleIdentityEvent(event);
+
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(repo.setUserKycStatus).not.toHaveBeenCalled();
+    expect(repo.incrementUserKycRetryCount).not.toHaveBeenCalled();
   });
 });
 
