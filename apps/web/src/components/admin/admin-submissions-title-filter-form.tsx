@@ -55,7 +55,7 @@ export function AdminSubmissionsTitleFilterForm({
             <FormItem className="grid min-w-0 flex-1 gap-1 sm:max-w-md">
               <label
                 htmlFor="admin-submissions-q"
-                className="font-label text-xs uppercase tracking-widest text-secondary"
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
                 Title contains (server)
               </label>

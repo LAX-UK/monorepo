@@ -35,9 +35,9 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
   // `null` during SSR + first client render so relative-time text matches; ticks after mount.
   const nowMs = useClientClock(30_000);
   return (
-    <div className={compact ? "" : "mt-10 border-t border-outline-variant/15 pt-10"}>
+    <div className={compact ? "" : "mt-10 border-t border-border-hairline pt-10"}>
       {hideHeading ? null : (
-        <h3 className="mb-4 font-label text-xs uppercase tracking-widest text-secondary">
+        <h3 className="mb-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Bid history
         </h3>
       )}
@@ -52,7 +52,7 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
           {entries.map((e) => (
             <li
               key={`${e.id}-${e.at}`}
-              className="flex items-center justify-between gap-4 border-b border-outline-variant/10 pb-3 font-body text-sm last:border-0"
+              className="flex items-center justify-between gap-4 border-b border-border-hairline pb-3 font-body text-sm last:border-0"
             >
               <div className="min-w-0">
                 <span className="block text-on-surface-variant">{maskBidder(e.bidderId)}</span>

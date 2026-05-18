@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  type StaffNavGroupSpec,
-  type StaffNavItemSpec,
-  getStaffNavActiveGroupId,
-  getStaffNavGroups,
-  staffNavItemToAppShellItem,
-} from "@/components/layout/staff-nav";
-import type { SessionUser } from "@/lib/data/contracts";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { NavGroup, NavItem } from "@/lib/shell/contracts";
+import { getActiveNavGroupId } from "@/lib/shell/nav-adapters";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
@@ -33,50 +26,28 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 const LS_PREFIX = "lax.staffNav.open.";
 
-function itemActive(spec: StaffNavItemSpec, pathname: string): boolean {
-  const shell = staffNavItemToAppShellItem(spec);
-  return shell.match
-    ? shell.match(pathname)
-    : pathname === spec.href || pathname.startsWith(`${spec.href}/`);
+function itemActive(item: NavItem, pathname: string): boolean {
+  return item.match
+    ? item.match(pathname)
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-function groupBadgeTotal(g: StaffNavGroupSpec): number {
+function groupBadgeTotal(g: NavGroup): number {
   return g.items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
 }
 
 export function StaffSidebarNav({
-  user,
-  pendingSubmissionCount,
-  pendingArtistCount = 0,
+  groups,
   labelsHidden,
   onNavigate,
 }: {
-  user: SessionUser;
-  pendingSubmissionCount: number;
-  pendingArtistCount?: number;
+  groups: readonly NavGroup[];
   labelsHidden: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const role = user.role as UserRole;
-  const staffRole = user.staffRole as UserStaffRole | null | undefined;
 
-  const groups = useMemo(
-    () => getStaffNavGroups(role, pendingSubmissionCount, staffRole ?? null, pendingArtistCount),
-    [role, pendingSubmissionCount, pendingArtistCount, staffRole],
-  );
-
-  const activeGroupId = useMemo(
-    () =>
-      getStaffNavActiveGroupId(
-        pathname,
-        role,
-        staffRole ?? null,
-        pendingSubmissionCount,
-        pendingArtistCount,
-      ),
-    [pathname, role, staffRole, pendingSubmissionCount, pendingArtistCount],
-  );
+  const activeGroupId = useMemo(() => getActiveNavGroupId(groups, pathname), [groups, pathname]);
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
@@ -142,7 +113,7 @@ export function StaffSidebarNav({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="start" className="min-w-[10rem]">
-                <DropdownMenuLabel className="font-label text-xs uppercase tracking-widest">
+                <DropdownMenuLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
                   {g.title}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

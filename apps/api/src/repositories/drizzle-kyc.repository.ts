@@ -238,8 +238,9 @@ export class DrizzleKycRepository implements IKycRepository {
     userId: string,
     status: "unverified" | "pending" | "approved" | "rejected",
     verifiedAt: Date | null,
+    conn: Database = this.db,
   ): Promise<void> {
-    await this.db
+    await conn
       .update(user)
       .set({
         kycStatus: status,

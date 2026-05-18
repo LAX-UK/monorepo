@@ -84,15 +84,15 @@ export function NotificationBell() {
         <ChromePopoverPanel
           id={MENU_ID}
           aria-label="Recent notifications"
-          className="w-[min(100vw-2rem,22rem)] border-outline-variant/15 bg-surface-container-lowest shadow-lg"
+          className="w-[min(100vw-2rem,22rem)] border-border-hairline bg-surface-container-lowest shadow-lg"
         >
           {unread > 0 ? (
-            <div className="flex justify-end border-b border-outline-variant/10 px-4 py-2">
+            <div className="flex justify-end border-b border-border-hairline px-4 py-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-primary hover:bg-transparent hover:underline"
+                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:underline"
                 onClick={() => void markAllRead()}
               >
                 Mark all read
@@ -108,18 +108,18 @@ export function NotificationBell() {
               items.map((n) => (
                 <div
                   key={n.id}
-                  className={`border-b border-outline-variant/10 px-4 py-3 last:border-0 ${
+                  className={`border-b border-border-hairline px-4 py-3 last:border-0 ${
                     n.read ? "opacity-70" : ""
                   }`}
                 >
-                  <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+                  <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
                     {n.title}
                   </p>
                   <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
                   {n.lotId ? (
                     <Link
                       href={lotPath({ id: n.lotId, title: n.title })}
-                      className="mt-2 inline-block font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+                      className="mt-2 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
                       onClick={() => void markRead(n.id)}
                     >
                       View lot
@@ -129,7 +129,7 @@ export function NotificationBell() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="mt-2 h-auto px-0 py-0 font-label text-xs uppercase tracking-widest text-secondary hover:bg-transparent hover:text-primary"
+                      className="mt-2 h-auto px-0 py-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:bg-transparent hover:text-primary"
                       onClick={() => void markRead(n.id)}
                     >
                       Mark read
@@ -139,17 +139,17 @@ export function NotificationBell() {
               ))
             )}
           </div>
-          <div className="flex flex-col gap-2 border-t border-outline-variant/10 px-4 py-2">
+          <div className="flex flex-col gap-2 border-t border-border-hairline px-4 py-2">
             <Link
               href="/dashboard/notifications"
-              className="font-label text-xs uppercase tracking-widest text-primary"
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary"
               onClick={closeMenu}
             >
               View all notifications
             </Link>
             <Link
               href="/dashboard"
-              className="font-label text-xs uppercase tracking-widest text-secondary hover:text-primary"
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:text-primary"
               onClick={closeMenu}
             >
               Open dashboard

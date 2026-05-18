@@ -28,7 +28,7 @@ export function AdminLotDetailActions({
         {showEditDraft ? (
           <Link
             href={`/admin/lots/${lotId}/edit`}
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/20 px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-surface hover:bg-surface-container-low"
+            className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
           >
             Edit draft
           </Link>
@@ -36,14 +36,14 @@ export function AdminLotDetailActions({
         {showEditCatalog && !showEditDraft ? (
           <Link
             href={`/admin/lots/${lotId}/edit`}
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/20 px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-surface hover:bg-surface-container-low"
+            className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
           >
             Edit catalog copy
           </Link>
         ) : null}
         <Link
           href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}
-          className="inline-flex items-center justify-center rounded-md border border-outline-variant/20 px-8 py-3 font-label text-xs font-semibold uppercase tracking-widest text-on-surface hover:bg-surface-container-low"
+          className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
         >
           Duplicate as new draft
         </Link>

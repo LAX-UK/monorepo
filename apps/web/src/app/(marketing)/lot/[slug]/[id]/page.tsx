@@ -1,3 +1,4 @@
+import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import {
@@ -13,6 +14,7 @@ import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/b
 import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwork-online-layout";
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
+import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -229,8 +231,17 @@ export default async function ArtworkPage({ params }: PageProps) {
     />
   );
 
+  const viewItemCurrency = auction.marketingDetails?.estimate?.currency ?? "GBP";
+  const viewItemPriceMinor = lotViewItemPriceMinor(auction);
+
   return (
     <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
+      <ViewItemTracker
+        lotId={auction.id}
+        title={auction.title}
+        currency={viewItemCurrency}
+        {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
+      />
       <script
         id={`auction-jsonld-${auction.id}`}
         type="application/ld+json"

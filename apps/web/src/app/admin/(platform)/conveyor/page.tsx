@@ -40,8 +40,8 @@ export default async function AdminConveyorPage({
           key={col.id}
           className="flex w-[min(100%,18rem)] shrink-0 flex-col rounded-lg border border-outline-variant/25 bg-surface-container-lowest/60"
         >
-          <header className="border-b border-outline-variant/20 px-3 py-3">
-            <h2 className="font-label text-xs font-bold uppercase tracking-widest text-on-surface">
+          <header className="border-b border-border-hairline px-3 py-3">
+            <h2 className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
               {col.title}
             </h2>
             <p className="mt-1 font-body text-[11px] leading-snug text-on-surface-variant">
@@ -56,7 +56,7 @@ export default async function AdminConveyorPage({
               col.items.map((item) => (
                 <li
                   key={`${col.id}-${item.submissionId}`}
-                  className="rounded-md border border-outline-variant/15 bg-surface px-2 py-2"
+                  className="rounded-md border border-border-hairline bg-surface px-2 py-2"
                 >
                   <Link
                     href={`/admin/submissions/${item.submissionId}`}

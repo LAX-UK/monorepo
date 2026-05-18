@@ -1,8 +1,8 @@
 import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-request-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageHeader } from "@auction/ui/components/page-header";
 
 /** Read-only seller-facing view of the canonical artist profile.
  *
@@ -15,10 +15,10 @@ import { PageHeader } from "@auction/ui/components/page-header";
 export default function SellerArtistProfilePage() {
   return (
     <DashboardPage>
-      <PageHeader
+      <DashboardPageHeader
+        meta="Selling"
         title="Artist profile"
         description="Your catalogue artist profile is managed by the admin team."
-        className="border-0 pb-0"
       />
       <Alert>
         <AlertTitle>Managed by admin</AlertTitle>

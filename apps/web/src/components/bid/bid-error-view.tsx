@@ -18,7 +18,9 @@ export function BidErrorView({
   return (
     <div className={className} role="alert">
       {error.title ? (
-        <p className={`font-label text-xs font-bold uppercase tracking-widest ${tone}`}>
+        <p
+          className={`font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${tone}`}
+        >
           {error.title}
         </p>
       ) : null}

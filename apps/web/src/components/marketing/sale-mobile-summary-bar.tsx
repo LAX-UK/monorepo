@@ -21,14 +21,14 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
     return (
       <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
         <div className="min-w-0">
-          <p className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
+          <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Sale {status === "ended" ? "ended" : "cancelled"}
             <span className="sr-only"> · {saleTitle}</span>
           </p>
         </div>
         <Link
           href="#catalog"
-          className="shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant"
+          className="shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
         >
           View results
         </Link>
@@ -45,7 +45,7 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
   return (
     <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
       <div className="min-w-0">
-        <p className="font-label text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
+        <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           {kicker}
           <span className="sr-only"> · {saleTitle}</span>
         </p>
@@ -62,7 +62,7 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
       </div>
       <Link
         href={ctaHref}
-        className="shrink-0 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on"
+        className="shrink-0 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
       >
         {ctaLabel}
       </Link>

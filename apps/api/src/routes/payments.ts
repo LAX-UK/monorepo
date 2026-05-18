@@ -8,7 +8,10 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
+import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
+import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
@@ -31,7 +34,8 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       userRole?: string;
       userStaffRole?: string | null;
       legalEntityContext?: LegalEntityContext;
-    };
+    } & MarketingConsentVars &
+      MarketingClientContextVars;
   }>();
 
   r.get("/", requireAuth, async (c) => {
@@ -100,18 +104,29 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
       const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
-      return result.match(
-        (data) =>
-          c.json(
-            {
-              data: {
-                paymentId: data.paymentId,
-                checkoutUrl: data.checkoutUrl,
-              },
-            },
-            201,
-          ),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      if (result.isErr()) {
+        const error = result.error;
+        return c.json({ error: error.message }, asHttpStatus(error.status));
+      }
+      const data = result.value;
+      const marketingEventId = crypto.randomUUID();
+      await container.marketingEventService.emit(
+        buildWebsiteUserEvent(c, {
+          name: "InitiateCheckout",
+          eventId: marketingEventId,
+          userId,
+          customData: { lotId: body.lotId, paymentId: data.paymentId },
+        }),
+      );
+      return c.json(
+        {
+          data: {
+            paymentId: data.paymentId,
+            checkoutUrl: data.checkoutUrl,
+            marketingEventId,
+          },
+        },
+        201,
       );
     },
   );

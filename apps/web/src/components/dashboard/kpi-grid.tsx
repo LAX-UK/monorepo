@@ -1,4 +1,5 @@
-import { KpiTile, type KpiTileProps, cn } from "@auction/ui";
+import { KpiRow, type KpiRowProps } from "@/components/dashboard/primitives/kpi-row";
+import type { KpiTileProps } from "@auction/ui";
 
 type KpiGridProps = {
   tiles: readonly KpiTileProps[];
@@ -6,19 +7,13 @@ type KpiGridProps = {
   className?: string;
 };
 
+/** @deprecated Prefer `KpiRow` — thin wrapper for backwards compatibility. */
 export function KpiGrid({ tiles, columns = 4, className }: KpiGridProps) {
-  return (
-    <section
-      aria-label="Summary at a glance"
-      className={cn(
-        "grid grid-cols-1 gap-3 sm:grid-cols-2",
-        columns === 6 ? "lg:grid-cols-3 xl:grid-cols-6" : "xl:grid-cols-4",
-        className,
-      )}
-    >
-      {tiles.map((tile, index) => (
-        <KpiTile key={`${String(tile.label)}-${index}`} {...tile} />
-      ))}
-    </section>
-  );
+  const rowProps: KpiRowProps = {
+    tiles,
+    columns,
+    variant: "default",
+  };
+  if (className) rowProps.className = className;
+  return <KpiRow {...rowProps} />;
 }

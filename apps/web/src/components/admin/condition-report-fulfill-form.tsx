@@ -15,11 +15,11 @@ export function ConditionReportFulfillForm({ requestId }: Props) {
   return (
     <form
       action={adminFulfillConditionReportAction}
-      className="mt-4 space-y-2 border-t border-outline-variant/20 pt-4"
+      className="mt-4 space-y-2 border-t border-border-hairline pt-4"
     >
       <input type="hidden" name="requestId" value={requestId} />
       <input type="hidden" name="downloadUrl" value={downloadUrl ?? ""} />
-      <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Publish to catalogue
       </p>
       <input
@@ -33,7 +33,7 @@ export function ConditionReportFulfillForm({ requestId }: Props) {
         className="min-h-20 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-sm"
       />
       <div className="space-y-1">
-        <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+        <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Condition report file
         </p>
         <DocumentUploadField

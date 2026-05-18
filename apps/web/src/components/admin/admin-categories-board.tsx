@@ -9,8 +9,8 @@ import { notify } from "@/lib/ui/notify";
 import type { AdminCategory } from "@auction/types";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
 import { Input } from "@auction/ui/components/input";
+import { Surface } from "@auction/ui/components/surface";
 import { Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -84,11 +84,11 @@ export function AdminCategoriesBoard({ categories }: Props) {
   };
 
   return (
-    <Card>
-      <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <CardTitle>Category tree</CardTitle>
-          <p className="mt-1 text-sm text-on-surface-variant">
+    <Surface variant="section" padding="md" className="space-y-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Category tree</h3>
+          <p className="font-body text-sm text-on-surface-variant">
             Manage catalog taxonomy, usage, and parent relationships.
           </p>
         </div>
@@ -99,8 +99,8 @@ export function AdminCategoriesBoard({ categories }: Props) {
           aria-label="Search categories"
           className="min-h-11 md:max-w-xs"
         />
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         {tree.length === 0 ? (
           <p className="rounded-lg border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
             No categories match this search.
@@ -119,7 +119,7 @@ export function AdminCategoriesBoard({ categories }: Props) {
             ))}
           </ul>
         )}
-      </CardContent>
+      </div>
       {confirmAction ? (
         <TypedConfirmationDialog
           open
@@ -140,7 +140,7 @@ export function AdminCategoriesBoard({ categories }: Props) {
           onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
         />
       ) : null}
-    </Card>
+    </Surface>
   );
 }
 
@@ -162,7 +162,7 @@ function CategoryTreeRow({
   return (
     <li>
       <div
-        className="grid gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+        className="grid gap-3 rounded-lg border border-border-hairline bg-surface-container-low/40 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
         style={{ marginLeft: depth ? `${Math.min(depth * 1.25, 4)}rem` : undefined }}
       >
         <div className="min-w-0">

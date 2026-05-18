@@ -77,7 +77,7 @@ export function BidStickyMobileBar({
         right = (
           <Link
             href={`/login?next=${next}`}
-            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm"
+            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
           >
             Sign in
           </Link>
@@ -87,7 +87,7 @@ export function BidStickyMobileBar({
         right = (
           <Link
             href="/admin"
-            className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+            className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
           >
             Staff
           </Link>
@@ -96,7 +96,7 @@ export function BidStickyMobileBar({
       case "seller-own-lot":
       case "suspended":
         right = (
-          <span className="shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant">
+          <span className="shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             {decision.viewId === "seller-own-lot" ? "Your listing" : "Suspended"}
           </span>
         );
@@ -109,7 +109,7 @@ export function BidStickyMobileBar({
       <Button
         type="button"
         onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm hover:bg-cta-bg/90"
+        className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
       >
         Place bid
       </Button>
@@ -120,7 +120,7 @@ export function BidStickyMobileBar({
         type="button"
         variant="outline"
         onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-primary hover:bg-transparent hover:text-primary"
+        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-primary"
       >
         Confirm bid
       </Button>
@@ -130,7 +130,7 @@ export function BidStickyMobileBar({
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
-        <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Current bid
         </p>
         <p
@@ -163,7 +163,7 @@ function UpcomingBar({
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
-        <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-lot-orange">
+        <p className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
           Opens in
         </p>
         <p className="truncate font-headline text-lg tabular-nums text-on-surface">
@@ -172,7 +172,7 @@ function UpcomingBar({
       </div>
       <Link
         href={`/register?next=${next}`}
-        className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-widest text-cta-on shadow-sm"
+        className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
       >
         Register
       </Link>
@@ -184,12 +184,12 @@ function ClosedBar({ terminalLabel }: { terminalLabel: "Closed" | "Cancelled" })
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
-        <p className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
+        <p className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Auction
         </p>
         <p className="truncate font-headline text-lg text-on-surface">{terminalLabel}</p>
       </div>
-      <span className="font-label text-[0.7rem] font-bold uppercase tracking-widest text-on-surface-variant">
+      <span className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
         Bidding ended
       </span>
     </MarketingStickyBidBar>

@@ -28,7 +28,7 @@ export function SortableImageItem({ item, index, onAltChange, onMakePrimary, onR
       onRemove={onRemove}
     >
       <label className="block" htmlFor={altInputId}>
-        <span className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+        <span className="font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Alt text
         </span>
         <Input

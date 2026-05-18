@@ -401,9 +401,15 @@ export default function PrivacyPage() {
         <p>
           On the public marketing site and buyer dashboard, optional analytics may be loaded via{" "}
           <strong>Google Tag Manager</strong> (container <code>GTM-W6K4N67Z</code>) when you choose
-          to allow analytics cookies. Measurement (for example <strong>Google Analytics 4</strong>{" "}
-          property <code>G-DMM13MHQDY</code>) is configured inside that container. Optional
-          marketing tags configured in GTM only run when you allow marketing cookies. We use{" "}
+          to allow analytics cookies. Browser data is sent through our first-party tagging server at{" "}
+          <code>https://gtm.lax.bid</code> (server-side GTM container <code>GTM-P79V48Q7</code>).
+          Measurement (for example <strong>Google Analytics 4</strong> property{" "}
+          <code>G-DMM13MHQDY</code>) is configured inside that stack. When you allow{" "}
+          <strong>marketing</strong> cookies, we may also use <strong>Meta Pixel</strong> and the{" "}
+          <strong>Meta Conversions API</strong> (hashed email/name and identifiers such as{" "}
+          <code>_fbp</code> / <code>_fbc</code>) for ad measurement and deduplication. Server-side
+          conversion events (for example payment confirmation) may be sent under documented
+          legitimate interest when no new marketing cookies are read for that event. We use{" "}
           <strong>Google Consent Mode</strong> so tags respect your choices. Authentication uses
           first-party session cookies; error monitoring may use Sentry in accordance with our
           subprocessors list.

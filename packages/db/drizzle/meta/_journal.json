@@ -435,6 +435,27 @@
       "when": 1781900000000,
       "tag": "0063_user_ui_preference_layout",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0064_marketing_event_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1782100000000,
+      "tag": "0065_marketing_click_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0066_marketing_outbox_claimed",
+      "breakpoints": true
     }
   ]
 }

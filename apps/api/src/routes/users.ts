@@ -32,9 +32,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
+import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
+import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
+import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   PASSWORD_REQUIRED_POLICY,
@@ -67,7 +70,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     SESSION_REVOKE_POLICY,
   );
   const requireTurnstile = createTurnstileMiddleware(container.env?.TURNSTILE_SECRET_KEY);
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string } & MarketingConsentVars &
+      MarketingClientContextVars;
+  }>();
 
   r.post("/register", zValidator("json", registerBodySchema), requireTurnstile, async (c) => {
     if (container.env?.DISABLE_NEW_USER_REGISTRATION) {
@@ -90,7 +96,16 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     if (!result.ok) {
       return c.json({ error: result.message }, result.status as 400);
     }
-    return c.json({ data: { userId: result.userId } }, 201);
+    const marketingEventId = crypto.randomUUID();
+    await container.marketingEventService.emit(
+      buildWebsiteUserEvent(c, {
+        name: "Lead",
+        eventId: marketingEventId,
+        userId: result.userId,
+        customData: { method: "email" },
+      }),
+    );
+    return c.json({ data: { userId: result.userId, marketingEventId } }, 201);
   });
 
   r.get("/public/artists", async (c) => {
@@ -191,11 +206,25 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.post("/me/watchlist", requireAuth, zValidator("json", watchlistBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const { lotId } = c.req.valid("json");
-    const row = await container.watchlistService.add(userId, lotId);
-    if (!row) {
+    const lot = await container.repoFactory.root.lot.findById(lotId);
+    if (!lot) {
       return c.json({ error: "Lot not found" }, 404);
     }
-    return c.json({ data: row }, 201);
+    const eventId = crypto.randomUUID();
+    const marketingEvent = buildWebsiteUserEvent(c, {
+      name: "AddToWishlist",
+      eventId,
+      userId,
+      customData: { lotId },
+    });
+    const row = await container.db.transaction(async (tx) => {
+      const added = await container.watchlistService.add(userId, lotId, tx);
+      if (!added) throw new Error("watchlist_insert_failed");
+      await container.marketingEventService.stage(marketingEvent, tx);
+      return added;
+    });
+    await container.marketingEventService.enqueue(marketingEvent);
+    return c.json({ data: row, marketingEventId: eventId }, 201);
   });
 
   r.delete(
@@ -205,7 +234,18 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     async (c) => {
       const userId = c.get("userId") as string;
       const { lotId } = c.req.valid("param");
-      await container.watchlistService.remove(userId, lotId);
+      const eventId = crypto.randomUUID();
+      const marketingEvent = buildWebsiteUserEvent(c, {
+        name: "RemoveFromWishlist",
+        eventId,
+        userId,
+        customData: { lotId },
+      });
+      await container.db.transaction(async (tx) => {
+        await container.watchlistService.remove(userId, lotId, tx);
+        await container.marketingEventService.stage(marketingEvent, tx);
+      });
+      await container.marketingEventService.enqueue(marketingEvent);
       return c.body(null, 204);
     },
   );

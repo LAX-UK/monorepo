@@ -3,15 +3,30 @@ import { createJwksAdapter } from "@auction/auth";
 import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
+import {
+  CompositeMarketingEventPublisher,
+  type IClickIdStore,
+  type IMarketingEventPublisher,
+  InMemoryCircuitBreaker,
+  MetaCapiMarketingEventPublisher,
+  SgtmMarketingEventPublisher,
+} from "@auction/marketing-events";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
+import {
+  BullmqMarketingEventQueue,
+  MARKETING_EVENTS_QUEUE_NAME,
+} from "./infrastructure/bullmq-marketing-event.queue.js";
+import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DefaultErrorClassifier } from "./infrastructure/default-error.classifier.js";
+import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
+import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
 import { JsonErrorResponseBuilder } from "./infrastructure/json-error-response.builder.js";
 import { JwtAuthenticator } from "./infrastructure/jwt-authenticator.js";
@@ -19,8 +34,13 @@ import { LocalDiskObjectStorage } from "./infrastructure/local-disk-object-stora
 import { NoOpErrorReporter } from "./infrastructure/no-op-error.reporter.js";
 import { NoOpPushSender } from "./infrastructure/no-op-push.sender.js";
 import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js";
+import { NoopMarketingEventOutboxRepository } from "./infrastructure/noop-marketing-event-outbox.repository.js";
+import { NoopMarketingEventPublisher } from "./infrastructure/noop-marketing-event.publisher.js";
+import { NoopMarketingEventQueue } from "./infrastructure/noop-marketing-event.queue.js";
+import { PostgresClickIdStore } from "./infrastructure/postgres-click-id.store.js";
 import { PushNotificationChannel } from "./infrastructure/push-notification.channel.js";
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
+import { RedisClickIdStore } from "./infrastructure/redis-click-id.store.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
@@ -33,6 +53,7 @@ import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notificat
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
+import { isMarketingEventsEnabled } from "./lib/marketing-events-enabled.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import {
@@ -124,6 +145,7 @@ import type { IKycRepository } from "./services/interfaces/kyc-repository.js";
 import type { IKycService } from "./services/interfaces/kyc-service.js";
 import type { ILegalEntityNotificationRecipientReader } from "./services/interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-repository.js";
+import type { IMarketingEventService } from "./services/interfaces/marketing-event-service.js";
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
@@ -153,6 +175,7 @@ import { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
 import { LotService } from "./services/lot.service.js";
+import { MarketingEventService } from "./services/marketing-event.service.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
 import { MemberManagementService } from "./services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "./services/membership-invite-notifier.js";
@@ -309,6 +332,9 @@ export type Container = {
   legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
   /** Service for handling Stripe payment webhooks (disputes, refunds). */
   stripePaymentWebhookService: StripePaymentWebhookService | null;
+  marketingEventService: IMarketingEventService;
+  marketingEventPublisher: IMarketingEventPublisher;
+  clickIdStore: IClickIdStore;
   /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
   admin: AdminRouteServices;
 };
@@ -375,7 +401,6 @@ export function createContainer(env: Env): Container {
   const legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader =
     new DrizzleLegalEntityNotificationRecipientRepository(db);
   const kycRepository = new DrizzleKycRepository(db);
-  const kycService: IKycService = new StripeKycService(env, kycRepository);
   const domainEventPublisher = new DomainEventPublisher();
   const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
@@ -549,6 +574,43 @@ export function createContainer(env: Env): Container {
   const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
   const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
   const marketingSyncQueue = new Queue("marketing-sync", { connection: bullConnection });
+  const marketingEnabled = isMarketingEventsEnabled(env);
+  const clickIdStore: IClickIdStore = marketingEnabled
+    ? new CachedClickIdStore(new PostgresClickIdStore(db), new RedisClickIdStore(redis))
+    : new RedisClickIdStore(redis);
+  const marketingOutbox = marketingEnabled
+    ? new DrizzleMarketingEventOutboxRepository(db)
+    : new NoopMarketingEventOutboxRepository();
+  const marketingConsentGate = new EventMarketingConsentGate();
+  const marketingEventsBullQueue = new Queue(MARKETING_EVENTS_QUEUE_NAME, {
+    connection: bullConnection,
+  });
+  const marketingEventQueue = marketingEnabled
+    ? new BullmqMarketingEventQueue(marketingEventsBullQueue)
+    : new NoopMarketingEventQueue();
+  const marketingEventPublisher: IMarketingEventPublisher = marketingEnabled
+    ? new CompositeMarketingEventPublisher(
+        new SgtmMarketingEventPublisher(env.SGTM_ENDPOINT_URL!, env.GA4_MEASUREMENT_ID!),
+        new MetaCapiMarketingEventPublisher(
+          env.META_PIXEL_ID!,
+          env.META_CAPI_ACCESS_TOKEN!,
+          env.META_CAPI_TEST_EVENT_CODE,
+          env.META_GRAPH_API_VERSION ?? "v21.0",
+        ),
+        new InMemoryCircuitBreaker(),
+      )
+    : new NoopMarketingEventPublisher();
+  const marketingEventService = new MarketingEventService(
+    marketingOutbox,
+    marketingEventQueue,
+    marketingConsentGate,
+  );
+  const kycService: IKycService = new StripeKycService(
+    env,
+    kycRepository,
+    db,
+    marketingEventService,
+  );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
   });
@@ -738,6 +800,7 @@ export function createContainer(env: Env): Container {
         lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
     },
     saleRepo,
+    marketingEventService,
   );
   paymentServiceRef.current = paymentService;
 
@@ -968,6 +1031,9 @@ export function createContainer(env: Env): Container {
     payoutStatementQueue,
     legalEntityArchiveQueue,
     stripePaymentWebhookService,
+    marketingEventService,
+    marketingEventPublisher,
+    clickIdStore,
     admin,
   };
 }

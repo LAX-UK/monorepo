@@ -1,10 +1,10 @@
 import { BiddingPreferencesForm } from "@/components/dashboard/bidding-preferences-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { PageHeader } from "@auction/ui/components/page-header";
 
 type BiddingPrefsSlice = {
   outbidInApp: boolean;
@@ -38,11 +38,7 @@ export default async function BiddingSettingsPage({
 
   return (
     <DashboardPage className="mx-auto max-w-2xl space-y-8">
-      <PageHeader
-        title="Bidding preferences"
-        description="Outbid alerts and optional default ceiling (stored in-app; syncs notification preferences)."
-        className="border-0 pb-0"
-      />
+      <SettingsFormHeader title="Bidding preferences" />
       {saved ? (
         <Alert>
           <AlertTitle>Saved</AlertTitle>

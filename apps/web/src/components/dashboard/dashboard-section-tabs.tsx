@@ -32,7 +32,7 @@ export function DashboardSectionTabs({ items, ariaLabel, className }: DashboardS
     <nav
       aria-label={ariaLabel}
       className={cn(
-        "sticky top-0 z-10 -mx-1 overflow-x-auto rounded-2xl border border-outline-variant/15 bg-surface-container-lowest/90 px-2 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80",
+        "sticky top-0 z-10 -mx-1 overflow-x-auto rounded-2xl border border-border-hairline bg-surface-container-lowest/90 px-2 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80",
         className,
       )}
     >
@@ -49,7 +49,7 @@ export function DashboardSectionTabs({ items, ariaLabel, className }: DashboardS
                 "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 font-label text-xs font-semibold uppercase tracking-[0.18em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 active
                   ? "border-primary/35 bg-primary-container/45 text-primary shadow-sm"
-                  : "border-outline-variant/15 bg-surface-container-lowest text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-low hover:text-on-surface",
+                  : "border-border-hairline bg-surface-container-lowest text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-low hover:text-on-surface",
               )}
             >
               <span>{item.label}</span>

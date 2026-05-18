@@ -12,7 +12,7 @@ import { adminPaymentLocalSearchSchema } from "@/lib/forms/schemas/url-search";
 import {
   Button,
   DataTable,
-  EntityTableShell,
+  EntityList,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -85,7 +85,7 @@ function paymentColumns(
             href={row.original.xeroOnlineInvoiceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             Invoice
@@ -130,7 +130,9 @@ function PaymentDrawerContent({ p, onClose }: { p: AdminPaymentTableRow; onClose
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-label text-[10px] uppercase tracking-widest text-secondary">Lot</p>
+        <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Lot
+        </p>
         <Link
           href={`/admin/lots/${p.lotId}`}
           className="font-headline text-base text-primary hover:underline"
@@ -225,7 +227,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
       {filtered.map((p) => (
         <li
           key={p.id}
-          className="rounded-sm border border-outline-variant/15 bg-surface-container-lowest/80 p-4"
+          className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4"
         >
           <div className="flex items-start justify-between gap-2">
             <Button
@@ -262,7 +264,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
     <>
       <PaymentsKpiStrip rows={summaryRows} />
 
-      <EntityTableShell
+      <EntityList
         responsiveMode="auto"
         density={density}
         {...(statusChips ? { filters: statusChips } : {})}
@@ -279,7 +281,7 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
                   <FormItem>
                     <FormLabel
                       htmlFor="admin-pay-q"
-                      className="font-label text-xs uppercase tracking-widest text-secondary"
+                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
                     >
                       Search
                     </FormLabel>

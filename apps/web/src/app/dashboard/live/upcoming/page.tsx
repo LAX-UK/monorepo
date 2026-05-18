@@ -1,20 +1,20 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { Button } from "@auction/ui/components/button";
-import { EmptyState } from "@auction/ui/components/empty-state";
-import { PageHeader } from "@auction/ui/components/page-header";
 import Link from "next/link";
 
 export default function LiveBiddingHubPage() {
   return (
     <DashboardPage>
-      <PageHeader
+      <DashboardPageHeader
+        meta="Live bidding"
         title="Live bidding"
-        description="Follow sales with countdown timers, paddle status, and one-tap bidding once streaming integrates."
-        className="border-0 pb-0"
+        description="Follow sales with countdown timers and one-tap entry when streaming integrates."
       />
-      <EmptyState
+      <DashboardEmptyState
         title="No live sales linked yet"
-        description="When you register for an onsite or hybrid auction, active rooms surface here with deep links like /dashboard/live/[saleId]."
+        description="When you register for an onsite or hybrid auction, active rooms surface here with links like /dashboard/live/[saleId]."
         action={
           <Button variant="default" asChild>
             <Link href="/search">Browse sales</Link>

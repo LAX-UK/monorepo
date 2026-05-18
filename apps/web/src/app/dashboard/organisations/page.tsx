@@ -1,5 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
 import { subkindLabel } from "@/components/organisations/labels";
@@ -10,16 +11,9 @@ import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hu
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import { Building2 } from "lucide-react";
 import Link from "next/link";
 
@@ -48,15 +42,10 @@ export default async function OrganisationsHubPage() {
   return (
     <DashboardPage>
       <div className="mx-auto max-w-5xl">
-        <PageHeader
+        <DashboardPageHeader
+          meta="Workspaces"
           title="Organisations"
-          meta={
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-              Workspace
-            </span>
-          }
           description="Manage organisations you belong to, respond to invitations, and continue setup."
-          className="border-b border-outline-variant/20 pb-5"
           actions={
             <Button asChild variant="outline" size="sm">
               <Link href="/onboarding/organisation?fresh=1" prefetch>
@@ -67,18 +56,18 @@ export default async function OrganisationsHubPage() {
         />
 
         {pending.length > 0 ? (
-          <Card className="mt-8">
-            <CardHeader>
+          <Surface variant="section" padding="md" className="mt-8 space-y-4">
+            <div className="space-y-1">
               <LabelCaps>Inbox</LabelCaps>
-              <CardTitle className="font-headline text-xl tracking-tight">
+              <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
                 Pending invitations
-              </CardTitle>
-              <CardDescription>Accept or decline before they expire.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InvitationCardList invitations={pending} />
-            </CardContent>
-          </Card>
+              </h2>
+              <p className="font-body text-sm text-on-surface-variant">
+                Accept or decline before they expire.
+              </p>
+            </div>
+            <InvitationCardList invitations={pending} />
+          </Surface>
         ) : null}
 
         {personal ? (

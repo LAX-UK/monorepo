@@ -76,6 +76,9 @@ export function HeaderSearchForm({
         className={cn("flex gap-2 border-b border-brand-300 pb-3", className)}
         onSubmit={form.handleSubmit((values) => {
           const q = values.q.trim();
+          if (q) {
+            void import("@/lib/analytics/events").then(({ trackSearch }) => trackSearch(q));
+          }
           router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
         })}
         noValidate

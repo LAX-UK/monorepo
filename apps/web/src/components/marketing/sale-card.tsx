@@ -66,7 +66,7 @@ export function SaleCardEditorial({
       <MarketingLinkCard
         href={href}
         className={cn(
-          "block overflow-hidden rounded-xl border border-outline-variant/15 bg-surface shadow-sm",
+          "block overflow-hidden rounded-xl border border-border-hairline bg-surface shadow-sm",
           className,
         )}
       >

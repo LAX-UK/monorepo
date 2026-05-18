@@ -57,7 +57,7 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        "block rounded-lg px-3 py-2 font-label text-xs font-semibold uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "block rounded-lg px-3 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         active
           ? "bg-primary-container/50 text-primary"
           : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
@@ -77,7 +77,7 @@ export function SettingsSectionNav() {
   return (
     <nav aria-label="Settings" className="flex flex-col gap-4 p-2">
       <div>
-        <p className="px-3 pb-1 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+        <p className="px-3 pb-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Account
         </p>
         <div className="flex flex-col gap-0.5">
@@ -91,8 +91,8 @@ export function SettingsSectionNav() {
           ))}
         </div>
       </div>
-      <div className="border-t border-outline-variant/20 pt-2">
-        <p className="px-3 pb-1 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+      <div className="border-t border-border-hairline pt-2">
+        <p className="px-3 pb-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           More settings
         </p>
         <div className="flex flex-col gap-0.5">

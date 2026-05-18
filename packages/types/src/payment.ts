@@ -33,6 +33,7 @@ export type Payment = {
 export type CreatePaymentResponse = {
   paymentId: string;
   checkoutUrl: string | null;
+  marketingEventId?: string;
 };
 
 /** Winner portfolio row from `GET /users/me/portfolio`. */

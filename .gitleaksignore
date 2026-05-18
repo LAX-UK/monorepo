@@ -3,3 +3,6 @@
 # Common-password blocklist entries misidentified as API keys — entire file is now path-allowlisted in .gitleaks.toml.
 e4ae3c490b45d61441afc898f805935775df2f88:packages/validators/src/password-policy.ts:generic-api-key:52
 e4ae3c490b45d61441afc898f805935775df2f88:packages/validators/src/password-policy.ts:generic-api-key:64
+# Terraform env map key/value pair for GA4 measurement ID (public identifier), flagged by generic-api-key in history scan.
+bdea2e91e954635e76bdf3e2e31c470a0c50df0d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:220
+bdea2e91e954635e76bdf3e2e31c470a0c50df0d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:306

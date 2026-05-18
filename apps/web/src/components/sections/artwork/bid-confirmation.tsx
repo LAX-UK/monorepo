@@ -24,7 +24,7 @@ export function BidConfirmation({
   return (
     <div className="space-y-8">
       <div className="border-l-4 border-primary bg-surface-container-high/60 p-6 ring-1 ring-outline-variant/10">
-        <p className="mb-1 font-label text-xs uppercase tracking-widest text-secondary">
+        <p className="mb-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Confirming your bid of
         </p>
         <p className="font-headline text-3xl text-primary">{formatMoney(amount)}</p>

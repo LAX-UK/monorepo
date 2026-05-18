@@ -3,6 +3,7 @@
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
 import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
+import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
@@ -25,7 +26,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 type Props = {
@@ -34,6 +35,10 @@ type Props = {
   hammer: string;
   buyerPremium: string;
   total: string;
+  /** Checkout total in minor units (for analytics). */
+  totalMinor?: number;
+  /** ISO currency for analytics (defaults to GBP). */
+  currency?: string;
   premiumPercentLabel: string;
   addresses: unknown[];
 };
@@ -71,6 +76,8 @@ export function CheckoutPurchasePanel({
   hammer,
   buyerPremium,
   total,
+  totalMinor,
+  currency = "GBP",
   premiumPercentLabel,
   addresses: rawAddresses,
 }: Props) {
@@ -87,11 +94,17 @@ export function CheckoutPurchasePanel({
     defaultValues: { addressId: defaultAddress?.id ?? "", termsAccepted: false },
   });
 
+  useEffect(() => {
+    if (totalMinor != null && totalMinor > 0) {
+      trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
+    }
+  }, [lotId, totalMinor, currency]);
+
   if (submitted) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
         <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-8 py-10 text-center shadow-sm">
-          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.3em] text-primary">
+          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
             Request received
           </p>
           <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
@@ -107,9 +120,9 @@ export function CheckoutPurchasePanel({
 
   return (
     <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-10">
-      <Card className="max-lg:sticky max-lg:top-4 max-lg:z-10 border border-outline-variant/15 bg-surface-container-low shadow-md max-lg:shadow-lg">
+      <Card className="max-lg:sticky max-lg:top-4 max-lg:z-10 border border-border-hairline bg-surface-container-low shadow-md max-lg:shadow-lg">
         <CardContent className="p-8 pt-8">
-          <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
+          <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Order summary
           </h2>
           <dl className="space-y-4 font-body text-sm">
@@ -126,7 +139,7 @@ export function CheckoutPurchasePanel({
             <Separator className="bg-outline-variant/10" />
             <div className="flex justify-between gap-4">
               <dt className="text-on-surface-variant">Shipping &amp; logistics</dt>
-              <dd className="font-label text-xs uppercase tracking-widest text-secondary">
+              <dd className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Quoted after payment
               </dd>
             </div>
@@ -139,9 +152,9 @@ export function CheckoutPurchasePanel({
         </CardContent>
       </Card>
 
-      <Card className="border border-outline-variant/15 bg-surface-container-high/40 shadow-sm">
+      <Card className="border border-border-hairline bg-surface-container-high/40 shadow-sm">
         <CardContent className="p-8 pt-8">
-          <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary">
+          <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Payment
           </h2>
           <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
@@ -149,7 +162,7 @@ export function CheckoutPurchasePanel({
             qualifying invoices—your specialist will confirm options and any processing fees.
           </p>
           <p className="font-body text-sm text-on-surface">
-            <span className="font-label text-xs uppercase tracking-widest text-primary">
+            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
               Concierge
             </span>
             <br />
@@ -160,7 +173,7 @@ export function CheckoutPurchasePanel({
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-outline-variant/10 py-6 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+      <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-border-hairline py-6 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
         <span className="inline-flex items-center gap-2">
           <ShieldCheck className="size-4 text-primary" aria-hidden />
           Payment protection
@@ -188,6 +201,15 @@ export function CheckoutPurchasePanel({
                 return;
               }
               const checkoutUrl = r.ok ? (r.data?.checkoutUrl ?? null) : null;
+              const paymentId = r.ok ? r.data?.paymentId : undefined;
+              if (totalMinor != null && totalMinor > 0) {
+                trackPurchase({
+                  lotId,
+                  valueMinor: totalMinor,
+                  currency,
+                  ...(paymentId ? { transactionId: paymentId } : {}),
+                });
+              }
               if (checkoutUrl) {
                 window.location.assign(checkoutUrl);
                 return;
@@ -243,10 +265,10 @@ export function CheckoutPurchasePanel({
                               className={`rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                                 selected
                                   ? "border-primary bg-primary-container/10"
-                                  : "border-outline-variant/20 bg-surface-container-low/30 hover:border-primary/50"
+                                  : "border-border-hairline bg-surface-container-low/30 hover:border-primary/50"
                               }`}
                             >
-                              <span className="block font-label text-xs uppercase tracking-widest text-on-surface">
+                              <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                                 {address.label}
                                 {address.isDefault ? " · Default" : ""}
                               </span>

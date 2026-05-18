@@ -13,6 +13,8 @@ export { Button, buttonVariants } from "./components/ui/button.js";
 export { Checkbox } from "./components/ui/checkbox.js";
 export { FloatingLabelInput } from "./components/ui/floating-label-input.js";
 export { LiveDot } from "./components/ui/live-dot.js";
+export { LiveBadge } from "./components/ui/live-badge.js";
+export type { LiveBadgeProps } from "./components/ui/live-badge.js";
 export { PasswordInput } from "./components/ui/password-input.js";
 export { SectionHeader } from "./components/ui/section-header.js";
 export { StatTile } from "./components/ui/stat-tile.js";
@@ -127,7 +129,11 @@ export type { StatusBadgeProps } from "./components/ui/status-badge.js";
 export { Sparkline } from "./components/ui/sparkline.js";
 export type { SparklineProps } from "./components/ui/sparkline.js";
 export { KpiTile } from "./components/ui/kpi-tile.js";
-export type { KpiTileProps, KpiTileTone } from "./components/ui/kpi-tile.js";
+export type {
+  KpiTileProps,
+  KpiTileSemanticTone,
+  KpiTileTone,
+} from "./components/ui/kpi-tile.js";
 export { Toolbar } from "./components/ui/toolbar.js";
 export type { ToolbarProps } from "./components/ui/toolbar.js";
 export { SectionNav } from "./components/ui/section-nav.js";
@@ -243,3 +249,27 @@ export {
   CommandSeparator,
 } from "./components/ui/command.js";
 export { Calendar, CalendarDayButton } from "./components/ui/calendar.js";
+export { Surface, surfaceVariants } from "./components/ui/surface.js";
+export type { SurfaceProps } from "./components/ui/surface.js";
+export { ListRow } from "./components/ui/list-row.js";
+export type { ListRowProps } from "./components/ui/list-row.js";
+export { InsetGroup } from "./components/ui/inset-group.js";
+export type { InsetGroupProps } from "./components/ui/inset-group.js";
+export { LoadingButton } from "./components/ui/loading-button.js";
+export type { LoadingButtonProps } from "./components/ui/loading-button.js";
+export { SectionToc } from "./components/ui/section-toc.js";
+export type { SectionTocItem, SectionTocProps } from "./components/ui/section-toc.js";
+export { FilterRow } from "./components/ui/filter-row.js";
+export type {
+  FilterRowLinkItem,
+  FilterRowProps,
+  FilterRowToggleItem,
+} from "./components/ui/filter-row.js";
+export { SectionTabs } from "./components/ui/section-tabs.js";
+export type { SectionTabItem, SectionTabsProps } from "./components/ui/section-tabs.js";
+export { ConfirmDialog } from "./components/ui/confirm-dialog.js";
+export type { ConfirmDialogProps, ConfirmDialogTone } from "./components/ui/confirm-dialog.js";
+export { StickySaveBar } from "./components/ui/sticky-save-bar.js";
+export type { StickySaveBarProps } from "./components/ui/sticky-save-bar.js";
+export { EntityList, EntityForm } from "./shell/index.js";
+export type { EntityListProps, EntityFormProps, EntityFormSection } from "./shell/index.js";

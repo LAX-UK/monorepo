@@ -92,7 +92,7 @@ export default async function AdminSubmissionsPage({
       <Suspense
         fallback={
           <div
-            className="min-h-11 rounded-md border border-outline-variant/20 bg-surface-container-low/40"
+            className="min-h-11 rounded-md border border-border-hairline bg-surface-container-low/40"
             aria-hidden
           />
         }

@@ -21,7 +21,7 @@ export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="border-outline-variant bg-surface-container-lowest">
         <SheetHeader>
-          <SheetTitle className="font-label text-xs uppercase tracking-widest text-secondary">
+          <SheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             More
           </SheetTitle>
         </SheetHeader>
@@ -36,7 +36,7 @@ export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode,
                     key={item.id}
                     href={item.href}
                     onClick={() => onOpenChange(false)}
-                    className="flex min-h-12 items-center gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-low/40 px-4 font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high"
+                    className="flex min-h-12 items-center gap-3 rounded-lg border border-border-hairline bg-surface-container-low/40 px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high"
                   >
                     <Icon className="size-4 text-primary" aria-hidden />
                     {item.label}
@@ -45,19 +45,19 @@ export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode,
               })}
             </nav>
           ) : null}
-          <div className="rounded-lg border border-outline-variant/15 bg-surface-container-low/40 p-4">
+          <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
             <DensityTweakSection />
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low/40 p-4">
+          <div className="flex items-center justify-between rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
             <div>
-              <p className="font-label text-xs font-semibold uppercase tracking-widest text-on-surface">
+              <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
                 Dark mode
               </p>
               <p className="mt-1 text-xs text-on-surface-variant">Toggle the colour scheme.</p>
             </div>
             <ThemeToggle />
           </div>
-          <LogoutButton className="min-h-11 w-full justify-center rounded-md border border-outline-variant/20 px-4 font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high" />
+          <LogoutButton className="min-h-11 w-full justify-center rounded-md border border-border-hairline px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
         </div>
       </SheetContent>
     </Sheet>

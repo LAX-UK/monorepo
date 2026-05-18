@@ -370,3 +370,37 @@ variable "next_public_gtm_id" {
   default     = ""
   description = "Google Tag Manager container ID (e.g. GTM-W6K4N67Z). GA4 is configured inside GTM. Empty disables analytics."
 }
+
+variable "gtm_sst_container_config" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "GTM server container CONTAINER_CONFIG (from GTM Admin > Manually provision tagging server)."
+}
+
+variable "meta_pixel_id" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Meta Pixel ID for Conversions API."
+}
+
+variable "meta_capi_access_token" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Meta Conversions API access token."
+}
+
+variable "meta_capi_test_event_code" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Optional Meta test event code for Events Manager validation."
+}
+
+variable "ga4_measurement_id" {
+  type        = string
+  default     = ""
+  description = "GA4 measurement ID for server-side Measurement Protocol (sGTM publisher). Required when marketing events are enabled."
+}

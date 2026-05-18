@@ -643,7 +643,7 @@ export function AdminLotForm({
           </p>
         ) : null}
 
-        <div className="flex flex-col justify-end gap-3 border-t border-outline-variant/20 pt-6 sm:flex-row">
+        <div className="flex flex-col justify-end gap-3 border-t border-border-hairline pt-6 sm:flex-row">
           <Button
             type="button"
             variant="outline"

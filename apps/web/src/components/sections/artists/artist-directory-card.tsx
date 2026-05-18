@@ -83,14 +83,14 @@ export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props
         <>
           <Link
             href={`${href}#works`}
-            className="font-label text-[length:var(--text-label-1)] uppercase tracking-widest text-primary hover:underline"
+            className="font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
             aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
           >
             {lotsLabel}
           </Link>
           <Link
             href={href}
-            className="hidden font-label text-[length:var(--text-label-1)] uppercase tracking-widest text-on-surface-variant hover:text-primary hover:underline sm:inline"
+            className="hidden font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline sm:inline"
             aria-label={`View profile for ${artist.displayName}`}
           >
             View profile

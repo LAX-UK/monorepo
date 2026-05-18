@@ -27,14 +27,17 @@ export function createStripeWebhookRoutes(container: Container) {
     const raw = await c.req.text();
     const signature = c.req.header("stripe-signature");
     try {
-      const { verification: updated, shouldProgressIndividuals } =
-        await container.kycService.handleWebhook(raw, signature);
+      const result = await container.kycService.handleWebhook(raw, signature);
+      const { verification: updated, shouldProgressIndividuals } = result;
       if (shouldProgressIndividuals && updated) {
         await progressIndividualsAfterIdentityVerification(
           container.db,
           container.domainEventPublisher,
           updated.userId,
         );
+      }
+      if (result.marketingEventToEnqueue) {
+        await container.marketingEventService.enqueue(result.marketingEventToEnqueue);
       }
       return c.json({ ok: true, processed: Boolean(updated) });
     } catch (err) {

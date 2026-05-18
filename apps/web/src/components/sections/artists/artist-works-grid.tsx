@@ -79,7 +79,7 @@ function WorkFilterControls({
 
 function WorksEmptyState() {
   return (
-    <p className="rounded-xl border border-outline-variant/15 bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
+    <p className="rounded-xl border border-border-hairline bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
       No works match this filter yet.
     </p>
   );

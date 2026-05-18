@@ -15,7 +15,7 @@ import { artistPath } from "@/lib/seo/url";
 import type { ArtistStatus } from "@auction/types";
 import { Badge, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -54,7 +54,7 @@ export default async function AdminArtistDetailPage({
   return (
     <AdminEntityDetailShell
       breadcrumbs={
-        <div className="flex flex-wrap gap-3 font-label text-xs uppercase tracking-widest">
+        <div className="flex flex-wrap gap-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
           <Link href="/admin/artists" className="text-primary hover:underline">
             ← Artists
           </Link>
@@ -100,11 +100,9 @@ export default async function AdminArtistDetailPage({
         <TabsContent value="overview" className="space-y-6">
           {mergedBanner}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-lg">Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
+          <Surface variant="card">
+            <h3 className="font-display text-lg font-semibold text-on-surface">Profile</h3>
+            <div className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
               <p>
                 <span className="font-medium text-on-surface">Slug</span>
                 <br />
@@ -127,8 +125,8 @@ export default async function AdminArtistDetailPage({
                 <br />
                 {artist.archived ? "Yes" : "No"}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </Surface>
 
           {artist.status === "pending" ? (
             <AdminArtistReviewPanel artistId={artist.id} currentStatus={artist.status} />
@@ -163,7 +161,7 @@ export default async function AdminArtistDetailPage({
           </p>
           <Link
             href={`/admin/audit/timeline?aggregateType=artist&aggregateId=${artist.id}`}
-            className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-widest text-primary hover:underline"
+            className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
           >
             Open audit timeline ↗
           </Link>

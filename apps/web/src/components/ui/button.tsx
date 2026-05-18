@@ -7,11 +7,11 @@ const base =
 
 const variants = {
   primary:
-    "rounded-md bg-gradient-to-br from-primary to-primary-container px-10 py-4 text-xs uppercase tracking-[0.3em] text-on-primary shadow-sm hover:opacity-95",
+    "rounded-md bg-gradient-to-br from-primary to-primary-container px-10 py-4 text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-sm hover:opacity-95",
   secondary:
-    "rounded-md border border-outline-variant/20 bg-transparent px-10 py-4 text-xs uppercase tracking-[0.3em] text-on-surface hover:bg-surface-container-low",
+    "rounded-md border border-border-hairline bg-transparent px-10 py-4 text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low",
   tertiary:
-    "border-b border-primary/0 bg-transparent px-0 py-2 text-label text-xs uppercase tracking-[0.25em] text-primary hover:border-primary",
+    "border-b border-primary/0 bg-transparent px-0 py-2 text-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:border-primary",
   destructive:
     "rounded-md bg-error px-6 py-3 text-xs uppercase tracking-[0.18em] text-on-error shadow-sm hover:opacity-95",
   success:

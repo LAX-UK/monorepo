@@ -151,7 +151,7 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
           className="w-[min(100vw-2rem,16rem)]"
           onKeyDown={onPanelKeyDown}
         >
-          <div className="border-b border-nav-border px-3 py-2 dark:border-outline-variant/15">
+          <div className="border-b border-nav-border px-3 py-2 dark:border-border-hairline">
             <p className="truncate font-body text-sm font-medium text-brand-900 dark:text-on-surface">
               {displayName}
             </p>

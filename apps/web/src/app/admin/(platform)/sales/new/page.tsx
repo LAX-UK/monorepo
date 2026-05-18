@@ -14,7 +14,7 @@ export default async function AdminNewSalePage() {
       breadcrumbs={
         <Link
           href="/admin/sales"
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           ← Sales
         </Link>
