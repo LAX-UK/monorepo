@@ -40,8 +40,7 @@ export const adminSetRoleBodySchema = z
     }
   });
 
-/** @deprecated Prefer {@link adminSetRoleBodySchema} with `role` + `staffRole`. */
-export const adminSetStaffRoleBodySchema = z.object({
+export const adminPatchStaffRoleBodySchema = z.object({
   staffRole: z.enum(userStaffRoles).nullable(),
 });
 

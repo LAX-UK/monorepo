@@ -1,5 +1,5 @@
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summary.vm";
 
 function formatCompactAmount(amount: number): string {
@@ -16,15 +16,13 @@ type Props = {
   className?: string;
 };
 
-/** Mockup-aligned KPI strip for the accountant payments page. Composes the
- * shared `KpiGrid` with payment-specific aggregates — Total volume, Settled
- * (captured), Awaiting action (pending + authorized), Refunded.
- */
+/** Mockup-aligned KPI strip for the accountant payments page. */
 export function PaymentsKpiStrip({ rows, className }: Props) {
   const summary = buildPaymentsSummary(rows);
   return (
-    <KpiGrid
+    <KpiRow
       className={className ?? "mb-6"}
+      columns={4}
       tiles={[
         {
           label: "Total volume",

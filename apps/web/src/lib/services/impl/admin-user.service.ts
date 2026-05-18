@@ -1,8 +1,8 @@
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
 import type {
+  AdminPatchStaffRoleBody,
   AdminSetRoleBody,
-  AdminSetStaffRoleBody,
   AdminSuspendBody,
   IAdminUserService,
 } from "../interfaces/admin-user-service";
@@ -26,7 +26,7 @@ export class AdminUserService implements IAdminUserService {
 
   async setStaffRole(
     userId: string,
-    body: AdminSetStaffRoleBody,
+    body: AdminPatchStaffRoleBody,
   ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/admin/users/${encodeURIComponent(userId)}/staff-role`,

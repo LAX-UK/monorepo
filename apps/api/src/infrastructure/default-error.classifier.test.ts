@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DefaultErrorClassifier } from "./default-error.classifier.js";
+import { CompositeErrorClassifier } from "./composite-error.classifier.js";
 
 function pgLikeError(message: string, code: string): Error {
   const e = new Error(message);
@@ -7,8 +7,8 @@ function pgLikeError(message: string, code: string): Error {
   return e;
 }
 
-describe("DefaultErrorClassifier", () => {
-  const classifier = new DefaultErrorClassifier();
+describe("CompositeErrorClassifier", () => {
+  const classifier = new CompositeErrorClassifier();
 
   it("classifies Postgres undefined_table (42P01) as 503 database_schema_incomplete", () => {
     const err = pgLikeError('relation "impersonation_session" does not exist', "42P01");
