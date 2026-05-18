@@ -463,15 +463,7 @@ export class PayoutService implements IPayoutService {
       : await this.repo.findByStripeTransferId(input.stripeTransferId);
     if (!found) return null;
 
-    const status: ReconcileStripeTransferPatch["status"] =
-      input.status === "paid"
-        ? "paid"
-        : input.status === "failed"
-          ? "failed"
-          : input.status === "reversed"
-            ? "reversed"
-            : "in_transit";
-
+    const status: ReconcileStripeTransferPatch["status"] = input.status;
     const processedAt = status === "paid" ? (input.occurredAt ?? new Date()) : found.processedAt;
 
     const patch: ReconcileStripeTransferPatch = {
@@ -479,7 +471,7 @@ export class PayoutService implements IPayoutService {
       status,
       ...(input.stripeFee !== undefined ? { stripeFee: input.stripeFee } : {}),
       processedAt,
-      failureReason: status === "failed" ? (input.failureReason ?? "stripe_transfer_failed") : null,
+      failureReason: null,
     };
 
     const publisher = this.domainEventPublisher;

@@ -366,4 +366,15 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       .limit(1);
     return rows.length > 0;
   }
+
+  async sumRefundLineCentsForPayment(paymentId: string): Promise<number> {
+    const rows = await this.db
+      .select({
+        total: sql<string>`COALESCE(SUM(${payoutLine.amount}), 0)`,
+      })
+      .from(payoutLine)
+      .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "refund")));
+    const totalMajor = Number.parseFloat(rows[0]?.total ?? "0");
+    return Math.round(Math.abs(totalMajor) * 100);
+  }
 }

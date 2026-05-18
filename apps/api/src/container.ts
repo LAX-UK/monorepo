@@ -55,6 +55,9 @@ import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { isMarketingEventsEnabled } from "./lib/marketing-events-enabled.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
+import type { IStripeClientFactory } from "./lib/stripe-client.js";
+import { StripeClientFactory } from "./lib/stripe-client.js";
+import { StripeWebhookVerifier } from "./lib/stripe-webhook-verifier.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import {
   createRequireLegalEntityContext,
@@ -332,6 +335,10 @@ export type Container = {
   legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
   /** Service for handling Stripe payment webhooks (disputes, refunds). */
   stripePaymentWebhookService: StripePaymentWebhookService | null;
+  /** Shared Stripe SDK client (pinned API version). */
+  stripeClientFactory: IStripeClientFactory;
+  /** Webhook signature verification for all Stripe surfaces. */
+  stripeWebhookVerifier: StripeWebhookVerifier;
   marketingEventService: IMarketingEventService;
   marketingEventPublisher: IMarketingEventPublisher;
   clickIdStore: IClickIdStore;
@@ -470,12 +477,15 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
   );
+  const stripeClientFactory = new StripeClientFactory(env);
+  const stripeWebhookVerifier = new StripeWebhookVerifier(stripeClientFactory, env);
   const stripeConnectService: IStripeConnectService = new StripeConnectService(
     env,
     db,
     payoutService,
     payoutRepository,
     domainEventPublisher,
+    stripeClientFactory,
   );
 
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
@@ -610,6 +620,7 @@ export function createContainer(env: Env): Container {
     kycRepository,
     db,
     marketingEventService,
+    stripeClientFactory,
   );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
@@ -777,7 +788,7 @@ export function createContainer(env: Env): Container {
       )
     : null;
 
-  const stripePaymentGateway = new StripePaymentGateway(env);
+  const stripePaymentGateway = new StripePaymentGateway(env, stripeClientFactory);
 
   const lotFulfilmentService = new LotFulfilmentService(db);
   const paymentService = new PaymentService(
@@ -1031,6 +1042,8 @@ export function createContainer(env: Env): Container {
     payoutStatementQueue,
     legalEntityArchiveQueue,
     stripePaymentWebhookService,
+    stripeClientFactory,
+    stripeWebhookVerifier,
     marketingEventService,
     marketingEventPublisher,
     clickIdStore,
