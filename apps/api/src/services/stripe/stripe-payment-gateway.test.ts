@@ -1,9 +1,13 @@
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { StripePaymentGateway } from "./stripe-payment-gateway.js";
 
 function injectStripeClient(gateway: StripePaymentGateway, stripe: Stripe) {
-  (gateway as unknown as { stripe: Stripe | null }).stripe = stripe;
+  (gateway as unknown as { stripeFactory: IStripeClientFactory }).stripeFactory = {
+    get: () => stripe,
+    require: () => stripe,
+  };
 }
 
 describe("StripePaymentGateway", () => {
@@ -53,5 +57,22 @@ describe("StripePaymentGateway", () => {
 
     const r = await gateway.createRefund({ chargeId: "ch_1", amount: 100 });
     expect(r).toEqual({ kind: "already_refunded" });
+  });
+
+  it("createRefund passes idempotency key", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const refundsCreate = vi.fn().mockResolvedValue({ id: "re_1" });
+    const mockStripe = {
+      paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
+      refunds: { create: refundsCreate },
+    };
+    injectStripeClient(gateway, mockStripe as unknown as Stripe);
+
+    await gateway.createRefund({ chargeId: "ch_1", amount: 100 });
+
+    expect(refundsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ charge: "ch_1", amount: 100 }),
+      { idempotencyKey: "refund:ch_1:100" },
+    );
   });
 });

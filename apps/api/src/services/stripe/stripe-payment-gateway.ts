@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
+import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
 
 export type StripeRefundInput = {
@@ -20,12 +22,14 @@ export interface IStripePaymentGateway {
 }
 
 export class StripePaymentGateway implements IStripePaymentGateway {
-  private readonly stripe: Stripe | null;
+  private readonly stripeFactory: IStripeClientFactory;
 
-  constructor(env: Pick<Env, "STRIPE_SECRET_KEY">) {
-    this.stripe = env.STRIPE_SECRET_KEY
-      ? new Stripe(env.STRIPE_SECRET_KEY, { typescript: true })
-      : null;
+  constructor(env: Pick<Env, "STRIPE_SECRET_KEY">, stripeFactory?: IStripeClientFactory) {
+    this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
+  }
+
+  private get stripe() {
+    return this.stripeFactory.get();
   }
 
   isConfigured(): boolean {
@@ -33,13 +37,17 @@ export class StripePaymentGateway implements IStripePaymentGateway {
   }
 
   async capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
-    if (!this.stripe) {
+    const stripe = this.stripe;
+    if (!stripe) {
       throw new Error("StripePaymentGateway: capture called while not configured");
     }
-    const stripe = this.stripe;
     return executeWithStripeRetries(async () => {
       try {
-        return await stripe.paymentIntents.capture(paymentIntentId);
+        return await stripe.paymentIntents.capture(
+          paymentIntentId,
+          {},
+          { idempotencyKey: `capture:${paymentIntentId}` },
+        );
       } catch (err) {
         if (
           err instanceof Stripe.errors.StripeError &&
@@ -56,10 +64,11 @@ export class StripePaymentGateway implements IStripePaymentGateway {
   }
 
   async createRefund(input: StripeRefundInput): Promise<StripeRefundGatewayResult> {
-    if (!this.stripe) {
+    const stripe = this.stripe;
+    if (!stripe) {
       throw new Error("StripePaymentGateway: refund called while not configured");
     }
-    const stripe = this.stripe;
+    const idempotencyKey = `refund:${input.chargeId}:${input.amount ?? "full"}`;
     return executeWithStripeRetries(async () => {
       try {
         const params: Stripe.RefundCreateParams = {
@@ -69,7 +78,7 @@ export class StripePaymentGateway implements IStripePaymentGateway {
         if (input.amount !== undefined) {
           params.amount = input.amount;
         }
-        const refund = await stripe.refunds.create(params);
+        const refund = await stripe.refunds.create(params, { idempotencyKey });
         return { kind: "created", refundId: refund.id };
       } catch (err) {
         if (err instanceof Stripe.errors.StripeError && err.code === "charge_already_refunded") {
