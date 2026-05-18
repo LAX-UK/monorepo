@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { MarketingLoadMore } from "@/components/marketing/marketing-load-more";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
@@ -296,6 +297,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         id="catalog"
         className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-0 pt-14 sm:px-6 md:px-8"
       >
+        <ViewItemListTracker
+          listId={`sale:${bundle.sale.id}`}
+          listName={bundle.sale.title}
+          itemIds={lotVMs.map((l) => l.id)}
+        />
         <SaleroomCatalogToolbarRow
           basePath={basePath}
           layoutView={layoutView}

@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
@@ -288,6 +289,11 @@ export default async function SalesListPage({
                       }
                     />
                   ) : null}
+                  <ViewItemListTracker
+                    listId="sales_hub"
+                    listName="New lots"
+                    itemIds={newLots.map((l) => l.id)}
+                  />
                   <SalesNewLotsGrid lots={newLots} />
                 </div>
               ) : null}

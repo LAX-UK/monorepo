@@ -3,6 +3,7 @@
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
 import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
+import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
@@ -25,7 +26,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 type Props = {
@@ -34,6 +35,10 @@ type Props = {
   hammer: string;
   buyerPremium: string;
   total: string;
+  /** Checkout total in minor units (for analytics). */
+  totalMinor?: number;
+  /** ISO currency for analytics (defaults to GBP). */
+  currency?: string;
   premiumPercentLabel: string;
   addresses: unknown[];
 };
@@ -71,6 +76,8 @@ export function CheckoutPurchasePanel({
   hammer,
   buyerPremium,
   total,
+  totalMinor,
+  currency = "GBP",
   premiumPercentLabel,
   addresses: rawAddresses,
 }: Props) {
@@ -86,6 +93,12 @@ export function CheckoutPurchasePanel({
     resolver: zodResolver(checkoutTermsAcceptanceSchema),
     defaultValues: { addressId: defaultAddress?.id ?? "", termsAccepted: false },
   });
+
+  useEffect(() => {
+    if (totalMinor != null && totalMinor > 0) {
+      trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
+    }
+  }, [lotId, totalMinor, currency]);
 
   if (submitted) {
     return (
@@ -188,6 +201,15 @@ export function CheckoutPurchasePanel({
                 return;
               }
               const checkoutUrl = r.ok ? (r.data?.checkoutUrl ?? null) : null;
+              const paymentId = r.ok ? r.data?.paymentId : undefined;
+              if (totalMinor != null && totalMinor > 0) {
+                trackPurchase({
+                  lotId,
+                  valueMinor: totalMinor,
+                  currency,
+                  ...(paymentId ? { transactionId: paymentId } : {}),
+                });
+              }
               if (checkoutUrl) {
                 window.location.assign(checkoutUrl);
                 return;

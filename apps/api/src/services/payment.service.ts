@@ -11,10 +11,12 @@ import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
+import { buildMarketingEventConsent, nowUnixSeconds } from "../lib/marketing-event-factory.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
+import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type {
@@ -70,6 +72,7 @@ export class PaymentService {
      * existing per-lot `buyerPremiumRate` — preserving the previous behaviour exactly.
      */
     private readonly sales: ISaleRepository | null = null,
+    private readonly marketingEvents: IMarketingEventService | null = null,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -395,6 +398,24 @@ export class PaymentService {
     const buyerId = p.paidByUserId ?? p.buyerId ?? null;
     const buyer = buyerId ? await this.users.findById(buyerId) : null;
 
+    const purchaseEvent =
+      buyerId && this.marketingEvents
+        ? {
+            name: "Purchase" as const,
+            eventId: `payment_captured_${paymentId}`,
+            eventTime: nowUnixSeconds(),
+            actionSource: "system_generated" as const,
+            userIdOrAnon: { kind: "user" as const, userId: buyerId },
+            consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
+            customData: {
+              lotId: p.lotId,
+              paymentId: p.id,
+              valueMinor: gbpAmountToPence(p.amount),
+              currencyCode: "GBP",
+            },
+          }
+        : null;
+
     await db.transaction(async (tx) => {
       const captureOpts: { stripeChargeId?: string | null } = {};
       if (resolvedChargeId) {
@@ -419,10 +440,18 @@ export class PaymentService {
         actorUserId: adminUserId ?? null,
         actingLegalEntityId: p.sellerLegalEntityId ?? null,
       });
+      if (purchaseEvent && this.marketingEvents) {
+        await this.marketingEvents.stage(purchaseEvent, tx);
+      }
     });
 
     const after = (await this.payments.findById(paymentId)) ?? p;
     await this.dispatchPaymentReceived(after);
+
+    if (purchaseEvent && this.marketingEvents) {
+      await this.marketingEvents.enqueue(purchaseEvent);
+    }
+
     return ok(undefined);
   }
 
