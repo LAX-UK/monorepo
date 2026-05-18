@@ -23,7 +23,6 @@
     "db:migrate:prod": "tsx src/migrate-prod.ts",
     "db:roles": "tsx src/migrate-roles.ts",
     "db:migrate:kit": "drizzle-kit migrate",
-    "db:seed": "tsx src/seed.ts",
     "db:seed:dev": "tsx src/seed/runners/cli.ts --env=dev",
     "db:studio": "drizzle-kit studio",
     "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
