@@ -25,12 +25,12 @@ import {
   adminListSuppressionsQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
+  adminPatchStaffRoleBodySchema,
   adminRejectSaleRegistrationBodySchema,
   adminSaleRegistrationListQuerySchema,
   adminSaleRegistrationParamsSchema,
   adminSaleroomSaleIdParamSchema,
   adminSetRoleBodySchema,
-  adminSetStaffRoleBodySchema,
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
   adminTelephonePlaceBidBodySchema,
@@ -983,7 +983,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.patch(
     "/users/:userId/staff-role",
     zValidator("param", userIdParamSchema),
-    zValidator("json", adminSetStaffRoleBodySchema),
+    zValidator("json", adminPatchStaffRoleBodySchema),
     async (c) => {
       const { userId } = c.req.valid("param");
       const { staffRole } = c.req.valid("json");
