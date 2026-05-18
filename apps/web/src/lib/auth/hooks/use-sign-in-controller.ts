@@ -1,5 +1,6 @@
 "use client";
 
+import { trackLogin } from "@/lib/analytics/events";
 import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
@@ -49,6 +50,7 @@ export function useSignInController(nextHref: string) {
         router.refresh();
         return;
       }
+      trackLogin();
       const me = await fetchSessionUserAfterAuth();
       if (me) {
         router.push(

@@ -12,6 +12,8 @@ import { createAppLogger } from "./lib/logger.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
+import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
+import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
@@ -32,6 +34,7 @@ import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
 import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
+import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
@@ -71,6 +74,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("*", createRequestIdMiddleware());
   app.use("*", createSecurityHeadersMiddleware());
   app.use("*", createMetricsMiddleware());
+  app.use("*", createMarketingConsentMiddleware());
+  app.use("*", createMarketingClientContextMiddleware());
   app.use(
     "/.well-known/*",
     cors({
@@ -85,7 +90,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     "*",
     cors({
       origin: webOrigins,
-      allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Idempotency-Key",
+        "x-lax-consent-marketing",
+        "x-lax-consent-analytics",
+        "x-lax-page-url",
+      ],
       exposeHeaders: ["Content-Length"],
       maxAge: 600,
       credentials: true,
@@ -193,6 +205,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/auth", createAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
+    .route("/marketing", createMarketingRoutes(container, authenticator))
     .route("/submissions", createSubmissionRoutes(container, authenticator))
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))

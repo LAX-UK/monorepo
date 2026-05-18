@@ -71,6 +71,7 @@ import {
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
+import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
 import { attachXeroAdminRoutes } from "./xero-admin.js";
 
 const activityQuerySchema = z.object({
@@ -1125,6 +1126,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 
   attachAdminInvitationRoutes(platform, container.admin.invitations);
+
+  attachAdminMarketingEventsRoutes(platform, container);
 
   const finance = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };

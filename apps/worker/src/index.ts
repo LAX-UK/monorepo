@@ -1,5 +1,13 @@
 import { createDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
+import {
+  InMemoryCircuitBreaker,
+  MetaCapiMarketingEventPublisher,
+  ProfileUserIdentityResolver,
+  SgtmMarketingEventPublisher,
+  Sha256PiiHasher,
+} from "@auction/marketing-events";
+import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
 import { Queue, Worker } from "bullmq";
@@ -18,6 +26,14 @@ import {
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
 import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
 import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
+import {
+  applyMarketingPublishOutcome,
+  marketingEventsOutcomeTotal,
+  processMarketingEventJob,
+  runMarketingEventOutboxPoller,
+} from "./jobs/marketing-event-processor.js";
+import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
+import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
 import {
@@ -27,7 +43,16 @@ import {
 } from "./jobs/send-email.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
+import { isMarketingEventsEnabled } from "./lib/marketing-events-enabled.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
+import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
+import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
+import {
+  MetaCapiBatchCollector,
+  marketingEventsCapiBatchSize,
+} from "./marketing/meta-capi-batch-collector.js";
+import { PostgresClickIdStore } from "./marketing/postgres-click-id.store.js";
+import { RedisClickIdStore } from "./marketing/redis-click-id.store.js";
 import { createProjectorRunner } from "./projectors/runner.js";
 import { syncXeroPayoutBillViaApi } from "./projectors/xero-payout-bill-sync.js";
 
@@ -88,6 +113,7 @@ const heartbeatKeys = [
   "worker:heartbeat:legal-entity-archive",
   "worker:heartbeat:impersonation-sweeper",
   "worker:heartbeat:purge-expired-verifications",
+  ...(isMarketingEventsEnabled(env) ? ["worker:heartbeat:marketing-events"] : []),
 ];
 async function heartbeat(queue: string) {
   await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
@@ -212,6 +238,144 @@ const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
   { connection: redis, concurrency: 3, limiter: { max: 10, duration: 1000 } },
 );
 marketingSyncWorker.on("completed", () => void heartbeat("marketing-sync"));
+
+let marketingEventsWorker: Worker<MarketingEvent> | undefined;
+let marketingEventsQueue: Queue<MarketingEvent> | undefined;
+let marketingCapiBatchWorker: Worker<ResolvedMarketingEvent> | undefined;
+let marketingCapiBatchQueue: Queue<ResolvedMarketingEvent> | undefined;
+let marketingOutboxPollerWorker: Worker | undefined;
+let marketingOutboxPollerQueue: Queue | undefined;
+let marketingCapiBatchCollector: MetaCapiBatchCollector | undefined;
+let purgeMarketingClickIdsWorker: Worker | undefined;
+let purgeMarketingClickIdsQueue: Queue | undefined;
+if (isMarketingEventsEnabled(env)) {
+  const hasher = new Sha256PiiHasher();
+  const clickIdStore = new CachedClickIdStore(
+    new PostgresClickIdStore(db),
+    new RedisClickIdStore(redis),
+  );
+  const identityResolver = new ProfileUserIdentityResolver(
+    new DrizzleProfileMarketingReader(db),
+    clickIdStore,
+    hasher,
+  );
+  const sgtmPublisher = new SgtmMarketingEventPublisher(
+    env.SGTM_ENDPOINT_URL!,
+    env.GA4_MEASUREMENT_ID!,
+  );
+  const metaPublisher = new MetaCapiMarketingEventPublisher(
+    env.META_PIXEL_ID!,
+    env.META_CAPI_ACCESS_TOKEN!,
+    env.META_CAPI_TEST_EVENT_CODE,
+    env.META_GRAPH_API_VERSION ?? "v21.0",
+  );
+
+  marketingCapiBatchQueue = new Queue<ResolvedMarketingEvent>("marketing-events-capi-batch", {
+    connection: redis,
+  });
+  const capiBatchQueue = marketingCapiBatchQueue;
+  const metaCircuitBreaker = new InMemoryCircuitBreaker();
+  marketingCapiBatchCollector = new MetaCapiBatchCollector(
+    metaPublisher,
+    async (event, outcome) => {
+      await applyMarketingPublishOutcome({ db, env, log, event, outcome });
+    },
+    100,
+    1000,
+    1000,
+    metaCircuitBreaker,
+  );
+  const batchCollector = marketingCapiBatchCollector;
+
+  marketingCapiBatchWorker = new Worker<ResolvedMarketingEvent>(
+    "marketing-events-capi-batch",
+    async (job) => {
+      await batchCollector.add(job.data);
+    },
+    { connection: redis, concurrency: 1 },
+  );
+
+  const marketingProcessorDeps = {
+    db,
+    env,
+    log,
+    identityResolver,
+    sgtmPublisher,
+    enqueueCapiBatch: async (event: ResolvedMarketingEvent) => {
+      await capiBatchQueue.add("batch", event, {
+        jobId: event.eventId,
+        removeOnComplete: 1000,
+        removeOnFail: 5000,
+        attempts: 10,
+        backoff: { type: "exponential", delay: 5000 },
+      });
+    },
+  };
+
+  marketingEventsQueue = new Queue<MarketingEvent>("marketing-events", { connection: redis });
+  const concurrency = env.MARKETING_EVENT_WORKER_CONCURRENCY ?? 5;
+  marketingEventsWorker = new Worker<MarketingEvent>(
+    "marketing-events",
+    async (job) => {
+      await processMarketingEventJob(marketingProcessorDeps, job.data);
+      await heartbeat("marketing-events");
+    },
+    {
+      connection: redis,
+      concurrency,
+      limiter: { max: 200, duration: 1000 },
+    },
+  );
+  marketingEventsWorker.on("completed", () => void heartbeat("marketing-events"));
+
+  marketingOutboxPollerQueue = new Queue("marketing-outbox-poller", { connection: redis });
+  marketingOutboxPollerWorker = new Worker(
+    "marketing-outbox-poller",
+    async () => {
+      if (!marketingEventsQueue) return;
+      await runMarketingEventOutboxPoller({
+        db,
+        log,
+        enqueue: async (event) => {
+          await marketingEventsQueue!.add("publish", event, { jobId: event.eventId });
+        },
+      });
+    },
+    { connection: redis },
+  );
+  void marketingOutboxPollerQueue.add(
+    "poll",
+    {},
+    { jobId: "marketing-outbox-poller-30s", repeat: { every: 30_000 }, removeOnComplete: 10 },
+  );
+  marketingOutboxPollerWorker.on("failed", (job, err) => {
+    log.warn({ jobId: job?.id, err }, "marketing outbox poller failed");
+  });
+
+  purgeMarketingClickIdsQueue = new Queue("purge-marketing-click-ids", {
+    connection: redis,
+  });
+  purgeMarketingClickIdsWorker = new Worker(
+    "purge-marketing-click-ids",
+    async () => {
+      await purgeStaleMarketingClickIds({ db, log });
+      await purgeStaleMarketingOutbox({ db, log });
+    },
+    { connection: redis },
+  );
+  void purgeMarketingClickIdsQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-marketing-click-ids-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+  purgeMarketingClickIdsWorker.on("failed", (job, err) => {
+    log.warn({ jobId: job?.id, err }, "purge marketing click ids failed");
+  });
+}
 
 type PayoutStatementJobData = GeneratePayoutStatementJobData;
 const payoutStatementQueue = new Queue<PayoutStatementJobData>("payout-statements", {
@@ -365,6 +529,7 @@ void Promise.all([
   heartbeat("gc-pending-uploads"),
   heartbeat("email"),
   heartbeat("marketing-sync"),
+  ...(isMarketingEventsEnabled(env) ? [heartbeat("marketing-events")] : []),
   heartbeat("payout-statements"),
   heartbeat("legal-entity-archive"),
   heartbeat("impersonation-sweeper"),
@@ -400,6 +565,8 @@ void projectorRunner.start();
 
 const metrics = new Registry();
 collectDefaultMetrics({ register: metrics, prefix: "auction_worker_" });
+metrics.registerMetric(marketingEventsOutcomeTotal);
+metrics.registerMetric(marketingEventsCapiBatchSize);
 const app = new Hono();
 
 app.get("/health/live", (c) => c.json({ service: "auction-worker", status: "ok" }));
@@ -435,40 +602,60 @@ const server = serve({ fetch: app.fetch, hostname: "0.0.0.0", port: env.PORT }, 
   log.info({ port: info.port }, "worker service listening");
 });
 
+async function drainMarketingPipeline(): Promise<void> {
+  if (marketingCapiBatchCollector) {
+    await marketingCapiBatchCollector.flush();
+  }
+  await Promise.allSettled([
+    ...(marketingEventsWorker ? [marketingEventsWorker.close()] : []),
+    ...(marketingCapiBatchWorker ? [marketingCapiBatchWorker.close()] : []),
+    ...(marketingOutboxPollerWorker ? [marketingOutboxPollerWorker.close()] : []),
+    ...(marketingEventsQueue ? [marketingEventsQueue.close()] : []),
+    ...(marketingCapiBatchQueue ? [marketingCapiBatchQueue.close()] : []),
+    ...(marketingOutboxPollerQueue ? [marketingOutboxPollerQueue.close()] : []),
+    ...(purgeMarketingClickIdsWorker ? [purgeMarketingClickIdsWorker.close()] : []),
+    ...(purgeMarketingClickIdsQueue ? [purgeMarketingClickIdsQueue.close()] : []),
+  ]);
+}
+
 function shutdown(signal: NodeJS.Signals) {
   log.info({ signal }, "draining worker");
   const timeout = setTimeout(() => process.exit(1), 30_000);
   timeout.unref();
-  void Promise.allSettled([
-    webhookWorker.close(),
-    validateUploadWorker.close(),
-    imageCleanupWorker.close(),
-    gcPendingUploadsWorker.close(),
-    gcUploadQueue.close(),
-    emailWorker.close(),
-    emailQueue.close(),
-    marketingSyncWorker.close(),
-    marketingSyncQueue.close(),
-    payoutStatementWorker.close(),
-    payoutStatementQueue.close(),
-    legalEntityArchiveWorker.close(),
-    legalEntityArchiveQueue.close(),
-    impersonationSweeperWorker.close(),
-    impersonationSweeperQueue.close(),
-    purgeVerificationsWorker.close(),
-    purgeVerificationsQueue.close(),
-    purgeSoftDeletedUsersWorker.close(),
-    purgeSoftDeletedUsersQueue.close(),
-    ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
-    ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
-    projectorRunner.stop(),
-    redis.quit(),
-  ]).finally(() => {
-    server.close(() => {
-      clearTimeout(timeout);
-      process.exit(0);
+  void drainMarketingPipeline()
+    .then(() =>
+      Promise.allSettled([
+        webhookWorker.close(),
+        validateUploadWorker.close(),
+        imageCleanupWorker.close(),
+        gcPendingUploadsWorker.close(),
+        gcUploadQueue.close(),
+        emailWorker.close(),
+        emailQueue.close(),
+        marketingSyncWorker.close(),
+        marketingSyncQueue.close(),
+        payoutStatementWorker.close(),
+        payoutStatementQueue.close(),
+        legalEntityArchiveWorker.close(),
+        legalEntityArchiveQueue.close(),
+        impersonationSweeperWorker.close(),
+        impersonationSweeperQueue.close(),
+        purgeVerificationsWorker.close(),
+        purgeVerificationsQueue.close(),
+        purgeSoftDeletedUsersWorker.close(),
+        purgeSoftDeletedUsersQueue.close(),
+        ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
+        ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
+        projectorRunner.stop(),
+      ]),
+    )
+    .then(() => redis.quit())
+    .finally(() => {
+      server.close(() => {
+        clearTimeout(timeout);
+        process.exit(0);
+      });
     });
-  });
 }
 
 process.on("SIGTERM", shutdown);

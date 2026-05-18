@@ -48,6 +48,13 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Platform admin email for ops notifications (refunds, disputes, etc.). */
     ADMIN_EMAIL_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    SGTM_ENDPOINT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    META_PIXEL_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    META_CAPI_ACCESS_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    META_CAPI_TEST_EVENT_CODE: z.preprocess(emptyToUndefined, z.string().optional()),
+    GA4_MEASUREMENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
+    MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {

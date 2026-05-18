@@ -119,6 +119,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       hammer={formatMoney(auction.currentPrice)}
                       buyerPremium={formatMoney(premium.toFixed(2))}
                       total={formatMoney(total.toFixed(2))}
+                      totalMinor={Math.round(total * 100)}
                       premiumPercentLabel={premiumPercentLabel}
                       addresses={addresses}
                     />

@@ -33,6 +33,8 @@ export * from "./jwks-key.js";
 export * from "./external-accounts.js";
 export * from "./oauth.js";
 export * from "./webhook-events.js";
+export * from "./marketing-event-outbox.js";
+export * from "./marketing-click-ids.js";
 export * from "./processed-stripe-events.js";
 export * from "./domain-events.js";
 export * from "./impersonation-sessions.js";
