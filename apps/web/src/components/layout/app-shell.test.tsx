@@ -150,4 +150,21 @@ describe("AppShell", () => {
       screen.getByRole("navigation", { name: /primary mobile dashboard navigation/i }),
     ).toBeInTheDocument();
   });
+
+  it("hides client bottom tab bar when hideBottomTabBar is set on config", () => {
+    render(
+      <AppShell
+        user={clientUser}
+        config={{
+          ...buildShellConfig({ user: clientUser, role: "client" }),
+          hideBottomTabBar: true,
+        }}
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    expect(
+      screen.queryByRole("navigation", { name: /primary mobile dashboard navigation/i }),
+    ).not.toBeInTheDocument();
+  });
 });

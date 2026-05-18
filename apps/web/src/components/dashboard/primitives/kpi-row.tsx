@@ -30,7 +30,11 @@ export function KpiRow({
   "aria-label": ariaLabel = "Summary at a glance",
 }: KpiRowProps) {
   const columnClass =
-    columns === 6 ? "xl:grid-cols-6" : columns === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4";
+    columns === 6
+      ? "md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6"
+      : columns === 5
+        ? "md:grid-cols-4 xl:grid-cols-5"
+        : "md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4";
 
   const showHeroChrome = variant === "hero" && !embedded;
 

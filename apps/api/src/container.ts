@@ -53,7 +53,7 @@ import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notificat
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
-import { isMarketingEventsEnabled } from "./lib/marketing-events-enabled.js";
+import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
@@ -584,7 +584,8 @@ export function createContainer(env: Env): Container {
   const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
   const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
   const marketingSyncQueue = new Queue("marketing-sync", { connection: bullConnection });
-  const marketingEnabled = isMarketingEventsEnabled(env);
+  const marketingConfig = getMarketingEventsConfig(env);
+  const marketingEnabled = marketingConfig !== undefined;
   const clickIdStore: IClickIdStore = marketingEnabled
     ? new CachedClickIdStore(new PostgresClickIdStore(db), new RedisClickIdStore(redis))
     : new RedisClickIdStore(redis);
@@ -598,14 +599,17 @@ export function createContainer(env: Env): Container {
   const marketingEventQueue = marketingEnabled
     ? new BullmqMarketingEventQueue(marketingEventsBullQueue)
     : new NoopMarketingEventQueue();
-  const marketingEventPublisher: IMarketingEventPublisher = marketingEnabled
+  const marketingEventPublisher: IMarketingEventPublisher = marketingConfig
     ? new CompositeMarketingEventPublisher(
-        new SgtmMarketingEventPublisher(env.SGTM_ENDPOINT_URL!, env.GA4_MEASUREMENT_ID!),
+        new SgtmMarketingEventPublisher(
+          marketingConfig.sgtmEndpointUrl,
+          marketingConfig.ga4MeasurementId,
+        ),
         new MetaCapiMarketingEventPublisher(
-          env.META_PIXEL_ID!,
-          env.META_CAPI_ACCESS_TOKEN!,
-          env.META_CAPI_TEST_EVENT_CODE,
-          env.META_GRAPH_API_VERSION ?? "v21.0",
+          marketingConfig.metaPixelId,
+          marketingConfig.metaCapiAccessToken,
+          marketingConfig.metaCapiTestEventCode,
+          marketingConfig.metaGraphApiVersion,
         ),
         new InMemoryCircuitBreaker(),
       )

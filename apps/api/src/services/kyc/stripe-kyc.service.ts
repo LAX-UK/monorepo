@@ -255,7 +255,8 @@ export class StripeKycService implements IKycService {
 
     if (isCurrentSession) {
       const isApproval = decision.setStatus === "approved";
-      if (decision.setStatus !== null) {
+      const kycStatus = decision.setStatus;
+      if (kycStatus !== null) {
         if (isApproval && conn && this.marketingEvents && obj.status === "verified") {
           marketingEventToEnqueue = {
             name: "CompleteRegistration",
@@ -266,17 +267,12 @@ export class StripeKycService implements IKycService {
             consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
             customData: { kycStatus: "approved" },
           };
-          await this.repo.setUserKycStatus(
-            existing.userId,
-            decision.setStatus!,
-            decision.verifiedAt,
-            conn,
-          );
+          await this.repo.setUserKycStatus(existing.userId, kycStatus, decision.verifiedAt, conn);
           await this.marketingEvents.stage(marketingEventToEnqueue, conn);
         } else {
           await this.repo.setUserKycStatus(
             existing.userId,
-            decision.setStatus,
+            kycStatus,
             decision.verifiedAt,
             conn ?? undefined,
           );

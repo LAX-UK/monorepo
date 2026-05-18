@@ -66,6 +66,8 @@ export function PricingStep({ form }: StepProps) {
                 rows={3}
                 className="font-body text-sm"
                 placeholder="Marks, repairs, framing, or conservation notes."
+                autoCapitalize="sentences"
+                enterKeyHint="next"
                 {...field}
               />
             </FormControl>
@@ -82,7 +84,13 @@ export function PricingStep({ form }: StepProps) {
               <LabelCaps>Notes for reviewers</LabelCaps>
             </FormLabel>
             <FormControl>
-              <Textarea rows={3} className="font-body text-sm" {...field} />
+              <Textarea
+                rows={3}
+                className="font-body text-sm"
+                autoCapitalize="sentences"
+                enterKeyHint="done"
+                {...field}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
