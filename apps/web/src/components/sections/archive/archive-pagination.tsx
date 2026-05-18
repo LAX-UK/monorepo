@@ -42,7 +42,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
       : null;
 
   return (
-    <div className="mx-auto mt-32 flex max-w-screen-2xl justify-center border-t border-outline-variant/10 pt-16">
+    <div className="mx-auto mt-32 flex max-w-screen-2xl justify-center border-t border-border-hairline pt-16">
       <MarketingPagination
         aria-label="Archive pagination"
         prev={{

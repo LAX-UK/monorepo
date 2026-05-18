@@ -5,28 +5,40 @@ export type DashboardOverviewSlots = {
   kpis: ReactNode;
   activity: ReactNode;
   watchlist: ReactNode;
-  /** Persistent account-readiness strip; renders just under the header. */
   compliance?: ReactNode;
-  /** Aggregated "needs attention" surface; renders just below KPIs. */
   attention?: ReactNode;
   banner?: ReactNode;
-  /** Unified activity feed (notifications + derived events). */
   activityFeed?: ReactNode;
   secondary?: ReactNode;
 };
 
 type Props = {
-  /** `stack` (mockup parity) renders KPIs -> active bids full-width -> banner ->
-   * watchlist preview -> secondary action stack. `twoCol` (legacy default)
-   * keeps the historical 1.2fr/0.8fr split for active-bids + watchlist and
-   * mounts the secondary stack below the banner. Both layouts mount the same
-   * children — only their positioning differs.
+  /** `focal` (v3): KPI hero → banner → attention → two-column bids/watchlist + activity feed → sell CTA.
+   * `stack` / `twoCol` kept for compatibility.
    */
-  layout?: "stack" | "twoCol";
+  layout?: "focal" | "stack" | "twoCol";
   slots: DashboardOverviewSlots;
 };
 
-export function DashboardOverviewLayout({ layout = "twoCol", slots }: Props) {
+export function DashboardOverviewLayout({ layout = "focal", slots }: Props) {
+  if (layout === "focal") {
+    return (
+      <div className="screen flex w-full flex-col gap-6">
+        {slots.header}
+        {slots.compliance}
+        {slots.kpis}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-8">
+          <div className="flex flex-col gap-6">
+            {slots.activity}
+            {slots.watchlist}
+          </div>
+          {slots.activityFeed}
+        </div>
+        {slots.secondary}
+      </div>
+    );
+  }
+
   if (layout === "stack") {
     return (
       <div className="screen flex w-full flex-col gap-8">

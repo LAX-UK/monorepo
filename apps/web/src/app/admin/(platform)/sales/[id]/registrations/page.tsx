@@ -1,4 +1,5 @@
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
 import {
   adminApproveSaleRegistrationAction,
   adminRejectSaleRegistrationAction,
@@ -12,7 +13,6 @@ import { StatusBadge } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -32,7 +32,7 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
           : "neutral";
 
   return (
-    <div className="rounded-lg border border-outline-variant/15 bg-surface-container-low/30 p-4">
+    <div className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <p className="font-medium">{row.userName ?? row.userEmail ?? row.userId}</p>
@@ -115,17 +115,18 @@ export default async function SaleRegistrationsPage({ params, searchParams }: Pr
   return (
     <AdminEntityDetailShell
       breadcrumbs={
-        <Link
-          href={`/admin/sales/${id}`}
-          className="font-label text-xs uppercase tracking-widest text-primary hover:underline"
-        >
-          ← {sale.title}
-        </Link>
+        <Breadcrumbs
+          items={[
+            { label: "Sales", href: "/admin/sales" },
+            { label: sale.title, href: `/admin/sales/${id}` },
+          ]}
+          current="Registrations"
+        />
       }
       title="Registrations"
       description={`Approve or reject bidder registrations for "${sale.title}".`}
       meta={
-        <span className="font-label text-xs uppercase tracking-widest text-secondary">
+        <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           {rows.length} total · {pending.length} pending
         </span>
       }
@@ -152,7 +153,7 @@ export default async function SaleRegistrationsPage({ params, searchParams }: Pr
 
       {pending.length > 0 ? (
         <section className="space-y-3">
-          <p className="font-label text-xs uppercase tracking-widest text-secondary">
+          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Pending ({pending.length})
           </p>
           {pending.map((row) => (
@@ -163,7 +164,7 @@ export default async function SaleRegistrationsPage({ params, searchParams }: Pr
 
       {decided.length > 0 ? (
         <section className="space-y-3">
-          <p className="font-label text-xs uppercase tracking-widest text-secondary">
+          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Decided ({decided.length})
           </p>
           {decided.map((row) => (

@@ -1,3 +1,5 @@
+import type { Database } from "@auction/db";
+
 export type WatchlistRow = {
   id: string;
   userId: string;
@@ -6,8 +8,8 @@ export type WatchlistRow = {
 };
 
 export interface IWatchlistRepository {
-  add(userId: string, lotId: string): Promise<WatchlistRow>;
-  remove(userId: string, lotId: string): Promise<void>;
+  add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow>;
+  remove(userId: string, lotId: string, conn?: Database): Promise<void>;
   findByUser(userId: string): Promise<WatchlistRow[]>;
   exists(userId: string, lotId: string): Promise<boolean>;
   listUserIdsForLot(lotId: string): Promise<string[]>;

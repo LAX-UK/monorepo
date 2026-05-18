@@ -49,7 +49,7 @@ Tabs.Trigger = function TabsTrigger({
     <UiTabsTrigger
       value={value}
       className={cn(
-        "rounded-full px-4 py-2 font-label text-xs uppercase tracking-widest transition-colors",
+        "rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors",
         "data-[state=active]:bg-primary data-[state=active]:text-on-primary",
         "data-[state=inactive]:bg-surface-container-high data-[state=inactive]:text-on-surface-variant data-[state=inactive]:hover:text-on-surface",
         className,

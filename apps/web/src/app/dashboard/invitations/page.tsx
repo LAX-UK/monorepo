@@ -1,10 +1,10 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { Button } from "@auction/ui/components/button";
-import { PageHeader } from "@auction/ui/components/page-header";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
 
@@ -19,15 +19,10 @@ export default async function InvitationsInboxPage() {
   return (
     <DashboardPage>
       <div className="mx-auto max-w-5xl space-y-8">
-        <PageHeader
+        <DashboardPageHeader
+          meta="Invitation"
           title="Invitations"
-          meta={
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-              Inbox
-            </span>
-          }
           description="Pending organisation invitations for your account email."
-          className="border-b border-outline-variant/20 pb-5"
           actions={
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/organisations" prefetch>

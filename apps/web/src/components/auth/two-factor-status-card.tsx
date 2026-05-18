@@ -3,14 +3,8 @@
 import { TwoFactorDisableDialog } from "@/components/auth/two-factor-disable-dialog";
 import { TwoFactorRegenerateCodesDialog } from "@/components/auth/two-factor-regenerate-codes-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,20 +20,22 @@ export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardPro
 
   return (
     <>
-      <Card className="border-outline-variant/15">
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+      <Surface variant="section" padding="md" className="space-y-4">
+        <div className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className="text-base">Two-factor authentication</CardTitle>
-            <CardDescription>
+            <h2 className="font-headline text-lg font-semibold text-on-surface">
+              Two-factor authentication
+            </h2>
+            <p className="font-body text-sm text-on-surface-variant">
               Add a second step at sign-in with an authenticator app (TOTP). Recommended for staff
               and anyone bidding regularly.
-            </CardDescription>
+            </p>
           </div>
           <StatusBadge variant={twoFactorEnabled ? "success" : "warning"}>
             {twoFactorEnabled ? "On" : "Off"}
           </StatusBadge>
-        </CardHeader>
-        <CardContent className="space-y-4 font-body text-sm text-on-surface-variant">
+        </div>
+        <div className="space-y-4 font-body text-sm text-on-surface-variant">
           {twoFactorEnabled ? (
             <>
               <p>
@@ -63,8 +59,8 @@ export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardPro
               </Button>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
 
       <TwoFactorDisableDialog
         open={disableOpen}

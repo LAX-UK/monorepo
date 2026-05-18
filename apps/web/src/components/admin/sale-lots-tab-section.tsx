@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { DisplayHeading } from "@/components/ui/typography";
 import {
   adminAttachLotToSaleResultAction,
@@ -79,7 +80,7 @@ export function SaleLotsTabSection({
             ? "Onsite lots inherit the sale's start/end window."
             : "Online lots run on their own schedule and accept bids when active."}
         </p>
-        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/15 bg-surface-container-lowest/40">
+        <ul className="mt-4 divide-y divide-outline-variant/15 rounded-lg border border-border-hairline bg-surface-container-lowest/40">
           {lots.map((l) => {
             const transitions = LOT_TRANSITION_OPTIONS[l.status];
             return (
@@ -119,35 +120,37 @@ export function SaleLotsTabSection({
                   {transitions.includes("cancelled") &&
                   saleStatus !== "ended" &&
                   saleStatus !== "cancelled" ? (
-                    <Button
+                    <ConfirmActionButton
                       type="button"
                       size="sm"
                       variant="secondary"
                       disabled={pending}
-                      onClick={() => {
-                        if (!confirm(`Cancel lot "${l.title}"?`)) return;
-                        run(() => adminCancelLotInSaleResultAction(saleId, l.id));
-                      }}
+                      confirmTitle="Cancel lot"
+                      confirmBody={`Cancel lot "${l.title}"?`}
+                      confirmLabel="Cancel lot"
+                      onConfirmed={() => run(() => adminCancelLotInSaleResultAction(saleId, l.id))}
                     >
                       Cancel lot
-                    </Button>
+                    </ConfirmActionButton>
                   ) : null}
                   {transitions
                     .filter((t) => t !== "cancelled")
                     .map((next) => (
-                      <Button
+                      <ConfirmActionButton
                         key={next}
                         type="button"
                         size="sm"
                         variant="secondary"
                         disabled={pending}
-                        onClick={() => {
-                          if (!confirm(`Mark lot "${l.title}" as ${next}?`)) return;
-                          run(() => adminSetLotStatusResultAction(saleId, l.id, next));
-                        }}
+                        confirmTitle={`Mark as ${next}`}
+                        confirmBody={`Mark lot "${l.title}" as ${next}?`}
+                        confirmLabel={`Mark ${next}`}
+                        onConfirmed={() =>
+                          run(() => adminSetLotStatusResultAction(saleId, l.id, next))
+                        }
                       >
                         Mark {next}
-                      </Button>
+                      </ConfirmActionButton>
                     ))}
                 </div>
               </li>
@@ -174,7 +177,7 @@ export function SaleLotsTabSection({
             {draftOrphans.map((l) => (
               <li
                 key={l.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-lowest/40 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest/40 px-4 py-3"
               >
                 <span className="font-body text-sm">{l.title}</span>
                 <Button

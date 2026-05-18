@@ -45,6 +45,12 @@ export function createHttpBidWriter(): BidWriter {
   const client = getBrowserHc();
   return {
     async placeBid(input) {
+      const { trackBidPlaced } = await import("@/lib/analytics/events");
+      const marketingEventId =
+        trackBidPlaced({
+          lotId: input.lotId,
+          amount: input.amount,
+        }) ?? undefined;
       const res = await client.bids.$post({
         json: {
           lotId: input.lotId,
@@ -52,6 +58,7 @@ export function createHttpBidWriter(): BidWriter {
           ...(input.maxAutoBidAmount !== undefined
             ? { maxAutoBidAmount: input.maxAutoBidAmount }
             : {}),
+          ...(marketingEventId ? { marketingEventId } : {}),
         },
       });
       const body = (await res.json().catch(() => ({}))) as {

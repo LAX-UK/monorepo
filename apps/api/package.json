@@ -26,6 +26,7 @@
   "dependencies": {
     "@auction/auth": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/marketing-events": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",

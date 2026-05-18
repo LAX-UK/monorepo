@@ -15,12 +15,12 @@ function mapRow(row: typeof watchlist.$inferSelect): WatchlistRow {
 export class DrizzleWatchlistRepository implements IWatchlistRepository {
   constructor(private readonly db: Database) {}
 
-  async add(userId: string, lotId: string): Promise<WatchlistRow> {
-    await this.db
+  async add(userId: string, lotId: string, conn: Database = this.db): Promise<WatchlistRow> {
+    await conn
       .insert(watchlist)
       .values({ userId, lotId })
       .onConflictDoNothing({ target: [watchlist.userId, watchlist.lotId] });
-    const [row] = await this.db
+    const [row] = await conn
       .select()
       .from(watchlist)
       .where(and(eq(watchlist.userId, userId), eq(watchlist.lotId, lotId)))
@@ -29,8 +29,8 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
     return mapRow(row);
   }
 
-  async remove(userId: string, lotId: string): Promise<void> {
-    await this.db
+  async remove(userId: string, lotId: string, conn: Database = this.db): Promise<void> {
+    await conn
       .delete(watchlist)
       .where(and(eq(watchlist.userId, userId), eq(watchlist.lotId, lotId)));
   }

@@ -51,6 +51,16 @@
   },
   "overrides": [
     {
+      "include": ["apps/web/src/app/dashboard/**", "apps/web/src/app/admin/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": "warn"
+          }
+        }
+      }
+    },
+    {
       "include": ["packages/ui/src/components/ui/view-switcher.tsx"],
       "linter": {
         "rules": {

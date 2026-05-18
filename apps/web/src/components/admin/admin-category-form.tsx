@@ -28,6 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { LoadingButton } from "@auction/ui/components/loading-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Textarea } from "@auction/ui/components/textarea";
 import {
@@ -329,9 +330,9 @@ export function AdminCategoryForm({ mode, categoryId, categories, defaultValues 
           <Button variant="outline" type="button" onClick={() => router.push("/admin/categories")}>
             Cancel
           </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : mode === "create" ? "Create category" : "Save changes"}
-          </Button>
+          <LoadingButton type="submit" loading={pending} loadingLabel="Saving…">
+            {mode === "create" ? "Create category" : "Save changes"}
+          </LoadingButton>
         </div>
       </form>
     </Form>

@@ -4,7 +4,7 @@ import { adminReviewArtistResultAction } from "@/lib/actions/admin";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import { Textarea } from "@auction/ui/components/textarea";
 import { CheckCircle, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -28,18 +28,16 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
 
   if (!isPending) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-lg">Review</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Surface variant="card">
+        <h3 className="font-display text-lg font-semibold text-on-surface">Review</h3>
+        <div>
           <p className="text-sm text-on-surface-variant">
             This artist has already been reviewed (status:{" "}
             <span className="font-medium capitalize text-on-surface">{currentStatus}</span>). You
             can update the status from the edit form.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </Surface>
     );
   }
 
@@ -69,11 +67,9 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-display text-lg">Review</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Surface variant="card">
+      <h3 className="font-display text-lg font-semibold text-on-surface">Review</h3>
+      <div className="space-y-4">
         <p className="text-sm text-on-surface-variant">
           Approve to make this artist publicly visible and enable attribution. Reject to flag the
           profile as invalid.
@@ -82,7 +78,7 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
         <div>
           <label
             htmlFor={notesFieldId}
-            className="mb-1 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+            className="mb-1 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
           >
             Review notes (internal, optional)
           </label>
@@ -99,7 +95,7 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
         <div>
           <label
             htmlFor={rejectionFieldId}
-            className="mb-1 block font-label text-xs uppercase tracking-widest text-on-surface-variant"
+            className="mb-1 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
           >
             Rejection reason (sent to owner if rejected, optional)
           </label>
@@ -133,7 +129,7 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
             {pending && decision === "rejected" ? "Rejecting…" : "Reject"}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

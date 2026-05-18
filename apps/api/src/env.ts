@@ -198,6 +198,18 @@ const envSchema = z
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** On-call / escalation inbox (required in production). */
     OPS_ONCALL_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** Server-side GTM tagging endpoint (e.g. https://gtm.lax.bid). Prod-only marketing events. */
+    SGTM_ENDPOINT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Meta Pixel ID for Conversions API. */
+    META_PIXEL_ID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Meta Conversions API access token. */
+    META_CAPI_ACCESS_TOKEN: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Optional Meta test event code (Events Manager validation). */
+    META_CAPI_TEST_EVENT_CODE: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** GA4 measurement ID for sGTM Measurement Protocol publisher. */
+    GA4_MEASUREMENT_ID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Meta Graph API version for CAPI (default v21.0). */
+    META_GRAPH_API_VERSION: z.preprocess(trimEmptyToUndefined, z.string().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {

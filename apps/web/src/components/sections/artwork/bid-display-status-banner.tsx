@@ -8,7 +8,7 @@ export function BidDisplayStatusBanner({ status }: { status: BidDisplayStatus })
         className="block rounded-lg border border-primary/35 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/25"
         aria-live="polite"
       >
-        <span className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+        <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
           Your listing
         </span>
         <p className="mt-1 text-on-surface">
@@ -22,7 +22,7 @@ export function BidDisplayStatusBanner({ status }: { status: BidDisplayStatus })
       className="block rounded-lg border border-primary/35 bg-primary-container/15 px-4 py-3 font-body text-sm text-on-surface ring-1 ring-primary/25"
       aria-live="polite"
     >
-      <span className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+      <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
         You&apos;re winning
       </span>
       <p className="mt-1 text-on-surface">Your bid is currently the high bid on this lot.</p>

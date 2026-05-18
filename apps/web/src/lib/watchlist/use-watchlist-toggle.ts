@@ -66,6 +66,8 @@ export function useWatchlistToggle({
           json: { lotId },
         });
         if (!res.ok) throw new Error("add_failed");
+        const { trackAddToWishlist } = await import("@/lib/analytics/events");
+        trackAddToWishlist(lotId);
         setAnnounce("Added to watchlist");
       }
     } catch {

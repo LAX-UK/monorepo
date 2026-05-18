@@ -48,7 +48,7 @@ export function ArtistWatchToggle({
     return (
       <Link
         href={`/login?next=${encodeURIComponent(loginNextPath)}`}
-        className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container"
+        className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container"
       >
         <Eye className="size-4" aria-hidden />
         Sign in to follow
@@ -63,7 +63,7 @@ export function ArtistWatchToggle({
       disabled={busy}
       aria-pressed={watching}
       onClick={() => void toggle()}
-      className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-widest ${
+      className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
         watching
           ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"
           : "bg-surface-container-high text-on-surface hover:bg-surface-container"

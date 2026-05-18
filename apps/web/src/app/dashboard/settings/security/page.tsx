@@ -1,17 +1,11 @@
 import { SecurityPasswordForm } from "@/components/auth/security-password-form";
 import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
-import { PageHeader } from "@auction/ui/components/page-header";
+import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -28,17 +22,15 @@ export default async function SecuritySettingsPage() {
   const twoFactorEnabled = me.twoFactorEnabled === true;
 
   return (
-    <DashboardPage className="mx-auto max-w-md space-y-8">
-      <PageHeader
+    <DashboardPage className="mx-auto max-w-md space-y-6">
+      <SettingsFormHeader
         title="Security"
-        description="Update your password and review account access settings."
-        className="border-0 pb-0"
         actions={
           <Link
-            href="/dashboard/settings?tab=security"
-            className="font-label text-xs uppercase tracking-widest text-primary underline-offset-2 hover:underline"
+            href="/dashboard/settings/profile"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
           >
-            Back to settings
+            All settings
           </Link>
         }
       />
@@ -52,18 +44,26 @@ export default async function SecuritySettingsPage() {
           </AlertDescription>
         </Alert>
       ) : null}
-      <SecurityPasswordForm />
+      <Surface variant="section" padding="md" className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="font-headline text-lg font-semibold text-on-surface">Password</h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Use a strong password you do not reuse on other sites.
+          </p>
+        </div>
+        <SecurityPasswordForm />
+      </Surface>
       <TwoFactorStatusCard twoFactorEnabled={twoFactorEnabled} />
       {deletionRequestedAt ? null : (
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="text-base text-destructive">Danger zone</CardTitle>
-            <CardDescription>Irreversible after processing — see privacy policy.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DeleteAccountForm />
-          </CardContent>
-        </Card>
+        <Surface variant="section" padding="md" className="space-y-4 border-destructive/30">
+          <div className="space-y-1">
+            <h2 className="font-headline text-lg font-semibold text-destructive">Danger zone</h2>
+            <p className="font-body text-sm text-on-surface-variant">
+              Irreversible after processing — see privacy policy.
+            </p>
+          </div>
+          <DeleteAccountForm />
+        </Surface>
       )}
     </DashboardPage>
   );

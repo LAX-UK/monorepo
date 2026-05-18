@@ -75,7 +75,7 @@ export function TwoFactorEnableWizard() {
   const stepIndex = steps.findIndex((s) => s.id === step);
 
   return (
-    <Card className="border-outline-variant/15">
+    <Card className="border-border-hairline">
       <CardHeader>
         <CardTitle className="text-base">Set up authenticator</CardTitle>
         <CardDescription>
@@ -85,7 +85,7 @@ export function TwoFactorEnableWizard() {
           {steps.map((s, i) => (
             <li key={s.id}>
               <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 font-label text-[10px] uppercase tracking-widest ${
+                className={`inline-flex items-center rounded-full border px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
                   i === stepIndex
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-outline-variant/30 text-on-surface-variant"
@@ -112,7 +112,7 @@ export function TwoFactorEnableWizard() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                    <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                       Current password
                     </FormLabel>
                     <FormControl>
@@ -137,12 +137,12 @@ export function TwoFactorEnableWizard() {
 
         {step === "qr" && totpURI ? (
           <div className="space-y-6">
-            <div className="flex justify-center rounded-xl border border-outline-variant/20 bg-white p-4 dark:bg-surface-container-highest">
+            <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-4 dark:bg-surface-container-highest">
               <QRCodeSVG value={totpURI} size={192} level="M" includeMargin />
             </div>
             {secret ? (
               <div className="space-y-2">
-                <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                   Can&apos;t scan? Enter this secret
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
@@ -187,7 +187,7 @@ export function TwoFactorEnableWizard() {
                 name="code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                    <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                       Enter the 6-digit code
                     </FormLabel>
                     <FormControl>

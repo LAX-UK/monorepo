@@ -26,7 +26,7 @@ export function ArtistSortSheetGroup({ canonicalPath, value, onSelect }: Props) 
 
   return (
     <fieldset className="space-y-2">
-      <legend className="mb-2 font-label text-xs uppercase tracking-widest text-secondary">
+      <legend className="mb-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Sort by
       </legend>
       {ARTIST_SORT_OPTIONS.map((opt) => {

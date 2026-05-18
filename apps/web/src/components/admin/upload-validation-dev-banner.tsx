@@ -25,7 +25,7 @@ export function UploadValidationDevBanner() {
   if (!health || health.ok) return null;
 
   return (
-    <output className="mb-6 block rounded-md border border-error/30 bg-error/5 px-4 py-3 font-body text-sm text-on-surface">
+    <output className="block rounded-md border border-error/30 bg-error/5 px-4 py-3 font-body text-sm text-on-surface">
       <p className="font-medium text-error">Upload validation worker offline</p>
       <p className="mt-1 text-on-surface-variant">
         Images upload to storage but stay pending until the BullMQ <code>validate-upload</code>{" "}

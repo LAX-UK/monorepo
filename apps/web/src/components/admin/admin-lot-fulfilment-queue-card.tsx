@@ -36,7 +36,7 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
             {row.lotTitle ?? row.lotId}
           </Link>
         </p>
-        <p className="mt-1 font-label text-[10px] uppercase tracking-widest text-secondary">
+        <p className="mt-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           {statusLabel(row.status)}
           {row.fulfilmentMethod ? ` · ${row.fulfilmentMethod}` : ""}
         </p>
@@ -50,11 +50,11 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
       {row.status === "awaiting_release" ? (
         <form
           action={adminLotFulfilmentReleaseAction}
-          className="mt-4 space-y-2 border-t border-outline-variant/20 pt-4"
+          className="mt-4 space-y-2 border-t border-border-hairline pt-4"
         >
           <input type="hidden" name="lotId" value={row.lotId} />
           {hiddenReturn}
-          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Approve release
           </p>
           <textarea
@@ -69,11 +69,13 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
       ) : null}
 
       {row.status === "released" ? (
-        <div className="mt-4 space-y-4 border-t border-outline-variant/20 pt-4">
+        <div className="mt-4 space-y-4 border-t border-border-hairline pt-4">
           <form action={adminLotFulfilmentShipAction} className="space-y-2">
             <input type="hidden" name="lotId" value={row.lotId} />
             {hiddenReturn}
-            <p className="font-label text-[10px] uppercase tracking-widest text-secondary">Ship</p>
+            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Ship
+            </p>
             <input name="carrier" placeholder="Carrier" className={inputClass} required />
             <input
               name="trackingNumber"
@@ -98,7 +100,7 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
       {row.status === "in_transit" ? (
         <form
           action={adminLotFulfilmentDeliveredAction}
-          className="mt-4 border-t border-outline-variant/20 pt-4"
+          className="mt-4 border-t border-border-hairline pt-4"
         >
           <input type="hidden" name="lotId" value={row.lotId} />
           {hiddenReturn}
@@ -111,11 +113,11 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
       {row.status === "ready_for_collection" ? (
         <form
           action={adminLotFulfilmentCollectedAction}
-          className="mt-4 space-y-2 border-t border-outline-variant/20 pt-4"
+          className="mt-4 space-y-2 border-t border-border-hairline pt-4"
         >
           <input type="hidden" name="lotId" value={row.lotId} />
           {hiddenReturn}
-          <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Collection
           </p>
           <input
@@ -131,13 +133,13 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
       ) : null}
 
       {row.status === "awaiting_payment" ? (
-        <p className="mt-4 border-t border-outline-variant/20 pt-4 text-xs text-on-surface-variant">
+        <p className="mt-4 border-t border-border-hairline pt-4 text-xs text-on-surface-variant">
           Waiting for the winning bidder to complete payment. No release actions yet.
         </p>
       ) : null}
 
       {row.status === "delivered" || row.status === "cancelled" ? (
-        <p className="mt-4 border-t border-outline-variant/20 pt-4 text-xs text-on-surface-variant">
+        <p className="mt-4 border-t border-border-hairline pt-4 text-xs text-on-surface-variant">
           {row.status === "delivered"
             ? "This lot is closed out for fulfilment."
             : "This fulfilment was cancelled."}

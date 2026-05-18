@@ -1,3 +1,4 @@
+import type { MarketingEvent } from "@auction/types";
 import type { KycVerification, UserKycStatus } from "@auction/types";
 
 export type CreateKycSessionResult = {
@@ -18,6 +19,8 @@ export type KycWebhookHandleResult = {
   appliedUserKycUpdate: boolean;
   /** True when Identity verified the *current* session — run post-verification progression. */
   shouldProgressIndividuals: boolean;
+  /** Staged in the same transaction as KYC approval; enqueue after handleWebhook returns. */
+  marketingEventToEnqueue?: MarketingEvent;
 };
 
 export type KycStatusSummary = {

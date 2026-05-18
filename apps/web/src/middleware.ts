@@ -37,8 +37,8 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
   // so we permit `'unsafe-eval'` in development only. Production runs without it.
   // Theme init runs without a nonce (avoids hydration mismatch); allow via static hash.
   const scriptSrc = isDev
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${themeInitScriptSrcToken}`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${themeInitScriptSrcToken}`;
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${themeInitScriptSrcToken} https://*.facebook.net`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${themeInitScriptSrcToken} https://*.facebook.net`;
 
   const directives = [
     `default-src 'self'`,
@@ -50,7 +50,7 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
     // Include configured API/auth origins. In local dev these vars are typically
     // absent so we fall back to localhost ports to avoid CSP violations.
     // DigitalOcean Spaces presigned PUTs go directly to *.digitaloceanspaces.com
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net`.trim(),
+    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net`.trim(),
     // Cloudflare Turnstile + YouTube embeds (live-stream hero) render iframes.
     "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com",
     `frame-ancestors 'none'`,

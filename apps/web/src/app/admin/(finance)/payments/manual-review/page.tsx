@@ -5,8 +5,8 @@ import {
 } from "@/lib/admin/payment.actions";
 import { getAdminManualReviewPayments } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Card, CardContent } from "@auction/ui/components/card";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Surface } from "@auction/ui/components/surface";
 
 function formatMoney(amount: string, currency: string): string {
   const value = Number.parseFloat(amount);
@@ -76,8 +76,8 @@ export default async function ManualReviewPaymentsPage({
                 payment.lotNumber == null ? payment.lotId : `Lot ${payment.lotNumber}`;
               return (
                 <li key={payment.paymentId}>
-                  <Card>
-                    <CardContent className="space-y-4 p-4">
+                  <Surface variant="card">
+                    <div className="space-y-4 p-4">
                       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                         <div className="min-w-0">
                           <h2 className="font-heading text-lg">{payment.lotTitle}</h2>
@@ -140,8 +140,8 @@ export default async function ManualReviewPaymentsPage({
                           </button>
                         </form>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </Surface>
                 </li>
               );
             })}

@@ -3,13 +3,7 @@ import type {
   ActivityKind,
   ActivityTone,
 } from "@/lib/data/view-models/dashboard-activity.vm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
+import { Surface } from "@auction/ui/components/surface";
 import {
   AlertTriangle,
   ArrowRight,
@@ -79,28 +73,30 @@ export function ActivityFeed({
   const now = new Date();
 
   return (
-    <Card
+    <Surface
+      variant="section"
+      padding="md"
       aria-label="Recent activity"
-      className={`border-outline-variant/15 shadow-lg ${className ?? ""}`}
+      className={`space-y-4 border-border-hairline ${className ?? ""}`}
     >
-      <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle className="font-headline text-xl font-semibold tracking-tight md:text-2xl">
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface md:text-2xl">
             Recent activity
-          </CardTitle>
-          <CardDescription>
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
             Outbid, payments, KYC, and shipping events across your account.
-          </CardDescription>
+          </p>
         </div>
         <Link
           href={viewAllHref}
-          className="inline-flex items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex items-center gap-1 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
         >
           View all
           <ArrowRight className="size-4" aria-hidden />
         </Link>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         <ul className="divide-y divide-outline-variant/10">
           {items.map((item) => {
             const Icon = KIND_ICON[item.kind] ?? Bell;
@@ -147,7 +143,7 @@ export function ActivityFeed({
             );
           })}
         </ul>
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

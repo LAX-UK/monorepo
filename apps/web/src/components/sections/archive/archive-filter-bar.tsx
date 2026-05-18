@@ -60,7 +60,7 @@ export function ArchiveFilterBar({ categories }: Props) {
       aria-busy={pending || undefined}
       aria-live={pending ? "polite" : undefined}
     >
-      <div className="flex flex-wrap items-center gap-x-12 gap-y-6 border-b border-outline-variant/20 pb-8">
+      <div className="flex flex-wrap items-center gap-x-12 gap-y-6 border-b border-border-hairline pb-8">
         <div className="flex flex-col gap-2">
           <span className="font-label text-[0.625rem] uppercase tracking-[0.2em] text-on-surface-variant">
             Lot year

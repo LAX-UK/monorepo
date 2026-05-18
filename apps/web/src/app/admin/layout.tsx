@@ -1,8 +1,11 @@
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
-import { AppShell } from "@/components/layout/app-shell";
+import { PlatformStaffContextBanners } from "@/components/admin/platform-staff-context-banners";
 import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
+import { FinanceShell } from "@/components/shell/finance-shell";
+import { StaffShell } from "@/components/shell/staff-shell";
+import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
@@ -69,6 +72,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     Boolean(impersonation) &&
     roleHasCapability(user.role as UserRole, "platform.admin.full", user.staffRole ?? null);
 
+  const acting: ActingContext = impersonation
+    ? {
+        kind: "impersonating",
+        userId: "staff-session",
+        userName: impersonation.displayName,
+      }
+    : { kind: "self" };
+
   return (
     <div className={showImpersonationBanner ? "pt-14" : undefined}>
       <ImpersonationEndWarningListener />
@@ -78,16 +89,29 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           expiresAtIso={impersonation.expiresAtIso}
         />
       ) : null}
-      <AppShell
-        user={user}
-        shellRole={role}
-        pendingSubmissionCount={pendingSubmissionCount}
-        pendingArtistCount={pendingArtistCount}
-        cookieDensity={cookieDensity}
-      >
-        <WelcomeBackToast />
-        {children}
-      </AppShell>
+      {role === "finance" ? (
+        <FinanceShell
+          user={user}
+          pendingSubmissionCount={pendingSubmissionCount}
+          cookieDensity={cookieDensity}
+          acting={acting}
+          topSlot={<WelcomeBackToast />}
+        >
+          {children}
+        </FinanceShell>
+      ) : (
+        <StaffShell
+          user={user}
+          pendingSubmissionCount={pendingSubmissionCount}
+          pendingArtistCount={pendingArtistCount}
+          cookieDensity={cookieDensity}
+          acting={acting}
+          contextBanner={<PlatformStaffContextBanners />}
+          topSlot={<WelcomeBackToast />}
+        >
+          {children}
+        </StaffShell>
+      )}
     </div>
   );
 }

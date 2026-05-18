@@ -4,9 +4,9 @@ import {
   type ProfileAddressRow,
   ProfileSettingsBoard,
 } from "@/components/dashboard/profile-settings-board";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { PageHeader } from "@auction/ui/components/page-header";
 
 export default async function ProfileSettingsPage({
   searchParams,
@@ -26,10 +26,9 @@ export default async function ProfileSettingsPage({
 
   return (
     <DashboardPage className="mx-auto max-w-5xl space-y-8">
-      <PageHeader
+      <SettingsFormHeader
         title="Profile"
         description="Manage your personal details, addresses, and account preferences."
-        className="border-b border-outline-variant/20 pb-5"
       />
       {err ? <DashboardErrorAlert title="Could not update" message={err} /> : null}
       <ProfileSettingsBoard

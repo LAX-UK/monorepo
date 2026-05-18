@@ -1,6 +1,4 @@
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DisplayHeading } from "@/components/ui/typography";
-import { cn } from "@auction/ui";
+import { EntityForm, StickySaveBar, cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type AdminEntityFormShellProps = {
@@ -24,22 +22,20 @@ export function AdminEntityFormShell({
   maxWidthClassName = "max-w-3xl",
 }: AdminEntityFormShellProps) {
   return (
-    <AppScreen className={cn("mx-auto space-y-8 pb-28", maxWidthClassName)}>
-      {breadcrumbs ? <div className="text-on-surface-variant">{breadcrumbs}</div> : null}
-      <div className="space-y-2">
-        <DisplayHeading as="h1" className="text-4xl">
-          {title}
-        </DisplayHeading>
-        {description ? (
-          <p className="font-body text-sm text-on-surface-variant">{description}</p>
-        ) : null}
-      </div>
-      {children}
-      {footer ? (
-        <div className="sticky bottom-0 z-10 -mx-4 border-t border-outline-variant/30 bg-surface-container-lowest/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80 md:-mx-0 md:px-0">
-          {footer}
-        </div>
-      ) : null}
-    </AppScreen>
+    <EntityForm
+      className={cn("mx-auto pb-28", maxWidthClassName)}
+      header={{
+        title,
+        ...(description ? { description } : {}),
+        ...(breadcrumbs ? { breadcrumbs } : {}),
+        className: "mb-0 border-0 pb-0",
+      }}
+      sections={[{ id: "main", children }]}
+      {...(footer
+        ? {
+            actions: <StickySaveBar>{footer}</StickySaveBar>,
+          }
+        : {})}
+    />
   );
 }

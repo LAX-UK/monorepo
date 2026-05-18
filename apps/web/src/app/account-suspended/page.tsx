@@ -24,7 +24,7 @@ export default function AccountSuspendedPage() {
             <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
               <Link href="/contact">Contact support</Link>
             </Button>
-            <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-widest text-on-surface hover:bg-surface-container-high" />
+            <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
           </div>
         </div>
       </AuthLayout>

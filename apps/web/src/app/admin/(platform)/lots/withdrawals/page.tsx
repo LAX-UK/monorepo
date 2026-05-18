@@ -36,10 +36,10 @@ export default async function AdminLotsWithdrawalsPage() {
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-outline-variant/20 bg-surface-container-low/30 p-4"
+                className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border-hairline bg-surface-container-low/30 p-4"
               >
                 <div className="min-w-0 space-y-1">
-                  <p className="font-label text-[10px] uppercase tracking-widest text-secondary">
+                  <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     {task.kind.replaceAll("_", " ")}
                   </p>
                   {task.targetLotId ? (
@@ -57,7 +57,7 @@ export default async function AdminLotsWithdrawalsPage() {
                   </p>
                   {Object.keys(task.payload).length > 0 ? (
                     <details className="mt-2">
-                      <summary className="cursor-pointer font-label text-[10px] uppercase tracking-widest text-secondary hover:text-on-surface">
+                      <summary className="cursor-pointer font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:text-on-surface">
                         Payload
                       </summary>
                       <pre className="mt-2 overflow-auto rounded bg-surface-container-high p-2 font-mono text-xs text-on-surface-variant">
