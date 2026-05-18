@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { KycVerification, UserKycStatus } from "@auction/types";
 
 export type CreateKycVerificationInput = {
@@ -40,6 +41,7 @@ export interface IKycRepository {
     userId: string,
     status: "unverified" | "pending" | "approved" | "rejected",
     verifiedAt: Date | null,
+    conn?: Database,
   ): Promise<void>;
 
   /** Insert verification row and set `user.current_kyc_session_id` + pending in one transaction. */

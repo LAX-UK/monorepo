@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
@@ -187,7 +188,14 @@ export default async function ArtistPage({ params }: PageProps) {
           {sellerLots.length === 0 ? (
             <p className="font-body text-on-surface-variant">No public lots for this seller yet.</p>
           ) : (
-            <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
+            <>
+              <ViewItemListTracker
+                listId={`artist:${id}`}
+                listName="Artist works"
+                itemIds={sellerLots.map((l) => l.id)}
+              />
+              <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
+            </>
           )}
         </section>
         <ArtistStickyFollow
@@ -430,7 +438,14 @@ export default async function ArtistPage({ params }: PageProps) {
             .
           </p>
         ) : (
-          <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
+          <>
+            <ViewItemListTracker
+              listId={`artist:${id}`}
+              listName="Artist works"
+              itemIds={sellerLots.map((l) => l.id)}
+            />
+            <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
+          </>
         )}
       </section>
       {related.length > 0 ? (

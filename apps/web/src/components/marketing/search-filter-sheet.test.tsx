@@ -13,6 +13,10 @@ vi.mock("@/hooks/use-is-md", () => ({
   useIsMd: () => false,
 }));
 
+vi.mock("@/lib/analytics/events", () => ({
+  trackSearch: vi.fn(),
+}));
+
 describe("SearchFilterSheet", () => {
   it("opens sheet with keywords field, sort group, and result apply label", () => {
     render(

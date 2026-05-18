@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
@@ -154,6 +155,11 @@ export default async function ArchivePage({ searchParams }: PageProps) {
           }
         />
 
+        <ViewItemListTracker
+          listId="archive"
+          listName="Past auctions"
+          itemIds={items.map((i) => i.auction.id)}
+        />
         {items.length === 0 ? (
           <PastAuctionsEmpty />
         ) : (

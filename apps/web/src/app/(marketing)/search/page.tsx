@@ -1,3 +1,4 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogLotView } from "@/components/marketing/catalog-lot-view";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
@@ -266,6 +267,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
               />
             ) : (
               <>
+                <ViewItemListTracker
+                  listId="search"
+                  listName="Search results"
+                  itemIds={filtered.map((a) => a.id)}
+                />
                 <div className="mt-8">
                   <CatalogLotView
                     view={layoutView}
