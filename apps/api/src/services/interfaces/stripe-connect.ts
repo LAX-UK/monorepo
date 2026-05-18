@@ -1,4 +1,5 @@
 import type { LegalEntity } from "@auction/types";
+import type Stripe from "stripe";
 
 export type ConnectAccountStatus = {
   /** Stripe account id (acct_…) when present. */
@@ -72,10 +73,14 @@ export interface IStripeConnectService {
   /** One-time login link to the Stripe Express dashboard (admin / member). */
   createDashboardLink(legalEntityId: string): Promise<AccountLink>;
 
-  /** Verify and process a Stripe Connect webhook event
-   * (`account.updated`, `capability.updated`, `transfer.*`).
-   */
+  /** Verify signature and process Connect account webhooks (`account.updated`, `capability.updated`). */
   handleWebhook(rawBody: string, signature: string | undefined): Promise<{ processed: boolean }>;
+
+  /** Process a verified Connect account event (Connected accounts scope). */
+  handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
+
+  /** Process a verified platform transfer event (Your account scope). */
+  handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
 
   /** Initiate a Stripe Connect transfer for a payout.
    * Called after settlement creation. Handles retry logic internally.

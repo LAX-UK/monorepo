@@ -1,5 +1,6 @@
 import type { MarketingEvent } from "@auction/types";
 import type { KycVerification, UserKycStatus } from "@auction/types";
+import type Stripe from "stripe";
 
 export type CreateKycSessionResult = {
   /** Stripe Identity verification session id (vi_…). */
@@ -73,6 +74,9 @@ export interface IKycService {
    * Returns `{ verification: null }` when the event is unrelated or unmatched.
    */
   handleWebhook(rawBody: string, signature: string | undefined): Promise<KycWebhookHandleResult>;
+
+  /** Process a verified Identity webhook event (after signature verification). */
+  handleIdentityEvent(event: Stripe.Event): Promise<KycWebhookHandleResult>;
 
   /** Pure helper used by middleware: throws KycRequiredError when the user is
    * over threshold and not approved.
