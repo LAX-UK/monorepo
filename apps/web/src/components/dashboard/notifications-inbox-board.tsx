@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
@@ -242,7 +241,7 @@ export function NotificationsInboxBoard({
   }, [items.length, loading, unreadCount]);
 
   return (
-    <DashboardPage
+    <div
       className={cn("mx-auto max-w-5xl py-10", selected.size > 0 ? "pb-28 md:pb-10" : undefined)}
     >
       <DashboardPageHeader
@@ -385,7 +384,7 @@ export function NotificationsInboxBoard({
               <section key={group.band} aria-labelledby={`band-${group.band}`}>
                 <h2
                   id={`band-${group.band}`}
-                  className="sticky top-0 z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
+                  className="sticky top-[var(--header-height-shell,52px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
                 >
                   {group.band}
                 </h2>
@@ -432,7 +431,7 @@ export function NotificationsInboxBoard({
         </Link>
         .
       </p>
-    </DashboardPage>
+    </div>
   );
 }
 

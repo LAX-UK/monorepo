@@ -27,11 +27,7 @@ export function DashboardToolbar({
       filters={chipRow ? <div className="min-w-0 flex-1 [&>*]:min-w-0">{chipRow}</div> : undefined}
       views={sortRow ? <div className="shrink-0">{sortRow}</div> : undefined}
       actions={actions}
-      className={cn(
-        "mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm",
-        "[&_search]:w-full [&_search]:md:max-w-md",
-        className,
-      )}
+      className={cn("mb-0 [&_search]:w-full [&_search]:md:max-w-md", className)}
     />
   );
 }

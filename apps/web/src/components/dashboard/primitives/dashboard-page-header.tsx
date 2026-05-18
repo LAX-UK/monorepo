@@ -30,6 +30,7 @@ export function DashboardPageHeader({
       meta={metaNode}
       className={cn(
         "mb-0 border-0 pb-0",
+        titleScale === "default" && "[&_h1]:text-2xl [&_h1]:md:text-3xl",
         titleScale === "display" && "[&_h1]:text-3xl [&_h1]:md:text-4xl [&_h1]:tracking-tight",
         className,
       )}

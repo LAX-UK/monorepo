@@ -62,7 +62,12 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
                 <LabelCaps>Year of work</LabelCaps>
               </FormLabel>
               <FormControl>
-                <UnderlineInput placeholder="2024 or circa 1990" {...field} />
+                <UnderlineInput
+                  placeholder="2024 or circa 1990"
+                  inputMode="numeric"
+                  enterKeyHint="next"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

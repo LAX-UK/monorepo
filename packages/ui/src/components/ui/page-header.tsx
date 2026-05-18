@@ -23,7 +23,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "mb-10 flex flex-col gap-5 border-b border-outline-variant/15 pb-8 md:flex-row md:items-start md:justify-between md:gap-8",
+        "mb-6 flex flex-col gap-4 border-b border-outline-variant/15 pb-5 md:flex-row md:items-start md:justify-between md:gap-6",
         className,
       )}
     >
@@ -34,7 +34,7 @@ export function PageHeader({
           </div>
         ) : null}
         {meta ? <div className="mb-2 text-on-surface-variant">{meta}</div> : null}
-        <h1 className="font-headline text-4xl font-semibold tracking-tight text-on-surface md:text-5xl">
+        <h1 className="font-headline text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">
           {title}
         </h1>
         {description ? (
@@ -44,7 +44,7 @@ export function PageHeader({
         ) : null}
       </div>
       {actions ? (
-        <div className="flex w-full shrink-0 flex-wrap gap-2 md:w-auto md:justify-end">
+        <div className="mt-4 flex w-full shrink-0 flex-wrap gap-2 md:mt-0 md:w-auto md:justify-end">
           {actions}
         </div>
       ) : null}

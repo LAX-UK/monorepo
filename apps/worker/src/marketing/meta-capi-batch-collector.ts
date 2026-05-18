@@ -94,8 +94,10 @@ export class MetaCapiBatchCollector {
       }
     }
 
-    for (let i = 0; i < batch.length; i++) {
-      await this.onOutcome(batch[i]!, outcomes[i]!);
+    for (const [i, event] of batch.entries()) {
+      const outcome = outcomes[i];
+      if (outcome === undefined) continue;
+      await this.onOutcome(event, outcome);
     }
 
     if (this.buffer.length > 0) {
