@@ -83,6 +83,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
 
 export type UsersListQuery = AdminListQueryBase & {
   role?: string | undefined;
+  staffRole?: string | undefined;
   suspendedOnly?: boolean | undefined;
 };
 
@@ -94,8 +95,9 @@ export const usersListController: IAdminListController<
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
     const role = firstString(sp.role);
+    const staffRole = firstString(sp.staffRole);
     const suspendedOnly = firstString(sp.suspended) === "1";
-    return { ...base, role, suspendedOnly, limit: Math.min(100, base.limit) };
+    return { ...base, role, staffRole, suspendedOnly, limit: Math.min(100, base.limit) };
   },
   async fetch(q) {
     const p: Parameters<typeof getAdminUserList>[0] = {
@@ -104,6 +106,7 @@ export const usersListController: IAdminListController<
     };
     if (q.q !== undefined && q.q !== "") p.q = q.q;
     if (q.role !== undefined && q.role !== "") p.role = q.role;
+    if (q.staffRole !== undefined && q.staffRole !== "") p.staffRole = q.staffRole;
     if (q.suspendedOnly) p.suspendedOnly = true;
     const data = await getAdminUserList(p);
     return { rows: data.rows, total: data.total, offset: q.offset, limit: q.limit };

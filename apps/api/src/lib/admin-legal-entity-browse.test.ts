@@ -49,4 +49,26 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
     expect(limit).toHaveBeenCalledWith(5);
     expect(offset).toHaveBeenCalledWith(2);
   });
+
+  it("filters by createdByUserId when provided", async () => {
+    const offset = vi
+      .fn()
+      .mockResolvedValue([{ id: "le-1", displayName: "Seller Co", status: "approved" }]);
+    const limit = vi.fn().mockReturnValue({ offset });
+    const orderBy = vi.fn().mockReturnValue({ limit });
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const from = vi.fn().mockReturnValue({ where });
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+    };
+
+    const rows = await searchLegalEntitiesForAdminBrowse(db as never, {
+      createdByUserId: "user-abc",
+      limit: 10,
+      offset: 0,
+    });
+
+    expect(where).toHaveBeenCalled();
+    expect(rows).toHaveLength(1);
+  });
 });

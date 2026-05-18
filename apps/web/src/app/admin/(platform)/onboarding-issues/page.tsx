@@ -113,7 +113,7 @@ export default async function AdminOnboardingIssuesPage() {
                             {new Date(k.createdAt).toLocaleString("en-GB")}
                           </span>
                           <Link
-                            href={`/admin/users/${encodeURIComponent(k.userId)}`}
+                            href={`/admin/clients/${encodeURIComponent(k.userId)}`}
                             className="text-sm font-medium text-primary underline"
                           >
                             User
