@@ -107,9 +107,17 @@ export type StripeTransferReconciliationInput = {
    * can arrive before `stripe_transfer_id` is already stored locally.
    */
   payoutId?: string | undefined;
-  status: "created" | "paid" | "failed" | "reversed";
+  /** Transfer status: "paid" for transfer.created/updated (transfers complete
+   * synchronously), "reversed" for transfer.reversed. Note: Stripe does not
+   * have transfer.paid or transfer.failed events—transfers succeed or fail
+   * at creation time via the API, not asynchronously via webhooks.
+   */
+  status: "paid" | "reversed";
   /** Stripe fee in major currency units when available from expanded balance transaction. */
   stripeFee?: string | undefined;
+  /** Unused—transfer failures are API errors, not webhook events. Kept for
+   * compatibility with manual admin operations.
+   */
   failureReason?: string | null | undefined;
   occurredAt?: Date | undefined;
   /** Stripe event ID for reversal idempotency (payout_line.source_event_id). */
@@ -207,9 +215,10 @@ export interface IPayoutService {
    */
   markPaid(actorUserId: string, payoutId: string, input: MarkPaidInput): Promise<Payout>;
 
-  /** Stripe Connect webhook reconciliation (`transfer.created`, `transfer.paid`,
-   * `transfer.failed`, `transfer.reversed`). Idempotent: missing payouts are
-   * ignored because webhook delivery can race settlement creation.
+  /** Stripe Connect webhook reconciliation (`transfer.created`, `transfer.updated`,
+   * `transfer.reversed`). Transfers complete synchronously so transfer.created
+   * maps to status "paid". Idempotent: missing payouts are ignored because
+   * webhook delivery can race settlement creation.
    */
   reconcileStripeTransfer(input: StripeTransferReconciliationInput): Promise<Payout | null>;
 

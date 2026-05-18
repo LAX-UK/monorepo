@@ -1,8 +1,11 @@
 import type { Database } from "@auction/db";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
+import { StripeClientFactory } from "../../lib/stripe-client.js";
+import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import {
   type CreateKycSessionResult,
@@ -31,19 +34,35 @@ function mapStripeStatus(
   }
 }
 
-/** Stripe Identity `last_error.code` values that count as a hard verification failure (increment retry). */
+/** Stripe Identity `last_error.code` values that count as a hard verification
+ * failure (the user attempted verification but failed; increment retry count).
+ * Source: https://docs.stripe.com/api/identity/verification_sessions/object#identity_verification_session_object-last_error-code
+ */
 const KYC_HARD_FAILURE_CODES = new Set([
   "document_unverified_other",
   "document_expired",
   "document_type_not_supported",
-  "selfie_document_missing_photo_id",
-  "document_unverified_copy",
-  "document_manipulated",
-  "document_invalid",
-  "document_name_mismatch",
+  "selfie_document_missing_photo",
+  "selfie_face_mismatch",
+  "selfie_manipulated",
+  "selfie_unverified_other",
+  "id_number_mismatch",
+  "id_number_insufficient_document_data",
+  "id_number_unverified_other",
+  "email_unverified_other",
+  "phone_unverified_other",
+  "abandoned",
 ]);
 
-const KYC_USER_ACTION_CODES = new Set(["consent_declined", "under_supported_age"]);
+/** Errors caused by the user's choice / environment — not a retryable failure. */
+const KYC_USER_ACTION_CODES = new Set([
+  "consent_declined",
+  "under_supported_age",
+  "country_not_supported",
+  "device_not_supported",
+  "email_verification_declined",
+  "phone_verification_declined",
+]);
 
 function userKycUpdateFromStripeSession(obj: Stripe.Identity.VerificationSession): {
   setStatus: UserKycStatus | null;
@@ -78,7 +97,7 @@ function userKycUpdateFromStripeSession(obj: Stripe.Identity.VerificationSession
 }
 
 export class StripeKycService implements IKycService {
-  private readonly stripe: Stripe | null;
+  private readonly stripeFactory: IStripeClientFactory;
   private readonly webhookSecret: string | undefined;
   private readonly thresholdAmount: number;
   private readonly thresholdCurrency: string;
@@ -88,15 +107,16 @@ export class StripeKycService implements IKycService {
     private readonly repo: IKycRepository,
     private readonly db: Database | null = null,
     private readonly marketingEvents: IMarketingEventService | null = null,
+    stripeFactory?: IStripeClientFactory,
   ) {
     this.webhookSecret = env.STRIPE_IDENTITY_WEBHOOK_SECRET;
     this.thresholdAmount = env.KYC_THRESHOLD_AMOUNT;
     this.thresholdCurrency = env.KYC_THRESHOLD_CURRENCY;
-    this.stripe = env.STRIPE_SECRET_KEY
-      ? new Stripe(env.STRIPE_SECRET_KEY, {
-          typescript: true,
-        })
-      : null;
+    this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
+  }
+
+  private get stripe() {
+    return this.stripeFactory.get();
   }
 
   isConfigured(): boolean {
@@ -104,19 +124,23 @@ export class StripeKycService implements IKycService {
   }
 
   async createSession(userId: string, returnUrl: string): Promise<CreateKycSessionResult> {
-    if (!this.stripe) throw new KycNotConfiguredError();
-    const session = await this.stripe.identity.verificationSessions.create({
-      type: "document",
-      metadata: { userId },
-      return_url: returnUrl,
-      options: {
-        document: {
-          require_matching_selfie: true,
-          require_id_number: false,
-          require_live_capture: true,
+    const stripe = this.stripe;
+    if (!stripe) throw new KycNotConfiguredError();
+    const session = await stripe.identity.verificationSessions.create(
+      {
+        type: "document",
+        metadata: { userId },
+        return_url: returnUrl,
+        options: {
+          document: {
+            require_matching_selfie: true,
+            require_id_number: false,
+            require_live_capture: true,
+          },
         },
       },
-    });
+      { idempotencyKey: `kyc:session:${userId}` },
+    );
     const verification = await this.repo.createWithCurrentStripeSession({
       userId,
       stripeVerificationSessionId: session.id,
@@ -156,16 +180,41 @@ export class StripeKycService implements IKycService {
     rawBody: string,
     signature: string | undefined,
   ): Promise<KycWebhookHandleResult> {
-    if (!this.stripe) throw new KycNotConfiguredError();
+    const stripe = this.stripe;
+    if (!stripe) throw new KycNotConfiguredError();
     if (!this.webhookSecret) throw new KycNotConfiguredError();
     if (!signature) throw new Error("missing_stripe_signature");
 
-    const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    const event = stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    return this.handleIdentityEvent(event);
+  }
 
+  async handleIdentityEvent(event: Stripe.Event): Promise<KycWebhookHandleResult> {
     if (!event.type.startsWith("identity.verification_session.")) {
       return { verification: null, appliedUserKycUpdate: false, shouldProgressIndividuals: false };
     }
 
+    if (!this.db) {
+      return this.processIdentitySession(event, null);
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_identity");
+      if (!claimed) {
+        return {
+          verification: null,
+          appliedUserKycUpdate: false,
+          shouldProgressIndividuals: false,
+        };
+      }
+      return this.processIdentitySession(event, tx);
+    });
+  }
+
+  private async processIdentitySession(
+    event: Stripe.Event,
+    conn: Database | null,
+  ): Promise<KycWebhookHandleResult> {
     const obj = event.data.object as Stripe.Identity.VerificationSession;
     const existing = await this.repo.findByStripeSessionId(obj.id);
     if (!existing) {
@@ -207,7 +256,7 @@ export class StripeKycService implements IKycService {
     if (isCurrentSession) {
       const isApproval = decision.setStatus === "approved";
       if (decision.setStatus !== null) {
-        if (isApproval && this.db && this.marketingEvents && obj.status === "verified") {
+        if (isApproval && conn && this.marketingEvents && obj.status === "verified") {
           marketingEventToEnqueue = {
             name: "CompleteRegistration",
             eventId: `kyc_approved_${existing.userId}`,
@@ -217,20 +266,19 @@ export class StripeKycService implements IKycService {
             consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
             customData: { kycStatus: "approved" },
           };
-          await this.db.transaction(async (tx) => {
-            await this.repo.setUserKycStatus(
-              existing.userId,
-              decision.setStatus!,
-              decision.verifiedAt,
-              tx,
-            );
-            await this.marketingEvents!.stage(marketingEventToEnqueue!, tx);
-          });
+          await this.repo.setUserKycStatus(
+            existing.userId,
+            decision.setStatus!,
+            decision.verifiedAt,
+            conn,
+          );
+          await this.marketingEvents.stage(marketingEventToEnqueue, conn);
         } else {
           await this.repo.setUserKycStatus(
             existing.userId,
             decision.setStatus,
             decision.verifiedAt,
+            conn ?? undefined,
           );
         }
         appliedUserKycUpdate = true;

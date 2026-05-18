@@ -3,6 +3,7 @@ import type { Payout } from "@auction/types";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
@@ -65,53 +66,59 @@ function makeDomainEventPublisher(): DomainEventPublisher {
   } as unknown as DomainEventPublisher;
 }
 
-function injectWebhookEvent(service: StripeConnectService, event: Stripe.Event): void {
-  (
-    service as unknown as {
-      stripe: {
-        webhooks: { constructEvent: ReturnType<typeof vi.fn> };
-        accounts: { retrieve: ReturnType<typeof vi.fn> };
-      };
-    }
-  ).stripe = {
-    webhooks: { constructEvent: vi.fn().mockReturnValue(event) },
-    accounts: { retrieve: vi.fn() },
+function makeStripeFactory(stripe: Stripe): IStripeClientFactory {
+  return {
+    get: () => stripe,
+    require: () => stripe,
   };
 }
 
-describe("StripeConnectService.handleWebhook transfer events", () => {
-  it("reconciles transfer.created with payout metadata and expanded fee", async () => {
+function makeTransactionDb(inner: Database = {} as Database): Database {
+  return {
+    transaction: vi.fn(async (fn: (tx: Database) => Promise<unknown>) => fn(inner)),
+  } as unknown as Database;
+}
+
+function injectStripeOnService(service: StripeConnectService, stripe: Stripe): void {
+  (service as unknown as { stripeFactory: IStripeClientFactory }).stripeFactory =
+    makeStripeFactory(stripe);
+}
+
+describe("StripeConnectService.handleTransferEvent", () => {
+  it("reconciles transfer.created as paid (transfers complete synchronously)", async () => {
     const payoutService = makePayoutService(payout());
-    const svc = new StripeConnectService(baseEnv(), {} as Database, payoutService);
+    const svc = new StripeConnectService(baseEnv(), makeTransactionDb(), payoutService);
     const transfer = {
       id: "tr_1",
       created: 1_778_000_000,
       metadata: { payoutId: "po1" },
       balance_transaction: { fee: 210 },
     } as unknown as Stripe.Transfer;
-    injectWebhookEvent(svc, {
+
+    const result = await svc.handleTransferEvent({
+      id: "evt_tr_1",
       type: "transfer.created",
       data: { object: transfer },
     } as Stripe.Event);
-
-    const result = await svc.handleWebhook("{}", "sig");
 
     expect(result.processed).toBe(true);
     expect(payoutService.reconcileStripeTransfer).toHaveBeenCalledWith({
       stripeTransferId: "tr_1",
       payoutId: "po1",
-      status: "created",
+      status: "paid",
       stripeFee: "2.10",
       failureReason: null,
       occurredAt: new Date(1_778_000_000 * 1000),
     });
   });
 
-  it("returns processed false when no local payout matches the transfer", async () => {
+  it("returns processed false when no local payout matches a transfer.created", async () => {
     const payoutService = makePayoutService(null);
-    const svc = new StripeConnectService(baseEnv(), {} as Database, payoutService);
-    injectWebhookEvent(svc, {
-      type: "transfer.updated",
+    const svc = new StripeConnectService(baseEnv(), makeTransactionDb(), payoutService);
+
+    const result = await svc.handleTransferEvent({
+      id: "evt_tr_2",
+      type: "transfer.created",
       data: {
         object: {
           id: "tr_missing",
@@ -122,20 +129,39 @@ describe("StripeConnectService.handleWebhook transfer events", () => {
       },
     } as Stripe.Event);
 
-    const result = await svc.handleWebhook("{}", "sig");
-
     expect(result.processed).toBe(false);
     expect(payoutService.reconcileStripeTransfer).toHaveBeenCalledWith(
       expect.objectContaining({
         stripeTransferId: "tr_missing",
-        status: "created",
+        status: "paid",
       }),
     );
   });
 
+  it("dedups transfer.updated (metadata-only) and never overwrites prior status", async () => {
+    const payoutService = makePayoutService(payout());
+    const svc = new StripeConnectService(baseEnv(), makeTransactionDb(), payoutService);
+
+    const result = await svc.handleTransferEvent({
+      id: "evt_tr_meta",
+      type: "transfer.updated",
+      data: {
+        object: {
+          id: "tr_meta",
+          created: 1_778_000_000,
+          metadata: { payoutId: "po1" },
+          balance_transaction: null,
+        } as unknown as Stripe.Transfer,
+      },
+    } as Stripe.Event);
+
+    expect(result.processed).toBe(true);
+    expect(payoutService.reconcileStripeTransfer).not.toHaveBeenCalled();
+  });
+
   it("reconciles transfer.reversed with stripeEventId and reversedAmountCents", async () => {
     const payoutService = makePayoutService(payout({ status: "reversed" }));
-    const svc = new StripeConnectService(baseEnv(), {} as Database, payoutService);
+    const svc = new StripeConnectService(baseEnv(), makeTransactionDb(), payoutService);
     const transfer = {
       id: "tr_reversed",
       created: 1_778_000_000,
@@ -144,13 +170,12 @@ describe("StripeConnectService.handleWebhook transfer events", () => {
       amount: 95000,
       amount_reversed: 95000,
     } as unknown as Stripe.Transfer;
-    injectWebhookEvent(svc, {
+
+    const result = await svc.handleTransferEvent({
       id: "evt_reversal_123",
       type: "transfer.reversed",
       data: { object: transfer },
     } as Stripe.Event);
-
-    const result = await svc.handleWebhook("{}", "sig");
 
     expect(result.processed).toBe(true);
     expect(payoutService.reconcileStripeTransfer).toHaveBeenCalledWith({
@@ -403,11 +428,11 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
-    (svc as unknown as { stripe: { transfers: { create: ReturnType<typeof vi.fn> } } }).stripe = {
+    injectStripeOnService(svc, {
       transfers: {
         create: vi.fn().mockRejectedValue(rejectErr),
       },
-    };
+    } as unknown as Stripe);
     const result = await svc.initiateTransfer("po1", { keepScheduledOnTransferFailure: true });
     expect(result).toEqual(
       expect.objectContaining({
@@ -491,9 +516,7 @@ describe("StripeConnectService.ensureAccount", () => {
     } as unknown as Database;
 
     const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
-    (svc as unknown as { stripe: { accounts: { create: typeof accountsCreate } } }).stripe = {
-      accounts: { create: accountsCreate },
-    };
+    injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
     const result = await svc.ensureAccount("le1", "GB");
 
@@ -509,6 +532,7 @@ describe("StripeConnectService.ensureAccount", () => {
         },
         capabilities: { transfers: { requested: true } },
       }),
+      { idempotencyKey: "connect:account:le1" },
     );
     expect(result.stripeAccountId).toBe("acct_test_1");
     expect(result.legalEntity.status).toBe("connect_pending");
@@ -573,9 +597,7 @@ describe("StripeConnectService.ensureAccount", () => {
     } as unknown as Database;
 
     const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
-    (svc as unknown as { stripe: { accounts: { create: typeof accountsCreate } } }).stripe = {
-      accounts: { create: accountsCreate },
-    };
+    injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
     await svc.ensureAccount("le-org", "GB");
 
@@ -584,11 +606,12 @@ describe("StripeConnectService.ensureAccount", () => {
         business_type: "company",
         metadata: expect.objectContaining({ legalEntityId: "le-org" }),
       }),
+      { idempotencyKey: "connect:account:le-org" },
     );
   });
 });
 
-describe("StripeConnectService.handleWebhook account.updated dedup", () => {
+describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
   beforeEach(() => {
     vi.mocked(tryClaimProcessedStripeEvent).mockReset();
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
@@ -597,8 +620,7 @@ describe("StripeConnectService.handleWebhook account.updated dedup", () => {
   it("skips applyAccountUpdate when event was already processed", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValueOnce({ claimed: false });
     const publisher = makeDomainEventPublisher();
-    const transaction = vi.fn();
-    const db = {
+    const db = makeTransactionDb({
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -606,8 +628,8 @@ describe("StripeConnectService.handleWebhook account.updated dedup", () => {
           }),
         }),
       }),
-      transaction,
-    } as unknown as Database;
+      update: vi.fn(),
+    } as unknown as Database);
 
     const svc = new StripeConnectService(
       baseEnv(),
@@ -617,7 +639,7 @@ describe("StripeConnectService.handleWebhook account.updated dedup", () => {
       publisher,
     );
 
-    injectWebhookEvent(svc, {
+    const result = await svc.handleConnectedAccountEvent({
       id: "evt_acct_1",
       type: "account.updated",
       data: {
@@ -630,10 +652,7 @@ describe("StripeConnectService.handleWebhook account.updated dedup", () => {
       },
     } as unknown as Stripe.Event);
 
-    const result = await svc.handleWebhook("{}", "sig");
-
     expect(result.processed).toBe(true);
-    expect(transaction).not.toHaveBeenCalled();
     expect(publisher.publish).not.toHaveBeenCalled();
   });
 });

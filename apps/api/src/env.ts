@@ -170,6 +170,8 @@ const envSchema = z
     STRIPE_CONNECT_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Payments webhook signing secret (whsec_…) for disputes/refunds. */
     STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Stripe Transfers webhook signing secret (whsec_…) for platform transfer events. */
+    STRIPE_TRANSFERS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Threshold (in major currency units, e.g. 1000.00 for £1000) at which KYC is required for buyer exposure. */
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
@@ -287,6 +289,7 @@ const envSchema = z
       for (const [key, val] of [
         ["STRIPE_IDENTITY_WEBHOOK_SECRET", e.STRIPE_IDENTITY_WEBHOOK_SECRET] as const,
         ["STRIPE_CONNECT_WEBHOOK_SECRET", e.STRIPE_CONNECT_WEBHOOK_SECRET] as const,
+        ["STRIPE_TRANSFERS_WEBHOOK_SECRET", e.STRIPE_TRANSFERS_WEBHOOK_SECRET] as const,
         ["STRIPE_PAYMENTS_WEBHOOK_SECRET", e.STRIPE_PAYMENTS_WEBHOOK_SECRET] as const,
       ]) {
         if (!val || !val.startsWith("whsec_")) {
