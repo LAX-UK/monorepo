@@ -197,6 +197,7 @@ locals {
         { key = "STRIPE_PUBLISHABLE_KEY", value = var.stripe_publishable_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_IDENTITY_WEBHOOK_SECRET", value = var.stripe_identity_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_CONNECT_WEBHOOK_SECRET", value = var.stripe_connect_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "STRIPE_TRANSFERS_WEBHOOK_SECRET", value = var.stripe_transfers_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_PAYMENTS_WEBHOOK_SECRET", value = var.stripe_payments_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "CRON_INTERNAL_SECRET", value = local.effective_cron_internal_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "KYC_THRESHOLD_AMOUNT", value = var.kyc_threshold_amount, type = "GENERAL", scope = "RUN_TIME" },

@@ -47,6 +47,7 @@ jobs:
       TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
       TF_VAR_stripe_identity_webhook_secret: ${{ secrets.STRIPE_IDENTITY_WEBHOOK_SECRET }}
       TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_transfers_webhook_secret: ${{ secrets.STRIPE_TRANSFERS_WEBHOOK_SECRET }}
       TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
       TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
       TF_VAR_kyc_threshold_amount: "1000"
