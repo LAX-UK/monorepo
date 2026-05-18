@@ -30,7 +30,8 @@ type SheetContentProps = React.ComponentPropsWithoutRef<typeof SheetPrimitive.Co
 
 const sheetSideClasses: Record<NonNullable<SheetContentProps["side"]>, string> = {
   top: "inset-x-0 top-0 border-b",
-  bottom: "inset-x-0 bottom-0 border-t",
+  bottom:
+    "inset-x-0 bottom-0 flex max-h-[min(92dvh,720px)] flex-col gap-0 rounded-t-2xl border-t p-0",
   left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-r sm:max-w-sm",
   right: "inset-y-0 right-0 h-full w-3/4 max-w-sm border-l sm:max-w-sm",
 };
@@ -38,26 +39,57 @@ const sheetSideClasses: Record<NonNullable<SheetContentProps["side"]>, string> =
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, overlayClassName, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay className={overlayClassName} />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed z-50 gap-4 border-outline-variant/20 bg-surface-container-lowest p-6 shadow-lg transition-transform duration-300 ease-out",
-        sheetSideClasses[side],
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-));
+>(({ side = "right", className, overlayClassName, children, ...props }, ref) => {
+  const isBottom = side === "bottom";
+
+  return (
+    <SheetPortal>
+      <SheetOverlay className={overlayClassName} />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed z-50 border-outline-variant/20 bg-surface-container-lowest shadow-lg transition-transform duration-300 ease-out",
+          isBottom ? "gap-0 p-0" : "gap-4 p-6",
+          sheetSideClasses[side],
+          className,
+        )}
+        {...props}
+      >
+        {isBottom ? (
+          <>
+            <div className="sticky top-0 z-10 flex items-center justify-end gap-2 bg-surface-container-lowest/95 px-3 pt-[max(env(safe-area-inset-top,0px),0.5rem)] pb-2 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80">
+              <div
+                className="pointer-events-none absolute left-1/2 top-2 h-1 w-9 -translate-x-1/2 rounded-full bg-outline-variant/60"
+                aria-hidden
+              />
+              <SheetPrimitive.Close
+                className="relative inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
+                aria-label="Close"
+              >
+                <X className="size-5" aria-hidden />
+                <span className="sr-only">Close</span>
+              </SheetPrimitive.Close>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+              {children}
+            </div>
+          </>
+        ) : (
+          <>
+            {children}
+            <SheetPrimitive.Close
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" aria-hidden />
+              <span className="sr-only">Close</span>
+            </SheetPrimitive.Close>
+          </>
+        )}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  );
+});
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
