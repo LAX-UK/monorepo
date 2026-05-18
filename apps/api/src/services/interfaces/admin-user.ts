@@ -4,6 +4,8 @@ export type AdminUserListFilter = {
   offset: number;
   /** When set, only users with this `user.role` value. */
   role?: string | undefined;
+  /** When set, only staff users with this internal `staff_role`. */
+  staffRole?: string | undefined;
   /** When true, only users with non-null `suspendedAt`. */
   suspendedOnly?: boolean | undefined;
 };
@@ -15,7 +17,12 @@ export type AdminUserListRow = {
   role: string;
   staffRole: string | null;
   createdAt: Date;
+  updatedAt: Date;
   suspendedAt: Date | null;
+  image: string | null;
+  emailVerified: boolean;
+  kycStatus: string;
+  kycVerifiedAt: Date | null;
 };
 
 export type AdminUserListResult = {
