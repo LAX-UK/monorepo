@@ -77,6 +77,28 @@ describe("useSubmissionWizardController", () => {
     expect(result.current.autosaveStatus).toBe("saved");
   });
 
+  it("autosave keeps blank provenance rows the user just added", async () => {
+    vi.useFakeTimers();
+    const initial = validSubmissionValues();
+    const { result } = renderHook(() =>
+      useSubmissionWizardController({ kind: "edit", submissionId: "sub-1" }, initial),
+    );
+
+    act(() => {
+      result.current.form.setValue("provenance", [{ period: "", note: "" }], {
+        shouldDirty: true,
+      });
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(updateSubmissionFromValuesAction).toHaveBeenCalledTimes(1);
+    expect(result.current.form.getValues("provenance")).toEqual([{ period: "", note: "" }]);
+    expect(result.current.autosaveStatus).toBe("saved");
+  });
+
   it("chains create then submit for review in create mode", async () => {
     const { result } = renderHook(() =>
       useSubmissionWizardController({ kind: "create" }, validSubmissionValues()),

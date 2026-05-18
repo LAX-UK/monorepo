@@ -1,5 +1,4 @@
 import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
-import { ShareFiltersButton } from "@/components/admin/share-filters-button";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -15,8 +14,7 @@ type Props = {
 
 /**
  * Standard admin list toolbar: consistent layout composing filters, extra pickers,
- * ShareFiltersButton, and ResetFiltersLink. All props are optional — pass only what
- * the specific list page needs.
+ * and ResetFiltersLink. All props are optional — pass only what the specific list page needs.
  */
 export function AdminListToolbar({ filters, extra, hasFilters, resetHref = "" }: Props) {
   return (
@@ -26,7 +24,6 @@ export function AdminListToolbar({ filters, extra, hasFilters, resetHref = "" }:
         {extra ? <div className="flex flex-wrap items-end gap-2">{extra}</div> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <ShareFiltersButton />
         <ResetFiltersLink active={!!hasFilters} href={resetHref} />
       </div>
     </div>

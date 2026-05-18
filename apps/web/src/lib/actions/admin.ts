@@ -1,6 +1,10 @@
 "use server";
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
+import {
+  revalidateAdminUserDetailPaths,
+  revalidateAdminUserListPaths,
+} from "@/lib/admin/admin-user-redirect";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -143,7 +147,7 @@ export async function adminSuspendUserAction(formData: FormData): Promise<void> 
   if (!r.ok) {
     redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   redirect("/admin/users");
 }
 
@@ -155,7 +159,7 @@ export async function adminUnsuspendUserAction(formData: FormData): Promise<void
   if (!r.ok) {
     redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   redirect("/admin/users");
 }
 
@@ -170,7 +174,7 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
   if (!r.ok) {
     redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserListPaths(revalidatePath);
   redirect("/admin/users");
 }
 
@@ -589,7 +593,7 @@ export async function adminBulkUsersResultAction(
   }
   const result = await postBulkAction("/admin/users/bulk", parsed.data, "User bulk action failed");
   if (!result.ok) return result;
-  revalidatePath("/admin/users");
+  revalidateAdminUserListPaths(revalidatePath);
   return actionSuccess();
 }
 
@@ -713,8 +717,7 @@ export async function adminSetUserStaffRoleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/users");
-  revalidatePath(`/admin/users/${id}`);
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   return actionSuccess();
 }
 
@@ -735,7 +738,7 @@ export async function adminSetUserRoleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   return actionSuccess();
 }
 
@@ -756,7 +759,7 @@ export async function adminSuspendUserResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   return actionSuccess();
 }
 
@@ -770,7 +773,7 @@ export async function adminUnsuspendUserResultAction(userId: string): Promise<Ac
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/users");
+  revalidateAdminUserDetailPaths(revalidatePath, id);
   return actionSuccess();
 }
 

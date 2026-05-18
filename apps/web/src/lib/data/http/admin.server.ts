@@ -190,7 +190,7 @@ function parseAdminPaymentRow(raw: unknown): AdminPaymentRow {
   return {
     id: String(o.id ?? ""),
     lotId,
-    buyerId: String(o.buyerId ?? ""),
+    buyerId: String(o.buyerId ?? o.paidByUserId ?? ""),
     sellerId: String(o.sellerId ?? ""),
     amount: String(o.amount ?? "0"),
     platformFee: String(o.platformFee ?? "0"),
@@ -579,6 +579,15 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   return body.data.map(parseAdminPaymentRow);
 }
 
+export async function getAdminPaymentsForUser(userId: string): Promise<AdminPaymentRow[]> {
+  const all = await getAdminPaymentList();
+  return all.filter((p) => p.buyerId === userId);
+}
+
+export async function getAdminLotsWonByUser(userId: string, limit = 20): Promise<Lot[]> {
+  return getAdminLotList({ winnerId: userId, limit, offset: 0 });
+}
+
 export type AdminEmailSuppressionListRow = {
   emailHash: string;
   reason: "hard_bounce" | "complaint" | "manual" | "unsubscribe";
@@ -874,11 +883,13 @@ export type AdminLegalEntityPickerRow = {
 
 export async function searchAdminLegalEntitiesForPicker(params: {
   q?: string;
+  createdByUserId?: string;
   limit?: number;
   offset?: number;
 }): Promise<AdminLegalEntityPickerRow[]> {
   const qs = new URLSearchParams();
   if (params.q?.trim()) qs.set("q", params.q.trim());
+  if (params.createdByUserId) qs.set("createdByUserId", params.createdByUserId);
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
   const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`);
@@ -897,6 +908,16 @@ export async function searchAdminLegalEntitiesForPicker(params: {
         ? (row.status as LegalEntityStatus)
         : "lead",
   }));
+}
+
+export async function getAdminLegalEntitiesForUser(userId: string): Promise<LegalEntity[]> {
+  const pickerRows = await searchAdminLegalEntitiesForPicker({
+    createdByUserId: userId,
+    limit: 50,
+    offset: 0,
+  });
+  const entities = await Promise.all(pickerRows.map((row) => getAdminLegalEntityById(row.id)));
+  return entities.filter((e): e is LegalEntity => e != null);
 }
 
 export type AdminManualReviewPaymentRow = {
@@ -971,7 +992,12 @@ export type AdminUserRow = {
   role: string;
   staffRole: string | null;
   createdAt: string;
+  updatedAt: string;
   suspendedAt: string | null;
+  image: string | null;
+  emailVerified: boolean;
+  kycStatus: string;
+  kycVerifiedAt: string | null;
 };
 
 export async function getAdminUserList(params: {
@@ -979,6 +1005,7 @@ export async function getAdminUserList(params: {
   limit?: number;
   offset?: number;
   role?: string;
+  staffRole?: string;
   suspendedOnly?: boolean;
 }): Promise<{ rows: AdminUserRow[]; total: number }> {
   const qs = new URLSearchParams();
@@ -986,6 +1013,7 @@ export async function getAdminUserList(params: {
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
   if (params.role) qs.set("role", params.role);
+  if (params.staffRole) qs.set("staffRole", params.staffRole);
   if (params.suspendedOnly) qs.set("suspended", "1");
   const res = await authedServerFetch(`/admin/users?${qs.toString()}`);
   if (!res.ok) {
@@ -1002,6 +1030,28 @@ export async function getAdminUserById(id: string): Promise<AdminUserDetailPaylo
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load user: ${res.status}`);
   const body = (await res.json()) as { data: AdminUserDetailPayload };
+  return body.data;
+}
+
+export type AdminUserActivityEntry = {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  ipAddress: string | null;
+};
+
+export async function getAdminUserActivity(
+  userId: string,
+  limit = 20,
+): Promise<AdminUserActivityEntry[]> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await authedServerFetch(
+    `/admin/users/${encodeURIComponent(userId)}/activity?${qs.toString()}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to load user activity: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminUserActivityEntry[] };
   return body.data;
 }
 
