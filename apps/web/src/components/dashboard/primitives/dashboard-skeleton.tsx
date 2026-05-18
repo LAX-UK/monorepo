@@ -10,7 +10,7 @@ const toPageVariant = (v: DashboardSkeletonVariant): PageSkeletonVariant => {
 };
 
 const outerClass: Record<DashboardSkeletonVariant, string> = {
-  dashboard: "",
+  dashboard: "min-h-[20rem]",
   list: "min-h-[12rem]",
   grid: "min-h-[16rem]",
   checkout: "min-h-[24rem]",

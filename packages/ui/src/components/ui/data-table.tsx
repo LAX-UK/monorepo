@@ -2,6 +2,7 @@
 
 import {
   type ColumnDef,
+  type Header,
   type RowSelectionState,
   type SortingState,
   flexRender,
@@ -20,6 +21,8 @@ type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   emptyMessage?: string;
+  /** Custom empty UI (e.g. `EmptyState`) when there are no rows. */
+  emptyComponent?: React.ReactNode;
   className?: string;
   /** When set, shows a selection column and wires TanStack row selection */
   enableRowSelection?: boolean;
@@ -29,6 +32,16 @@ type DataTableProps<TData, TValue> = {
   /** Tighter rows for compact density */
   density?: "comfortable" | "compact";
 };
+
+function sortableHeaderLabel<TData, TValue>(header: Header<TData, TValue>): string {
+  const def = header.column.columnDef;
+  if (typeof def.header === "string" && def.header.trim()) return def.header;
+  const rendered = flexRender(def.header, header.getContext());
+  if (typeof rendered === "string" && rendered.trim()) return rendered;
+  const meta = def.meta as { sortLabel?: string } | undefined;
+  if (meta?.sortLabel) return meta.sortLabel;
+  return header.column.id.replace(/_/g, " ");
+}
 
 function selectionColumn<TData>(): ColumnDef<TData, unknown> {
   return {
@@ -64,6 +77,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   emptyMessage = "No results.",
+  emptyComponent,
   className,
   enableRowSelection,
   getRowId,
@@ -117,7 +131,7 @@ export function DataTable<TData, TValue>({
                       ? "descending"
                       : "none"
                   : undefined;
-                const sortButtonLabel = `Sort by ${header.column.id.replace(/_/g, " ")}`;
+                const sortButtonLabel = `Sort by ${sortableHeaderLabel(header)}`;
                 return (
                   <TableHead
                     key={header.id}
@@ -132,7 +146,7 @@ export function DataTable<TData, TValue>({
                         aria-label={sortButtonLabel}
                         className={cn(
                           "-ml-3 font-medium text-on-surface hover:bg-surface-container-high",
-                          density === "compact" ? "h-9 px-2" : "h-8 px-3",
+                          density === "compact" ? "h-9 px-2" : "h-10 px-3",
                         )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
@@ -174,11 +188,10 @@ export function DataTable<TData, TValue>({
             ))
           ) : (
             <TableRow>
-              <TableCell
-                colSpan={mergedColumns.length}
-                className="h-24 text-center text-on-surface-variant"
-              >
-                {emptyMessage}
+              <TableCell colSpan={mergedColumns.length} className="h-24 p-0">
+                {emptyComponent ?? (
+                  <p className="px-4 py-6 text-center text-on-surface-variant">{emptyMessage}</p>
+                )}
               </TableCell>
             </TableRow>
           )}

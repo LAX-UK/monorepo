@@ -7,6 +7,7 @@ import { PricingStep } from "@/components/dashboard/submission-wizard/steps/pric
 import { ProvenanceStep } from "@/components/dashboard/submission-wizard/steps/provenance-step";
 import { ReviewStep } from "@/components/dashboard/submission-wizard/steps/review-step";
 import { WizardFooter } from "@/components/dashboard/submission-wizard/wizard-footer";
+import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wizard-header-actions";
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
@@ -19,6 +20,7 @@ import {
   type WizardMode,
   useSubmissionWizardController,
 } from "@/lib/forms/submission/use-submission-wizard-controller";
+import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
@@ -110,6 +112,10 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     void saveDraft({ leaveAfter: true });
   }, [saveDraft]);
 
+  const handleSaveDraft = useCallback(() => {
+    void saveDraft();
+  }, [saveDraft]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isLastStep) {
@@ -122,54 +128,68 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
   }, [handleNext, isLastStep]);
 
   return (
-    <Form {...form}>
-      <form
-        className="space-y-6 pb-24"
-        onSubmit={(e) => {
-          e.preventDefault();
-        }}
-      >
-        <WizardStepper
-          activeIndex={stepIndex}
-          maxReachableIndex={maxReachableIndex}
-          onStepClick={(index) => {
-            if (index <= maxReachableIndex) goToStep(index);
+    <>
+      <HideBottomTabBarWhileMounted />
+      <Form {...form}>
+        <form
+          className="space-y-6 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:pb-24"
+          onSubmit={(e) => {
+            e.preventDefault();
           }}
-        />
-
-        <Surface
-          variant="section"
-          padding="md"
-          className="border-border-hairline"
-          data-testid={currentStep ? `submission-wizard-step-${currentStep.id}` : undefined}
         >
-          {currentStep
-            ? renderStep(currentStep.id, {
-                form,
-                isSubmitting,
-                categories,
-                onJumpTo: goToStep,
-                saveDraft: () => void saveDraft(),
-                submitForReview: () => void submitForReview(),
-              })
-            : null}
-        </Surface>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <WizardStepper
+                activeIndex={stepIndex}
+                maxReachableIndex={maxReachableIndex}
+                onStepClick={(index) => {
+                  if (index <= maxReachableIndex) goToStep(index);
+                }}
+                onPrev={handleBack}
+                onNext={() => void handleNext()}
+                canGoPrev={stepIndex > 0}
+                canGoNext={!isLastStep}
+              />
+            </div>
+            <WizardHeaderActions
+              isSubmitting={isSubmitting}
+              onSaveDraft={handleSaveDraft}
+              onSaveAndLeave={handleSaveAndLeave}
+            />
+          </div>
 
-        {!isLastStep ? (
-          <WizardFooter
-            stepIndex={stepIndex}
-            isLastStep={isLastStep}
-            isSubmitting={isSubmitting}
-            autosaveStatus={autosaveStatus}
-            lastSavedAt={lastSavedAt}
-            showAutosave={showAutosave}
-            onBack={handleBack}
-            onNext={() => void handleNext()}
-            onSaveAndLeave={handleSaveAndLeave}
-            canGoBack={stepIndex > 0}
-          />
-        ) : null}
-      </form>
-    </Form>
+          <Surface
+            variant="section"
+            padding="md"
+            className="border-border-hairline"
+            data-testid={currentStep ? `submission-wizard-step-${currentStep.id}` : undefined}
+          >
+            {currentStep
+              ? renderStep(currentStep.id, {
+                  form,
+                  isSubmitting,
+                  categories,
+                  onJumpTo: goToStep,
+                  saveDraft: handleSaveDraft,
+                  submitForReview: () => void submitForReview(),
+                })
+              : null}
+          </Surface>
+
+          {!isLastStep ? (
+            <WizardFooter
+              isLastStep={isLastStep}
+              isSubmitting={isSubmitting}
+              autosaveStatus={autosaveStatus}
+              lastSavedAt={lastSavedAt}
+              showAutosave={showAutosave}
+              onBack={handleBack}
+              onNext={() => void handleNext()}
+              canGoBack={stepIndex > 0}
+            />
+          ) : null}
+        </form>
+      </Form>
+    </>
   );
 }

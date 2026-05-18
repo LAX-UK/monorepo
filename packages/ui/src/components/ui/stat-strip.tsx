@@ -10,7 +10,8 @@ export type StatStripProps = {
   className?: string;
 };
 
-/** Responsive KPI row: 1 col &lt;sm, 2 sm, 3 md, 4 lg+.
+/** Responsive KPI row: 2 cols on phones, denser breakpoints from `className`.
+ * `sticky` pins below the shell header on `lg+` only.
  * Children are typically `KpiTile` or custom stat cards.
  */
 export function StatStrip({ children, sticky, className }: StatStripProps) {

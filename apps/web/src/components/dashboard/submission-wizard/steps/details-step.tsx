@@ -95,6 +95,8 @@ export function DetailsStep({ form }: StepProps) {
                 rows={5}
                 className="font-body text-sm"
                 placeholder="Subject, materials, and any catalogue notes for specialists."
+                autoCapitalize="sentences"
+                enterKeyHint="done"
                 {...field}
               />
             </FormControl>

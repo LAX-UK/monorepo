@@ -27,11 +27,14 @@ export function Breadcrumbs({ items, className, current }: BreadcrumbsProps) {
               <ChevronRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
             ) : null}
             {item.href ? (
-              <Link href={item.href} className="text-primary hover:underline">
+              <Link
+                href={item.href}
+                className="inline-flex min-h-11 -mx-2 items-center rounded-md px-2 text-primary hover:underline md:min-h-0 md:py-1"
+              >
                 {item.label}
               </Link>
             ) : (
-              <span>{item.label}</span>
+              <span aria-current="page">{item.label}</span>
             )}
           </li>
         ))}
@@ -40,7 +43,9 @@ export function Breadcrumbs({ items, className, current }: BreadcrumbsProps) {
             {items.length > 0 ? (
               <ChevronRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
             ) : null}
-            <span className="text-on-surface">{current}</span>
+            <span className="text-on-surface" aria-current="page">
+              {current}
+            </span>
           </li>
         ) : null}
       </ol>
