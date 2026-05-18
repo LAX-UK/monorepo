@@ -63,6 +63,7 @@ export const adminUserListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(25),
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
   role: z.enum(userRoles).optional(),
+  staffRole: z.enum(userStaffRoles).optional(),
   suspended: z.enum(["1"]).optional(),
 });
 

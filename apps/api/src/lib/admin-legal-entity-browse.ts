@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
-import { asc, ilike } from "drizzle-orm";
+import { type SQL, and, asc, eq, ilike } from "drizzle-orm";
 
 export type AdminLegalEntityBrowseRow = {
   id: string;
@@ -10,6 +10,8 @@ export type AdminLegalEntityBrowseRow = {
 
 export type AdminLegalEntityBrowseParams = {
   q?: string;
+  /** When set, only entities created by this user. */
+  createdByUserId?: string;
   limit: number;
   offset: number;
 };
@@ -29,21 +31,18 @@ export async function searchLegalEntitiesForAdminBrowse(
     status: legalEntity.status,
   };
 
-  const rows =
-    trimmed.length > 0
-      ? await db
-          .select(cols)
-          .from(legalEntity)
-          .where(ilike(legalEntity.displayName, `%${trimmed}%`))
-          .orderBy(asc(legalEntity.displayName))
-          .limit(limit)
-          .offset(offset)
-      : await db
-          .select(cols)
-          .from(legalEntity)
-          .orderBy(asc(legalEntity.displayName))
-          .limit(limit)
-          .offset(offset);
+  const clauses: SQL[] = [];
+  if (trimmed.length > 0) {
+    clauses.push(ilike(legalEntity.displayName, `%${trimmed}%`));
+  }
+  if (params.createdByUserId?.trim()) {
+    clauses.push(eq(legalEntity.createdByUserId, params.createdByUserId.trim()));
+  }
+  const whereClause = clauses.length > 0 ? and(...clauses) : undefined;
+
+  const base = db.select(cols).from(legalEntity);
+  const filtered = whereClause ? base.where(whereClause) : base;
+  const rows = await filtered.orderBy(asc(legalEntity.displayName)).limit(limit).offset(offset);
 
   return rows.map((r) => ({
     id: r.id,

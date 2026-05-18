@@ -1,7 +1,6 @@
 "use client";
 
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
-import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { SearchCategoryChips } from "@/components/marketing/search-category-chips";
 import { SearchFilterSheet } from "@/components/marketing/search-filter-sheet";
@@ -59,12 +58,7 @@ export function SearchPageToolbar({
           />
         }
         sort={<SearchSortSelect value={sort} />}
-        trailing={
-          <>
-            <CopyCatalogLinkButton />
-            <CatalogViewSwitcher routeKey="search" value={layoutView} />
-          </>
-        }
+        trailing={<CatalogViewSwitcher routeKey="search" value={layoutView} />}
       />
       {categories.length > 0 ? (
         <div className="border-b border-border-hairline bg-surface/85 px-4 py-2 backdrop-blur-md md:hidden">
