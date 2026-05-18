@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import type { UserRole } from "@auction/types";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,24 +8,22 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const adminUsersSearchSchema = z.object({
+const schema = z.object({
   q: z.string().trim().max(200),
 });
 
-type AdminUsersSearchValues = z.infer<typeof adminUsersSearchSchema>;
+type Values = z.infer<typeof schema>;
 
-export function AdminUsersSearchForm({
+export function AdminClientsSearchForm({
   initialQ,
-  roleFilter,
   suspendedOnly,
 }: {
   initialQ: string;
-  roleFilter?: UserRole | undefined;
   suspendedOnly: boolean;
 }) {
   const router = useRouter();
-  const form = useForm<AdminUsersSearchValues>({
-    resolver: zodResolver(adminUsersSearchSchema),
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
     defaultValues: { q: initialQ },
   });
 
@@ -38,10 +35,9 @@ export function AdminUsersSearchForm({
           const params = new URLSearchParams();
           const q = values.q.trim();
           if (q) params.set("q", q);
-          if (roleFilter) params.set("role", roleFilter);
           if (suspendedOnly) params.set("suspended", "1");
           const query = params.toString();
-          router.push(query ? `/admin/users?${query}` : "/admin/users");
+          router.push(query ? `/admin/clients?${query}` : "/admin/clients");
         })}
         noValidate
       >
@@ -51,14 +47,14 @@ export function AdminUsersSearchForm({
           render={({ field }) => (
             <FormItem className="grid min-w-0 flex-1 gap-1">
               <label
-                htmlFor="admin-users-server-q"
+                htmlFor="admin-clients-q"
                 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               >
-                Server search
+                Search clients
               </label>
               <FormControl>
                 <Input
-                  id="admin-users-server-q"
+                  id="admin-clients-q"
                   placeholder="Name or email"
                   className="min-h-11 text-base md:text-sm"
                   {...field}

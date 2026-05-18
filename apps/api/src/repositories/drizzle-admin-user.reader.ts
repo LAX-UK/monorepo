@@ -27,6 +27,11 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     if (filter.role) {
       clauses.push(eq(user.role, filter.role));
     }
+    if (filter.staffRole) {
+      clauses.push(
+        eq(user.staffRole, filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number]),
+      );
+    }
     if (filter.suspendedOnly) {
       clauses.push(isNotNull(user.suspendedAt));
     }
@@ -44,7 +49,12 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         role: user.role,
         staffRole: user.staffRole,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
         suspendedAt: user.suspendedAt,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        kycStatus: user.kycStatus,
+        kycVerifiedAt: user.kycVerifiedAt,
       })
       .from(user)
       .orderBy(desc(user.createdAt))
@@ -62,7 +72,12 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         role: r.role,
         staffRole: r.staffRole ?? null,
         createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
         suspendedAt: r.suspendedAt ?? null,
+        image: r.image ?? null,
+        emailVerified: r.emailVerified,
+        kycStatus: r.kycStatus,
+        kycVerifiedAt: r.kycVerifiedAt ?? null,
       })),
     };
   }
@@ -76,8 +91,13 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         role: user.role,
         staffRole: user.staffRole,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
         suspendedAt: user.suspendedAt,
         suspendedReason: user.suspendedReason,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        kycStatus: user.kycStatus,
+        kycVerifiedAt: user.kycVerifiedAt,
       })
       .from(user)
       .where(eq(user.id, id))
@@ -90,8 +110,13 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       role: row.role,
       staffRole: row.staffRole ?? null,
       createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       suspendedAt: row.suspendedAt ?? null,
       suspendedReason: row.suspendedReason ?? null,
+      image: row.image ?? null,
+      emailVerified: row.emailVerified,
+      kycStatus: row.kycStatus,
+      kycVerifiedAt: row.kycVerifiedAt ?? null,
     };
   }
 }

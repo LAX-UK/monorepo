@@ -71,7 +71,7 @@ export function useSubmissionWizardController(
       if (r.ok) {
         setLastSavedAt(new Date());
         setAutosaveStatus("saved");
-        form.reset(values);
+        form.reset(form.getValues(), { keepDirtyValues: false });
         return true;
       }
       applyFieldErrors(form, r.fieldErrors);

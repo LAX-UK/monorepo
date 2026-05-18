@@ -36,6 +36,16 @@ const nextConfig: NextConfig = {
         hostname: "lax-media.lon1.cdn.digitaloceanspaces.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.lax.bid",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "test-media.lax.bid",
+        pathname: "/**",
+      },
     ],
   },
   experimental: {

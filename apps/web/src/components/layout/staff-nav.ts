@@ -32,6 +32,7 @@ import {
   ScrollText,
   Settings,
   ShieldAlert,
+  ShieldCheck,
   Truck,
   Upload,
   Users,
@@ -267,10 +268,17 @@ function buildStaffNavGroupSpecs(
       icon: Users,
       items: [
         {
-          id: "users",
-          href: "/admin/users",
-          label: "Users",
+          id: "clients",
+          href: "/admin/clients",
+          label: "Clients",
           icon: Users,
+          requirement: "platform.admin.full",
+        },
+        {
+          id: "staff",
+          href: "/admin/staff",
+          label: "Staff",
+          icon: ShieldCheck,
           requirement: "platform.admin.full",
         },
         {
