@@ -88,6 +88,7 @@ const impersonationLookupQuerySchema = z.object({
 
 const adminLegalEntityBrowseQuerySchema = z.object({
   q: z.string().max(200).optional(),
+  createdByUserId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(50).optional().default(25),
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
 });
@@ -616,6 +617,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       };
       const trimmed = query.q?.trim();
       if (trimmed) input.q = trimmed;
+      if (query.createdByUserId) input.createdByUserId = query.createdByUserId;
       const data = await container.admin.dashboard.searchLegalEntitiesBrowse(input);
       return c.json({ data });
     },
@@ -928,6 +930,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       limit: q.limit,
       offset: q.offset,
       role: q.role,
+      staffRole: q.staffRole,
       suspendedOnly: q.suspended === "1",
     });
     return c.json({ data });

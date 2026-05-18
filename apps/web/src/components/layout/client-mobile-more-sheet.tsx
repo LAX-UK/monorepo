@@ -19,13 +19,16 @@ type Props = {
 export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode, items }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="border-outline-variant bg-surface-container-lowest">
-        <SheetHeader>
+      <SheetContent
+        side="bottom"
+        className="border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)]"
+      >
+        <SheetHeader className="px-6 pt-2 pb-1 text-left">
           <SheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             More
           </SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="space-y-5 px-6 pt-4 pb-6">
           <WorkspaceModeSwitcher mode={clientWorkspaceMode} />
           {items.length > 0 ? (
             <nav aria-label="More dashboard destinations" className="grid gap-2">

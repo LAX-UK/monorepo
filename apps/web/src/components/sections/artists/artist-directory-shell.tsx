@@ -1,5 +1,4 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
-import { CopyCatalogLinkButton } from "@/components/marketing/copy-catalog-link-button";
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
@@ -465,12 +464,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                   </MarketingChipStrip>
                 </div>
               }
-              trailing={
-                <>
-                  <CopyCatalogLinkButton />
-                  <CatalogViewSwitcher routeKey="artists" value={layoutView} />
-                </>
-              }
+              trailing={<CatalogViewSwitcher routeKey="artists" value={layoutView} />}
             />
 
             {rows.length === 0 ? (
