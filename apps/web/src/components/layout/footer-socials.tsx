@@ -10,18 +10,6 @@ function SocialIconYoutube({ className = "" }: { className?: string }) {
   );
 }
 
-function SocialIconFacebook({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <title>Facebook</title>
-      <path
-        fill="currentColor"
-        d="M22 12a10 10 0 1 0-11.5 9.9v-7H7V12h3.5V9.8c0-3.5 2.1-5.4 5.3-5.4 1.5 0 3.1.3 3.1.3v3.4h-1.7c-1.7 0-2.2 1-2.2 2.1V12h3.8l-.6 3.9h-3.2v7A10 10 0 0 0 22 12Z"
-      />
-    </svg>
-  );
-}
-
 function SocialIconInstagram({ className = "" }: { className?: string }) {
   return (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -49,40 +37,37 @@ function SocialIconLinkedIn({ className = "" }: { className?: string }) {
 const socialClass =
   "h-6 w-6 text-brand-800 transition-opacity hover:opacity-70 dark:text-on-surface";
 
+const SOCIAL_LINKS = {
+  youtube: "https://www.youtube.com/@londonauctionxchange",
+  instagram: "https://www.instagram.com/lax.bid",
+  linkedin: "https://www.linkedin.com/company/london-auction-xchange/",
+} as const;
+
 export function FooterSocials() {
   return (
     <div className="flex flex-row items-center gap-4">
       <a
-        href="https://www.youtube.com"
+        href={SOCIAL_LINKS.youtube}
         className={socialClass}
-        aria-label="YouTube"
+        aria-label="London Auction Xchange on YouTube"
         rel="noreferrer noopener"
         target="_blank"
       >
         <SocialIconYoutube />
       </a>
       <a
-        href="https://www.facebook.com"
+        href={SOCIAL_LINKS.instagram}
         className={socialClass}
-        aria-label="Facebook"
-        rel="noreferrer noopener"
-        target="_blank"
-      >
-        <SocialIconFacebook />
-      </a>
-      <a
-        href="https://www.instagram.com"
-        className={socialClass}
-        aria-label="Instagram"
+        aria-label="London Auction Xchange on Instagram"
         rel="noreferrer noopener"
         target="_blank"
       >
         <SocialIconInstagram />
       </a>
       <a
-        href="https://www.linkedin.com"
+        href={SOCIAL_LINKS.linkedin}
         className={socialClass}
-        aria-label="LinkedIn"
+        aria-label="London Auction Xchange on LinkedIn"
         rel="noreferrer noopener"
         target="_blank"
       >
