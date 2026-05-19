@@ -15,6 +15,7 @@ import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/ty
 import { userHasAccessTo } from "@auction/types";
 import {
   AlertTriangle,
+  Banknote,
   BarChart3,
   Brush,
   Building2,
@@ -115,7 +116,7 @@ function buildStaffNavGroupSpecs(
         {
           id: "home",
           href: "/admin",
-          label: "Operations",
+          label: "Dashboard",
           icon: Gauge,
           match: (pathname) => pathname === "/admin",
           requirement: STAFF_OVERVIEW_ACCESS,
@@ -250,7 +251,7 @@ function buildStaffNavGroupSpecs(
           id: "payouts",
           href: "/admin/payouts",
           label: "Payouts",
-          icon: WalletCards,
+          icon: Banknote,
           requirement: "finance.read",
         },
         {
@@ -349,6 +350,14 @@ function buildStaffNavGroupSpecs(
           icon: FileText,
           match: (pathname) =>
             pathname.startsWith("/admin/audit/events") || pathname === "/admin/audit/events",
+          requirement: AUDIT_ACCESS,
+        },
+        {
+          id: "audit-email",
+          href: "/admin/audit/email",
+          label: "Audit email",
+          icon: Mail,
+          match: (pathname) => pathname.startsWith("/admin/audit/email"),
           requirement: AUDIT_ACCESS,
         },
         {
@@ -459,6 +468,29 @@ export function getStaffNavActiveGroupId(
     }
   }
   return best?.groupId ?? null;
+}
+
+const STAFF_MOBILE_TAB_IDS = ["home", "submissions", "lots", "sales", "payments"] as const;
+const FINANCE_MOBILE_TAB_IDS = [
+  "payments",
+  "manual-review",
+  "disputes",
+  "payouts",
+  "xero",
+] as const;
+
+/** Primary staff routes for the mobile bottom bar (max 5). */
+export function getStaffMobileBottomTabs(
+  role: UserRole,
+  staffRole: UserStaffRole | null | undefined,
+  pendingSubmissionCount = 0,
+  pendingArtistCount = 0,
+  financeOnly = false,
+): AppShellNavItem[] {
+  const allowed = new Set<string>(financeOnly ? FINANCE_MOBILE_TAB_IDS : STAFF_MOBILE_TAB_IDS);
+  return getStaffNavItems(role, staffRole, pendingSubmissionCount, pendingArtistCount).filter(
+    (item) => allowed.has(item.id),
+  );
 }
 
 export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavItem {

@@ -1,12 +1,13 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import {
   artistStatusLabel as artistStatusText,
   artistStatusToBadgeVariant,
 } from "@/lib/admin/status-badge-variants";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
-import { DataTable, EntityList, StatusBadge } from "@auction/ui";
+import { EntityList, StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -57,7 +58,14 @@ export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicat
   return (
     <EntityList
       responsiveMode="scroll"
-      table={<DataTable columns={cols} data={rows} emptyMessage="No duplicate candidates." />}
+      table={
+        <AdminDataTable
+          ariaLabel="Artist duplicate candidates"
+          columns={cols}
+          data={rows}
+          emptyMessage="No duplicate candidates."
+        />
+      }
     />
   );
 }

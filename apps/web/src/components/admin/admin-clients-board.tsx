@@ -208,6 +208,7 @@ export function AdminClientsBoard({ rows, totalMatches, kpis }: Props) {
       bulkOperations={bulkOperations}
       drawerTitle="Client"
       kpiAriaLabel="Client summary"
+      tableAriaLabel="Clients"
       emptyMessage="No clients match this filter."
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}

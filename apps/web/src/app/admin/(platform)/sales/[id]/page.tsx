@@ -1,7 +1,9 @@
+import { ActivityTimelinePanel } from "@/components/admin/activity-timeline-panel";
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminSaleHeaderActions } from "@/components/admin/admin-sale-header-actions";
 import { SaleDocumentsSection } from "@/components/admin/sale-form/sale-documents-section";
 import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
+import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import { saleStatusLabel, saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import {
   type AdminSaleRegistrationRow,
@@ -11,7 +13,7 @@ import {
 } from "@/lib/data/http/admin.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import type { Lot, Sale } from "@auction/types";
-import { Button, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui";
+import { Button, StatusBadge } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -111,226 +113,222 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
         />
       }
     >
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6 flex flex-wrap gap-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="lots">Lots {lots.length > 0 ? `(${lots.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents {saleDocuments.length > 0 ? `(${saleDocuments.length})` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="registrations">
-            Registrations{" "}
-            {registrations.length > 0 ? `(${registrations.length})` : liveish ? "(0)" : ""}
-          </TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <InfoCard title="Status">
-              <StatusBadge variant={saleStatusToBadgeVariant(sale.status)}>
-                {saleStatusLabel[sale.status] ?? sale.status}
-              </StatusBadge>
-            </InfoCard>
-            <InfoCard title="Delivery">
-              <span className="capitalize">{sale.deliveryMode}</span>
-              {sale.streamUrl ? (
-                <p className="mt-2 font-mono text-xs break-all text-on-surface-variant">
-                  Stream: {sale.streamUrl}
-                </p>
-              ) : null}
-            </InfoCard>
-            <InfoCard title="Buyer premium">
-              <p className="font-body text-sm text-on-surface">{buyerPremiumSummary(sale)}</p>
-            </InfoCard>
-            <InfoCard title="Lots & hammer">
-              <p className="font-body text-sm">
-                <span className="font-medium text-on-surface">{lots.length}</span> lot
-                {lots.length === 1 ? "" : "s"}
-              </p>
-              <p className="mt-1 text-xs text-on-surface-variant">
-                Aggregate current hammer (sum of lot current prices):{" "}
-                <span className="tabular-nums font-medium text-on-surface">
-                  {sumLotHammers(lots)}
-                </span>
-              </p>
-            </InfoCard>
-            {isOnsite && venueLines.length > 0 ? (
-              <InfoCard title="Venue" className="sm:col-span-2">
-                <ul className="list-inside list-disc space-y-1 font-body text-sm text-on-surface-variant">
-                  {venueLines.map((line, i) => (
-                    <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
-                  ))}
-                </ul>
-                {sale.locationMapUrl ? (
-                  <p className="mt-2">
-                    <Link
-                      href={sale.locationMapUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-                    >
-                      Open map ↗
-                    </Link>
+      <AdminDetailTabs
+        defaultValue="overview"
+        tabs={[
+          {
+            value: "overview",
+            label: "Overview",
+            content: (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InfoCard title="Status">
+                  <StatusBadge variant={saleStatusToBadgeVariant(sale.status)}>
+                    {saleStatusLabel[sale.status] ?? sale.status}
+                  </StatusBadge>
+                </InfoCard>
+                <InfoCard title="Delivery">
+                  <span className="capitalize">{sale.deliveryMode}</span>
+                  {sale.streamUrl ? (
+                    <p className="mt-2 font-mono text-xs break-all text-on-surface-variant">
+                      Stream: {sale.streamUrl}
+                    </p>
+                  ) : null}
+                </InfoCard>
+                <InfoCard title="Buyer premium">
+                  <p className="font-body text-sm text-on-surface">{buyerPremiumSummary(sale)}</p>
+                </InfoCard>
+                <InfoCard title="Lots & hammer">
+                  <p className="font-body text-sm">
+                    <span className="font-medium text-on-surface">{lots.length}</span> lot
+                    {lots.length === 1 ? "" : "s"}
                   </p>
-                ) : null}
-              </InfoCard>
-            ) : null}
-            {liveish ? (
-              <InfoCard title="Saleroom & registrations" className="sm:col-span-2">
-                <div className="flex flex-wrap gap-3">
-                  <Button size="sm" asChild>
-                    <Link href={`/admin/saleroom/${id}`}>Open saleroom</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/sales/${id}/registrations`}>
-                      {isOnsite ? "Paddle registrations" : "Bidder registrations"}
-                    </Link>
-                  </Button>
-                </div>
-              </InfoCard>
-            ) : null}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="schedule">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <InfoCard title="Sale window">
-              <dl className="space-y-2 font-body text-sm">
-                <div>
-                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                    Start
-                  </dt>
-                  <dd className="tabular-nums text-on-surface">
-                    {sale.startTime.toLocaleString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                    End
-                  </dt>
-                  <dd className="tabular-nums text-on-surface">{sale.endTime.toLocaleString()}</dd>
-                </div>
-                {sale.previewStartTime ? (
-                  <div>
-                    <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                      Preview from
-                    </dt>
-                    <dd className="tabular-nums text-on-surface">
-                      {sale.previewStartTime.toLocaleString()}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-              <p className="mt-3 text-xs text-on-surface-variant">
-                Displayed in your browser locale. Cross-check with published catalog copy for the
-                canonical timezone.
-              </p>
-            </InfoCard>
-            <InfoCard title="Per-lot timing">
-              <p className="font-body text-sm text-on-surface-variant">
-                {sale.deliveryMode === "onsite"
-                  ? "Onsite lots typically share the sale window above. Open a lot to adjust its own schedule if needed."
-                  : "Each online lot has its own start/end. Open the Lots tab to jump to a lot, then edit its schedule on the lot detail page."}
-              </p>
-            </InfoCard>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="lots">
-          <SaleLotsTabSection
-            saleId={id}
-            saleStatus={sale.status}
-            deliveryMode={sale.deliveryMode}
-            canEdit={canEdit}
-            lots={lots.map((l) => ({
-              id: l.id,
-              title: l.title,
-              lotNumber: l.lotNumber,
-              status: l.status,
-            }))}
-            draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
-          />
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <SaleDocumentsSection saleId={id} initialDocuments={saleDocuments} />
-        </TabsContent>
-
-        <TabsContent value="registrations">
-          {liveish ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="font-body text-sm text-on-surface-variant">
-                  {registrations.length} registration{registrations.length === 1 ? "" : "s"} loaded.
-                  Use the full queue for filters, reject reasons, and pagination.
-                </p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/admin/sales/${id}/registrations`}>Open registrations page</Link>
-                </Button>
-              </div>
-              {registrations.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">No registrations yet.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-border-hairline">
-                  <table className="w-full min-w-[36rem] font-body text-sm">
-                    <thead>
-                      <tr className="border-b border-border-hairline bg-surface-container-low/40">
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                          Bidder
-                        </th>
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                          Status
-                        </th>
-                        <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                          Requested
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {registrations.slice(0, 50).map((r) => (
-                        <tr key={r.id} className="border-b border-border-hairline last:border-0">
-                          <td className="px-3 py-2">
-                            <span className="font-medium text-on-surface">
-                              {r.buyerLegalEntityDisplayName ?? r.userName ?? r.userEmail ?? "—"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-on-surface-variant">
-                            {registrationStatusLabel[r.status]}
-                          </td>
-                          <td className="px-3 py-2 text-xs text-on-surface-variant tabular-nums">
-                            {r.requestedAt ? new Date(r.requestedAt).toLocaleString() : "—"}
-                          </td>
-                        </tr>
+                  <p className="mt-1 text-xs text-on-surface-variant">
+                    Aggregate current hammer (sum of lot current prices):{" "}
+                    <span className="tabular-nums font-medium text-on-surface">
+                      {sumLotHammers(lots)}
+                    </span>
+                  </p>
+                </InfoCard>
+                {isOnsite && venueLines.length > 0 ? (
+                  <InfoCard title="Venue" className="sm:col-span-2">
+                    <ul className="list-inside list-disc space-y-1 font-body text-sm text-on-surface-variant">
+                      {venueLines.map((line, i) => (
+                        <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
                       ))}
-                    </tbody>
-                  </table>
+                    </ul>
+                    {sale.locationMapUrl ? (
+                      <p className="mt-2">
+                        <Link
+                          href={sale.locationMapUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                        >
+                          Open map ↗
+                        </Link>
+                      </p>
+                    ) : null}
+                  </InfoCard>
+                ) : null}
+                {liveish ? (
+                  <InfoCard title="Saleroom & registrations" className="sm:col-span-2">
+                    <div className="flex flex-wrap gap-3">
+                      <Button size="sm" asChild>
+                        <Link href={`/admin/saleroom/${id}`}>Open saleroom</Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/sales/${id}/registrations`}>
+                          {isOnsite ? "Paddle registrations" : "Bidder registrations"}
+                        </Link>
+                      </Button>
+                    </div>
+                  </InfoCard>
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            value: "schedule",
+            label: "Schedule",
+            content: (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InfoCard title="Sale window">
+                  <dl className="space-y-2 font-body text-sm">
+                    <div>
+                      <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                        Start
+                      </dt>
+                      <dd className="tabular-nums text-on-surface">
+                        {sale.startTime.toLocaleString()}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                        End
+                      </dt>
+                      <dd className="tabular-nums text-on-surface">
+                        {sale.endTime.toLocaleString()}
+                      </dd>
+                    </div>
+                    {sale.previewStartTime ? (
+                      <div>
+                        <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                          Preview from
+                        </dt>
+                        <dd className="tabular-nums text-on-surface">
+                          {sale.previewStartTime.toLocaleString()}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <p className="mt-3 text-xs text-on-surface-variant">
+                    Displayed in your browser locale. Cross-check with published catalog copy for
+                    the canonical timezone.
+                  </p>
+                </InfoCard>
+                <InfoCard title="Per-lot timing">
+                  <p className="font-body text-sm text-on-surface-variant">
+                    {sale.deliveryMode === "onsite"
+                      ? "Onsite lots typically share the sale window above. Open a lot to adjust its own schedule if needed."
+                      : "Each online lot has its own start/end. Open the Lots tab to jump to a lot, then edit its schedule on the lot detail page."}
+                  </p>
+                </InfoCard>
+              </div>
+            ),
+          },
+          {
+            value: "lots",
+            label: `Lots${lots.length > 0 ? ` (${lots.length})` : ""}`,
+            content: (
+              <SaleLotsTabSection
+                saleId={id}
+                saleStatus={sale.status}
+                deliveryMode={sale.deliveryMode}
+                canEdit={canEdit}
+                lots={lots.map((l) => ({
+                  id: l.id,
+                  title: l.title,
+                  lotNumber: l.lotNumber,
+                  status: l.status,
+                }))}
+                draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
+              />
+            ),
+          },
+          {
+            value: "documents",
+            label: `Documents${saleDocuments.length > 0 ? ` (${saleDocuments.length})` : ""}`,
+            content: <SaleDocumentsSection saleId={id} initialDocuments={saleDocuments} />,
+          },
+          {
+            value: "registrations",
+            label: `Registrations${
+              registrations.length > 0 ? ` (${registrations.length})` : liveish ? " (0)" : ""
+            }`,
+            content: liveish ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-body text-sm text-on-surface-variant">
+                    {registrations.length} registration{registrations.length === 1 ? "" : "s"}{" "}
+                    loaded. Use the full queue for filters, reject reasons, and pagination.
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/sales/${id}/registrations`}>Open registrations page</Link>
+                  </Button>
                 </div>
-              )}
-            </div>
-          ) : (
-            <p className="font-body text-sm text-on-surface-variant">
-              Registrations open when the sale is scheduled or live. Current status:{" "}
-              <strong>{saleStatusLabel[sale.status]}</strong>.
-            </p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <div className="space-y-3">
-            <p className="font-body text-sm text-on-surface-variant">
-              Domain events for aggregate <span className="font-mono">sale / {id}</span>.
-            </p>
-            <Link
-              href={`/admin/audit/timeline?aggregateType=sale&aggregateId=${id}`}
-              className="inline-flex items-center gap-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-            >
-              Open audit timeline ↗
-            </Link>
-          </div>
-        </TabsContent>
-      </Tabs>
+                {registrations.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant">No registrations yet.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-border-hairline">
+                    <table className="w-full min-w-[36rem] font-body text-sm">
+                      <thead>
+                        <tr className="border-b border-border-hairline bg-surface-container-low/40">
+                          <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                            Bidder
+                          </th>
+                          <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                            Status
+                          </th>
+                          <th className="px-3 py-2 text-left font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                            Requested
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {registrations.slice(0, 50).map((r) => (
+                          <tr key={r.id} className="border-b border-border-hairline last:border-0">
+                            <td className="px-3 py-2">
+                              <span className="font-medium text-on-surface">
+                                {r.buyerLegalEntityDisplayName ?? r.userName ?? r.userEmail ?? "—"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-on-surface-variant">
+                              {registrationStatusLabel[r.status]}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-on-surface-variant tabular-nums">
+                              {r.requestedAt ? new Date(r.requestedAt).toLocaleString() : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="font-body text-sm text-on-surface-variant">
+                Registrations open when the sale is scheduled or live. Current status:{" "}
+                <strong>{saleStatusLabel[sale.status]}</strong>.
+              </p>
+            ),
+          },
+          {
+            value: "activity",
+            label: "Activity",
+            content: <ActivityTimelinePanel aggregateType="sale" aggregateId={id} />,
+          },
+        ]}
+      />
     </AdminEntityDetailShell>
   );
 }

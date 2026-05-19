@@ -1,10 +1,14 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
+import { getSaleBulkOperations } from "@/lib/admin/bulk-ops/sales";
 import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
-import { DataTable, EntityList, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
+import { EntityList, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -104,6 +108,8 @@ type Props = {
 export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
   const { density } = useTableDensity();
   const columns = useMemo(() => saleColumns(), []);
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const bulkOperations = useMemo(() => getSaleBulkOperations(), []);
 
   const cards = (
     <ul className="space-y-3">
@@ -136,20 +142,30 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
   );
 
   return (
-    <EntityList
-      responsiveMode="auto"
-      density={density}
-      filters={statusChips ?? null}
-      toolbarEnd={toolbarEnd}
-      table={
-        <DataTable
-          columns={columns}
-          data={rows}
-          emptyMessage="No sales on this page."
-          density={density}
-        />
-      }
-      cards={cards}
-    />
+    <div className="space-y-4">
+      <EntityList
+        responsiveMode="auto"
+        density={density}
+        filters={statusChips ?? null}
+        toolbarEnd={toolbarEnd}
+        table={
+          <AdminDataTable
+            ariaLabel="Sales"
+            columns={columns}
+            data={rows}
+            emptyMessage="No sales on this page."
+            density={density}
+            enableRowSelection
+            getRowId={(r) => r.saleId}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            showColumnPicker
+            columnVisibilityStorageKey="admin-sales-columns"
+          />
+        }
+        cards={cards}
+      />
+      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+    </div>
   );
 }

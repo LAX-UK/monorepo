@@ -222,7 +222,7 @@ function AppShellFrame({ user, config, children }: Props) {
           id="main-content"
           className={cn(
             "min-h-0 flex-1 scroll-mt-[52px] overflow-y-auto overflow-x-hidden",
-            shellRole === "client" && !hideBottomTabBar && "pb-20 lg:pb-0",
+            config.mobileNav.length > 0 && !hideBottomTabBar && "pb-20 lg:pb-0",
           )}
         >
           <div
@@ -239,9 +239,7 @@ function AppShellFrame({ user, config, children }: Props) {
           </div>
         </main>
       </div>
-      {shellRole === "client" && config.mobileNav.length > 0 && !hideBottomTabBar ? (
-        <BottomTabBar />
-      ) : null}
+      {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar /> : null}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
 import type { AdminEmailOutboxRow } from "@/lib/data/http/admin.server";
-import { DataTable, EntityList } from "@auction/ui";
+import { EntityList } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -85,7 +86,13 @@ export function AdminEmailOutboxBoard({ rows }: { rows: AdminEmailOutboxRow[] })
       responsiveMode="scroll"
       table={
         <TableScroll>
-          <DataTable columns={tableColumns} data={rows} getRowId={(r) => r.id} density={density} />
+          <AdminDataTable
+            ariaLabel="Email outbox"
+            columns={tableColumns}
+            data={rows}
+            getRowId={(r) => r.id}
+            density={density}
+          />
         </TableScroll>
       }
     />

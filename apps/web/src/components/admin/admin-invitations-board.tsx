@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { adminResendInvitationAction, adminRevokeInvitationAction } from "@/lib/actions/admin";
@@ -7,7 +8,7 @@ import { getInvitationBulkOperations } from "@/lib/admin/bulk-ops/invitations";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import type { UserRole } from "@auction/types";
-import { Button, DataTable } from "@auction/ui";
+import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -71,7 +72,8 @@ export function AdminInvitationsBoard({ rows }: { rows: AdminInvitationSummary[]
 
   return (
     <div className="space-y-4">
-      <DataTable
+      <AdminDataTable
+        ariaLabel="Invitations"
         columns={tableColumns}
         data={rows}
         density={density}

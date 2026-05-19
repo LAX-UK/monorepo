@@ -1,17 +1,20 @@
 "use client";
 
-import { AdminArtistsBulkBar } from "@/components/admin/admin-artists-bulk-bar";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { MediaImage } from "@/components/ui/media-image";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { getArtistBulkOperations } from "@/lib/admin/bulk-ops/artists";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { AdminArtistListRow } from "@auction/types";
-import { Badge, DataTable, EntityList, InlineActionMenu } from "@auction/ui";
+import { Badge, EntityList, InlineActionMenu } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
   const router = useRouter();
@@ -39,41 +42,8 @@ function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
   );
 }
 
-function artistColumns(
-  selected: Set<string>,
-  onToggle: (id: string) => void,
-  onTogglePage: (ids: string[], checked: boolean) => void,
-  pageIds: string[],
-): ColumnDef<AdminArtistListRow>[] {
-  const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
-  const someOnPage = pageIds.some((id) => selected.has(id));
-
+function artistColumns(): ColumnDef<AdminArtistListRow>[] {
   return [
-    {
-      id: "select",
-      header: () => (
-        <input
-          type="checkbox"
-          className="size-4 rounded border-outline-variant accent-primary"
-          checked={allOnPage}
-          ref={(el) => {
-            if (el) el.indeterminate = !allOnPage && someOnPage;
-          }}
-          onChange={(e) => onTogglePage(pageIds, e.target.checked)}
-          aria-label="Select all on this page"
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          className="size-4 rounded border-outline-variant accent-primary"
-          checked={selected.has(row.original.id)}
-          onChange={() => onToggle(row.original.id)}
-          aria-label={`Select ${row.original.displayName}`}
-        />
-      ),
-      enableSorting: false,
-    },
     {
       accessorKey: "displayName",
       header: "Artist",
@@ -195,41 +165,13 @@ type Props = {
 export function AdminArtistsBoard({ artists }: Props) {
   const { density } = useTableDensity();
   const router = useRouter();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const pageIds = useMemo(() => artists.map((a) => a.id), [artists]);
-
-  const onToggle = useCallback((id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const onTogglePage = useCallback((ids: string[], checked: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (checked) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const clearSelection = useCallback(() => setSelected(new Set()), []);
-
-  const columns = useMemo(
-    () => artistColumns(selected, onToggle, onTogglePage, pageIds),
-    [selected, onToggle, onTogglePage, pageIds],
-  );
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const bulkOperations = useMemo(() => getArtistBulkOperations(), []);
+  const columns = useMemo(() => artistColumns(), []);
 
   if (artists.length === 0) {
     return null;
   }
-
-  const selectedIds = artists.filter((a) => selected.has(a.id)).map((a) => a.id);
 
   return (
     <div className="space-y-4">
@@ -238,7 +180,16 @@ export function AdminArtistsBoard({ artists }: Props) {
         responsiveMode="auto"
         table={
           <TableScroll>
-            <DataTable columns={columns} data={artists} getRowId={(r) => r.id} density={density} />
+            <AdminDataTable
+              ariaLabel="Artists"
+              columns={columns}
+              data={artists}
+              getRowId={(r) => r.id}
+              density={density}
+              enableRowSelection
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+            />
           </TableScroll>
         }
         cards={
@@ -249,20 +200,12 @@ export function AdminArtistsBoard({ artists }: Props) {
                 deathYear: a.deathYear,
               });
               const life = lifeRaw === "—" ? null : lifeRaw;
-              const checked = selected.has(a.id);
               return (
                 <li
                   key={a.id}
                   className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-3"
                 >
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-4 rounded border-outline-variant accent-primary"
-                      checked={checked}
-                      onChange={() => onToggle(a.id)}
-                      aria-label={`Select ${a.displayName}`}
-                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -321,11 +264,7 @@ export function AdminArtistsBoard({ artists }: Props) {
           </ul>
         }
       />
-      <AdminArtistsBulkBar
-        selectedCount={selectedIds.length}
-        selectedIds={selectedIds}
-        onClear={clearSelection}
-      />
+      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
     </div>
   );
 }
