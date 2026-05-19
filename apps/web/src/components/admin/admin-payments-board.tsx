@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPaymentXeroPanel } from "@/components/admin/admin-payment-xero-panel";
 import {
   AdminPaymentActions,
@@ -11,7 +12,6 @@ import { paymentStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { adminPaymentLocalSearchSchema } from "@/lib/forms/schemas/url-search";
 import {
   Button,
-  DataTable,
   EntityList,
   Sheet,
   SheetContent,
@@ -301,7 +301,8 @@ export function AdminPaymentsBoard({ rows, summaryRows, statusChips }: Props) {
           </Form>
         }
         table={
-          <DataTable
+          <AdminDataTable
+            ariaLabel="Payments"
             columns={columns}
             data={filtered}
             emptyMessage="No payments match this filter."

@@ -20,7 +20,14 @@ describe("buildShellConfig", () => {
     const groups = navEntriesToGroups(config.nav);
     expect(groups.length).toBeGreaterThan(0);
     expect(navEntriesToFlatItems(config.nav).length).toBeGreaterThan(groups.length);
-    expect(config.mobileNav).toEqual([]);
+    expect(config.mobileNav.length).toBeGreaterThan(0);
+    expect(config.mobileNav.map((t) => t.id)).toEqual([
+      "home",
+      "sales",
+      "lots",
+      "submissions",
+      "payments",
+    ]);
   });
 
   it("maps shell slots onto config", () => {

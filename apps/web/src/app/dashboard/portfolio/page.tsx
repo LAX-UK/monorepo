@@ -3,7 +3,6 @@ import {
   DashboardComplianceStripSkeleton,
 } from "@/components/dashboard/dashboard-compliance-strip";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { PortfolioAnalyticsCard } from "@/components/dashboard/portfolio-analytics-card";
 import {
   type PortfolioFilterValue,
   PortfolioFilters,
@@ -17,6 +16,7 @@ import {
 } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -98,7 +98,31 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
       ) : null}
 
       {!fetchError && analytics.totalRows > 0 ? (
-        <PortfolioAnalyticsCard analytics={analytics} />
+        <KpiRow
+          variant="hero"
+          columns={4}
+          className="xl:grid-cols-3"
+          aria-label="Collection summary"
+          tiles={[
+            {
+              id: "spent",
+              label: "Total spent",
+              value: analytics.totalSpentFormatted,
+              semanticTone: "emphasis",
+            },
+            {
+              id: "outstanding",
+              label: "Outstanding",
+              value: analytics.outstandingFormatted,
+              semanticTone: analytics.hasOutstanding ? "warning" : "default",
+            },
+            {
+              id: "year",
+              label: "This year",
+              value: String(analytics.wonThisYear),
+            },
+          ]}
+        />
       ) : null}
 
       {!fetchError ? (

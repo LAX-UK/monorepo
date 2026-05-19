@@ -14,6 +14,7 @@ import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ShellConfig } from "@/lib/shell/contracts";
+import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-context";
 import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -37,7 +38,9 @@ type Props = {
 };
 
 function AppShellFrame({ user, config, children }: Props) {
+  const { hideBottomTabBar: hideBottomTabBarOverride } = useShellChrome();
   const shellRole = config.role as AppShellRole;
+  const hideBottomTabBar = config.hideBottomTabBar || hideBottomTabBarOverride;
   const pendingSubmissionCount = config.pendingSubmissionCount ?? 0;
   const pendingArtistCount = config.pendingArtistCount ?? 0;
   const clientWorkspaceMode = config.clientWorkspaceMode ?? "buying";
@@ -219,7 +222,7 @@ function AppShellFrame({ user, config, children }: Props) {
           id="main-content"
           className={cn(
             "min-h-0 flex-1 scroll-mt-[52px] overflow-y-auto overflow-x-hidden",
-            shellRole === "client" && "pb-20 lg:pb-0",
+            config.mobileNav.length > 0 && !hideBottomTabBar && "pb-20 lg:pb-0",
           )}
         >
           <div
@@ -236,7 +239,7 @@ function AppShellFrame({ user, config, children }: Props) {
           </div>
         </main>
       </div>
-      {shellRole === "client" && config.mobileNav.length > 0 ? <BottomTabBar /> : null}
+      {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar /> : null}
     </div>
   );
 }
@@ -244,15 +247,17 @@ function AppShellFrame({ user, config, children }: Props) {
 export function AppShell({ user, config, children, cookieDensity }: Props) {
   return (
     <ShellConfigProvider config={config}>
-      <TooltipProvider delayDuration={200}>
-        <DensityProvider cookieDensity={cookieDensity ?? null}>
-          <SidebarStateProvider>
-            <AppShellFrame user={user} config={config}>
-              {children}
-            </AppShellFrame>
-          </SidebarStateProvider>
-        </DensityProvider>
-      </TooltipProvider>
+      <ShellChromeProvider>
+        <TooltipProvider delayDuration={200}>
+          <DensityProvider cookieDensity={cookieDensity ?? null}>
+            <SidebarStateProvider>
+              <AppShellFrame user={user} config={config}>
+                {children}
+              </AppShellFrame>
+            </SidebarStateProvider>
+          </DensityProvider>
+        </TooltipProvider>
+      </ShellChromeProvider>
     </ShellConfigProvider>
   );
 }

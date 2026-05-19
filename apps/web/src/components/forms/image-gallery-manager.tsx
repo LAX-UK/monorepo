@@ -60,6 +60,7 @@ export function ImageGalleryManager({
   previewUrlByKey = {},
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const entries = toEntries(value);
   const { sensors, onDragEnd } = useImageReorder({
@@ -94,39 +95,50 @@ export function ImageGalleryManager({
   return (
     <div className="space-y-4">
       {remaining > 0 ? (
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={dropzoneAriaLabel(kind)}
-          className={`w-full rounded-lg border border-dashed p-6 text-left transition ${
-            disabled
-              ? "cursor-not-allowed opacity-60"
-              : dragging
-                ? "border-primary bg-primary-container/20"
-                : "border-outline-variant bg-surface-container-lowest"
-          }`}
-          onClick={() => !disabled && inputRef.current?.click()}
-          onDragEnter={(event) => {
-            if (disabled) return;
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(event) => {
-            if (disabled) return;
-            event.preventDefault();
-            setDragging(false);
-            void uploadFiles(event.dataTransfer.files);
-          }}
-        >
-          <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Upload images
-          </span>
-          <span className="mt-2 block font-body text-sm text-on-surface-variant">
-            Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
-          </span>
-        </button>
+        <div className="flex flex-col gap-2 sm:block">
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={dropzoneAriaLabel(kind)}
+            className={`w-full rounded-lg border border-dashed p-6 text-left transition ${
+              disabled
+                ? "cursor-not-allowed opacity-60"
+                : dragging
+                  ? "border-primary bg-primary-container/20"
+                  : "border-outline-variant bg-surface-container-lowest"
+            }`}
+            onClick={() => !disabled && inputRef.current?.click()}
+            onDragEnter={(event) => {
+              if (disabled) return;
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              if (disabled) return;
+              event.preventDefault();
+              setDragging(false);
+              void uploadFiles(event.dataTransfer.files);
+            }}
+          >
+            <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Upload images
+            </span>
+            <span className="mt-2 block font-body text-sm text-on-surface-variant">
+              Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            className="min-h-12 w-full rounded-lg border border-border-hairline bg-surface-container-low px-4 font-label text-xs font-semibold uppercase tracking-wider text-primary sm:hidden"
+            onClick={() => !disabled && cameraInputRef.current?.click()}
+            data-testid="image-gallery-take-photo"
+          >
+            Take photo
+          </button>
+        </div>
       ) : (
         <p className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 font-body text-sm text-on-surface-variant">
           Maximum of {maxFiles} images reached. Remove an image before uploading another.
@@ -137,6 +149,18 @@ export function ImageGalleryManager({
         type="file"
         accept={IMAGE_ACCEPT}
         multiple
+        disabled={disabled}
+        className="hidden"
+        onChange={(event) => {
+          if (event.target.files) void uploadFiles(event.target.files);
+          event.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept={IMAGE_ACCEPT}
+        capture="environment"
         disabled={disabled}
         className="hidden"
         onChange={(event) => {

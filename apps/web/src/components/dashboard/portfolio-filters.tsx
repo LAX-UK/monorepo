@@ -96,7 +96,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
   );
 
   return (
-    <div className="mb-8 space-y-4 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm">
+    <div className="space-y-4">
       <Form {...form}>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-end"

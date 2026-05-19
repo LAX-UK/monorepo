@@ -44,6 +44,8 @@ export type ShellConfig = {
   topSlot?: ReactNode;
   density?: DashboardDensity;
   hideEmailStatusBanner?: boolean;
+  /** When true, the mobile bottom tab bar is not rendered (e.g. focused wizard flows). */
+  hideBottomTabBar?: boolean;
   clientWorkspaceMode?: "buying" | "selling";
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;

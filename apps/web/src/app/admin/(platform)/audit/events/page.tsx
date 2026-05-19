@@ -1,4 +1,6 @@
 import { AdminAuditDomainEventsBoard } from "@/components/admin/admin-audit-domain-events-board";
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { auditDomainEventsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
@@ -117,7 +119,19 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
       <p className="font-body text-sm text-on-surface-variant">No rows for this filter.</p>
     ) : null;
 
-  const view = !loadError && rows.length > 0 ? <AdminAuditDomainEventsBoard rows={rows} /> : null;
+  const view =
+    !loadError && rows.length > 0 ? (
+      <>
+        <AdminListKpiStrip
+          ariaLabel="Audit events summary"
+          tiles={[
+            { label: "On this page", value: rows.length },
+            { label: "Limit", value: query.limit, delta: "Per request" },
+          ]}
+        />
+        <AdminAuditDomainEventsBoard rows={rows} />
+      </>
+    ) : null;
 
   const pagination =
     !loadError && (query.offset > 0 || rows.length === query.limit) ? (
@@ -147,6 +161,7 @@ export default async function AdminAuditEventsPage({ searchParams }: Props) {
       errorAlert={errorAlert}
       meta={prefixMeta}
       filters={filters}
+      listToolbarEnd={<AdminListExportLink basePath="/admin/audit/domain-events/export" />}
       view={view}
       empty={empty}
       pagination={pagination}

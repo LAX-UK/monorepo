@@ -1,8 +1,8 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import type { ItemSubmissionStatus } from "@auction/types";
-import { DataTable } from "@auction/ui/components/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -74,5 +74,12 @@ type Props = {
 
 export function AdminSubmissionsDataTable({ rows }: Props) {
   const columns = useMemo(() => submissionColumns(), []);
-  return <DataTable columns={columns} data={rows} emptyMessage="No submissions." />;
+  return (
+    <AdminDataTable
+      ariaLabel="Submissions"
+      columns={columns}
+      data={rows}
+      emptyMessage="No submissions."
+    />
+  );
 }

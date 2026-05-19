@@ -34,20 +34,6 @@ test.describe("admin user directories", () => {
     await expect(page.getByRole("heading", { name: /^staff$/i })).toBeVisible();
   });
 
-  test("legacy /admin/users redirects to clients", async ({ page }) => {
-    test.skip(!enabled, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/users?q=test");
-    await expect(page).toHaveURL(/\/admin\/clients\?q=test/);
-  });
-
-  test("legacy /admin/users?role=staff redirects to staff", async ({ page }) => {
-    test.skip(!enabled, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/users?role=staff");
-    await expect(page).toHaveURL(/\/admin\/staff/);
-  });
-
   test("client drawer quick actions tab is reachable", async ({ page }) => {
     test.skip(!enabled, skipReason);
     await staffLogin(page);

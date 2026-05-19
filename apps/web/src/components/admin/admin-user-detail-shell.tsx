@@ -19,7 +19,6 @@ import type { UserRole, UserStaffRole } from "@auction/types";
 import { StatusBadge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 function daysSince(iso: string): string {
@@ -58,14 +57,9 @@ export function AdminUserDetailShell({
 
   return (
     <AdminEntityDetailShell
-      breadcrumbs={
-        <Link
-          href={listHref}
-          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← {listLabel}
-        </Link>
-      }
+      detailHeader
+      backHref={listHref}
+      backLabel={listLabel}
       title={user.name}
       meta={
         <div className="space-y-3">

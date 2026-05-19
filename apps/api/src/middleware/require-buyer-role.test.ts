@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createRequireBuyerRole,
-  createRequireBuyerRoleUnlessAdministrator,
-} from "./require-buyer-role.js";
+import { createRequireBuyerRole, createRequireBuyerRoleUnlessStaff } from "./require-buyer-role.js";
 import type { RoleSource } from "./role-source.js";
 
 function roleSource(role: string | null): RoleSource {
@@ -52,14 +49,14 @@ describe("createRequireBuyerRole", () => {
   });
 });
 
-describe("createRequireBuyerRoleUnlessAdministrator", () => {
-  it("skips buyer gate for administrator", async () => {
-    const mw = createRequireBuyerRoleUnlessAdministrator(roleSource("administrator"));
+describe("createRequireBuyerRoleUnlessStaff", () => {
+  it("skips buyer gate for staff", async () => {
+    const mw = createRequireBuyerRoleUnlessStaff(roleSource("staff"));
     const json = vi.fn();
     const next = vi.fn();
     const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];
     (c.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
-      key === "userRole" ? "administrator" : undefined,
+      key === "userRole" ? "staff" : undefined,
     );
     await mw(c, next as never);
     expect(json).not.toHaveBeenCalled();
@@ -67,7 +64,7 @@ describe("createRequireBuyerRoleUnlessAdministrator", () => {
   });
 
   it("does not skip buyer gate when role does not normalize to staff", async () => {
-    const mw = createRequireBuyerRoleUnlessAdministrator(roleSource("not-a-platform-role"));
+    const mw = createRequireBuyerRoleUnlessStaff(roleSource("not-a-platform-role"));
     const json = vi.fn();
     const next = vi.fn();
     const c = { get: vi.fn(), json } as unknown as Parameters<typeof mw>[0];

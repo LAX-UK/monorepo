@@ -1,10 +1,17 @@
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminSavedViewChips } from "@/components/admin/admin-saved-view-chips";
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submissions-title-filter-form";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { submissionsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import {
+  submissionListActivePreset,
+  submissionListPresetHref,
+} from "@/lib/admin/list-presets/submissions-presets";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -68,6 +75,33 @@ export default async function AdminSubmissionsPage({
     q: "",
     offset: 0,
   });
+
+  const intakeOnPage = submissionRows.filter(
+    (r) => r.status === "under_review" || r.status === "submitted",
+  ).length;
+
+  const savedViews = (
+    <AdminSavedViewChips
+      activeId={submissionListActivePreset(sp)}
+      views={[
+        { id: "all", label: "All", href: submissionListPresetHref("all", sp) },
+        { id: "intake", label: "Needs review", href: submissionListPresetHref("intake", sp) },
+        { id: "approved", label: "Approved", href: submissionListPresetHref("approved", sp) },
+        { id: "rejected", label: "Rejected", href: submissionListPresetHref("rejected", sp) },
+      ]}
+    />
+  );
+
+  const kpiStrip =
+    !loadError && submissionRows.length > 0 ? (
+      <AdminListKpiStrip
+        ariaLabel="Submissions summary"
+        tiles={[
+          { label: "On this page", value: submissionRows.length, delta: `of ${total} total` },
+          { label: "Needs review", value: intakeOnPage, delta: "Submitted or under review" },
+        ]}
+      />
+    ) : null;
 
   const statusChipsRow = (
     <FilterChipRow
@@ -168,7 +202,10 @@ export default async function AdminSubmissionsPage({
 
   const view =
     !loadError && submissionRows.length > 0 ? (
-      <AdminSubmissionsBoard rows={submissionRows} />
+      <>
+        {kpiStrip}
+        <AdminSubmissionsBoard rows={submissionRows} />
+      </>
     ) : null;
 
   return (
@@ -178,9 +215,16 @@ export default async function AdminSubmissionsPage({
       hasFilters={hasFilters}
       resetHref="/admin/submissions"
       errorAlert={errorAlert}
-      chips={statusChipsRow}
+      chips={
+        <div className="space-y-3">
+          {savedViews}
+          {statusChipsRow}
+        </div>
+      }
+      listToolbarEnd={<AdminListExportLink />}
       filters={filters}
       view={view}
+      showCommandPaletteHint={!loadError && submissionRows.length === 0}
       empty={
         <>
           {emptyNoQuery}

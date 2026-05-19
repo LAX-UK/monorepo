@@ -1,9 +1,14 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminMobileCardList } from "@/components/admin/admin-mobile-card-list";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { getAuditEventBulkOperations } from "@/lib/admin/bulk-ops/audit-events";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import { Button, DataTable, EntityList } from "@auction/ui";
+import { Button, EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -69,16 +74,51 @@ function columns(): ColumnDef<AdminDomainEventRow>[] {
 export function AdminAuditDomainEventsBoard({ rows }: { rows: AdminDomainEventRow[] }) {
   const { density } = useTableDensity();
   const tableColumns = useMemo(() => columns(), []);
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const bulkOperations = useMemo(() => getAuditEventBulkOperations(), []);
 
   return (
-    <EntityList
-      density={density}
-      responsiveMode="scroll"
-      table={
-        <TableScroll>
-          <DataTable columns={tableColumns} data={rows} getRowId={(r) => r.id} density={density} />
-        </TableScroll>
-      }
-    />
+    <div className="space-y-4">
+      <EntityList
+        density={density}
+        responsiveMode="auto"
+        table={
+          <TableScroll>
+            <AdminDataTable
+              ariaLabel="Audit domain events"
+              columns={tableColumns}
+              data={rows}
+              getRowId={(r) => r.id}
+              density={density}
+              enableRowSelection
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              showColumnPicker
+              columnVisibilityStorageKey="admin-audit-events-columns"
+            />
+          </TableScroll>
+        }
+        cards={
+          <AdminMobileCardList rows={rows} getRowId={(r) => r.id}>
+            {(r) => (
+              <>
+                <p className="font-mono text-xs text-on-surface">{r.eventType}</p>
+                <p className="mt-1 font-body text-xs text-on-surface-variant">
+                  {r.occurredAt.toISOString()}
+                </p>
+                <Button variant="link" size="sm" className="mt-2 h-auto p-0" asChild>
+                  <Link
+                    href={`/admin/audit/timeline?aggregateType=${encodeURIComponent(r.aggregateType)}&aggregateId=${encodeURIComponent(r.aggregateId)}`}
+                  >
+                    Open timeline
+                  </Link>
+                </Button>
+              </>
+            )}
+          </AdminMobileCardList>
+        }
+      />
+      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+    </div>
   );
 }

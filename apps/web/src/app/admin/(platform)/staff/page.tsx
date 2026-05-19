@@ -196,6 +196,7 @@ export default async function AdminStaffPage({
           />
         ) : null
       }
+      showCommandPaletteHint={!loadError && rows.length === 0}
       pagination={pagination}
     />
   );
