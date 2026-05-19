@@ -1,9 +1,11 @@
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Suspense } from "react";
@@ -20,10 +22,12 @@ export default async function AdminPaymentsPage({
   let loadError: string | null = null;
   let paymentRows: AdminPaymentTableRow[] = [];
   let summaryRows: AdminPaymentTableRow[] = [];
+  let total = 0;
   try {
     const result = await paymentsListController.fetch(query);
     paymentRows = result.rows;
     summaryRows = result.rowsForSummary ?? result.rows;
+    total = result.total ?? summaryRows.length;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payments.";
   }
@@ -69,8 +73,33 @@ export default async function AdminPaymentsPage({
       description="Filter by status, search loaded rows, and use the drawer for capture/refund on touch devices."
       errorAlert={errorAlert}
       chips={statusChips}
+      listToolbarEnd={<AdminListExportLink />}
       view={view}
       empty={empty}
+      pagination={
+        !loadError && total > 0 ? (
+          <PaginationFooter
+            offset={query.offset}
+            limit={query.limit}
+            countOnPage={paymentRows.length}
+            total={total}
+            prevHref={
+              query.offset > 0
+                ? buildListHref("/admin/payments", sp, {
+                    offset: Math.max(0, query.offset - query.limit),
+                  })
+                : null
+            }
+            nextHref={
+              query.offset + paymentRows.length < total
+                ? buildListHref("/admin/payments", sp, {
+                    offset: query.offset + query.limit,
+                  })
+                : null
+            }
+          />
+        ) : null
+      }
     />
   );
 }

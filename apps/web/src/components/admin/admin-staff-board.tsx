@@ -182,6 +182,7 @@ export function AdminStaffBoard({ rows, totalMatches, kpis, roleBreakdown }: Pro
         bulkOperations={bulkOperations}
         drawerTitle="Staff member"
         kpiAriaLabel="Staff summary"
+        tableAriaLabel="Staff directory"
         emptyMessage="No staff match this filter."
         renderDrawerOverview={renderDrawerOverview}
         renderMobileCard={renderMobileCard}

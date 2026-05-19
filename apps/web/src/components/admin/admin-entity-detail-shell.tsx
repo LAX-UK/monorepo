@@ -41,7 +41,8 @@ export function AdminEntityDetailShell({
           sticky
           title={title}
           {...(description ? { description } : {})}
-          {...(backHref ? { backHref } : {})}
+          {...(breadcrumbs ? { crumbs: breadcrumbs } : {})}
+          {...(backHref && !breadcrumbs ? { backHref } : {})}
           {...(backLabel ? { backLabel } : {})}
           {...(eyebrow ? { eyebrow } : {})}
           badges={meta}

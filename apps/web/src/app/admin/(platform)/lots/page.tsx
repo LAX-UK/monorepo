@@ -1,11 +1,15 @@
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
+import { AdminSavedViewChips } from "@/components/admin/admin-saved-view-chips";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { LotFilterForm } from "@/components/admin/lot-filter-form";
 import { Button } from "@/components/ui/button";
 import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { lotListActivePreset, lotListPresetHref } from "@/lib/admin/list-presets/lots-presets";
 import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
 import { getAdminArtistList, getAdminSalesList } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
@@ -116,6 +120,21 @@ export default async function AdminLotsPage({
   const chip = (patch: Record<string, string | number | boolean | undefined | null | "">) =>
     buildListHref("/admin/lots", sp, { ...patch, offset: 0 });
 
+  const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;
+  const draftOnPage = lotTableRows.filter((r) => r.status === "draft").length;
+
+  const savedViews = (
+    <AdminSavedViewChips
+      activeId={lotListActivePreset(sp)}
+      views={[
+        { id: "all", label: "All", href: lotListPresetHref("all", sp) },
+        { id: "active", label: "Live", href: lotListPresetHref("active", sp) },
+        { id: "draft", label: "Draft", href: lotListPresetHref("draft", sp) },
+        { id: "ended", label: "Ended", href: lotListPresetHref("ended", sp) },
+      ]}
+    />
+  );
+
   const statusChips = (
     <FilterChipRow
       label="Filter by status"
@@ -173,7 +192,13 @@ export default async function AdminLotsPage({
       }
       hasFilters={hasFilters}
       resetHref="/admin/lots"
-      chips={statusChips}
+      chips={
+        <div className="space-y-3">
+          {!viewPipeline ? savedViews : null}
+          {statusChips}
+        </div>
+      }
+      listToolbarEnd={<AdminListExportLink />}
       errorAlert={
         error || listError ? (
           <Alert variant="destructive">
@@ -199,6 +224,16 @@ export default async function AdminLotsPage({
       view={
         !listError ? (
           <Suspense fallback={<PageSkeleton variant="table" />}>
+            {!viewPipeline && lotTableRows.length > 0 ? (
+              <AdminListKpiStrip
+                ariaLabel="Lots summary"
+                tiles={[
+                  { label: "On this page", value: lotTableRows.length },
+                  { label: "Live", value: activeOnPage },
+                  { label: "Draft", value: draftOnPage },
+                ]}
+              />
+            ) : null}
             <AdminLotsBoard
               rows={lotTableRows}
               fullLots={lotRows}

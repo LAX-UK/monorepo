@@ -1,4 +1,5 @@
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
+import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { EntityList } from "@auction/ui";
@@ -13,6 +14,8 @@ export type AdminListPageProps = {
   chips?: ReactNode;
   filters?: ReactNode;
   toolbarEnd?: ReactNode;
+  /** Export, column picker, etc. — shown in the list toolbar beside reset. */
+  listToolbarEnd?: ReactNode;
   hasFilters?: boolean | undefined;
   resetHref?: string | undefined;
   errorAlert?: ReactNode;
@@ -20,6 +23,8 @@ export type AdminListPageProps = {
   view: ReactNode;
   pagination?: ReactNode;
   empty?: ReactNode;
+  /** When true, appends command palette hint below the empty slot. */
+  showCommandPaletteHint?: boolean;
   className?: string | undefined;
 };
 
@@ -33,6 +38,7 @@ export function AdminListPage({
   chips,
   filters,
   toolbarEnd,
+  listToolbarEnd,
   hasFilters,
   resetHref,
   errorAlert,
@@ -40,9 +46,10 @@ export function AdminListPage({
   view,
   pagination,
   empty,
+  showCommandPaletteHint = false,
   className,
 }: AdminListPageProps) {
-  const showToolbar = Boolean(filters || toolbarEnd);
+  const showToolbar = Boolean(filters || toolbarEnd || listToolbarEnd);
   return (
     <AppScreen className={className ?? "space-y-6"}>
       <DashboardPageHeader
@@ -55,11 +62,13 @@ export function AdminListPage({
       {chips}
       {bulkBar}
       <EntityList
+        responsiveMode="scroll"
         filters={
           showToolbar ? (
             <AdminListToolbar
               filters={filters}
               extra={toolbarEnd}
+              toolbarEnd={listToolbarEnd}
               hasFilters={Boolean(hasFilters)}
               resetHref={resetHref ?? ""}
             />
@@ -69,6 +78,7 @@ export function AdminListPage({
         {...(errorAlert ? { error: errorAlert } : {})}
       />
       {empty}
+      {showCommandPaletteHint ? <CommandPaletteHint className="mt-2" /> : null}
       {pagination}
     </AppScreen>
   );

@@ -3,8 +3,10 @@
 import {
   type ColumnDef,
   type Header,
+  type OnChangeFn,
   type RowSelectionState,
   type SortingState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -24,6 +26,10 @@ type DataTableProps<TData, TValue> = {
   /** Custom empty UI (e.g. `EmptyState`) when there are no rows. */
   emptyComponent?: React.ReactNode;
   className?: string;
+  /** Accessible name for the table (rendered as visually hidden caption). */
+  ariaLabel?: string;
+  /** When false, column header sort only reorders the current page in memory (default off for server-driven lists). */
+  enableClientSort?: boolean;
   /** When set, shows a selection column and wires TanStack row selection */
   enableRowSelection?: boolean;
   getRowId?: (row: TData, index: number) => string;
@@ -31,6 +37,9 @@ type DataTableProps<TData, TValue> = {
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   /** Tighter rows for compact density */
   density?: "comfortable" | "compact";
+  /** When set, columns can be hidden via `columnVisibility` */
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 };
 
 function sortableHeaderLabel<TData, TValue>(header: Header<TData, TValue>): string {
@@ -79,11 +88,15 @@ export function DataTable<TData, TValue>({
   emptyMessage = "No results.",
   emptyComponent,
   className,
+  ariaLabel,
+  enableClientSort = false,
   enableRowSelection,
   getRowId,
   rowSelection: controlledSelection,
   onRowSelectionChange,
   density = "comfortable",
+  columnVisibility,
+  onColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [uncontrolledSelection, setUncontrolledSelection] = React.useState<RowSelectionState>({});
@@ -91,23 +104,37 @@ export function DataTable<TData, TValue>({
   const setRowSelection = onRowSelectionChange ?? setUncontrolledSelection;
 
   const mergedColumns = React.useMemo(() => {
-    if (!enableRowSelection) return columns;
-    return [selectionColumn<TData>() as ColumnDef<TData, TValue>, ...columns];
+    const withHiding = columns.map((col) => {
+      const id = ("accessorKey" in col && col.accessorKey ? String(col.accessorKey) : col.id) ?? "";
+      const locked = id === "actions" || id === "__select";
+      return {
+        ...col,
+        enableHiding: col.enableHiding ?? !locked,
+      };
+    });
+    if (!enableRowSelection) return withHiding;
+    return [selectionColumn<TData>() as ColumnDef<TData, TValue>, ...withHiding];
   }, [columns, enableRowSelection]);
 
   const table = useReactTable({
     data,
     columns: mergedColumns,
-    state: { sorting, rowSelection },
+    state: {
+      sorting,
+      rowSelection,
+      ...(columnVisibility ? { columnVisibility } : {}),
+    },
     onSortingChange: setSorting,
     onRowSelectionChange: (updater) => {
       const next = typeof updater === "function" ? updater(rowSelection) : updater;
       setRowSelection(next);
     },
     enableRowSelection: !!enableRowSelection,
+    enableSorting: enableClientSort,
+    ...(onColumnVisibilityChange ? { onColumnVisibilityChange } : {}),
     getRowId: getRowId ?? ((_, i) => String(i)),
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    ...(enableClientSort ? { getSortedRowModel: getSortedRowModel() } : {}),
   });
 
   return (
@@ -117,7 +144,8 @@ export function DataTable<TData, TValue>({
         className,
       )}
     >
-      <Table>
+      <Table scrollContainer={false} aria-label={ariaLabel}>
+        {ariaLabel ? <caption className="sr-only">{ariaLabel}</caption> : null}
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className={density === "compact" ? "h-9" : undefined}>

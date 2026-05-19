@@ -71,7 +71,12 @@ export function EntityTableShell({
       ) : null}
 
       {responsiveMode === "scroll" ? (
-        <div className={density === "compact" ? "text-sm" : ""}>{table}</div>
+        <div className={density === "compact" ? "text-sm" : ""}>
+          {table}
+          <p className="mt-2 font-body text-xs text-on-surface-variant md:hidden">
+            Swipe horizontally to see all columns.
+          </p>
+        </div>
       ) : null}
 
       {showAuto ? (

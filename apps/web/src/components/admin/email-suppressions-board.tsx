@@ -1,11 +1,11 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { EmailSuppressionRemoveButton } from "@/components/admin/email-suppression-remove-button";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getEmailSuppressionBulkOperations } from "@/lib/admin/bulk-ops/email-suppressions";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
-import { DataTable } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -58,7 +58,8 @@ export function EmailSuppressionsBoard({ rows }: { rows: EmailSuppressionRow[] }
 
   return (
     <div className="space-y-4">
-      <DataTable
+      <AdminDataTable
+        ariaLabel="Email suppressions"
         columns={tableColumns}
         data={rows}
         density={density}

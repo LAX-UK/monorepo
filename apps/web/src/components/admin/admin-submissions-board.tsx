@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
@@ -7,7 +8,7 @@ import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
-import { Button, DataTable, EntityList } from "@auction/ui";
+import { Button, EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -111,7 +112,8 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
         density={density}
         {...(filterForm ? { filters: filterForm } : {})}
         table={
-          <DataTable
+          <AdminDataTable
+            ariaLabel="Submissions"
             columns={columns}
             data={rows}
             emptyMessage="No submissions match this filter."
@@ -120,6 +122,8 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
             getRowId={(row) => row.id}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
+            showColumnPicker
+            columnVisibilityStorageKey="admin-submissions-columns"
           />
         }
         cards={cards}

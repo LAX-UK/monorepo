@@ -2,6 +2,7 @@
 
 import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
 import { AdminLiveBidActivity } from "@/components/admin/admin-live-bid-activity";
+import { StaffWhatsNewBanner } from "@/components/admin/staff-whats-new-banner";
 import { AttentionList } from "@/components/dashboard/attention-list";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
@@ -58,6 +59,7 @@ export function AdminOperationsHomeView({
 }: Props) {
   return (
     <div className="space-y-10">
+      <StaffWhatsNewBanner />
       <DashboardPageHeader
         title="Operations"
         meta={<LabelCaps className="text-lot-orange">Admin · Cockpit</LabelCaps>}
