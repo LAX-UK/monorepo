@@ -307,10 +307,12 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
         getAdminLotFulfilmentList().catch(() => []),
       ]);
       const allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
-      const rows = filterPaymentTableRowsByStatus(allRows, q.status);
+      const filtered = filterPaymentTableRowsByStatus(allRows, q.status);
+      const { rows, total } = sliceAdminListWindow(filtered, q.offset, q.limit);
       return {
         rows,
         rowsForSummary: allRows,
+        total,
         offset: q.offset,
         limit: q.limit,
       };

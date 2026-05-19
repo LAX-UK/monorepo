@@ -186,7 +186,8 @@ export function StaffSidebarNav({
                         className={cn(
                           "group relative flex min-h-10 items-center gap-3 rounded-md px-2 py-2 pl-7 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
                           "hover:bg-surface-container-high hover:text-on-surface",
-                          active && "bg-surface-container-high text-on-surface",
+                          active &&
+                            "border-l-2 border-accent-brand bg-primary-container/40 pl-[calc(1.75rem-2px)] text-on-primary-container",
                         )}
                       >
                         <Icon className="size-4 shrink-0" aria-hidden />

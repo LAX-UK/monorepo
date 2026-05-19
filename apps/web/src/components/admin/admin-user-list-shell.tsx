@@ -1,20 +1,14 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import {
-  DataTable,
-  EntityList,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  StatusBadge,
-} from "@auction/ui";
+import { EntityList, Sheet, SheetContent, SheetHeader, SheetTitle, StatusBadge } from "@auction/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
@@ -30,6 +24,7 @@ type Props = {
   bulkOperations: BulkOperation[];
   drawerTitle?: string;
   kpiAriaLabel?: string;
+  tableAriaLabel?: string;
   emptyMessage?: string;
   renderDrawerOverview: (user: AdminUserRow) => ReactNode;
   renderDrawerActions?: (user: AdminUserRow) => ReactNode;
@@ -45,12 +40,15 @@ export function AdminUserListShell({
   bulkOperations,
   drawerTitle = "User",
   kpiAriaLabel = "Account summary",
+  tableAriaLabel = "Accounts",
   emptyMessage = "No matching accounts.",
   renderDrawerOverview,
   renderDrawerActions,
   renderMobileCard,
   filtersSlot,
 }: Props) {
+  const { density: shellDensity } = useTableDensity();
+  const tableDensity = shellDensity === "compact" ? "compact" : "comfortable";
   const [selected, setSelected] = useState<AdminUserRow | null>(null);
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
   const onOpen = useCallback((u: AdminUserRow) => setSelected(u), []);
@@ -74,11 +72,12 @@ export function AdminUserListShell({
         responsiveMode="auto"
         filters={filtersSlot ?? null}
         table={
-          <DataTable
+          <AdminDataTable
+            ariaLabel={tableAriaLabel}
             columns={columns}
             data={rows}
             emptyMessage={emptyMessage}
-            density="compact"
+            density={tableDensity}
             enableRowSelection
             getRowId={(row) => row.id}
             rowSelection={rowSelection}

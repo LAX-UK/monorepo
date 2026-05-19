@@ -1,3 +1,4 @@
+import { AdminShellHeaderActions } from "@/components/admin/admin-shell-header-actions";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
 import { PlatformStaffContextBanners } from "@/components/admin/platform-staff-context-banners";
@@ -80,6 +81,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       }
     : { kind: "self" };
 
+  const headerRightSlot = (
+    <AdminShellHeaderActions
+      pendingSubmissionCount={pendingSubmissionCount}
+      pendingArtistCount={pendingArtistCount}
+      showPlatformLinks={canAccessPlatformAdminRoutes(
+        user.role as UserRole,
+        user.staffRole ?? null,
+      )}
+    />
+  );
+
   return (
     <div className={showImpersonationBanner ? "pt-14" : undefined}>
       <ImpersonationEndWarningListener />
@@ -95,6 +107,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           pendingSubmissionCount={pendingSubmissionCount}
           cookieDensity={cookieDensity}
           acting={acting}
+          headerRightSlot={headerRightSlot}
           topSlot={<WelcomeBackToast />}
         >
           {children}
@@ -106,6 +119,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           pendingArtistCount={pendingArtistCount}
           cookieDensity={cookieDensity}
           acting={acting}
+          headerRightSlot={headerRightSlot}
           contextBanner={<PlatformStaffContextBanners />}
           topSlot={<WelcomeBackToast />}
         >
