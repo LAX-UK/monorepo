@@ -33,7 +33,8 @@ export class ProfileUserIdentityResolver implements IUserIdentityResolver {
     if (profile.email) userData.em = [this.hasher.hashEmail(profile.email)];
     if (profile.phone) userData.ph = [this.hasher.hashPhone(profile.phone)];
     const nameParts = (profile.name ?? "").trim().split(/\s+/).filter(Boolean);
-    if (nameParts.length >= 1) userData.fn = [this.hasher.hashName(nameParts[0]!)];
+    const firstName = nameParts[0];
+    if (firstName) userData.fn = [this.hasher.hashName(firstName)];
     if (nameParts.length >= 2) {
       userData.ln = [this.hasher.hashName(nameParts.slice(1).join(" "))];
     }

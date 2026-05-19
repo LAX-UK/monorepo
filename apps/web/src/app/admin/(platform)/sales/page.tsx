@@ -1,9 +1,13 @@
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
+import { AdminSavedViewChips } from "@/components/admin/admin-saved-view-chips";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { Button } from "@/components/ui/button";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { saleListActivePreset, saleListPresetHref } from "@/lib/admin/list-presets/sales-presets";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import type { SaleStatus } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
@@ -59,6 +63,20 @@ export default async function AdminSalesPage({
   }
 
   const boardRows = rows.map(toAdminSaleBoardRow);
+  const liveOnPage = boardRows.filter((r) => r.status === "active").length;
+  const draftOnPage = boardRows.filter((r) => r.status === "draft").length;
+
+  const savedViews = (
+    <AdminSavedViewChips
+      activeId={saleListActivePreset(sp)}
+      views={[
+        { id: "all", label: "All", href: saleListPresetHref("all", sp) },
+        { id: "live", label: "Live", href: saleListPresetHref("live", sp) },
+        { id: "draft", label: "Draft", href: saleListPresetHref("draft", sp) },
+        { id: "ended", label: "Ended", href: saleListPresetHref("ended", sp) },
+      ]}
+    />
+  );
 
   const statusChips = (
     <FilterChipRow
@@ -152,7 +170,13 @@ export default async function AdminSalesPage({
           </Alert>
         ) : null
       }
-      chips={statusChips}
+      chips={
+        <div className="space-y-3">
+          {savedViews}
+          {statusChips}
+        </div>
+      }
+      listToolbarEnd={<AdminListExportLink />}
       filters={
         <form
           action="/admin/sales"
@@ -188,6 +212,14 @@ export default async function AdminSalesPage({
       view={
         !err && boardRows.length > 0 ? (
           <Suspense fallback={<PageSkeleton variant="table" />}>
+            <AdminListKpiStrip
+              ariaLabel="Sales summary"
+              tiles={[
+                { label: "On this page", value: boardRows.length },
+                { label: "Live", value: liveOnPage },
+                { label: "Draft", value: draftOnPage },
+              ]}
+            />
             <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
           </Suspense>
         ) : null

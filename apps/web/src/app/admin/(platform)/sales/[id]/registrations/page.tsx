@@ -13,6 +13,7 @@ import { StatusBadge } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Label } from "@auction/ui/components/label";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -76,7 +77,11 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
               >
                 <input type="hidden" name="saleId" value={saleId} />
                 <input type="hidden" name="registrationId" value={row.id} />
+                <Label htmlFor={`reject-reason-${row.id}`} className="sr-only">
+                  Rejection reason (optional)
+                </Label>
                 <textarea
+                  id={`reject-reason-${row.id}`}
                   name="reason"
                   placeholder="Optional reason"
                   className="mb-1 min-h-16 w-48 rounded border border-outline-variant/40 bg-surface px-2 py-1 font-body text-xs"

@@ -32,19 +32,23 @@ describe("MetaCapiMarketingEventPublisher", () => {
     const out = await pub.publish(baseEvent);
     expect(out.status).toBe("sent");
     expect(fetchFn).toHaveBeenCalledOnce();
-    const [, init] = fetchFn.mock.calls[0]!;
+    const firstCall = fetchFn.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const [, init] = firstCall ?? [];
     const body = JSON.parse(String(init?.body)) as {
       test_event_code: string;
       data: Array<Record<string, unknown>>;
     };
     expect(body.test_event_code).toBe("TEST123");
-    expect(body.data[0]).toMatchObject({
+    const firstEvent = body.data[0];
+    expect(firstEvent).toMatchObject({
       event_name: "Purchase",
       event_id: "purchase-evt-1",
       action_source: "website",
       event_source_url: "https://lax.bid/lot/foo",
     });
-    const userData = body.data[0]!.user_data as Record<string, unknown>;
+    const userData = firstEvent?.user_data as Record<string, unknown>;
+    expect(userData).toBeDefined();
     expect(userData.em).toEqual(["abc123"]);
     expect(userData.fbp).toBe("fb.1.123.456");
   });

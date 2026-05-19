@@ -1,10 +1,6 @@
 "use server";
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
-import {
-  revalidateAdminUserDetailPaths,
-  revalidateAdminUserListPaths,
-} from "@/lib/admin/admin-user-redirect";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -22,8 +18,8 @@ import {
   adminCreateArtistBodySchema,
   adminCreateCategoryBodySchema,
   adminCreateInvitationBodySchema,
+  adminPatchStaffRoleBodySchema,
   adminSetRoleBodySchema,
-  adminSetStaffRoleBodySchema,
   adminSuspendBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
@@ -40,6 +36,17 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
+function revalidateAdminUserListPaths(): void {
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin/staff");
+}
+
+function revalidateAdminUserDetailPaths(userId: string): void {
+  revalidateAdminUserListPaths();
+  revalidatePath(`/admin/clients/${userId}`);
+  revalidatePath(`/admin/staff/${userId}`);
+}
 
 async function postBulkAction(
   path: string,
@@ -139,28 +146,28 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
 
 export async function adminSuspendUserAction(formData: FormData): Promise<void> {
   const id = String(formData.get("userId") ?? "").trim();
-  if (!id) redirect(`/admin/users?error=${encodeURIComponent("Missing user")}`);
+  if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
   const { adminUsers } = getWriteContainer();
   const r = await adminUsers.suspend(id, {
     reason: String(formData.get("reason") ?? "").trim() || undefined,
   });
   if (!r.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
+    redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
-  redirect("/admin/users");
+  revalidateAdminUserDetailPaths(id);
+  redirect("/admin/clients");
 }
 
 export async function adminUnsuspendUserAction(formData: FormData): Promise<void> {
   const id = String(formData.get("userId") ?? "").trim();
-  if (!id) redirect(`/admin/users?error=${encodeURIComponent("Missing user")}`);
+  if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
   const { adminUsers } = getWriteContainer();
   const r = await adminUsers.unsuspend(id);
   if (!r.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
+    redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
-  redirect("/admin/users");
+  revalidateAdminUserDetailPaths(id);
+  redirect("/admin/clients");
 }
 
 export async function adminSetUserRoleAction(formData: FormData): Promise<void> {
@@ -168,14 +175,14 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
   const roleRaw = String(formData.get("role") ?? "").trim();
   const bodyParsed = adminSetRoleBodySchema.safeParse({ role: roleRaw });
   if (!id || !bodyParsed.success)
-    redirect(`/admin/users?error=${encodeURIComponent("Missing fields")}`);
+    redirect(`/admin/clients?error=${encodeURIComponent("Missing fields")}`);
   const { adminUsers } = getWriteContainer();
   const r = await adminUsers.setRole(id, bodyParsed.data);
   if (!r.ok) {
-    redirect(`/admin/users?error=${encodeURIComponent(r.message)}`);
+    redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
   }
-  revalidateAdminUserListPaths(revalidatePath);
-  redirect("/admin/users");
+  revalidateAdminUserListPaths();
+  redirect(bodyParsed.data.role === "staff" ? "/admin/staff" : "/admin/clients");
 }
 
 export async function adminCreateLotAction(formData: FormData): Promise<void> {
@@ -593,7 +600,7 @@ export async function adminBulkUsersResultAction(
   }
   const result = await postBulkAction("/admin/users/bulk", parsed.data, "User bulk action failed");
   if (!result.ok) return result;
-  revalidateAdminUserListPaths(revalidatePath);
+  revalidateAdminUserListPaths();
   return actionSuccess();
 }
 
@@ -702,13 +709,13 @@ export async function adminPaymentXeroSyncResultAction(
 
 export async function adminSetUserStaffRoleResultAction(
   userId: string,
-  body: z.infer<typeof adminSetStaffRoleBodySchema>,
+  body: z.infer<typeof adminPatchStaffRoleBodySchema>,
 ): Promise<ActionResult<void>> {
   const id = userId.trim();
   if (!id) {
     return actionFailure("Missing user");
   }
-  const p = adminSetStaffRoleBodySchema.safeParse(body);
+  const p = adminPatchStaffRoleBodySchema.safeParse(body);
   if (!p.success) {
     return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
   }
@@ -717,7 +724,7 @@ export async function adminSetUserStaffRoleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
+  revalidateAdminUserDetailPaths(id);
   return actionSuccess();
 }
 
@@ -738,7 +745,7 @@ export async function adminSetUserRoleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
+  revalidateAdminUserDetailPaths(id);
   return actionSuccess();
 }
 
@@ -759,7 +766,7 @@ export async function adminSuspendUserResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
+  revalidateAdminUserDetailPaths(id);
   return actionSuccess();
 }
 
@@ -773,7 +780,7 @@ export async function adminUnsuspendUserResultAction(userId: string): Promise<Ac
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidateAdminUserDetailPaths(revalidatePath, id);
+  revalidateAdminUserDetailPaths(id);
   return actionSuccess();
 }
 

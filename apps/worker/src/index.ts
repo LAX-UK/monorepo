@@ -43,7 +43,10 @@ import {
 } from "./jobs/send-email.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
-import { isMarketingEventsEnabled } from "./lib/marketing-events-enabled.js";
+import {
+  getMarketingEventsConfig,
+  isMarketingEventsEnabled,
+} from "./lib/marketing-events-enabled.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
 import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
@@ -248,7 +251,8 @@ let marketingOutboxPollerQueue: Queue | undefined;
 let marketingCapiBatchCollector: MetaCapiBatchCollector | undefined;
 let purgeMarketingClickIdsWorker: Worker | undefined;
 let purgeMarketingClickIdsQueue: Queue | undefined;
-if (isMarketingEventsEnabled(env)) {
+const marketingConfig = getMarketingEventsConfig(env);
+if (marketingConfig) {
   const hasher = new Sha256PiiHasher();
   const clickIdStore = new CachedClickIdStore(
     new PostgresClickIdStore(db),
@@ -260,14 +264,14 @@ if (isMarketingEventsEnabled(env)) {
     hasher,
   );
   const sgtmPublisher = new SgtmMarketingEventPublisher(
-    env.SGTM_ENDPOINT_URL!,
-    env.GA4_MEASUREMENT_ID!,
+    marketingConfig.sgtmEndpointUrl,
+    marketingConfig.ga4MeasurementId,
   );
   const metaPublisher = new MetaCapiMarketingEventPublisher(
-    env.META_PIXEL_ID!,
-    env.META_CAPI_ACCESS_TOKEN!,
-    env.META_CAPI_TEST_EVENT_CODE,
-    env.META_GRAPH_API_VERSION ?? "v21.0",
+    marketingConfig.metaPixelId,
+    marketingConfig.metaCapiAccessToken,
+    marketingConfig.metaCapiTestEventCode,
+    marketingConfig.metaGraphApiVersion,
   );
 
   marketingCapiBatchQueue = new Queue<ResolvedMarketingEvent>("marketing-events-capi-batch", {
@@ -332,12 +336,13 @@ if (isMarketingEventsEnabled(env)) {
   marketingOutboxPollerWorker = new Worker(
     "marketing-outbox-poller",
     async () => {
-      if (!marketingEventsQueue) return;
+      const eventsQueue = marketingEventsQueue;
+      if (!eventsQueue) return;
       await runMarketingEventOutboxPoller({
         db,
         log,
         enqueue: async (event) => {
-          await marketingEventsQueue!.add("publish", event, { jobId: event.eventId });
+          await eventsQueue.add("publish", event, { jobId: event.eventId });
         },
       });
     },

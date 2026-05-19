@@ -209,8 +209,8 @@ function buildVisibleSections(
           },
           {
             id: "action-open-user",
-            href: `/admin/users/${id}`,
-            label: `Open user ${id.slice(0, 8)}…`,
+            href: `/admin/clients/${id}`,
+            label: `Open account ${id.slice(0, 8)}…`,
             hint: "UUID",
           },
         );

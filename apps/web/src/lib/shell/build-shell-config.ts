@@ -3,7 +3,7 @@ import {
   getAppShellNavItems,
   getClientMobileBottomTabs,
 } from "@/components/layout/app-shell-nav";
-import { getStaffNavGroups } from "@/components/layout/staff-nav";
+import { getStaffMobileBottomTabs, getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
@@ -63,7 +63,15 @@ export function buildShellConfig({
   const mobileNav =
     role === "client"
       ? appShellNavItemsToNavItems(getClientMobileBottomTabs(clientWorkspaceMode))
-      : [];
+      : appShellNavItemsToNavItems(
+          getStaffMobileBottomTabs(
+            user.role as UserRole,
+            (user.staffRole ?? null) as UserStaffRole | null,
+            pendingSubmissionCount,
+            pendingArtistCount,
+            role === "finance",
+          ),
+        );
 
   const tabIds = new Set(mobileNav.map((item) => item.id));
   const moreSheetNav =

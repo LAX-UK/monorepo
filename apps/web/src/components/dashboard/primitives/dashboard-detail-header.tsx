@@ -4,6 +4,7 @@ import {
   accentLinkClass,
 } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -47,23 +48,27 @@ export function DashboardDetailHeader({
       <div className="mx-auto flex max-w-6xl flex-col gap-3">
         {crumbs ? <div className="text-on-surface-variant">{crumbs}</div> : null}
         {backHref && !crumbs ? (
-          <Link
-            href={backHref}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
             className={cn(
-              "inline-flex w-fit items-center gap-1 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
+              "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
               accentLinkClass(track),
             )}
           >
-            <ChevronLeft className="size-4" aria-hidden />
-            {backLabel}
-          </Link>
+            <Link href={backHref}>
+              <ChevronLeft className="size-4" aria-hidden />
+              {backLabel}
+            </Link>
+          </Button>
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             {eyebrow ? (
               <p
                 className={cn(
-                  "font-label text-[10px] font-semibold uppercase tracking-[0.22em]",
+                  "font-label text-xs font-semibold uppercase tracking-[0.22em]",
                   accentEyebrowClass(track),
                 )}
               >

@@ -5,7 +5,6 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
 type Props = {
-  stepIndex: number;
   isLastStep: boolean;
   isSubmitting: boolean;
   autosaveStatus: AutosaveStatus;
@@ -13,7 +12,6 @@ type Props = {
   showAutosave: boolean;
   onBack: () => void;
   onNext: () => void;
-  onSaveAndLeave: () => void;
   canGoBack: boolean;
 };
 
@@ -28,7 +26,6 @@ function autosaveLabel(status: AutosaveStatus, lastSavedAt: Date | null): string
 }
 
 export function WizardFooter({
-  stepIndex: _stepIndex,
   isLastStep,
   isSubmitting,
   autosaveStatus,
@@ -36,42 +33,56 @@ export function WizardFooter({
   showAutosave,
   onBack,
   onNext,
-  onSaveAndLeave,
   canGoBack,
 }: Props) {
   const statusText = showAutosave ? autosaveLabel(autosaveStatus, lastSavedAt) : "";
 
+  if (isLastStep) return null;
+
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-20 -mx-4 border-t border-border-hairline bg-surface-container-lowest/95 px-4 py-4 backdrop-blur-sm sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md",
+        "sticky z-50 -mx-4 border-t border-border-hairline bg-surface-container-lowest/95 px-4 pt-4 backdrop-blur-sm sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md",
+        "pb-[max(1rem,env(safe-area-inset-bottom))]",
       )}
+      style={{ bottom: "env(keyboard-inset-height, 0px)" }}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {statusText ? (
         <p
           className={cn(
-            "min-h-5 font-label text-[10px] uppercase tracking-wider",
+            "mb-3 min-h-5 font-label text-[10px] uppercase tracking-wider",
             autosaveStatus === "error" ? "text-live-red" : "text-on-surface-variant",
           )}
           aria-live="polite"
         >
-          {statusText || "\u00a0"}
+          {statusText}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {canGoBack ? (
-            <Button type="button" variant="ghost" disabled={isSubmitting} onClick={onBack}>
-              Back
-            </Button>
-          ) : null}
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onSaveAndLeave}>
-            Save and continue later
+      ) : null}
+      <div className="flex items-center gap-3">
+        {canGoBack ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="min-h-12 shrink-0 px-4"
+            disabled={isSubmitting}
+            onClick={onBack}
+            data-testid="wizard-back"
+          >
+            Back
           </Button>
-          {!isLastStep ? (
-            <Button type="button" variant="cta" disabled={isSubmitting} onClick={onNext}>
-              Next
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
+        <Button
+          type="button"
+          variant="cta"
+          size="lg"
+          className="min-h-12 flex-1"
+          disabled={isSubmitting}
+          onClick={onNext}
+          data-testid="wizard-next"
+        >
+          Next
+        </Button>
       </div>
     </div>
   );

@@ -45,6 +45,3 @@ export function SectionTabsNav({
     />
   );
 }
-
-/** @deprecated Use `SectionTabsNav` */
-export { SectionTabsNav as DashboardSectionTabs };

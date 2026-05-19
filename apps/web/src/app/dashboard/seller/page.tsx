@@ -202,7 +202,7 @@ export default async function SellerOverviewPage() {
           action={
             <Button variant="primary" asChild>
               <Link href="/dashboard/submissions/new">
-                New submission <ArrowRight className="ml-2 inline size-4" aria-hidden />
+                New submission <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
           }

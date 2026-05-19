@@ -16,6 +16,7 @@ import { LifespanSection } from "@/components/admin/artist-form/sections/lifespa
 import { MediaSection } from "@/components/admin/artist-form/sections/media-section";
 import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
 import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
+import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { notify } from "@/lib/ui/notify";
@@ -94,165 +95,168 @@ export function AdminArtistForm({
   const showPreview = showFormBody;
 
   return (
-    <Form {...form}>
-      <form
-        className="space-y-8"
-        onSubmit={form.handleSubmit((values) => {
-          if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {
-            notify.error("Link a platform user for a maker–seller profile.");
-            return;
-          }
-          startTransition(async () => {
-            const result =
-              mode === "create"
-                ? await adminCreateArtistResultAction(values)
-                : artistId
-                  ? await adminUpdateArtistResultAction(artistId, values)
-                  : { ok: false as const, error: "Missing artist" };
-            if (result.ok) {
-              notify.success(mode === "create" ? "Artist created" : "Artist saved");
-              if (mode === "edit" && artistId) {
-                router.push(`/admin/artists/${artistId}`);
-              } else {
-                router.push("/admin/artists");
-              }
-              router.refresh();
+    <>
+      <FormDirtyGuard isDirty={form.formState.isDirty} />
+      <Form {...form}>
+        <form
+          className="space-y-8"
+          onSubmit={form.handleSubmit((values) => {
+            if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {
+              notify.error("Link a platform user for a maker–seller profile.");
               return;
             }
-            notify.error(result.error);
-          });
-        })}
-      >
-        {mode === "edit" ? <ArtistScenarioBadge scenario={editScenario} /> : null}
+            startTransition(async () => {
+              const result =
+                mode === "create"
+                  ? await adminCreateArtistResultAction(values)
+                  : artistId
+                    ? await adminUpdateArtistResultAction(artistId, values)
+                    : { ok: false as const, error: "Missing artist" };
+              if (result.ok) {
+                notify.success(mode === "create" ? "Artist created" : "Artist saved");
+                if (mode === "edit" && artistId) {
+                  router.push(`/admin/artists/${artistId}`);
+                } else {
+                  router.push("/admin/artists");
+                }
+                router.refresh();
+                return;
+              }
+              notify.error(result.error);
+            });
+          })}
+        >
+          {mode === "edit" ? <ArtistScenarioBadge scenario={editScenario} /> : null}
 
-        {mode === "create" ? (
-          <ScenarioSelector
-            value={createScenario}
-            onChange={applyScenarioChange}
-            disabled={pending}
-          />
-        ) : null}
+          {mode === "create" ? (
+            <ScenarioSelector
+              value={createScenario}
+              onChange={applyScenarioChange}
+              disabled={pending}
+            />
+          ) : null}
 
-        {mode === "create" && createScenario === null ? (
-          <p className="text-sm text-on-surface-variant">
-            Choose a profile type above to continue. Fields stay tailored to catalogue-only vs
-            linked maker–seller workflows.
-          </p>
-        ) : null}
+          {mode === "create" && createScenario === null ? (
+            <p className="text-sm text-on-surface-variant">
+              Choose a profile type above to continue. Fields stay tailored to catalogue-only vs
+              linked maker–seller workflows.
+            </p>
+          ) : null}
 
-        {showFormBody ? (
-          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-            <div className="min-w-0 space-y-6">
-              {activeScenario === "maker-seller" ? (
+          {showFormBody ? (
+            <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+              <div className="min-w-0 space-y-6">
+                {activeScenario === "maker-seller" ? (
+                  <ArtistFormSection
+                    title="Platform user"
+                    description="Who this catalogue profile represents when they sell their own work."
+                    defaultOpen
+                  >
+                    <UserLinkSection
+                      control={form.control}
+                      disabled={pending || readOnly}
+                      emphasize
+                    />
+                  </ArtistFormSection>
+                ) : null}
+
                 <ArtistFormSection
-                  title="Platform user"
-                  description="Who this catalogue profile represents when they sell their own work."
+                  title="Identity"
+                  description="Public name, URL slug, and place."
                   defaultOpen
                 >
-                  <UserLinkSection
-                    control={form.control}
-                    disabled={pending || readOnly}
-                    emphasize
-                  />
+                  <IdentitySection control={form.control} disabled={pending || readOnly} />
                 </ArtistFormSection>
-              ) : null}
 
-              <ArtistFormSection
-                title="Identity"
-                description="Public name, URL slug, and place."
-                defaultOpen
-              >
-                <IdentitySection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
-
-              <ArtistFormSection
-                title="Lifespan"
-                description="Optional years for biographical context."
-                defaultOpen={false}
-              >
-                <LifespanSection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
-
-              <ArtistFormSection
-                title="Biography"
-                description="Copy shown on the public artist profile."
-                defaultOpen
-              >
-                <BiographySection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
-
-              <ArtistFormSection
-                title="Media"
-                description="Portrait, hero, and website links."
-                defaultOpen={false}
-              >
-                <MediaSection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
-
-              <ArtistFormSection
-                title="Catalogue"
-                description="Taxonomy and lifecycle for the registry."
-                defaultOpen
-              >
-                <CatalogueSection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
-
-              {activeScenario === "historical" ? (
                 <ArtistFormSection
-                  title="Optional user link"
-                  description="Rarely needed for external profiles; use maker–seller path when the seller is the maker."
+                  title="Lifespan"
+                  description="Optional years for biographical context."
                   defaultOpen={false}
                 >
-                  <UserLinkSection
-                    control={form.control}
-                    disabled={pending || readOnly}
-                    emphasize={false}
-                  />
+                  <LifespanSection control={form.control} disabled={pending || readOnly} />
                 </ArtistFormSection>
-              ) : null}
 
-              <ArtistFormSection
-                title="Visibility"
-                description="Featured, verified, and archive flags."
-                defaultOpen={false}
-              >
-                <FlagsSection control={form.control} disabled={pending || readOnly} />
-              </ArtistFormSection>
+                <ArtistFormSection
+                  title="Biography"
+                  description="Copy shown on the public artist profile."
+                  defaultOpen
+                >
+                  <BiographySection control={form.control} disabled={pending || readOnly} />
+                </ArtistFormSection>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/admin/artists")}
+                <ArtistFormSection
+                  title="Media"
+                  description="Portrait, hero, and website links."
+                  defaultOpen={false}
                 >
-                  Cancel
-                </Button>
-                <LoadingButton
-                  type="submit"
-                  loading={pending}
-                  loadingLabel="Saving…"
-                  disabled={readOnly}
+                  <MediaSection control={form.control} disabled={pending || readOnly} />
+                </ArtistFormSection>
+
+                <ArtistFormSection
+                  title="Catalogue"
+                  description="Taxonomy and lifecycle for the registry."
+                  defaultOpen
                 >
-                  {mode === "create" ? "Create artist" : "Save artist"}
-                </LoadingButton>
+                  <CatalogueSection control={form.control} disabled={pending || readOnly} />
+                </ArtistFormSection>
+
+                {activeScenario === "historical" ? (
+                  <ArtistFormSection
+                    title="Optional user link"
+                    description="Rarely needed for external profiles; use maker–seller path when the seller is the maker."
+                    defaultOpen={false}
+                  >
+                    <UserLinkSection
+                      control={form.control}
+                      disabled={pending || readOnly}
+                      emphasize={false}
+                    />
+                  </ArtistFormSection>
+                ) : null}
+
+                <ArtistFormSection
+                  title="Visibility"
+                  description="Featured, verified, and archive flags."
+                  defaultOpen={false}
+                >
+                  <FlagsSection control={form.control} disabled={pending || readOnly} />
+                </ArtistFormSection>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/admin/artists")}
+                  >
+                    Cancel
+                  </Button>
+                  <LoadingButton
+                    type="submit"
+                    loading={pending}
+                    loadingLabel="Saving…"
+                    disabled={readOnly}
+                  >
+                    {mode === "create" ? "Create artist" : "Save artist"}
+                  </LoadingButton>
+                </div>
               </div>
-            </div>
 
-            {showPreview ? (
-              <ArtistPreview
-                className="lg:sticky lg:top-4"
-                scenario={activeScenario}
-                data={{
-                  displayName: String(watchedDisplay),
-                  kindLabel: artistKindMeta(watchedKind).label,
-                  shortBio: String(watchedShortBio ?? ""),
-                  portraitUrl: String(watchedPortrait ?? ""),
-                }}
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </form>
-    </Form>
+              {showPreview ? (
+                <ArtistPreview
+                  className="lg:sticky lg:top-4"
+                  scenario={activeScenario}
+                  data={{
+                    displayName: String(watchedDisplay),
+                    kindLabel: artistKindMeta(watchedKind).label,
+                    shortBio: String(watchedShortBio ?? ""),
+                    portraitUrl: String(watchedPortrait ?? ""),
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </form>
+      </Form>
+    </>
   );
 }

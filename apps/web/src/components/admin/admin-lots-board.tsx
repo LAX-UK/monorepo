@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
 import type { LotStatus } from "@auction/types";
-import { DataTable, EmptyState, EntityList, InlineActionMenu, StatusBadge } from "@auction/ui";
+import { EmptyState, EntityList, InlineActionMenu, StatusBadge } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -222,7 +223,8 @@ export function AdminLotsBoard({
         responsiveMode="auto"
         table={
           <TableScroll>
-            <DataTable
+            <AdminDataTable
+              ariaLabel="Lots"
               columns={columns}
               data={data}
               enableRowSelection
@@ -230,6 +232,8 @@ export function AdminLotsBoard({
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               density={density}
+              showColumnPicker
+              columnVisibilityStorageKey="admin-lots-columns"
             />
           </TableScroll>
         }

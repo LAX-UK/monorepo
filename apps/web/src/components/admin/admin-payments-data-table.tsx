@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminDataTable } from "@/components/admin/admin-data-table";
 import {
   adminCapturePaymentResultAction,
   adminRefundPaymentResultAction,
@@ -9,7 +10,6 @@ import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments
 import { notify } from "@/lib/ui/notify";
 import type { PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
@@ -177,5 +177,12 @@ type Props = {
 
 export function AdminPaymentsDataTable({ rows }: Props) {
   const columns = useMemo(() => paymentColumns(), []);
-  return <DataTable columns={columns} data={rows} emptyMessage="No payment records yet." />;
+  return (
+    <AdminDataTable
+      ariaLabel="Payments"
+      columns={columns}
+      data={rows}
+      emptyMessage="No payment records yet."
+    />
+  );
 }
