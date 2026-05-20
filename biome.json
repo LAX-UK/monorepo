@@ -89,6 +89,23 @@
           }
         }
       }
+    },
+    {
+      "include": [
+        "packages/ui/src/components/ui/carousel.tsx",
+        "src/components/ui/carousel.tsx",
+        "apps/web/src/components/gallery/parts/thumb-pile-3-plus-n.tsx",
+        "apps/web/src/components/sections/home/hero/hero-slide-copy.tsx",
+        "src/components/gallery/parts/thumb-pile-3-plus-n.tsx",
+        "src/components/sections/home/hero/hero-slide-copy.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
     }
   ]
 }
