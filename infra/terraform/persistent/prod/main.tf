@@ -10,7 +10,7 @@ locals {
     api                  = { name = "api", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod api App Platform hostname" }
     auth                 = { name = "auth", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod auth App Platform hostname" }
     ws                   = { name = "ws", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod ws App Platform hostname" }
-    gtm                  = { name = "gtm", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod GTM server-side tagging cluster" }
+    gtm                  = { name = "gtm", type = "CNAME", value = "eum.stape.io", proxied = false, comment = "lax prod sGTM via Stape (DNS-only; Stape terminates TLS on eum.stape.io)" }
     gtm_preview          = { name = "gtm-preview", type = "CNAME", value = local.app_hostname, proxied = true, comment = "lax prod GTM server-side preview server" }
     media                = { name = "media", type = "CNAME", value = local.media_cdn, proxied = false, comment = "lax prod media CDN (legacy - app uses CDN URL directly)" }
     postmark_dkim        = { name = "20260505002152pm._domainkey.mail", type = "TXT", value = "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDi/NrnU+oeVXNo0sJM72mILqXSYfL76kXxMfPFtoivITNVd3bSJjzcurIm2M0VqnE2L7O20xc35lYMTnRddm3BrU8UXJ6D+dq4yp8l+Nl3min0w0V9dCFgBL0TijdVP52yBlQwgQfi/IkUOPo4jxukYdcvu4NNy2r6sdnEvPcjRwIDAQAB", proxied = false, comment = "Postmark prod DKIM" }
