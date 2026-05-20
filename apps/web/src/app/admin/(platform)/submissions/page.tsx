@@ -1,41 +1,44 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { AdminSavedViewChips } from "@/components/admin/admin-saved-view-chips";
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
-import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submissions-title-filter-form";
-import { FilterChipRow } from "@/components/admin/filter-chip-row";
-import { submissionsListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogSubmissionsFilterToolbar } from "@/components/admin/catalog/catalog-submissions-filter-toolbar";
 import {
-  submissionListActivePreset,
-  submissionListPresetHref,
-} from "@/lib/admin/list-presets/submissions-presets";
-import type { ItemSubmissionStatus } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+  type SubmissionDecisionQueue,
+  submissionsListController,
+} from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
+import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
+import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import Link from "next/link";
 import { Suspense } from "react";
 
-const statusChips: { value: ItemSubmissionStatus | ""; label: string }[] = [
-  { value: "", label: "All" },
-  { value: "submitted", label: "Submitted" },
-  { value: "under_review", label: "Under review" },
-  { value: "approved", label: "Approved" },
-  { value: "converted", label: "Converted" },
-  { value: "rejected", label: "Rejected" },
-  { value: "withdrawn", label: "Withdrawn" },
-  { value: "draft", label: "Draft" },
+const DECISION_TABS: { id: SubmissionDecisionQueue; label: string }[] = [
+  { id: "awaiting", label: "Awaiting" },
+  { id: "accepted", label: "Accepted" },
+  { id: "rejected", label: "Rejected" },
 ];
+
+function legacyStatusLabel(searchParams: Record<string, string | string[] | undefined>) {
+  const st = Array.isArray(searchParams.status)
+    ? searchParams.status[0]
+    : (searchParams.status ?? "");
+  if (!st || st === "all") return null;
+  return st.replaceAll("_", " ");
+}
 
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
   searchParams: Promise<{
     status?: string;
+    queue?: string;
     error?: string;
     q?: string;
     limit?: string;
@@ -46,6 +49,8 @@ export default async function AdminSubmissionsPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const query = submissionsListController.parseQuery(sp);
   const initialQ = query.q ?? "";
+  const activeQueue = query.queue ?? ("awaiting" as SubmissionDecisionQueue);
+  const legacyLabel = legacyStatusLabel(sp);
 
   let loadError: string | null = null;
   let rows: Awaited<ReturnType<typeof submissionsListController.fetch>>["rows"] = [];
@@ -66,82 +71,56 @@ export default async function AdminSubmissionsPage({
       title: s.title,
       sellerPreview,
       status: s.status,
-      createdAtLabel: s.createdAt.toLocaleString(),
+      createdAtLabel: formatDateTime(s.createdAt),
     };
   });
 
   const clearTitleHref = buildListHref("/admin/submissions", sp, {
-    ...(query.status !== undefined ? { status: query.status } : { status: "" }),
     q: "",
     offset: 0,
+    ...(query.status !== undefined
+      ? { status: query.status }
+      : { status: "", queue: query.queue ?? "awaiting" }),
   });
 
-  const intakeOnPage = submissionRows.filter(
+  const awaitingOnPage = submissionRows.filter(
     (r) => r.status === "under_review" || r.status === "submitted",
   ).length;
 
-  const savedViews = (
-    <AdminSavedViewChips
-      activeId={submissionListActivePreset(sp)}
-      views={[
-        { id: "all", label: "All", href: submissionListPresetHref("all", sp) },
-        { id: "intake", label: "Needs review", href: submissionListPresetHref("intake", sp) },
-        { id: "approved", label: "Approved", href: submissionListPresetHref("approved", sp) },
-        { id: "rejected", label: "Rejected", href: submissionListPresetHref("rejected", sp) },
-      ]}
-    />
-  );
-
-  const kpiStrip =
+  const kpiTiles =
     !loadError && submissionRows.length > 0 ? (
       <AdminListKpiStrip
         ariaLabel="Submissions summary"
         tiles={[
           { label: "On this page", value: submissionRows.length, delta: `of ${total} total` },
-          { label: "Needs review", value: intakeOnPage, delta: "Submitted or under review" },
+          ...(query.queue === "awaiting"
+            ? [
+                {
+                  label: "Submitted / reviewing",
+                  value: awaitingOnPage,
+                  delta: "On this page",
+                },
+              ]
+            : []),
         ]}
       />
     ) : null;
 
-  const statusChipsRow = (
-    <FilterChipRow
-      label="Filter by submission status"
-      chips={statusChips.map((chip) => ({
-        id: chip.value || "all",
-        label: chip.label,
-        href: buildListHref("/admin/submissions", sp, {
-          status: chip.value ? chip.value : "",
-          q: initialQ,
-          offset: 0,
-        }),
-        active:
-          (chip.value === "" && query.status === undefined) ||
-          (chip.value !== "" && chip.value === query.status),
-      }))}
-    />
-  );
+  const lenses: CatalogSegmentItem[] = DECISION_TABS.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    href: submissionsDecisionQueueHref(tab.id, sp),
+  }));
 
-  const filters = (
-    <div className="flex w-full flex-col gap-4">
-      <Suspense
-        fallback={
-          <div
-            className="min-h-11 rounded-md border border-border-hairline bg-surface-container-low/40"
-            aria-hidden
-          />
-        }
-      >
-        <AdminSubmissionsTitleFilterForm initialQ={initialQ} status={query.status} />
-      </Suspense>
-    </div>
-  );
+  const activeLensId: string = query.status !== undefined ? "__legacy__" : String(activeQueue);
+
+  const activeFilterCount = initialQ.trim() !== "" ? 1 : 0;
 
   const pagination =
     !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
-        total={total}
         countOnPage={rows.length}
         prevHref={
           query.offset > 0
@@ -162,36 +141,39 @@ export default async function AdminSubmissionsPage({
 
   const errorAlert =
     error || loadError ? (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load submissions</AlertTitle>
-        <AlertDescription>{loadError ?? error}</AlertDescription>
-      </Alert>
+      <AdminListAlert title="Could not load submissions">{loadError ?? error}</AdminListAlert>
     ) : null;
 
-  const hasFilters = Boolean(query.status !== undefined || initialQ);
-
-  const activeStatusLabel =
-    statusChips.find((c) => c.value === query.status)?.label.toLowerCase() ?? null;
+  const scopeDescription =
+    query.status !== undefined
+      ? (legacyLabel ?? "matching your filters")
+      : ({
+          awaiting: "awaiting decision (submitted or under review)",
+          accepted: "accepted (approved or converted)",
+          rejected: "rejected",
+        }[activeQueue] ?? "matching your filters");
 
   const emptyNoQuery =
     !loadError && rows.length === 0 && !initialQ ? (
-      <EmptyState
+      <AdminEmptyState
         title={
-          query.status !== undefined ? `No ${activeStatusLabel} submissions` : "No submissions"
+          query.status !== undefined
+            ? `No submissions with legacy status "${legacyLabel ?? ""}"`
+            : `Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`
         }
         description={
           query.status !== undefined
-            ? `There are no submissions with status "${activeStatusLabel}" matching your filters.`
-            : "The intake queue is empty."
+            ? "This bookmarked status filter matched no rows."
+            : `There are no submissions ${scopeDescription} right now.`
         }
       />
     ) : null;
 
   const emptyTitleOnly =
     !loadError && initialQ && rows.length === 0 ? (
-      <EmptyState
+      <AdminEmptyState
         title="No matches"
-        description={`No submissions match "${initialQ}"${query.status !== undefined ? ` with status "${activeStatusLabel}"` : ""}. Try another search term or clear the filter.`}
+        description={`No submissions match "${initialQ}" in this ${query.status !== undefined ? `legacy filter (${legacyLabel ?? ""})` : "queue"} view. Try another search term or clear the filter.`}
         action={
           <Button variant="secondary" asChild>
             <Link href={clearTitleHref}>Clear search</Link>
@@ -200,38 +182,65 @@ export default async function AdminSubmissionsPage({
       />
     ) : null;
 
-  const view =
+  const board =
     !loadError && submissionRows.length > 0 ? (
       <>
-        {kpiStrip}
+        {kpiTiles}
         <AdminSubmissionsBoard rows={submissionRows} />
       </>
     ) : null;
 
   return (
-    <AdminListPage
+    <CatalogListShell
       title="Submissions"
-      description="Review seller intake. Start review on submitted items, then approve (creates a draft lot) or reject with a clear reason."
-      hasFilters={hasFilters}
-      resetHref="/admin/submissions"
-      errorAlert={errorAlert}
-      chips={
-        <div className="space-y-3">
-          {savedViews}
-          {statusChipsRow}
-        </div>
+      description="Staff decision queue: approve to create draft lots or reject with a clear reason."
+      filterBar={
+        <Suspense
+          fallback={
+            <div
+              className="min-h-[3.25rem] rounded-md border border-border-hairline bg-surface-container-low/40"
+              aria-hidden
+            />
+          }
+        >
+          <CatalogSubmissionsFilterToolbar
+            lenses={lenses}
+            activeLensId={activeLensId}
+            activeFilterCount={activeFilterCount}
+            initialQ={initialQ}
+            {...(query.queue !== undefined ? { queue: query.queue } : {})}
+            {...(query.status !== undefined ? { status: query.status } : {})}
+          />
+        </Suspense>
       }
-      listToolbarEnd={<AdminListExportLink />}
-      filters={filters}
-      view={view}
-      showCommandPaletteHint={!loadError && submissionRows.length === 0}
-      empty={
+      toolbarEnd={<AdminListExportLink />}
+      errorAlert={
         <>
-          {emptyNoQuery}
-          {emptyTitleOnly}
+          {errorAlert}
+          {query.status !== undefined ? (
+            <p className="font-body text-xs text-on-surface-variant">
+              Using legacy bookmark <span className="font-mono">{String(sp.status ?? "")}</span>.{" "}
+              <Link href="/admin/submissions" className="text-primary underline">
+                Switch to queues
+              </Link>
+              .
+            </p>
+          ) : null}
         </>
       }
-      pagination={pagination}
-    />
+      mobileSummary={
+        !loadError && submissionRows.length > 0 ? (
+          <p className="font-body text-sm text-on-surface-variant">
+            {submissionRows.length} on page
+            {total > 0 ? ` · ${total} total` : ""}
+          </p>
+        ) : null
+      }
+    >
+      {board}
+      {emptyNoQuery}
+      {emptyTitleOnly}
+      {pagination}
+    </CatalogListShell>
   );
 }

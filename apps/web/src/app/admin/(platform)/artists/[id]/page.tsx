@@ -1,11 +1,15 @@
-import { ActivityTimelinePanel } from "@/components/admin/activity-timeline-panel";
 import { AdminArtistDuplicatesTable } from "@/components/admin/admin-artist-duplicates-table";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
 import { AdminArtistReviewPanel } from "@/components/admin/admin-artist-review-panel";
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
-import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
-import { artistStatusLabel, artistStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import {
+  CatalogDetailShell,
+  CatalogInfoAside,
+  type CatalogMobileAction,
+} from "@/components/admin/catalog";
+import { AdminArtistEditableTitle } from "@/components/admin/editable-titles";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import {
@@ -15,7 +19,7 @@ import {
 } from "@/lib/data/http/admin.server";
 import { artistPath } from "@/lib/seo/url";
 import type { ArtistStatus } from "@auction/types";
-import { Badge, StatusBadge } from "@auction/ui";
+import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -40,6 +44,20 @@ export default async function AdminArtistDetailPage({
   const publicHref = artistPath({ id: artist.id, name: artist.displayName });
   const registryStatus: ArtistStatus = artist.status ?? "pending";
 
+  const artistMobileActions: CatalogMobileAction[] = [
+    {
+      id: "edit-artist",
+      label: "Edit",
+      href: `/admin/artists/${artist.id}/edit`,
+      variant: "primary",
+    },
+    {
+      id: "public-profile",
+      label: "Public profile",
+      href: publicHref,
+    },
+  ];
+
   const mergedBanner =
     artist.status === "merged_into" && artist.mergedIntoArtistId ? (
       <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low/40 p-4 text-sm text-on-surface">
@@ -54,30 +72,30 @@ export default async function AdminArtistDetailPage({
     ) : null;
 
   return (
-    <AdminEntityDetailShell
+    <CatalogDetailShell
       breadcrumbs={
-        <div className="flex flex-wrap gap-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
           <Link href="/admin/artists" className="text-primary hover:underline">
             ← Artists
           </Link>
           <span className="text-on-surface-variant">/</span>
-          <span className="text-on-surface">{artist.displayName}</span>
-        </div>
+          <span className="truncate text-on-surface">{artist.displayName}</span>
+        </span>
       }
-      title={artist.displayName}
+      eyebrow="Artist"
+      title={<AdminArtistEditableTitle artistId={artist.id} value={artist.displayName} />}
       description={life ? `${life} · Registry overview` : "Registry overview"}
       meta={
         <div className="flex flex-wrap items-center gap-2">
           {artist.kind ? (
             <Badge variant="secondary">{artistKindMeta(artist.kind).badge}</Badge>
           ) : null}
-          <StatusBadge variant={artistStatusToBadgeVariant(registryStatus)}>
-            {artistStatusLabel[registryStatus]}
-          </StatusBadge>
+          <AdminStatusBadge domain="artist" status={registryStatus} />
         </div>
       }
       actions={
         <div className="flex flex-wrap gap-2">
+          <AdminPinPageButton label={artist.displayName} />
           <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
           </Button>
@@ -88,93 +106,87 @@ export default async function AdminArtistDetailPage({
           </Button>
         </div>
       }
+      mobileActions={artistMobileActions}
+      aside={
+        <CatalogInfoAside
+          entityId={artist.id}
+          updatedAt={artist.updatedAt}
+          publicHref={publicHref}
+          publicLabel="Public profile"
+          status={<AdminStatusBadge domain="artist" status={registryStatus} />}
+        />
+      }
     >
-      <AdminDetailTabs
-        defaultValue="overview"
-        tabs={[
-          {
-            value: "overview",
-            label: "Overview",
-            content: (
-              <div className="space-y-6">
-                {mergedBanner}
+      <div className="space-y-12">
+        <section className="space-y-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-on-surface">
+            Overview
+          </h2>
+          <div className="space-y-6">
+            {mergedBanner}
 
-                <Surface variant="card">
-                  <h3 className="font-display text-lg font-semibold text-on-surface">Profile</h3>
-                  <div className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
-                    <p>
-                      <span className="font-medium text-on-surface">Slug</span>
-                      <br />
-                      <span className="font-mono text-xs">/{artist.slug}</span>
-                    </p>
-                    <p>
-                      <span className="font-medium text-on-surface">Nationality</span>
-                      <br />
-                      {artist.nationality?.trim() || "—"}
-                    </p>
-                    <p>
-                      <span className="font-medium text-on-surface">Featured / verified</span>
-                      <br />
-                      {artist.featured ? "Featured" : "Not featured"}
-                      {" · "}
-                      {artist.verified ? "Verified" : "Not verified"}
-                    </p>
-                    <p>
-                      <span className="font-medium text-on-surface">Archived</span>
-                      <br />
-                      {artist.archived ? "Yes" : "No"}
-                    </p>
-                  </div>
-                </Surface>
+            <Surface variant="card">
+              <h3 className="font-display text-lg font-semibold text-on-surface">Profile</h3>
+              <div className="mt-4 grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
+                <p>
+                  <span className="font-medium text-on-surface">Slug</span>
+                  <br />
+                  <span className="font-mono text-xs">/{artist.slug}</span>
+                </p>
+                <p>
+                  <span className="font-medium text-on-surface">Nationality</span>
+                  <br />
+                  {artist.nationality?.trim() || "—"}
+                </p>
+                <p>
+                  <span className="font-medium text-on-surface">Featured / verified</span>
+                  <br />
+                  {artist.featured ? "Featured" : "Not featured"}
+                  {" · "}
+                  {artist.verified ? "Verified" : "Not verified"}
+                </p>
+                <p>
+                  <span className="font-medium text-on-surface">Archived</span>
+                  <br />
+                  {artist.archived ? "Yes" : "No"}
+                </p>
+              </div>
+            </Surface>
 
-                {artist.status === "pending" ? (
-                  <AdminArtistReviewPanel artistId={artist.id} currentStatus={artist.status} />
-                ) : null}
-              </div>
-            ),
-          },
-          {
-            value: "lots",
-            label: `Lots${lots.length > 0 ? ` (${lots.length})` : ""}`,
-            content: (
-              <div className="space-y-3">
-                <p className="text-sm text-on-surface-variant">
-                  Read-only FK attribution. Reassign from each lot&apos;s edit screen.
-                </p>
-                <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
-              </div>
-            ),
-          },
-          {
-            value: "duplicates",
-            label: `Duplicates${dupes.length > 0 ? ` (${dupes.length})` : ""}`,
-            content: (
-              <div className="space-y-4">
-                <p className="text-sm text-on-surface-variant">
-                  Server-suggested candidates with similar names. Merging moves aliases and lots to
-                  the surviving profile.
-                </p>
-                {dupes.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
-                    No duplicate candidates returned for this profile.
-                  </p>
-                ) : (
-                  <AdminArtistDuplicatesTable rows={dupes} />
-                )}
-                <AdminArtistMergePanel
-                  fromArtistId={artist.id}
-                  fromDisplayName={artist.displayName}
-                />
-              </div>
-            ),
-          },
-          {
-            value: "activity",
-            label: "Activity",
-            content: <ActivityTimelinePanel aggregateType="artist" aggregateId={artist.id} />,
-          },
-        ]}
-      />
-    </AdminEntityDetailShell>
+            {artist.status === "pending" ? (
+              <AdminArtistReviewPanel artistId={artist.id} currentStatus={artist.status} />
+            ) : null}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-on-surface">
+            Lots{lots.length > 0 ? ` (${lots.length})` : ""}
+          </h2>
+          <p className="text-sm text-on-surface-variant">
+            Read-only FK attribution. Reassign from each lot&apos;s edit screen.
+          </p>
+          <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-on-surface">
+            Duplicates{dupes.length > 0 ? ` (${dupes.length})` : ""}
+          </h2>
+          <p className="text-sm text-on-surface-variant">
+            Server-suggested candidates with similar names. Merging moves aliases and lots to the
+            surviving profile.
+          </p>
+          {dupes.length === 0 ? (
+            <p className="rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
+              No duplicate candidates returned for this profile.
+            </p>
+          ) : (
+            <AdminArtistDuplicatesTable rows={dupes} />
+          )}
+          <AdminArtistMergePanel fromArtistId={artist.id} fromDisplayName={artist.displayName} />
+        </section>
+      </div>
+    </CatalogDetailShell>
   );
 }

@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user, userStaffRoleEnum } from "./auth.js";
+import { emailOutbox } from "./email.js";
 import { legalEntity } from "./legal-entities.js";
 
 export const invitationStatusEnum = pgEnum("invitation_status", [
@@ -21,6 +22,11 @@ export const userInvitation = pgTable(
     tokenHash: text("token_hash").notNull().unique(),
     status: invitationStatusEnum("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    /** First successful preview of the invite registration link (does not imply email delivery). */
+    openedAt: timestamp("opened_at", { mode: "date", withTimezone: true }),
+    lastEmailOutboxId: uuid("last_email_outbox_id").references(() => emailOutbox.id, {
+      onDelete: "set null",
+    }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     acceptedUserId: text("accepted_user_id").references(() => user.id, { onDelete: "set null" }),
     /** entity-scoped invitation (optional; coexists with targetRole for platform invites) */

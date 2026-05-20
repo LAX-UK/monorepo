@@ -1,6 +1,7 @@
 "use client";
 
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
+import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
@@ -57,7 +58,10 @@ export function AdminImpersonateForm() {
           const result = await startAdminImpersonationAfterLookup(id);
           if (!result.ok) {
             setError(formatImpersonationError(result));
+            notify.error("Impersonation failed");
+            return;
           }
+          notify.success("Impersonation started");
         });
       }}
     >

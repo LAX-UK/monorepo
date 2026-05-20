@@ -8,10 +8,14 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { DensityProvider, useDashboardDensity } from "@/components/layout/density-provider";
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
+import { HeaderSearchTrigger } from "@/components/layout/header-search";
 import { SidebarStateProvider, useSidebarState } from "@/components/layout/sidebar-state";
+import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-tracker";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
+import { HotkeyProvider } from "@/lib/hotkeys/hotkey-provider";
+import { StaffGlobalHotkeys } from "@/lib/hotkeys/staff-global-hotkeys";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ShellConfig } from "@/lib/shell/contracts";
 import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-context";
@@ -125,6 +129,12 @@ function AppShellFrame({ user, config, children }: Props) {
       className="flex min-h-[100dvh] bg-page-bg font-body text-on-surface"
       style={{ ["--sidebar-width" as string]: collapsed ? "4.5rem" : "14rem" }}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
@@ -171,7 +181,7 @@ function AppShellFrame({ user, config, children }: Props) {
       </Sheet>
 
       <div className="flex h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-[var(--header-height-shell,52px)] min-h-[var(--tap-target-min,44px)] shrink-0 items-center justify-between border-b border-border-soft bg-surface-container-lowest px-4 md:px-8 max-lg:min-h-[var(--header-height-mobile,56px)]">
+        <header className="sticky top-0 z-30 flex h-[var(--header-height-shell,52px)] min-h-[var(--tap-target-min,44px)] shrink-0 items-center justify-between border-b border-border-soft bg-surface-container-lowest/80 px-4 shadow-[var(--shadow-glass)] backdrop-blur-md md:px-8 max-lg:min-h-[var(--header-height-mobile,56px)]">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
@@ -203,6 +213,7 @@ function AppShellFrame({ user, config, children }: Props) {
           <div className="flex shrink-0 items-center gap-1">
             {headerRightSlot}
             {headerLeftSlot}
+            {shellRole === "platform" || shellRole === "finance" ? <HeaderSearchTrigger /> : null}
             <Button
               type="button"
               variant="ghost"
@@ -245,20 +256,29 @@ function AppShellFrame({ user, config, children }: Props) {
 }
 
 export function AppShell({ user, config, children, cookieDensity }: Props) {
+  const isStaffShell = config.role !== "client";
   return (
-    <ShellConfigProvider config={config}>
-      <ShellChromeProvider>
-        <TooltipProvider delayDuration={200}>
-          <DensityProvider cookieDensity={cookieDensity ?? null}>
-            <SidebarStateProvider>
-              <AppShellFrame user={user} config={config}>
-                {children}
-              </AppShellFrame>
-            </SidebarStateProvider>
-          </DensityProvider>
-        </TooltipProvider>
-      </ShellChromeProvider>
-    </ShellConfigProvider>
+    <HotkeyProvider scope={isStaffShell ? "page" : "global"}>
+      {isStaffShell ? (
+        <>
+          <StaffGlobalHotkeys />
+          <StaffRouteRecentTracker />
+        </>
+      ) : null}
+      <ShellConfigProvider config={config}>
+        <ShellChromeProvider>
+          <TooltipProvider delayDuration={200}>
+            <DensityProvider cookieDensity={cookieDensity ?? null}>
+              <SidebarStateProvider>
+                <AppShellFrame user={user} config={config}>
+                  {children}
+                </AppShellFrame>
+              </SidebarStateProvider>
+            </DensityProvider>
+          </TooltipProvider>
+        </ShellChromeProvider>
+      </ShellConfigProvider>
+    </HotkeyProvider>
   );
 }
 

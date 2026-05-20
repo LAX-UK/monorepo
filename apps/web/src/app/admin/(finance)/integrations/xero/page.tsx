@@ -1,4 +1,5 @@
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
+import { XeroDisconnectSubmit } from "@/components/admin/xero-disconnect-submit";
 import { adminXeroDisconnectAction, adminXeroOAuthStartAction } from "@/lib/actions/admin";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -108,10 +109,8 @@ export default async function AdminXeroIntegrationPage({
               </form>
             ) : null}
             {status.connected ? (
-              <form action={adminXeroDisconnectAction}>
-                <Button type="submit" variant="secondary" className="min-h-11 text-error">
-                  Disconnect
-                </Button>
+              <form id="xero-disconnect-form" action={adminXeroDisconnectAction}>
+                <XeroDisconnectSubmit formId="xero-disconnect-form" />
               </form>
             ) : null}
           </div>

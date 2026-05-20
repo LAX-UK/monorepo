@@ -34,7 +34,7 @@ describe("isSafeNextPath", () => {
 describe("staffRoleDefaultDestination", () => {
   it("maps staff specializations", () => {
     expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/payments");
+    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/finance");
     expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
   });
 });

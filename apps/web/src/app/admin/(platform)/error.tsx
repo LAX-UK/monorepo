@@ -1,11 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { DisplayHeading } from "@/components/ui/typography";
-import Link from "next/link";
+import { AdminErrorPage } from "@/components/admin/admin-error-page";
 import { useEffect } from "react";
 
-export default function AdminError({
+export default function AdminPlatformError({
   error,
   reset,
 }: {
@@ -17,27 +15,12 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <main
-      id="main-content"
-      className="mx-auto flex min-h-[40vh] max-w-lg flex-col justify-center px-6 py-16 text-center"
-    >
-      <DisplayHeading as="h1" className="mb-4 text-2xl">
-        Admin error
-      </DisplayHeading>
-      <p className="mb-8 font-body text-sm text-on-surface-variant">
-        {process.env.NODE_ENV === "development" ? error.message : "Please try again in a moment."}
-      </p>
-      <div className="flex flex-wrap justify-center gap-4">
-        <Button type="button" variant="primary" onClick={() => reset()}>
-          Try again
-        </Button>
-        <Link
-          href="/admin"
-          className="inline-flex items-center justify-center rounded-md border border-border-hairline bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
-        >
-          Admin home
-        </Link>
-      </div>
-    </main>
+    <AdminErrorPage
+      title="Admin error"
+      message={
+        process.env.NODE_ENV === "development" ? error.message : "Please try again in a moment."
+      }
+      reset={reset}
+    />
   );
 }

@@ -10,7 +10,7 @@ function value(formData: FormData, key: string): string {
 }
 
 function redirectWith(kind: "success" | "error", message: string): never {
-  redirect(`/admin/payments/manual-review?${kind}=${encodeURIComponent(message)}`);
+  redirect(`/admin/payments?manualReview=1&${kind}=${encodeURIComponent(message)}`);
 }
 
 async function jsonOrError(res: Response, fallback: string): Promise<string | null> {
@@ -36,7 +36,7 @@ export async function captureManualReviewPaymentAction(formData: FormData): Prom
   const error = await jsonOrError(res, "capture_manual_review_failed");
   if (error) redirectWith("error", error);
 
-  revalidatePath("/admin/payments/manual-review");
+  revalidatePath("/admin/payments");
   redirectWith("success", "payment_released_for_capture");
 }
 
@@ -51,6 +51,6 @@ export async function refundManualReviewPaymentAction(formData: FormData): Promi
   const error = await jsonOrError(res, "refund_manual_review_failed");
   if (error) redirectWith("error", error);
 
-  revalidatePath("/admin/payments/manual-review");
+  revalidatePath("/admin/payments");
   redirectWith("success", "buyer_refunded");
 }

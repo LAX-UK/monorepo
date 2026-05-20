@@ -11,7 +11,6 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import {
-  adminBulkEmailSuppressionsBodySchema,
   adminBulkInvitationsBodySchema,
   adminBulkSubmissionsBodySchema,
   adminBulkUsersBodySchema,
@@ -570,7 +569,7 @@ export async function adminApproveWithdrawalRequestResultAction(
     const body = await res.json().catch(() => ({ error: "Request failed" }));
     return actionFailure((body as { error?: string }).error ?? "Failed to approve withdrawal");
   }
-  revalidatePath("/admin/lots/withdrawals");
+  revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);
   return actionSuccess();
 }
@@ -618,23 +617,6 @@ export async function adminBulkInvitationsResultAction(
   );
   if (!result.ok) return result;
   revalidatePath("/admin/invitations");
-  return actionSuccess();
-}
-
-export async function adminBulkEmailSuppressionsResultAction(
-  body: z.infer<typeof adminBulkEmailSuppressionsBodySchema>,
-): Promise<ActionResult<void>> {
-  const parsed = adminBulkEmailSuppressionsBodySchema.safeParse(body);
-  if (!parsed.success) {
-    return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
-  }
-  const result = await postBulkAction(
-    "/admin/email/suppressions/bulk",
-    parsed.data,
-    "Email suppression bulk action failed",
-  );
-  if (!result.ok) return result;
-  revalidatePath("/admin/email/suppressions");
   return actionSuccess();
 }
 

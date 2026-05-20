@@ -57,7 +57,7 @@ describe("role policy (staff | client)", () => {
 
   it("staffRoleDefaultDestination", () => {
     expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/payments");
+    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/finance");
     expect(staffRoleDefaultDestination("staff", "auction_manager")).toBe("/admin/sales");
     expect(staffRoleDefaultDestination("staff", "catalogue_manager")).toBe("/admin/lots");
     expect(staffRoleDefaultDestination("staff", "specialist")).toBe("/admin/submissions");

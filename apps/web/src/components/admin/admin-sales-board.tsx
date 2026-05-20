@@ -1,14 +1,14 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getSaleBulkOperations } from "@/lib/admin/bulk-ops/sales";
-import { saleStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
-import { EntityList, InlineActionMenu, Sparkline, StatusBadge } from "@auction/ui";
+import { EntityList, InlineActionMenu, Sparkline } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -66,11 +66,7 @@ function saleColumns(): ColumnDef<AdminSaleBoardRow>[] {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge variant={saleStatusToBadgeVariant(row.original.status)}>
-          {row.original.status}
-        </StatusBadge>
-      ),
+      cell: ({ row }) => <AdminStatusBadge domain="sale" status={row.original.status} />,
     },
     {
       id: "lots",
@@ -130,7 +126,7 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
                 {r.lotCount} lot{r.lotCount === 1 ? "" : "s"}
               </p>
             </div>
-            <StatusBadge variant={saleStatusToBadgeVariant(r.status)}>{r.status}</StatusBadge>
+            <AdminStatusBadge domain="sale" status={r.status} />
           </div>
           <div className="mt-3 flex items-center justify-between gap-2">
             <Sparkline values={r.sparklineValues} width={96} height={28} tone="lot-orange" />

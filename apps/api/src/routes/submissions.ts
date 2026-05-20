@@ -1,5 +1,4 @@
-import type { CreateItemSubmissionInput } from "@auction/types";
-import type { UserRole } from "@auction/types";
+import type { CreateItemSubmissionInput, ItemSubmissionStatus, UserRole } from "@auction/types";
 import {
   adminBulkSubmissionsBodySchema,
   approveSubmissionBodySchema,
@@ -17,6 +16,35 @@ import { requireBuyerRole, requireBuyerRoleUnlessStaff } from "../middleware/req
 import { requirePlatformAdmin } from "../middleware/require-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { ListSubmissionsFilter } from "../services/interfaces/repositories.js";
+
+function submissionsAdminListFilter(q: {
+  queue?: "awaiting" | "accepted" | "rejected" | undefined;
+  status?: ItemSubmissionStatus | undefined;
+  sellerId?: string | undefined;
+  q?: string | undefined;
+  limit: number;
+  offset: number;
+}): ListSubmissionsFilter {
+  const base: ListSubmissionsFilter = {
+    limit: q.limit,
+    offset: q.offset,
+    ...(q.sellerId ? { legalEntityId: q.sellerId } : {}),
+    ...(q.q ? { q: q.q.trim() || undefined } : {}),
+  };
+  const AWAITING: ItemSubmissionStatus[] = ["submitted", "under_review"];
+  const ACCEPTED: ItemSubmissionStatus[] = ["approved", "converted"];
+  switch (q.queue) {
+    case "awaiting":
+      return { ...base, statuses: AWAITING };
+    case "accepted":
+      return { ...base, statuses: ACCEPTED };
+    case "rejected":
+      return { ...base, statuses: ["rejected"] };
+    default:
+      return { ...base, ...(q.status !== undefined ? { status: q.status } : {}) };
+  }
+}
 
 export function createSubmissionRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -86,13 +114,9 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const { data, total } = await container.itemSubmissionService.listSubmissionsForAdminApi({
-        status: q.status,
-        legalEntityId: q.sellerId,
-        q: q.q,
-        limit: q.limit,
-        offset: q.offset,
-      });
+      const { data, total } = await container.itemSubmissionService.listSubmissionsForAdminApi(
+        submissionsAdminListFilter(q),
+      );
       return c.json({ data, total });
     },
   );

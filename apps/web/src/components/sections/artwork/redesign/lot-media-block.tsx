@@ -1,8 +1,9 @@
 import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
+import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
 import type { Lot } from "@auction/types";
 
 type Props = {
-  lot: Pick<Lot, "title" | "images" | "marketingDetails" | "dimensions">;
+  lot: Pick<Lot, "id" | "title" | "images" | "marketingDetails" | "dimensions">;
 };
 
 /** e.g. "120 x 90 cm" or "800×600" → width/height for aspect-ratio */
@@ -28,7 +29,8 @@ export function LotMediaBlock({ lot }: Props) {
     : ({ aspectRatio: "786 / 502" } as const);
 
   return (
-    <div
+    <LotHeroViewTransitionShell
+      lotId={lot.id}
       className="relative w-full max-w-[786px] overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full"
       style={aspectStyle}
     >
@@ -39,6 +41,6 @@ export function LotMediaBlock({ lot }: Props) {
           imageAlts={lot.marketingDetails.imageAlts}
         />
       </div>
-    </div>
+    </LotHeroViewTransitionShell>
   );
 }

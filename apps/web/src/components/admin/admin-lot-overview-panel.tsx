@@ -1,8 +1,8 @@
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
 import { MediaImage } from "@/components/ui/media-image";
-import { lotStatusLabel, lotStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { formatDateTime } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -37,9 +37,7 @@ export function AdminLotOverviewPanel({ auction, imageAlts }: Props) {
       metaSlot={
         <div className="space-y-3">
           <InfoCard title="Status">
-            <StatusBadge variant={lotStatusToBadgeVariant(auction.status)}>
-              {lotStatusLabel[auction.status] ?? auction.status}
-            </StatusBadge>
+            <AdminStatusBadge domain="lot" status={auction.status} />
           </InfoCard>
           {auction.saleId ? (
             <InfoCard title="Sale">
@@ -77,11 +75,11 @@ export function AdminLotOverviewPanel({ auction, imageAlts }: Props) {
             <div className="space-y-0.5 font-body text-sm">
               <p>
                 <span className="text-on-surface-variant">Start:</span>{" "}
-                {auction.startTime.toLocaleString()}
+                {formatDateTime(auction.startTime)}
               </p>
               <p>
                 <span className="text-on-surface-variant">End:</span>{" "}
-                {auction.endTime.toLocaleString()}
+                {formatDateTime(auction.endTime)}
               </p>
             </div>
           </InfoCard>

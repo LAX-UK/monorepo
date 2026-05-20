@@ -1,16 +1,18 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
+import {
+  type AdminNavCounts,
+  EMPTY_ADMIN_NAV_COUNTS,
+} from "@/lib/data/http/admin-nav-counts.types";
 /**
  * Single source of truth for staff (platform + finance shell) sidebar navigation.
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
  */
 import {
-  AUDIT_ACCESS,
-  CMS_ACCESS,
   CONDITION_REPORTS_ACCESS,
-  EMAIL_OUTBOX_ACCESS,
   STAFF_OVERVIEW_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
+import type { NavBadgeTone } from "@/lib/shell/contracts";
 import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
 import { userHasAccessTo } from "@auction/types";
 import {
@@ -20,18 +22,15 @@ import {
   Brush,
   Building2,
   ClipboardList,
-  CreditCard,
-  FileText,
   Gauge,
-  LayoutGrid,
   ListTree,
   Mail,
   MonitorPlay,
   MonitorSmartphone,
+  MoreHorizontal,
   Package,
   Plug,
   ScrollText,
-  Settings,
   ShieldAlert,
   ShieldCheck,
   Truck,
@@ -52,9 +51,17 @@ export type StaffNavItemSpec = {
   label: string;
   icon: LucideIcon;
   badge?: number;
+  badgeTone?: NavBadgeTone;
   match?: (pathname: string) => boolean;
   requirement: CapabilityRequirement;
 };
+
+function navBadge(
+  count: number,
+  tone: NavBadgeTone = "default",
+): Pick<StaffNavItemSpec, "badge" | "badgeTone"> | Record<string, never> {
+  return count > 0 ? { badge: count, badgeTone: tone } : {};
+}
 
 export type StaffNavGroupSpec = {
   /** Stable id for accordion localStorage (e.g. lax.staffNav.open.catalog). */
@@ -88,6 +95,7 @@ function filterGroups(
 function buildStaffNavGroupSpecs(
   pendingSubmissionCount: number,
   pendingArtistCount = 0,
+  navCounts: AdminNavCounts = EMPTY_ADMIN_NAV_COUNTS,
 ): readonly StaffNavGroupSpec[] {
   const submissions: StaffNavItemSpec =
     pendingSubmissionCount > 0
@@ -147,7 +155,12 @@ function buildStaffNavGroupSpecs(
           href: "/admin/lots",
           label: "Lots",
           icon: Package,
+          match: (pathname) =>
+            pathname === "/admin/lots" ||
+            (pathname.startsWith("/admin/lots/") &&
+              !pathname.startsWith("/admin/lots/withdrawals")),
           requirement: "catalogue.write",
+          ...navBadge(navCounts.withdrawalsPending, "warning"),
         },
         {
           id: "categories",
@@ -165,14 +178,6 @@ function buildStaffNavGroupSpecs(
           requirement: "artist.read",
         },
         submissions,
-        {
-          id: "lot-withdrawals",
-          href: "/admin/lots/withdrawals",
-          label: "Withdrawal requests",
-          icon: AlertTriangle,
-          match: (pathname) => pathname.startsWith("/admin/lots/withdrawals"),
-          requirement: "auction.manage" as const,
-        },
       ],
     },
     {
@@ -186,6 +191,7 @@ function buildStaffNavGroupSpecs(
           label: "Saleroom",
           icon: MonitorPlay,
           requirement: "auction.manage",
+          ...navBadge(navCounts.saleroomLiveCount, "live"),
         },
         {
           id: "conveyor",
@@ -202,6 +208,7 @@ function buildStaffNavGroupSpecs(
           icon: Truck,
           match: (pathname) => pathname.startsWith("/admin/lot-fulfilment"),
           requirement: "operations.fulfilment",
+          ...navBadge(navCounts.lotFulfilmentPending, "warning"),
         },
         {
           id: "condition-reports",
@@ -209,6 +216,7 @@ function buildStaffNavGroupSpecs(
           label: "Condition reports",
           icon: ClipboardList,
           requirement: CONDITION_REPORTS_ACCESS,
+          ...navBadge(navCounts.conditionReportsPending, "warning"),
         },
         {
           id: "onboarding-issues",
@@ -217,6 +225,7 @@ function buildStaffNavGroupSpecs(
           icon: AlertTriangle,
           match: (pathname) => pathname.startsWith("/admin/onboarding-issues"),
           requirement: STAFF_OVERVIEW_ACCESS,
+          ...navBadge(navCounts.onboardingIssuesTotal, "warning"),
         },
       ],
     },
@@ -230,15 +239,12 @@ function buildStaffNavGroupSpecs(
           href: "/admin/payments",
           label: "Payments",
           icon: WalletCards,
+          match: (pathname) =>
+            pathname === "/admin/payments" ||
+            (pathname.startsWith("/admin/payments/") &&
+              !pathname.startsWith("/admin/payments/manual-review")),
           requirement: "finance.read",
-        },
-        {
-          id: "manual-review",
-          href: "/admin/payments/manual-review",
-          label: "Manual review",
-          icon: CreditCard,
-          match: (pathname) => pathname.startsWith("/admin/payments/manual-review"),
-          requirement: "finance.read",
+          ...navBadge(navCounts.manualReviewCount, "danger"),
         },
         {
           id: "disputes",
@@ -246,6 +252,7 @@ function buildStaffNavGroupSpecs(
           label: "Disputes",
           icon: ShieldAlert,
           requirement: "finance.read",
+          ...navBadge(navCounts.disputesOpen, "danger"),
         },
         {
           id: "payouts",
@@ -253,6 +260,7 @@ function buildStaffNavGroupSpecs(
           label: "Payouts",
           icon: Banknote,
           requirement: "finance.read",
+          ...navBadge(navCounts.payoutsFailed, "danger"),
         },
         {
           id: "xero",
@@ -296,92 +304,13 @@ function buildStaffNavGroupSpecs(
           label: "Invitations",
           icon: Mail,
           requirement: "platform.admin.full",
+          ...navBadge(navCounts.invitationsPending, "default"),
         },
         {
           id: "impersonation",
           href: "/admin/impersonation",
           label: "Impersonate",
           icon: MonitorSmartphone,
-          requirement: "platform.admin.full",
-        },
-      ],
-    },
-    {
-      id: "platform",
-      title: "Platform",
-      icon: Settings,
-      items: [
-        {
-          id: "email-outbox",
-          href: "/admin/email/outbox",
-          label: "Email outbox",
-          icon: Mail,
-          match: (pathname) => pathname.startsWith("/admin/email/outbox"),
-          requirement: EMAIL_OUTBOX_ACCESS,
-        },
-        {
-          id: "email-suppressions",
-          href: "/admin/email/suppressions",
-          label: "Email suppressions",
-          icon: Mail,
-          match: (pathname) => pathname.startsWith("/admin/email/suppressions"),
-          requirement: EMAIL_OUTBOX_ACCESS,
-        },
-        {
-          id: "email-templates",
-          href: "/admin/email/templates",
-          label: "Email templates",
-          icon: Mail,
-          match: (pathname) => pathname.startsWith("/admin/email/templates"),
-          requirement: EMAIL_OUTBOX_ACCESS,
-        },
-        {
-          id: "cms",
-          href: "/admin/cms",
-          label: "CMS",
-          icon: LayoutGrid,
-          match: (pathname) => pathname.startsWith("/admin/cms"),
-          requirement: CMS_ACCESS,
-        },
-        {
-          id: "audit-events",
-          href: "/admin/audit/events",
-          label: "Audit events",
-          icon: FileText,
-          match: (pathname) =>
-            pathname.startsWith("/admin/audit/events") || pathname === "/admin/audit/events",
-          requirement: AUDIT_ACCESS,
-        },
-        {
-          id: "audit-email",
-          href: "/admin/audit/email",
-          label: "Audit email",
-          icon: Mail,
-          match: (pathname) => pathname.startsWith("/admin/audit/email"),
-          requirement: AUDIT_ACCESS,
-        },
-        {
-          id: "audit-timeline",
-          href: "/admin/audit/timeline",
-          label: "Audit timeline",
-          icon: FileText,
-          match: (pathname) => pathname.startsWith("/admin/audit/timeline"),
-          requirement: AUDIT_ACCESS,
-        },
-        {
-          id: "audit-webhooks",
-          href: "/admin/audit/webhooks",
-          label: "Audit webhooks",
-          icon: FileText,
-          match: (pathname) => pathname.startsWith("/admin/audit/webhooks"),
-          requirement: AUDIT_ACCESS,
-        },
-        {
-          id: "system",
-          href: "/admin/settings/platform",
-          label: "System",
-          icon: Settings,
-          match: (pathname) => pathname.startsWith("/admin/settings"),
           requirement: "platform.admin.full",
         },
       ],
@@ -394,11 +323,12 @@ export function getStaffNavGroups(
   pendingSubmissionCount: number,
   staffRole?: UserStaffRole | null,
   pendingArtistCount = 0,
+  navCounts?: AdminNavCounts,
 ): StaffNavGroupSpec[] {
   return filterGroups(
     role,
     staffRole,
-    buildStaffNavGroupSpecs(pendingSubmissionCount, pendingArtistCount),
+    buildStaffNavGroupSpecs(pendingSubmissionCount, pendingArtistCount, navCounts),
   );
 }
 
@@ -408,10 +338,15 @@ export function getStaffNavItems(
   staffRole: UserStaffRole | null | undefined,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
+  navCounts?: AdminNavCounts,
 ): AppShellNavItem[] {
-  return getStaffNavGroups(role, pendingSubmissionCount, staffRole, pendingArtistCount).flatMap(
-    (g) => g.items.map((spec) => staffNavItemToAppShellItem(spec)),
-  );
+  return getStaffNavGroups(
+    role,
+    pendingSubmissionCount,
+    staffRole,
+    pendingArtistCount,
+    navCounts,
+  ).flatMap((g) => g.items.map((spec) => staffNavItemToAppShellItem(spec)));
 }
 
 /** Longest-prefix nav item label for nested admin routes (breadcrumbs parent). */
@@ -421,12 +356,14 @@ export function getStaffNavParentLabel(
   staffRole: UserStaffRole | null | undefined,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
+  navCounts?: AdminNavCounts,
 ): string | null {
   const items = getStaffNavGroups(
     role,
     pendingSubmissionCount,
     staffRole,
     pendingArtistCount,
+    navCounts,
   ).flatMap((g) => g.items);
   let best: { hrefLen: number; label: string } | null = null;
 
@@ -444,40 +381,8 @@ export function getStaffNavParentLabel(
   return best?.label ?? null;
 }
 
-/** Which accordion group should be open for the current path (longest matching child). */
-export function getStaffNavActiveGroupId(
-  pathname: string,
-  role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
-  pendingSubmissionCount = 0,
-  pendingArtistCount = 0,
-): string | null {
-  const groups = getStaffNavGroups(role, pendingSubmissionCount, staffRole, pendingArtistCount);
-  let best: { score: number; groupId: string } | null = null;
-
-  for (const g of groups) {
-    for (const item of g.items) {
-      const isActive = item.match
-        ? item.match(pathname)
-        : pathname === item.href || pathname.startsWith(`${item.href}/`);
-      if (!isActive) continue;
-      const score = item.href.length + (pathname === item.href ? 1000 : 0);
-      if (!best || score > best.score) {
-        best = { score, groupId: g.id };
-      }
-    }
-  }
-  return best?.groupId ?? null;
-}
-
-const STAFF_MOBILE_TAB_IDS = ["home", "submissions", "lots", "sales", "payments"] as const;
-const FINANCE_MOBILE_TAB_IDS = [
-  "payments",
-  "manual-review",
-  "disputes",
-  "payouts",
-  "xero",
-] as const;
+const STAFF_MOBILE_TAB_IDS = ["home", "submissions", "lots", "sales", "more"] as const;
+const FINANCE_MOBILE_TAB_IDS = ["payments", "disputes", "payouts", "xero"] as const;
 
 /** Primary staff routes for the mobile bottom bar (max 5). */
 export function getStaffMobileBottomTabs(
@@ -486,11 +391,26 @@ export function getStaffMobileBottomTabs(
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   financeOnly = false,
+  navCounts?: AdminNavCounts,
 ): AppShellNavItem[] {
   const allowed = new Set<string>(financeOnly ? FINANCE_MOBILE_TAB_IDS : STAFF_MOBILE_TAB_IDS);
-  return getStaffNavItems(role, staffRole, pendingSubmissionCount, pendingArtistCount).filter(
-    (item) => allowed.has(item.id),
-  );
+  const items = getStaffNavItems(
+    role,
+    staffRole,
+    pendingSubmissionCount,
+    pendingArtistCount,
+    navCounts,
+  ).filter((item) => allowed.has(item.id));
+  if (!financeOnly && !items.some((i) => i.id === "more")) {
+    items.push({
+      id: "more",
+      href: "#more",
+      label: "More",
+      icon: MoreHorizontal,
+      match: () => false,
+    });
+  }
+  return items;
 }
 
 export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavItem {
@@ -501,5 +421,9 @@ export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavI
     icon: spec.icon,
     match: spec.match ?? exactOrNested(spec.href),
   };
-  return spec.badge !== undefined ? { ...base, badge: spec.badge } : base;
+  return {
+    ...base,
+    ...(spec.badge !== undefined ? { badge: spec.badge } : {}),
+    ...(spec.badgeTone !== undefined ? { badgeTone: spec.badgeTone } : {}),
+  };
 }

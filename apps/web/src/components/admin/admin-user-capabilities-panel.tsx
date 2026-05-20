@@ -1,7 +1,7 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { listCapabilitiesForStaffRole } from "@/lib/admin/staff-capabilities";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { UserStaffRole } from "@auction/types";
-import { EmptyState } from "@auction/ui/components/empty-state";
 
 export function AdminUserCapabilitiesPanel({
   staffRole,
@@ -12,7 +12,7 @@ export function AdminUserCapabilitiesPanel({
 
   if (staffRole == null) {
     return (
-      <EmptyState
+      <AdminEmptyState
         title="Legacy full access"
         description="No internal staff role is set. This account uses pre–18 June behaviour until a narrow role is assigned."
       />
@@ -21,7 +21,7 @@ export function AdminUserCapabilitiesPanel({
 
   if (caps.length === 0) {
     return (
-      <EmptyState
+      <AdminEmptyState
         title="No capabilities"
         description={`Role “${staffRoleLabel(staffRole)}” has no mapped capabilities in the current policy matrix.`}
       />

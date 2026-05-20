@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  type AppShellRole,
-  appShellRoleMeta,
-  getRouteLabel,
-  getRouteParentLabel,
-} from "@/components/layout/app-shell-nav";
+import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
+import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import type { SessionUser } from "@/lib/data/contracts";
+import { buildAdminBreadcrumbTrail } from "@/lib/navigation/admin-breadcrumb-trail";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import { ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export function AppShellBreadcrumbs({
@@ -21,52 +17,27 @@ export function AppShellBreadcrumbs({
   clientWorkspaceMode?: ClientWorkspaceMode;
 }) {
   const pathname = usePathname();
-  const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode, sessionUser);
-  const current = getRouteLabel(pathname, role, clientWorkspaceMode, sessionUser);
-  const workspace = appShellRoleMeta[role].workspaceLabel;
-  const segments =
-    parent && parent !== current
-      ? [
-          { key: "workspace", label: workspace },
-          { key: "parent", label: parent },
-          { key: "current", label: current },
-        ]
-      : [
-          { key: "workspace", label: workspace },
-          { key: "current", label: current },
-        ];
+
+  if (role === "client") {
+    const items =
+      pathname === "/dashboard"
+        ? [{ label: "Dashboard" }]
+        : [
+            { label: "Dashboard", href: "/dashboard" },
+            { label: pathname.split("/").filter(Boolean).pop() ?? "Page" },
+          ];
+    return (
+      <nav aria-label="Breadcrumb" className="min-w-0">
+        <Breadcrumbs items={items} className="text-xs" />
+      </nav>
+    );
+  }
+
+  const items = buildAdminBreadcrumbTrail(pathname, role, sessionUser, clientWorkspaceMode);
 
   return (
-    <nav
-      aria-label="Dashboard breadcrumb"
-      className="flex min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap font-label text-xs text-on-surface-variant"
-    >
-      <span className="shrink-0">LAX</span>
-      {segments.map((segment, index) => {
-        const isLast = index === segments.length - 1;
-        return (
-          <span
-            key={segment.key}
-            className={
-              segment.key === "parent"
-                ? "hidden min-w-0 items-center gap-1 md:inline-flex"
-                : "inline-flex min-w-0 shrink-0 items-center gap-1"
-            }
-          >
-            <ChevronRight className="size-3 shrink-0" aria-hidden />
-            <span
-              className={
-                isLast
-                  ? "truncate font-semibold text-on-surface"
-                  : "truncate font-medium text-on-surface-variant"
-              }
-              {...(isLast ? { "aria-current": "page" as const } : {})}
-            >
-              {segment.label}
-            </span>
-          </span>
-        );
-      })}
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <Breadcrumbs items={items} className="text-xs" />
     </nav>
   );
 }

@@ -1,9 +1,10 @@
 import { AdminDisputesDomainEventsBoard } from "@/components/admin/admin-disputes-domain-events-board";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { disputesDomainEventsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { PaginationFooter } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 
 export default async function AdminDisputesPage({
@@ -26,10 +27,7 @@ export default async function AdminDisputesPage({
 
   const errorAlert =
     error || loadError ? (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load</AlertTitle>
-        <AlertDescription>{loadError ?? error}</AlertDescription>
-      </Alert>
+      <AdminListAlert title="Could not load">{loadError ?? error}</AdminListAlert>
     ) : null;
 
   const meta = (
@@ -44,7 +42,7 @@ export default async function AdminDisputesPage({
 
   const empty =
     !loadError && rows.length === 0 ? (
-      <p className="font-body text-sm text-on-surface-variant">No dispute events recorded yet.</p>
+      <AdminEmptyState title="No disputes" description="No dispute events recorded yet." />
     ) : null;
 
   const view =

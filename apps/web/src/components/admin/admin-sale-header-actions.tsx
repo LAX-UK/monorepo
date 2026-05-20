@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import {
   adminCancelSaleResultAction,
   adminMarkSaleEndedResultAction,
@@ -13,7 +14,9 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+
+const PUBLISH_PHRASE = "PUBLISH";
 
 type Props = {
   saleId: string;
@@ -23,6 +26,8 @@ type Props = {
   canUnpublish: boolean;
   canCancel: boolean;
   canMarkOnsiteEnded: boolean;
+  /** Saleroom is available once a sale is published (scheduled onward). */
+  showSaleroomLink?: boolean | undefined;
 };
 
 export function AdminSaleHeaderActions({
@@ -33,9 +38,11 @@ export function AdminSaleHeaderActions({
   canUnpublish,
   canCancel,
   canMarkOnsiteEnded,
+  showSaleroomLink = false,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [publishOpen, setPublishOpen] = useState(false);
 
   const run = (fn: () => Promise<ActionResult<void>>) => {
     startTransition(() => {
@@ -53,18 +60,30 @@ export function AdminSaleHeaderActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
+      {showSaleroomLink ? (
+        <Button size="sm" asChild className="min-h-11">
+          <Link href={`/admin/saleroom/${saleId}`}>Open saleroom</Link>
+        </Button>
+      ) : null}
       <Button variant="outline" size="sm" asChild>
         <Link href={`/admin/sales/${saleId}/edit`}>{canEdit ? "Edit draft" : "Edit details"}</Link>
       </Button>
       {canPublish ? (
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending}
-          onClick={() => run(() => adminPublishSaleResultAction(saleId))}
-        >
-          Publish
-        </Button>
+        <>
+          <Button type="button" size="sm" disabled={pending} onClick={() => setPublishOpen(true)}>
+            Publish
+          </Button>
+          <TypedConfirmationDialog
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            title="Publish this sale?"
+            description={`Type ${PUBLISH_PHRASE} to schedule lots and make the sale visible to bidders.`}
+            actionLabel="Publish sale"
+            confirmationPhrase={PUBLISH_PHRASE}
+            severity="warning"
+            onConfirm={() => run(() => adminPublishSaleResultAction(saleId))}
+          />
+        </>
       ) : null}
       {canUnpublish ? (
         <ConfirmActionButton

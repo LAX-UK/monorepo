@@ -7,19 +7,27 @@ import { useId } from "react";
 
 type Props = {
   item: ReorderableImageEntry;
+  sortId: string;
   index: number;
   onAltChange: (alt: string) => void;
   onMakePrimary: () => void;
   onRemove: () => void;
 };
 
-export function SortableImageItem({ item, index, onAltChange, onMakePrimary, onRemove }: Props) {
+export function SortableImageItem({
+  item,
+  sortId,
+  index,
+  onAltChange,
+  onMakePrimary,
+  onRemove,
+}: Props) {
   const altInputId = useId();
   const primary = index === 0;
 
   return (
     <SortableImageCard
-      id={item.key}
+      id={sortId}
       index={index}
       label={primary ? "Primary lot artwork" : "Lot artwork"}
       imageAlt={item.alt || (primary ? "Primary lot image" : `Lot image ${index + 1}`)}

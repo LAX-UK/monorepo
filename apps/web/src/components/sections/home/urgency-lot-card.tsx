@@ -1,9 +1,9 @@
 import { LotCard } from "@/components/marketing/lot-card";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { Eye } from "lucide-react";
-import Link from "next/link";
 
 type Props = {
   item: LotCardVM;
@@ -53,12 +53,13 @@ export function UrgencyLotCard({
       belowImage={
         <div className="flex w-full flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <Link
+            <LotViewTransitionLink
+              lotId={item.id}
               href={item.href}
               className="group text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
             >
               {item.title}
-            </Link>
+            </LotViewTransitionLink>
             <p className="text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
               {item.artistName}
             </p>
@@ -95,19 +96,21 @@ export function UrgencyLotCard({
           )}
 
           <div className="inline-flex w-full items-start gap-6">
-            <Link
+            <LotViewTransitionLink
+              lotId={item.id}
               href={item.href}
               className="flex h-10 flex-1 items-center justify-center rounded border border-[#A3A3A3] bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-[#0A0A0A] outline-offset-2 hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:border-neutral-500 dark:text-on-surface dark:hover:bg-white/[0.06]"
             >
               Bid
-            </Link>
-            <Link
+            </LotViewTransitionLink>
+            <LotViewTransitionLink
+              lotId={item.id}
               href={item.href}
               aria-label={`View details for ${item.title}`}
               className="flex h-10 items-center justify-center rounded px-2.5 text-[#0A0A0A] outline-offset-2 hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:text-on-surface dark:hover:bg-white/[0.06]"
             >
               <Eye className="size-5 shrink-0" aria-hidden />
-            </Link>
+            </LotViewTransitionLink>
           </div>
         </div>
       }

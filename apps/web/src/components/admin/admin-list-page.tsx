@@ -5,37 +5,54 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { EntityList } from "@auction/ui";
 import type { ReactNode } from "react";
 
+export type AdminListPageVariant = "default" | "overview" | "report" | "queue";
+
 export type AdminListPageProps = {
   title: string;
   description?: string | undefined;
+  variant?: AdminListPageVariant;
   breadcrumbs?: ReactNode;
   primaryAction?: ReactNode;
   meta?: ReactNode;
+  /** KPI strip — use AdminListKpiStrip only */
+  kpiStrip?: ReactNode;
   chips?: ReactNode;
+  /** Persisted saved-view chips (client); rendered in toolbar when set. */
+  savedViews?: ReactNode;
   filters?: ReactNode;
   toolbarEnd?: ReactNode;
-  /** Export, column picker, etc. — shown in the list toolbar beside reset. */
   listToolbarEnd?: ReactNode;
   hasFilters?: boolean | undefined;
   resetHref?: string | undefined;
   errorAlert?: ReactNode;
   bulkBar?: ReactNode;
   view: ReactNode;
+  /** Mobile card fallback rendered below md when provided */
+  mobileCards?: ReactNode;
   pagination?: ReactNode;
   empty?: ReactNode;
-  /** When true, appends command palette hint below the empty slot. */
   showCommandPaletteHint?: boolean;
   className?: string | undefined;
 };
 
-/** Shared staff list layout: header, optional chips/filters, toolbar (share/reset), view, pagination. */
+const variantSpacing: Record<AdminListPageVariant, string> = {
+  default: "space-y-6",
+  overview: "space-y-8",
+  report: "space-y-8",
+  queue: "space-y-4",
+};
+
+/** Shared staff list layout: header, KPI, toolbar, view, mobile cards, pagination. */
 export function AdminListPage({
   title,
   description,
+  variant = "default",
   breadcrumbs,
   primaryAction,
   meta,
+  kpiStrip,
   chips,
+  savedViews,
   filters,
   toolbarEnd,
   listToolbarEnd,
@@ -44,14 +61,16 @@ export function AdminListPage({
   errorAlert,
   bulkBar,
   view,
+  mobileCards,
   pagination,
   empty,
   showCommandPaletteHint = false,
   className,
 }: AdminListPageProps) {
-  const showToolbar = Boolean(filters || toolbarEnd || listToolbarEnd);
+  const showToolbar = Boolean(savedViews || filters || toolbarEnd || listToolbarEnd);
+
   return (
-    <AppScreen className={className ?? "space-y-6"}>
+    <AppScreen className={className ?? variantSpacing[variant]}>
       <DashboardPageHeader
         title={title}
         {...(description ? { description } : {})}
@@ -59,22 +78,39 @@ export function AdminListPage({
         {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(primaryAction ? { actions: primaryAction } : {})}
       />
+      {kpiStrip}
       {chips}
       {bulkBar}
       <EntityList
-        responsiveMode="scroll"
+        responsiveMode={mobileCards ? "auto" : "scroll"}
         filters={
           showToolbar ? (
             <AdminListToolbar
               filters={filters}
               extra={toolbarEnd}
-              toolbarEnd={listToolbarEnd}
+              toolbarEnd={
+                savedViews || listToolbarEnd ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {savedViews}
+                    {listToolbarEnd}
+                  </div>
+                ) : undefined
+              }
               hasFilters={Boolean(hasFilters)}
               resetHref={resetHref ?? ""}
             />
           ) : undefined
         }
-        table={view}
+        table={
+          mobileCards ? (
+            <>
+              <div className="hidden md:block">{view}</div>
+              <div className="md:hidden">{mobileCards}</div>
+            </>
+          ) : (
+            view
+          )
+        }
         {...(errorAlert ? { error: errorAlert } : {})}
       />
       {empty}

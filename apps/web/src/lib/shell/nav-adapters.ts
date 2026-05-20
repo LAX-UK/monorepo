@@ -17,6 +17,7 @@ export function appShellNavItemToNavItem(item: AppShellNavItem): NavItem {
     label: item.label,
     icon: item.icon,
     ...(item.badge !== undefined ? { badge: item.badge } : {}),
+    ...(item.badgeTone !== undefined ? { badgeTone: item.badgeTone } : {}),
     ...(item.match ? { match: item.match } : {}),
   };
 }
@@ -32,6 +33,7 @@ export function staffNavItemSpecToNavItem(spec: StaffNavItemSpec): NavItem {
     label: spec.label,
     icon: spec.icon,
     ...(spec.badge !== undefined ? { badge: spec.badge } : {}),
+    ...(spec.badgeTone !== undefined ? { badgeTone: spec.badgeTone } : {}),
     ...(spec.match ? { match: spec.match } : {}),
     requirement: spec.requirement,
   };

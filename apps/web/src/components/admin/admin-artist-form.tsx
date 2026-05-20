@@ -1,7 +1,6 @@
 "use client";
 
 import { ArtistPreview } from "@/components/admin/artist-form/artist-preview";
-import { ArtistFormSection } from "@/components/admin/artist-form/form-section";
 import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
 import {
   SCENARIO_REGISTRY,
@@ -17,6 +16,7 @@ import { MediaSection } from "@/components/admin/artist-form/sections/media-sect
 import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
 import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import { CatalogFormSection as ArtistFormSection } from "@/components/admin/forms/catalog-form-section";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { notify } from "@/lib/ui/notify";
@@ -38,6 +38,8 @@ type Props = {
   initialScenario?: ArtistScenario | null;
   /** When true all fields are disabled (e.g. merged artist) */
   readOnly?: boolean;
+  /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
+  htmlFormId?: string;
 };
 
 export function AdminArtistForm({
@@ -46,6 +48,7 @@ export function AdminArtistForm({
   defaultValues,
   initialScenario = null,
   readOnly = false,
+  htmlFormId,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -99,6 +102,7 @@ export function AdminArtistForm({
       <FormDirtyGuard isDirty={form.formState.isDirty} />
       <Form {...form}>
         <form
+          id={htmlFormId}
           className="space-y-8"
           onSubmit={form.handleSubmit((values) => {
             if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {

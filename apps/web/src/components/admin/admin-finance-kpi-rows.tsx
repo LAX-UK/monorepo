@@ -61,7 +61,7 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
                   : "default",
               trendSlot: (
                 <Link
-                  href="/admin/legal-entities/stripe-connect-requirements"
+                  href="/admin/legal-entities?stripe=1"
                   className="text-xs font-semibold text-primary hover:underline"
                 >
                   Entities

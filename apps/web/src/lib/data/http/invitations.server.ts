@@ -10,6 +10,8 @@ export type AdminInvitationSummary = {
   status: string;
   expiresAt: Date;
   createdAt: Date;
+  openedAt: Date | null;
+  inviteEmailLastStatus: string | null;
 };
 
 export async function getAdminInvitations(): Promise<AdminInvitationSummary[]> {
@@ -25,6 +27,8 @@ export async function getAdminInvitations(): Promise<AdminInvitationSummary[]> {
       status: string;
       expiresAt: string;
       createdAt: string;
+      openedAt?: string | null;
+      inviteEmailLastStatus?: string | null;
     }[];
   };
   return body.data.map((r) => ({
@@ -34,5 +38,7 @@ export async function getAdminInvitations(): Promise<AdminInvitationSummary[]> {
     status: r.status,
     expiresAt: new Date(r.expiresAt),
     createdAt: new Date(r.createdAt),
+    openedAt: r.openedAt ? new Date(r.openedAt) : null,
+    inviteEmailLastStatus: r.inviteEmailLastStatus ?? null,
   }));
 }

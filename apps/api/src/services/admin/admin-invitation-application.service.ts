@@ -1,7 +1,7 @@
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { IAdminInvitationApplicationService } from "../interfaces/admin-routes.js";
-import type { InvitationSummary } from "../interfaces/invitation.js";
+import type { InvitationAdminListRow } from "../interfaces/invitation.js";
 import type {
   CreateInvitationInput,
   InvitationError,
@@ -17,8 +17,8 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
     return this.invitations.create(input);
   }
 
-  listPendingForActor(actorUserId: string): Promise<InvitationSummary[]> {
-    return this.invitations.listPendingForActor(actorUserId);
+  listInvitationsForActor(actorUserId: string): Promise<InvitationAdminListRow[]> {
+    return this.invitations.listInvitationsForActor(actorUserId);
   }
 
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
