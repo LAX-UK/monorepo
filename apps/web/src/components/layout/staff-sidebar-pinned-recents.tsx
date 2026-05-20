@@ -31,9 +31,7 @@ export function StaffSidebarPinnedRecents({ labelsHidden, onNavigate }: Props) {
   if (labelsHidden) return null;
   if (pinned.length === 0) return null;
 
-  return (
-    <PinnedList pathname={pathname} pinned={pinned} {...(onNavigate ? { onNavigate } : {})} />
-  );
+  return <PinnedList pathname={pathname} pinned={pinned} {...(onNavigate ? { onNavigate } : {})} />;
 }
 
 function PinnedList({
