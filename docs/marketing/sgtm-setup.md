@@ -51,7 +51,7 @@ curl -sS -o /dev/null -w "%{http_code}" https://gtm-preview.lax.bid/healthy
 
 ## TLS and DNS
 
-TLS terminates at DigitalOcean App Platform. Cloudflare `CNAME` records point `gtm.lax.bid` / `gtm-preview.lax.bid` at the App hostname.
+`gtm.lax.bid` is a DNS-only Cloudflare `CNAME` to `eum.stape.io` (Stape terminates TLS). `gtm-preview.lax.bid` still points at the App Platform hostname until preview is migrated or removed.
 
 ## Disable / rollback
 
