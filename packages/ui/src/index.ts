@@ -238,6 +238,16 @@ export {
 } from "./components/ui/collapsible.js";
 export { AspectRatio } from "./components/ui/aspect-ratio.js";
 export {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  CarouselDots,
+  useCarousel,
+} from "./components/ui/carousel.js";
+export type { CarouselApi, CarouselOptions, CarouselPlugin } from "./components/ui/carousel.js";
+export {
   Command,
   CommandDialog,
   CommandInput,

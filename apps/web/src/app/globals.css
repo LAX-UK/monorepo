@@ -499,11 +499,13 @@
   display: none;
 }
 
-/* Lot image lightbox: strip UA margin only — do not use % max-height here; it can
-   resolve to 0 on the top layer and collapse the dialog so next/image fill has no box. */
-.artwork-lightbox-dialog {
-  margin: 0;
-  padding: 0;
+@keyframes hero-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* Dark theme: semantic tokens (mirrors @theme names) */
