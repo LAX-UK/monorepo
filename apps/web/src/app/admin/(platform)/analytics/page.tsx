@@ -4,8 +4,8 @@ import {
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
 import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
-import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import {
   Table,
   TableBody,
@@ -87,8 +87,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         </Alert>
       ) : data ? (
         <>
-          <KpiRow
-            columns={4}
+          <AdminListKpiStrip
+            ariaLabel="Analytics summary"
             tiles={[
               {
                 label: `GMV (${days}d)`,

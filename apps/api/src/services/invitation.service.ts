@@ -12,8 +12,8 @@ import { type Result, err, ok } from "neverthrow";
 import type { IEmailService } from "./interfaces/email.js";
 import type {
   IUserInvitationRepository,
+  InvitationAdminListRow,
   InvitationRow,
-  InvitationSummary,
 } from "./interfaces/invitation.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
 
@@ -96,7 +96,7 @@ export class InvitationService {
       createdByUserId: input.actorUserId,
     });
 
-    await this.email.enqueue({
+    const { outboxId } = await this.email.enqueue({
       template: "invite",
       to: input.email.trim(),
       category: "transactional",
@@ -109,6 +109,8 @@ export class InvitationService {
         expiresAt: expiresAt.toISOString(),
       },
     });
+
+    await this.invites.updateStatus(id, { lastEmailOutboxId: outboxId });
 
     return ok({ id, expiresAt });
   }
@@ -130,6 +132,9 @@ export class InvitationService {
       await this.invites.updateStatus(row.id, { status: "expired" });
       return err({ message: "Invitation expired", status: 400 });
     }
+
+    await this.invites.markOpenedFirstTouch(row.id);
+
     return ok({
       email: row.email,
       targetRole: row.targetRole,
@@ -214,8 +219,8 @@ export class InvitationService {
     }
   }
 
-  async listPendingForActor(actorUserId: string): Promise<InvitationSummary[]> {
-    return this.invites.listPendingCreatedBy(actorUserId);
+  async listInvitationsForActor(actorUserId: string): Promise<InvitationAdminListRow[]> {
+    return this.invites.listAdminCreatedBy(actorUserId);
   }
 
   async revoke(input: { actorUserId: string; invitationId: string }): Promise<
@@ -261,7 +266,7 @@ export class InvitationService {
     const expiresAt = addDays(new Date(), 7);
     await this.invites.updateStatus(row.id, { tokenHash, expiresAt });
 
-    await this.email.enqueue({
+    const { outboxId } = await this.email.enqueue({
       template: "invite",
       to: row.email,
       category: "transactional",
@@ -274,6 +279,8 @@ export class InvitationService {
         expiresAt: expiresAt.toISOString(),
       },
     });
+
+    await this.invites.updateStatus(row.id, { lastEmailOutboxId: outboxId });
 
     return ok({ expiresAt });
   }

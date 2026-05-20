@@ -3,8 +3,13 @@ import {
   getAppShellNavItems,
   getClientMobileBottomTabs,
 } from "@/components/layout/app-shell-nav";
-import { getStaffMobileBottomTabs, getStaffNavGroups } from "@/components/layout/staff-nav";
+import {
+  getStaffMobileBottomTabs,
+  getStaffNavGroups,
+  getStaffNavItems,
+} from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { UserRole, UserStaffRole } from "@auction/types";
@@ -17,8 +22,6 @@ export type BuildShellConfigInput = {
   role: AppShellRole;
   clientWorkspaceMode?: ClientWorkspaceMode;
   density?: DashboardDensity;
-  /** @deprecated Prefer `headerRightSlot` — kept for adapter compatibility. */
-  headerSlot?: ReactNode;
   headerLeftSlot?: ReactNode;
   headerRightSlot?: ReactNode;
   contextBanner?: ReactNode;
@@ -26,6 +29,7 @@ export type BuildShellConfigInput = {
   hideEmailStatusBanner?: boolean;
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
+  navCounts?: AdminNavCounts;
 };
 
 export function buildShellConfig({
@@ -33,7 +37,6 @@ export function buildShellConfig({
   role,
   clientWorkspaceMode = "buying",
   density = "normal",
-  headerSlot,
   headerLeftSlot,
   headerRightSlot,
   contextBanner,
@@ -41,6 +44,7 @@ export function buildShellConfig({
   hideEmailStatusBanner,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
+  navCounts,
 }: BuildShellConfigInput): ShellConfig {
   const navItems = getAppShellNavItems(
     role,
@@ -48,6 +52,7 @@ export function buildShellConfig({
     pendingSubmissionCount,
     clientWorkspaceMode,
     pendingArtistCount,
+    navCounts,
   );
   const nav =
     role === "client"
@@ -58,6 +63,7 @@ export function buildShellConfig({
             pendingSubmissionCount,
             (user.staffRole ?? null) as UserStaffRole | null,
             pendingArtistCount,
+            navCounts,
           ),
         );
   const mobileNav =
@@ -70,6 +76,7 @@ export function buildShellConfig({
             pendingSubmissionCount,
             pendingArtistCount,
             role === "finance",
+            navCounts,
           ),
         );
 
@@ -79,7 +86,17 @@ export function buildShellConfig({
       ? appShellNavItemsToNavItems(
           navItems.filter((item) => !tabIds.has(item.id) && item.id !== "more"),
         )
-      : undefined;
+      : role === "platform" || role === "finance"
+        ? appShellNavItemsToNavItems(
+            getStaffNavItems(
+              user.role as UserRole,
+              (user.staffRole ?? null) as UserStaffRole | null,
+              pendingSubmissionCount,
+              pendingArtistCount,
+              navCounts,
+            ).filter((item) => !tabIds.has(item.id) && item.id !== "more"),
+          )
+        : undefined;
 
   return {
     role,
@@ -88,7 +105,7 @@ export function buildShellConfig({
     ...(moreSheetNav && moreSheetNav.length > 0 ? { moreSheetNav } : {}),
     header: {
       ...(headerLeftSlot ? { leftSlot: headerLeftSlot } : {}),
-      ...(headerRightSlot || headerSlot ? { rightSlot: headerRightSlot ?? headerSlot } : {}),
+      ...(headerRightSlot ? { rightSlot: headerRightSlot } : {}),
     },
     ...(contextBanner ? { contextBanner } : {}),
     ...(topSlot ? { topSlot } : {}),

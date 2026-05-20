@@ -1,12 +1,7 @@
-import { AdminUserActivityPanel } from "@/components/admin/admin-user-activity-panel";
 import { AdminUserCapabilitiesPanel } from "@/components/admin/admin-user-capabilities-panel";
 import { AdminUserDetailShell } from "@/components/admin/admin-user-detail-shell";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
-import {
-  getAdminDomainEvents,
-  getAdminUserActivity,
-  getAdminUserById,
-} from "@/lib/data/http/admin.server";
+import { getAdminUserById } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
 import { notFound, redirect } from "next/navigation";
 
@@ -25,12 +20,12 @@ export default async function AdminStaffDetailPage({ params }: Props) {
     redirect(`/admin/clients/${id}`);
   }
 
-  const [sessions, domainEvents] = await Promise.all([
-    getAdminUserActivity(user.id).catch(() => []),
-    getAdminDomainEvents({ aggregateType: "user", aggregateId: user.id, limit: 50 }).catch(
-      () => [],
-    ),
-  ]);
+  const notesPlaceholder = (
+    <p className="font-body text-sm text-on-surface-variant">
+      Internal notes & tags require user_note / user_tag migrations before collaborative workflows
+      unlock.
+    </p>
+  );
 
   return (
     <AdminUserDetailShell
@@ -39,18 +34,13 @@ export default async function AdminStaffDetailPage({ params }: Props) {
       listLabel="Staff"
       tabs={[
         {
-          id: "profile",
-          label: "Profile",
+          id: "overview",
+          label: "Overview",
           content: <AdminUserProfilePanel user={user} />,
         },
         {
-          id: "activity",
-          label: "Activity",
-          content: <AdminUserActivityPanel sessions={sessions} domainEvents={domainEvents} />,
-        },
-        {
-          id: "capabilities",
-          label: "Capabilities",
+          id: "permissions",
+          label: "Permissions",
           content: (
             <AdminUserCapabilitiesPanel
               staffRole={(user.staffRole as UserStaffRole | null) ?? null}
@@ -60,12 +50,7 @@ export default async function AdminStaffDetailPage({ params }: Props) {
         {
           id: "notes",
           label: "Notes",
-          content: (
-            <p className="font-body text-sm text-on-surface-variant">
-              Internal notes & tags require user_note / user_tag migrations before collaborative
-              workflows unlock.
-            </p>
-          ),
+          content: notesPlaceholder,
         },
       ]}
     />

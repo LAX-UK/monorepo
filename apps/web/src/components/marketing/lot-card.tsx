@@ -1,7 +1,21 @@
+import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
+import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
+
+type NavLinkProps = Pick<
+  ComponentProps<typeof Link>,
+  "href" | "className" | "children" | "aria-label" | "aria-hidden" | "tabIndex"
+>;
+
+function LotCardNavLink({ lotId, href, ...rest }: NavLinkProps & { lotId?: string | undefined }) {
+  if (lotId != null) {
+    return <LotViewTransitionLink lotId={lotId} href={href} {...rest} />;
+  }
+  return <Link href={href} {...rest} />;
+}
 
 const mediaHover =
   "transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100";
@@ -11,6 +25,8 @@ const cardShell =
 
 export type LotCardGridProps = {
   href: string;
+  /** When set, enables list → detail image morph on navigation. */
+  lotId?: string;
   /** Full-bleed media (typically `MediaImage`). */
   image: ReactNode;
   title: ReactNode;
@@ -27,6 +43,7 @@ export type LotCardGridProps = {
 /** Uniform `4/5` tile — catalogue grid (object-contain on neutral field per design language). */
 export function LotCardGrid({
   href,
+  lotId,
   image,
   title,
   meta,
@@ -36,9 +53,15 @@ export function LotCardGrid({
   className,
 }: LotCardGridProps) {
   return (
-    <article className={cn(cardShell, className)}>
-      <Link href={href} className="block">
-        <div className="relative aspect-[4/5] bg-surface-container-low">
+    <article
+      className={cn(cardShell, className)}
+      {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
+    >
+      <LotCardNavLink lotId={lotId} href={href} className="block">
+        <div
+          {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
+          className="relative aspect-[4/5] bg-surface-container-low"
+        >
           <div className={cn("absolute inset-0", mediaHover)}>{image}</div>
           {topLeft ? (
             <div className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3">
@@ -55,7 +78,7 @@ export function LotCardGrid({
           {title}
           {meta}
         </div>
-      </Link>
+      </LotCardNavLink>
       {topRight ? (
         <div className="pointer-events-auto absolute right-1.5 top-1.5 z-[2] md:right-3 md:top-3">
           {topRight}
@@ -67,6 +90,7 @@ export function LotCardGrid({
 
 export type LotCardListProps = {
   href: string;
+  lotId?: string;
   image: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
@@ -79,6 +103,7 @@ export type LotCardListProps = {
 /** Dense row — `1/1` thumb `size-24` (sm `size-24` per spec). */
 export function LotCardList({
   href,
+  lotId,
   image,
   title,
   subtitle,
@@ -92,17 +117,27 @@ export function LotCardList({
         "group relative flex gap-4 p-4 transition-colors hover:bg-surface-container-low/50 sm:gap-5 sm:p-5",
         className,
       )}
+      {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
     >
-      <Link href={href} className="absolute inset-0 z-0" aria-hidden="true" tabIndex={-1} />
-      <span className="relative z-[1] size-20 shrink-0 overflow-hidden rounded-lg bg-surface-container-low sm:size-24">
+      <LotCardNavLink
+        lotId={lotId}
+        href={href}
+        className="absolute inset-0 z-0"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <span
+        {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
+        className="relative z-[1] size-20 shrink-0 overflow-hidden rounded-lg bg-surface-container-low sm:size-24"
+      >
         {image}
       </span>
       <div className="relative z-[1] min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <Link href={href} className="min-w-0">
+          <LotCardNavLink lotId={lotId} href={href} className="min-w-0">
             {title}
             {subtitle}
-          </Link>
+          </LotCardNavLink>
           {trailing ? (
             <div className="pointer-events-auto relative z-[2] shrink-0">{trailing}</div>
           ) : null}

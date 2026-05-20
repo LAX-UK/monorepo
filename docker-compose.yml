@@ -50,14 +50,17 @@ services:
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV: production
+      # Local compose stack — use development so localhost URLs and short dev secrets are allowed.
+      # Real production: docker-compose.prod.yml + .env (NODE_ENV=production, 48+ char secrets, AUTH_DEK_KEY).
+      NODE_ENV: development
       PORT: "3001"
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auction
       REDIS_URL: redis://redis:6379
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-min-16-chars}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-docker-dev-secret-min-16-chars}
       API_PUBLIC_URL: http://localhost:3001
       WEB_ORIGIN: http://localhost:3000
-      # Required by API env when NODE_ENV=production; override in real deployments.
+      ALLOW_HTTP_COOKIES: "true"
+      VERIFY_ORIGIN: "false"
       POSTMARK_WEBHOOK_BASIC_AUTH: ${POSTMARK_WEBHOOK_BASIC_AUTH:-local-docker-dev}
       ENGLISH_ONLY_AUCTIONS: ${ENGLISH_ONLY_AUCTIONS:-true}
     depends_on:
@@ -76,7 +79,7 @@ services:
       # If host 3002 is taken, set WS_PUBLISH_PORT (e.g. 3022) in .env or the shell.
       - "${WS_PUBLISH_PORT:-3002}:3002"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: "3002"
       REDIS_URL: redis://redis:6379
       API_URL: http://api:3001

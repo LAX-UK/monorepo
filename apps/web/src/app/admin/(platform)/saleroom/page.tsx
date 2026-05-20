@@ -1,16 +1,28 @@
-import { AdminPanelPage } from "@/components/admin/admin-panel-page";
-import { EmptyState } from "@auction/ui/components/empty-state";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
+import { getAdminSalesList } from "@/lib/data/http/admin.server";
 import Link from "next/link";
 
-export default function AdminSaleroomHubPage() {
-  return (
-    <AdminPanelPage
-      title="Saleroom console"
-      description="Pick a sale, then use the clerk console for go live, advance lot, hammer, and no sale. Sale-room events broadcast over websockets to joined clients."
-    >
-      <EmptyState
-        title="Select a sale"
-        description="From Sales, copy an active sale’s id into the URL as /admin/saleroom/{saleId} to open the clerk console."
+export default async function AdminSaleroomHubPage() {
+  let sales: Awaited<ReturnType<typeof getAdminSalesList>> = [];
+  let loadError: string | null = null;
+  try {
+    sales = await getAdminSalesList({ limit: 50 });
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Could not load sales.";
+  }
+
+  const liveOrUpcoming = sales.filter(
+    (row) => row.sale.status === "active" || row.sale.status === "scheduled",
+  );
+
+  const empty =
+    !loadError && liveOrUpcoming.length === 0 ? (
+      <AdminEmptyState
+        title="No live or upcoming sales"
+        description="Schedule or activate a sale to open the clerk console."
         action={
           <Link
             href="/admin/sales"
@@ -20,6 +32,21 @@ export default function AdminSaleroomHubPage() {
           </Link>
         }
       />
-    </AdminPanelPage>
+    ) : null;
+
+  return (
+    <AdminListPage
+      title="Saleroom console"
+      description="Pick a live or upcoming sale to open the clerk console."
+      errorAlert={
+        loadError ? <AdminListAlert title="Could not load sales">{loadError}</AdminListAlert> : null
+      }
+      view={
+        !loadError && liveOrUpcoming.length > 0 ? (
+          <AdminSaleroomHubBoard rows={liveOrUpcoming} />
+        ) : null
+      }
+      empty={empty}
+    />
   );
 }

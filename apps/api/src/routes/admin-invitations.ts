@@ -29,7 +29,7 @@ export function attachAdminInvitationRoutes(
   });
 
   r.get("/invitations", async (c) => {
-    const data = await invitations.listPendingForActor(c.get("userId") as string);
+    const data = await invitations.listInvitationsForActor(c.get("userId") as string);
     return c.json({ data });
   });
 

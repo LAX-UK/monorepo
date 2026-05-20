@@ -1,10 +1,17 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
+import { InvitationRevokeButton } from "@/components/admin/invitation-revoke-button";
 import { useTableDensity } from "@/components/layout/density-provider";
-import { adminResendInvitationAction, adminRevokeInvitationAction } from "@/lib/actions/admin";
+import { adminResendInvitationAction } from "@/lib/actions/admin";
 import { getInvitationBulkOperations } from "@/lib/admin/bulk-ops/invitations";
+import {
+  invitationCanResendOrRevoke,
+  invitationLifecycleDisplay,
+} from "@/lib/admin/invite-lifecycle";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import type { UserRole } from "@auction/types";
@@ -17,6 +24,10 @@ function roleLabel(r: UserRole): string {
   return "Client";
 }
 
+function coerceDate(d: Date | string): Date {
+  return d instanceof Date ? d : new Date(d);
+}
+
 function columns(): ColumnDef<AdminInvitationSummary>[] {
   return [
     { accessorKey: "email", header: "Email" },
@@ -26,39 +37,66 @@ function columns(): ColumnDef<AdminInvitationSummary>[] {
       cell: ({ row }) => roleLabel(row.original.targetRole),
     },
     {
-      accessorKey: "expiresAt",
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const r = row.original;
+        const expiresAt = coerceDate(r.expiresAt);
+        const openedAt = r.openedAt ? coerceDate(r.openedAt) : null;
+        const display = invitationLifecycleDisplay({
+          status: r.status,
+          expiresAt,
+          openedAt,
+          inviteEmailLastStatus: r.inviteEmailLastStatus,
+        });
+        if (display.kind === "revoked") {
+          return <AdminStatusBadge domain="invitation" status="revoked" />;
+        }
+        return <AdminStatusBadge domain="inviteLifecycle" status={display.pill} size="sm" />;
+      },
+      enableSorting: false,
+    },
+    {
+      id: "expires",
       header: "Expires",
-      cell: ({ row }) => row.original.expiresAt.toLocaleString(),
+      cell: ({ row }) => {
+        const expiresAt = coerceDate(row.original.expiresAt);
+        const terminal = row.original.status !== "pending" || expiresAt.getTime() <= Date.now();
+        return <InvitationExpiryCountdown expiresAt={expiresAt} active={!terminal} />;
+      },
+      enableSorting: false,
     },
     {
       id: "actions",
       header: () => <span className="block text-right">Actions</span>,
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <form action={adminResendInvitationAction}>
-            <input type="hidden" name="invitationId" value={row.original.id} />
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className="font-label text-[10px] uppercase"
-            >
-              Resend
-            </Button>
-          </form>
-          <form action={adminRevokeInvitationAction}>
-            <input type="hidden" name="invitationId" value={row.original.id} />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="font-label text-[10px] uppercase"
-            >
-              Revoke
-            </Button>
-          </form>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const r = row.original;
+        const expiresAt = coerceDate(r.expiresAt);
+        const canMutate = invitationCanResendOrRevoke({
+          status: r.status,
+          expiresAt,
+          openedAt: r.openedAt ? coerceDate(r.openedAt) : null,
+          inviteEmailLastStatus: r.inviteEmailLastStatus,
+        });
+
+        return (
+          <div className="flex justify-end gap-2">
+            <form action={adminResendInvitationAction}>
+              <input type="hidden" name="invitationId" value={r.id} />
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                disabled={!canMutate}
+                className="font-label text-[10px] uppercase"
+              >
+                Resend
+              </Button>
+            </form>
+            <InvitationRevokeButton invitationId={r.id} disabled={!canMutate} />
+          </div>
+        );
+      },
       enableSorting: false,
     },
   ];

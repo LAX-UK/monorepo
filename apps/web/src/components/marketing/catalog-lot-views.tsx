@@ -73,6 +73,7 @@ export function CatalogLotGridView({
         return (
           <li key={a.id} className="min-w-0">
             <LotCard.Grid
+              lotId={a.id}
               href={lotPath(a)}
               topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
               topRight={
@@ -215,6 +216,7 @@ export function CatalogLotListView({
           return (
             <li key={a.id}>
               <LotCard.List
+                lotId={a.id}
                 href={lotPath(a)}
                 image={
                   <MediaImage

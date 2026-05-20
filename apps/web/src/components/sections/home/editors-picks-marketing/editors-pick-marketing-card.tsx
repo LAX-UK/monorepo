@@ -1,8 +1,8 @@
 import { LotCard } from "@/components/marketing/lot-card";
+import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 
 type Props = {
   lot: EditorsPickLotCardVM;
@@ -43,12 +43,13 @@ export function EditorsPickMarketingCard({
       belowImage={
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <Link
+            <LotViewTransitionLink
+              lotId={lot.id}
               href={lot.href}
               className="font-headline text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
             >
               {lot.title}
-            </Link>
+            </LotViewTransitionLink>
             <p className="font-body text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
               {lot.artistName}
             </p>
@@ -66,7 +67,9 @@ export function EditorsPickMarketingCard({
             asChild
             className="h-10 w-full rounded border-[#A3A3A3] text-base font-semibold tracking-[0.05em] text-[#0A0A0A] dark:border-neutral-500 dark:text-on-surface"
           >
-            <Link href={lot.href}>View Lot</Link>
+            <LotViewTransitionLink lotId={lot.id} href={lot.href}>
+              View Lot
+            </LotViewTransitionLink>
           </Button>
         </div>
       }

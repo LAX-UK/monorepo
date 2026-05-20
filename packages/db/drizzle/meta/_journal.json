@@ -456,6 +456,13 @@
       "when": 1782200000000,
       "tag": "0066_marketing_outbox_claimed",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1782300000000,
+      "tag": "0067_invitation_admin_tracking",
+      "breakpoints": true
     }
   ]
 }

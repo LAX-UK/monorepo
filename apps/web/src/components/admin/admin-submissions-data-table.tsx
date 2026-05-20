@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { ItemSubmissionStatus } from "@auction/types";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -50,7 +50,7 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <SubmissionStatusBadge status={row.original.status} />,
+      cell: ({ row }) => <AdminStatusBadge domain="submission" status={row.original.status} />,
     },
     {
       id: "open",

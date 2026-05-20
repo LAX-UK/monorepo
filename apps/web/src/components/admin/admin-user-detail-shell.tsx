@@ -1,6 +1,8 @@
 "use client";
 
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   UserRoleAction,
   UserStaffRoleAction,
@@ -12,23 +14,19 @@ import {
   type AdminUserSummaryMetrics,
   AdminUserSummaryStrip,
 } from "@/components/admin/admin-user-summary-strip";
+import { AdminClientDisplayNameEditableTitle } from "@/components/admin/editable-titles";
+import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
+import {
+  type AdminDetailTab,
+  AdminDetailTabs,
+} from "@/components/dashboard/primitives/admin-detail-tabs";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import type { ReactNode } from "react";
-
-function daysSince(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "";
-  const days = Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000));
-  if (days < 1) return "today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
-}
 
 type TabDef = {
   id: string;
@@ -55,12 +53,38 @@ export function AdminUserDetailShell({
 }: Props) {
   const isStaff = user.role === "staff";
 
+  const accountControls = (
+    <div className="space-y-6 rounded-xl border border-border-hairline bg-surface-container-low/60 p-5">
+      <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Account controls
+      </p>
+      <div className="space-y-4">
+        <UserRoleAction userId={user.id} defaultRole={user.role as UserRole} layout="block" />
+      </div>
+      {isStaff ? (
+        <div className="space-y-4 border-t border-border-hairline pt-4">
+          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Internal staff role
+          </p>
+          <UserStaffRoleAction
+            userId={user.id}
+            defaultStaffRole={(user.staffRole as UserStaffRole | null) ?? null}
+          />
+        </div>
+      ) : null}
+      <div className="border-t border-border-hairline pt-4">
+        <UserSuspendAction userId={user.id} suspendedAt={user.suspendedAt} fullWidthButton />
+      </div>
+    </div>
+  );
+
   return (
     <AdminEntityDetailShell
       detailHeader
       backHref={listHref}
       backLabel={listLabel}
-      title={user.name}
+      title={<AdminClientDisplayNameEditableTitle userId={user.id} value={user.name} />}
+      actions={<AdminPinPageButton label={user.name} />}
       meta={
         <div className="space-y-3">
           <div className="flex items-start gap-3">
@@ -76,19 +100,17 @@ export function AdminUserDetailShell({
             />
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge variant={isStaff ? "info" : "neutral"}>
-              {isStaff ? "Staff" : "Client"}
-            </StatusBadge>
+            <AdminStatusBadge domain="user" status="active" label={isStaff ? "Staff" : "Client"} />
             {isStaff ? (
-              <StatusBadge variant="neutral">
-                {staffRoleLabel(user.staffRole as UserStaffRole | null)}
-              </StatusBadge>
+              <AdminStatusBadge
+                domain="user"
+                status="active"
+                label={staffRoleLabel(user.staffRole as UserStaffRole | null)}
+              />
             ) : null}
-            <StatusBadge variant={user.suspendedAt ? "danger" : "success"}>
-              {user.suspendedAt ? "Suspended" : "Active"}
-            </StatusBadge>
+            <AdminStatusBadge domain="user" status={user.suspendedAt ? "suspended" : "active"} />
             <span className="font-body text-xs text-on-surface-variant">
-              Created {formatAdminUserDate(user.createdAt)} ({daysSince(user.createdAt)})
+              Created {formatAdminUserDate(user.createdAt)} ({relativeFromIso(user.createdAt)})
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -105,54 +127,37 @@ export function AdminUserDetailShell({
           <p className="font-mono text-xs text-on-surface-variant">{user.id}</p>
         </div>
       }
+      rail={
+        <div className="space-y-6">
+          <UserDetailContextRail
+            user={user}
+            {...(summaryMetrics?.lifetimeSpend != null
+              ? { lifetimeSpend: summaryMetrics.lifetimeSpend }
+              : {})}
+            {...(summaryMetrics?.lotsWon != null ? { lotsWon: summaryMetrics.lotsWon } : {})}
+            {...(summaryMetrics?.submissionsCount != null
+              ? { submissionsCount: summaryMetrics.submissionsCount }
+              : {})}
+            legalEntities={legalEntitiesForActions}
+          />
+          {accountControls}
+        </div>
+      }
     >
-      <div className="grid gap-8 lg:grid-cols-[1fr_minmax(16rem,20rem)]">
-        <Tabs defaultValue={tabs[0]?.id ?? "profile"} className="w-full min-w-0">
-          <TabsList className="flex h-auto min-h-11 flex-wrap justify-start gap-1 bg-surface-container-low p-1">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="font-label text-[11px] uppercase tracking-wide"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {tabs.map((tab) => (
-            <TabsContent
-              key={tab.id}
-              value={tab.id}
-              className="mt-6 rounded-xl border border-border-hairline bg-surface-container-low/40 p-6"
-            >
-              {tab.content}
-            </TabsContent>
-          ))}
-        </Tabs>
-
-        <aside className="space-y-6 rounded-xl border border-border-hairline bg-surface-container-low/60 p-5 lg:sticky lg:top-24 lg:self-start">
-          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Account controls
-          </p>
-          <div className="space-y-4">
-            <UserRoleAction userId={user.id} defaultRole={user.role as UserRole} layout="block" />
-          </div>
-          {isStaff ? (
-            <div className="space-y-4 border-t border-border-hairline pt-4">
-              <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Internal staff role
-              </p>
-              <UserStaffRoleAction
-                userId={user.id}
-                defaultStaffRole={(user.staffRole as UserStaffRole | null) ?? null}
-              />
-            </div>
-          ) : null}
-          <div className="border-t border-border-hairline pt-4">
-            <UserSuspendAction userId={user.id} suspendedAt={user.suspendedAt} fullWidthButton />
-          </div>
-        </aside>
-      </div>
+      <AdminDetailTabs
+        defaultValue={tabs[0]?.id ?? "overview"}
+        tabs={tabs.map(
+          (tab): AdminDetailTab => ({
+            value: tab.id,
+            label: tab.label,
+            content: (
+              <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
+                {tab.content}
+              </div>
+            ),
+          }),
+        )}
+      />
     </AdminEntityDetailShell>
   );
 }

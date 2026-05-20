@@ -1,9 +1,11 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { AdminDetailSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { TableSkeleton } from "@auction/ui";
 
-export default function AdminSaleRegistrationsLoading() {
+export default function RegistrationsLoading() {
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
-      <PageSkeleton variant="table" />
+    <div className="space-y-8">
+      <AdminDetailSkeleton />
+      <TableSkeleton rows={6} columns={5} />
     </div>
   );
 }

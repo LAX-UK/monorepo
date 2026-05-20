@@ -1,9 +1,13 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
-export default function AdminLotsLoading() {
+export default function LotsLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-6 py-6">
-      <PageSkeleton variant="table" />
-    </div>
+    <AdminListPageSkeleton
+      title="Lots"
+      description="Loading lots…"
+      kpiTiles={4}
+      tableRows={10}
+      tableColumns={7}
+    />
   );
 }

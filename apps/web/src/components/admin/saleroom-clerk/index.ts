@@ -1,0 +1,1 @@
+export { SaleroomClerkConsole } from "./console";

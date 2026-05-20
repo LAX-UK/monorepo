@@ -20,16 +20,19 @@ type Props = {
   row: AdminLotFulfilmentListRow;
   /** Current list filter; echoed back on redirect after actions. */
   returnStatus: string;
+  /** When true, renders a div panel (e.g. sheet drawer) instead of a list item. */
+  embedded?: boolean;
 };
 
-export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
+export function AdminLotFulfilmentQueueCard({ row, returnStatus, embedded = false }: Props) {
   const hiddenReturn =
     returnStatus.trim() !== "" ? (
       <input type="hidden" name="returnStatus" value={returnStatus} />
     ) : null;
 
+  const Wrapper = embedded ? "div" : "li";
   return (
-    <li className="rounded-lg border border-outline-variant/30 p-4">
+    <Wrapper className="rounded-lg border border-outline-variant/30 p-4">
       <div className="font-body text-sm">
         <p className="font-medium">
           <Link href={`/admin/lots/${row.lotId}`} className="text-primary hover:underline">
@@ -145,6 +148,6 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus }: Props) {
             : "This fulfilment was cancelled."}
         </p>
       ) : null}
-    </li>
+    </Wrapper>
   );
 }

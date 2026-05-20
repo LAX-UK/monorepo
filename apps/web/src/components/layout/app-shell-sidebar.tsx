@@ -6,10 +6,12 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
 import { StaffSidebarNav } from "@/components/layout/staff-sidebar-nav";
+import { StaffWorkspaceSwitcher } from "@/components/layout/staff-workspace-switcher";
 import { MediaImage } from "@/components/ui/media-image";
 import { useLogout } from "@/lib/auth/use-logout";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
+import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
 import { navEntriesToFlatItems, navEntriesToGroups } from "@/lib/shell/nav-adapters";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
@@ -164,9 +166,10 @@ export function AppShellSidebar({
                       {item.badge ? (
                         <Badge
                           className={cn(
-                            "rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white",
+                            navBadgeClassName(item.badgeTone),
                             labelsHidden && "absolute right-1 top-1",
                           )}
+                          aria-label={`${item.badge > 99 ? "99+" : item.badge} pending ${item.label}`}
                         >
                           {item.badge > 99 ? "99+" : item.badge}
                         </Badge>
@@ -219,7 +222,11 @@ export function AppShellSidebar({
           <div className={cn("mb-3 px-0", labelsHidden && "hidden")}>
             <WorkspaceModeSwitcher mode={clientWorkspaceMode} />
           </div>
-        ) : null}
+        ) : (
+          <div className={cn("mb-3", labelsHidden && "px-0")}>
+            <StaffWorkspaceSwitcher user={user} collapsed={labelsHidden} />
+          </div>
+        )}
         <div className={cn("items-center gap-1", labelsHidden ? "flex justify-center" : "hidden")}>
           {role === "client" ? (
             <Tooltip delayDuration={250}>

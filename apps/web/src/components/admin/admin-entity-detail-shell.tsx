@@ -1,23 +1,29 @@
+import { DetailRailLayout } from "@/components/admin/detail-rail/detail-rail-layout";
+import { EntityDetailMeta } from "@/components/admin/entity-detail-meta";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type AdminEntityDetailShellProps = {
   breadcrumbs?: ReactNode;
-  title: string;
+  title: ReactNode;
   description?: string | undefined;
   meta?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
-  aside?: ReactNode;
+  /** Stripe-style sticky context rail (lg+) with mobile sheet */
+  rail?: ReactNode;
   className?: string | undefined;
   /** Use sticky `DashboardDetailHeader` (v3) instead of `DashboardPageHeader`. */
   detailHeader?: boolean;
   backHref?: string;
   backLabel?: string;
   eyebrow?: ReactNode;
+  entityId?: string;
+  updatedAt?: Date | string;
+  publicHref?: string;
+  publicLabel?: string;
 };
 
 export function AdminEntityDetailShell({
@@ -27,13 +33,19 @@ export function AdminEntityDetailShell({
   meta,
   actions,
   children,
-  aside,
+  rail,
   className,
   detailHeader = false,
   backHref,
   backLabel,
   eyebrow,
+  entityId,
+  updatedAt,
+  publicHref,
+  publicLabel,
 }: AdminEntityDetailShellProps) {
+  const contextRail = rail;
+
   return (
     <AppScreen className={className ?? "space-y-8"}>
       {detailHeader ? (
@@ -57,15 +69,18 @@ export function AdminEntityDetailShell({
           {...(actions ? { actions } : {})}
         />
       )}
-      <div
-        className={cn(
-          "mx-auto max-w-6xl gap-8",
-          aside ? "grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]" : "",
-        )}
-      >
-        <div className="min-w-0 space-y-6">{children}</div>
-        {aside ? <aside className="min-w-0 space-y-4">{aside}</aside> : null}
-      </div>
+      <EntityDetailMeta
+        {...(entityId ? { entityId } : {})}
+        {...(updatedAt ? { updatedAt } : {})}
+        {...(publicHref ? { publicHref, publicLabel } : {})}
+      />
+      {contextRail ? (
+        <DetailRailLayout rail={contextRail}>{children}</DetailRailLayout>
+      ) : (
+        <div className="mx-auto max-w-6xl">
+          <div className="min-w-0 space-y-6">{children}</div>
+        </div>
+      )}
     </AppScreen>
   );
 }

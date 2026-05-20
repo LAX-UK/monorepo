@@ -1,6 +1,7 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
+import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -18,7 +19,8 @@ export default async function NewAdminArtistPage({
   const initialScenario = parseScenarioParam(sp.scenario?.trim());
 
   return (
-    <AdminEntityFormShell
+    <CatalogFormShell
+      className="md:max-w-4xl"
       breadcrumbs={
         <Link
           href="/admin/artists"
@@ -29,12 +31,27 @@ export default async function NewAdminArtistPage({
       }
       title="New artist"
       description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
+      mobileActions={[
+        {
+          id: "save",
+          label: "Create artist",
+          variant: "primary",
+          htmlForm: CATALOG_FORM_IDS.artist,
+        },
+        {
+          id: "cancel",
+          label: "Cancel",
+          variant: "secondary",
+          href: "/admin/artists",
+        },
+      ]}
     >
       <Surface variant="card">
         <div className="pt-6">
           <AdminArtistForm
             mode="create"
             initialScenario={initialScenario}
+            htmlFormId={CATALOG_FORM_IDS.artist}
             defaultValues={{
               displayName: displayFromUrl,
               slug: "",
@@ -58,6 +75,6 @@ export default async function NewAdminArtistPage({
           />
         </div>
       </Surface>
-    </AdminEntityFormShell>
+    </CatalogFormShell>
   );
 }

@@ -1,10 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AdminCategoriesBoard } from "./admin-categories-board";
 
 vi.mock("@/lib/actions/admin", () => ({
   adminArchiveCategoryResultAction: vi.fn(),
   adminDeleteCategoryResultAction: vi.fn(),
+}));
+
+vi.mock("@/lib/actions/admin/field-updates", () => ({
+  adminUpdateCategoryNameFieldAction: vi.fn(),
+  adminUpdateCategorySlugFieldAction: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -38,7 +43,8 @@ describe("AdminCategoriesBoard", () => {
     };
     render(<AdminCategoriesBoard categories={[unused]} />);
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-    expect(screen.getByRole("dialog", { name: "Archive this category?" })).toBeInTheDocument();
-    expect(screen.getByText("sculpture")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Archive this category?" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("sculpture")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultUserAgentParser, formatDeviceLabel, parseUserAgent } from "./parse-user-agent.js";
+import { defaultUserAgentParser, formatDeviceLabel, parseUserAgent } from "./parse-user-agent";
 
 describe("parseUserAgent", () => {
   it("parses Chrome on macOS", () => {

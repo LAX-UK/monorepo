@@ -147,7 +147,11 @@ export const submissionIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const submissionDecisionQueueSchema = z.enum(["awaiting", "accepted", "rejected"]);
+
 export const listSubmissionsQuerySchema = z.object({
+  /** Admin decision-queue tab: filters multiple underlying statuses server-side. */
+  queue: submissionDecisionQueueSchema.optional(),
   status: z.enum(itemSubmissionStatuses).optional(),
   sellerId: z.string().min(1).max(191).optional(),
   q: z.string().trim().max(200).optional(),

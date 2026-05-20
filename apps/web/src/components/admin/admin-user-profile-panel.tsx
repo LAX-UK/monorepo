@@ -1,12 +1,11 @@
 import { AdminCopyField } from "@/components/admin/admin-copy-field";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { kycStatusBadgeVariant, kycStatusLabel } from "@/lib/admin/kyc-status-presenter";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import type { ReactNode } from "react";
 
@@ -102,23 +101,18 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
             <dd className="flex items-center gap-2">
-              {user.emailVerified ? (
-                <StatusBadge variant="success" size="sm">
-                  Verified
-                </StatusBadge>
-              ) : (
-                <StatusBadge variant="warning" size="sm">
-                  Unverified
-                </StatusBadge>
-              )}
+              <AdminStatusBadge
+                domain="kyc"
+                status={user.emailVerified ? "approved" : "pending"}
+                label={user.emailVerified ? "Verified" : "Unverified"}
+                size="sm"
+              />
             </dd>
           </div>
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">KYC</dt>
             <dd>
-              <StatusBadge variant={kycStatusBadgeVariant(user.kycStatus)} size="sm">
-                {kycStatusLabel(user.kycStatus)}
-              </StatusBadge>
+              <AdminStatusBadge domain="kyc" status={user.kycStatus ?? ""} size="sm" />
             </dd>
           </div>
           {user.kycVerifiedAt ? (

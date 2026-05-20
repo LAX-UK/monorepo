@@ -1,17 +1,121 @@
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
+import { AdminSubmissionDetailCatalogShell } from "@/components/admin/admin-submission-detail-catalog-shell";
+import { CatalogInfoAside } from "@/components/admin/catalog";
+import { SubmissionInternalDetailsCollapsible } from "@/components/admin/submission-review/submission-internal-details-collapsible";
 import {
   SubmissionDocumentsSection,
   SubmissionMetadataSummary,
 } from "@/components/admin/submission-review/submission-staff-sections";
 import { MediaImage } from "@/components/ui/media-image";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
-import { getAdminArtistList, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
+import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
-import { ReviewSplitPane } from "@auction/ui";
+import { formatDateTime } from "@/lib/ui/format";
+import type { ItemSubmission } from "@auction/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+function InnerMeta({ submission }: { submission: ItemSubmission }) {
+  const s = submission;
+  return (
+    <dl className="grid gap-3 sm:grid-cols-2">
+      <div>
+        <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          Submission ID
+        </dt>
+        <dd className="break-all font-mono text-xs text-on-surface">{s.id}</dd>
+      </div>
+      {(s.sellerId || s.legalEntityId) && (
+        <div className="sm:col-span-2">
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Legal entity / seller identifiers
+          </dt>
+          <dd className="space-y-1 font-mono text-xs text-on-surface">
+            {s.legalEntityId ? <p>Legal entity: {s.legalEntityId}</p> : null}
+            {s.sellerId ? <p>Seller (legacy): {s.sellerId}</p> : null}
+          </dd>
+        </div>
+      )}
+      {(s.categoryIds?.length ?? 0) > 0 ? (
+        <div className="sm:col-span-2">
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Category IDs
+          </dt>
+          <dd className="break-all font-mono text-xs text-on-surface">
+            {(s.categoryIds ?? []).join(", ") || "—"}
+          </dd>
+        </div>
+      ) : (
+        <div>
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Primary category ID (legacy)
+          </dt>
+          <dd className="break-all font-mono text-xs text-on-surface">{s.categoryId}</dd>
+        </div>
+      )}
+      <div>
+        <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          Created / updated (UTC)
+        </dt>
+        <dd className="text-xs text-on-surface">
+          {formatDateTime(s.createdAt)} · {formatDateTime(s.updatedAt)}
+        </dd>
+      </div>
+      {s.reviewedAt ? (
+        <div>
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Reviewed
+          </dt>
+          <dd className="text-xs text-on-surface">
+            {formatDateTime(s.reviewedAt)}
+            {s.reviewedBy ? (
+              <>
+                {" "}
+                by <span className="font-mono">{s.reviewedBy.slice(0, 8)}…</span>
+              </>
+            ) : null}
+          </dd>
+        </div>
+      ) : (
+        <div>
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Reviewed
+          </dt>
+          <dd className="text-xs text-on-surface">—</dd>
+        </div>
+      )}
+      <div className="sm:col-span-2">
+        <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          Staff review notes on record
+        </dt>
+        <dd className="whitespace-pre-wrap text-xs text-on-surface">{s.reviewNotes ?? "—"}</dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          Converted lot ID
+        </dt>
+        <dd className="break-all font-mono text-xs text-on-surface">
+          {s.convertedLotId ? (
+            <Link href={`/admin/lots/${s.convertedLotId}`} className="text-primary underline">
+              {s.convertedLotId}
+            </Link>
+          ) : (
+            "—"
+          )}
+        </dd>
+      </div>
+      {s.signatureNote ? (
+        <div className="sm:col-span-2">
+          <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Signature note (seller-provided technical)
+          </dt>
+          <dd className="whitespace-pre-wrap text-xs text-on-surface">{s.signatureNote}</dd>
+        </div>
+      ) : null}
+    </dl>
+  );
+}
 
 export default async function AdminSubmissionDetailPage({
   params,
@@ -21,14 +125,12 @@ export default async function AdminSubmissionDetailPage({
   if (!s) notFound();
 
   const submitterLegalEntityId = s.legalEntityId ?? s.sellerId ?? null;
-  const [submitterEntity, artistList, staffDocuments] = await Promise.all([
+  const [submitterEntity, staffDocuments] = await Promise.all([
     submitterLegalEntityId
       ? getAdminLegalEntityById(submitterLegalEntityId).catch(() => null)
       : Promise.resolve(null),
-    getAdminArtistList({ limit: 500 }).catch(() => ({ rows: [], total: 0 })),
     getServerSubmissionDocuments(id),
   ]);
-  const artists = artistList.rows;
   const submitterDisplayName = submitterEntity?.displayName;
 
   const submissionRecord = (
@@ -37,8 +139,11 @@ export default async function AdminSubmissionDetailPage({
         <p>
           <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Seller
-          </span>{" "}
-          {s.sellerId}
+          </span>
+          <br />
+          <span className="text-base font-medium text-on-surface">
+            {submitterDisplayName ?? "Unknown submitter"}
+          </span>
         </p>
         <p>{s.description ?? "—"}</p>
         <p className="text-on-surface-variant">
@@ -85,6 +190,10 @@ export default async function AdminSubmissionDetailPage({
       {s.status === "rejected" && s.rejectionReason ? (
         <p className="text-sm text-error">Rejected: {s.rejectionReason}</p>
       ) : null}
+
+      <SubmissionInternalDetailsCollapsible>
+        <InnerMeta submission={s} />
+      </SubmissionInternalDetailsCollapsible>
     </div>
   );
 
@@ -92,54 +201,30 @@ export default async function AdminSubmissionDetailPage({
     <AdminSubmissionDecisionPanel
       submissionId={s.id}
       status={s.status}
-      artists={artists}
       {...(submitterDisplayName ? { submitterDisplayName } : {})}
     />
   );
 
   return (
-    <AdminEntityDetailShell
-      breadcrumbs={
-        <Link
-          href="/admin/submissions"
-          className="inline-flex min-h-11 items-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← Queue
-        </Link>
-      }
-      title={s.title}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <SubmissionStatusBadge status={s.status} />
-          <Link
-            href={`/admin/audit/timeline?aggregateType=item_submission&aggregateId=${id}`}
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:text-primary hover:underline"
-          >
-            Audit ↗
-          </Link>
+    <AdminSubmissionDetailCatalogShell submissionId={s.id} title={s.title} status={s.status}>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+        <div className="min-w-0 space-y-6">
+          <div className="lg:hidden">{decision}</div>
+          {submissionRecord}
+          <SubmissionMetadataSummary submission={s} />
+          <SubmissionDocumentsSection submissionId={id} initialDocuments={staffDocuments} />
         </div>
-      }
-    >
-      <ReviewSplitPane
-        recordTitle="Intake"
-        decisionTitle="Decision"
-        mobileStickyAction={
-          <Link
-            href="/admin/submissions"
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border-hairline bg-surface-container-low px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high/60"
-          >
-            Back to queue
-          </Link>
-        }
-        record={
-          <div className="space-y-6">
-            {submissionRecord}
-            <SubmissionMetadataSummary submission={s} />
-            <SubmissionDocumentsSection submissionId={id} initialDocuments={staffDocuments} />
+        <aside className="hidden min-w-0 space-y-4 lg:block">
+          <CatalogInfoAside
+            entityId={id}
+            updatedAt={s.updatedAt}
+            status={<AdminStatusBadge domain="submission" status={s.status} />}
+          />
+          <div className="lg:sticky lg:top-28 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:self-start lg:overscroll-contain lg:pb-8">
+            {decision}
           </div>
-        }
-        decision={decision}
-      />
-    </AdminEntityDetailShell>
+        </aside>
+      </div>
+    </AdminSubmissionDetailCatalogShell>
   );
 }

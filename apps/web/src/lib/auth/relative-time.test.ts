@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRelativeTime } from "./relative-time.js";
+import { formatRelativeTime } from "./relative-time";
 
 describe("formatRelativeTime", () => {
   it("describes past times in the past tense", () => {
