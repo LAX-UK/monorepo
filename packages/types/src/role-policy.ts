@@ -220,15 +220,13 @@ export function staffRoleDefaultDestination(
   if (staff == null) return "/dashboard";
 
   if (staff === "super_admin") return "/admin";
-  if (staff === "finance_ops") return "/admin/payments";
+  if (staff === "finance_ops") return "/admin/finance";
 
   const ordered: Array<{ path: string; requirement: CapabilityRequirement }> = [
     { path: "/admin/sales", requirement: "auction.manage" },
     { path: "/admin/lots", requirement: "catalogue.write" },
     { path: "/admin/submissions", requirement: "specialist.appraise" },
     { path: "/admin/lot-fulfilment", requirement: "operations.fulfilment" },
-    { path: "/admin/cms", requirement: "content.write" },
-    { path: "/admin/email/outbox", requirement: "support.respond" },
     { path: "/admin/legal-entities", requirement: "legal_entity.read" },
     {
       path: "/admin",

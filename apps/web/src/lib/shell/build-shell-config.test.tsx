@@ -26,7 +26,7 @@ describe("buildShellConfig", () => {
       "sales",
       "lots",
       "submissions",
-      "payments",
+      "more",
     ]);
   });
 

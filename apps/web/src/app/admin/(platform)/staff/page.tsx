@@ -1,7 +1,9 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminStaffBoard } from "@/components/admin/admin-staff-board";
 import { AdminStaffSearchForm } from "@/components/admin/admin-staff-search-form";
-import type { AdminUserListKpi } from "@/components/admin/admin-user-list-shell";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { usersListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
@@ -9,8 +11,6 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { type UserStaffRole, userStaffRoles } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 
 function isStaffRole(s: string | undefined): s is UserStaffRole {
   return s != null && (userStaffRoles as readonly string[]).includes(s);
@@ -49,17 +49,6 @@ export default async function AdminStaffPage({
 
   const activeOnPage = rows.filter((r) => !r.suspendedAt).length;
   const suspendedOnPage = rows.filter((r) => r.suspendedAt).length;
-
-  const kpis: AdminUserListKpi[] = [
-    { label: "Total staff", value: total, delta: `${rows.length} on page` },
-    { label: "Active", value: activeOnPage, delta: "Current page" },
-    { label: "Suspended", value: suspendedOnPage, delta: "Current page" },
-    {
-      label: "Roles on page",
-      value: new Set(rows.map((r) => r.staffRole ?? "legacy")).size,
-      delta: "Distinct staff roles",
-    },
-  ];
 
   const chip = (patch: Record<string, string | number | boolean | undefined | null | "">) =>
     buildListHref("/admin/staff", sp, { ...patch, offset: 0 });
@@ -155,12 +144,26 @@ export default async function AdminStaffPage({
       description="Internal team directory. Filter by staff role or suspension, and manage capabilities from each profile."
       hasFilters={hasFilters}
       resetHref="/admin/staff"
+      kpiStrip={
+        !loadError ? (
+          <AdminListKpiStrip
+            ariaLabel="Staff summary"
+            tiles={[
+              { label: "Total staff", value: total, delta: `${rows.length} on page` },
+              { label: "Active", value: activeOnPage, delta: "Current page" },
+              { label: "Suspended", value: suspendedOnPage, delta: "Current page" },
+              {
+                label: "Roles on page",
+                value: new Set(rows.map((r) => r.staffRole ?? "legacy")).size,
+                delta: "Distinct staff roles",
+              },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={
         error || loadError ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not load staff</AlertTitle>
-            <AlertDescription>{loadError ?? error}</AlertDescription>
-          </Alert>
+          <AdminListAlert title="Could not load staff">{loadError ?? error}</AdminListAlert>
         ) : null
       }
       chips={
@@ -180,17 +183,12 @@ export default async function AdminStaffPage({
       }
       view={
         !loadError && rows.length > 0 ? (
-          <AdminStaffBoard
-            rows={rows}
-            totalMatches={total}
-            kpis={kpis}
-            roleBreakdown={roleBreakdown}
-          />
+          <AdminStaffBoard rows={rows} totalMatches={total} roleBreakdown={roleBreakdown} />
         ) : null
       }
       empty={
         !loadError && rows.length === 0 ? (
-          <EmptyState
+          <AdminEmptyState
             title="No staff"
             description="Try a different search query or clear filters."
           />

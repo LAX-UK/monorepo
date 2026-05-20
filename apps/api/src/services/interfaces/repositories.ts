@@ -204,6 +204,8 @@ export interface IUserRepository {
 
 export type ListSubmissionsFilter = {
   status?: ItemSubmissionStatus | undefined;
+  /** Multiple statuses (admin decision queues). Overrides `status` when set. */
+  statuses?: ItemSubmissionStatus[] | undefined;
   legalEntityId?: string | undefined;
   q?: string | undefined;
   limit: number;

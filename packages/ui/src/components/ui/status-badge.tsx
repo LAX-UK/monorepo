@@ -16,7 +16,7 @@ export const statusBadgeVariants = cva(
       },
       size: {
         sm: "px-2 py-0.5 text-[10px]",
-        md: "px-2.5 py-1 text-xs",
+        md: "px-3 py-1.5 text-xs font-semibold",
       },
     },
     defaultVariants: {

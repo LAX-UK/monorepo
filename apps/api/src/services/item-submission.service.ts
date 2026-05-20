@@ -364,9 +364,15 @@ export class ItemSubmissionService implements IItemSubmissionService {
   async listSubmissionsForAdminApi(
     f: ListSubmissionsFilter,
   ): Promise<{ data: ItemSubmission[]; total: number }> {
+    const countFilter: Omit<ListSubmissionsFilter, "limit" | "offset"> = {
+      legalEntityId: f.legalEntityId,
+      q: f.q,
+      ...(f.statuses && f.statuses.length > 0 ? { statuses: f.statuses } : {}),
+      ...(f.status && !(f.statuses && f.statuses.length > 0) ? { status: f.status } : {}),
+    };
     const [rows, total] = await Promise.all([
       this.listForAdmin(f),
-      this.submissions.countAdmin({ status: f.status, legalEntityId: f.legalEntityId, q: f.q }),
+      this.submissions.countAdmin(countFilter),
     ]);
     const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
     return { data, total };

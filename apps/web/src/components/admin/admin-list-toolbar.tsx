@@ -1,3 +1,4 @@
+import { AdminListFilterSheet } from "@/components/admin/admin-list-filter-sheet";
 import { ResetFiltersLink } from "@/components/admin/reset-filters-link";
 import type { ReactNode } from "react";
 
@@ -28,7 +29,12 @@ export function AdminListToolbar({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3">
-        {filters ? <div className="flex min-w-0 flex-wrap gap-2">{filters}</div> : null}
+        {filters ? (
+          <>
+            <div className="hidden min-w-0 flex-wrap gap-2 md:flex">{filters}</div>
+            <AdminListFilterSheet activeCount={hasFilters ? 1 : 0}>{filters}</AdminListFilterSheet>
+          </>
+        ) : null}
         {extra ? <div className="flex flex-wrap items-end gap-2">{extra}</div> : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">

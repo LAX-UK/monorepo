@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { type ReactNode, useMemo } from "react";
@@ -11,8 +12,8 @@ import { type ReactNode, useMemo } from "react";
 type Props = {
   user: SessionUser;
   pendingSubmissionCount?: number;
+  navCounts?: AdminNavCounts;
   cookieDensity?: DashboardDensity | null;
-  headerSlot?: ReactNode;
   headerRightSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
@@ -24,8 +25,8 @@ type Props = {
 export function FinanceShell({
   user,
   pendingSubmissionCount = 0,
+  navCounts,
   cookieDensity,
-  headerSlot,
   headerRightSlot,
   contextBanner,
   topSlot,
@@ -37,13 +38,13 @@ export function FinanceShell({
       buildShellConfig({
         user,
         role: "finance",
-        headerSlot,
-        headerRightSlot: headerRightSlot ?? headerSlot,
+        headerRightSlot,
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         pendingSubmissionCount,
+        ...(navCounts ? { navCounts } : {}),
       }),
-    [user, headerSlot, headerRightSlot, contextBanner, topSlot, pendingSubmissionCount],
+    [user, headerRightSlot, contextBanner, topSlot, pendingSubmissionCount, navCounts],
   );
 
   return (

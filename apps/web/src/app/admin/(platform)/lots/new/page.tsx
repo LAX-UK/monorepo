@@ -1,5 +1,6 @@
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
-import { AdminLotForm } from "@/components/admin/admin-lot-form";
+import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { AdminLotForm } from "@/components/admin/lot-form";
+import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import {
   getAdminArtistList,
   getAdminLotById,
@@ -51,8 +52,14 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
   if (salesResult.status === "rejected") loadWarnings.push("sales list");
   if (artistResult.status === "rejected") loadWarnings.push("artist list");
 
+  const description = fromLotId
+    ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
+    : loadWarnings.length > 0
+      ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
+      : null;
+
   return (
-    <AdminEntityFormShell
+    <CatalogFormShell
       breadcrumbs={
         <Link
           href="/admin/lots"
@@ -62,13 +69,21 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
         </Link>
       }
       title="New lot"
-      description={
-        fromLotId
-          ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
-          : loadWarnings.length > 0
-            ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
-            : undefined
-      }
+      {...(description ? { description } : {})}
+      mobileActions={[
+        {
+          id: "save",
+          label: "Create draft",
+          variant: "primary",
+          htmlForm: CATALOG_FORM_IDS.lot,
+        },
+        {
+          id: "cancel",
+          label: "Cancel",
+          variant: "secondary",
+          href: "/admin/lots",
+        },
+      ]}
     >
       <AdminLotForm
         mode="create"
@@ -77,7 +92,8 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
         sales={sales}
         artists={artists}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+        htmlFormId={CATALOG_FORM_IDS.lot}
       />
-    </AdminEntityFormShell>
+    </CatalogFormShell>
   );
 }

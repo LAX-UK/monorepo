@@ -4,6 +4,9 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { parseItemSubmission } from "@/lib/data/http/parse";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 
+/** Admin submissions decision-queue tabs (`GET /submissions?queue=`). */
+export type AdminSubmissionDecisionQueue = "awaiting" | "accepted" | "rejected";
+
 export async function getMySubmissions(
   params: {
     status?: ItemSubmissionStatus;
@@ -32,6 +35,8 @@ export async function getSubmissionForUser(id: string): Promise<ItemSubmission |
 export async function getAdminSubmissions(
   params: {
     status?: ItemSubmissionStatus;
+    /** Grouped statuses for staff queues. Prefer over `status` when both passed. */
+    queue?: AdminSubmissionDecisionQueue;
     sellerId?: string;
     q?: string;
     limit?: number;
@@ -41,7 +46,8 @@ export async function getAdminSubmissions(
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 50));
   qs.set("offset", String(params.offset ?? 0));
-  if (params.status) qs.set("status", params.status);
+  if (params.queue) qs.set("queue", params.queue);
+  else if (params.status) qs.set("status", params.status);
   if (params.sellerId) qs.set("sellerId", params.sellerId);
   if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/submissions?${qs.toString()}`);

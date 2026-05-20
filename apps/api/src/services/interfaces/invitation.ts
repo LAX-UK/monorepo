@@ -8,6 +8,8 @@ export type InvitationRow = {
   tokenHash: string;
   status: "pending" | "accepted" | "revoked" | "expired";
   expiresAt: Date;
+  openedAt: Date | null;
+  lastEmailOutboxId: string | null;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
   targetLegalEntityId: string | null;
@@ -25,6 +27,8 @@ export type InvitationInsert = {
   tokenHash: string;
   status: InvitationRow["status"];
   expiresAt: Date;
+  openedAt?: Date | null;
+  lastEmailOutboxId?: string | null;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
   targetLegalEntityId?: string | null;
@@ -32,18 +36,33 @@ export type InvitationInsert = {
   createdByUserId: string;
 };
 
-/** Safe for admin list endpoints (no token hash). */
-export type InvitationSummary = Omit<InvitationRow, "tokenHash">;
+/** Safe for internal reads (no token hash). Omits operational FK only used for joins. */
+export type InvitationSummary = Omit<InvitationRow, "tokenHash" | "lastEmailOutboxId">;
+
+/** Admin list projection including invite-email delivery snapshot from linked outbox row. */
+export type InvitationAdminListRow = InvitationSummary & {
+  inviteEmailLastStatus: string | null;
+};
 
 export interface IUserInvitationRepository {
   insert(row: InvitationInsert): Promise<void>;
   findById(id: string): Promise<InvitationRow | null>;
   findPendingByTokenHash(tokenHash: string): Promise<InvitationRow | null>;
-  listPendingCreatedBy(userId: string): Promise<InvitationSummary[]>;
+  listAdminCreatedBy(userId: string): Promise<InvitationAdminListRow[]>;
   updateStatus(
     id: string,
     patch: Partial<
-      Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">
+      Pick<
+        InvitationRow,
+        | "status"
+        | "acceptedAt"
+        | "acceptedUserId"
+        | "tokenHash"
+        | "expiresAt"
+        | "openedAt"
+        | "lastEmailOutboxId"
+      >
     >,
   ): Promise<void>;
+  markOpenedFirstTouch(id: string): Promise<void>;
 }

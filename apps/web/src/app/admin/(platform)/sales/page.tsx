@@ -1,39 +1,33 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
-import { AdminSavedViewChips } from "@/components/admin/admin-saved-view-chips";
-import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogSalesFilterToolbar } from "@/components/admin/catalog/catalog-sales-filter-toolbar";
 import { Button } from "@/components/ui/button";
+import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import type { SalePresetId } from "@/lib/admin/list-presets/sales-presets";
 import { saleListActivePreset, saleListPresetHref } from "@/lib/admin/list-presets/sales-presets";
+import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
-import type { SaleStatus } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
-const statuses: (SaleStatus | "all")[] = [
-  "all",
-  "draft",
-  "scheduled",
-  "active",
-  "ended",
-  "cancelled",
-];
-
-const saleStatusChipLabel: Record<SaleStatus | "all", string> = {
+const PRESET_IDS: SalePresetId[] = ["all", "upcoming", "live", "closed", "settled"];
+const PRESET_LABELS: Record<SalePresetId, string> = {
   all: "All",
-  draft: "Draft",
-  scheduled: "Scheduled",
-  active: "Live",
-  ended: "Ended",
-  cancelled: "Cancelled",
+  upcoming: "Upcoming",
+  live: "Live",
+  closed: "Closed",
+  settled: "Settled",
 };
 
 export default async function AdminSalesPage({
@@ -41,17 +35,27 @@ export default async function AdminSalesPage({
 }: {
   searchParams: Promise<{
     status?: string;
+    lifecycle?: string;
     q?: string;
     error?: string;
     limit?: string;
     offset?: string;
+    period?: string;
   }>;
 }) {
   const sp = await searchParams;
+  const periodDays = parseAdminKpiPeriod(sp.period);
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const query = salesListController.parseQuery(sp);
   const q = query.q;
   const statusFilter = query.status;
+  const lifecycleSlug = query.lifecycle ?? null;
+
+  const salesTrend = await getAdminSalesKpiTrend(periodDays).catch(() => ({
+    currentTotal: 0,
+    priorTotal: 0,
+    dailyCounts: [] as number[],
+  }));
 
   let err: string | null = null;
   let rows = [] as Awaited<ReturnType<typeof salesListController.fetch>>["rows"];
@@ -66,40 +70,18 @@ export default async function AdminSalesPage({
   const liveOnPage = boardRows.filter((r) => r.status === "active").length;
   const draftOnPage = boardRows.filter((r) => r.status === "draft").length;
 
-  const savedViews = (
-    <AdminSavedViewChips
-      activeId={saleListActivePreset(sp)}
-      views={[
-        { id: "all", label: "All", href: saleListPresetHref("all", sp) },
-        { id: "live", label: "Live", href: saleListPresetHref("live", sp) },
-        { id: "draft", label: "Draft", href: saleListPresetHref("draft", sp) },
-        { id: "ended", label: "Ended", href: saleListPresetHref("ended", sp) },
-      ]}
-    />
-  );
+  const lenses: CatalogSegmentItem[] = PRESET_IDS.map((id) => ({
+    id,
+    label: PRESET_LABELS[id],
+    href: saleListPresetHref(id, sp),
+  }));
 
-  const statusChips = (
-    <FilterChipRow
-      label="Filter by status"
-      chips={statuses.map((s) => {
-        const href = buildListHref("/admin/sales", sp, {
-          status: s === "all" ? "" : s,
-          q: q ?? "",
-          offset: 0,
-        });
-        return {
-          id: s,
-          label: saleStatusChipLabel[s],
-          href,
-          active: (s === "all" && !sp.status) || sp.status === s,
-        };
-      })}
-    />
-  );
+  const activeLensId = saleListActivePreset(sp);
+  const activeFilterCount = [q ?? ""].filter((s) => String(s).trim() !== "").length;
 
   const pagination =
     !err && (query.offset > 0 || rows.length === query.limit) ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
@@ -120,15 +102,15 @@ export default async function AdminSalesPage({
       />
     ) : null;
 
-  const hasListFilters = Boolean(statusFilter || q);
+  const hasListFilters = Boolean(statusFilter || q || lifecycleSlug != null);
 
   const empty =
     !err && rows.length === 0 ? (
-      <EmptyState
+      <AdminEmptyState
         title={hasListFilters ? "No matching sales" : "No sales yet"}
         description={
           hasListFilters
-            ? "Try another search keyword or clear the status filter."
+            ? "Try another search keyword or clear the lifecycle lens."
             : "Create a sale to group lots for a session or season."
         }
         action={
@@ -149,7 +131,7 @@ export default async function AdminSalesPage({
     ) : null;
 
   return (
-    <AdminListPage
+    <CatalogListShell
       title="Sales"
       description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
       primaryAction={
@@ -160,72 +142,62 @@ export default async function AdminSalesPage({
           </Link>
         </Button>
       }
-      hasFilters={Boolean(statusFilter || q)}
-      resetHref="/admin/sales"
-      errorAlert={
-        err || error ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not load sales</AlertTitle>
-            <AlertDescription>{err ?? error}</AlertDescription>
-          </Alert>
-        ) : null
+      filterBar={
+        <CatalogSalesFilterToolbar
+          lenses={lenses}
+          activeLensId={activeLensId}
+          activeFilterCount={activeFilterCount}
+        />
       }
-      chips={
-        <div className="space-y-3">
-          {savedViews}
-          {statusChips}
-        </div>
-      }
-      listToolbarEnd={<AdminListExportLink />}
-      filters={
-        <form
-          action="/admin/sales"
-          method="get"
-          className="flex max-w-xl flex-wrap items-end gap-2"
-        >
-          <label className="block min-w-[12rem] flex-1">
-            <span className="mb-1 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Search titles
-            </span>
-            <input
-              name="q"
-              type="search"
-              defaultValue={q ?? ""}
-              placeholder="Search by sale title…"
-              className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 font-body text-sm text-on-surface"
-            />
-          </label>
-          {statusFilter ? <input type="hidden" name="status" value={sp.status} /> : null}
-          <Button variant="secondary" type="submit" className="h-11 shrink-0">
-            Search
-          </Button>
-        </form>
+      mobileSummary={
+        <p className="font-body text-sm text-on-surface-variant">
+          {boardRows.length} on page
+          {liveOnPage > 0 ? ` · ${liveOnPage} live` : ""}
+          {draftOnPage > 0 ? ` · ${draftOnPage} draft` : ""}
+        </p>
       }
       toolbarEnd={
-        <Link
-          href="/sales"
-          className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
-        >
-          Public sales
-        </Link>
+        <>
+          <Link
+            href="/sales"
+            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
+          >
+            Public sales
+          </Link>
+          <AdminListExportLink />
+        </>
       }
-      view={
-        !err && boardRows.length > 0 ? (
-          <Suspense fallback={<PageSkeleton variant="table" />}>
-            <AdminListKpiStrip
-              ariaLabel="Sales summary"
-              tiles={[
-                { label: "On this page", value: boardRows.length },
-                { label: "Live", value: liveOnPage },
-                { label: "Draft", value: draftOnPage },
-              ]}
-            />
-            <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
-          </Suspense>
+      kpiStrip={
+        boardRows.length > 0 ? (
+          <AdminTrendKpiBand
+            ariaLabel="Sales summary"
+            tiles={[
+              buildTrendKpiTile("New sales", salesTrend, periodDays, { emphasize: true }),
+              {
+                label: "On this page",
+                value: String(boardRows.length),
+                compareHint: `Live ${liveOnPage} · draft ${draftOnPage}`,
+              },
+              buildTrendKpiTile("Scheduled activity", salesTrend, periodDays, {
+                trendTone: "secondary",
+              }),
+            ]}
+          />
         ) : null
       }
-      empty={empty}
-      pagination={pagination}
-    />
+      errorAlert={
+        err || error ? (
+          <AdminListAlert title="Could not load sales">{err ?? error}</AdminListAlert>
+        ) : null
+      }
+    >
+      {!err && boardRows.length > 0 ? (
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
+        </Suspense>
+      ) : null}
+      {!err && rows.length === 0 ? empty : null}
+      {pagination}
+    </CatalogListShell>
   );
 }

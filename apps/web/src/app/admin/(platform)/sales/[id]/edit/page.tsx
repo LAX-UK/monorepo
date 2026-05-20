@@ -1,5 +1,6 @@
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
+import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
@@ -30,7 +31,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   );
 
   return (
-    <AdminEntityFormShell
+    <CatalogFormShell
       breadcrumbs={
         <Link
           href={`/admin/sales/${id}`}
@@ -40,6 +41,20 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         </Link>
       }
       title="Edit sale"
+      mobileActions={[
+        {
+          id: "save",
+          label: "Save",
+          variant: "primary",
+          htmlForm: CATALOG_FORM_IDS.sale,
+        },
+        {
+          id: "cancel",
+          label: "Cancel",
+          variant: "secondary",
+          href: `/admin/sales/${id}`,
+        },
+      ]}
     >
       <AdminSaleForm
         mode="edit"
@@ -50,7 +65,8 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         initialSaleDocuments={saleDocuments}
         previewUrlByKey={previewUrlByKey}
+        htmlFormId={CATALOG_FORM_IDS.sale}
       />
-    </AdminEntityFormShell>
+    </CatalogFormShell>
   );
 }

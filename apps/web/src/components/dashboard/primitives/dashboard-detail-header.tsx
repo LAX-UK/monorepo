@@ -10,7 +10,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type DashboardDetailHeaderProps = {
-  title: string;
+  title: ReactNode;
   eyebrow?: ReactNode;
   crumbs?: ReactNode;
   backHref?: string;

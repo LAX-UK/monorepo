@@ -1,5 +1,6 @@
 import { AdminLegalEntityOpenForm } from "@/components/admin/admin-legal-entity-open-form";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
+import { LegalEntityStripeRequirementsSection } from "@/components/admin/legal-entity-stripe-requirements-section";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -12,7 +13,7 @@ import { redirect } from "next/navigation";
 export default async function AdminLegalEntitiesLookupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; stripe?: string }>;
 }) {
   const user = await requireAuthenticatedUser({
     shell: "staff",
@@ -24,6 +25,7 @@ export default async function AdminLegalEntitiesLookupPage({
 
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const showStripe = sp.stripe === "1";
 
   return (
     <AdminPanelPage
@@ -38,10 +40,7 @@ export default async function AdminLegalEntitiesLookupPage({
             </Link>
           </Button>
           <Button variant="ctaLink" asChild>
-            <Link
-              href="/admin/legal-entities/stripe-connect-requirements"
-              className="inline-flex items-center gap-1"
-            >
+            <Link href="/admin/legal-entities?stripe=1" className="inline-flex items-center gap-1">
               Stripe requirements
               <ChevronRight className="size-4" aria-hidden />
             </Link>
@@ -55,6 +54,7 @@ export default async function AdminLegalEntitiesLookupPage({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+      {showStripe ? <LegalEntityStripeRequirementsSection /> : null}
       <Surface variant="card" className="border-border-hairline">
         <div className="space-y-1">
           <h3 className="font-headline text-lg font-semibold text-on-surface">Open entity</h3>

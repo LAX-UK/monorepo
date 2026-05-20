@@ -1,13 +1,10 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
-import {
-  artistStatusLabel as artistStatusText,
-  artistStatusToBadgeVariant,
-} from "@/lib/admin/status-badge-variants";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
-import { EntityList, StatusBadge } from "@auction/ui";
+import { EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -31,11 +28,7 @@ function columns(): ColumnDef<AdminArtistDuplicateHit>[] {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge variant={artistStatusToBadgeVariant(row.original.status)}>
-          {artistStatusText[row.original.status]}
-        </StatusBadge>
-      ),
+      cell: ({ row }) => <AdminStatusBadge domain="artist" status={row.original.status} />,
     },
     {
       id: "open",

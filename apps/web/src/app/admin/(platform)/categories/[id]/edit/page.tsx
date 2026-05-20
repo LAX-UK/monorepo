@@ -1,82 +1,10 @@
-import { AdminCategoryForm } from "@/components/admin/admin-category-form";
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
-import { getAdminCategoryById, getAdminCategoryList } from "@/lib/data/http/admin.server";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Surface } from "@auction/ui/components/surface";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export default async function EditAdminCategoryPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [category, categories] = await Promise.all([
-    getAdminCategoryById(id),
-    getAdminCategoryList({ includeArchived: true }),
-  ]);
-
-  if (!category) notFound();
-
-  return (
-    <AdminEntityFormShell
-      maxWidthClassName="max-w-6xl"
-      breadcrumbs={
-        <Link
-          href="/admin/categories"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← Categories
-        </Link>
-      }
-      title={`Edit ${category.name}`}
-      description="Update taxonomy copy, hierarchy, sort order, and archived state."
-    >
-      {sp.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not save category</AlertTitle>
-          <AlertDescription>{decodeURIComponent(sp.error)}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Surface variant="card">
-          <div className="pt-6">
-            <AdminCategoryForm
-              mode="edit"
-              categoryId={category.id}
-              categories={categories}
-              defaultValues={{
-                name: category.name,
-                slug: category.slug,
-                description: category.description ?? "",
-                parentId: category.parentId,
-                sortOrder: category.sortOrder,
-                archived: category.archived,
-                heroImageKey: category.heroImageKey ?? null,
-              }}
-            />
-          </div>
-        </Surface>
-
-        <Surface variant="card">
-          <h3 className="font-headline text-base font-semibold text-on-surface">Usage</h3>
-          <div className="space-y-3 text-sm text-on-surface-variant">
-            <p>Lots: {category.usage.lots}</p>
-            <p>Sales: {category.usage.sales}</p>
-            <p>Submissions: {category.usage.submissions}</p>
-            <p className="font-semibold text-on-surface">Total: {category.usage.total}</p>
-            <p>
-              {category.usage.total > 0
-                ? "Used categories should be archived to preserve catalog history."
-                : "Unused categories can be deleted from the category tree."}
-            </p>
-          </div>
-        </Surface>
-      </div>
-    </AdminEntityFormShell>
-  );
+  const { id } = await params;
+  redirect(`/admin/categories/${id}?tab=edit`);
 }

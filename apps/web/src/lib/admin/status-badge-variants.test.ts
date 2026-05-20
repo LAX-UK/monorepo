@@ -1,13 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminStatusLabel,
+  adminStatusToBadgeVariant,
   artistStatusLabel,
   artistStatusToBadgeVariant,
+  disputeStatusToBadgeVariant,
+  emailOutboxStatusToBadgeVariant,
+  kycStatusToBadgeVariant,
+  legalEntityStatusToBadgeVariant,
   lotStatusLabel,
   lotStatusToBadgeVariant,
+  registrationStatusToBadgeVariant,
   saleStatusLabel,
   saleStatusToBadgeVariant,
+  saleroomSessionStatusToBadgeVariant,
   submissionStatusLabel,
   submissionStatusToBadgeVariant,
+  suppressionReasonToBadgeVariant,
+  userAccountStatusLabel,
+  userAccountStatusToBadgeVariant,
 } from "./status-badge-variants";
 
 describe("lotStatusToBadgeVariant", () => {
@@ -92,6 +103,33 @@ describe("status label maps", () => {
     for (const s of statuses) {
       expect(submissionStatusLabel[s]).toBeTruthy();
     }
+  });
+
+  it("maps extended admin domains via adminStatusToBadgeVariant", () => {
+    expect(adminStatusToBadgeVariant("emailOutbox", "sent")).toBe("success");
+    expect(adminStatusToBadgeVariant("suppression", "complaint")).toBe("danger");
+    expect(adminStatusToBadgeVariant("registration", "pending")).toBe("warning");
+    expect(adminStatusToBadgeVariant("saleroomSession", "live")).toBe("live");
+    expect(adminStatusToBadgeVariant("kyc", "approved")).toBe("success");
+    expect(adminStatusToBadgeVariant("legalEntity", "approved")).toBe("success");
+    expect(adminStatusToBadgeVariant("dispute", "open")).toBe("warning");
+    expect(adminStatusToBadgeVariant("user", "active")).toBe("success");
+    expect(adminStatusToBadgeVariant("user", "suspended")).toBe("danger");
+    expect(adminStatusLabel("user", "suspended")).toBe("Suspended");
+    expect(adminStatusLabel("registration", "approved")).toBe("Approved");
+  });
+
+  it("domain-specific mappers stay aligned", () => {
+    expect(emailOutboxStatusToBadgeVariant("failed")).toBe("danger");
+    expect(suppressionReasonToBadgeVariant("complaint")).toBe("danger");
+    expect(registrationStatusToBadgeVariant("rejected")).toBe("danger");
+    expect(saleroomSessionStatusToBadgeVariant("paused")).toBe("warning");
+    expect(kycStatusToBadgeVariant("pending")).toBe("warning");
+    expect(legalEntityStatusToBadgeVariant("under_review")).toBe("info");
+    expect(disputeStatusToBadgeVariant("won")).toBe("success");
+    expect(userAccountStatusToBadgeVariant("active")).toBe("success");
+    expect(userAccountStatusToBadgeVariant("suspended")).toBe("danger");
+    expect(userAccountStatusLabel.active).toBe("Active");
   });
 
   it("does not display raw enum values (no underscores in labels)", () => {

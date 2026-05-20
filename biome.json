@@ -69,6 +69,26 @@
           }
         }
       }
+    },
+    {
+      "include": ["apps/web/src/app/**/error.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noShadowRestrictedNames": "off"
+          }
+        }
+      }
+    },
+    {
+      "include": ["apps/web/src/components/admin/admin-loading-skeletons.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
     }
   ]
 }

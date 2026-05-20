@@ -30,10 +30,7 @@ export default async function AdminImpersonationPage() {
             </Link>
           </Button>
           <Button variant="ctaLink" asChild>
-            <Link
-              href="/admin/legal-entities/stripe-connect-requirements"
-              className="inline-flex items-center gap-1"
-            >
+            <Link href="/admin/legal-entities?stripe=1" className="inline-flex items-center gap-1">
               Stripe requirements
               <ChevronRight className="size-4" aria-hidden />
             </Link>

@@ -4,6 +4,7 @@ import type {
   LotRelatedRailVM,
   LotSummarySeedVM,
 } from "@/components/sections/artwork/artwork-view-models";
+import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
 import {
   AddSaleToCalendarButton,
   RequestViewingMailtoButton,
@@ -94,7 +95,10 @@ export function LotOnsiteMarketingLayout({
       </h1>
       <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-20 pt-6 sm:px-6 md:px-8">
         <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
-          <div className="relative aspect-[21/9] min-h-[220px] w-full sm:min-h-[280px]">
+          <LotHeroViewTransitionShell
+            lotId={auction.id}
+            className="relative aspect-[21/9] min-h-[220px] w-full sm:min-h-[280px]"
+          >
             {heroImage ? (
               <MediaImage
                 src={heroImage}
@@ -122,7 +126,7 @@ export function LotOnsiteMarketingLayout({
                 <OnsiteSaleScheduleCountdown sale={sale} />
               </div>
             </div>
-          </div>
+          </LotHeroViewTransitionShell>
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:justify-start">

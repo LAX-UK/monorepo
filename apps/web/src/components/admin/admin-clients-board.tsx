@@ -1,17 +1,19 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
+import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import {
-  type AdminUserListKpi,
-  AdminUserListShell,
-} from "@/components/admin/admin-user-list-shell";
+  userJoinedColumn,
+  userLastActivityColumn,
+  userRowActionsColumn,
+  userStatusColumn,
+} from "@/components/admin/users-board";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { kycStatusBadgeVariant, kycStatusLabel } from "@/lib/admin/kyc-status-presenter";
-import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import { Button, InlineActionMenu, StatusBadge } from "@auction/ui";
+import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -24,22 +26,7 @@ function clientColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRo
       header: "Client",
       cell: ({ row }) => {
         const u = row.original;
-        return (
-          <div className="flex items-center gap-3">
-            <AdminUserAvatar user={u} size="sm" />
-            <div className="min-w-0">
-              <Button
-                type="button"
-                variant="link"
-                className="block h-auto max-w-[14rem] truncate px-0 py-0 text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
-                onClick={() => onOpen(u)}
-              >
-                {u.name}
-              </Button>
-              <p className="max-w-[14rem] truncate text-xs text-on-surface-variant">{u.email}</p>
-            </div>
-          </div>
-        );
+        return <ClientIdentityCell u={u} onOpen={() => onOpen(u)} />;
       },
     },
     {
@@ -60,64 +47,62 @@ function clientColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRo
             ) : (
               <span className="text-[10px] text-on-surface-variant">Email unverified</span>
             )}
-            <StatusBadge variant={kycStatusBadgeVariant(u.kycStatus)} size="sm">
-              {kycStatusLabel(u.kycStatus)}
-            </StatusBadge>
+            <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
           </div>
         );
       },
     },
-    {
-      id: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge variant={row.original.suspendedAt ? "danger" : "success"}>
-          {row.original.suspendedAt ? "Suspended" : "Active"}
-        </StatusBadge>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Joined",
-      cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {formatAdminUserDate(row.original.createdAt)}
-        </span>
-      ),
-    },
-    {
-      id: "lastActivity",
-      header: "Last activity",
-      cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {relativeFromIso(row.original.updatedAt)}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => {
-        const u = row.original;
-        return (
-          <div className="flex justify-end">
-            <InlineActionMenu
-              label={`Actions for ${u.name}`}
-              items={[
-                { type: "item", label: "Open details", onSelect: () => onOpen(u) },
-                {
-                  type: "item",
-                  label: "Copy user ID",
-                  onSelect: () => void navigator.clipboard.writeText(u.id),
-                },
-              ]}
-            />
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
+    userStatusColumn(),
+    userJoinedColumn(),
+    userLastActivityColumn(),
+    userRowActionsColumn(onOpen),
   ];
+}
+
+function ClientIdentityCell({ u, onOpen }: { u: AdminUserRow; onOpen: () => void }) {
+  return (
+    <div className="flex items-center gap-3">
+      <AdminUserAvatar user={u} size="sm" />
+      <div className="min-w-0">
+        <Button
+          type="button"
+          variant="link"
+          className="block h-auto max-w-[14rem] truncate px-0 py-0 text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
+          onClick={onOpen}
+        >
+          {u.name}
+        </Button>
+        <p className="max-w-[14rem] truncate text-xs text-on-surface-variant">{u.email}</p>
+      </div>
+    </div>
+  );
+}
+
+export function AdminClientMobileCard({ u, onOpen }: { u: AdminUserRow; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      className="flex w-full items-center gap-3 rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      onClick={onOpen}
+    >
+      <AdminUserAvatar user={u} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-headline text-base text-on-surface">{u.name}</p>
+        <p className="truncate text-xs text-on-surface-variant">{u.email}</p>
+        <div className="mt-1 flex items-center gap-2">
+          <AdminStatusBadge
+            domain="user"
+            status={u.suspendedAt ? "suspended" : "active"}
+            size="sm"
+          />
+          <span className="text-[10px] text-on-surface-variant">
+            Joined {formatAdminUserDate(u.createdAt)}
+          </span>
+        </div>
+      </div>
+      <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+    </button>
+  );
 }
 
 function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
@@ -129,7 +114,7 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
       </div>
       <div>
         <dt className="font-label text-[10px] uppercase text-on-surface-variant">User ID</dt>
-        <dd className="font-mono text-xs break-all">{u.id}</dd>
+        <dd className="break-all font-mono text-xs">{u.id}</dd>
       </div>
     </dl>
   );
@@ -165,38 +150,16 @@ function ClientDrawerActions({ u }: { u: AdminUserRow }) {
 type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
-  kpis: AdminUserListKpi[];
 };
 
-export function AdminClientsBoard({ rows, totalMatches, kpis }: Props) {
+export function AdminClientsBoard({ rows, totalMatches }: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <ClientDrawerOverview u={u} />, []);
   const renderDrawerActions = useCallback((u: AdminUserRow) => <ClientDrawerActions u={u} />, []);
 
   const renderMobileCard = useCallback(
-    (u: AdminUserRow, onOpen: () => void) => (
-      <button
-        type="button"
-        className="flex w-full items-center gap-3 rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4 text-left"
-        onClick={onOpen}
-      >
-        <AdminUserAvatar user={u} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-headline text-base text-on-surface">{u.name}</p>
-          <p className="truncate text-xs text-on-surface-variant">{u.email}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <StatusBadge variant={u.suspendedAt ? "danger" : "success"} size="sm">
-              {u.suspendedAt ? "Suspended" : "Active"}
-            </StatusBadge>
-            <span className="text-[10px] text-on-surface-variant">
-              Joined {formatAdminUserDate(u.createdAt)}
-            </span>
-          </div>
-        </div>
-        <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-      </button>
-    ),
+    (u: AdminUserRow, onOpen: () => void) => <AdminClientMobileCard u={u} onOpen={onOpen} />,
     [],
   );
 
@@ -204,16 +167,17 @@ export function AdminClientsBoard({ rows, totalMatches, kpis }: Props) {
     <AdminUserListShell
       rows={rows}
       totalMatches={totalMatches}
-      kpis={kpis}
       bulkOperations={bulkOperations}
       drawerTitle="Client"
-      kpiAriaLabel="Client summary"
       tableAriaLabel="Clients"
       emptyMessage="No clients match this filter."
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}
       renderMobileCard={renderMobileCard}
       buildColumns={clientColumns}
+      detailHref={(u) => `/admin/clients/${u.id}`}
+      showColumnPicker
+      columnVisibilityStorageKey="admin.clients.columns"
     />
   );
 }
