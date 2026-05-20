@@ -4,6 +4,7 @@ import {
   legalEntityArchiveAction,
   legalEntityRejectAction,
 } from "@/lib/admin/legal-entity-lifecycle.actions";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { Textarea } from "@auction/ui/components/textarea";
@@ -29,7 +30,12 @@ export function LegalEntityRejectForm({ legalEntityId }: RejectProps) {
       fd.set("legalEntityId", legalEntityId);
       fd.set("reason", reason);
       fd.set("confirmationPhrase", "REJECT");
-      await legalEntityRejectAction(fd);
+      try {
+        await legalEntityRejectAction(fd);
+        notify.success("Entity rejected");
+      } catch (e) {
+        notify.error(e instanceof Error ? e.message : "Rejection failed");
+      }
     });
   }
 
@@ -90,7 +96,12 @@ export function LegalEntityArchiveForm({ legalEntityId, displayName }: ArchivePr
       fd.set("legalEntityId", legalEntityId);
       fd.set("reason", reason);
       fd.set("confirmationPhrase", phrase);
-      await legalEntityArchiveAction(fd);
+      try {
+        await legalEntityArchiveAction(fd);
+        notify.success("Entity archived");
+      } catch (e) {
+        notify.error(e instanceof Error ? e.message : "Archive failed");
+      }
     });
   }
 

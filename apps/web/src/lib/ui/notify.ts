@@ -63,4 +63,31 @@ export const notify = {
   dismiss(toastId?: string | number): void {
     toast.dismiss(toastId);
   },
+
+  /** Long-running staff action — pair with `success`/`error` using the same `id` to resolve. */
+  loading(title: string, opts?: NotifyOpts): string | number {
+    return toast.loading(title, {
+      ...(opts?.description !== undefined ? { description: opts.description } : {}),
+      ...(opts?.id !== undefined ? { id: opts.id } : {}),
+    });
+  },
+
+  /** Soft mutation with optional undo (archive, dismiss, mark read). */
+  action(
+    title: string,
+    opts: NotifyOpts & {
+      actionLabel?: string;
+      onAction: () => void;
+    },
+  ): string | number {
+    return toast.success(title, {
+      duration: opts.duration ?? DEFAULT_SUCCESS_DURATION_MS,
+      ...(opts.description !== undefined ? { description: opts.description } : {}),
+      ...(opts.id !== undefined ? { id: opts.id } : {}),
+      action: {
+        label: opts.actionLabel ?? "Undo",
+        onClick: opts.onAction,
+      },
+    });
+  },
 };

@@ -60,19 +60,27 @@ export function ThemeToggle() {
     document.documentElement.style.setProperty("--theme-toggle-y", `${cy}px`);
     document.documentElement.style.setProperty("--theme-toggle-radius", `${radius}px`);
 
-    const transition = (
-      document as Document & {
-        startViewTransition: (cb: () => void) => { finished: Promise<void> };
-      }
-    ).startViewTransition(() => {
-      apply();
-    });
-
-    transition.finished.finally(() => {
+    const cleanup = () => {
       document.documentElement.style.removeProperty("--theme-toggle-x");
       document.documentElement.style.removeProperty("--theme-toggle-y");
       document.documentElement.style.removeProperty("--theme-toggle-radius");
-    });
+    };
+
+    try {
+      const transition = (
+        document as Document & {
+          startViewTransition: (cb: () => void) => { finished: Promise<void> };
+        }
+      ).startViewTransition(() => {
+        apply();
+      });
+      void transition.finished.finally(cleanup).catch(() => {
+        /* Duplicate view-transition-name or aborted transition — theme already applied */
+      });
+    } catch {
+      apply();
+      cleanup();
+    }
   }, []);
 
   return (

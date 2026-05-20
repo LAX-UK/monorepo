@@ -1,10 +1,10 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPage } from "@/components/admin/admin-list-page";
-import { AdminLotFulfilmentQueueCard } from "@/components/admin/admin-lot-fulfilment-queue-card";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { AdminLotFulfilmentBoard } from "@/components/admin/lot-fulfilment-board";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { loadAdminLotFulfilmentQueue } from "@/lib/data/http/admin.server";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 
 const FILTER_STATUSES = [
   "awaiting_payment",
@@ -37,17 +37,13 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
   if (loaded.access === "forbidden") {
     return (
       <AdminListPage
-        className="max-w-3xl"
+        className="max-w-5xl"
         title="Lot fulfilment"
         description="Release, shipping, and collection workflow for sold lots."
         errorAlert={
-          <Alert variant="destructive">
-            <AlertTitle>Access denied</AlertTitle>
-            <AlertDescription>
-              Your account does not have the operations fulfilment staff role. Ask a super-admin if
-              you need access to this queue.
-            </AlertDescription>
-          </Alert>
+          <AdminListAlert title="Access denied">
+            Your account does not have the operations fulfilment staff role.
+          </AdminListAlert>
         }
         view={null}
       />
@@ -57,15 +53,10 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
   if (loaded.access === "error") {
     return (
       <AdminListPage
-        className="max-w-3xl"
+        className="max-w-5xl"
         title="Lot fulfilment"
         description="Release, shipping, and collection workflow for sold lots."
-        errorAlert={
-          <Alert variant="destructive">
-            <AlertTitle>Could not load queue</AlertTitle>
-            <AlertDescription>{loaded.message}</AlertDescription>
-          </Alert>
-        }
+        errorAlert={<AdminListAlert title="Could not load queue">{loaded.message}</AdminListAlert>}
         view={null}
       />
     );
@@ -89,42 +80,32 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
     />
   );
 
-  const errorAlert = error ? (
-    <Alert variant="destructive">
-      <AlertTitle>Action failed</AlertTitle>
-      <AlertDescription>{error}</AlertDescription>
-    </Alert>
-  ) : null;
+  const errorAlert = error ? <AdminListAlert title="Action failed">{error}</AdminListAlert> : null;
 
   const empty =
     rows.length === 0 ? (
-      <EmptyState
+      <AdminEmptyState
         title="Nothing in this view"
         description={
           statusFilter
             ? "No lots match this filter. Try “All” or another status."
-            : "No fulfilment rows yet. They appear when winners start checkout or after payment is recorded."
+            : "No fulfilment rows yet."
         }
       />
     ) : null;
 
-  const view =
-    rows.length > 0 ? (
-      <ul className="space-y-4">
-        {rows.map((row) => (
-          <AdminLotFulfilmentQueueCard key={row.id} row={row} returnStatus={returnStatus} />
-        ))}
-      </ul>
-    ) : null;
-
   return (
     <AdminListPage
-      className="max-w-3xl"
+      className="max-w-5xl"
       title="Lot fulfilment"
-      description="After payment is captured, approve release, then either ship (carrier + tracking) or mark ready for collection. Close out with delivered or collected."
+      description="After payment is captured, approve release, then ship or mark ready for collection."
       errorAlert={errorAlert}
       chips={chips}
-      view={view}
+      view={
+        rows.length > 0 ? (
+          <AdminLotFulfilmentBoard rows={rows} returnStatus={returnStatus} statusChips={chips} />
+        ) : null
+      }
       empty={empty}
     />
   );

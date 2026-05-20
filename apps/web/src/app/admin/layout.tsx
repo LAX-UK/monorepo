@@ -8,6 +8,11 @@ import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import {
+  getAdminNavCounts,
+  getFinanceAdminNavCounts,
+} from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -16,7 +21,12 @@ import {
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { type UserRole, canAccessPlatformAdminRoutes, roleHasCapability } from "@auction/types";
+import {
+  type UserRole,
+  canAccessFinanceAdminRoutes,
+  canAccessPlatformAdminRoutes,
+  roleHasCapability,
+} from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -50,17 +60,32 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   let pendingSubmissionCount = 0;
   let pendingArtistCount = 0;
-  if (canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
+  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
+  const staffRole = user.staffRole ?? null;
+  const userRole = user.role as UserRole;
+  if (canAccessPlatformAdminRoutes(userRole, staffRole)) {
     try {
-      pendingSubmissionCount = await getAdminSubmissionPendingCount();
+      navCounts = await getAdminNavCounts();
+      pendingSubmissionCount = navCounts.submissionsPending;
+      pendingArtistCount = navCounts.artistsPending;
     } catch {
-      pendingSubmissionCount = 0;
+      try {
+        pendingSubmissionCount = await getAdminSubmissionPendingCount();
+      } catch {
+        pendingSubmissionCount = 0;
+      }
+      try {
+        const stats = await getAdminArtistStats();
+        pendingArtistCount = stats.pendingReview;
+      } catch {
+        pendingArtistCount = 0;
+      }
     }
+  } else if (canAccessFinanceAdminRoutes(userRole, staffRole)) {
     try {
-      const stats = await getAdminArtistStats();
-      pendingArtistCount = stats.pendingReview;
+      navCounts = await getFinanceAdminNavCounts();
     } catch {
-      pendingArtistCount = 0;
+      navCounts = EMPTY_ADMIN_NAV_COUNTS;
     }
   }
 
@@ -84,7 +109,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const headerRightSlot = (
     <AdminShellHeaderActions
       pendingSubmissionCount={pendingSubmissionCount}
-      pendingArtistCount={pendingArtistCount}
       showPlatformLinks={canAccessPlatformAdminRoutes(
         user.role as UserRole,
         user.staffRole ?? null,
@@ -105,6 +129,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <FinanceShell
           user={user}
           pendingSubmissionCount={pendingSubmissionCount}
+          navCounts={navCounts}
           cookieDensity={cookieDensity}
           acting={acting}
           headerRightSlot={headerRightSlot}
@@ -117,6 +142,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           user={user}
           pendingSubmissionCount={pendingSubmissionCount}
           pendingArtistCount={pendingArtistCount}
+          navCounts={navCounts}
           cookieDensity={cookieDensity}
           acting={acting}
           headerRightSlot={headerRightSlot}

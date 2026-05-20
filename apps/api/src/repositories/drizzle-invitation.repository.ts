@@ -1,9 +1,10 @@
 import type { Database } from "@auction/db";
-import { userInvitation } from "@auction/db/schema";
+import { emailOutbox, userInvitation } from "@auction/db/schema";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { and, desc, eq } from "drizzle-orm";
 import type {
   IUserInvitationRepository,
+  InvitationAdminListRow,
   InvitationInsert,
   InvitationRow,
   InvitationSummary,
@@ -18,6 +19,8 @@ function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
     tokenHash: r.tokenHash,
     status: r.status,
     expiresAt: r.expiresAt,
+    openedAt: r.openedAt ?? null,
+    lastEmailOutboxId: r.lastEmailOutboxId ?? null,
     acceptedAt: r.acceptedAt ?? null,
     acceptedUserId: r.acceptedUserId ?? null,
     targetLegalEntityId: r.targetLegalEntityId ?? null,
@@ -28,13 +31,14 @@ function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
   };
 }
 
-function mapSummary(r: {
+function mapInvitationSummary(r: {
   id: string;
   email: string;
   targetRole: string;
   targetStaffRole: string | null;
   status: InvitationRow["status"];
   expiresAt: Date;
+  openedAt: Date | null;
   acceptedAt: Date | null;
   acceptedUserId: string | null;
   targetLegalEntityId: string | null;
@@ -50,6 +54,7 @@ function mapSummary(r: {
     targetStaffRole: (r.targetStaffRole ?? null) as UserStaffRole | null,
     status: r.status,
     expiresAt: r.expiresAt,
+    openedAt: r.openedAt ?? null,
     acceptedAt: r.acceptedAt ?? null,
     acceptedUserId: r.acceptedUserId ?? null,
     targetLegalEntityId: r.targetLegalEntityId ?? null,
@@ -72,6 +77,8 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       tokenHash: row.tokenHash,
       status: row.status,
       expiresAt: row.expiresAt,
+      openedAt: row.openedAt ?? null,
+      lastEmailOutboxId: row.lastEmailOutboxId ?? null,
       acceptedAt: row.acceptedAt,
       acceptedUserId: row.acceptedUserId,
       targetLegalEntityId: row.targetLegalEntityId ?? null,
@@ -98,7 +105,8 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     return row ? mapRow(row) : null;
   }
 
-  async listPendingCreatedBy(userId: string): Promise<InvitationSummary[]> {
+  async listAdminCreatedBy(userId: string): Promise<InvitationAdminListRow[]> {
+    const inviteEmailLastStatus = emailOutbox.status;
     const rows = await this.db
       .select({
         id: userInvitation.id,
@@ -107,6 +115,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         targetStaffRole: userInvitation.targetStaffRole,
         status: userInvitation.status,
         expiresAt: userInvitation.expiresAt,
+        openedAt: userInvitation.openedAt,
         acceptedAt: userInvitation.acceptedAt,
         acceptedUserId: userInvitation.acceptedUserId,
         targetLegalEntityId: userInvitation.targetLegalEntityId,
@@ -114,22 +123,42 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         createdByUserId: userInvitation.createdByUserId,
         createdAt: userInvitation.createdAt,
         updatedAt: userInvitation.updatedAt,
+        inviteEmailLastStatus,
       })
       .from(userInvitation)
-      .where(and(eq(userInvitation.createdByUserId, userId), eq(userInvitation.status, "pending")))
+      .leftJoin(emailOutbox, eq(userInvitation.lastEmailOutboxId, emailOutbox.id))
+      .where(eq(userInvitation.createdByUserId, userId))
       .orderBy(desc(userInvitation.createdAt));
-    return rows.map(mapSummary);
+    return rows.map((r) => ({
+      ...mapInvitationSummary(r),
+      inviteEmailLastStatus: r.inviteEmailLastStatus ?? null,
+    }));
   }
 
   async updateStatus(
     id: string,
     patch: Partial<
-      Pick<InvitationRow, "status" | "acceptedAt" | "acceptedUserId" | "tokenHash" | "expiresAt">
+      Pick<
+        InvitationRow,
+        | "status"
+        | "acceptedAt"
+        | "acceptedUserId"
+        | "tokenHash"
+        | "expiresAt"
+        | "openedAt"
+        | "lastEmailOutboxId"
+      >
     >,
   ): Promise<void> {
     await this.db
       .update(userInvitation)
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(userInvitation.id, id));
+  }
+
+  async markOpenedFirstTouch(id: string): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing || existing.openedAt) return;
+    await this.updateStatus(id, { openedAt: new Date() });
   }
 }

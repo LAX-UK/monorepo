@@ -1,17 +1,18 @@
 "use client";
 
 import { UserStaffRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
+import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import {
-  type AdminUserListKpi,
-  AdminUserListShell,
-} from "@/components/admin/admin-user-list-shell";
+  userJoinedColumn,
+  userLastActivityColumn,
+  userRowActionsColumn,
+  userStatusColumn,
+} from "@/components/admin/users-board";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
-import { Button, InlineActionMenu, StatusBadge } from "@auction/ui";
+import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { type ReactNode, useCallback, useMemo } from "react";
@@ -48,56 +49,10 @@ function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow
         </span>
       ),
     },
-    {
-      id: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge variant={row.original.suspendedAt ? "danger" : "success"}>
-          {row.original.suspendedAt ? "Suspended" : "Active"}
-        </StatusBadge>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Joined",
-      cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {formatAdminUserDate(row.original.createdAt)}
-        </span>
-      ),
-    },
-    {
-      id: "lastLogin",
-      header: "Last login",
-      cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {relativeFromIso(row.original.updatedAt)}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => {
-        const u = row.original;
-        return (
-          <div className="flex justify-end">
-            <InlineActionMenu
-              label={`Actions for ${u.name}`}
-              items={[
-                { type: "item", label: "Open details", onSelect: () => onOpen(u) },
-                {
-                  type: "item",
-                  label: "Copy user ID",
-                  onSelect: () => void navigator.clipboard.writeText(u.id),
-                },
-              ]}
-            />
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
+    userStatusColumn(),
+    userJoinedColumn(),
+    userLastActivityColumn("Last login"),
+    userRowActionsColumn(onOpen),
   ];
 }
 
@@ -142,11 +97,10 @@ function StaffDrawerContent({ u }: { u: AdminUserRow }) {
 type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
-  kpis: AdminUserListKpi[];
   roleBreakdown?: ReactNode;
 };
 
-export function AdminStaffBoard({ rows, totalMatches, kpis, roleBreakdown }: Props) {
+export function AdminStaffBoard({ rows, totalMatches, roleBreakdown }: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <StaffDrawerContent u={u} />, []);
@@ -178,15 +132,16 @@ export function AdminStaffBoard({ rows, totalMatches, kpis, roleBreakdown }: Pro
       <AdminUserListShell
         rows={rows}
         totalMatches={totalMatches}
-        kpis={kpis}
         bulkOperations={bulkOperations}
         drawerTitle="Staff member"
-        kpiAriaLabel="Staff summary"
         tableAriaLabel="Staff directory"
         emptyMessage="No staff match this filter."
         renderDrawerOverview={renderDrawerOverview}
         renderMobileCard={renderMobileCard}
         buildColumns={staffColumns}
+        detailHref={(u) => `/admin/staff/${u.id}`}
+        showColumnPicker
+        columnVisibilityStorageKey="admin.staff.columns"
       />
     </>
   );

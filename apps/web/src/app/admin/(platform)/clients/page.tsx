@@ -1,15 +1,18 @@
 import { AdminClientsBoard } from "@/components/admin/admin-clients-board";
 import { AdminClientsSearchForm } from "@/components/admin/admin-clients-search-form";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminListPage } from "@/components/admin/admin-list-page";
-import type { AdminUserListKpi } from "@/components/admin/admin-user-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { usersListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import { countCreatedWithinDays } from "@/lib/admin/format-admin-user-date";
+import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { getAdminClientsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { PaginationFooter } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 
 export default async function AdminClientsPage({
   searchParams,
@@ -20,15 +23,23 @@ export default async function AdminClientsPage({
     suspended?: string;
     limit?: string;
     offset?: string;
+    period?: string;
   }>;
 }) {
   const sp = await searchParams;
+  const periodDays = parseAdminKpiPeriod(sp.period);
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const query = usersListController.parseQuery({ ...sp, role: "client" });
 
   let rows: AdminUserRow[] = [];
   let total = 0;
   let loadError: string | null = null;
+  const clientTrend = await getAdminClientsKpiTrend(periodDays).catch(() => ({
+    currentTotal: 0,
+    priorTotal: 0,
+    dailyCounts: [] as number[],
+  }));
+
   try {
     const result = await usersListController.fetch({ ...query, role: "client" });
     rows = result.rows;
@@ -42,27 +53,7 @@ export default async function AdminClientsPage({
 
   const activeOnPage = rows.filter((r) => !r.suspendedAt).length;
   const suspendedOnPage = rows.filter((r) => r.suspendedAt).length;
-  const new30dOnPage = countCreatedWithinDays(rows, 30);
-
   const activePct = rows.length > 0 ? Math.round((activeOnPage / rows.length) * 100) : 0;
-
-  const kpis: AdminUserListKpi[] = [
-    { label: "Total clients", value: total, delta: `${rows.length} on page` },
-    {
-      label: "Active",
-      value: activeOnPage,
-      delta: rows.length > 0 ? `${activePct}% on page` : "Current page",
-      deltaTone: "positive",
-    },
-    {
-      label: "Suspended",
-      value: suspendedOnPage,
-      delta: "Current page",
-      deltaTone: suspendedOnPage > 0 ? "negative" : "neutral",
-      semanticTone: suspendedOnPage > 0 ? "warning" : "default",
-    },
-    { label: "New (30d)", value: new30dOnPage, delta: "Current page" },
-  ];
 
   const chip = (patch: Record<string, string | number | boolean | undefined | null | "">) =>
     buildListHref("/admin/clients", sp, { ...patch, offset: 0 });
@@ -119,26 +110,51 @@ export default async function AdminClientsPage({
       description="Browse collector and seller accounts. Search by name or email, filter by suspension, and open a profile for activity and catalogue links."
       hasFilters={hasFilters}
       resetHref="/admin/clients"
+      kpiStrip={
+        !loadError ? (
+          <AdminTrendKpiBand
+            ariaLabel="Client summary"
+            tiles={[
+              buildTrendKpiTile("New clients", clientTrend, periodDays, { emphasize: true }),
+              {
+                label: "Total clients",
+                value: String(total),
+                compareHint: `${rows.length} on this page`,
+              },
+              {
+                label: "Active",
+                value: String(activeOnPage),
+                compareHint: rows.length > 0 ? `${activePct}% on page` : "Current page",
+                deltaTone: "positive",
+              },
+              {
+                label: "Suspended",
+                value: String(suspendedOnPage),
+                compareHint: "Current page",
+                semanticTone: suspendedOnPage > 0 ? "warning" : "default",
+              },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={
         error || loadError ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not load clients</AlertTitle>
-            <AlertDescription>{loadError ?? error}</AlertDescription>
-          </Alert>
+          <AdminListAlert title="Could not load clients">{loadError ?? error}</AdminListAlert>
         ) : null
       }
       chips={suspendedChip}
+      listToolbarEnd={<AdminListExportLink />}
       filters={
         !loadError ? <AdminClientsSearchForm initialQ={q} suspendedOnly={suspendedOnly} /> : null
       }
       view={
         !loadError && rows.length > 0 ? (
-          <AdminClientsBoard rows={rows} totalMatches={total} kpis={kpis} />
+          <AdminClientsBoard rows={rows} totalMatches={total} />
         ) : null
       }
       empty={
         !loadError && rows.length === 0 ? (
-          <EmptyState
+          <AdminEmptyState
             title="No clients"
             description="Try a different search query or clear filters."
           />

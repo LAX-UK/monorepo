@@ -1,37 +1,23 @@
 import { AdminArtistsBoard } from "@/components/admin/admin-artists-board";
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { ArtistBackfillReviewSection } from "@/components/admin/artist-backfill-review-section";
+import { ArtistDuplicateReviewSection } from "@/components/admin/artist-duplicate-review-section";
+import { CatalogArtistsFilterToolbar } from "@/components/admin/catalog/catalog-artists-filter-toolbar";
+import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { Button } from "@/components/ui/button";
 import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
 import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
-import { PaginationFooter, StatTile } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-const PRESET_IDS: ArtistPresetId[] = [
-  "all",
-  "pending",
-  "makers",
-  "historical",
-  "brands",
-  "featured",
-  "archived",
-];
-
-const PRESET_LABELS: Record<ArtistPresetId, string> = {
-  all: "All",
-  pending: "Pending",
-  makers: "Maker–sellers",
-  historical: "Historical",
-  brands: "Brands",
-  featured: "Featured",
-  archived: "Archived",
-};
+const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured"]);
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -42,21 +28,28 @@ export default async function AdminArtistsPage({
 }) {
   const sp = await searchParams;
   const error = typeof sp.error === "string" ? decodeURIComponent(sp.error) : null;
+  const showBackfill = sp.backfill === "1";
+  const showDuplicates = sp.duplicates === "1";
+  const skipIndexedList = showBackfill || showDuplicates;
+
   const query = artistsListController.parseQuery(sp);
   const q = query.q;
 
   const hasFilters = Boolean(
-    q ||
-      query.includeArchived ||
-      query.archivedOnly ||
-      (query.kind && query.kind.trim() !== "") ||
-      (query.kinds && query.kinds.trim() !== "") ||
-      (query.status && query.status.trim() !== "") ||
-      (query.ownerUserId && query.ownerUserId.trim() !== "") ||
-      query.featured === true ||
-      query.verified === true ||
-      (query.linked && query.linked !== "any") ||
-      (query.sort && query.sort.trim() !== "" && query.sort !== "name_asc"),
+    showDuplicates ||
+      showBackfill ||
+      (!skipIndexedList &&
+        (q ||
+          query.includeArchived ||
+          query.archivedOnly ||
+          (query.kind && query.kind.trim() !== "") ||
+          (query.kinds && query.kinds.trim() !== "") ||
+          (query.status && query.status.trim() !== "") ||
+          (query.ownerUserId && query.ownerUserId.trim() !== "") ||
+          query.featured === true ||
+          query.verified === true ||
+          (query.linked && query.linked !== "any") ||
+          (query.sort && query.sort.trim() !== "" && query.sort !== "name_asc"))),
   );
 
   let loadError: string | null = null;
@@ -70,207 +63,142 @@ export default async function AdminArtistsPage({
     brands: string;
     featured: string;
   } | null = null;
+  let pendingReviewCount = 0;
 
   try {
-    const [result, stats] = await Promise.all([
-      artistsListController.fetch(query),
-      getAdminArtistStats().catch(() => null),
-    ]);
-    artists = result.rows;
-    total = result.total ?? 0;
-    if (stats) {
-      statsStrip = {
-        total: String(stats.total),
-        pending: String(stats.pendingReview),
-        makers: String(stats.makerSellers),
-        historical: String(stats.historical),
-        brands: String(stats.brands),
-        featured: String(stats.featured),
-      };
+    if (!skipIndexedList) {
+      const [result, stats] = await Promise.all([
+        artistsListController.fetch(query),
+        getAdminArtistStats().catch(() => null),
+      ]);
+      artists = result.rows;
+      total = result.total ?? 0;
+      if (stats) {
+        pendingReviewCount = stats.pendingReview;
+        statsStrip = {
+          total: String(stats.total),
+          pending: String(stats.pendingReview),
+          makers: String(stats.makerSellers),
+          historical: String(stats.historical),
+          brands: String(stats.brands),
+          featured: String(stats.featured),
+        };
+      }
     }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load artists.";
   }
 
-  const activePreset = artistListActivePreset(sp);
-  const presetChips = PRESET_IDS.map((id) => ({
-    id,
-    label: PRESET_LABELS[id],
-    href: artistListPresetHref(id, sp),
-    active: activePreset === id,
-  }));
+  const preset = artistListActivePreset(sp);
 
-  const inputCls =
-    "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
-  const selectCls =
-    "h-10 rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface";
-  const labelCapsCls =
-    "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+  const activeLensId =
+    showDuplicates === true
+      ? "queues"
+      : showBackfill === true
+        ? "__backfill__"
+        : NAV_PRESETS.has(preset)
+          ? preset
+          : "all";
 
-  const chips = <FilterChipRow chips={presetChips} label="Artist presets" />;
+  const queuesHref = buildListHref("/admin/artists", sp, {
+    duplicates: "1",
+    backfill: "",
+    offset: 0,
+  });
 
-  const filters = (
-    <div className="space-y-6">
-      {statsStrip ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatTile label="Total" value={statsStrip.total} tone="light" />
-          <StatTile label="Pending review" value={statsStrip.pending} tone="light" />
-          <StatTile label="Maker–sellers" value={statsStrip.makers} tone="light" />
-          <StatTile label="Historical" value={statsStrip.historical} tone="light" />
-          <StatTile label="Brands" value={statsStrip.brands} tone="light" />
-          <StatTile label="Featured" value={statsStrip.featured} tone="light" />
-        </div>
-      ) : null}
+  const lenses: CatalogSegmentItem[] = [
+    { id: "all", label: "All", href: artistListPresetHref("all", sp) },
+    { id: "pending", label: "Pending", href: artistListPresetHref("pending", sp) },
+    { id: "makers", label: "Maker–sellers", href: artistListPresetHref("makers", sp) },
+    { id: "featured", label: "Featured", href: artistListPresetHref("featured", sp) },
+    {
+      id: "queues",
+      label: "Queues",
+      href: queuesHref,
+      ...(pendingReviewCount > 0 ? { badge: pendingReviewCount } : {}),
+    },
+  ];
 
-      <form method="get" action="/admin/artists" className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className={labelCapsCls}>Search</span>
-          <input
-            name="q"
-            type="search"
-            defaultValue={q ?? ""}
-            placeholder="Name or slug…"
-            className={`${inputCls} w-48 md:w-56`}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className={labelCapsCls}>Status</span>
-          <select name="status" defaultValue={query.status ?? ""} className={selectCls}>
-            <option value="">Any</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="merged_into">Merged</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className={labelCapsCls}>Kind</span>
-          <select name="kind" defaultValue={query.kind ?? ""} className={selectCls}>
-            <option value="">Any</option>
-            <option value="artist">Artist</option>
-            <option value="maker">Maker</option>
-            <option value="brand">Brand</option>
-            <option value="marque">Marque</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className={labelCapsCls}>Sort</span>
-          <select name="sort" defaultValue={query.sort ?? "name_asc"} className={selectCls}>
-            <option value="name_asc">Name A–Z</option>
-            <option value="popular">Most lots</option>
-            <option value="recent">Recently updated</option>
-          </select>
-        </label>
-
-        <div className="flex flex-wrap items-end gap-4 pb-0.5">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="featured"
-              value="true"
-              defaultChecked={query.featured === true}
-              className="size-4 rounded border-outline-variant accent-primary"
-            />
-            <span className="font-body text-sm text-on-surface-variant">Featured</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="verified"
-              value="true"
-              defaultChecked={query.verified === true}
-              className="size-4 rounded border-outline-variant accent-primary"
-            />
-            <span className="font-body text-sm text-on-surface-variant">Verified</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="includeArchived"
-              value="true"
-              defaultChecked={query.includeArchived}
-              className="size-4 rounded border-outline-variant accent-primary"
-            />
-            <span className="font-body text-sm text-on-surface-variant">Include archived</span>
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
-        >
-          Apply
-        </button>
-      </form>
-    </div>
-  );
+  const advancedFilterInputs = skipIndexedList
+    ? []
+    : [
+        q ?? "",
+        query.status ?? "",
+        query.kind ?? "",
+        ...(query.sort !== undefined && query.sort !== "" && query.sort !== "name_asc"
+          ? [query.sort]
+          : []),
+      ].filter(Boolean);
+  const checkboxCount = skipIndexedList
+    ? []
+    : [query.featured === true, query.verified === true, query.includeArchived === true].filter(
+        Boolean,
+      );
+  const activeFilterCount = advancedFilterInputs.length + checkboxCount.length;
 
   const errorAlert =
     error || loadError ? (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load artists</AlertTitle>
-        <AlertDescription>{loadError ?? error}</AlertDescription>
-      </Alert>
+      <AdminListAlert title="Could not load artists">{loadError ?? error}</AdminListAlert>
     ) : null;
 
-  const view =
-    !loadError && artists.length > 0 ? (
-      <AdminArtistsBoard artists={artists} searchQuery={q} />
-    ) : null;
+  const view = showBackfill ? (
+    <ArtistBackfillReviewSection />
+  ) : showDuplicates ? (
+    <ArtistDuplicateReviewSection />
+  ) : !loadError && artists.length > 0 ? (
+    <AdminArtistsBoard artists={artists} searchQuery={q} />
+  ) : null;
 
-  const empty =
-    !loadError && artists.length === 0 ? (
-      total === 0 ? (
-        <EmptyState
-          title={hasFilters ? "No matching artists" : "No artists yet"}
-          description={
-            hasFilters
-              ? "Clear the search or filters to broaden the list."
-              : "Create canonical profiles before assigning artist attribution to lots."
-          }
-          action={
-            hasFilters ? (
-              <Button variant="secondary" asChild>
-                <Link href="/admin/artists">Clear filters</Link>
-              </Button>
-            ) : (
-              <Button variant="primary" asChild>
-                <Link href="/admin/artists/new">
-                  <Plus className="size-4" aria-hidden />
-                  New artist
-                </Link>
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <EmptyState
-          title="No rows on this page"
-          description="Try the previous page or clear filters — results may have shifted."
-          action={
+  const empty = skipIndexedList ? null : !loadError && artists.length === 0 ? (
+    total === 0 ? (
+      <AdminEmptyState
+        title={hasFilters ? "No matching artists" : "No artists yet"}
+        description={
+          hasFilters
+            ? "Try another lens or open More filters."
+            : "Create canonical profiles before assigning artist attribution to lots."
+        }
+        action={
+          hasFilters ? (
             <Button variant="secondary" asChild>
-              <Link
-                href={buildListHref("/admin/artists", sp, {
-                  offset: Math.max(0, query.offset - query.limit),
-                })}
-              >
-                Previous page
+              <Link href="/admin/artists">Clear filters</Link>
+            </Button>
+          ) : (
+            <Button variant="primary" asChild>
+              <Link href="/admin/artists/new">
+                <Plus className="size-4" aria-hidden />
+                New artist
               </Link>
             </Button>
-          }
-        />
-      )
-    ) : null;
+          )
+        }
+      />
+    ) : (
+      <AdminEmptyState
+        title="No rows on this page"
+        description="Try the previous page or clear filters — results may have shifted."
+        action={
+          <Button variant="secondary" asChild>
+            <Link
+              href={buildListHref("/admin/artists", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })}
+            >
+              Previous page
+            </Link>
+          </Button>
+        }
+      />
+    )
+  ) : null;
 
   const pagination =
-    !loadError && total > 0 && (query.offset > 0 || query.offset + artists.length < total) ? (
-      <PaginationFooter
+    skipIndexedList ||
+    loadError ||
+    !(total > 0 && (query.offset > 0 || query.offset + artists.length < total)) ? null : (
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
-        total={total}
         countOnPage={artists.length}
         prevHref={
           query.offset > 0
@@ -285,10 +213,10 @@ export default async function AdminArtistsPage({
             : null
         }
       />
-    ) : null;
+    );
 
   return (
-    <AdminListPage
+    <CatalogListShell
       title="Artists"
       description="Manage canonical public artist profiles, client ownership links, featured state, and attribution targets."
       primaryAction={
@@ -299,14 +227,62 @@ export default async function AdminArtistsPage({
           </Link>
         </Button>
       }
-      hasFilters={hasFilters}
-      resetHref="/admin/artists"
+      filterBar={
+        <CatalogArtistsFilterToolbar
+          lenses={lenses}
+          activeLensId={activeLensId}
+          activeFilterCount={activeFilterCount}
+          queueModesActive={skipIndexedList}
+          filterDefaults={{
+            q,
+            status: query.status,
+            kind: query.kind ?? "",
+            sort: query.sort,
+            featured: query.featured,
+            verified: query.verified,
+            includeArchived: query.includeArchived,
+          }}
+        />
+      }
+      toolbarEnd={
+        skipIndexedList ? null : (
+          <Link
+            href="/admin/artists?backfill=1"
+            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
+          >
+            Lot artist backfill
+          </Link>
+        )
+      }
+      mobileSummary={
+        skipIndexedList ? null : (
+          <p className="font-body text-sm text-on-surface-variant">
+            {total > 0
+              ? `Showing ${artists.length} on page (${total} total)`
+              : `${artists.length} artists on page`}
+          </p>
+        )
+      }
+      kpiStrip={
+        !skipIndexedList && statsStrip ? (
+          <AdminListKpiStrip
+            ariaLabel="Artist summary"
+            tiles={[
+              { label: "Total", value: statsStrip.total },
+              { label: "Pending review", value: statsStrip.pending, semanticTone: "warning" },
+              { label: "Maker–sellers", value: statsStrip.makers },
+              { label: "Historical", value: statsStrip.historical },
+              { label: "Brands", value: statsStrip.brands },
+              { label: "Featured", value: statsStrip.featured },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={errorAlert}
-      chips={chips}
-      filters={filters}
-      view={view}
-      empty={empty}
-      pagination={pagination}
-    />
+    >
+      {view}
+      {empty}
+      {pagination}
+    </CatalogListShell>
   );
 }

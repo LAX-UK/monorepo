@@ -1,7 +1,7 @@
 "use client";
 
+import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { endAdminImpersonationAction } from "@/lib/legal-entity/acting-context.actions";
-import { Button } from "@auction/ui/components/button";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -46,15 +46,19 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
             · Session ends in <span className="tabular-nums">{formatRemaining(remainingSec)}</span>
           </span>
         </p>
-        <form action={endAdminImpersonationAction} className="shrink-0">
-          <Button
-            type="submit"
+        <form id="end-impersonation-form" action={endAdminImpersonationAction} className="shrink-0">
+          <ConfirmFormSubmit
+            formId="end-impersonation-form"
             size="sm"
             variant="secondary"
             className="w-full bg-white text-red-700 hover:bg-red-50 sm:w-auto"
+            confirmTitle="End impersonation?"
+            confirmBody="You will return to your staff session immediately."
+            confirmLabel="End now"
+            tone="warning"
           >
             End now
-          </Button>
+          </ConfirmFormSubmit>
         </form>
       </div>
     </div>

@@ -1,8 +1,9 @@
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
-import { AdminLotForm } from "@/components/admin/admin-lot-form";
-import { AdminLotMarketingForm } from "@/components/admin/admin-lot-marketing-form";
+import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { AdminLotForm } from "@/components/admin/lot-form";
 import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
+import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
+import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import {
   getAdminArtistList,
   getAdminLotById,
@@ -33,9 +34,44 @@ export default async function AdminEditLotPage({ params }: { params: Promise<{ i
   const isDraft = auction.status === "draft";
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
+  const mobileActions = isDraft
+    ? [
+        {
+          id: "save-lot",
+          label: "Save lot",
+          variant: "primary" as const,
+          htmlForm: CATALOG_FORM_IDS.lot,
+        },
+        {
+          id: "save-marketing",
+          label: "Save story",
+          variant: "secondary" as const,
+          htmlForm: CATALOG_FORM_IDS.lotMarketing,
+        },
+        {
+          id: "cancel",
+          label: "Cancel",
+          variant: "secondary" as const,
+          href: `/admin/lots/${id}`,
+        },
+      ]
+    : [
+        {
+          id: "save-marketing",
+          label: "Save catalog",
+          variant: "primary" as const,
+          htmlForm: CATALOG_FORM_IDS.lotMarketing,
+        },
+        {
+          id: "cancel",
+          label: "Cancel",
+          variant: "secondary" as const,
+          href: `/admin/lots/${id}`,
+        },
+      ];
+
   return (
-    <AdminEntityFormShell
-      maxWidthClassName="max-w-3xl"
+    <CatalogFormShell
       breadcrumbs={
         <Breadcrumbs
           items={[
@@ -46,11 +82,13 @@ export default async function AdminEditLotPage({ params }: { params: Promise<{ i
         />
       }
       title={isDraft ? "Edit draft" : "Edit catalog copy"}
-      description={
-        isDraft
-          ? undefined
-          : "Core auction fields (price, times) are locked after publish. You can still update estimate, condition, provenance, exhibitions, and the artist note below."
-      }
+      {...(isDraft
+        ? {}
+        : {
+            description:
+              "Core auction fields (price, times) are locked after publish. You can still update estimate, condition, provenance, exhibitions, and the artist note below.",
+          })}
+      mobileActions={mobileActions}
     >
       {isDraft ? (
         <AdminLotForm
@@ -61,6 +99,7 @@ export default async function AdminEditLotPage({ params }: { params: Promise<{ i
           sales={sales}
           artists={artists}
           englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+          htmlFormId={CATALOG_FORM_IDS.lot}
         />
       ) : null}
       <AdminLotMarketingForm
@@ -68,8 +107,9 @@ export default async function AdminEditLotPage({ params }: { params: Promise<{ i
         marketingDetails={auction.marketingDetails}
         artists={artists}
         artistId={auction.artistId ?? null}
+        htmlFormId={CATALOG_FORM_IDS.lotMarketing}
       />
       <LotDocumentsSection lotId={id} initialDocuments={lotDocuments} />
-    </AdminEntityFormShell>
+    </CatalogFormShell>
   );
 }

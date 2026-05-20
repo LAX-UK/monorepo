@@ -20,6 +20,10 @@ export type TypedConfirmationDialogProps = {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  /** Bullets shown above the typed confirmation input. */
+  changeSummary?: readonly string[];
+  /** e.g. "This will affect 12 lots in this sale" */
+  relatedEntities?: { count: number; label: string };
   actionLabel: string;
   /** Exact string the user must type (case-sensitive). */
   confirmationPhrase: string;
@@ -33,6 +37,8 @@ export function TypedConfirmationDialog({
   onOpenChange,
   title,
   description,
+  changeSummary,
+  relatedEntities,
   actionLabel,
   confirmationPhrase,
   severity = "danger",
@@ -67,6 +73,19 @@ export function TypedConfirmationDialog({
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
+        {changeSummary && changeSummary.length > 0 ? (
+          <ul className="list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
+            {changeSummary.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
+        {relatedEntities ? (
+          <p className="rounded-md border border-warning/30 bg-warning-container/40 px-3 py-2 font-body text-sm text-on-surface">
+            This will affect {relatedEntities.count} {relatedEntities.label}
+            {relatedEntities.count === 1 ? "" : "s"}.
+          </p>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor={inputId}>
             Type <span className="font-mono text-on-surface">{confirmationPhrase}</span> to confirm

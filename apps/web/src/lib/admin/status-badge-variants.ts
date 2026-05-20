@@ -3,6 +3,7 @@ import type {
   ItemSubmissionStatus,
   LotStatus,
   PaymentStatus,
+  PayoutStatus,
   SaleStatus,
 } from "@auction/types";
 
@@ -137,6 +138,496 @@ export function paymentStatusToBadgeVariant(status: PaymentStatus): AdminStatusB
       return "warning";
     case "refunded":
       return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export const payoutStatusLabel: Record<PayoutStatus, string> = {
+  scheduled: "Scheduled",
+  in_transit: "In transit",
+  paid: "Paid",
+  failed: "Failed",
+  reversed: "Reversed",
+  clawback_pending: "Clawback pending",
+};
+
+export function payoutStatusToBadgeVariant(status: PayoutStatus | string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "paid":
+      return "success";
+    case "in_transit":
+      return "info";
+    case "scheduled":
+      return "neutral";
+    case "failed":
+    case "clawback_pending":
+      return "warning";
+    case "reversed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
+
+export const invitationStatusLabel: Record<InvitationStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  expired: "Expired",
+  revoked: "Revoked",
+};
+
+export function invitationStatusToBadgeVariant(
+  status: InvitationStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "accepted":
+      return "success";
+    case "pending":
+      return "warning";
+    case "expired":
+      return "neutral";
+    case "revoked":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+/** Admin invitations table — UX lifecycle distinct from DB enum. */
+export type InviteLifecycleStatus = "sent" | "opened" | "accepted" | "expired" | "bounced";
+
+export const inviteLifecycleLabel: Record<InviteLifecycleStatus, string> = {
+  sent: "Sent",
+  opened: "Opened",
+  accepted: "Accepted",
+  expired: "Expired",
+  bounced: "Bounced",
+};
+
+export function inviteLifecycleToBadgeVariant(
+  status: InviteLifecycleStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "accepted":
+      return "success";
+    case "opened":
+      return "info";
+    case "sent":
+      return "neutral";
+    case "expired":
+      return "warning";
+    case "bounced":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type UserAccountStatus = "active" | "suspended";
+
+export const userAccountStatusLabel: Record<UserAccountStatus, string> = {
+  active: "Active",
+  suspended: "Suspended",
+};
+
+export function userAccountStatusToBadgeVariant(
+  status: UserAccountStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "active":
+      return "success";
+    case "suspended":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Email outbox, suppressions, registrations, fulfilment, condition reports,
+// saleroom, KYC, legal entity, disputes
+// ---------------------------------------------------------------------------
+
+export type EmailOutboxStatus = "queued" | "sending" | "sent" | "failed" | "suppressed";
+
+export const emailOutboxStatusLabel: Record<EmailOutboxStatus, string> = {
+  queued: "Queued",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  suppressed: "Suppressed",
+};
+
+export function emailOutboxStatusToBadgeVariant(
+  status: EmailOutboxStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "sent":
+      return "success";
+    case "failed":
+    case "suppressed":
+      return "danger";
+    case "sending":
+      return "warning";
+    case "queued":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type SuppressionReason = "hard_bounce" | "complaint" | "manual" | "unsubscribe";
+
+export const suppressionReasonLabel: Record<SuppressionReason, string> = {
+  hard_bounce: "Hard bounce",
+  complaint: "Complaint",
+  manual: "Manual",
+  unsubscribe: "Unsubscribe",
+};
+
+export function suppressionReasonToBadgeVariant(
+  reason: SuppressionReason | string,
+): AdminStatusBadgeVariant {
+  switch (reason) {
+    case "complaint":
+      return "danger";
+    case "hard_bounce":
+    case "manual":
+      return "warning";
+    case "unsubscribe":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type RegistrationStatus = "pending" | "approved" | "rejected" | "withdrawn";
+
+export const registrationStatusLabel: Record<RegistrationStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  withdrawn: "Withdrawn",
+};
+
+export function registrationStatusToBadgeVariant(
+  status: RegistrationStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "approved":
+      return "success";
+    case "pending":
+      return "warning";
+    case "rejected":
+      return "danger";
+    case "withdrawn":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type LotFulfilmentStatus =
+  | "awaiting_payment"
+  | "awaiting_release"
+  | "released"
+  | "ready_for_collection"
+  | "in_transit"
+  | "delivered"
+  | "cancelled";
+
+export const lotFulfilmentStatusLabel: Record<LotFulfilmentStatus, string> = {
+  awaiting_payment: "Awaiting payment",
+  awaiting_release: "Awaiting release",
+  released: "Released",
+  ready_for_collection: "Ready for collection",
+  in_transit: "In transit",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+export function lotFulfilmentStatusToBadgeVariant(
+  status: LotFulfilmentStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "delivered":
+      return "success";
+    case "in_transit":
+    case "released":
+      return "info";
+    case "awaiting_payment":
+    case "awaiting_release":
+    case "ready_for_collection":
+      return "warning";
+    case "cancelled":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type ConditionReportStatus = "requested" | "in_progress" | "fulfilled" | "declined";
+
+export const conditionReportStatusLabel: Record<ConditionReportStatus, string> = {
+  requested: "Requested",
+  in_progress: "In progress",
+  fulfilled: "Fulfilled",
+  declined: "Declined",
+};
+
+export function conditionReportStatusToBadgeVariant(
+  status: ConditionReportStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "fulfilled":
+      return "success";
+    case "in_progress":
+      return "info";
+    case "requested":
+      return "warning";
+    case "declined":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type SaleroomSessionStatus = "idle" | "live" | "paused" | "closed";
+
+export const saleroomSessionStatusLabel: Record<SaleroomSessionStatus, string> = {
+  idle: "Idle",
+  live: "Live",
+  paused: "Paused",
+  closed: "Closed",
+};
+
+export function saleroomSessionStatusToBadgeVariant(
+  status: SaleroomSessionStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "live":
+      return "live";
+    case "paused":
+      return "warning";
+    case "closed":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type KycStatus = "approved" | "pending" | "rejected" | null | undefined;
+
+export function kycStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case "approved":
+      return "Verified";
+    case "pending":
+      return "Pending";
+    case "rejected":
+      return "Failed";
+    default:
+      return "Not started";
+  }
+}
+
+export function kycStatusToBadgeVariant(
+  status: string | null | undefined,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "approved":
+      return "success";
+    case "pending":
+      return "warning";
+    case "rejected":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type LegalEntityStatus =
+  | "lead"
+  | "docs_requested"
+  | "docs_received"
+  | "under_review"
+  | "approved"
+  | "connect_pending"
+  | "rejected"
+  | "restricted"
+  | "archived";
+
+export const legalEntityStatusLabel: Record<LegalEntityStatus, string> = {
+  lead: "Lead",
+  docs_requested: "Docs requested",
+  docs_received: "Docs received",
+  under_review: "Under review",
+  approved: "Approved",
+  connect_pending: "Connect pending",
+  rejected: "Rejected",
+  restricted: "Restricted",
+  archived: "Archived",
+};
+
+export function legalEntityStatusToBadgeVariant(
+  status: LegalEntityStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "approved":
+    case "connect_pending":
+      return "success";
+    case "rejected":
+    case "archived":
+    case "restricted":
+      return "danger";
+    case "under_review":
+    case "docs_received":
+      return "info";
+    case "docs_requested":
+    case "lead":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+export type DisputeStatus = "open" | "won" | "lost" | "warning_needs_response" | "under_review";
+
+export const disputeStatusLabel: Record<DisputeStatus, string> = {
+  open: "Open",
+  won: "Won",
+  lost: "Lost",
+  warning_needs_response: "Needs response",
+  under_review: "Under review",
+};
+
+export function disputeStatusToBadgeVariant(
+  status: DisputeStatus | string,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "won":
+      return "success";
+    case "lost":
+      return "danger";
+    case "open":
+    case "warning_needs_response":
+      return "warning";
+    case "under_review":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+export type AdminStatusDomain =
+  | "sale"
+  | "lot"
+  | "artist"
+  | "submission"
+  | "payment"
+  | "payout"
+  | "invitation"
+  | "inviteLifecycle"
+  | "user"
+  | "emailOutbox"
+  | "suppression"
+  | "registration"
+  | "fulfilment"
+  | "conditionReport"
+  | "saleroomSession"
+  | "kyc"
+  | "legalEntity"
+  | "dispute";
+
+export function adminStatusLabel(domain: AdminStatusDomain, status: string): string {
+  switch (domain) {
+    case "sale":
+      return saleStatusLabel[status as SaleStatus] ?? status;
+    case "lot":
+      return lotStatusLabel[status as LotStatus] ?? status;
+    case "artist":
+      return artistStatusLabel[status as ArtistStatus] ?? status;
+    case "submission":
+      return submissionStatusLabel[status as ItemSubmissionStatus] ?? status;
+    case "payment":
+      return status.replaceAll("_", " ");
+    case "payout":
+      return payoutStatusLabel[status as PayoutStatus] ?? status.replaceAll("_", " ");
+    case "invitation":
+      return invitationStatusLabel[status as InvitationStatus] ?? status;
+    case "inviteLifecycle":
+      return inviteLifecycleLabel[status as InviteLifecycleStatus] ?? status;
+    case "user":
+      return userAccountStatusLabel[status as UserAccountStatus] ?? status;
+    case "emailOutbox":
+      return emailOutboxStatusLabel[status as EmailOutboxStatus] ?? status;
+    case "suppression":
+      return suppressionReasonLabel[status as SuppressionReason] ?? status;
+    case "registration":
+      return registrationStatusLabel[status as RegistrationStatus] ?? status;
+    case "fulfilment":
+      return lotFulfilmentStatusLabel[status as LotFulfilmentStatus] ?? status.replaceAll("_", " ");
+    case "conditionReport":
+      return (
+        conditionReportStatusLabel[status as ConditionReportStatus] ?? status.replaceAll("_", " ")
+      );
+    case "saleroomSession":
+      return saleroomSessionStatusLabel[status as SaleroomSessionStatus] ?? status;
+    case "kyc":
+      return kycStatusLabel(status);
+    case "legalEntity":
+      return legalEntityStatusLabel[status as LegalEntityStatus] ?? status.replaceAll("_", " ");
+    case "dispute":
+      return disputeStatusLabel[status as DisputeStatus] ?? status.replaceAll("_", " ");
+    default:
+      return status;
+  }
+}
+
+export function adminStatusToBadgeVariant(
+  domain: AdminStatusDomain,
+  status: string,
+): AdminStatusBadgeVariant {
+  switch (domain) {
+    case "sale":
+      return saleStatusToBadgeVariant(status as SaleStatus);
+    case "lot":
+      return lotStatusToBadgeVariant(status);
+    case "artist":
+      return artistStatusToBadgeVariant(status as ArtistStatus);
+    case "submission":
+      return submissionStatusToBadgeVariant(status as ItemSubmissionStatus);
+    case "payment":
+      return paymentStatusToBadgeVariant(status as PaymentStatus);
+    case "payout":
+      return payoutStatusToBadgeVariant(status);
+    case "invitation":
+      return invitationStatusToBadgeVariant(status);
+    case "inviteLifecycle":
+      return inviteLifecycleToBadgeVariant(status);
+    case "user":
+      return userAccountStatusToBadgeVariant(status);
+    case "emailOutbox":
+      return emailOutboxStatusToBadgeVariant(status);
+    case "suppression":
+      return suppressionReasonToBadgeVariant(status);
+    case "registration":
+      return registrationStatusToBadgeVariant(status);
+    case "fulfilment":
+      return lotFulfilmentStatusToBadgeVariant(status);
+    case "conditionReport":
+      return conditionReportStatusToBadgeVariant(status);
+    case "saleroomSession":
+      return saleroomSessionStatusToBadgeVariant(status);
+    case "kyc":
+      return kycStatusToBadgeVariant(status);
+    case "legalEntity":
+      return legalEntityStatusToBadgeVariant(status);
+    case "dispute":
+      return disputeStatusToBadgeVariant(status);
     default:
       return "neutral";
   }

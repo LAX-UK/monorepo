@@ -43,6 +43,9 @@ export function CountUp({
       fromRef.current = value;
       return;
     }
+    if (value === fromRef.current) {
+      return;
+    }
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     if (reduced) {
       setDisplay(value);

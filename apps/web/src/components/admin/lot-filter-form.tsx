@@ -32,6 +32,7 @@ type Props = {
   saleId?: string | undefined;
   categoryId?: string | undefined;
   sort?: LotSort | undefined;
+  lens?: string | undefined;
   /** Options */
   artists: Pick<ArtistProfile, "id" | "displayName">[];
   sales: Pick<Sale, "id" | "title">[];
@@ -49,6 +50,7 @@ export function LotFilterForm({
   saleId,
   categoryId,
   sort,
+  lens,
   artists,
   sales,
   categories,
@@ -61,6 +63,7 @@ export function LotFilterForm({
       {/* Preserve existing params */}
       {status ? <input type="hidden" name="status" value={status} /> : null}
       {viewPipeline ? <input type="hidden" name="view" value="pipeline" /> : null}
+      {lens ? <input type="hidden" name="lens" value={lens} /> : null}
 
       {/* Search */}
       <label className="flex flex-col gap-1">

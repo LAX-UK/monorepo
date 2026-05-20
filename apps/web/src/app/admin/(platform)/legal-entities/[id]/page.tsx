@@ -1,18 +1,19 @@
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CopyUuidButton } from "@/components/admin/copy-uuid-button";
 import {
   LegalEntityArchiveForm,
   LegalEntityRejectForm,
 } from "@/components/admin/legal-entity-destructive-forms";
+import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import { legalEntityLifecycleSimpleAction } from "@/lib/admin/legal-entity-lifecycle.actions";
-import { legalEntityStatusToBadgeVariant } from "@/lib/admin/legal-entity-status-badge-variant";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
+import { formatDateTime } from "@/lib/ui/format";
 import type { LegalEntityStatus } from "@auction/types";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -39,7 +40,7 @@ export default async function AdminLegalEntityDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; tab?: string }>;
 }) {
   const user = await requireAuthenticatedUser({
     shell: "staff",
@@ -53,6 +54,8 @@ export default async function AdminLegalEntityDetailPage({
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const success = sp.success ? decodeURIComponent(sp.success) : null;
+  const activeTab =
+    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "activity" ? sp.tab : "overview";
 
   let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
   try {
@@ -70,6 +73,7 @@ export default async function AdminLegalEntityDetailPage({
 
   return (
     <AdminEntityDetailShell
+      detailHeader
       className="max-w-3xl space-y-6"
       breadcrumbs={
         <Link
@@ -81,6 +85,7 @@ export default async function AdminLegalEntityDetailPage({
       }
       title={entity.displayName}
       description={`Legal entity · ${entity.kind} / ${entity.subkind}`}
+      meta={<AdminStatusBadge domain="legalEntity" status={entity.status} size="md" />}
       actions={
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -105,99 +110,153 @@ export default async function AdminLegalEntityDetailPage({
         </Alert>
       ) : null}
 
-      <Surface variant="card" className="border-border-hairline">
-        <div className="space-y-1">
-          <h3 className="font-headline text-lg font-semibold text-on-surface">Status</h3>
-          <p className="font-body text-sm text-on-surface-variant">
-            Verification state and identifiers.
-          </p>
-        </div>
-        <div className="space-y-4">
-          <StatusBadge variant={legalEntityStatusToBadgeVariant(entity.status)} size="md">
-            {entity.status.replaceAll("_", " ")}
-          </StatusBadge>
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div className="space-y-1">
-              <dt className="text-on-surface-variant">UUID</dt>
-              <dd className="flex flex-wrap items-center gap-2">
-                <span className="break-all font-mono text-xs text-on-surface">{entity.id}</span>
-                <CopyUuidButton text={entity.id} />
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="text-on-surface-variant">Legal name</dt>
-              <dd className="text-on-surface">{entity.legalName ?? "—"}</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="text-on-surface-variant">Stripe Connect</dt>
-              <dd className="text-on-surface">
-                {entity.stripeConnectAccountId
-                  ? `${entity.stripeConnectChargesEnabled ? "charges" : "no charges"} · ${entity.stripeConnectPayoutsEnabled ? "payouts" : "no payouts"}`
-                  : "—"}
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="text-on-surface-variant">Updated</dt>
-              <dd className="text-on-surface">{entity.updatedAt.toLocaleString("en-GB")}</dd>
-            </div>
-          </dl>
-        </div>
-      </Surface>
-
-      {simple.length > 0 ? (
-        <Surface variant="card" className="border-border-hairline">
-          <div className="space-y-1">
-            <h3 className="font-headline text-lg font-semibold text-on-surface">Lifecycle</h3>
-            <p className="font-body text-sm text-on-surface-variant">
-              Each action updates status and writes a domain event in one transaction.
-            </p>
-          </div>
-          <div>
-            <div className="flex flex-wrap gap-2">
-              {simple.map((b) => (
-                <form key={b.op} action={legalEntityLifecycleSimpleAction}>
-                  <input type="hidden" name="legalEntityId" value={entity.id} />
-                  <input type="hidden" name="op" value={b.op} />
-                  <Button type="submit" variant="secondary" size="sm">
-                    {b.label}
-                  </Button>
-                </form>
-              ))}
-            </div>
-          </div>
-        </Surface>
-      ) : null}
-
-      {canReject ? (
-        <Surface variant="card" className="border-border-hairline">
-          <div className="space-y-1">
-            <h3 className="font-headline text-lg font-semibold text-on-surface">Reject</h3>
-            <p className="font-body text-sm text-on-surface-variant">
-              Sets status to rejected. Requires an audit reason (min. 3 characters) and typed
-              confirmation <span className="font-mono text-on-surface">REJECT</span>.
-            </p>
-          </div>
-          <div>
-            <LegalEntityRejectForm legalEntityId={entity.id} />
-          </div>
-        </Surface>
-      ) : null}
-
-      {canArchive ? (
-        <Surface variant="card" className="border-border-hairline">
-          <div className="space-y-1">
-            <h3 className="font-headline text-lg font-semibold text-on-surface">Archive</h3>
-            <p className="font-body text-sm text-on-surface-variant">
-              Permanent terminal state. You will confirm by typing{" "}
-              <span className="font-mono text-on-surface">ARCHIVE {entity.displayName}</span>{" "}
-              exactly.
-            </p>
-          </div>
-          <div>
-            <LegalEntityArchiveForm legalEntityId={entity.id} displayName={entity.displayName} />
-          </div>
-        </Surface>
-      ) : null}
+      <AdminDetailTabs
+        defaultValue={activeTab}
+        syncUrl
+        tabs={[
+          {
+            value: "overview",
+            label: "Overview",
+            content: (
+              <Surface variant="card" className="border-border-hairline">
+                <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">UUID</dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      <span className="break-all font-mono text-xs text-on-surface">
+                        {entity.id}
+                      </span>
+                      <CopyUuidButton text={entity.id} />
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Legal name</dt>
+                    <dd className="text-on-surface">{entity.legalName ?? "—"}</dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Stripe Connect</dt>
+                    <dd className="text-on-surface">
+                      {entity.stripeConnectAccountId
+                        ? `${entity.stripeConnectChargesEnabled ? "charges" : "no charges"} · ${entity.stripeConnectPayoutsEnabled ? "payouts" : "no payouts"}`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Updated</dt>
+                    <dd className="text-on-surface">{formatDateTime(entity.updatedAt)}</dd>
+                  </div>
+                </dl>
+              </Surface>
+            ),
+          },
+          {
+            value: "stripe",
+            label: "Stripe",
+            content: (
+              <Surface variant="card" className="border-border-hairline">
+                <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Connect account</dt>
+                    <dd className="break-all font-mono text-xs text-on-surface">
+                      {entity.stripeConnectAccountId ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Charges enabled</dt>
+                    <dd className="text-on-surface">
+                      {entity.stripeConnectChargesEnabled ? "Yes" : "No"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-on-surface-variant">Payouts enabled</dt>
+                    <dd className="text-on-surface">
+                      {entity.stripeConnectPayoutsEnabled ? "Yes" : "No"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <dt className="text-on-surface-variant">Currently due requirements</dt>
+                    <dd className="text-on-surface">
+                      {entity.stripeConnectRequirementsCurrentlyDue.length > 0 ? (
+                        <ul className="mt-2 list-inside list-disc space-y-1 font-mono text-xs">
+                          {entity.stripeConnectRequirementsCurrentlyDue.map((req) => (
+                            <li key={req}>{req}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        "None outstanding"
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </Surface>
+            ),
+          },
+          {
+            value: "lifecycle",
+            label: "Lifecycle",
+            content: (
+              <div className="space-y-4">
+                {simple.length > 0 ? (
+                  <Surface variant="card" className="border-border-hairline">
+                    <p className="mb-3 font-body text-sm text-on-surface-variant">
+                      Each action updates status and writes a domain event in one transaction.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {simple.map((b) => (
+                        <form key={b.op} action={legalEntityLifecycleSimpleAction}>
+                          <input type="hidden" name="legalEntityId" value={entity.id} />
+                          <input type="hidden" name="op" value={b.op} />
+                          <Button type="submit" variant="secondary" size="sm">
+                            {b.label}
+                          </Button>
+                        </form>
+                      ))}
+                    </div>
+                  </Surface>
+                ) : (
+                  <p className="font-body text-sm text-on-surface-variant">
+                    No lifecycle transitions available for this status.
+                  </p>
+                )}
+                {canReject ? (
+                  <Surface variant="card" className="border-border-hairline">
+                    <div className="space-y-1">
+                      <h3 className="font-headline text-lg font-semibold text-on-surface">
+                        Reject
+                      </h3>
+                      <p className="font-body text-sm text-on-surface-variant">
+                        Requires audit reason and typed confirmation{" "}
+                        <span className="font-mono text-on-surface">REJECT</span>.
+                      </p>
+                    </div>
+                    <LegalEntityRejectForm legalEntityId={entity.id} />
+                  </Surface>
+                ) : null}
+                {canArchive ? (
+                  <Surface variant="card" className="border-border-hairline">
+                    <div className="space-y-1">
+                      <h3 className="font-headline text-lg font-semibold text-on-surface">
+                        Archive
+                      </h3>
+                      <p className="font-body text-sm text-on-surface-variant">
+                        Permanent terminal state. Confirm by typing{" "}
+                        <span className="font-mono text-on-surface">
+                          ARCHIVE {entity.displayName}
+                        </span>{" "}
+                        exactly.
+                      </p>
+                    </div>
+                    <LegalEntityArchiveForm
+                      legalEntityId={entity.id}
+                      displayName={entity.displayName}
+                    />
+                  </Surface>
+                ) : null}
+              </div>
+            ),
+          },
+        ]}
+      />
     </AdminEntityDetailShell>
   );
 }

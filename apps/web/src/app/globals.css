@@ -89,6 +89,26 @@
   --color-accent-selling: var(--color-lot-orange);
   --color-accent-live: var(--color-live-red);
 
+  /* Semantic trend / status (oklch — perceptually even in light + dark) */
+  --color-warning: oklch(0.72 0.14 55);
+  --color-on-warning: oklch(0.22 0.04 55);
+  --color-warning-container: oklch(0.94 0.06 85);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-on-danger: oklch(0.98 0.01 25);
+  --color-danger-container: oklch(0.94 0.04 25);
+  --color-positive: oklch(0.55 0.14 145);
+  --color-on-positive: oklch(0.98 0.01 145);
+  --color-negative: oklch(0.55 0.2 25);
+  --color-on-negative: oklch(0.98 0.01 25);
+  --color-neutral-delta: oklch(0.55 0.02 250);
+  --color-trend-line: oklch(0.55 0.08 250 / 0.35);
+
+  /* Elevation */
+  --shadow-rest: 0 1px 2px oklch(0.2 0.02 250 / 0.06);
+  --shadow-hover: 0 4px 12px oklch(0.2 0.04 250 / 0.1);
+  --shadow-elevated: 0 8px 24px oklch(0.2 0.06 250 / 0.14);
+  --shadow-glass: 0 1px 0 oklch(1 0 0 / 0.04) inset;
+
   /* shadcn/ui variable bridge — maps shadcn new-york tokens to existing Material-like tokens.
      Keep these as var() references so dark-mode overrides on the source tokens flow through.
      See packages/ui/src/components/ui/* for consumers (bg-primary, border, ring, popover, etc.). */
@@ -135,8 +155,6 @@
   --radius-xl: 0.5rem;
   --radius-2xl: 0.75rem;
   --radius-pill: 9999px;
-  /** @deprecated Use --radius-pill or Tailwind rounded-full */
-  --radius-full: 9999px;
 
   /* Micro type scale — chips, eyebrows, kbd hints (marketing chrome + cards) */
   --text-label-1: 0.625rem;
@@ -187,7 +205,10 @@
   --text-display-lg: clamp(2.25rem, 4vw + 1rem, 3.75rem);
   --text-display-md: clamp(1.75rem, 2vw + 1rem, 2.5rem);
   --text-display-sm: clamp(1.5rem, 1.4vw + 0.9rem, 1.875rem);
+  --text-display-hero: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+  --text-display-kpi: 2.25rem;
   --text-title-section: 2.5rem;
+  --font-feature-tabular: "tnum" 1, "ss01" 1;
   --text-legal-h2: 1.125rem;
   --text-label-caps-tracking: 0.22em;
   --text-label-caps-tracking-tight: 0.18em;
@@ -309,6 +330,52 @@
   top: 1rem;
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Admin list row enter stagger (Wave JJ) */
+@media (prefers-reduced-motion: no-preference) {
+  .admin-data-table-stagger tbody tr {
+    animation: admin-row-enter 0.28s ease-out both;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(2) {
+    animation-delay: 30ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(3) {
+    animation-delay: 60ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(4) {
+    animation-delay: 90ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(n + 5) {
+    animation-delay: 120ms;
+  }
+}
+
+@keyframes admin-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-tab-crossfade[data-state="active"] {
+  animation: admin-tab-fade 0.18s ease-out;
+}
+
+@keyframes admin-tab-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .masonry-layout {
@@ -511,6 +578,18 @@ html.dark {
   --color-secondary-fixed: #8e8d8d;
   --color-inverse-primary: #775a19;
   --color-background: #121414;
+
+  --color-warning: oklch(0.78 0.12 85);
+  --color-on-warning: oklch(0.18 0.03 85);
+  --color-warning-container: oklch(0.28 0.06 85);
+  --color-danger: oklch(0.72 0.14 25);
+  --color-on-danger: oklch(0.15 0.02 25);
+  --color-danger-container: oklch(0.28 0.08 25);
+  --color-positive: oklch(0.72 0.12 145);
+  --color-on-positive: oklch(0.15 0.02 145);
+  --color-negative: oklch(0.72 0.14 25);
+  --color-neutral-delta: oklch(0.65 0.02 250);
+  --color-trend-line: oklch(0.7 0.06 250 / 0.4);
 }
 
 @keyframes bidPriceBump {

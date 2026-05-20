@@ -1,9 +1,13 @@
 "use client";
 
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { SortableImageItem } from "@/components/admin/sortable-image-item";
 import { ImageUploadField } from "@/components/forms/image-upload-field";
-import { type ReorderableImageEntry, useImageReorder } from "@/lib/forms/image/use-image-reorder";
-import { EmptyState } from "@auction/ui/components/empty-state";
+import {
+  type ReorderableImageEntry,
+  imageEntrySortId,
+  useImageReorder,
+} from "@/lib/forms/image/use-image-reorder";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 
@@ -16,7 +20,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function LotImageManager({ value, onChange, maxFiles = 20, disabled = false }: Props) {
+export function LotImageManager({ value, onChange, maxFiles = 50, disabled = false }: Props) {
   const { sensors, onDragEnd } = useImageReorder({ value, onChange });
   const remaining = Math.max(0, maxFiles - value.length);
 
@@ -59,18 +63,22 @@ export function LotImageManager({ value, onChange, maxFiles = 20, disabled = fal
       )}
 
       {value.length === 0 ? (
-        <EmptyState
+        <AdminEmptyState
           title="No lot images yet"
           description="Upload catalog images, then drag to reorder. The first image is the primary artwork image."
         />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={value.map((item) => item.key)} strategy={rectSortingStrategy}>
+          <SortableContext
+            items={value.map((item, index) => imageEntrySortId(item, index))}
+            strategy={rectSortingStrategy}
+          >
             <ol className="grid gap-4 sm:grid-cols-2">
               {value.map((item, index) => (
                 <SortableImageItem
-                  key={item.key}
+                  key={imageEntrySortId(item, index)}
                   item={item}
+                  sortId={imageEntrySortId(item, index)}
                   index={index}
                   onAltChange={(alt) => updateAt(index, { alt })}
                   onMakePrimary={() => makePrimary(index)}

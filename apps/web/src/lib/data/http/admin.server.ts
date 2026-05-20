@@ -588,46 +588,6 @@ export async function getAdminLotsWonByUser(userId: string, limit = 20): Promise
   return getAdminLotList({ winnerId: userId, limit, offset: 0 });
 }
 
-export type AdminEmailSuppressionListRow = {
-  emailHash: string;
-  reason: "hard_bounce" | "complaint" | "manual" | "unsubscribe";
-  createdAt: string;
-};
-
-export async function getAdminEmailSuppressions(): Promise<AdminEmailSuppressionListRow[]> {
-  const res = await authedServerFetch("/admin/email/suppressions");
-  if (!res.ok) {
-    throw new Error(`Failed to load email suppressions: ${res.status}`);
-  }
-  const body = (await res.json()) as { data: AdminEmailSuppressionListRow[] };
-  return body.data;
-}
-
-export type AdminEmailOutboxRow = {
-  id: string;
-  userEmail: string | null;
-  toEmailHash: string;
-  template: string;
-  status: "pending" | "sending" | "sent" | "failed" | "suppressed";
-  messageId: string | null;
-  lastError: string | null;
-  createdAt: string;
-};
-
-export async function getAdminEmailOutbox(params?: {
-  status?: string;
-}): Promise<AdminEmailOutboxRow[]> {
-  const qs = new URLSearchParams();
-  if (params?.status) qs.set("status", params.status);
-  const suffix = qs.size ? `?${qs.toString()}` : "";
-  const res = await authedServerFetch(`/admin/email/outbox${suffix}`);
-  if (!res.ok) {
-    throw new Error(`Failed to load email outbox: ${res.status}`);
-  }
-  const body = (await res.json()) as { data: AdminEmailOutboxRow[] };
-  return body.data;
-}
-
 export type AdminLotFulfilmentListRow = {
   id: string;
   lotId: string;
@@ -1181,31 +1141,6 @@ function parseAdminDomainEventRows(body: {
     actingLegalEntityId: row.actingLegalEntityId == null ? null : String(row.actingLegalEntityId),
     occurredAt: new Date(String(row.occurredAt ?? "")),
   }));
-}
-
-export async function getAdminDomainEvents(params: {
-  limit?: number;
-  offset?: number;
-  eventTypePrefix?: string;
-  aggregateType?: string;
-  aggregateId?: string;
-}): Promise<AdminDomainEventRow[]> {
-  const qs = new URLSearchParams();
-  qs.set("limit", String(params.limit ?? 100));
-  qs.set("offset", String(params.offset ?? 0));
-  if (params.eventTypePrefix?.trim()) {
-    qs.set("eventTypePrefix", params.eventTypePrefix.trim());
-  }
-  const aggT = params.aggregateType?.trim();
-  const aggI = params.aggregateId?.trim();
-  if (aggT && aggI) {
-    qs.set("aggregateType", aggT);
-    qs.set("aggregateId", aggI);
-  }
-  const res = await authedServerFetch(`/admin/audit/domain-events?${qs.toString()}`);
-  if (!res.ok) throw new Error(`Failed to load domain events: ${res.status}`);
-  const body = (await res.json()) as { data: Record<string, unknown>[] };
-  return parseAdminDomainEventRows(body);
 }
 
 /** Finance admin + platform admin: Stripe dispute-related domain events only. */

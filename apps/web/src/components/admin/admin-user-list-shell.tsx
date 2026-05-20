@@ -1,14 +1,15 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
-import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import { EntityList, Sheet, SheetContent, SheetHeader, SheetTitle, StatusBadge } from "@auction/ui";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
@@ -19,33 +20,36 @@ export type AdminUserListKpi = KpiRowTile & { id?: string };
 type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
-  kpis: AdminUserListKpi[];
   buildColumns: (onOpen: (u: AdminUserRow) => void) => ColumnDef<AdminUserRow>[];
   bulkOperations: BulkOperation[];
   drawerTitle?: string;
-  kpiAriaLabel?: string;
   tableAriaLabel?: string;
   emptyMessage?: string;
   renderDrawerOverview: (user: AdminUserRow) => ReactNode;
   renderDrawerActions?: (user: AdminUserRow) => ReactNode;
   renderMobileCard: (user: AdminUserRow, onOpen: () => void) => ReactNode;
   filtersSlot?: ReactNode;
+  /** e.g. (id) => `/admin/clients/${id}` */
+  detailHref?: (user: AdminUserRow) => string;
+  showColumnPicker?: boolean;
+  columnVisibilityStorageKey?: string;
 };
 
 export function AdminUserListShell({
   rows,
   totalMatches,
-  kpis,
   buildColumns,
   bulkOperations,
   drawerTitle = "User",
-  kpiAriaLabel = "Account summary",
   tableAriaLabel = "Accounts",
   emptyMessage = "No matching accounts.",
   renderDrawerOverview,
   renderDrawerActions,
   renderMobileCard,
   filtersSlot,
+  detailHref,
+  showColumnPicker = false,
+  columnVisibilityStorageKey,
 }: Props) {
   const { density: shellDensity } = useTableDensity();
   const tableDensity = shellDensity === "compact" ? "compact" : "comfortable";
@@ -55,7 +59,7 @@ export function AdminUserListShell({
   const columns = useMemo(() => buildColumns(onOpen), [buildColumns, onOpen]);
 
   const cards = (
-    <ul className="space-y-3">
+    <ul className="space-y-3 md:hidden">
       {rows.map((u) => (
         <li key={u.id}>{renderMobileCard(u, () => onOpen(u))}</li>
       ))}
@@ -64,28 +68,27 @@ export function AdminUserListShell({
 
   return (
     <>
-      <KpiRow className="mb-2" tiles={kpis} aria-label={kpiAriaLabel} />
       <p className="mb-3 font-body text-xs text-on-surface-variant">
         Showing {rows.length} of {totalMatches} matching accounts on this page.
       </p>
-      <EntityList
-        responsiveMode="auto"
-        filters={filtersSlot ?? null}
-        table={
-          <AdminDataTable
-            ariaLabel={tableAriaLabel}
-            columns={columns}
-            data={rows}
-            emptyMessage={emptyMessage}
-            density={tableDensity}
-            enableRowSelection
-            getRowId={(row) => row.id}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-          />
-        }
-        cards={cards}
-      />
+      <div className="hidden md:block">
+        <AdminDataTable
+          ariaLabel={tableAriaLabel}
+          columns={columns}
+          data={rows}
+          emptyMessage={emptyMessage}
+          density={tableDensity}
+          stickyFirstColumn
+          enableRowSelection
+          getRowId={(row) => row.id}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          showColumnPicker={showColumnPicker}
+          {...(columnVisibilityStorageKey ? { columnVisibilityStorageKey } : {})}
+        />
+      </div>
+      {cards}
+      {filtersSlot}
       <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
@@ -96,15 +99,28 @@ export function AdminUserListShell({
                   {drawerTitle}: {selected.name}
                 </SheetTitle>
               </SheetHeader>
+              {detailHref ? (
+                <AdminPreviewSheetHeader
+                  title={selected.name}
+                  fullPageHref={detailHref(selected)}
+                  subtitle={
+                    <p className="truncate font-body text-sm text-on-surface-variant">
+                      {selected.email}
+                    </p>
+                  }
+                />
+              ) : null}
               <div className="flex items-start gap-3 border-b border-border-hairline pb-4">
                 <AdminUserAvatar user={selected} size="lg" />
                 <div className="min-w-0 flex-1">
                   <p className="font-headline text-lg text-on-surface">{selected.name}</p>
                   <p className="truncate text-sm text-on-surface-variant">{selected.email}</p>
                   <div className="mt-2">
-                    <StatusBadge variant={selected.suspendedAt ? "danger" : "success"} size="sm">
-                      {selected.suspendedAt ? "Suspended" : "Active"}
-                    </StatusBadge>
+                    <AdminStatusBadge
+                      domain="user"
+                      status={selected.suspendedAt ? "suspended" : "active"}
+                      size="sm"
+                    />
                   </div>
                 </div>
               </div>

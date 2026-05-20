@@ -11,6 +11,11 @@ export type ArtistPresetId =
 
 const PRESET_BASE = "/admin/artists";
 
+const queueClearPatch = {
+  backfill: null,
+  duplicates: null,
+};
+
 /** Preset tabs: each maps to a stable filter URL (OCP-friendly table). */
 export function artistListPresetHref(
   id: ArtistPresetId,
@@ -18,9 +23,10 @@ export function artistListPresetHref(
 ): string {
   switch (id) {
     case "all":
-      return PRESET_BASE;
+      return buildListHref(PRESET_BASE, current, { ...queueClearPatch, offset: 0 });
     case "pending":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         status: "pending",
         offset: 0,
         kinds: null,
@@ -33,6 +39,7 @@ export function artistListPresetHref(
       });
     case "makers":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         linked: "yes",
         status: null,
         kinds: null,
@@ -41,6 +48,7 @@ export function artistListPresetHref(
       });
     case "historical":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         linked: "no",
         kinds: "artist,maker",
         status: null,
@@ -49,6 +57,7 @@ export function artistListPresetHref(
       });
     case "brands":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         kinds: "brand,marque",
         linked: null,
         status: null,
@@ -57,6 +66,7 @@ export function artistListPresetHref(
       });
     case "featured":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         featured: true,
         offset: 0,
         status: null,
@@ -65,12 +75,13 @@ export function artistListPresetHref(
       });
     case "archived":
       return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
         archivedOnly: true,
         includeArchived: true,
         offset: 0,
       });
     default:
-      return PRESET_BASE;
+      return buildListHref(PRESET_BASE, current, { ...queueClearPatch, offset: 0 });
   }
 }
 
