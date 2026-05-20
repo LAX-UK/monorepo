@@ -51,7 +51,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
           className="h-full"
           aria-label="Lot images"
         >
-          <CarouselContent className="-ml-0 h-full">
+          <CarouselContent className="-ml-0 h-full" viewportClassName="h-full">
             {images.map((img, i) => (
               <CarouselItem key={`${img.src}__${i}`} className="h-full basis-full pl-0">
                 <MediaImage
