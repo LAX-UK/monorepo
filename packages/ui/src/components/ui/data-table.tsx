@@ -40,6 +40,8 @@ type DataTableProps<TData, TValue> = {
   /** When set, columns can be hidden via `columnVisibility` */
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  /** Keyboard-focused row id (staff list tables). */
+  focusedRowId?: string | null;
 };
 
 function sortableHeaderLabel<TData, TValue>(header: Header<TData, TValue>): string {
@@ -97,6 +99,7 @@ export function DataTable<TData, TValue>({
   density = "comfortable",
   columnVisibility,
   onColumnVisibilityChange,
+  focusedRowId = null,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [uncontrolledSelection, setUncontrolledSelection] = React.useState<RowSelectionState>({});
@@ -202,7 +205,12 @@ export function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
-                className={density === "compact" ? "h-10" : undefined}
+                data-focused={focusedRowId === row.id ? "true" : undefined}
+                className={cn(
+                  density === "compact" ? "h-10" : undefined,
+                  focusedRowId === row.id &&
+                    "bg-primary-container/30 ring-2 ring-inset ring-primary/50 outline-none",
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell

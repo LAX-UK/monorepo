@@ -11,7 +11,9 @@ import type {
 
 function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [];
-  if (f.status) parts.push(eq(itemSubmission.status, f.status));
+  if (f.statuses && f.statuses.length > 0) {
+    parts.push(inArray(itemSubmission.status, f.statuses));
+  } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
   if (f.legalEntityId) parts.push(eq(itemSubmission.legalEntityId, f.legalEntityId));
   if (f.q?.trim()) {
     const safe = f.q
@@ -170,7 +172,9 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
 
   async listForLegalEntity(legalEntityId: string, f: ListSubmissionsFilter) {
     const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
-    if (f.status) parts.push(eq(itemSubmission.status, f.status));
+    if (f.statuses && f.statuses.length > 0) {
+      parts.push(inArray(itemSubmission.status, f.statuses));
+    } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
     const where = and(...parts);
     const rows = await this.db
       .select()

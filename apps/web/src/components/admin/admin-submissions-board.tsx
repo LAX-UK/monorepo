@@ -1,11 +1,11 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
 import { useTableDensity } from "@/components/layout/density-provider";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { Button, EntityList } from "@auction/ui";
@@ -49,7 +49,7 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <SubmissionStatusBadge status={row.original.status} />,
+      cell: ({ row }) => <AdminStatusBadge domain="submission" status={row.original.status} />,
     },
     {
       id: "actions",
@@ -90,7 +90,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
             <p className="font-headline text-base text-on-surface">{r.title}</p>
             <p className="mt-1 text-xs text-on-surface-variant">{r.sellerPreview}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <SubmissionStatusBadge status={r.status} />
+              <AdminStatusBadge domain="submission" status={r.status} />
               <span className="text-[10px] text-on-surface-variant">{r.createdAtLabel}</span>
             </div>
           </Link>

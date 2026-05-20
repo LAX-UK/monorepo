@@ -1,6 +1,7 @@
 "use client";
 
 import { openAdminLegalEntityAction } from "@/lib/admin/legal-entity-lifecycle.actions";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { useState, useTransition } from "react";
@@ -20,7 +21,12 @@ export function AdminLegalEntityOpenForm() {
         startTransition(async () => {
           const nextFd = new FormData();
           nextFd.set("legalEntityId", id);
-          await openAdminLegalEntityAction(nextFd);
+          try {
+            await openAdminLegalEntityAction(nextFd);
+            notify.success("Opening entity");
+          } catch (e) {
+            notify.error(e instanceof Error ? e.message : "Could not open entity");
+          }
         });
       }}
     >

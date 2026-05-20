@@ -3,6 +3,8 @@ import type { CapabilityRequirement } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+export type NavBadgeTone = "default" | "warning" | "danger" | "live";
+
 /** Leaf navigation entry — client and staff nav satisfy this contract (Liskov). */
 export type NavItem = {
   id: string;
@@ -10,6 +12,7 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   badge?: number;
+  badgeTone?: NavBadgeTone;
   match?: (pathname: string) => boolean;
   requirement?: CapabilityRequirement;
 };

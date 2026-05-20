@@ -3,7 +3,11 @@
 import type { ImageUploadKind } from "@/components/forms/image-upload-field";
 import { SortableImageCard } from "@/components/forms/sortable-image-card";
 import { UploadItem } from "@/components/forms/upload-item";
-import { type KeyEntry, useImageReorder } from "@/lib/forms/image/use-image-reorder";
+import {
+  type KeyEntry,
+  imageEntrySortId,
+  useImageReorder,
+} from "@/lib/forms/image/use-image-reorder";
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
 import { notify } from "@/lib/ui/notify";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -28,7 +32,7 @@ type Props = {
 };
 
 function toEntries(keys: string[]): KeyEntry[] {
-  return keys.map((key) => ({ key }));
+  return keys.map((key, index) => ({ key, sortId: `${index}::${key}` }));
 }
 
 function dropzoneAriaLabel(kind: ImageUploadKind): string {
@@ -184,15 +188,19 @@ export function ImageGalleryManager({
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={value} strategy={rectSortingStrategy}>
+          <SortableContext
+            items={entries.map((entry, index) => imageEntrySortId(entry, index))}
+            strategy={rectSortingStrategy}
+          >
             <ol className="grid gap-4 sm:grid-cols-2">
-              {value.map((key, index) => {
+              {entries.map((entry, index) => {
                 const primary = index === 0;
+                const sortId = imageEntrySortId(entry, index);
                 return (
                   <SortableImageCard
-                    key={key}
-                    id={key}
-                    src={displaySrc(key)}
+                    key={sortId}
+                    id={sortId}
+                    src={displaySrc(entry.key)}
                     index={index}
                     label={label}
                     imageAlt={primary ? `Primary ${label.toLowerCase()}` : `${label} ${index + 1}`}

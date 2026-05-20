@@ -1,5 +1,6 @@
 "use client";
 
+import type { SubmissionDecisionQueue } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -18,9 +19,11 @@ type AdminSubmissionsTitleFilterValues = z.infer<typeof adminSubmissionsTitleFil
 
 export function AdminSubmissionsTitleFilterForm({
   initialQ,
+  queue,
   status,
 }: {
   initialQ: string;
+  queue?: SubmissionDecisionQueue | undefined;
   status?: ItemSubmissionStatus | undefined;
 }) {
   const router = useRouter();
@@ -40,7 +43,11 @@ export function AdminSubmissionsTitleFilterForm({
             sp[k] = v;
           });
           const href = buildListHref("/admin/submissions", sp, {
-            ...(status !== undefined ? { status } : { status: "" }),
+            ...(queue !== undefined
+              ? { queue, status: "" }
+              : status !== undefined
+                ? { status }
+                : { status: "" }),
             q: values.q.trim() || "",
             offset: 0,
           });

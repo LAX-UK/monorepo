@@ -9,8 +9,6 @@ import {
   type AdminConditionReportRequestRow,
   type AdminConveyorPipelineRow,
   type AdminDomainEventRow,
-  type AdminEmailOutboxRow,
-  type AdminEmailSuppressionListRow,
   type AdminPayoutRow,
   type AdminSaleListRow,
   type GetAdminArtistListParams,
@@ -18,9 +16,6 @@ import {
   getAdminCategoryList,
   getAdminConditionReportRequests,
   getAdminConveyorPipeline,
-  getAdminDomainEvents,
-  getAdminEmailOutbox,
-  getAdminEmailSuppressions,
   getAdminFinanceDisputeDomainEvents,
   getAdminLotFulfilmentList,
   getAdminLotList,
@@ -54,20 +49,40 @@ import { payoutStatuses } from "@auction/types";
 
 const saleStatuses: SaleStatus[] = ["draft", "scheduled", "active", "ended", "cancelled"];
 
+export type SaleLifecycleSlug = "upcoming" | "live" | "closed" | "settled";
+
 export type SalesListQuery = AdminListQueryBase & {
   status?: SaleStatus | undefined;
+  /** Mutually exclusive with raw `status` for URL bookmarking — derived into `status` for fetch */
+  lifecycle?: SaleLifecycleSlug | undefined;
+};
+
+const saleLifecycleStatuses: Partial<Record<SaleLifecycleSlug, SaleStatus>> = {
+  upcoming: "scheduled",
+  live: "active",
+  closed: "ended",
+  settled: "ended",
 };
 
 export const salesListController: IAdminListController<AdminSaleListRow, SalesListQuery> = {
   id: "sales",
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
-    const st = firstString(sp.status);
-    const status =
-      st && st !== "all" && (saleStatuses as readonly string[]).includes(st)
-        ? (st as SaleStatus)
+    const lifeRaw = firstString(sp.lifecycle)?.trim()?.toLowerCase();
+    const life =
+      lifeRaw && ["upcoming", "live", "closed", "settled"].includes(lifeRaw as SaleLifecycleSlug)
+        ? (lifeRaw as SaleLifecycleSlug)
         : undefined;
-    return { ...base, status, limit: Math.min(100, base.limit) };
+    const lifecycleStatus = life ? saleLifecycleStatuses[life] : undefined;
+    const st = firstString(sp.status);
+    const explicitStatus =
+      lifecycleStatus !== undefined
+        ? undefined
+        : st && st !== "all" && (saleStatuses as readonly string[]).includes(st)
+          ? (st as SaleStatus)
+          : undefined;
+    const status = lifecycleStatus ?? explicitStatus;
+    return { ...base, lifecycle: life, status, limit: Math.min(100, base.limit) };
   },
   async fetch(q) {
     const p: { limit: number; offset: number; status?: SaleStatus; q?: string } = {
@@ -229,8 +244,13 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
   },
 };
 
+export type SubmissionDecisionQueue = "awaiting" | "accepted" | "rejected";
+
 export type SubmissionsListQuery = AdminListQueryBase & {
+  /** Legacy single-status filter (`status` URL param); ignored when `queue` is set. */
   status?: ItemSubmissionStatus | undefined;
+  /** Decision-queue tabs (preferred). Maps to grouped statuses via API `queue`. */
+  queue?: SubmissionDecisionQueue | undefined;
 };
 
 export const submissionsListController: IAdminListController<ItemSubmission, SubmissionsListQuery> =
@@ -239,34 +259,37 @@ export const submissionsListController: IAdminListController<ItemSubmission, Sub
     parseQuery(sp) {
       const base = parseListSearchParams(sp);
       const st = firstString(sp.status);
-      const status = st && st !== "all" ? (st as ItemSubmissionStatus) : undefined;
+      const legacyStatus = st && st !== "all" ? (st as ItemSubmissionStatus) : undefined;
+
+      const qt = firstString(sp.queue);
+      const queueAllowed: SubmissionDecisionQueue[] = ["awaiting", "accepted", "rejected"];
+      const queueExplicit =
+        qt && (queueAllowed as readonly string[]).includes(qt)
+          ? (qt as SubmissionDecisionQueue)
+          : undefined;
+
+      /** Tabs default to awaiting when no legacy `status` bookmark is present. */
+      const queue =
+        queueExplicit ??
+        (legacyStatus === undefined ? ("awaiting" as SubmissionDecisionQueue) : undefined);
+      const status = queueExplicit !== undefined ? undefined : legacyStatus;
+
       /** Default page size 100 (parseListSearchParams defaults to 50). */
       const limit = base.limit === 50 ? 100 : Math.min(100, base.limit);
-      return { ...base, status, limit };
+      return { ...base, status, queue, limit };
     },
     async fetch(q) {
       const p: Parameters<typeof getAdminSubmissions>[0] = {
         limit: q.limit,
         offset: q.offset,
       };
-      if (q.status !== undefined) p.status = q.status;
+      if (q.queue !== undefined) p.queue = q.queue;
+      else if (q.status !== undefined) p.status = q.status;
       if (q.q !== undefined && q.q !== "") p.q = q.q;
       const { rows, total } = await getAdminSubmissions(p);
       return { rows, offset: q.offset, limit: q.limit, total };
     },
   };
-
-function parseBoundedInt(
-  raw: string | undefined,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  if (raw === undefined || raw === "") return fallback;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
 
 const paymentStatusesForChip: (PaymentStatus | "all")[] = [
   "all",
@@ -307,7 +330,17 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
         getAdminLotFulfilmentList().catch(() => []),
       ]);
       const allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
-      const filtered = filterPaymentTableRowsByStatus(allRows, q.status);
+      let filtered = filterPaymentTableRowsByStatus(allRows, q.status);
+      const needle = q.q?.trim().toLowerCase();
+      if (needle) {
+        filtered = filtered.filter(
+          (r) =>
+            r.lotTitle.toLowerCase().includes(needle) ||
+            r.buyerId.toLowerCase().includes(needle) ||
+            r.id.toLowerCase().includes(needle) ||
+            (r.fulfilmentStatus?.toLowerCase().includes(needle) ?? false),
+        );
+      }
       const { rows, total } = sliceAdminListWindow(filtered, q.offset, q.limit);
       return {
         rows,
@@ -335,46 +368,6 @@ export const invitationsListController: IAdminListController<
   },
 };
 
-export const emailSuppressionsListController: IAdminListController<
-  AdminEmailSuppressionListRow,
-  AdminListQueryBase
-> = {
-  id: "email-suppressions",
-  parseQuery(sp) {
-    return parseListSearchParams(sp);
-  },
-  async fetch(q) {
-    const all = await getAdminEmailSuppressions();
-    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total };
-  },
-};
-
-export type AuditDomainEventsListQuery = AdminListQueryBase & {
-  eventTypePrefix?: string | undefined;
-};
-
-export const auditDomainEventsListController: IAdminListController<
-  AdminDomainEventRow,
-  AuditDomainEventsListQuery
-> = {
-  id: "audit-domain-events",
-  parseQuery(sp) {
-    const base = parseListSearchParams(sp);
-    const limit = parseBoundedInt(firstString(sp.limit), 100, 1, 500);
-    const eventTypePrefix = firstString(sp.prefix)?.trim() || undefined;
-    return { ...base, limit, eventTypePrefix };
-  },
-  async fetch(q) {
-    const rows = await getAdminDomainEvents({
-      limit: q.limit,
-      offset: q.offset,
-      ...(q.eventTypePrefix ? { eventTypePrefix: q.eventTypePrefix } : {}),
-    });
-    return { rows, offset: q.offset, limit: q.limit };
-  },
-};
-
 export const disputesDomainEventsListController: IAdminListController<
   AdminDomainEventRow,
   AdminListQueryBase
@@ -391,41 +384,6 @@ export const disputesDomainEventsListController: IAdminListController<
       offset: q.offset,
     });
     return { rows, offset: q.offset, limit: q.limit };
-  },
-};
-
-export type EmailOutboxListQuery = AdminListQueryBase & {
-  status?: AdminEmailOutboxRow["status"] | "all" | undefined;
-};
-
-const outboxStatuses: AdminEmailOutboxRow["status"][] = [
-  "pending",
-  "sending",
-  "sent",
-  "failed",
-  "suppressed",
-];
-
-export const emailOutboxListController: IAdminListController<
-  AdminEmailOutboxRow,
-  EmailOutboxListQuery
-> = {
-  id: "email-outbox",
-  parseQuery(sp) {
-    const base = parseListSearchParams(sp);
-    const st = firstString(sp.status);
-    const status =
-      st && st !== "all" && (outboxStatuses as readonly string[]).includes(st)
-        ? (st as AdminEmailOutboxRow["status"])
-        : undefined;
-    return { ...base, status };
-  },
-  async fetch(q) {
-    const all = await getAdminEmailOutbox(
-      q.status !== undefined ? { status: q.status } : undefined,
-    );
-    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total };
   },
 };
 
@@ -459,37 +417,6 @@ export const conveyorListController: IAdminListController<
   },
   async fetch(q) {
     const rows = await getAdminConveyorPipeline({ limit: q.limit });
-    return { rows, offset: q.offset, limit: q.limit };
-  },
-};
-
-export type AuditTimelineListQuery = AdminListQueryBase & {
-  aggregateType?: string | undefined;
-  aggregateId?: string | undefined;
-};
-
-export const auditTimelineListController: IAdminListController<
-  AdminDomainEventRow,
-  AuditTimelineListQuery
-> = {
-  id: "audit-timeline",
-  parseQuery(sp) {
-    const base = parseListSearchParams(sp);
-    const limit = Math.min(500, Math.max(1, base.limit === 50 ? 200 : base.limit));
-    const aggregateType = firstString(sp.aggregateType)?.trim() || undefined;
-    const aggregateId = firstString(sp.aggregateId)?.trim() || undefined;
-    return { ...base, limit, aggregateType, aggregateId };
-  },
-  async fetch(q) {
-    if (!q.aggregateType || !q.aggregateId) {
-      return { rows: [], offset: q.offset, limit: q.limit };
-    }
-    const rows = await getAdminDomainEvents({
-      limit: q.limit,
-      offset: q.offset,
-      aggregateType: q.aggregateType,
-      aggregateId: q.aggregateId,
-    });
     return { rows, offset: q.offset, limit: q.limit };
   },
 };

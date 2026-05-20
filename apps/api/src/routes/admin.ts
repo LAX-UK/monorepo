@@ -49,6 +49,7 @@ import {
   lotIdParamSchema,
   paymentIdParamSchema,
   saleroomAdvanceLotBodySchema,
+  updateProfileSchema,
   userIdParamSchema,
 } from "@auction/validators";
 import { zValidator } from "@hono/zod-validator";
@@ -1032,6 +1033,28 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { limit } = c.req.valid("query");
       const data = await container.admin.users.activityFor(userId, limit);
       return c.json({ data });
+    },
+  );
+
+  platform.patch(
+    "/users/:userId/profile",
+    zValidator("param", userIdParamSchema),
+    zValidator("json", updateProfileSchema.pick({ name: true })),
+    async (c) => {
+      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
+      const actorStaff = normalizeUserStaffRole(
+        c.get("userStaffRole") as string | null | undefined,
+      );
+      if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+      const { userId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      if (body.name == null) {
+        return c.json({ error: "name is required" }, 400);
+      }
+      await container.profileService.updateProfile(userId, { name: body.name });
+      return c.json({ ok: true });
     },
   );
 

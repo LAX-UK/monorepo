@@ -1,6 +1,7 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
-import { AdminEntityFormShell } from "@/components/admin/admin-entity-form-shell";
+import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -36,8 +37,8 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
   ) : null;
 
   return (
-    <AdminEntityFormShell
-      maxWidthClassName="max-w-4xl"
+    <CatalogFormShell
+      className="md:max-w-4xl"
       breadcrumbs={
         <Link
           href="/admin/artists"
@@ -48,6 +49,31 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
       }
       title={`Edit ${artist.displayName}`}
       description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
+      mobileActions={
+        isMerged
+          ? [
+              {
+                id: "back",
+                label: "Back to artists",
+                variant: "secondary",
+                href: "/admin/artists",
+              },
+            ]
+          : [
+              {
+                id: "save",
+                label: "Save artist",
+                variant: "primary",
+                htmlForm: CATALOG_FORM_IDS.artist,
+              },
+              {
+                id: "cancel",
+                label: "Cancel",
+                variant: "secondary",
+                href: "/admin/artists",
+              },
+            ]
+      }
     >
       {mergedNotice}
 
@@ -57,6 +83,7 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
             mode="edit"
             artistId={artist.id}
             readOnly={isMerged}
+            htmlFormId={CATALOG_FORM_IDS.artist}
             defaultValues={{
               displayName: artist.displayName,
               slug: artist.slug,
@@ -89,6 +116,6 @@ export default async function EditAdminArtistPage({ params }: { params: Promise<
         </p>
         <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
       </section>
-    </AdminEntityFormShell>
+    </CatalogFormShell>
   );
 }

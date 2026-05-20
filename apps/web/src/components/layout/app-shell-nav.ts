@@ -206,6 +206,7 @@ export function getAppShellNavItems(
   pendingSubmissionCount = 0,
   clientWorkspace: ClientWorkspaceMode = "buying",
   pendingArtistCount = 0,
+  navCounts?: import("@/lib/data/http/admin-nav-counts.types").AdminNavCounts,
 ): AppShellNavItem[] {
   if (shell === "client") return getClientNavItems(clientWorkspace);
   return getStaffNavItems(
@@ -213,6 +214,7 @@ export function getAppShellNavItems(
     sessionUser.staffRole ?? null,
     pendingSubmissionCount,
     pendingArtistCount,
+    navCounts,
   );
 }
 
@@ -234,7 +236,6 @@ export function getRouteLabel(
   if (pathname.includes("/new")) return "New";
   if (pathname.includes("/edit")) return "Edit";
   if (pathname.includes("/checkout")) return "Checkout";
-  if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live sale";
   if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
   if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
   return "Detail";
@@ -250,10 +251,8 @@ export function getRouteParentLabel(
   if (shell === "client" && pathname.startsWith("/dashboard/checkout")) return "Collection";
   if (shell === "client" && pathname.startsWith("/dashboard/seller"))
     return clientWorkspace === "selling" ? "Selling" : null;
-  if (shell === "client" && pathname.startsWith("/dashboard/live")) return "Live bidding";
   if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
   if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
-  if (shell === "client" && pathname.startsWith("/dashboard/team")) return "Organisations";
   if (shell !== "client" && pathname.startsWith("/admin")) {
     const u = sessionUser ?? {
       role: "staff" as UserRole,

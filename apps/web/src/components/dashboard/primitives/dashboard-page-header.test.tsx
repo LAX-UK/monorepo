@@ -13,20 +13,21 @@ describe("DashboardPageHeader", () => {
     );
 
     expect(screen.getByRole("button", { name: /new submission/i })).toBeInTheDocument();
-    const button = screen.getByRole("button", { name: /new submission/i });
-    expect(button.parentElement?.className).toMatch(/mt-4/);
-    expect(button.parentElement?.className).toMatch(/md:mt-0/);
+    const actionsWrap = screen.getByRole("button", { name: /new submission/i }).parentElement;
+    expect(actionsWrap?.className).toMatch(/flex shrink-0/);
   });
 
   it("uses compact title scale by default", () => {
-    const { container } = render(<DashboardPageHeader title="Portfolio" />);
-    expect(container.firstChild).toHaveClass("[&_h1]:text-2xl");
-    expect(container.firstChild).toHaveClass("[&_h1]:md:text-3xl");
+    render(<DashboardPageHeader title="Portfolio" />);
+    const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
+    expect(heading.className).toMatch(/text-2xl/);
+    expect(heading.className).toMatch(/md:text-3xl/);
   });
 
   it("uses display title scale for overview hero", () => {
-    const { container } = render(<DashboardPageHeader title="Welcome back" titleScale="display" />);
-    expect(container.firstChild).toHaveClass("[&_h1]:text-3xl");
-    expect(container.firstChild).toHaveClass("[&_h1]:md:text-4xl");
+    render(<DashboardPageHeader title="Welcome back" titleScale="display" />);
+    const heading = screen.getByRole("heading", { level: 1, name: "Welcome back" });
+    expect(heading.className).toMatch(/text-3xl/);
+    expect(heading.className).toMatch(/md:text-4xl/);
   });
 });

@@ -9,6 +9,8 @@ export type ReviewSplitPaneProps = {
   decisionTitle: string;
   record: React.ReactNode;
   decision: React.ReactNode;
+  /** Desktop (lg+): extra classes on the decision column (e.g. sticky). */
+  decisionSectionClassName?: string;
   /** Optional sticky action above tabs on mobile (e.g. Next in queue) */
   mobileStickyAction?: React.ReactNode;
   className?: string;
@@ -21,6 +23,7 @@ export function ReviewSplitPane({
   decisionTitle,
   record,
   decision,
+  decisionSectionClassName,
   mobileStickyAction,
   className,
 }: ReviewSplitPaneProps) {
@@ -36,7 +39,10 @@ export function ReviewSplitPane({
           </h2>
           {record}
         </section>
-        <section aria-labelledby="review-decision-heading" className="min-w-0 space-y-4">
+        <section
+          aria-labelledby="review-decision-heading"
+          className={cn("min-w-0 space-y-4", decisionSectionClassName)}
+        >
           <h2
             id="review-decision-heading"
             className="font-label text-xs font-bold uppercase tracking-widest text-secondary"

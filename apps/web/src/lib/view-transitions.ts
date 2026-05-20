@@ -1,20 +1,22 @@
 /**
- * F5a — View Transitions API helpers.
- *
- * Sites that opt in: a lot card image and the lot detail hero image share the
- * same `view-transition-name` so Chromium-based browsers smoothly morph from
- * the card to the detail page. Browsers without support fall back to instant
- * navigation — the API is a progressive enhancement.
+ * Lot image view transitions — list tile morphs into detail hero when the user
+ * clicks through. Only the clicked tile gets a `view-transition-name` (see
+ * `LotViewTransitionLink`); the detail hero applies the same name on arrival.
  */
+
+export const LOT_TRANSITION_ROOT_ATTR = "data-lot-transition-root";
+
+/** Image surface inside a root — receives the transition name on click. */
+export const LOT_TRANSITION_IMAGE_ATTR = "data-lot-transition-image";
 
 const SAFE_PREFIX = "lot-image-";
 
-/** Generate a stable, CSS-safe transition name for a lot's image. */
+/** Stable, CSS-safe transition name for a lot's primary image. */
 export function lotImageTransitionName(lotId: string): string {
-  return `${SAFE_PREFIX}${lotId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const safeId = lotId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `${SAFE_PREFIX}${safeId}`;
 }
 
-/** Inline style to apply on both the card image and the detail hero image. */
 export function lotImageTransitionStyle(lotId: string): { viewTransitionName: string } {
   return { viewTransitionName: lotImageTransitionName(lotId) };
 }

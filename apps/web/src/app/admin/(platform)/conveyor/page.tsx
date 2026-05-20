@@ -1,17 +1,20 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminConveyorTableBoard } from "@/components/admin/conveyor-board";
+import { ConveyorLayoutToggle } from "@/components/admin/conveyor-board/layout-toggle";
 import { conveyorListController } from "@/lib/admin/admin-list-controllers";
 import { buildConveyorColumns } from "@/lib/admin/conveyor-pipeline.vm";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import Link from "next/link";
 
 export default async function AdminConveyorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ limit?: string; offset?: string; error?: string }>;
+  searchParams: Promise<{ limit?: string; offset?: string; error?: string; view?: string }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const viewTable = sp.view === "table";
   const query = conveyorListController.parseQuery(sp);
 
   let loadError: string | null = null;
@@ -27,10 +30,7 @@ export default async function AdminConveyorPage({
 
   const errorAlert =
     error || loadError ? (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load conveyor</AlertTitle>
-        <AlertDescription>{loadError ?? error}</AlertDescription>
-      </Alert>
+      <AdminListAlert title="Could not load conveyor">{loadError ?? error}</AdminListAlert>
     ) : null;
 
   const kanban = (
@@ -87,19 +87,25 @@ export default async function AdminConveyorPage({
 
   const empty =
     !loadError && rows.length === 0 ? (
-      <EmptyState
+      <AdminEmptyState
         title="Pipeline is empty"
         description="No submissions in the conveyor view yet."
       />
     ) : null;
 
-  const view = !loadError && rows.length > 0 ? kanban : null;
+  const view =
+    !loadError && rows.length > 0 ? (
+      <div className="space-y-4">
+        <ConveyorLayoutToggle viewTable={viewTable} />
+        {viewTable ? <AdminConveyorTableBoard rows={rows} /> : kanban}
+      </div>
+    ) : null;
 
   return (
     <AdminListPage
       className="max-w-[1600px]"
       title="Conveyor"
-      description="Single view of seller submissions through specialist review, catalogue build, live sale, and settlement hand-off. Rows are the most recently updated first."
+      description="Single view of seller submissions through specialist review, catalogue build, live sale, and settlement hand-off."
       errorAlert={errorAlert}
       view={view}
       empty={empty}

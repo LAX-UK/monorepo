@@ -1,0 +1,1 @@
+export { AdminCategoriesBoard } from "./board";

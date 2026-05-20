@@ -1,5 +1,9 @@
 "use client";
 
+import { StaffSidebarPinnedRecents } from "@/components/layout/staff-sidebar-pinned-recents";
+import { ViewTransitionLink } from "@/components/layout/view-transition-link";
+import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
+import { readStaffNavGroupOpen, writeStaffNavGroupOpen } from "@/lib/layout/staff-nav-storage";
 import type { NavGroup, NavItem } from "@/lib/shell/contracts";
 import { getActiveNavGroupId } from "@/lib/shell/nav-adapters";
 import { cn } from "@auction/ui";
@@ -20,11 +24,8 @@ import {
 } from "@auction/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
 import { ChevronDown } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-const LS_PREFIX = "lax.staffNav.open.";
 
 function itemActive(item: NavItem, pathname: string): boolean {
   return item.match
@@ -54,14 +55,8 @@ export function StaffSidebarNav({
   const readLocalStorage = useCallback(() => {
     const next: Record<string, boolean> = {};
     for (const g of groups) {
-      try {
-        const raw = localStorage.getItem(LS_PREFIX + g.id);
-        if (raw === "1") next[g.id] = true;
-        else if (raw === "0") next[g.id] = false;
-        else next[g.id] = g.id === activeGroupId;
-      } catch {
-        next[g.id] = g.id === activeGroupId;
-      }
+      const stored = readStaffNavGroupOpen(g.id);
+      next[g.id] = stored ?? g.id === activeGroupId;
     }
     return next;
   }, [groups, activeGroupId]);
@@ -77,11 +72,7 @@ export function StaffSidebarNav({
 
   const persistOpen = (groupId: string, open: boolean) => {
     setOpenMap((prev) => ({ ...prev, [groupId]: open }));
-    try {
-      localStorage.setItem(LS_PREFIX + groupId, open ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    writeStaffNavGroupOpen(groupId, open);
   };
 
   if (labelsHidden) {
@@ -126,15 +117,18 @@ export function StaffSidebarNav({
                       asChild
                       className={cn(active && "bg-surface-container-high")}
                     >
-                      <Link href={item.href} {...(onNavigate ? { onClick: onNavigate } : {})}>
+                      <ViewTransitionLink
+                        href={item.href}
+                        {...(onNavigate ? { onClick: onNavigate } : {})}
+                      >
                         <Icon className="mr-2 size-4 shrink-0 opacity-70" aria-hidden />
                         <span className="flex-1">{item.label}</span>
                         {item.badge ? (
-                          <Badge className="ml-2 rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white">
+                          <Badge className={navBadgeClassName(item.badgeTone, "ml-2")}>
                             {item.badge > 99 ? "99+" : item.badge}
                           </Badge>
                         ) : null}
-                      </Link>
+                      </ViewTransitionLink>
                     </DropdownMenuItem>
                   );
                 })}
@@ -148,6 +142,10 @@ export function StaffSidebarNav({
 
   return (
     <div className="space-y-1">
+      <StaffSidebarPinnedRecents
+        labelsHidden={labelsHidden}
+        {...(onNavigate ? { onNavigate } : {})}
+      />
       {groups.map((g) => {
         const GroupIcon = g.icon;
         const open = openMap[g.id] ?? g.id === activeGroupId;
@@ -166,9 +164,7 @@ export function StaffSidebarNav({
               <GroupIcon className="size-4 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-left">{g.title}</span>
               {gb > 0 ? (
-                <Badge className="rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white">
-                  {gb > 99 ? "99+" : gb}
-                </Badge>
+                <Badge className={navBadgeClassName("default")}>{gb > 99 ? "99+" : gb}</Badge>
               ) : null}
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-0.5 pl-1 pt-0.5">
@@ -178,7 +174,7 @@ export function StaffSidebarNav({
                 return (
                   <Tooltip key={item.id} delayDuration={400}>
                     <TooltipTrigger asChild>
-                      <Link
+                      <ViewTransitionLink
                         href={item.href}
                         {...(onNavigate ? { onClick: onNavigate } : {})}
                         aria-current={active ? "page" : undefined}
@@ -195,11 +191,11 @@ export function StaffSidebarNav({
                           {item.label}
                         </span>
                         {item.badge ? (
-                          <Badge className="rounded-full bg-lot-orange px-1.5 py-0 font-label text-[9px] text-white">
+                          <Badge className={navBadgeClassName(item.badgeTone)}>
                             {item.badge > 99 ? "99+" : item.badge}
                           </Badge>
                         ) : null}
-                      </Link>
+                      </ViewTransitionLink>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="hidden lg:block">
                       {item.label}

@@ -1,18 +1,16 @@
 import { AdminClientArtistProfilesPanel } from "@/components/admin/admin-client-artist-profiles-panel";
 import {
-  AdminUserActivityPanel,
-  AdminUserAuditLogPanel,
-} from "@/components/admin/admin-user-activity-panel";
-import { AdminUserCommercePanel } from "@/components/admin/admin-user-commerce-panel";
+  AdminUserLegalEntitiesPanel,
+  AdminUserPaymentsPanel,
+  AdminUserWonLotsPanel,
+} from "@/components/admin/admin-user-commerce-panel";
 import { AdminUserDetailShell } from "@/components/admin/admin-user-detail-shell";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import {
   getAdminArtistsByOwnerUserId,
-  getAdminDomainEvents,
   getAdminLegalEntitiesForUser,
   getAdminLotsWonByUser,
   getAdminPaymentsForUser,
-  getAdminUserActivity,
   getAdminUserById,
 } from "@/lib/data/http/admin.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
@@ -33,17 +31,12 @@ export default async function AdminClientDetailPage({ params }: Props) {
     redirect(`/admin/staff/${id}`);
   }
 
-  const [linkedArtists, sessions, domainEvents, payments, wonLots, legalEntities] =
-    await Promise.all([
-      getAdminArtistsByOwnerUserId(user.id).catch(() => []),
-      getAdminUserActivity(user.id).catch(() => []),
-      getAdminDomainEvents({ aggregateType: "user", aggregateId: user.id, limit: 50 }).catch(
-        () => [],
-      ),
-      getAdminPaymentsForUser(user.id).catch(() => []),
-      getAdminLotsWonByUser(user.id).catch(() => []),
-      getAdminLegalEntitiesForUser(user.id).catch(() => []),
-    ]);
+  const [linkedArtists, payments, wonLots, legalEntities] = await Promise.all([
+    getAdminArtistsByOwnerUserId(user.id).catch(() => []),
+    getAdminPaymentsForUser(user.id).catch(() => []),
+    getAdminLotsWonByUser(user.id).catch(() => []),
+    getAdminLegalEntitiesForUser(user.id).catch(() => []),
+  ]);
 
   const lifetimeSpend = payments
     .filter((p) => p.status === "captured")
@@ -57,6 +50,13 @@ export default async function AdminClientDetailPage({ params }: Props) {
     ),
   );
   const submissionsCount = submissionTotals.reduce((a, b) => a + b, 0);
+
+  const notesPlaceholder = (
+    <p className="font-body text-sm text-on-surface-variant">
+      Internal notes & tags require user_note / user_tag migrations before collaborative workflows
+      unlock.
+    </p>
+  );
 
   return (
     <AdminUserDetailShell
@@ -75,41 +75,34 @@ export default async function AdminClientDetailPage({ params }: Props) {
       }))}
       tabs={[
         {
-          id: "profile",
-          label: "Profile",
-          content: <AdminUserProfilePanel user={user} />,
-        },
-        {
-          id: "activity",
-          label: "Activity",
-          content: <AdminUserActivityPanel sessions={sessions} domainEvents={domainEvents} />,
-        },
-        {
-          id: "commerce",
-          label: "Commerce",
+          id: "overview",
+          label: "Overview",
           content: (
-            <AdminUserCommercePanel
-              payments={payments}
-              wonLots={wonLots}
-              legalEntities={legalEntities}
-            />
+            <div className="space-y-8">
+              <AdminUserProfilePanel user={user} />
+              <AdminClientArtistProfilesPanel
+                userId={user.id}
+                userName={user.name}
+                linkedArtists={linkedArtists}
+              />
+              <AdminUserLegalEntitiesPanel legalEntities={legalEntities} />
+            </div>
           ),
+        },
+        {
+          id: "bids",
+          label: "Bids",
+          content: <AdminUserWonLotsPanel wonLots={wonLots} />,
+        },
+        {
+          id: "payouts",
+          label: "Payouts",
+          content: <AdminUserPaymentsPanel payments={payments} />,
         },
         {
           id: "notes",
-          label: "Audit log",
-          content: <AdminUserAuditLogPanel sessions={sessions} domainEvents={domainEvents} />,
-        },
-        {
-          id: "artists",
-          label: "Artist profiles",
-          content: (
-            <AdminClientArtistProfilesPanel
-              userId={user.id}
-              userName={user.name}
-              linkedArtists={linkedArtists}
-            />
-          ),
+          label: "Notes",
+          content: notesPlaceholder,
         },
       ]}
     />
