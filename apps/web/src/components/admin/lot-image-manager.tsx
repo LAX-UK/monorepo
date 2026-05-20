@@ -20,7 +20,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function LotImageManager({ value, onChange, maxFiles = 20, disabled = false }: Props) {
+export function LotImageManager({ value, onChange, maxFiles = 50, disabled = false }: Props) {
   const { sensors, onDragEnd } = useImageReorder({ value, onChange });
   const remaining = Math.max(0, maxFiles - value.length);
 
