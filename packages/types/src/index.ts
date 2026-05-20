@@ -19,3 +19,4 @@ export * from "./domain-event-pii.js";
 export * from "./onboarding-steps.js";
 export * from "./document.js";
 export * from "./marketing-events.js";
+export * from "./gallery.js";
