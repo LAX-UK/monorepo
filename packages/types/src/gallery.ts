@@ -24,10 +24,7 @@ export function toGalleryImages(
   return urls.map((src, i) => {
     const custom = alts?.[i]?.trim();
     const alt =
-      custom ||
-      (urls.length > 1 && title
-        ? `${title} — image ${i + 1} of ${urls.length}`
-        : title);
+      custom || (urls.length > 1 && title ? `${title} — image ${i + 1} of ${urls.length}` : title);
     const image: GalleryImage = { src };
     if (alt) image.alt = alt;
     return image;
