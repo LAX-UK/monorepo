@@ -21,7 +21,6 @@ export function GalleryHeroOverlays() {
         className="md:top-4"
       />
       <ThumbPile3PlusN
-        images={images}
         total={total}
         index={index}
         onSelect={setIndex}

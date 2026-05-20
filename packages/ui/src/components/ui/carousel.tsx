@@ -111,12 +111,25 @@ export function Carousel({
   );
 }
 
-export function CarouselContent({ className, children, ...props }: React.ComponentProps<"div">) {
+type CarouselContentProps = React.ComponentProps<"div"> & {
+  viewportClassName?: string;
+};
+
+export function CarouselContent({
+  className,
+  children,
+  viewportClassName,
+  ...props
+}: CarouselContentProps) {
   const { carouselRef, api } = useCarousel();
   const orientation = api?.internalEngine().options.axis === "y" ? "vertical" : "horizontal";
 
   return (
-    <div ref={carouselRef} className="overflow-hidden" data-slot="carousel-content">
+    <div
+      ref={carouselRef}
+      className={cn("overflow-hidden", viewportClassName)}
+      data-slot="carousel-content"
+    >
       <div
         className={cn("flex", orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col", className)}
         {...props}

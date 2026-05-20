@@ -1,18 +1,15 @@
 "use client";
 
-import { MediaImage } from "@/components/ui/media-image";
-import type { GalleryImage, PositionIndicatorProps } from "@auction/types";
+import type { PositionIndicatorProps } from "@auction/types";
 import { Button, cn } from "@auction/ui";
 
 const MAX_VISIBLE = 3;
 const TAP_MIN = "min-h-11 min-w-11";
 
-type Props = PositionIndicatorProps & {
-  images: GalleryImage[];
-};
+type Props = PositionIndicatorProps;
 
-/** Windowed mini-thumb pile: at most 3 circles + "+N" for the rest. */
-export function ThumbPile3PlusN({ images, total, index, onSelect, onOverflow, className }: Props) {
+/** Windowed dot pile: at most 3 small dots + "+N" for the rest. */
+export function ThumbPile3PlusN({ total, index, onSelect, onOverflow, className }: Props) {
   if (total <= 1) return null;
 
   if (total <= MAX_VISIBLE) {
@@ -22,15 +19,9 @@ export function ThumbPile3PlusN({ images, total, index, onSelect, onOverflow, cl
         role="group"
         aria-label="Image position"
       >
-        {images.map((img, i) => (
-          <ThumbDot
-            key={`${img.src}__${i}`}
-            image={img}
-            i={i}
-            total={total}
-            active={i === index}
-            onSelect={onSelect}
-          />
+        {Array.from({ length: total }, (_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: stable dot index for position controls
+          <ThumbDot key={i} i={i} total={total} active={i === index} onSelect={onSelect} />
         ))}
       </div>
     );
@@ -45,20 +36,9 @@ export function ThumbPile3PlusN({ images, total, index, onSelect, onOverflow, cl
       role="group"
       aria-label="Image position"
     >
-      {windowIndices.map((i) => {
-        const image = images[i];
-        if (!image) return null;
-        return (
-          <ThumbDot
-            key={`${image.src}__${i}`}
-            image={image}
-            i={i}
-            total={total}
-            active={i === index}
-            onSelect={onSelect}
-          />
-        );
-      })}
+      {windowIndices.map((i) => (
+        <ThumbDot key={i} i={i} total={total} active={i === index} onSelect={onSelect} />
+      ))}
       <Button
         type="button"
         variant="ghost"
@@ -86,13 +66,11 @@ function windowedIndices(current: number, total: number, max: number): number[] 
 }
 
 function ThumbDot({
-  image,
   i,
   total,
   active,
   onSelect,
 }: {
-  image: GalleryImage;
   i: number;
   total: number;
   active: boolean;
@@ -108,15 +86,14 @@ function ThumbDot({
       onClick={() => onSelect(i)}
       className={cn(
         TAP_MIN,
-        "rounded-full p-0.5",
-        active
-          ? "bg-primary ring-2 ring-primary ring-offset-2 ring-offset-transparent"
-          : "bg-white/50 hover:bg-white/80",
+        "rounded-full p-0 hover:bg-transparent",
+        active ? "bg-primary hover:bg-primary" : "bg-white/50 hover:bg-white/80",
       )}
     >
-      <span className="relative block size-6 overflow-hidden rounded-full">
-        <MediaImage src={image.src} alt="" label="Thumbnail" sizes="24px" />
-      </span>
+      <span
+        className={cn("block h-2.5 w-2.5 rounded-full", active ? "bg-white" : "bg-on-surface")}
+        aria-hidden
+      />
     </Button>
   );
 }
