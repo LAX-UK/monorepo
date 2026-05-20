@@ -32,7 +32,7 @@ const createLotBodySchema = z.object({
   description: z.string().max(10000).optional(),
   medium: z.string().max(500).optional(),
   dimensions: z.string().max(200).optional(),
-  images: z.array(mediaReferenceSchema).max(20).optional(),
+  images: z.array(mediaReferenceSchema).max(50).optional(),
   sellerId: z.string().min(1).max(191).optional(),
   sellerLegalEntityId: z.string().uuid().optional(),
   categoryIds: categoryIdsSchema,
@@ -173,7 +173,7 @@ export const updateLotMarketingDetailsSchema = z.object({
   conditionReport: conditionReportSchema.nullable().optional(),
   provenance: z.array(provenanceEntrySchema).max(50).nullable().optional(),
   exhibitions: z.array(exhibitionEntrySchema).max(50).nullable().optional(),
-  imageAlts: z.array(z.string().max(500)).max(20).nullable().optional(),
+  imageAlts: z.array(z.string().max(500)).max(50).nullable().optional(),
   artistNote: z.string().max(5000).nullable().optional(),
 });
 
