@@ -1,7 +1,7 @@
 # DPIA note: Meta Conversions API (server-side)
 
 **Scope**: LAX auction platform production (`lax.bid`).  
-**Last updated**: 2026-05-16.
+**Last updated**: 2026-05-21.
 
 ## Processing activities
 
@@ -53,8 +53,8 @@ Meta (US) and Google (GTM cloud image / tooling) may process data outside the UK
 | Party | Role |
 |-------|------|
 | Meta Platforms | Ads measurement (CAPI); independent controller for matched audiences |
-| Google (Tag Manager / cloud image) | Server-side tagging runtime hosted on our infrastructure |
-| DigitalOcean | App hosting for sGTM containers |
+| Google (Tag Manager / cloud image) | Server-side tagging container image (operated by Stape on our behalf) |
+| Stape OÜ (Estonia, EEA) | Managed server-side GTM hosting and TLS termination for `gtm.lax.bid` |
 
 ## User rights
 
