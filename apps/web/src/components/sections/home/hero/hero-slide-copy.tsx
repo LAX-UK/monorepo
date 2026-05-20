@@ -33,7 +33,7 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
           {slide.dateLabel}
         </p>
       </div>
-      <Button variant="cta" size="xl" className="min-h-[44px] w-fit" asChild>
+      <Button variant="cta" size="xl" className="pointer-events-auto min-h-[44px] w-fit" asChild>
         <Link href={slide.href}>Open saleroom</Link>
       </Button>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
