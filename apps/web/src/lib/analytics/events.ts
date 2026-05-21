@@ -12,10 +12,34 @@ declare global {
   }
 }
 
+/**
+ * When the URL carries `?gtm_debug=…` or `?debug_mode=1`, attach `debug_mode: 1`
+ * to every dataLayer event. The Google tag forwards this to GA4 which routes the
+ * hit to DebugView (Admin → DebugView), making it trivial to verify tags
+ * end-to-end without a full GTM Preview session.
+ *
+ * Sticky for the rest of the session via sessionStorage so DebugView keeps
+ * working across client-side navigations after the flag is dropped from the URL.
+ */
+function isGa4DebugSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("gtm_debug") || params.get("debug_mode") === "1") {
+      window.sessionStorage.setItem("lax_ga4_debug", "1");
+      return true;
+    }
+    return window.sessionStorage.getItem("lax_ga4_debug") === "1";
+  } catch {
+    return false;
+  }
+}
+
 function pushDataLayer(payload: DataLayerEvent): string {
   if (typeof window === "undefined") return payload.event_id as string;
   window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push(payload);
+  const enriched = isGa4DebugSession() ? { ...payload, debug_mode: 1 } : payload;
+  window.dataLayer.push(enriched);
   return String(payload.event_id);
 }
 
