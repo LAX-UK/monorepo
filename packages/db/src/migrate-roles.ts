@@ -263,6 +263,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
      * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
      * outbox stays an immutable audit trail of attempted delivery. */
     await grantIfExists(client, "worker_app", "email_outbox", "INSERT, SELECT, UPDATE");
+    /** worker drains marketing_event_outbox (Meta CAPI + sGTM publisher) — same claim/ack
+     * pattern as email_outbox: INSERT for skipped audit rows, SELECT + UPDATE for poller. */
+    await grantIfExists(client, "worker_app", "marketing_event_outbox", "INSERT, SELECT, UPDATE");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }
