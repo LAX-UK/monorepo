@@ -76,6 +76,7 @@ jobs:
       TF_VAR_meta_pixel_id: ${{ secrets.META_PIXEL_ID }}
       TF_VAR_meta_capi_access_token: ${{ secrets.META_CAPI_ACCESS_TOKEN }}
       TF_VAR_meta_capi_test_event_code: ${{ secrets.META_CAPI_TEST_EVENT_CODE }}
+      TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)
