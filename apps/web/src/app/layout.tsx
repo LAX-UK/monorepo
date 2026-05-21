@@ -1,5 +1,7 @@
 import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
+import { AnalyticsDebugPanel } from "@/components/analytics/analytics-debug-panel";
 import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
+import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
@@ -8,6 +10,7 @@ import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { readConsentFromCookies } from "@/lib/analytics/consent/server";
+import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
 import { THEME_COOKIE_NAME, parseThemeCookie } from "@/lib/preferences/theme-cookie";
@@ -84,6 +87,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     >
       <head>
         <ThemeInit />
+        {isAnalyticsEnabled() ? <ConsentInit snapshot={consentSnapshot} nonce={nonce} /> : null}
       </head>
       <body>
         <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
@@ -103,6 +107,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <Toaster />
           <WebVitalsReporter />
           <ConsentShell />
+          <AnalyticsDebugPanel />
         </ConsentProvider>
       </body>
     </html>
