@@ -65,7 +65,7 @@ export default function CookiesPage() {
             <strong>Analytics</strong> — helps us understand how the site is used. When you allow
             this category, we may load <strong>Google Tag Manager (GTM)</strong> and measurement
             tags such as <strong>Google Analytics 4</strong> (for example property id{" "}
-            <code>G-DMM13MHQDY</code> as configured in our GTM container). These tools may set their
+            <code>G-GDG4D2YELR</code> as configured in our GTM container). These tools may set their
             own cookies or storage on your device.
           </li>
           <li>
