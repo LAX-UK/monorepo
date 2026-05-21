@@ -49,12 +49,7 @@ export function ConsentProvider({ children, initialSnapshot }: ConsentProviderPr
   const [showBanner, setShowBanner] = useState(initialSnapshot === null);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
-  useEffect(() => {
-    for (const p of getAnalyticsProviders()) {
-      p.pushConsentDefault();
-    }
-  }, []);
-
+  // Consent Mode default + SSR cookie restore run synchronously in <head> via ConsentInit.
   useEffect(() => {
     syncProvidersConsent(snapshot);
   }, [snapshot]);
