@@ -71,6 +71,10 @@ jobs:
       TF_VAR_verify_origin: "true"
       TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      # TEMPORARY (marketing pre-launch test): repo variable NEXT_PUBLIC_DISABLE_CONSENT_BANNER
+      # set to "true" hides the cookie banner and auto-grants consent for GA4 validation.
+      # MUST be "false" (or unset) at public launch. See apps/web/src/lib/analytics/consent/disable-banner.ts.
+      TF_VAR_next_public_disable_consent_banner: ${{ vars.NEXT_PUBLIC_DISABLE_CONSENT_BANNER || 'false' }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
       TF_VAR_gtm_sst_container_config: ${{ secrets.GTM_SST_CONTAINER_CONFIG }}
       TF_VAR_meta_pixel_id: ${{ secrets.META_PIXEL_ID }}

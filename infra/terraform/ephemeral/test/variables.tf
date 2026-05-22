@@ -351,3 +351,17 @@ variable "next_public_csp_report_uri" {
   default     = ""
   description = "Optional CSP violation report endpoint (e.g. https://o123.ingest.sentry.io/api/456/security/?sentry_key=…)."
 }
+
+variable "next_public_disable_consent_banner" {
+  # ⚠️ TEMPORARY — PRE-LAUNCH MARKETING TEST TOGGLE — REMOVE BEFORE GO-LIVE ⚠️
+  # Added at the marketing team's request to validate GA4 events without clicking
+  # the cookie banner. When "true": banner hidden + analytics/marketing consent
+  # synthesised as granted at SSR. Must be "false" (or unset) on prod at launch.
+  type        = string
+  default     = "false"
+  description = "TEMPORARY (pre-launch marketing test): set to \"true\" to hide the cookie banner and auto-grant analytics/marketing consent. Must be \"false\" before go-live (violates UK GDPR/PECR if left enabled in production)."
+  validation {
+    condition     = contains(["true", "false"], var.next_public_disable_consent_banner)
+    error_message = "next_public_disable_consent_banner must be \"true\" or \"false\"."
+  }
+}
