@@ -1,6 +1,7 @@
 "use client";
 
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
+import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
 import { Button, cn } from "@auction/ui";
 import { useEffect, useRef } from "react";
@@ -41,7 +42,7 @@ export function Filmstrip({ className }: { className?: string }) {
               i === index ? "ring-primary" : "ring-transparent hover:ring-outline-variant/40",
             )}
           >
-            <MediaImage src={img.src} alt="" label="Lot image" sizes="56px" />
+            <MediaImage src={img.src} alt="" label={GALLERY_MEDIA_PLACEHOLDER_LABEL} sizes="56px" />
           </Button>
         ))}
       </div>

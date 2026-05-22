@@ -4,7 +4,13 @@ import { BidPanelTabs } from "./bid-panel-tabs";
 
 describe("BidPanelTabs", () => {
   it("cycles focus and selection with arrow keys", () => {
-    render(<BidPanelTabs bidPanel={<div>Bids body</div>} videoPanel={<div>Video body</div>} />);
+    render(
+      <BidPanelTabs
+        bidPanel={<div>Bids body</div>}
+        videoPanel={<div>Video body</div>}
+        hasVideoStream
+      />,
+    );
     const bidsTab = screen.getByRole("tab", { name: /bids view/i });
     const videoTab = screen.getByRole("tab", { name: /video stream/i });
     bidsTab.focus();

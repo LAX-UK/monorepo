@@ -6,6 +6,7 @@ import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-aucti
 import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
 import { SalesCalendarGrid } from "@/components/sections/sales/sales-calendar-grid";
+import { SalesCalendarPagination } from "@/components/sections/sales/sales-calendar-pagination";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
 import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
@@ -23,6 +24,7 @@ import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-u
 import {
   type CalendarPrimaryTab,
   type CalendarSalesUrlState,
+  parseCalendarPage,
   parseCalendarPrimaryTab,
   parseDeliveryMode,
   parseLocationFilter,
@@ -41,6 +43,9 @@ import type { Lot } from "@auction/types";
 import { Button, SectionCta } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+const CALENDAR_PAGE_SIZE = 24;
 
 export const metadata: Metadata = metadataForStatic({
   title: "Calendar",
@@ -63,37 +68,49 @@ async function loadSaleRowsForTab(
   tab: CalendarPrimaryTab,
   categoryId: string | undefined,
   sort: "startAsc" | "createdDesc",
-): Promise<SaleListRow[]> {
+  page: number,
+): Promise<{ rows: SaleListRow[]; hasMore: boolean }> {
   const cat = categoryId ? { categoryId } : {};
   const sortParam = sort;
+  const offset = (page - 1) * CALENDAR_PAGE_SIZE;
+  const limit = CALENDAR_PAGE_SIZE + 1;
   try {
+    let rows: SaleListRow[] = [];
     switch (tab) {
       case "upcoming":
-        return await getServerSalesList({
+        rows = await getServerSalesList({
           status: "scheduled",
-          limit: 48,
+          limit,
+          offset,
           sort: sortParam,
           ...cat,
         });
+        break;
       case "live":
-        return await getServerSalesList({
+        rows = await getServerSalesList({
           status: "active",
-          limit: 48,
+          limit,
+          offset,
           sort: sortParam,
           ...cat,
         });
+        break;
       case "results":
-        return await getServerSalesList({
+        rows = await getServerSalesList({
           status: "ended",
-          limit: 48,
+          limit,
+          offset,
           sort: sortParam,
           ...cat,
         });
+        break;
       default:
-        return [];
+        return { rows: [], hasMore: false };
     }
+    const hasMore = rows.length > CALENDAR_PAGE_SIZE;
+    return { rows: rows.slice(0, CALENDAR_PAGE_SIZE), hasMore };
   } catch {
-    return [];
+    return { rows: [], hasMore: false };
   }
 }
 
@@ -103,6 +120,9 @@ export default async function SalesListPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+  if (firstString(sp.tab)?.toLowerCase() === "artists") {
+    redirect("/artists");
+  }
   const session = await getServerSessionUser();
 
   const salesLayoutResolved = await resolveMarketingLayoutView({
@@ -120,6 +140,7 @@ export default async function SalesListPage({
   const categoryId = parseSalesCategoryId(sp, categories);
 
   const tab = parseCalendarPrimaryTab(sp);
+  const calendarPage = parseCalendarPage(sp);
   const deliveryMode = parseDeliveryMode(sp);
   const location = parseLocationFilter(sp);
   const sort = parseSort(sp);
@@ -138,9 +159,11 @@ export default async function SalesListPage({
     ...(year != null ? { year } : {}),
     ...(minPrice != null ? { minPrice } : {}),
     ...(maxPrice != null ? { maxPrice } : {}),
+    ...(calendarPage > 1 ? { page: calendarPage } : {}),
   };
 
   let saleRows: SaleListRow[] = [];
+  let calendarHasMore = false;
   let newLots: Lot[] = [];
   let err: string | null = null;
 
@@ -148,10 +171,12 @@ export default async function SalesListPage({
     if (tab === "newLots") {
       const reader = await getServerLotReader();
       newLots = await reader.list({ limit: 36, sort: "createdDesc" });
-    } else if (tab === "privateSales" || tab === "artists") {
+    } else if (tab === "privateSales") {
       saleRows = [];
     } else {
-      saleRows = await loadSaleRowsForTab(tab, categoryId, sort);
+      const loaded = await loadSaleRowsForTab(tab, categoryId, sort, calendarPage);
+      saleRows = loaded.rows;
+      calendarHasMore = loaded.hasMore;
     }
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load data.";
@@ -256,19 +281,6 @@ export default async function SalesListPage({
                 />
               ) : null}
 
-              {tab === "artists" ? (
-                <MarketingEmptyState
-                  variant="marketing"
-                  title="Artists"
-                  description="Public artist profiles are coming soon. Explore auctions and lots in the meantime."
-                  action={
-                    <Button variant="outline" asChild>
-                      <Link href="/">Back to home</Link>
-                    </Button>
-                  }
-                />
-              ) : null}
-
               {tab === "newLots" ? (
                 <div className="flex flex-col gap-6">
                   {!session ? (
@@ -344,6 +356,11 @@ export default async function SalesListPage({
                   ) : (
                     <SalesAuctionList rows={rowVms} className="gap-2 sm:gap-2 lg:gap-3" />
                   )}
+                  <SalesCalendarPagination
+                    state={calendarState}
+                    page={calendarPage}
+                    hasMore={calendarHasMore}
+                  />
                 </SalesCalendarBrowse>
               ) : null}
             </div>

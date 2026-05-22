@@ -190,6 +190,15 @@ export default async function SearchPage({ searchParams }: PageProps) {
         />
 
         <div className="mx-auto max-w-[var(--container-max,1440px)] px-6 md:px-16">
+          <div className="mb-6 md:hidden">
+            <SearchFilterForm
+              variant="default"
+              initialQ={String(q)}
+              sort={sort}
+              categoryId={categoryId}
+              view={layoutView}
+            />
+          </div>
           <div className="mb-6 hidden md:block">
             <SearchFilterForm
               variant="hero"

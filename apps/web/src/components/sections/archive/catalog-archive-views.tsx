@@ -4,7 +4,9 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
+import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { Lot } from "@auction/types";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 
 export type ArchiveLotVM = {
@@ -23,7 +25,15 @@ export function ArchiveLotGridView({
   currentUserId?: string | null;
 }) {
   return (
-    <section className="mx-auto grid max-w-screen-2xl grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-2 md:gap-x-12 md:gap-y-16 lg:grid-cols-3">
+    <section
+      className={cn(
+        "mx-auto max-w-screen-2xl gap-x-4 gap-y-8 md:gap-x-12 md:gap-y-16",
+        sparseGridClasses(items.length, {
+          multi:
+            "grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-2 md:gap-x-12 md:gap-y-16 lg:grid-cols-3",
+        }),
+      )}
+    >
       {items.map((row, i) => (
         <RevealInView key={row.auction.id} variant="fadeUp" delayMs={i * 70} className="min-w-0">
           <PastAuctionCard
