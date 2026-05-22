@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import * as Sentry from "@sentry/node";
+import { initNodeSentry } from "@auction/observability";
 import pino from "pino";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 import { Server } from "socket.io";
@@ -10,9 +10,9 @@ import { bridgeRedisToSockets } from "./services/redis-bridge.js";
 
 const env = loadWsEnv();
 if (env.SENTRY_DSN_WS) {
-  Sentry.init({
+  initNodeSentry({
     dsn: env.SENTRY_DSN_WS,
-    environment: env.NODE_ENV,
+    nodeEnv: env.NODE_ENV,
     tracesSampleRate: env.NODE_ENV === "production" ? 0.05 : 1,
   });
 }

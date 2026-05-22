@@ -5,7 +5,7 @@ on:
       layer:
         type: choice
         required: true
-        options: [persistent, ephemeral]
+        options: [persistent, sentry, ephemeral]
       confirmation:
         required: true
         description: Type APPLY-PROD
@@ -81,6 +81,8 @@ jobs:
       TF_VAR_meta_capi_access_token: ${{ secrets.META_CAPI_ACCESS_TOKEN }}
       TF_VAR_meta_capi_test_event_code: ${{ secrets.META_CAPI_TEST_EVENT_CODE }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)

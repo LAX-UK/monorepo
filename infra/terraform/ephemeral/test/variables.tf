@@ -35,6 +35,12 @@ variable "sentry_team_slug" {
   type    = string
   default = "lax-engineering"
 }
+
+variable "sentry_release" {
+  type        = string
+  default     = ""
+  description = "Git SHA or release tag emitted by Sentry SDK and source-map upload workflow."
+}
 variable "repository_clone_url" {
   type    = string
   default = "https://github.com/LAX-UK/monorepo.git"
