@@ -1,9 +1,16 @@
 name: Sentry auth preflight
 description: Verify SENTRY_AUTH_TOKEN before applying the sentry Terraform layer
+inputs:
+  organization-slug:
+    description: Sentry organization slug
+    required: false
+    default: lax
 runs:
   using: composite
   steps:
     - shell: bash
+      env:
+        SENTRY_ORG_SLUG: ${{ inputs.organization-slug }}
       run: |
         token="$(printf '%s' "${SENTRY_AUTH_TOKEN:-}" | tr -d '[:space:]')"
         if [ -z "$token" ]; then
@@ -14,8 +21,24 @@ runs:
           -H "Authorization: Bearer ${token}" \
           https://sentry.io/api/0/)"
         if [ "$http_code" != "200" ]; then
-          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not a user auth token), regenerate terraform-bot with scopes org:read, team:write, project:admin, project:releases, member:read, alerts:write, then gh secret set SENTRY_AUTH_TOKEN"
+          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not a user auth token), regenerate terraform-bot with Organization Read + org:integrations (see BOOTSTRAP.md §6), then gh secret set SENTRY_AUTH_TOKEN"
           head -c 500 /tmp/sentry-health.json 2>/dev/null || true
           exit 1
+        fi
+        integrations_code="$(curl -sS -o /tmp/sentry-integrations.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/integrations/?providerKey=github")"
+        if [ "$integrations_code" = "403" ]; then
+          echo "::error::Sentry integrations API returned HTTP 403. Edit terraform-bot permissions: Organization Read + Organization Integrations Read (org:read, org:integrations), generate a new token, gh secret set SENTRY_AUTH_TOKEN"
+          head -c 500 /tmp/sentry-integrations.json 2>/dev/null || true
+          exit 1
+        fi
+        if [ "$integrations_code" != "200" ]; then
+          echo "::error::Sentry integrations API returned HTTP ${integrations_code} for org ${SENTRY_ORG_SLUG}"
+          head -c 500 /tmp/sentry-integrations.json 2>/dev/null || true
+          exit 1
+        fi
+        if ! grep -q '"provider"' /tmp/sentry-integrations.json 2>/dev/null; then
+          echo "::warning::No GitHub integration found in Sentry org ${SENTRY_ORG_SLUG}. Install GitHub under Settings → Integrations and link LAX-UK/monorepo before apply."
         fi
         echo "Sentry auth OK"
