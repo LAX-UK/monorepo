@@ -1,0 +1,21 @@
+name: Sentry auth preflight
+description: Verify SENTRY_AUTH_TOKEN before applying the sentry Terraform layer
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        token="$(printf '%s' "${SENTRY_AUTH_TOKEN:-}" | tr -d '[:space:]')"
+        if [ -z "$token" ]; then
+          echo "::error::SENTRY_AUTH_TOKEN is not set. Create the terraform-bot internal integration (infra/terraform/BOOTSTRAP.md §6) and run: gh secret set SENTRY_AUTH_TOKEN"
+          exit 1
+        fi
+        http_code="$(curl -sS -o /tmp/sentry-health.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          https://sentry.io/api/0/)"
+        if [ "$http_code" != "200" ]; then
+          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not a user auth token), regenerate terraform-bot with scopes org:read, team:write, project:admin, project:releases, member:read, alerts:write, then gh secret set SENTRY_AUTH_TOKEN"
+          head -c 500 /tmp/sentry-health.json 2>/dev/null || true
+          exit 1
+        fi
+        echo "Sentry auth OK"

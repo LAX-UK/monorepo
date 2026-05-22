@@ -140,6 +140,18 @@ Store the token:
 gh secret set SENTRY_AUTH_TOKEN
 ```
 
+Use an **Internal Integration** token (`terraform-bot`), not a personal user auth token.
+The provider calls `GET https://sentry.io/api/0/` on startup; HTTP 401 means the secret
+is missing, expired, or lacks the scopes above. After rotating the token, re-run
+**Terraform apply test → layer: sentry**.
+
+```sh
+# Quick local check (paste token at prompt)
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer {}" https://sentry.io/api/0/
+```
+
 ### Third-party integrations (optional for first apply)
 
 **Slack and PagerDuty alerts are deferred until you set the matching GitHub secrets.** With only `SENTRY_AUTH_TOKEN`, Terraform still creates projects, DSN keys, code mappings, and inbound filters — but skips issue/metric alerts.
