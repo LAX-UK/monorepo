@@ -49,15 +49,18 @@ Wire each to PagerDuty / email per your observability stack.
 
 ---
 
-## Sentry (manual fine-tuning)
+## Sentry (Terraform-managed)
 
-Terraform (`infra/terraform/modules/sentry-alerts`) provisions baseline per-project issue alerts when `SENTRY_AUTH_TOKEN` is set. For **message/tag-scoped** money alerts:
+Issue and metric alerts are defined in:
 
-1. Sentry → **Alerts** → **Create Alert** → **Issues**.
-2. Filter: `transaction:/webhooks/stripe/*` OR `message:*payout*`.
-3. Action: email `support@lax.bid`, CC on-call distro.
+- `infra/terraform/modules/sentry-issue-alerts/` — new high-severity issues, regressions
+- `infra/terraform/modules/sentry-metric-alerts/` — error rate, p95 latency, Stripe webhook 5xx, `payout_reconciled_failed`
 
-Re-test with Stripe CLI (`stripe trigger charge.dispute.created`) after changing webhook code.
+Money-path filters previously tuned manually in the Sentry UI are now codified on the **api** project. After changing webhook handlers, re-test with Stripe CLI (`stripe trigger charge.dispute.created`).
+
+### Sentry vs. App Platform logs
+
+Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins. Raw structured log lines (`pino` stdout) remain in **DigitalOcean App Platform** component logs (~30 day retention) and are not searchable from Sentry.
 
 ---
 

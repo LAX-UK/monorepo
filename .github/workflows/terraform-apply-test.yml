@@ -5,7 +5,7 @@ on:
       layer:
         type: choice
         required: true
-        options: [persistent, ephemeral]
+        options: [persistent, sentry, ephemeral]
 concurrency:
   group: terraform-test-${{ inputs.layer }}
   cancel-in-progress: false
@@ -57,6 +57,8 @@ jobs:
       # set to "true" hides the cookie banner and auto-grants consent for GA4 validation.
       # Must be "false" (or unset) before go-live. See apps/web/src/lib/analytics/consent/disable-banner.ts.
       TF_VAR_next_public_disable_consent_banner: ${{ vars.NEXT_PUBLIC_DISABLE_CONSENT_BANNER || 'false' }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/terraform-setup

@@ -50,6 +50,9 @@ importers:
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -150,6 +153,9 @@ importers:
       '@auction/email':
         specifier: workspace:^
         version: link:../../packages/email
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.13(hono@4.12.12)
@@ -199,6 +205,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -357,6 +366,9 @@ importers:
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -418,6 +430,9 @@ importers:
 
   apps/ws:
     dependencies:
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -595,6 +610,19 @@ importers:
       vitest:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/observability:
+    dependencies:
+      '@sentry/node':
+        specifier: ^10.51.0
+        version: 10.51.0
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
 
   packages/types:
     devDependencies:

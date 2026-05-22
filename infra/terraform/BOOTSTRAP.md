@@ -58,6 +58,8 @@ Terraform state keys:
 
 - `persistent-test/terraform.tfstate`
 - `persistent-prod/terraform.tfstate`
+- `sentry-test/terraform.tfstate`
+- `sentry-prod/terraform.tfstate`
 - `ephemeral-test/terraform.tfstate`
 - `ephemeral-prod/terraform.tfstate`
 
@@ -125,16 +127,63 @@ Create the Sentry organization and team used by Terraform:
 - Organization slug: `lax`
 - Team slug: `lax-engineering`
 
-Then add:
+### Internal integration (terraform-bot)
+
+In Sentry → **Settings → Developer Settings → Internal Integrations**, create
+`terraform-bot` with scopes:
+
+- `org:read`, `team:write`, `project:admin`, `project:releases`, `member:read`, `alerts:write`
+
+Store the token:
 
 ```sh
 gh secret set SENTRY_AUTH_TOKEN
 ```
 
-Sentry is optional for the first infrastructure bring-up. If
-`SENTRY_AUTH_TOKEN` is absent or empty, Terraform skips Sentry project creation;
-add the secret later and re-apply `persistent/test` and `persistent/prod` to
-create the projects.
+### Third-party integrations (optional for first apply)
+
+**Slack and PagerDuty alerts are deferred until you set the matching GitHub secrets.** With only `SENTRY_AUTH_TOKEN`, Terraform still creates projects, DSN keys, code mappings, and inbound filters — but skips issue/metric alerts.
+
+When you are ready for Slack alerts:
+
+1. Install **Slack** in Sentry → **Settings → Integrations** and connect `#alerts-engineering`.
+2. Copy the Slack **channel ID** (`C…`) from the channel About tab.
+3. Set `SENTRY_SLACK_CHANNEL_ID` on the `test` and/or `prod` GitHub environment.
+4. Re-apply `infra/terraform/sentry/{env}` — alert rules are created on the next plan/apply.
+
+For prod paging, also install **PagerDuty** in Sentry and set `PAGERDUTY_INTEGRATION_KEY` on the `prod` environment.
+
+GitHub integration (for code mappings) is still required for the full stack:
+
+- **GitHub** → link `LAX-UK/monorepo`
+
+Add GitHub environment secrets when ready:
+
+```sh
+gh secret set SENTRY_SLACK_CHANNEL_ID --env prod --body "C0123456789"
+gh secret set SENTRY_SLACK_CHANNEL_ID --env test  --body "C0123456789"
+gh secret set PAGERDUTY_INTEGRATION_KEY --env prod   # prod only, when paging is ready
+```
+
+### Apply order
+
+Sentry now lives in **`infra/terraform/sentry/{prod,test}`** (state keys
+`sentry-prod/terraform.tfstate`, `sentry-test/terraform.tfstate`). Apply **after**
+`persistent/{env}` and **before** `ephemeral/{env}` so DSN outputs can be consumed
+via `terraform_remote_state`.
+
+If `SENTRY_AUTH_TOKEN` is absent, the sentry stack creates no resources; ephemeral
+continues without DSN env vars until you add the token and apply `sentry/{env}`.
+
+**Data scrubbing** (sensitive fields) is not yet exposed by provider `0.14.13`;
+configure once in Sentry UI → Project → Security & Privacy, and rely on SDK
+`beforeSend` scrubbing in `@auction/observability`.
+
+**Cron monitors** are upserted by worker SDK check-ins using slugs from
+`sentry/{env}` outputs until `sentry_cron_monitor` lands in a future provider release.
+
+Legacy Sentry projects in `persistent/{env}` are migrated via controlled
+`terraform state mv` (see `.cursor/plans/sentry_terraform_stack_17319c6f.plan.md`).
 
 ## 7. GitHub environments and secrets
 

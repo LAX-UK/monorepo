@@ -17,6 +17,7 @@
     "@auction/api": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/types": "workspace:*",
+    "@auction/observability": "workspace:*",
     "@auction/ui": "workspace:*",
     "@auction/validators": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
