@@ -7,7 +7,9 @@ import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
+import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { Lot } from "@auction/types";
+import { cn } from "@auction/ui";
 
 export type CatalogLotViewsProps = {
   lots: Lot[];
@@ -65,7 +67,15 @@ export function CatalogLotGridView({
   loginNextPath,
 }: CatalogLotViewsProps) {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+    <ul
+      className={cn(
+        "gap-3 sm:gap-4 md:gap-8",
+        sparseGridClasses(lots.length, {
+          multi:
+            "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3",
+        }),
+      )}
+    >
       {lots.map((a) => {
         const img = a.images[0];
         const est = lotEstimateLine(a);

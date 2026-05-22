@@ -1,6 +1,7 @@
 "use client";
 
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
+import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
 import { Carousel, type CarouselApi, CarouselContent, CarouselItem } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -29,7 +30,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
       <MediaImage
         src={null}
         alt=""
-        label="Lot image"
+        label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
         tone="auto"
         className="h-full min-h-[240px] w-full"
       />
@@ -57,7 +58,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
                 <MediaImage
                   src={img.src}
                   alt={img.alt ?? ""}
-                  label="Lot image"
+                  label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
                   priority={priorityIndices.has(i)}
                   imgClassName="cursor-zoom-in bg-surface-container-low object-contain transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   sizes="(min-width: 1024px) 58vw, 100vw"
@@ -100,7 +101,7 @@ function SingleHero({
         <MediaImage
           src={image.src}
           alt={image.alt ?? ""}
-          label="Lot image"
+          label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
           priority
           imgClassName="cursor-zoom-in bg-surface-container-low transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
           sizes="(min-width: 1024px) 58vw, 100vw"
