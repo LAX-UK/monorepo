@@ -32,6 +32,10 @@ export default function FaqPage() {
         kicker={null}
         dividerUnderDate
         embedded
+        toc={faqGroups.map((group) => ({
+          id: `faq-group-${group.id}`,
+          label: group.title,
+        }))}
       >
         <FaqFlatList groups={faqGroups} />
       </LegalPage>

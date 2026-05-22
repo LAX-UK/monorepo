@@ -1,5 +1,6 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { ArchiveFilterBar } from "@/components/sections/archive/archive-filter-bar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
@@ -20,7 +21,9 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
+import { Button } from "@auction/ui";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForStatic({
@@ -173,9 +176,21 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={[]} />
         </Suspense>
-        <p className="font-body text-on-surface-variant">
-          Archive is temporarily unavailable. Check API configuration.
-        </p>
+        <MarketingEmptyState
+          variant="marketing"
+          title="Archive temporarily unavailable"
+          description="We couldn't load past auction results right now. Please try again in a moment."
+          action={
+            <>
+              <Button variant="cta" asChild>
+                <Link href="/archive">Try again</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/">Back to home</Link>
+              </Button>
+            </>
+          }
+        />
       </main>
     );
   }

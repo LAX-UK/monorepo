@@ -1,5 +1,8 @@
 import { CatalogByView } from "@/components/marketing/catalog-by-view";
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { Button } from "@auction/ui";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import { SaleroomLotsGrid } from "./saleroom-lots-grid";
@@ -13,6 +16,7 @@ type Props = {
   /** OCP: callers render action slot per lot (Bid vs Results). */
   renderActions?: (lot: SaleLotCardVM) => ReactNode;
   emptyMessage?: string;
+  clearFiltersHref?: string | null;
 };
 
 export function SaleroomCatalogLotsByView({
@@ -21,8 +25,23 @@ export function SaleroomCatalogLotsByView({
   renderCorner,
   renderActions,
   emptyMessage,
+  clearFiltersHref,
 }: Props) {
-  const resolvedEmpty = emptyMessage ?? "No lots in this section yet.";
+  const resolvedEmpty =
+    lots.length === 0 && clearFiltersHref ? (
+      <MarketingEmptyState
+        variant="marketing"
+        title={emptyMessage ?? "No lots match these filters"}
+        description="Try clearing filters to see all lots in this sale."
+        action={
+          <Button variant="outline" asChild>
+            <Link href={clearFiltersHref}>Clear filters</Link>
+          </Button>
+        }
+      />
+    ) : (
+      (emptyMessage ?? "No lots in this section yet.")
+    );
 
   return (
     <CatalogByView

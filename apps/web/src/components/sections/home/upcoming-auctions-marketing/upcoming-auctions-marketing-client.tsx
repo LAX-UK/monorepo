@@ -7,7 +7,9 @@ import { MarketingListToolbar } from "@/components/marketing/marketing-list-tool
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Calendar, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -158,7 +160,15 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
               ))}
             </ul>
           ) : (
-            <div className="grid w-full auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-5 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4 xl:gap-6">
+            <div
+              className={cn(
+                "w-full auto-rows-fr items-stretch gap-3 sm:gap-5 md:gap-5 lg:gap-6 xl:gap-6",
+                sparseGridClasses(visible.length, {
+                  multi:
+                    "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:gap-5 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4",
+                }),
+              )}
+            >
               {visible.map((tile) => (
                 <UpcomingAuctionMarketingCard
                   key={tile.id}

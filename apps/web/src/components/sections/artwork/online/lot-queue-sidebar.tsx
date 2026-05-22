@@ -6,6 +6,8 @@ import { cn } from "@auction/ui";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 
+export { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
+
 type Props = {
   current: LotQueueCardVM;
   upNext: LotQueueCardVM | null;
@@ -113,9 +115,6 @@ export function LotQueueSidebar({
           <div className="space-y-2" aria-busy="true" aria-label="Loading queue">
             <div className="h-3 w-24 animate-pulse rounded bg-surface-container-high" />
             <div className="h-24 w-full animate-pulse rounded-lg bg-surface-container-high" />
-            <p className="font-body text-xs text-on-surface-variant">
-              Sale catalogue could not be loaded. Refresh the page or try again shortly.
-            </p>
           </div>
         ) : queue.length > 0 ? (
           <div className="flex w-full flex-col gap-3">

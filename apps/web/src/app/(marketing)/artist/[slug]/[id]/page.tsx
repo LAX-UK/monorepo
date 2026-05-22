@@ -5,6 +5,7 @@ import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
+import { ArtistWorksEmptyState } from "@/components/sections/artists/artist-works-empty-state";
 import { ArtistWorksGrid } from "@/components/sections/artists/artist-works-grid";
 import { normalizeDecadeSegment, slugifyNationality } from "@/lib/artists/directory-presets";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
@@ -186,7 +187,7 @@ export default async function ArtistPage({ params }: PageProps) {
         />
         <section id="works">
           {sellerLots.length === 0 ? (
-            <p className="font-body text-on-surface-variant">No public lots for this seller yet.</p>
+            <ArtistWorksEmptyState />
           ) : (
             <>
               <ViewItemListTracker
@@ -430,13 +431,7 @@ export default async function ArtistPage({ params }: PageProps) {
       ) : null}
       <section id="works">
         {sellerLots.length === 0 ? (
-          <p className="rounded-xl border border-border-hairline bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
-            No public lots for this profile yet. Browse{" "}
-            <Link href="/" className="text-primary underline-offset-4 hover:underline">
-              live salerooms
-            </Link>
-            .
-          </p>
+          <ArtistWorksEmptyState />
         ) : (
           <>
             <ViewItemListTracker

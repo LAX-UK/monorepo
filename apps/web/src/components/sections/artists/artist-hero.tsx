@@ -43,13 +43,9 @@ export function ArtistHero({ vm, actions }: Props) {
         <DisplayHeading
           as="h1"
           size="lg"
-          className="font-semibold leading-[0.95] tracking-tighter [font-size:clamp(3rem,6vw,6rem)]"
+          className="line-clamp-3 text-balance font-semibold leading-[0.95] tracking-tighter [font-size:clamp(3rem,6vw,6rem)]"
         >
-          {vm.name.split(" ").map((w, i) => (
-            <span key={`${i}-${w}`} className="block">
-              {w}
-            </span>
-          ))}
+          {vm.name}
         </DisplayHeading>
         {vm.tagline ? (
           <p className="max-w-[420px] font-headline text-lg font-light italic leading-relaxed text-on-surface-variant">

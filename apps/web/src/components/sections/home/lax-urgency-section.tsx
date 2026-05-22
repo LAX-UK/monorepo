@@ -1,4 +1,5 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
@@ -99,11 +100,32 @@ export function LaxUrgencySection({
   watchedLotIds,
   loginNextPath = "/",
 }: Props) {
-  if (items.length === 0) return null;
-
   const headingId = COPY[variant].headingId;
   const switcherValue = urgencySwitcherValue(layoutView);
   const isList = switcherValue === "list";
+
+  if (items.length === 0) {
+    return (
+      <section
+        aria-labelledby={headingId}
+        className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-10 md:px-10 lg:px-14"
+      >
+        <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
+          <UrgencySectionHeader variant={variant} switcherValue={switcherValue} />
+          <MarketingEmptyState
+            variant="marketing"
+            title={`No ${COPY[variant].heading.toLowerCase()} right now`}
+            description="Check back soon or browse the full catalogue."
+            action={
+              <Button variant="outline" asChild>
+                <Link href={COPY[variant].viewAllHref}>View catalogue</Link>
+              </Button>
+            }
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

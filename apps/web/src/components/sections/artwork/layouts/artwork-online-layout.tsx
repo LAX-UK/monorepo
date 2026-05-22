@@ -10,12 +10,14 @@ import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tab
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
+import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
 import { LotSessionStatePill } from "@/components/sections/artwork/online/lot-session-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import type { Lot, Sale } from "@auction/types";
+import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
@@ -43,6 +45,8 @@ type Props = {
   bidPanel: ReactNode;
   /** Optional strip above the bid panel (e.g. condition report request). */
   bidPanelTop?: ReactNode;
+  /** When true, show the Video Stream tab in the bid panel. */
+  hasVideoStream?: boolean;
 };
 
 export function ArtworkOnlineLayout({
@@ -64,6 +68,7 @@ export function ArtworkOnlineLayout({
   followSlot,
   bidPanel,
   bidPanelTop,
+  hasVideoStream = false,
 }: Props) {
   const lifecycleLot = {
     id: auction.id,
@@ -74,6 +79,8 @@ export function ArtworkOnlineLayout({
     reservePrice: auction.reservePrice,
     currentPrice: auction.currentPrice,
   };
+
+  const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
 
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
@@ -100,23 +107,53 @@ export function ArtworkOnlineLayout({
           />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)] lg:items-start lg:gap-6 xl:gap-8">
-          <LotQueueSidebar
-            current={queueCurrent}
-            upNext={queueUpNext}
-            queue={queueRest}
-            isSaleQueueLoading={isSaleQueueLoading}
-            className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2"
-          />
-          <div className="order-1 min-w-0 lg:col-start-2 lg:row-start-1">
-            <LotImageArea lot={auction} />
+        <div
+          className={cn(
+            "mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:items-start lg:gap-6 xl:gap-8",
+            showQueue
+              ? "lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)]"
+              : "lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]",
+          )}
+        >
+          {showQueue ? (
+            <LotQueueSidebar
+              current={queueCurrent}
+              upNext={queueUpNext}
+              queue={queueRest}
+              isSaleQueueLoading={isSaleQueueLoading}
+              className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2"
+            />
+          ) : null}
+          <div
+            className={cn(
+              "order-1 min-w-0",
+              showQueue ? "lg:col-start-2 lg:row-start-1" : "lg:col-start-1 lg:row-start-1",
+            )}
+          >
+            <LotImageArea lot={auction} wide={!showQueue} />
           </div>
-          <div className="order-3 mx-auto w-full max-w-[640px] lg:col-start-2 lg:row-start-2 lg:max-w-[786px]">
+          <div
+            className={cn(
+              "order-3 mx-auto w-full max-w-[640px]",
+              showQueue
+                ? "lg:col-start-2 lg:row-start-2 lg:max-w-[786px]"
+                : "lg:col-start-1 lg:row-start-2 lg:max-w-[900px]",
+            )}
+          >
             <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
           </div>
-          <div className="order-2 w-full min-w-0 pb-6 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:pb-24 xl:pl-2">
+          <div
+            className={cn(
+              "order-2 w-full min-w-0 pb-6 lg:row-span-2 lg:row-start-1 lg:pb-24 xl:pl-2",
+              showQueue ? "lg:col-start-3" : "lg:col-start-2",
+            )}
+          >
             {bidPanelTop ? <div className="mb-4">{bidPanelTop}</div> : null}
-            <BidPanelTabs bidPanel={bidPanel} videoPanel={<OnlineVideoStreamPanel />} />
+            <BidPanelTabs
+              bidPanel={bidPanel}
+              videoPanel={<OnlineVideoStreamPanel />}
+              hasVideoStream={hasVideoStream}
+            />
             <div className="mt-6">
               <LotActionsRow
                 followSlot={followSlot}

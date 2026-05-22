@@ -50,6 +50,11 @@ export function SaleroomCatalogToolbar({ basePath }: Props) {
       value: "upcoming",
       href: buildHref(basePath, "upcoming", new URLSearchParams(params?.toString() ?? "")),
     },
+    {
+      label: "Ended",
+      value: "ended",
+      href: buildHref(basePath, "ended", new URLSearchParams(params?.toString() ?? "")),
+    },
   ];
 
   return (
