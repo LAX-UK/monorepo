@@ -613,6 +613,9 @@ importers:
 
   packages/observability:
     dependencies:
+      '@sentry/core':
+        specifier: ^10.51.0
+        version: 10.51.0
       '@sentry/node':
         specifier: ^10.51.0
         version: 10.51.0
