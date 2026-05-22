@@ -10,5 +10,5 @@ terraform {
 }
 
 provider "sentry" {
-  token = var.sentry_auth_token
+  token = trimspace(var.sentry_auth_token)
 }
