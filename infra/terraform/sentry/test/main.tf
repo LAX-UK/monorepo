@@ -1,6 +1,7 @@
 locals {
-  environment      = "test"
-  enabled          = var.sentry_auth_token != ""
+  environment = "test"
+  # Token presence is safe to expose for count/for_each gating; the token itself stays sensitive.
+  enabled = nonsensitive(trimspace(var.sentry_auth_token) != "")
   enable_slack     = var.slack_channel_id != ""
   enable_pagerduty = false
   enable_alerts    = local.enable_slack
