@@ -19,8 +19,8 @@ variable "sentry_team_slug" {
 
 variable "github_integration_name" {
   type        = string
-  default     = "GitHub"
-  description = "GitHub integration display name in Sentry."
+  default     = "LAX-UK"
+  description = "GitHub org name as shown in Sentry Integrations (usually the GitHub org slug, e.g. LAX-UK)."
 }
 
 variable "slack_integration_name" {

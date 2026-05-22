@@ -130,9 +130,20 @@ Create the Sentry organization and team used by Terraform:
 ### Internal integration (terraform-bot)
 
 In Sentry → **Settings → Developer Settings → Internal Integrations**, create
-`terraform-bot` with scopes:
+`terraform-bot` and grant these **Permissions** (Read or higher where noted):
 
-- `org:read`, `team:write`, `project:admin`, `project:releases`, `member:read`, `alerts:write`
+| Permission | Level | API scope |
+|---|---|---|
+| Organization | **Read** | `org:read` |
+| Organization Integrations | **Read** | `org:integrations` |
+| Team | Write | `team:write` |
+| Project | Admin | `project:admin` |
+| Release | Admin | `project:releases` |
+| Member | Read | `member:read` |
+| Alerts | Write | `alerts:write` |
+
+**Organization Read** is required — without it, Terraform gets HTTP 403 on
+`data.sentry_organization_integration.github`. After editing permissions, **generate a new token** (existing tokens do not pick up permission changes).
 
 Store the token:
 
@@ -150,7 +161,19 @@ is missing, expired, or lacks the scopes above. After rotating the token, re-run
 read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
   xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
   -H "Authorization: Bearer {}" https://sentry.io/api/0/
+
+# Integrations list (must return 200, not 403)
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer {}" \
+  "https://sentry.io/api/0/organizations/lax/integrations/?providerKey=github"
 ```
+
+### GitHub integration (required before sentry apply)
+
+Install **GitHub** in Sentry → **Settings → Integrations** and link `LAX-UK/monorepo`.
+The integration **name** in Sentry is your GitHub org slug (`LAX-UK`), not the string
+`GitHub`. Terraform defaults `github_integration_name` to `LAX-UK`.
 
 ### Third-party integrations (optional for first apply)
 
@@ -165,9 +188,7 @@ When you are ready for Slack alerts:
 
 For prod paging, also install **PagerDuty** in Sentry and set `PAGERDUTY_INTEGRATION_KEY` on the `prod` environment.
 
-GitHub integration (for code mappings) is still required for the full stack:
-
-- **GitHub** → link `LAX-UK/monorepo`
+GitHub integration (for code mappings) must be installed before sentry apply — see above.
 
 Add GitHub environment secrets when ready:
 
