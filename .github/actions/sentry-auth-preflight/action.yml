@@ -30,19 +30,43 @@ runs:
           head -c 500 /tmp/sentry-health.json 2>/dev/null || true
           exit 1
         fi
-        # Internal integration tokens cannot list org integrations (control silo 403).
-        # Verify org access via team lookup instead.
-        team_code="$(curl -sS -o /tmp/sentry-team.json -w '%{http_code}' \
+        org_code="$(curl -sS -o /tmp/sentry-org.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/${SENTRY_TEAM_SLUG}/")"
-        if [ "$team_code" = "403" ] || [ "$team_code" = "401" ]; then
-          echo "::error::Sentry org API returned HTTP ${team_code} for org=${SENTRY_ORG_SLUG} team=${SENTRY_TEAM_SLUG}. Confirm the org slug, update gh secret set SENTRY_AUTH_TOKEN --env test, and regenerate the terraform-bot token."
-          head -c 500 /tmp/sentry-team.json 2>/dev/null || true
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/")"
+        if [ "$org_code" != "200" ]; then
+          echo "::error::Sentry org lookup returned HTTP ${org_code} for slug '${SENTRY_ORG_SLUG}'. Confirm the slug in Sentry → Settings → General (URL is sentry.io/settings/{slug}/)."
+          head -c 500 /tmp/sentry-org.json 2>/dev/null || true
           exit 1
         fi
-        if [ "$team_code" != "200" ]; then
-          echo "::error::Sentry team lookup returned HTTP ${team_code} for org=${SENTRY_ORG_SLUG} team=${SENTRY_TEAM_SLUG}"
-          head -c 500 /tmp/sentry-team.json 2>/dev/null || true
+        teams_code="$(curl -sS -o /tmp/sentry-teams.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
+        if [ "$teams_code" != "200" ]; then
+          echo "::error::Could not list teams for org '${SENTRY_ORG_SLUG}' (HTTP ${teams_code}). Check terraform-bot Team permission and org slug."
+          head -c 500 /tmp/sentry-teams.json 2>/dev/null || true
+          exit 1
+        fi
+        if ! SENTRY_ORG_SLUG="$SENTRY_ORG_SLUG" python3 - "$SENTRY_TEAM_SLUG" <<'PY'
+        import json
+        import os
+        import sys
+
+        want = sys.argv[1]
+        org = os.environ["SENTRY_ORG_SLUG"]
+        teams = json.load(open("/tmp/sentry-teams.json"))
+        slugs = [t.get("slug") for t in teams if t.get("slug")]
+        if want in slugs:
+            sys.exit(0)
+        print(f"::error::Team slug '{want}' not found in org '{org}'.")
+        print("Teams visible to this token (use slug, not display name):")
+        for t in teams:
+            print(f"  slug={t.get('slug')}  name={t.get('name')}")
+        if not teams:
+            print("  (none — create a team under Sentry → Settings → Teams)")
+        print("Update sentry_team_slug in infra/terraform/sentry/{env}/variables.tf to match.")
+        sys.exit(1)
+        PY
+        then
           exit 1
         fi
         if [ -z "${SENTRY_GITHUB_INTEGRATION_ID:-}" ] && [ -z "${TF_VAR_github_integration_id:-}" ]; then

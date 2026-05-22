@@ -122,10 +122,35 @@ Apple Sign-In is disabled for v1, but the future redirect URIs are:
 
 ## 6. Sentry
 
-Create the Sentry organization and team used by Terraform:
+Create the Sentry organization and team used by Terraform. **Confirm slugs in the Sentry UI** — do not guess:
 
-- Organization slug: `lax-bid`
-- Team slug: `lax-engineering`
+| Setting | Where to find it | Terraform default |
+|---|---|---|
+| Organization slug | Settings → General Settings (URL: `sentry.io/settings/{slug}/`) | `lax-bid` |
+| Team slug | Settings → Teams → pick team → slug in URL or team settings | `lax-engineering` |
+
+If the team does not exist yet, create it under **Settings → Teams** before running apply.
+Projects are assigned to this team automatically.
+
+**Important:** the **slug** is not always the same as the display name. After creating or
+renaming a team, open it in Sentry and copy the slug from the URL:
+`sentry.io/settings/lax-bid/teams/{slug}/`
+
+### Validate before first apply
+
+Check each value against your Sentry / GitHub setup:
+
+| Assumption | Default | Required now? | How to verify |
+|---|---|---|---|
+| Org slug | `lax-bid` | **Yes** | Settings → General |
+| Team slug | `lax-engineering` | **Yes** | Settings → Teams (404 = wrong slug or team missing) |
+| GitHub repo for code mappings | `LAX-UK/monorepo` | Only if `SENTRY_GITHUB_INTEGRATION_ID` set | Settings → Integrations → GitHub |
+| GitHub integration ID | (secret) | Optional | Personal token curl — see below |
+| Slack integration name | `Slack` | No (alerts skipped) | When enabling Slack later |
+| Slack channel | `#alerts-engineering` | No | When `SENTRY_SLACK_CHANNEL_ID` set |
+| PagerDuty service | `lax-primary` | No (prod paging deferred) | When `PAGERDUTY_INTEGRATION_KEY` set |
+| Alert email | `support@lax.bid` | No (alerts skipped) | When alerts enabled |
+| Project names | `lax-test-{web,api,auth,ws,worker}` | Auto-created | No pre-existing projects needed |
 
 ### Internal integration (terraform-bot)
 
