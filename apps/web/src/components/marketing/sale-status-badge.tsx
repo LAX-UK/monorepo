@@ -1,6 +1,8 @@
 "use client";
 
 import { SaleCalendarCountdown } from "@/components/sections/sales/sale-calendar-countdown";
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { LiveDot, cn } from "@auction/ui";
 
 type SaleStatusBadgeProps = {
@@ -10,17 +12,23 @@ type SaleStatusBadgeProps = {
 
 /** Live overlay on sale media — countdown until sale end. */
 export function SaleStatusBadge({ countdownEndIso, className }: SaleStatusBadgeProps) {
+  const tone = useOverlayTone("bottomLeft");
+
   return (
     <div
       className={cn(
-        "absolute bottom-3 left-3 flex min-h-8 items-center gap-1 rounded bg-scrim-hero-soft px-2",
+        overlayPillClasses(tone),
+        "absolute bottom-3 left-3 flex min-h-8 items-center gap-1 rounded px-2",
         className,
       )}
+      {...overlayToneProps(tone)}
       aria-label="Live auction, time remaining"
     >
       <LiveDot size="sm" className="shrink-0" />
-      <span className="font-body text-sm font-semibold leading-4 text-cta-on">Live</span>
-      <SaleCalendarCountdown endIso={countdownEndIso} className="text-cta-on" />
+      <span className="font-body text-sm font-semibold leading-4 text-[color:var(--overlay-fg)]">
+        Live
+      </span>
+      <SaleCalendarCountdown endIso={countdownEndIso} className="text-[color:var(--overlay-fg)]" />
     </div>
   );
 }

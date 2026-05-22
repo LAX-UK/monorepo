@@ -1,5 +1,5 @@
-import { LotCard } from "@/components/marketing/lot-card";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
+import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { Button } from "@auction/ui/components/button";
@@ -23,7 +23,7 @@ export function EditorsPickMarketingCard({
   const initialWatching = watchedLotIds.includes(lot.id);
 
   return (
-    <LotCard.HeroTile
+    <MarketingLotTile
       lotId={lot.id}
       index={index}
       href={lot.href}

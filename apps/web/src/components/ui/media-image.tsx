@@ -4,7 +4,7 @@ import { MediaPlaceholder, type MediaPlaceholderProps } from "@/components/ui/me
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { cn } from "@auction/ui";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { type Ref, useEffect, useState } from "react";
 
 type MediaImageProps = {
   src: string | null | undefined;
@@ -19,6 +19,12 @@ type MediaImageProps = {
   priority?: boolean | undefined;
   onClick?: (() => void) | undefined;
   placeholderClassName?: string | undefined;
+  /** Ref to the underlying rendered `<img>` (for overlay tone sampling). */
+  imgRef?: Ref<HTMLImageElement>;
+  /** Fired after internal loaded state transitions. */
+  onImageLoad?: (() => void) | undefined;
+  /** Set for canvas sampling only; omit for prod image loading (default). */
+  crossOrigin?: "anonymous";
 };
 
 export function MediaImage({
@@ -34,6 +40,9 @@ export function MediaImage({
   priority = false,
   onClick,
   placeholderClassName,
+  imgRef,
+  onImageLoad,
+  crossOrigin,
 }: MediaImageProps) {
   const normalizedSrc = resolveMediaSrc(src);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
@@ -68,12 +77,17 @@ export function MediaImage({
       ) : null}
       {normalizedSrc && status !== "error" ? (
         <Image
+          ref={imgRef}
           src={normalizedSrc}
           alt={alt}
           fill
           sizes={sizes}
           priority={priority}
-          onLoad={() => setStatus("loaded")}
+          {...(crossOrigin ? { crossOrigin } : {})}
+          onLoad={() => {
+            setStatus("loaded");
+            onImageLoad?.();
+          }}
           onError={() => setStatus("error")}
           onClick={onClick}
           className={cn(
