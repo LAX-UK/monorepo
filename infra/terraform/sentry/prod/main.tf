@@ -5,6 +5,7 @@ locals {
   enable_slack     = var.slack_channel_id != ""
   enable_pagerduty = var.pagerduty_integration_key != ""
   enable_alerts    = local.enable_slack || local.enable_pagerduty
+  enable_github    = trimspace(var.github_integration_id) != ""
 }
 
 module "catalog" {
@@ -17,7 +18,8 @@ module "org" {
 
   organization_slug            = var.sentry_organization_slug
   team_slug                    = var.sentry_team_slug
-  github_integration_name      = var.github_integration_name
+  github_integration_id        = var.github_integration_id
+  enable_github                = local.enable_github
   slack_integration_name       = var.slack_integration_name
   pagerduty_integration_name   = var.pagerduty_integration_name
   github_repository_identifier = var.github_repository_identifier
@@ -53,6 +55,7 @@ module "app_projects" {
   platform              = each.value.platform
   github_integration_id = module.org[0].github_integration_id
   github_repository_id  = module.org[0].github_repository_id
+  enable_code_mappings  = local.enable_github
   inbound_filters       = module.catalog.inbound_filters
 }
 

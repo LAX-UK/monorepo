@@ -17,7 +17,7 @@ variable "sentry_auth_token" {
 }
 variable "sentry_organization_slug" {
   type    = string
-  default = "lax"
+  default = "lax-bid"
 }
 variable "sentry_team_slug" {
   type    = string

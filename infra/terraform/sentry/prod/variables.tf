@@ -7,7 +7,7 @@ variable "sentry_auth_token" {
 
 variable "sentry_organization_slug" {
   type        = string
-  default     = "lax"
+  default     = "lax-bid"
   description = "Sentry organization slug."
 }
 
@@ -17,10 +17,10 @@ variable "sentry_team_slug" {
   description = "Sentry team slug."
 }
 
-variable "github_integration_name" {
+variable "github_integration_id" {
   type        = string
-  default     = "LAX-UK"
-  description = "GitHub org name as shown in Sentry Integrations (usually the GitHub org slug, e.g. LAX-UK)."
+  default     = ""
+  description = "GitHub org integration ID from Sentry UI. Internal integration tokens cannot list integrations — set SENTRY_GITHUB_INTEGRATION_ID. Leave empty to skip code mappings."
 }
 
 variable "slack_integration_name" {
