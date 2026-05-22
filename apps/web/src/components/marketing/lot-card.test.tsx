@@ -1,4 +1,5 @@
 import { LotCard } from "@/components/marketing/lot-card";
+import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -25,9 +26,9 @@ describe("LotCard", () => {
     expect(screen.getByTestId("img")).toBeInTheDocument();
   });
 
-  it("HeroTile exposes the marketing hero tile link", () => {
+  it("MarketingLotTile exposes the marketing hero tile link", () => {
     render(
-      <LotCard.HeroTile
+      <MarketingLotTile
         lotId="1"
         index={0}
         href="/lot/a"
