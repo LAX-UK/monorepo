@@ -15,6 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@sentry/core": "^10.51.0",
     "@sentry/node": "^10.51.0"
   },
   "devDependencies": {
