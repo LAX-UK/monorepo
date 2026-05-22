@@ -33,7 +33,10 @@ locals {
     }
   } : {}
 
-  warning_actions = var.enable_slack ? [local.slack_action] : [local.email_action]
+  warning_actions = concat(
+    var.enable_slack ? [local.slack_action] : [],
+    var.enable_slack ? [] : [local.email_action],
+  )
 
   critical_actions = concat(
     var.enable_slack ? [local.slack_action] : [],

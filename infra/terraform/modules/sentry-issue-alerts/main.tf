@@ -13,7 +13,7 @@ resource "sentry_issue_alert" "new_issue_high_severity" {
   filters_v2 = [
     {
       level = {
-        match = "GTE"
+        match = "GREATER_OR_EQUAL"
         level = "error"
       }
     },
