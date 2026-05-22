@@ -1,6 +1,7 @@
 "use client";
 
 import type { MarketingEventName } from "@auction/types";
+import { isConsentBannerDisabled } from "./consent/disable-banner";
 import { readConsentFromDocument } from "./consent-headers";
 import { isAnalyticsEnabled } from "./is-enabled";
 
@@ -59,11 +60,17 @@ function consentAllowsAnalytics(): boolean {
 
 function guardConversion(): boolean {
   if (!isAnalyticsEnabled()) return false;
+  // TEMPORARY (PRE-LAUNCH TESTING ONLY): bypass consent guards when banner is disabled.
+  // REMOVE BEFORE GOING LIVE — violates UK GDPR/PECR if left enabled in production.
+  if (isConsentBannerDisabled()) return true;
   return consentAllowsMarketing() && consentAllowsAnalytics();
 }
 
 function guardAnalytics(): boolean {
   if (!isAnalyticsEnabled()) return false;
+  // TEMPORARY (PRE-LAUNCH TESTING ONLY): bypass consent guards when banner is disabled.
+  // REMOVE BEFORE GOING LIVE — violates UK GDPR/PECR if left enabled in production.
+  if (isConsentBannerDisabled()) return true;
   return consentAllowsAnalytics();
 }
 

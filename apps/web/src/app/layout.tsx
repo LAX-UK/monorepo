@@ -9,7 +9,7 @@ import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
-import { readConsentFromCookies } from "@/lib/analytics/consent/server";
+import { readEffectiveConsentFromCookies } from "@/lib/analytics/consent/server";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
@@ -74,7 +74,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
   const cookieStore = await cookies();
   const themePref = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
-  const consentSnapshot = readConsentFromCookies(cookieStore);
+  // NOTE: `readEffectiveConsentFromCookies` honours the TEMPORARY pre-launch toggle
+  // `NEXT_PUBLIC_DISABLE_CONSENT_BANNER=true` (marketing test only — see disable-banner.ts).
+  const consentSnapshot = readEffectiveConsentFromCookies(cookieStore);
   const consentProviderKey =
     consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
