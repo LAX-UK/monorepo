@@ -292,6 +292,7 @@ export default async function ArtworkPage({ params }: PageProps) {
                   kycApproved={kycApprovedForCr}
                 />
               }
+              hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
             />
           </OnlineLotLifecycleProvider>
         )}

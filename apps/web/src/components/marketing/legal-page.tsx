@@ -1,3 +1,4 @@
+import { PolicyMobileToc } from "@/components/marketing/policy-mobile-toc";
 import { SITE_NAME } from "@/lib/brand";
 import { cn } from "@auction/ui";
 import type { TocNavItem } from "@auction/ui";
@@ -66,9 +67,12 @@ export function LegalPage({
         </p>
       ) : null}
       {toc && toc.length > 0 ? (
-        <div className="mb-10 lg:float-right lg:mb-4 lg:ml-8 lg:w-56 lg:pl-2">
-          <TocNav items={toc} sticky={false} />
-        </div>
+        <>
+          <PolicyMobileToc items={toc} />
+          <div className="mb-10 hidden lg:float-right lg:mb-4 lg:ml-8 lg:block lg:w-56 lg:pl-2">
+            <TocNav items={toc} sticky={false} />
+          </div>
+        </>
       ) : null}
       <div className="clear-both space-y-6 font-body text-sm leading-relaxed text-on-surface-variant md:text-base">
         {children}

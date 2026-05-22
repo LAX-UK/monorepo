@@ -7,7 +7,6 @@ export const CALENDAR_PRIMARY_TABS = [
   "results",
   "newLots",
   "privateSales",
-  "artists",
 ] as const;
 export type CalendarPrimaryTab = (typeof CALENDAR_PRIMARY_TABS)[number];
 
@@ -25,6 +24,7 @@ export type CalendarSalesUrlParams = {
   maxPrice?: number;
   /** Catalogue layout for calendar browse (grid = default card rows, list = compact). */
   view?: "grid" | "list";
+  page?: number;
 };
 
 function firstString(v: string | string[] | undefined): string | undefined {
@@ -89,6 +89,13 @@ export function parseYear(sp: Record<string, string | string[] | undefined>): nu
   return n;
 }
 
+export function parseCalendarPage(sp: Record<string, string | string[] | undefined>): number {
+  const v = firstString(sp.page);
+  if (!v) return 1;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 500) : 1;
+}
+
 export function parsePriceRange(sp: Record<string, string | string[] | undefined>): {
   minPrice?: number;
   maxPrice?: number;
@@ -115,6 +122,7 @@ export type CalendarSalesUrlState = {
   minPrice?: number;
   maxPrice?: number;
   view: "grid" | "list";
+  page?: number;
 };
 
 /** Patch type allows explicit `undefined` to clear keys (exactOptionalPropertyTypes). */
@@ -122,7 +130,14 @@ export type CalendarSalesUrlPatch = {
   [K in keyof CalendarSalesUrlState]?: CalendarSalesUrlState[K] | undefined;
 };
 
-const CLEARABLE_KEYS = new Set<string>(["categoryId", "month", "year", "minPrice", "maxPrice"]);
+const CLEARABLE_KEYS = new Set<string>([
+  "categoryId",
+  "month",
+  "year",
+  "minPrice",
+  "maxPrice",
+  "page",
+]);
 
 /** Merge partial updates; `undefined` in patch removes optional query keys (exactOptionalPropertyTypes-safe). */
 export function calendarSalesHrefFromState(
@@ -163,6 +178,7 @@ export function calendarSalesHref(params: CalendarSalesUrlParams): string {
   if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
   if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
   if (params.view === "list") q.set("view", "list");
+  if (params.page != null && params.page > 1) q.set("page", String(params.page));
   const qs = q.toString();
   return qs ? `/sales?${qs}` : "/sales";
 }

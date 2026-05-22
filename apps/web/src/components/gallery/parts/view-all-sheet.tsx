@@ -1,6 +1,7 @@
 "use client";
 
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
+import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
 import { Button, cn } from "@auction/ui";
 import {
@@ -109,7 +110,7 @@ function GridThumb({
         active && "ring-2 ring-primary ring-offset-2",
       )}
     >
-      <MediaImage src={image.src} alt="" label="Lot image" sizes="120px" />
+      <MediaImage src={image.src} alt="" label={GALLERY_MEDIA_PLACEHOLDER_LABEL} sizes="120px" />
     </Button>
   );
 }

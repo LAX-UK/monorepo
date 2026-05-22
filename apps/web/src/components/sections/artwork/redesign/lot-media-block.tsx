@@ -1,9 +1,11 @@
 import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
 import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
 import type { Lot } from "@auction/types";
+import { cn } from "@auction/ui";
 
 type Props = {
   lot: Pick<Lot, "id" | "title" | "images" | "marketingDetails" | "dimensions">;
+  wide?: boolean;
 };
 
 /** e.g. "120 x 90 cm" or "800×600" → width/height for aspect-ratio */
@@ -22,16 +24,19 @@ function parseDimensionsAspect(
 /** Figma: ~786×502 hero; not sticky. Wraps the lightbox + thumbs stack.
  * Uses catalog `dimensions` for aspect when two numbers are present; else Figma ratio.
  */
-export function LotMediaBlock({ lot }: Props) {
+export function LotMediaBlock({ lot, wide = false }: Props) {
   const custom = parseDimensionsAspect(lot.dimensions);
   const aspectStyle = custom
     ? ({ aspectRatio: `${custom.w} / ${custom.h}` } as const)
-    : ({ aspectRatio: "786 / 502" } as const);
+    : ({ aspectRatio: wide ? "900 / 575" : "786 / 502" } as const);
 
   return (
     <LotHeroViewTransitionShell
       lotId={lot.id}
-      className="relative w-full max-w-[786px] overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full"
+      className={cn(
+        "relative w-full overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full",
+        wide ? "max-w-[900px]" : "max-w-[786px]",
+      )}
       style={aspectStyle}
     >
       <div className="absolute inset-0 min-h-0">
