@@ -1,8 +1,8 @@
 "use client";
 
 import type { MarketingEventName } from "@auction/types";
-import { isConsentBannerDisabled } from "./consent/disable-banner";
 import { readConsentFromDocument } from "./consent-headers";
+import { isConsentBannerDisabled } from "./consent/disable-banner";
 import { isAnalyticsEnabled } from "./is-enabled";
 
 type DataLayerEvent = Record<string, unknown>;
