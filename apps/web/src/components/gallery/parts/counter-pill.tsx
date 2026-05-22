@@ -1,11 +1,12 @@
 "use client";
 
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { PositionIndicatorProps } from "@auction/types";
 import { formatGalleryIndex } from "@auction/types";
 import { cn } from "@auction/ui";
 
 type Props = PositionIndicatorProps & {
-  /** Screen-reader live region id when paired with a hero region. */
   liveId?: string;
 };
 
@@ -14,15 +15,18 @@ export function CounterPill({ total, index, className, liveId }: Props) {
   if (total <= 1) return null;
 
   const label = formatGalleryIndex(index, total);
+  const tone = useOverlayTone("topRight");
 
   return (
     <>
       <p
         className={cn(
-          "pointer-events-none absolute top-4 z-10 rounded-full bg-surface-container-lowest/90 px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface shadow-md backdrop-blur-sm",
+          overlayPillClasses(tone),
+          "pointer-events-none absolute top-4 z-10 rounded-full px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] shadow-md",
           "right-4 md:left-4 md:right-auto",
           className,
         )}
+        {...overlayToneProps(tone)}
         aria-hidden
       >
         {label}

@@ -1,5 +1,14 @@
+"use client";
+
+import type { AdaptiveMediaConfig } from "@/components/marketing/adaptive-media-config";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
-import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
+import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
+import {
+  AdaptiveMediaFrame,
+  AdaptiveMediaFrameContainer,
+} from "@/components/ui/adaptive-media-frame";
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -23,28 +32,42 @@ const mediaHover =
 const cardShell =
   "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-0.5";
 
+export type { AdaptiveMediaConfig };
+
 export type LotCardGridProps = {
   href: string;
-  /** When set, enables list → detail image morph on navigation. */
   lotId?: string;
-  /** Full-bleed media (typically `MediaImage`). */
-  image: ReactNode;
+  /** Full-bleed media when `adaptiveMedia` is not set. */
+  image?: ReactNode;
+  adaptiveMedia?: AdaptiveMediaConfig;
   title: ReactNode;
   meta?: ReactNode;
-  /** Pointer-events-none overlays (e.g. owner badge). */
   topLeft?: ReactNode;
-  /** Interactive overlays (e.g. watchlist heart) — rendered OUTSIDE the link to avoid nested anchors. */
   topRight?: ReactNode;
-  /** Pointer-events-none overlays (e.g. status timer). */
   bottomLeft?: ReactNode;
   className?: string;
 };
+
+function EditorialBoldScrim() {
+  const tone = useOverlayTone("contentBlock");
+  const { strong, soft } = toneAwareScrimStops(tone.tone);
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{
+        background: `linear-gradient(to top, ${strong} 0%, ${soft} 45%, transparent 100%)`,
+      }}
+      aria-hidden
+    />
+  );
+}
 
 /** Uniform `4/5` tile — catalogue grid (object-contain on neutral field per design language). */
 export function LotCardGrid({
   href,
   lotId,
   image,
+  adaptiveMedia,
   title,
   meta,
   topLeft,
@@ -52,17 +75,31 @@ export function LotCardGrid({
   bottomLeft,
   className,
 }: LotCardGridProps) {
-  return (
+  const article = (
     <article
       className={cn(cardShell, className)}
       {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
     >
       <LotCardNavLink lotId={lotId} href={href} className="block">
-        <div
+        <AdaptiveMediaFrameContainer
           {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
           className="relative aspect-[4/5] bg-surface-container-low"
         >
-          <div className={cn("absolute inset-0", mediaHover)}>{image}</div>
+          <div className={cn("absolute inset-0", mediaHover)}>
+            {adaptiveMedia ? (
+              <AdaptiveFrameImage
+                src={adaptiveMedia.src}
+                alt={adaptiveMedia.alt}
+                objectFit={adaptiveMedia.objectFit}
+                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
+                className="h-full w-full"
+                imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+              />
+            ) : (
+              image
+            )}
+          </div>
           {topLeft ? (
             <div className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3">
               {topLeft}
@@ -73,7 +110,7 @@ export function LotCardGrid({
               {bottomLeft}
             </div>
           ) : null}
-        </div>
+        </AdaptiveMediaFrameContainer>
         <div className="p-3 md:p-5">
           {title}
           {meta}
@@ -86,6 +123,18 @@ export function LotCardGrid({
       ) : null}
     </article>
   );
+
+  if (!adaptiveMedia) return article;
+
+  return (
+    <AdaptiveMediaFrame
+      src={adaptiveMedia.src}
+      objectFit={adaptiveMedia.objectFit}
+      slots={adaptiveMedia.slots}
+    >
+      {article}
+    </AdaptiveMediaFrame>
+  );
 }
 
 export type LotCardListProps = {
@@ -95,7 +144,6 @@ export type LotCardListProps = {
   title: ReactNode;
   subtitle?: ReactNode;
   footer?: ReactNode;
-  /** Interactive trailing content (e.g. watchlist heart) — rendered OUTSIDE the link. */
   trailing?: ReactNode;
   className?: string;
 };
@@ -152,11 +200,11 @@ export function LotCardList({
 
 export type LotCardEditorialBoldProps = {
   href: string;
-  image: ReactNode;
+  image?: ReactNode;
+  adaptiveMedia?: AdaptiveMediaConfig;
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
-  /** Interactive overlays (e.g. watchlist heart) — rendered OUTSIDE the link. */
   topRight?: ReactNode;
   className?: string;
 };
@@ -165,13 +213,14 @@ export type LotCardEditorialBoldProps = {
 export function LotCardEditorialBold({
   href,
   image,
+  adaptiveMedia,
   title,
   description,
   footer,
   topRight,
   className,
 }: LotCardEditorialBoldProps) {
-  return (
+  const article = (
     <article
       className={cn(
         "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
@@ -179,17 +228,37 @@ export function LotCardEditorialBold({
       )}
     >
       <Link href={href} className="block">
-        <div className="relative aspect-video bg-surface-container-low">
-          <div className={cn("absolute inset-0", mediaHover)}>{image}</div>
+        <AdaptiveMediaFrameContainer className="relative aspect-video bg-surface-container-low">
+          <div className={cn("absolute inset-0", mediaHover)}>
+            {adaptiveMedia ? (
+              <AdaptiveFrameImage
+                src={adaptiveMedia.src}
+                alt={adaptiveMedia.alt}
+                objectFit={adaptiveMedia.objectFit}
+                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
+                className="h-full w-full"
+              />
+            ) : (
+              image
+            )}
+          </div>
+          {adaptiveMedia ? (
+            <EditorialBoldScrim />
+          ) : (
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+              aria-hidden
+            />
+          )}
           <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
-            aria-hidden
-          />
-          <div className="absolute inset-x-0 bottom-0 z-[1] space-y-2 p-6 text-white">
+            className="absolute inset-x-0 bottom-0 z-[1] space-y-2 p-6"
+            {...(adaptiveMedia ? { "data-overlay-content-block": true } : {})}
+          >
             {title}
             {description}
           </div>
-        </div>
+        </AdaptiveMediaFrameContainer>
         {footer ? <div className="space-y-2 p-6">{footer}</div> : null}
       </Link>
       {topRight ? (
@@ -197,15 +266,27 @@ export function LotCardEditorialBold({
       ) : null}
     </article>
   );
+
+  if (!adaptiveMedia) return article;
+
+  return (
+    <AdaptiveMediaFrame
+      src={adaptiveMedia.src}
+      objectFit={adaptiveMedia.objectFit}
+      slots={adaptiveMedia.slots}
+    >
+      {article}
+    </AdaptiveMediaFrame>
+  );
 }
 
 export type LotCardEditorialCalmProps = {
   href: string;
-  image: ReactNode;
+  image?: ReactNode;
+  adaptiveMedia?: AdaptiveMediaConfig;
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
-  /** Interactive overlays (e.g. watchlist heart) — rendered OUTSIDE the link. */
   topRight?: ReactNode;
   className?: string;
 };
@@ -214,13 +295,14 @@ export type LotCardEditorialCalmProps = {
 export function LotCardEditorialCalm({
   href,
   image,
+  adaptiveMedia,
   title,
   description,
   footer,
   topRight,
   className,
 }: LotCardEditorialCalmProps) {
-  return (
+  const article = (
     <article
       className={cn(
         "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
@@ -228,9 +310,22 @@ export function LotCardEditorialCalm({
       )}
     >
       <Link href={href} className="block">
-        <div className="relative aspect-video bg-surface-container-low">
-          <div className={cn("absolute inset-0", mediaHover)}>{image}</div>
-        </div>
+        <AdaptiveMediaFrameContainer className="relative aspect-video bg-surface-container-low">
+          <div className={cn("absolute inset-0", mediaHover)}>
+            {adaptiveMedia ? (
+              <AdaptiveFrameImage
+                src={adaptiveMedia.src}
+                alt={adaptiveMedia.alt}
+                objectFit={adaptiveMedia.objectFit}
+                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
+                className="h-full w-full"
+              />
+            ) : (
+              image
+            )}
+          </div>
+        </AdaptiveMediaFrameContainer>
         <div className="space-y-2 p-6">
           {title}
           {description}
@@ -242,6 +337,18 @@ export function LotCardEditorialCalm({
       ) : null}
     </article>
   );
+
+  if (!adaptiveMedia) return article;
+
+  return (
+    <AdaptiveMediaFrame
+      src={adaptiveMedia.src}
+      objectFit={adaptiveMedia.objectFit}
+      slots={adaptiveMedia.slots}
+    >
+      {article}
+    </AdaptiveMediaFrame>
+  );
 }
 
 export const LotCard = {
@@ -249,6 +356,4 @@ export const LotCard = {
   List: LotCardList,
   EditorialBold: LotCardEditorialBold,
   EditorialCalm: LotCardEditorialCalm,
-  /** Home hero tile (image link + body) — same contract as `MarketingLotTile`. */
-  HeroTile: MarketingLotTile,
 } as const;

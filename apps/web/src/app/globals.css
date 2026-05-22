@@ -221,6 +221,13 @@
   --shell-gutter-sm: 1rem;
   --shell-gutter-md: 2rem;
   --shell-gutter-lg: 3.5rem;
+
+  /* Overlay tone fallbacks — used outside AdaptiveMediaFrame */
+  --overlay-fg: var(--color-foreground);
+  --overlay-bg: var(--color-surface);
+  --overlay-border: var(--color-outline-variant);
+  --overlay-fg-opaque: var(--color-foreground);
+  --overlay-bg-opaque: var(--color-surface);
 }
 
 /* lg — utility bar + gap-6 + mega row + py-3 (matches `lg:` in site-header). */
@@ -983,5 +990,43 @@ html.dark {
   .animate-artwork-slide-up-fade {
     animation: none !important;
     opacity: 1 !important;
+  }
+}
+
+/* Adaptive overlay tone palettes — photo decides, not site theme */
+[data-overlay-tone="light"] {
+  --overlay-fg: #ffffff;
+  --overlay-bg: rgba(0, 0, 0, 0.45);
+  --overlay-border: rgba(255, 255, 255, 0.22);
+  --overlay-fg-opaque: #ffffff;
+  --overlay-bg-opaque: #050505;
+}
+
+[data-overlay-tone="dark"] {
+  --overlay-fg: #050505;
+  --overlay-bg: rgba(255, 255, 255, 0.78);
+  --overlay-border: rgba(0, 0, 0, 0.12);
+  --overlay-fg-opaque: #050505;
+  --overlay-bg-opaque: #f9f9f9;
+}
+
+[data-overlay-fallback="opaque"] {
+  --overlay-bg: var(--overlay-bg-opaque);
+  --overlay-fg: var(--overlay-fg-opaque);
+  backdrop-filter: none !important;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-overlay-tone] {
+    --overlay-bg: var(--overlay-bg-opaque);
+    backdrop-filter: none !important;
+  }
+}
+
+/* biome-ignore lint/correctness/noUnknownMediaFeatureName: Valid MQ5 a11y feature */
+@media (prefers-reduced-transparency: reduce) {
+  [data-overlay-tone] {
+    --overlay-bg: var(--overlay-bg-opaque);
+    backdrop-filter: none !important;
   }
 }
