@@ -1,4 +1,4 @@
-import { SaleCard } from "@/components/marketing/sale-card";
+import { SaleCardGrid } from "@/components/marketing/sale-card";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
@@ -17,7 +17,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
   return (
     <li className="h-full min-w-0 flex-1">
       <RevealInView variant="fadeUp" delayMs={index * 70} className="block h-full min-w-0">
-        <SaleCard.Grid
+        <SaleCardGrid
           href={vm.href}
           className={cn(
             "motion-safe:ease-out",
@@ -52,7 +52,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
             <SaleCardTitle mode="embedded" title={vm.title} />
             <SaleCardMeta locationLabel={vm.locationLabel} />
           </div>
-        </SaleCard.Grid>
+        </SaleCardGrid>
       </RevealInView>
     </li>
   );

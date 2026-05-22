@@ -5,6 +5,7 @@ import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-
 import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 
@@ -85,16 +86,14 @@ export function CatalogLotGridView({
                 />
               }
               bottomLeft={<LotStatusOverlay lot={a} />}
-              image={
-                <MediaImage
-                  src={img}
-                  alt={a.title}
-                  label="Lot artwork"
-                  className="h-full w-full"
-                  imgClassName="object-contain transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
-                />
-              }
+              adaptiveMedia={{
+                src: img,
+                objectFit: "contain",
+                slots: LOT_CARD_GRID_SLOTS,
+                alt: a.title,
+                sizes: "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw",
+                label: "Lot artwork",
+              }}
               title={
                 <>
                   <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-primary md:text-xl">
@@ -156,16 +155,14 @@ export function CatalogLotCardView({
                   />
                 </div>
               }
-              image={
-                <MediaImage
-                  src={img}
-                  alt={a.title}
-                  label="Lot artwork"
-                  className="h-full w-full"
-                  imgClassName="object-contain transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
-                  sizes="(max-width: 768px) 100vw, 42rem"
-                />
-              }
+              adaptiveMedia={{
+                src: img,
+                objectFit: "contain",
+                slots: EDITORIAL_CALM_SLOTS,
+                alt: a.title,
+                sizes: "(max-width: 768px) 100vw, 42rem",
+                label: "Lot artwork",
+              }}
               title={
                 <h2 className="font-headline text-2xl font-light leading-tight text-on-surface group-hover:text-primary">
                   {a.title}

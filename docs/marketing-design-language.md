@@ -299,6 +299,43 @@ full artwork layout refactor is out of scope.
 
 ---
 
+## Adaptive overlays (image-aware contrast)
+
+Marketing overlays on photos resolve **light** or **dark** chrome from pixels beneath each slot — independent of the site theme toggle. The photo decides; user dark mode does not.
+
+### Architecture
+
+- **`AdaptiveMediaFrame`** wraps a card or hero shell and samples configured slots via canvas (`crossOrigin="anonymous"` on `MediaImage`).
+- **`useOverlayTone(slot)`** reads resolved tone for a corner or grouped copy block.
+- Primitives consume **`--overlay-fg` / `--overlay-bg` / `--overlay-border`** (and `*-opaque` fallbacks) — never `text-foreground` or `dark:` over imagery.
+- Outside a frame, `:root` defaults map overlay vars to existing `--color-*` theme tokens.
+
+### Slot contract
+
+| Slot | Typical consumer |
+|------|------------------|
+| `topLeft` | Owner badge |
+| `topRight` | Watchlist heart, gallery counter |
+| `bottomLeft` | Live timer pill, sale status badge |
+| `bottomRight` | Gallery expand control |
+| `contentBlock` | Hero copy column, editorial-bold title on image |
+
+Callers pass **`objectFit: "contain" | "cover"`** explicitly (catalog grid uses contain; sale/editorial tiles use cover). Provider wraps the full card `<article>` when overlays sit outside the image div (e.g. grid watchlist heart).
+
+### Fallbacks
+
+| Condition | Behaviour |
+|-----------|-----------|
+| Before sample / SSR | Default **light** frosted tone |
+| Frosted palettes below WCAG threshold | **Opaque** solid variant via `--overlay-*-opaque` |
+| Slot mostly on letterbox (<50% overlap) | Opaque light without sampling |
+| Canvas taint / CORS failure | Opaque light |
+| `prefers-reduced-transparency` | Opaque vars; no `backdrop-filter` |
+
+v1 accepts a brief default-then-resolve flash (~120ms). Server-side luminance metadata is Phase 2 (out of scope).
+
+---
+
 ## Implementation checklist
 
 1. Land tokens + lint guards.

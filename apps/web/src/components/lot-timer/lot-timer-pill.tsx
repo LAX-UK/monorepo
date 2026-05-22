@@ -1,3 +1,7 @@
+"use client";
+
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { LiveDot, cn } from "@auction/ui";
 import { Clock } from "lucide-react";
 import type { LotTimerState } from "./classify";
@@ -49,15 +53,30 @@ export function LotTimerPill({
   clockText,
   surfaceClassName,
   variant = "default",
+  useOverlayChrome = false,
 }: {
   state: LotTimerState;
   clockText?: string;
   /** Merged last so marketing surfaces can override shell (e.g. glass pill). */
   surfaceClassName?: string;
   variant?: LotTimerPillVariant;
+  /** Read `--overlay-*` vars from AdaptiveMediaFrame instead of theme glass. */
+  useOverlayChrome?: boolean;
 }) {
+  const overlayTone = useOverlayTone("bottomLeft");
+  const overlayShell = useOverlayChrome ? overlayPillClasses(overlayTone) : null;
+  const overlayProps = useOverlayChrome ? overlayToneProps(overlayTone) : {};
   const aria = ariaLabelFor(state, clockText);
   const figma = variant === "endingSoon";
+
+  const shellClass = (figmaShell: string, themeShell: string) =>
+    useOverlayChrome && !figma
+      ? cn(PILL_BASE, overlayShell, surfaceClassName)
+      : figma
+        ? cn(figmaShell, surfaceClassName)
+        : cn(PILL_BASE, themeShell, surfaceClassName);
+
+  const toneProps = useOverlayChrome && !figma ? overlayProps : {};
 
   switch (state.kind) {
     case "live":
@@ -65,11 +84,8 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={
-            figma
-              ? cn(ENDING_SOON_TAG_GLASS, surfaceClassName)
-              : cn(PILL_BASE, SHELL_LIVE, surfaceClassName)
-          }
+          className={shellClass(ENDING_SOON_TAG_GLASS, SHELL_LIVE)}
+          {...toneProps}
         >
           <LiveDot size="sm" className={figma ? "live-dot-pulse" : ""} />
           {figma ? (
@@ -91,11 +107,8 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={
-            figma
-              ? cn(ENDING_SOON_TAG_GLASS, surfaceClassName)
-              : cn(PILL_BASE, SHELL_LIVE, surfaceClassName)
-          }
+          className={shellClass(ENDING_SOON_TAG_GLASS, SHELL_LIVE)}
+          {...toneProps}
         >
           <Clock
             className={cn(
@@ -123,11 +136,8 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={
-            figma
-              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
-              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
-          }
+          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          {...toneProps}
         >
           Closed
         </output>
@@ -137,11 +147,8 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={
-            figma
-              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
-              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
-          }
+          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          {...toneProps}
         >
           Cancelled
         </output>
@@ -151,11 +158,8 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={
-            figma
-              ? cn(ENDING_SOON_MUTED_SHELL, surfaceClassName)
-              : cn(PILL_BASE, SHELL_MUTED, surfaceClassName)
-          }
+          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          {...toneProps}
         >
           Soon
         </output>

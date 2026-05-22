@@ -1,6 +1,6 @@
-import { LotCard } from "@/components/marketing/lot-card";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
+import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { Eye } from "lucide-react";
@@ -25,7 +25,7 @@ export function UrgencyLotCard({
   const initialWatching = watchedLotIds.includes(item.id);
 
   return (
-    <LotCard.HeroTile
+    <MarketingLotTile
       lotId={item.id}
       index={index}
       href={item.href}

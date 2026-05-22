@@ -1,25 +1,23 @@
+"use client";
+
 import { LotStatusBadge, LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
+import {
+  AdaptiveMediaFrame,
+  AdaptiveMediaFrameContainer,
+} from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
+import { LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lot: SaleLotCardVM;
-  /** Watchlist heart or similar — rendered top-right on the image, outside the artwork link. */
   cornerAction?: ReactNode;
-  /** OCP: callers slot in Bid / Watch / Results actions without modifying the card.
-   * Pass `null` to render the card without actions (e.g. ended sales).
-   */
   actions?: ReactNode;
-  /** Image sizes hint — defaults to 4-col grid; override for different grids. */
   sizes?: string;
-  /** Visual emphasis hint for the price block. Defaults preserve the historical
-   * rendering (estimate calm, current-bid bold) so callers that don't pass a
-   * variant render unchanged.
-   */
   priceEmphasis?: "estimate" | "currentBid" | "both";
-  /** `row` = compact horizontal strip for catalogue list view. */
   layout?: "tile" | "row";
 };
 
@@ -43,9 +41,6 @@ function MetaStack({
   );
 }
 
-/** Figma saleroom lot tile — no Card chrome; fixed aspect image block with a live
- * countdown pill (live / opens-in / closed) overlaid on the artwork.
- */
 export function SaleroomLotCard({
   lot,
   cornerAction,
@@ -133,7 +128,7 @@ export function SaleroomLotCard({
     );
   }
 
-  return (
+  const tile = (
     <article className="group flex h-full w-full min-w-0 flex-col gap-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-0.5">
       <div className="relative w-full">
         <Link
@@ -141,14 +136,21 @@ export function SaleroomLotCard({
           className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >
-          <MediaImage
-            src={lot.imageUrl}
-            alt={lot.imageAlt}
-            label="Lot artwork"
-            sizes={sizes}
-            imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+          <AdaptiveMediaFrameContainer className="absolute inset-0">
+            <AdaptiveFrameImage
+              src={lot.imageUrl}
+              alt={lot.imageAlt}
+              objectFit="cover"
+              sizes={sizes}
+              imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+            />
+          </AdaptiveMediaFrameContainer>
+          <LotStatusTimer
+            overlay
+            status={lot.status}
+            startTime={lot.startTime}
+            endTime={lot.endTime}
           />
-          <LotStatusTimer status={lot.status} startTime={lot.startTime} endTime={lot.endTime} />
         </Link>
         {cornerAction ? (
           <div className="pointer-events-auto absolute right-3 top-3 z-10">{cornerAction}</div>
@@ -189,13 +191,15 @@ export function SaleroomLotCard({
             strongValue={currentStrong}
           />
         </div>
-      </div>
 
-      {actions ? (
-        <div className="mt-auto flex w-full min-w-0 flex-col gap-2 text-xs sm:flex-row sm:text-sm">
-          {actions}
-        </div>
-      ) : null}
+        {actions ? <div className="mt-auto w-full min-w-0">{actions}</div> : null}
+      </div>
     </article>
+  );
+
+  return (
+    <AdaptiveMediaFrame src={lot.imageUrl} objectFit="cover" slots={LOT_CARD_TIMER_SLOTS}>
+      {tile}
+    </AdaptiveMediaFrame>
   );
 }
