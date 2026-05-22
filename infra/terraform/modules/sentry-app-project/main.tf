@@ -9,11 +9,10 @@ resource "sentry_project" "this" {
 }
 
 resource "sentry_key" "this" {
-  organization      = var.organization_slug
-  project           = sentry_project.this.slug
-  name              = "terraform-${var.app_key}"
-  rate_limit_count  = var.rate_limit_count
-  rate_limit_window = var.rate_limit_window
+  organization = var.organization_slug
+  project      = sentry_project.this.slug
+  name         = "terraform-${var.app_key}"
+  # rate_limit_* omitted — provider v0.14.x returns null on read after apply (jianyuan/sentry#694).
 }
 
 resource "sentry_project_inbound_data_filter" "this" {
