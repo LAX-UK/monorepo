@@ -10,9 +10,10 @@ type Props = {
   hero: SaleHeroVM;
   toolbar: ReactNode;
   actions: ReactNode;
+  isAuthenticated?: boolean;
 };
 
-export function SaleroomHero({ hero, toolbar, actions }: Props) {
+export function SaleroomHero({ hero, toolbar, actions, isAuthenticated = false }: Props) {
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
   const liveTrailing =
     hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0
@@ -83,9 +84,15 @@ export function SaleroomHero({ hero, toolbar, actions }: Props) {
       }
       actions={
         <>
-          <Button variant="cta" size="lg" asChild>
-            <Link href="/register">Register to Bid →</Link>
-          </Button>
+          {isAuthenticated ? (
+            <Button variant="cta" size="lg" asChild>
+              <Link href="#catalog">Browse Lots →</Link>
+            </Button>
+          ) : (
+            <Button variant="cta" size="lg" asChild>
+              <Link href="/register">Register to Bid →</Link>
+            </Button>
+          )}
           {actions}
         </>
       }

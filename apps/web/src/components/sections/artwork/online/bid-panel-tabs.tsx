@@ -9,16 +9,19 @@ type TabId = "bids" | "video";
 type Props = {
   bidPanel: ReactNode;
   videoPanel: ReactNode;
+  /** When false, only the bid panel is shown (no Video Stream tab). */
+  hasVideoStream?: boolean;
   className?: string;
 };
 
-const TABS: { id: TabId; label: string }[] = [
+const ALL_TABS: { id: TabId; label: string }[] = [
   { id: "bids", label: "Bids View" },
   { id: "video", label: "Video Stream" },
 ];
 
 /** Pill tabs: Bids View vs Video Stream (online mockup). */
-export function BidPanelTabs({ bidPanel, videoPanel, className }: Props) {
+export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, className }: Props) {
+  const tabs = hasVideoStream ? ALL_TABS : ALL_TABS.filter((t) => t.id === "bids");
   const [tab, setTab] = useState<TabId>("bids");
   const baseId = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -27,28 +30,35 @@ export function BidPanelTabs({ bidPanel, videoPanel, className }: Props) {
     setTab(t);
   }, []);
 
-  const focusTabIndex = useCallback((idx: number) => {
-    const len = TABS.length;
-    const next = ((idx % len) + len) % len;
-    const def = TABS[next];
-    if (!def) return;
-    tabRefs.current[next]?.focus();
-    setTab(def.id);
-  }, []);
+  const focusTabIndex = useCallback(
+    (idx: number) => {
+      const len = tabs.length;
+      const next = ((idx % len) + len) % len;
+      const def = tabs[next];
+      if (!def) return;
+      tabRefs.current[next]?.focus();
+      setTab(def.id);
+    },
+    [tabs],
+  );
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       e.preventDefault();
-      const idx = TABS.findIndex((t) => t.id === tab);
+      const idx = tabs.findIndex((t) => t.id === tab);
       if (e.key === "ArrowRight") {
         focusTabIndex(idx + 1);
       } else {
         focusTabIndex(idx - 1);
       }
     },
-    [focusTabIndex, tab],
+    [focusTabIndex, tab, tabs],
   );
+
+  if (!hasVideoStream) {
+    return <div className={cn("flex w-full flex-col gap-4", className)}>{bidPanel}</div>;
+  }
 
   return (
     <div className={cn("flex w-full flex-col gap-4", className)}>
@@ -60,7 +70,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, className }: Props) {
         aria-label="Lot bidding panel"
         onKeyDown={onKeyDown}
       >
-        {TABS.map(({ id, label }, i) => {
+        {tabs.map(({ id, label }, i) => {
           const selected = tab === id;
           return (
             <button

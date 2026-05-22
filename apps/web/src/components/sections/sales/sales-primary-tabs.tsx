@@ -14,7 +14,6 @@ const TABS: { id: CalendarPrimaryTab; label: string }[] = [
   { id: "results", label: "Auction Results" },
   { id: "newLots", label: "New Lots" },
   { id: "privateSales", label: "Private Sales" },
-  { id: "artists", label: "Artists" },
 ];
 
 type Props = {

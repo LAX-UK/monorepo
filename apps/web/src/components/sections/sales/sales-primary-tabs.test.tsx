@@ -12,14 +12,13 @@ const baseState: CalendarSalesUrlState = {
 };
 
 describe("SalesPrimaryTabs", () => {
-  it("renders all six section tabs", () => {
+  it("renders all five section tabs", () => {
     render(<SalesPrimaryTabs state={baseState} />);
     expect(screen.getByRole("link", { name: /^Upcoming$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Live Now/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Auction Results/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /New Lots/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Private Sales/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^Artists$/i })).toBeInTheDocument();
   });
 
   it("marks the active tab with aria-current=page", () => {

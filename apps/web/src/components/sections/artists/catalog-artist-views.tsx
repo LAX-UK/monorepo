@@ -4,6 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import { artistPath } from "@/lib/seo/url";
+import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -19,7 +20,14 @@ export function ArtistBrowseGrid({
   isAuthenticated: boolean;
 }) {
   return (
-    <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
+    <ul
+      className={cn(
+        "gap-3 md:gap-6",
+        sparseGridClasses(rows.length, {
+          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 md:gap-6 xl:grid-cols-3",
+        }),
+      )}
+    >
       {rows.map((a) => (
         <ArtistDirectoryCard
           key={a.id}

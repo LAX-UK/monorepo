@@ -4,11 +4,13 @@ import { cn } from "@auction/ui";
 
 type Props = {
   lot: Lot;
+  /** When true, allow a wider hero when the queue sidebar is hidden. */
+  wide?: boolean;
   className?: string;
 };
 
 /** Center column: hero media with mockup-aligned max width and entrance motion. */
-export function LotImageArea({ lot, className }: Props) {
+export function LotImageArea({ lot, wide = false, className }: Props) {
   return (
     <div
       className={cn(
@@ -16,8 +18,13 @@ export function LotImageArea({ lot, className }: Props) {
         className,
       )}
     >
-      <div className="mx-auto w-full max-w-[786px] overflow-hidden rounded-lg border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/30">
-        <LotMediaBlock lot={lot} />
+      <div
+        className={cn(
+          "mx-auto w-full overflow-hidden rounded-lg border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/30",
+          wide ? "max-w-[900px]" : "max-w-[786px]",
+        )}
+      >
+        <LotMediaBlock lot={lot} wide={wide} />
       </div>
     </div>
   );

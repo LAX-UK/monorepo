@@ -18,6 +18,8 @@ export type MarketingLoadMoreProps = {
   unitLabel?: string;
   /** When true, show underlined "Load all" (maps to `page=all` on the route). */
   showLoadAll?: boolean;
+  /** Max lots fetched by "Load all"; when total exceeds this, hide Load all and show a note. */
+  loadAllCap?: number;
 };
 
 function buildNextHref(
@@ -54,6 +56,7 @@ export function MarketingLoadMore({
   preservedQuery,
   unitLabel = "lots",
   showLoadAll = false,
+  loadAllCap,
 }: MarketingLoadMoreProps) {
   const hasMore = shown < total;
   const nextPage = page + 1;
@@ -62,11 +65,15 @@ export function MarketingLoadMore({
   const loadAllHref = buildLoadAllHref(basePath, preservedQuery);
   const remaining = Math.min(pageSize, Math.max(0, total - shown));
   const canLoadAll = showLoadAll && total > 0;
+  const exceedsLoadAllCap = loadAllCap != null && total > loadAllCap;
 
   return (
     <div className="mx-auto flex w-full max-w-[233px] flex-col items-stretch gap-4 py-10 text-center">
       <p className="text-center text-xs leading-4 text-on-surface-variant">
         Showing {shown}/{total}
+        {exceedsLoadAllCap && shown >= loadAllCap ? (
+          <span className="mt-1 block">Use Load More for the remaining {unitLabel}.</span>
+        ) : null}
         <span className="sr-only">
           {" "}
           {percent}% of {unitLabel} loaded

@@ -49,6 +49,7 @@ type PageProps = {
 };
 
 const CATALOG_PAGE_SIZE = 40;
+const CATALOG_LOAD_ALL_CAP = 200;
 const CATALOG_SORT = "lot" as const;
 
 function firstString(v: string | string[] | undefined): string | undefined {
@@ -90,20 +91,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 async function loadCatalogLotsPage(id: string, pageRaw: string | undefined): Promise<SaleLotsPage> {
   const isAll = pageRaw === "all";
   if (isAll) {
-    const p = await getServerSaleLotsPage({
+    const first = await getServerSaleLotsPage({
       id,
       page: 1,
-      pageSize: CATALOG_PAGE_SIZE,
+      pageSize: 1,
       sort: CATALOG_SORT,
     });
-    if (!p) throw new Error("notfound");
-    const cap = Math.min(48, p.total);
-    if (cap > p.items.length) {
-      const full = await getServerSaleLotsPage({ id, page: 1, pageSize: cap, sort: CATALOG_SORT });
-      if (!full) throw new Error("notfound");
-      return full;
-    }
-    return p;
+    if (!first) throw new Error("notfound");
+    const cap = Math.min(CATALOG_LOAD_ALL_CAP, first.total);
+    const full = await getServerSaleLotsPage({ id, page: 1, pageSize: cap, sort: CATALOG_SORT });
+    if (!full) throw new Error("notfound");
+    return full;
   }
 
   const pageNum = parsePage(pageRaw);
@@ -258,6 +256,23 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const kycApproved = session?.kycStatus === "approved";
 
+  const catalogEmptyMessage =
+    statusFilter && lotVMs.length === 0
+      ? `No ${statusFilter} lots match these filters.`
+      : "No lots in this section yet.";
+
+  const catalogClearFiltersHref =
+    statusFilter != null
+      ? (() => {
+          const qs = new URLSearchParams();
+          if (layoutView !== "grid") qs.set("view", layoutView);
+          if (isCatalogLoadAll) qs.set("page", "all");
+          else if (pageNum > 1) qs.set("page", String(pageNum));
+          const q = qs.toString();
+          return q ? `${basePath}?${q}` : basePath;
+        })()
+      : null;
+
   return (
     <main
       id="main-content"
@@ -276,6 +291,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
       <SaleroomHero
         hero={heroVM}
+        isAuthenticated={isAuthenticated}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
@@ -315,6 +331,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         <SaleroomCatalogLotsByView
           view={layoutView}
           lots={lotVMs}
+          emptyMessage={catalogEmptyMessage}
+          clearFiltersHref={catalogClearFiltersHref}
           renderCorner={(lot) => (
             <MarketingWatchlistHeart
               lotId={lot.id}
@@ -333,7 +351,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           pageSize={CATALOG_PAGE_SIZE}
           basePath={basePath}
           preservedQuery={preservedQuery}
-          showLoadAll={!isCatalogLoadAll}
+          showLoadAll={!isCatalogLoadAll && lotsPage.total <= CATALOG_LOAD_ALL_CAP}
+          loadAllCap={CATALOG_LOAD_ALL_CAP}
         />
       </section>
 
