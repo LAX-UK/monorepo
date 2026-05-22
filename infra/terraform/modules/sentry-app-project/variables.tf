@@ -55,15 +55,3 @@ variable "inbound_filters" {
   type        = set(string)
   description = "Inbound data filter IDs to enable."
 }
-
-variable "rate_limit_count" {
-  type        = number
-  description = "Max events per rate_limit_window."
-  default     = 10000
-}
-
-variable "rate_limit_window" {
-  type        = number
-  description = "Rate limit window in seconds."
-  default     = 60
-}
