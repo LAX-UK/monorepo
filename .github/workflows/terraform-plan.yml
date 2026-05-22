@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         env: [test, prod]
-        layer: [persistent, ephemeral]
+        layer: [persistent, sentry, ephemeral]
     runs-on: ubuntu-latest
     environment: ${{ matrix.env }}
     env:
@@ -42,11 +42,21 @@ jobs:
       TF_VAR_verify_origin: "true"
       TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Terraform quality gates
+        run: |
+          terraform fmt -check -recursive infra/terraform
+          terraform -chdir=infra/terraform/${{ matrix.layer }}/${{ matrix.env }} init -backend=false -input=false
+          terraform -chdir=infra/terraform/${{ matrix.layer }}/${{ matrix.env }} validate
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}

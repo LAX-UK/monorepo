@@ -140,7 +140,7 @@ locals {
       health_check_path = "/api/health"
       domain            = local.domain.web
       primary_domain    = true
-      env = concat(local.common_secret_env, [
+      env = concat(local.common_secret_env, local.sentry_env_for["web"], [
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -166,7 +166,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.api
       primary_domain    = false
-      env = concat(local.common_secret_env, local.email_common_env, [
+      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["api"], [
         { key = "DATABASE_URL", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
@@ -233,7 +233,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.auth
       primary_domain    = false
-      env = concat(local.common_secret_env, local.email_common_env, [
+      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["auth"], [
         { key = "DATABASE_URL", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
@@ -261,16 +261,19 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.ws
       primary_domain    = false
-      env = [
-        { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
-        { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
-        { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
-        { key = "API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "OIDC_ISSUER", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "JWKS_URL", value = "${local.oidc_issuer_url}/.well-known/jwks.json", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "CORS_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "LEGACY_WS_COOKIE_RELAY", value = "false", type = "GENERAL", scope = "RUN_TIME" }
-      ]
+      env = concat(
+        [
+          { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+          { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+          { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
+          { key = "API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
+          { key = "OIDC_ISSUER", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_TIME" },
+          { key = "JWKS_URL", value = "${local.oidc_issuer_url}/.well-known/jwks.json", type = "GENERAL", scope = "RUN_TIME" },
+          { key = "CORS_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
+          { key = "LEGACY_WS_COOKIE_RELAY", value = "false", type = "GENERAL", scope = "RUN_TIME" },
+        ],
+        local.sentry_env_for["ws"],
+      )
     },
     {
       name            = "worker"
@@ -279,7 +282,7 @@ locals {
       dockerfile_path = "apps/worker/Dockerfile"
       instance_size   = "professional-xs"
       instance_count  = 1
-      env = concat(local.email_common_env, [
+      env = concat(local.email_common_env, local.sentry_env_for["worker"], [
         { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "APP_ENV", value = "production", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "DATABASE_URL", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
