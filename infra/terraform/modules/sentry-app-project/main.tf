@@ -26,6 +26,8 @@ resource "sentry_project_inbound_data_filter" "this" {
 }
 
 resource "sentry_organization_code_mapping" "app" {
+  count = var.enable_code_mappings ? 1 : 0
+
   organization   = var.organization_slug
   integration_id = var.github_integration_id
   repository_id  = var.github_repository_id
@@ -36,6 +38,8 @@ resource "sentry_organization_code_mapping" "app" {
 }
 
 resource "sentry_organization_code_mapping" "packages" {
+  count = var.enable_code_mappings ? 1 : 0
+
   organization   = var.organization_slug
   integration_id = var.github_integration_id
   repository_id  = var.github_repository_id

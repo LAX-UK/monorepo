@@ -31,6 +31,8 @@ jobs:
       TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TF_VAR_sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      TF_VAR_github_integration_id: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
+      SENTRY_GITHUB_INTEGRATION_ID: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
       TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
       TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
       TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -94,6 +96,9 @@ jobs:
           echo "TF_VAR_app_git_branch=$b" >> "$GITHUB_ENV"
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
+        with:
+          organization-slug: lax-bid
+          team-slug: lax-engineering
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: infra/terraform/${{ inputs.layer }}/prod

@@ -124,60 +124,85 @@ Apple Sign-In is disabled for v1, but the future redirect URIs are:
 
 Create the Sentry organization and team used by Terraform:
 
-- Organization slug: `lax`
+- Organization slug: `lax-bid`
 - Team slug: `lax-engineering`
 
 ### Internal integration (terraform-bot)
 
-In Sentry → **Settings → Developer Settings → Internal Integrations**, create
-`terraform-bot` and grant these **Permissions** (Read or higher where noted):
+> **Do not use an Organization Token** (Settings → Auth Tokens → Organization Tokens).
+> Those only grant `org:ci` for sentry-cli. Terraform needs an **Internal Integration**
+> under **Developer Settings → Internal Integrations**.
 
-| Permission | Level | API scope |
+> **Internal integration tokens cannot list org integrations** (Sentry returns HTTP 403
+> on `/organizations/{slug}/integrations/` even with full scopes). Terraform accepts
+> the GitHub integration ID via `SENTRY_GITHUB_INTEGRATION_ID` instead.
+
+In Sentry → **Settings → Developer Settings → Internal Integrations**, create
+`terraform-bot` and grant these **Permissions**:
+
+| Permission | Level | Notes |
 |---|---|---|
-| Organization | **Read** | `org:read` |
-| Organization Integrations | **Read** | `org:integrations` |
-| Team | Write | `team:write` |
+| Organization | Read | `org:read` |
+| Team | Read & Write | `team:write` |
 | Project | Admin | `project:admin` |
 | Release | Admin | `project:releases` |
 | Member | Read | `member:read` |
-| Alerts | Write | `alerts:write` |
+| Alerts | Read & Write | `alerts:write` |
+| Continuous Integration (CI) | ✅ enabled | `org:ci` for code mappings |
 
-**Organization Read** is required — without it, Terraform gets HTTP 403 on
-`data.sentry_organization_integration.github`. After editing permissions, **generate a new token** (existing tokens do not pick up permission changes).
+After editing permissions, **generate a new token** (existing tokens do not pick up changes).
 
-Store the token:
+Store the token (set on repo **and** `--env test` / `--env prod` if workflows use environments):
 
 ```sh
 gh secret set SENTRY_AUTH_TOKEN
+gh secret set SENTRY_AUTH_TOKEN --env test
+gh secret set SENTRY_AUTH_TOKEN --env prod
 ```
 
-Use an **Internal Integration** token (`terraform-bot`), not a personal user auth token.
-The provider calls `GET https://sentry.io/api/0/` on startup; HTTP 401 means the secret
-is missing, expired, or lacks the scopes above. After rotating the token, re-run
-**Terraform apply test → layer: sentry**.
+Use an **Internal Integration** token (`terraform-bot`), not a personal user auth token
+and not an **Organization Token** (`org:ci` only).
 
 ```sh
-# Quick local check (paste token at prompt)
+# Quick local check (paste terraform-bot token at prompt)
 read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
   xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
   -H "Authorization: Bearer {}" https://sentry.io/api/0/
 
-# Integrations list (must return 200, not 403)
+# Org-scoped access (internal integration tokens support this)
 read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
   xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
   -H "Authorization: Bearer {}" \
-  "https://sentry.io/api/0/organizations/lax/integrations/?providerKey=github"
+  "https://sentry.io/api/0/organizations/lax-bid/teams/lax-engineering/"
 ```
 
-### GitHub integration (required before sentry apply)
+### GitHub integration ID (for code mappings)
 
-Install **GitHub** in Sentry → **Settings → Integrations** and link `LAX-UK/monorepo`.
-The integration **name** in Sentry is your GitHub org slug (`LAX-UK`), not the string
-`GitHub`. Terraform defaults `github_integration_name` to `LAX-UK`.
+1. Install **GitHub** in Sentry → **Settings → Integrations** and link `LAX-UK/monorepo`.
+2. Look up the integration ID **once** with a personal auth token (internal integration tokens cannot list integrations):
+
+```sh
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS \
+  -H "Authorization: Bearer {}" \
+  "https://sentry.io/api/0/organizations/lax-bid/integrations/?providerKey=github"
+```
+
+Copy the `"id"` field from the response (numeric string, e.g. `"123456"`).
+
+3. Store as a GitHub secret:
+
+```sh
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --body "123456"
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --env test --body "123456"
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --env prod --body "123456"
+```
+
+Without this secret, sentry apply still creates **projects and DSNs** but skips GitHub code mappings.
 
 ### Third-party integrations (optional for first apply)
 
-**Slack and PagerDuty alerts are deferred until you set the matching GitHub secrets.** With only `SENTRY_AUTH_TOKEN`, Terraform still creates projects, DSN keys, code mappings, and inbound filters — but skips issue/metric alerts.
+**Slack and PagerDuty alerts are deferred until you set the matching GitHub secrets.** With only `SENTRY_AUTH_TOKEN`, Terraform still creates projects and DSN keys — but skips issue/metric alerts and GitHub code mappings until `SENTRY_GITHUB_INTEGRATION_ID` is set.
 
 When you are ready for Slack alerts:
 
@@ -187,8 +212,6 @@ When you are ready for Slack alerts:
 4. Re-apply `infra/terraform/sentry/{env}` — alert rules are created on the next plan/apply.
 
 For prod paging, also install **PagerDuty** in Sentry and set `PAGERDUTY_INTEGRATION_KEY` on the `prod` environment.
-
-GitHub integration (for code mappings) must be installed before sentry apply — see above.
 
 Add GitHub environment secrets when ready:
 

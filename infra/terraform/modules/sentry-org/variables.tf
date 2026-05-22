@@ -8,9 +8,21 @@ variable "team_slug" {
   description = "Existing Sentry team slug that owns projects."
 }
 
-variable "github_integration_name" {
+variable "github_integration_id" {
   type        = string
-  description = "Display name of the GitHub integration in Sentry (Settings → Integrations)."
+  default     = ""
+  description = "GitHub org integration ID from Sentry (Settings → Integrations → GitHub). Internal integration tokens cannot list integrations via API — set this explicitly."
+}
+
+variable "enable_github" {
+  type        = bool
+  default     = false
+  description = "Link LAX-UK/monorepo and enable code mappings. Requires github_integration_id."
+}
+
+variable "github_repository_identifier" {
+  type        = string
+  description = "GitHub repo identifier for code mappings (org/repo)."
 }
 
 variable "slack_integration_name" {
@@ -21,11 +33,6 @@ variable "slack_integration_name" {
 variable "pagerduty_integration_name" {
   type        = string
   description = "Display name of the PagerDuty integration in Sentry."
-}
-
-variable "github_repository_identifier" {
-  type        = string
-  description = "GitHub repo identifier for code mappings (org/repo)."
 }
 
 variable "enable_slack" {
