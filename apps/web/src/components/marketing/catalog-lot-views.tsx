@@ -1,4 +1,8 @@
-import { LotCard } from "@/components/marketing/lot-card";
+import {
+  LotCardEditorialCalm,
+  LotCardGrid,
+  LotCardList,
+} from "@/components/marketing/lot-card";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
@@ -83,7 +87,7 @@ export function CatalogLotGridView({
         const owned = Boolean(currentUserId && a.sellerId === currentUserId);
         return (
           <li key={a.id} className="min-w-0">
-            <LotCard.Grid
+            <LotCardGrid
               lotId={a.id}
               href={lotPath(a)}
               topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
@@ -152,7 +156,7 @@ export function CatalogLotCardView({
         const owned = Boolean(currentUserId && a.sellerId === currentUserId);
         return (
           <li key={a.id}>
-            <LotCard.EditorialCalm
+            <LotCardEditorialCalm
               href={lotPath(a)}
               topRight={
                 <div className="flex flex-col items-end gap-2">
@@ -222,7 +226,7 @@ export function CatalogLotListView({
           const subtitle = lotSubtitle(a);
           return (
             <li key={a.id}>
-              <LotCard.List
+              <LotCardList
                 lotId={a.id}
                 href={lotPath(a)}
                 image={
