@@ -4,13 +4,18 @@ inputs:
   organization-slug:
     description: Sentry organization slug
     required: false
-    default: lax
+    default: lax-bid
+  team-slug:
+    description: Sentry team slug used to verify org-scoped API access
+    required: false
+    default: lax-engineering
 runs:
   using: composite
   steps:
     - shell: bash
       env:
         SENTRY_ORG_SLUG: ${{ inputs.organization-slug }}
+        SENTRY_TEAM_SLUG: ${{ inputs.team-slug }}
       run: |
         token="$(printf '%s' "${SENTRY_AUTH_TOKEN:-}" | tr -d '[:space:]')"
         if [ -z "$token" ]; then
@@ -21,24 +26,26 @@ runs:
           -H "Authorization: Bearer ${token}" \
           https://sentry.io/api/0/)"
         if [ "$http_code" != "200" ]; then
-          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not a user auth token), regenerate terraform-bot with Organization Read + org:integrations (see BOOTSTRAP.md §6), then gh secret set SENTRY_AUTH_TOKEN"
+          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not an Organization Token), regenerate terraform-bot, then gh secret set SENTRY_AUTH_TOKEN (and --env test if using the test environment)."
           head -c 500 /tmp/sentry-health.json 2>/dev/null || true
           exit 1
         fi
-        integrations_code="$(curl -sS -o /tmp/sentry-integrations.json -w '%{http_code}' \
+        # Internal integration tokens cannot list org integrations (control silo 403).
+        # Verify org access via team lookup instead.
+        team_code="$(curl -sS -o /tmp/sentry-team.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/integrations/?providerKey=github")"
-        if [ "$integrations_code" = "403" ]; then
-          echo "::error::Sentry integrations API returned HTTP 403. Edit terraform-bot permissions: Organization Read + Organization Integrations Read (org:read, org:integrations), generate a new token, gh secret set SENTRY_AUTH_TOKEN"
-          head -c 500 /tmp/sentry-integrations.json 2>/dev/null || true
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/${SENTRY_TEAM_SLUG}/")"
+        if [ "$team_code" = "403" ] || [ "$team_code" = "401" ]; then
+          echo "::error::Sentry org API returned HTTP ${team_code} for org=${SENTRY_ORG_SLUG} team=${SENTRY_TEAM_SLUG}. Confirm the org slug, update gh secret set SENTRY_AUTH_TOKEN --env test, and regenerate the terraform-bot token."
+          head -c 500 /tmp/sentry-team.json 2>/dev/null || true
           exit 1
         fi
-        if [ "$integrations_code" != "200" ]; then
-          echo "::error::Sentry integrations API returned HTTP ${integrations_code} for org ${SENTRY_ORG_SLUG}"
-          head -c 500 /tmp/sentry-integrations.json 2>/dev/null || true
+        if [ "$team_code" != "200" ]; then
+          echo "::error::Sentry team lookup returned HTTP ${team_code} for org=${SENTRY_ORG_SLUG} team=${SENTRY_TEAM_SLUG}"
+          head -c 500 /tmp/sentry-team.json 2>/dev/null || true
           exit 1
         fi
-        if ! grep -q '"provider"' /tmp/sentry-integrations.json 2>/dev/null; then
-          echo "::warning::No GitHub integration found in Sentry org ${SENTRY_ORG_SLUG}. Install GitHub under Settings → Integrations and link LAX-UK/monorepo before apply."
+        if [ -z "${SENTRY_GITHUB_INTEGRATION_ID:-}" ] && [ -z "${TF_VAR_github_integration_id:-}" ]; then
+          echo "::warning::SENTRY_GITHUB_INTEGRATION_ID is not set — apply will create projects/DSNs but skip GitHub code mappings. See BOOTSTRAP.md §6."
         fi
-        echo "Sentry auth OK"
+        echo "Sentry auth OK (org=${SENTRY_ORG_SLUG}, team=${SENTRY_TEAM_SLUG})"

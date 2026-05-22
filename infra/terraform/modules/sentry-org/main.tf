@@ -3,12 +3,6 @@ data "sentry_team" "engineering" {
   slug         = var.team_slug
 }
 
-data "sentry_organization_integration" "github" {
-  organization = var.organization_slug
-  provider_key = "github"
-  name         = var.github_integration_name
-}
-
 data "sentry_organization_integration" "slack" {
   count = var.enable_slack ? 1 : 0
 
@@ -26,8 +20,10 @@ data "sentry_organization_integration" "pagerduty" {
 }
 
 resource "sentry_organization_repository" "github" {
+  count = var.enable_github ? 1 : 0
+
   organization     = var.organization_slug
   integration_type = "github"
-  integration_id   = data.sentry_organization_integration.github.id
+  integration_id   = var.github_integration_id
   identifier       = var.github_repository_identifier
 }

@@ -9,8 +9,8 @@ output "team_internal_id" {
 }
 
 output "github_integration_id" {
-  description = "GitHub organization integration ID."
-  value       = data.sentry_organization_integration.github.id
+  description = "GitHub organization integration ID (empty when enable_github is false)."
+  value       = var.enable_github ? var.github_integration_id : ""
 }
 
 output "slack_integration_id" {
@@ -24,6 +24,6 @@ output "pagerduty_integration_id" {
 }
 
 output "github_repository_id" {
-  description = "Sentry organization repository ID for GitHub."
-  value       = sentry_organization_repository.github.id
+  description = "Sentry organization repository ID for GitHub (empty when enable_github is false)."
+  value       = try(sentry_organization_repository.github[0].id, "")
 }

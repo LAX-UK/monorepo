@@ -33,13 +33,21 @@ variable "platform" {
   }
 }
 
+variable "enable_code_mappings" {
+  type        = bool
+  default     = false
+  description = "Create GitHub code mappings for apps/ and packages/."
+}
+
 variable "github_integration_id" {
   type        = string
+  default     = ""
   description = "GitHub integration ID for code mappings."
 }
 
 variable "github_repository_id" {
   type        = string
+  default     = ""
   description = "Sentry organization repository ID."
 }
 
