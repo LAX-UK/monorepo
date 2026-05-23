@@ -1,6 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { adminCreateArtistResultAction } from "@/lib/actions/admin";
+import { apiBaseUrl } from "@/lib/auth/api-base";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@auction/ui/components/dialog";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -31,6 +40,8 @@ type Props = {
   /** When set, the new artist is linked to this user (e.g. submitter is the
    * maker). The dialog passes it through on submit; not user-editable. */
   ownerUserId?: string | null;
+  /** When true, creates an approved profile (submission decision flow). */
+  approveOnCreate?: boolean;
 };
 
 const KINDS = [
@@ -49,6 +60,7 @@ export function CreateArtistDialog({
   onCancel,
   defaultKind,
   ownerUserId,
+  approveOnCreate = false,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,75 +85,77 @@ export function CreateArtistDialog({
       setNameStatus(null);
       return;
     }
+    const controller = new AbortController();
     const handle = setTimeout(async () => {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const res = await fetch(
-        `${apiBase}/artists/check-name?displayName=${encodeURIComponent(displayName)}`,
-        { credentials: "include" },
-      );
-      if (!res.ok) return;
-      const body = (await res.json()) as {
-        data: { available: boolean; suggestions: string[] };
-      };
-      setNameStatus(body.data);
+      const apiBase = apiBaseUrl();
+      try {
+        const res = await fetch(
+          `${apiBase}/artists/check-name?displayName=${encodeURIComponent(displayName)}`,
+          { credentials: "include", signal: controller.signal },
+        );
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          data: { available: boolean; suggestions: string[] };
+        };
+        setNameStatus(body.data);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      clearTimeout(handle);
+      controller.abort();
+    };
   }, [displayName, open]);
-
-  if (!open) return null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const res = await fetch(`${apiBase}/artists`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: displayName.trim(),
-          kind,
-          ...(shortBio.trim() ? { shortBio: shortBio.trim() } : {}),
-          ...(nationality.trim() ? { nationality: nationality.trim() } : {}),
-          ...(birthYear.trim() ? { birthYear: birthYear.trim() } : {}),
-          ...(deathYear.trim() ? { deathYear: deathYear.trim() } : {}),
-          ...(ownerUserId ? { ownerUserId } : {}),
-        }),
+      const result = await adminCreateArtistResultAction({
+        displayName: displayName.trim(),
+        kind,
+        ...(approveOnCreate ? { status: "approved" as const } : {}),
+        ...(shortBio.trim() ? { shortBio: shortBio.trim() } : {}),
+        ...(nationality.trim() ? { nationality: nationality.trim() } : {}),
+        ...(birthYear.trim() ? { birthYear: birthYear.trim() } : {}),
+        ...(deathYear.trim() ? { deathYear: deathYear.trim() } : {}),
+        ...(ownerUserId ? { ownerUserId } : {}),
       });
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: string };
-        setError(body.error ?? "create_failed");
+      if (!result.ok) {
+        const fieldMessage =
+          result.fieldErrors?.displayName?.[0] ??
+          result.fieldErrors?.kind?.[0] ??
+          result.fieldErrors?.shortBio?.[0];
+        setError(fieldMessage ?? result.error);
         return;
       }
-      const body = (await res.json()) as { data: CreatedArtist };
-      onCreated(body.data);
+      const createdId = result.data?.id;
+      if (!createdId) {
+        setError("Artist was created but no id was returned");
+        return;
+      }
+      onCreated({
+        id: createdId,
+        displayName: displayName.trim(),
+        slug: displayName.trim().toLowerCase().replace(/\s+/g, "-"),
+        status: approveOnCreate ? "approved" : "pending",
+      });
     });
   }
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: custom modal manages its own open/close state; native <dialog> element does not fit our overlay/transition model.
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-artist-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onCancel();
+      }}
     >
-      <div className="w-full max-w-lg rounded-md border bg-surface shadow-xl">
-        <div className="flex items-start justify-between border-b p-4">
-          <h2 id="create-artist-title" className="text-lg font-semibold">
-            Create artist
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-on-surface-variant hover:text-on-surface"
-            aria-label="Cancel"
-          >
-            ×
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create artist</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ca-name">Name</Label>
             <Input
@@ -219,16 +233,16 @@ export function CreateArtistDialog({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <div className="flex justify-end gap-2">
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="tertiary" onClick={onCancel} disabled={pending}>
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
               {pending ? "Creating…" : "Create artist"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

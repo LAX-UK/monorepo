@@ -61,6 +61,8 @@ export function TypedConfirmationDialog({
     try {
       await onConfirm();
       onOpenChange(false);
+    } catch {
+      // Caller surfaces errors (e.g. toast); keep dialog open for retry.
     } finally {
       setPending(false);
     }

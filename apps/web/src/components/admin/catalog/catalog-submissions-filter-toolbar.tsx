@@ -6,15 +6,13 @@ import {
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
 import type { SubmissionDecisionQueue } from "@/lib/admin/admin-list-controllers";
-import type { ItemSubmissionStatus } from "@auction/types";
 
 type Props = {
   lenses: readonly CatalogSegmentItem[];
   activeLensId: string;
   activeFilterCount: number;
   initialQ: string;
-  queue?: SubmissionDecisionQueue;
-  status?: ItemSubmissionStatus;
+  queue: SubmissionDecisionQueue;
 };
 
 export function CatalogSubmissionsFilterToolbar({
@@ -23,7 +21,6 @@ export function CatalogSubmissionsFilterToolbar({
   activeFilterCount,
   initialQ,
   queue,
-  status,
 }: Props) {
   return (
     <CatalogFilterBar
@@ -32,13 +29,7 @@ export function CatalogSubmissionsFilterToolbar({
       lensAriaLabel="Submission queue"
       sheetTitle="Submission filters"
       activeFilterCount={activeFilterCount}
-      sheetFilters={
-        <AdminSubmissionsTitleFilterForm
-          initialQ={initialQ}
-          {...(queue !== undefined ? { queue } : {})}
-          {...(status !== undefined ? { status } : {})}
-        />
-      }
+      sheetFilters={<AdminSubmissionsTitleFilterForm initialQ={initialQ} queue={queue} />}
     />
   );
 }

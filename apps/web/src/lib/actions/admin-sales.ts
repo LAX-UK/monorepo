@@ -1,6 +1,8 @@
 "use server";
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
+import { getIdempotentSaleCreate, setIdempotentSaleCreate } from "@/lib/actions/idempotency-cache";
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -9,11 +11,21 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { LotStatus } from "@auction/types";
 import { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
+
+function revalidateAdminSaleDetail(saleId: string) {
+  revalidatePath("/admin/sales");
+  revalidatePath(`/admin/sales/${saleId}`);
+  revalidatePath(`/admin/sales/${saleId}/schedule`);
+  revalidatePath(`/admin/sales/${saleId}/lots`);
+  revalidatePath(`/admin/sales/${saleId}/documents`);
+  revalidatePath(`/admin/sales/${saleId}/registrations`);
+}
 
 function parseCoverImagesFromForm(formData: FormData): string[] | undefined {
   const raw = String(formData.get("coverImages") ?? "").trim();
@@ -157,8 +169,7 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   if (!r.ok) {
     redirect(`/admin/sales/${id}/edit?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   redirect(`/admin/sales/${id}`);
 }
@@ -171,8 +182,7 @@ export async function adminPublishSaleAction(formData: FormData): Promise<void> 
   if (!r.ok) {
     redirect(`/admin/sales/${id}?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   redirect(`/admin/sales/${id}`);
 }
@@ -185,8 +195,7 @@ export async function adminCancelSaleAction(formData: FormData): Promise<void> {
   if (!r.ok) {
     redirect(`/admin/sales/${id}?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   redirect(`/admin/sales/${id}`);
 }
@@ -199,12 +208,11 @@ export async function adminAttachLotToSaleAction(formData: FormData): Promise<vo
   const { adminSales } = getWriteContainer();
   const r = await adminSales.attachLot(saleId, lotId);
   if (!r.ok) {
-    redirect(`/admin/sales/${saleId}?error=${encodeURIComponent(r.message)}`);
+    redirect(`/admin/sales/${saleId}/lots?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${saleId}`);
+  revalidateAdminSaleDetail(saleId);
   revalidatePath("/admin/lots");
-  redirect(`/admin/sales/${saleId}`);
+  redirect(`/admin/sales/${saleId}/lots`);
 }
 
 export async function adminDetachLotFromSaleAction(formData: FormData): Promise<void> {
@@ -215,17 +223,21 @@ export async function adminDetachLotFromSaleAction(formData: FormData): Promise<
   const { adminSales } = getWriteContainer();
   const r = await adminSales.detachLot(saleId, lotId);
   if (!r.ok) {
-    redirect(`/admin/sales/${saleId}?error=${encodeURIComponent(r.message)}`);
+    redirect(`/admin/sales/${saleId}/lots?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${saleId}`);
+  revalidateAdminSaleDetail(saleId);
   revalidatePath("/admin/lots");
-  redirect(`/admin/sales/${saleId}`);
+  redirect(`/admin/sales/${saleId}/lots`);
 }
 
 export async function adminCreateSaleResultAction(
   input: z.infer<typeof createSaleSchema>,
+  idempotencyKey?: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
+  const cachedId = getIdempotentSaleCreate(idempotencyKey);
+  if (cachedId) return actionSuccess({ id: cachedId });
   const parsed = createSaleSchema.safeParse(input);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -235,6 +247,7 @@ export async function adminCreateSaleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
+  setIdempotentSaleCreate(idempotencyKey, r.data.id);
   revalidatePath("/admin/sales");
   revalidatePath("/");
   return actionSuccess({ id: r.data.id });
@@ -244,6 +257,8 @@ export async function adminUpdateSaleResultAction(
   saleId: string,
   input: z.infer<typeof updateSaleSchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const id = saleId.trim();
   if (!id) {
     return actionFailure("Missing sale");
@@ -258,13 +273,14 @@ export async function adminUpdateSaleResultAction(
     const meta = readApiActionErrorMeta(r.body);
     return actionFailure(r.message, undefined, r.status, r.code, meta);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   return actionSuccess();
 }
 
 export async function adminPublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const id = saleId.trim();
   if (!id) {
     return actionFailure("Missing sale");
@@ -274,13 +290,14 @@ export async function adminPublishSaleResultAction(saleId: string): Promise<Acti
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   return actionSuccess();
 }
 
 export async function adminUnpublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const id = saleId.trim();
   if (!id) {
     return actionFailure("Missing sale");
@@ -290,14 +307,15 @@ export async function adminUnpublishSaleResultAction(saleId: string): Promise<Ac
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/admin/lots");
   revalidatePath("/");
   return actionSuccess();
 }
 
 export async function adminCancelSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const id = saleId.trim();
   if (!id) {
     return actionFailure("Missing sale");
@@ -307,8 +325,7 @@ export async function adminCancelSaleResultAction(saleId: string): Promise<Actio
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath("/");
   return actionSuccess();
 }
@@ -317,6 +334,8 @@ export async function adminAttachLotToSaleResultAction(
   saleId: string,
   lotId: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const sid = saleId.trim();
   const lid = lotId.trim();
   if (!sid || !lid) {
@@ -327,8 +346,7 @@ export async function adminAttachLotToSaleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${sid}`);
+  revalidateAdminSaleDetail(sid);
   revalidatePath("/admin/lots");
   return actionSuccess();
 }
@@ -337,6 +355,8 @@ export async function adminDetachLotFromSaleResultAction(
   saleId: string,
   lotId: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const sid = saleId.trim();
   const lid = lotId.trim();
   if (!sid || !lid) {
@@ -347,8 +367,7 @@ export async function adminDetachLotFromSaleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${sid}`);
+  revalidateAdminSaleDetail(sid);
   revalidatePath("/admin/lots");
   return actionSuccess();
 }
@@ -357,6 +376,8 @@ export async function adminMarkSaleEndedResultAction(
   saleId: string,
   reason?: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const id = saleId.trim();
   if (!id) {
     return actionFailure("Missing sale");
@@ -366,8 +387,7 @@ export async function adminMarkSaleEndedResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${id}`);
+  revalidateAdminSaleDetail(id);
   revalidatePath(`/sales/${id}`);
   revalidatePath("/", "layout");
   revalidatePath("/");
@@ -379,6 +399,8 @@ export async function adminCancelLotInSaleResultAction(
   lotId: string,
   reason?: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const sid = saleId.trim();
   const lid = lotId.trim();
   if (!sid || !lid) {
@@ -389,8 +411,7 @@ export async function adminCancelLotInSaleResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${sid}`);
+  revalidateAdminSaleDetail(sid);
   revalidatePath("/admin/lots");
   revalidatePath(`/lot/${lid}`);
   revalidatePath("/", "layout");
@@ -403,6 +424,8 @@ export async function adminSetLotStatusResultAction(
   status: LotStatus,
   reason?: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+  if (denied) return denied;
   const sid = saleId.trim();
   const lid = lotId.trim();
   if (!sid || !lid) {
@@ -413,8 +436,7 @@ export async function adminSetLotStatusResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${sid}`);
+  revalidateAdminSaleDetail(sid);
   revalidatePath("/admin/lots");
   revalidatePath(`/lot/${lid}`);
   revalidatePath("/", "layout");

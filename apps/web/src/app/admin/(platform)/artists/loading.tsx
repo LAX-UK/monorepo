@@ -1,17 +1,13 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { TableSkeleton } from "@auction/ui";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminArtistsLoading() {
   return (
-    <AdminListPage
+    <AdminListPageSkeleton
       title="Artists"
-      description="Loading catalogue…"
-      hasFilters={false}
-      resetHref="/admin/artists"
-      errorAlert={null}
-      filters={null}
-      view={<TableSkeleton rows={10} columns={8} />}
-      pagination={null}
+      description="Loading artists…"
+      kpiTiles={4}
+      tableRows={10}
+      tableColumns={8}
     />
   );
 }

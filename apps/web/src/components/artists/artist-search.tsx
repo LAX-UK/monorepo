@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
+import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Input } from "@auction/ui/components/input";
 import { Loader2, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +14,7 @@ export type ArtistSearchHit = {
   kind: "artist" | "maker" | "brand" | "marque";
   status: "pending" | "approved" | "rejected" | "merged_into";
   matchedAlias: string | null;
-  matchType: "exact" | "alias" | "fuzzy";
+  matchType: "exact" | "alias" | "partial" | "fuzzy";
   score: number;
 };
 
@@ -27,6 +29,8 @@ type Props = {
   disabled?: boolean;
   /** Placeholder text for the search input. */
   placeholder?: string;
+  /** Admin pickers use the authenticated staff search (includes pending profiles). */
+  mode?: "admin" | "public";
 };
 
 const DEBOUNCE_MS = 300;
@@ -37,6 +41,7 @@ export function ArtistSearch({
   onCreateNew,
   disabled = false,
   placeholder = "Search artists by name or alias…",
+  mode = "public",
 }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [hits, setHits] = useState<ArtistSearchHit[]>([]);
@@ -57,10 +62,25 @@ export function ArtistSearch({
     const requestId = ++lastRequestId.current;
     const handle = setTimeout(async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-        const res = await fetch(`${apiBase}/artists/search?q=${encodeURIComponent(trimmed)}`, {
-          credentials: "include",
-        });
+        if (mode === "admin") {
+          const result = await searchAdminArtistsAction(trimmed);
+          if (requestId !== lastRequestId.current) return;
+          if (!result.ok) {
+            setError(result.error || "Search failed.");
+            setHits([]);
+          } else {
+            setHits(result.data ?? []);
+          }
+          return;
+        }
+
+        const apiBase = apiBaseUrl();
+        const res = await fetch(
+          `${apiBase}/artists/search?q=${encodeURIComponent(trimmed)}&limit=20`,
+          {
+            credentials: "include",
+          },
+        );
         if (requestId !== lastRequestId.current) return;
         if (!res.ok) {
           setError("Search failed.");
@@ -79,7 +99,7 @@ export function ArtistSearch({
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [query]);
+  }, [mode, query]);
 
   return (
     <div className="space-y-2">
@@ -114,9 +134,13 @@ export function ArtistSearch({
                   <span className="text-xs text-on-surface-variant">
                     {hit.matchType === "alias" && hit.matchedAlias
                       ? `Matched alias “${hit.matchedAlias}”`
-                      : hit.matchType === "fuzzy"
-                        ? `Fuzzy match (${(hit.score * 100).toFixed(0)}%)`
-                        : "Exact match"}
+                      : hit.matchType === "partial" && hit.matchedAlias
+                        ? `Matched alias “${hit.matchedAlias}”`
+                        : hit.matchType === "partial"
+                          ? "Name contains your search"
+                          : hit.matchType === "fuzzy"
+                            ? `Fuzzy match (${(hit.score * 100).toFixed(0)}%)`
+                            : "Exact match"}
                     {hit.status !== "approved" && ` · ${hit.status}`}
                   </span>
                 </span>

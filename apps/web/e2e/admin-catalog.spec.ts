@@ -76,16 +76,44 @@ test.describe("admin lot create flow", () => {
     await page.goto("/admin/lots/new");
     await expect(page.getByRole("heading", { name: /new lot/i })).toBeVisible();
 
-    const titleInput = page.getByLabel(/title/i).first();
-    await titleInput.fill(`E2E Test Lot ${Date.now()}`);
+    await page.getByLabel(/title/i).first().fill(`E2E Test Lot ${Date.now()}`);
+    await page.getByRole("button", { name: /continue/i }).click();
 
-    // Starting price
-    const priceInput = page.getByLabel(/starting price/i).first();
-    await priceInput.fill("100");
+    const saleSelect = page.getByLabel(/assign to sale/i);
+    await saleSelect.waitFor();
+    const saleOptions = saleSelect.locator("option:not([disabled])");
+    if ((await saleOptions.count()) === 0) {
+      test.skip(true, "No sales available in seed data");
+      return;
+    }
+    await saleSelect.selectOption({ index: 1 });
 
-    await page.getByRole("button", { name: /save/i }).click();
+    const sellerSearch = page.getByPlaceholder(/search by organisation/i);
+    await sellerSearch.click();
+    await page.waitForTimeout(400);
+    const sellerHit = page.locator(".absolute.z-20").getByRole("button").first();
+    const hasSeller = await sellerHit.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasSeller) {
+      test.skip(true, "No legal entities available in seed data");
+      return;
+    }
+    await sellerHit.click();
 
-    // Should redirect to lot detail
+    await page.getByRole("button", { name: /continue/i }).click();
+
+    await page
+      .getByLabel(/starting price/i)
+      .first()
+      .fill("100");
+
+    const categoryTrigger = page.getByRole("button", { name: /select categories/i });
+    if (await categoryTrigger.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await categoryTrigger.click();
+      await page.getByRole("option").first().click();
+    }
+
+    await page.getByRole("button", { name: /create draft/i }).click();
+
     await page.waitForURL(/\/admin\/lots\/[^/]+$/);
     await expect(page.getByText(/draft/i)).toBeVisible();
   });

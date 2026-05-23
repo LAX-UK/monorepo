@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
 import { adminReviewTask, artistAlias, artistProfile, lot } from "@auction/db/schema";
-import { and, desc, eq, ilike, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   ArtistKind,
@@ -18,6 +18,10 @@ import type {
 } from "./interfaces/artist-registry.js";
 
 const FUZZY_THRESHOLD = 0.4;
+
+function partialSearchPattern(query: string): string {
+  return `%${query.trim().replace(/[%_\\]/g, "")}%`;
+}
 
 function slugify(name: string): string {
   return name
@@ -129,6 +133,7 @@ export class ArtistRegistryService implements IArtistRegistryService {
       .where(
         and(
           ne(artistProfile.status, "merged_into"),
+          eq(artistProfile.archived, false),
           sql`(${artistProfile.slug} = ${slug} OR lower(${artistProfile.displayName}) = lower(${trimmed}))`,
         ),
       )
@@ -162,6 +167,7 @@ export class ArtistRegistryService implements IArtistRegistryService {
       .where(
         and(
           ne(artistProfile.status, "merged_into"),
+          eq(artistProfile.archived, false),
           sql`lower(${artistAlias.alias}) = lower(${trimmed})`,
         ),
       )
@@ -183,10 +189,67 @@ export class ArtistRegistryService implements IArtistRegistryService {
       return [...exact, ...aliasHits].slice(0, limit);
     }
 
-    // Pass 3: fuzzy via pg_trgm similarity on displayName + alias.
     const aliasIds = new Set(aliasHits.map((h) => h.id));
     const skipIds = new Set([...exactIds, ...aliasIds]);
-    const remaining = limit - exact.length - aliasHits.length;
+    let remaining = limit - exact.length - aliasHits.length;
+
+    // Pass 3: partial substring match on display name, slug, or alias (admin-list parity).
+    const pattern = partialSearchPattern(trimmed);
+    const partialRows = await this.db
+      .select({
+        id: artistProfile.id,
+        displayName: artistProfile.displayName,
+        slug: artistProfile.slug,
+        kind: artistProfile.kind,
+        status: artistProfile.status,
+        alias: sql<string | null>`(
+          select ${artistAlias.alias}
+          from ${artistAlias}
+          where ${artistAlias.artistProfileId} = ${artistProfile.id}
+            and ${artistAlias.alias} ilike ${pattern}
+          limit 1
+        )`,
+      })
+      .from(artistProfile)
+      .where(
+        and(
+          ne(artistProfile.status, "merged_into"),
+          eq(artistProfile.archived, false),
+          or(
+            ilike(artistProfile.displayName, pattern),
+            ilike(artistProfile.slug, pattern),
+            sql`exists (
+              select 1 from ${artistAlias}
+              where ${artistAlias.artistProfileId} = ${artistProfile.id}
+                and ${artistAlias.alias} ilike ${pattern}
+            )`,
+          ),
+        ),
+      )
+      .orderBy(asc(artistProfile.displayName))
+      .limit(remaining + skipIds.size);
+
+    const partialHits: ArtistSearchHit[] = partialRows
+      .filter((r) => !skipIds.has(r.id as string))
+      .slice(0, remaining)
+      .map((r) => ({
+        id: r.id as string,
+        displayName: r.displayName as string,
+        slug: r.slug as string,
+        kind: (r.kind as ArtistKind) ?? "artist",
+        status: (r.status as ArtistStatus) ?? "approved",
+        matchedAlias: r.alias ?? null,
+        matchType: "partial",
+        score: 0.85,
+      }));
+
+    for (const hit of partialHits) skipIds.add(hit.id);
+    remaining -= partialHits.length;
+    if (remaining <= 0) {
+      return [...exact, ...aliasHits, ...partialHits].slice(0, limit);
+    }
+
+    // Pass 4: fuzzy via pg_trgm similarity on displayName + alias.
     const fuzzyRows = await this.db
       .select({
         id: artistProfile.id,
@@ -203,6 +266,7 @@ export class ArtistRegistryService implements IArtistRegistryService {
       .where(
         and(
           ne(artistProfile.status, "merged_into"),
+          eq(artistProfile.archived, false),
           sql`(
             similarity(${artistProfile.displayName}, ${trimmed}) >= ${FUZZY_THRESHOLD}
             OR exists (
@@ -235,7 +299,7 @@ export class ArtistRegistryService implements IArtistRegistryService {
         score: Number(r.score ?? 0),
       }));
 
-    return [...exact, ...aliasHits, ...fuzzy];
+    return [...exact, ...aliasHits, ...partialHits, ...fuzzy];
   }
 
   async proposeMatches(input: ProposeMatchesInput): Promise<ProposeMatchesResult> {
@@ -244,7 +308,9 @@ export class ArtistRegistryService implements IArtistRegistryService {
     return {
       exact: all.filter((h) => h.matchType === "exact").slice(0, limit),
       alias: all.filter((h) => h.matchType === "alias").slice(0, limit),
-      fuzzy: all.filter((h) => h.matchType === "fuzzy").slice(0, limit),
+      fuzzy: all
+        .filter((h) => h.matchType === "fuzzy" || h.matchType === "partial")
+        .slice(0, limit),
     };
   }
 

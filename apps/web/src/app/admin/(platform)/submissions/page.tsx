@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -25,19 +26,10 @@ const DECISION_TABS: { id: SubmissionDecisionQueue; label: string }[] = [
   { id: "rejected", label: "Rejected" },
 ];
 
-function legacyStatusLabel(searchParams: Record<string, string | string[] | undefined>) {
-  const st = Array.isArray(searchParams.status)
-    ? searchParams.status[0]
-    : (searchParams.status ?? "");
-  if (!st || st === "all") return null;
-  return st.replaceAll("_", " ");
-}
-
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    status?: string;
     queue?: string;
     error?: string;
     q?: string;
@@ -46,11 +38,10 @@ export default async function AdminSubmissionsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const query = submissionsListController.parseQuery(sp);
   const initialQ = query.q ?? "";
-  const activeQueue = query.queue ?? ("awaiting" as SubmissionDecisionQueue);
-  const legacyLabel = legacyStatusLabel(sp);
+  const activeQueue = query.queue ?? "awaiting";
 
   let loadError: string | null = null;
   let rows: Awaited<ReturnType<typeof submissionsListController.fetch>>["rows"] = [];
@@ -78,9 +69,7 @@ export default async function AdminSubmissionsPage({
   const clearTitleHref = buildListHref("/admin/submissions", sp, {
     q: "",
     offset: 0,
-    ...(query.status !== undefined
-      ? { status: query.status }
-      : { status: "", queue: query.queue ?? "awaiting" }),
+    queue: activeQueue,
   });
 
   const awaitingOnPage = submissionRows.filter(
@@ -93,7 +82,7 @@ export default async function AdminSubmissionsPage({
         ariaLabel="Submissions summary"
         tiles={[
           { label: "On this page", value: submissionRows.length, delta: `of ${total} total` },
-          ...(query.queue === "awaiting"
+          ...(activeQueue === "awaiting"
             ? [
                 {
                   label: "Submitted / reviewing",
@@ -111,8 +100,6 @@ export default async function AdminSubmissionsPage({
     label: tab.label,
     href: submissionsDecisionQueueHref(tab.id, sp),
   }));
-
-  const activeLensId: string = query.status !== undefined ? "__legacy__" : String(activeQueue);
 
   const activeFilterCount = initialQ.trim() !== "" ? 1 : 0;
 
@@ -144,28 +131,17 @@ export default async function AdminSubmissionsPage({
       <AdminListAlert title="Could not load submissions">{loadError ?? error}</AdminListAlert>
     ) : null;
 
-  const scopeDescription =
-    query.status !== undefined
-      ? (legacyLabel ?? "matching your filters")
-      : ({
-          awaiting: "awaiting decision (submitted or under review)",
-          accepted: "accepted (approved or converted)",
-          rejected: "rejected",
-        }[activeQueue] ?? "matching your filters");
+  const scopeDescription = {
+    awaiting: "awaiting decision (submitted or under review)",
+    accepted: "accepted (approved or converted)",
+    rejected: "rejected",
+  }[activeQueue];
 
   const emptyNoQuery =
     !loadError && rows.length === 0 && !initialQ ? (
       <AdminEmptyState
-        title={
-          query.status !== undefined
-            ? `No submissions with legacy status "${legacyLabel ?? ""}"`
-            : `Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`
-        }
-        description={
-          query.status !== undefined
-            ? "This bookmarked status filter matched no rows."
-            : `There are no submissions ${scopeDescription} right now.`
-        }
+        title={`Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`}
+        description={`There are no submissions ${scopeDescription} right now.`}
       />
     ) : null;
 
@@ -173,7 +149,7 @@ export default async function AdminSubmissionsPage({
     !loadError && initialQ && rows.length === 0 ? (
       <AdminEmptyState
         title="No matches"
-        description={`No submissions match "${initialQ}" in this ${query.status !== undefined ? `legacy filter (${legacyLabel ?? ""})` : "queue"} view. Try another search term or clear the filter.`}
+        description={`No submissions match "${initialQ}" in this queue view. Try another search term or clear the filter.`}
         action={
           <Button variant="secondary" asChild>
             <Link href={clearTitleHref}>Clear search</Link>
@@ -205,29 +181,15 @@ export default async function AdminSubmissionsPage({
         >
           <CatalogSubmissionsFilterToolbar
             lenses={lenses}
-            activeLensId={activeLensId}
+            activeLensId={activeQueue}
             activeFilterCount={activeFilterCount}
             initialQ={initialQ}
-            {...(query.queue !== undefined ? { queue: query.queue } : {})}
-            {...(query.status !== undefined ? { status: query.status } : {})}
+            queue={activeQueue}
           />
         </Suspense>
       }
       toolbarEnd={<AdminListExportLink />}
-      errorAlert={
-        <>
-          {errorAlert}
-          {query.status !== undefined ? (
-            <p className="font-body text-xs text-on-surface-variant">
-              Using legacy bookmark <span className="font-mono">{String(sp.status ?? "")}</span>.{" "}
-              <Link href="/admin/submissions" className="text-primary underline">
-                Switch to queues
-              </Link>
-              .
-            </p>
-          ) : null}
-        </>
-      }
+      errorAlert={errorAlert}
       mobileSummary={
         !loadError && submissionRows.length > 0 ? (
           <p className="font-body text-sm text-on-surface-variant">

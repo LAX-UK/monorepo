@@ -1,5 +1,6 @@
 "use client";
 
+import { apiBaseUrl } from "@/lib/auth/api-base";
 import type { AdminLegalEntityPickerRow } from "@/lib/data/http/admin.server";
 import { Loader2, X } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
@@ -26,10 +27,6 @@ function InlineActionButton({
       {children}
     </button>
   );
-}
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 }
 
 export type AdminLegalEntityPickerProps = {
@@ -72,7 +69,7 @@ export function AdminLegalEntityPicker({
           });
           const t = query.trim();
           if (t) qs.set("q", t);
-          const res = await fetch(`${apiBase()}/admin/legal-entities/browse?${qs.toString()}`, {
+          const res = await fetch(`${apiBaseUrl()}/admin/legal-entities/browse?${qs.toString()}`, {
             credentials: "include",
           });
           if (requestId !== lastSearchId.current) return;

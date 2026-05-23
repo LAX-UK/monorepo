@@ -3,11 +3,24 @@ import { saleDeliveryModes } from "@auction/types";
 import {
   buyerPremiumTiersSchema,
   createSaleSchema,
+  isAllowedStreamUrl,
+  isUkPostcode,
   majorToMinor,
   mediaReferenceSchema,
+  normalizeUkPostcode,
   updateSaleSchema,
 } from "@auction/validators";
 import { z } from "zod";
+
+const buyerPremiumRateString = z
+  .string()
+  .regex(/^\d(\.\d{1,4})?$/, "Must be a decimal between 0 and 1")
+  .refine((s) => {
+    const n = Number.parseFloat(s);
+    return n >= 0 && n <= 1;
+  }, "Buyer premium rate must be between 0 and 1");
+
+const optionalBuyerPremiumRate = z.union([buyerPremiumRateString, z.literal("")]);
 
 function parseCategoryId(cat: string): string | undefined {
   const t = cat.trim();
@@ -21,30 +34,80 @@ export const adminSaleTierRowSchema = z.object({
   rate: z.string().max(16),
 });
 
-export const adminSaleFormValuesSchema = z.object({
-  title: z.string().min(1, "Title is required").max(500),
-  description: z.string().max(10_000),
-  coverImages: z.array(mediaReferenceSchema).max(20),
-  categoryId: z.string(),
-  deliveryMode: z.enum(saleDeliveryModes),
-  streamUrl: z.string().max(500),
-  locationName: z.string().max(500),
-  locationAddress: z.string().max(500),
-  locationMapUrl: z.string().max(2048),
-  locationAddressLine1: z.string().max(500),
-  locationAddressLine2: z.string().max(500),
-  locationCity: z.string().max(500),
-  locationCounty: z.string().max(500),
-  locationPostcode: z.string().max(16),
-  locationCountry: z.string().max(120),
-  startTime: z.string().min(1, "Start is required"),
-  endTime: z.string().min(1, "End is required"),
-  previewStartTime: z.string(),
-  buyerPremiumRate: z.string(),
-  /** Band rows; empty = flat rate only (`buyerPremiumRate`). */
-  buyerPremiumTiers: z.array(adminSaleTierRowSchema).max(16),
-  terms: z.string().max(50_000),
-});
+export const adminSaleFormValuesSchema = z
+  .object({
+    title: z.string().min(1, "Title is required").max(500),
+    description: z.string().max(10_000),
+    coverImages: z.array(mediaReferenceSchema).max(20),
+    categoryId: z.string(),
+    deliveryMode: z.enum(saleDeliveryModes),
+    streamUrl: z.string().max(500),
+    locationName: z.string().max(500),
+    locationAddress: z.string().max(500),
+    locationMapUrl: z.string().max(2048),
+    locationAddressLine1: z.string().max(500),
+    locationAddressLine2: z.string().max(500),
+    locationCity: z.string().max(500),
+    locationCounty: z.string().max(500),
+    locationPostcode: z.string().max(16),
+    locationCountry: z.string().max(120),
+    startTime: z.string().min(1, "Start is required"),
+    endTime: z.string().min(1, "End is required"),
+    previewStartTime: z.string(),
+    buyerPremiumRate: optionalBuyerPremiumRate,
+    /** Band rows; empty = flat rate only (`buyerPremiumRate`). */
+    buyerPremiumTiers: z.array(adminSaleTierRowSchema).max(16),
+    terms: z.string().max(50_000),
+  })
+  .superRefine((values, ctx) => {
+    const start = new Date(values.startTime);
+    const end = new Date(values.endTime);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End must be after start",
+        path: ["endTime"],
+      });
+    }
+    const previewRaw = values.previewStartTime.trim();
+    if (previewRaw) {
+      const preview = new Date(previewRaw);
+      if (Number.isNaN(preview.getTime())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid preview start",
+          path: ["previewStartTime"],
+        });
+      } else if (!Number.isNaN(start.getTime()) && preview >= start) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Preview must be before sale start",
+          path: ["previewStartTime"],
+        });
+      }
+    }
+    const stream = values.streamUrl.trim();
+    if (stream && !isAllowedStreamUrl(stream)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Unsupported stream URL host",
+        path: ["streamUrl"],
+      });
+    }
+    if (values.deliveryMode === "onsite") {
+      const postcode = values.locationPostcode.trim();
+      if (postcode) {
+        const normalized = normalizeUkPostcode(postcode);
+        if (!isUkPostcode(normalized)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter a valid UK postcode (e.g. SW1Y 6QU)",
+            path: ["locationPostcode"],
+          });
+        }
+      }
+    }
+  });
 
 export type AdminSaleTierRow = z.infer<typeof adminSaleTierRowSchema>;
 

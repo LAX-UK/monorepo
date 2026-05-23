@@ -15,10 +15,18 @@ type Props = {
   steps: readonly WizardStepSpec[];
   currentIndex: number;
   onStepClick?: (index: number) => void;
+  /** When true, step chips cannot be clicked (e.g. while validating a step jump). */
+  stepNavigationDisabled?: boolean;
   className?: string;
 };
 
-export function WizardStepIndicator({ steps, currentIndex, onStepClick, className }: Props) {
+export function WizardStepIndicator({
+  steps,
+  currentIndex,
+  onStepClick,
+  stepNavigationDisabled = false,
+  className,
+}: Props) {
   const stepCount = steps.length;
   const current = steps[currentIndex];
 
@@ -54,7 +62,11 @@ export function WizardStepIndicator({ steps, currentIndex, onStepClick, classNam
               <button
                 key={step.id}
                 type="button"
-                onClick={() => onStepClick(index)}
+                disabled={stepNavigationDisabled}
+                onClick={() => {
+                  if (stepNavigationDisabled) return;
+                  onStepClick(index);
+                }}
                 className={cn(
                   "inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-1.5 transition-colors",
                   active

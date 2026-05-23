@@ -1,17 +1,13 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { TableSkeleton } from "@auction/ui";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminSubmissionsLoading() {
   return (
-    <AdminListPage
+    <AdminListPageSkeleton
       title="Submissions"
       description="Loading submissions…"
-      hasFilters={false}
-      resetHref="/admin/submissions"
-      errorAlert={null}
-      filters={null}
-      view={<TableSkeleton rows={10} columns={5} />}
-      pagination={null}
+      kpiTiles={3}
+      tableRows={10}
+      tableColumns={5}
     />
   );
 }

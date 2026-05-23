@@ -1,13 +1,13 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function LotsLoading() {
   return (
-    <AdminListPageSkeleton
+    <CatalogListPageSkeleton
       title="Lots"
       description="Loading lots…"
-      kpiTiles={4}
+      kpiTiles={3}
       tableRows={10}
-      tableColumns={7}
+      tableColumns={6}
     />
   );
 }

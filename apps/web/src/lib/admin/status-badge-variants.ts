@@ -138,6 +138,28 @@ export function paymentStatusToBadgeVariant(status: PaymentStatus): AdminStatusB
       return "warning";
     case "refunded":
       return "neutral";
+    case "cancelled":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export type CategoryLifecycleStatus = "active" | "archived";
+
+export const categoryLifecycleLabel: Record<CategoryLifecycleStatus, string> = {
+  active: "Active",
+  archived: "Archived",
+};
+
+export function categoryLifecycleToBadgeVariant(
+  status: CategoryLifecycleStatus,
+): AdminStatusBadgeVariant {
+  switch (status) {
+    case "archived":
+      return "danger";
+    case "active":
+      return "success";
     default:
       return "neutral";
   }
@@ -540,7 +562,8 @@ export type AdminStatusDomain =
   | "saleroomSession"
   | "kyc"
   | "legalEntity"
-  | "dispute";
+  | "dispute"
+  | "category";
 
 export function adminStatusLabel(domain: AdminStatusDomain, status: string): string {
   switch (domain) {
@@ -582,6 +605,8 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
       return legalEntityStatusLabel[status as LegalEntityStatus] ?? status.replaceAll("_", " ");
     case "dispute":
       return disputeStatusLabel[status as DisputeStatus] ?? status.replaceAll("_", " ");
+    case "category":
+      return categoryLifecycleLabel[status as CategoryLifecycleStatus] ?? status;
     default:
       return status;
   }
@@ -628,6 +653,8 @@ export function adminStatusToBadgeVariant(
       return legalEntityStatusToBadgeVariant(status);
     case "dispute":
       return disputeStatusToBadgeVariant(status);
+    case "category":
+      return categoryLifecycleToBadgeVariant(status as CategoryLifecycleStatus);
     default:
       return "neutral";
   }

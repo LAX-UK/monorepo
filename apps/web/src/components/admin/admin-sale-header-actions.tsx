@@ -1,22 +1,15 @@
 "use client";
 
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
-import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import {
-  adminCancelSaleResultAction,
-  adminMarkSaleEndedResultAction,
-  adminPublishSaleResultAction,
-  adminUnpublishSaleResultAction,
-} from "@/lib/actions/admin-sales";
-import type { ActionResult } from "@/lib/forms/form-result";
+  SALE_PUBLISH_PHRASE,
+  useSaleLifecycleActions,
+} from "@/components/admin/sale-actions/use-sale-lifecycle-actions";
+import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { salePath } from "@/lib/seo/url";
-import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-
-const PUBLISH_PHRASE = "PUBLISH";
+import { useState } from "react";
 
 type Props = {
   saleId: string;
@@ -40,23 +33,8 @@ export function AdminSaleHeaderActions({
   canMarkOnsiteEnded,
   showSaleroomLink = false,
 }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, publish, unpublish, markOnsiteEnded, cancel } = useSaleLifecycleActions(saleId);
   const [publishOpen, setPublishOpen] = useState(false);
-
-  const run = (fn: () => Promise<ActionResult<void>>) => {
-    startTransition(() => {
-      void (async () => {
-        const r = await fn();
-        if (r.ok) {
-          notify.success("Done");
-          router.refresh();
-          return;
-        }
-        notify.error(r.error);
-      })();
-    });
-  };
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -77,11 +55,13 @@ export function AdminSaleHeaderActions({
             open={publishOpen}
             onOpenChange={setPublishOpen}
             title="Publish this sale?"
-            description={`Type ${PUBLISH_PHRASE} to schedule lots and make the sale visible to bidders.`}
+            description={`Type ${SALE_PUBLISH_PHRASE} to schedule lots and make the sale visible to bidders.`}
             actionLabel="Publish sale"
-            confirmationPhrase={PUBLISH_PHRASE}
+            confirmationPhrase={SALE_PUBLISH_PHRASE}
             severity="warning"
-            onConfirm={() => run(() => adminPublishSaleResultAction(saleId))}
+            onConfirm={async () => {
+              publish();
+            }}
           />
         </>
       ) : null}
@@ -93,7 +73,7 @@ export function AdminSaleHeaderActions({
           confirmTitle="Revert sale to draft?"
           confirmBody="All scheduled lots will also revert to draft."
           confirmLabel="Revert to draft"
-          onConfirmed={() => run(() => adminUnpublishSaleResultAction(saleId))}
+          onConfirmed={unpublish}
         >
           Revert to draft
         </ConfirmActionButton>
@@ -107,7 +87,7 @@ export function AdminSaleHeaderActions({
           confirmTitle="End onsite sale?"
           confirmBody="This will end the sale and all remaining lots."
           confirmLabel="Mark ended"
-          onConfirmed={() => run(() => adminMarkSaleEndedResultAction(saleId))}
+          onConfirmed={markOnsiteEnded}
         >
           Mark onsite sale ended
         </ConfirmActionButton>
@@ -120,7 +100,7 @@ export function AdminSaleHeaderActions({
           confirmTitle="Cancel entire sale?"
           confirmBody="This cancels the sale and remaining lots."
           confirmLabel="Cancel sale"
-          onConfirmed={() => run(() => adminCancelSaleResultAction(saleId))}
+          onConfirmed={cancel}
         >
           Cancel sale
         </ConfirmActionButton>

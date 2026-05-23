@@ -5,6 +5,8 @@ export * from "./media.js";
 export * from "./onsite-location.js";
 export * from "./sale.js";
 export * from "./sale-mode-policy.js";
+export * from "./lot-sale-timing.js";
+export * from "./sale-settlement.js";
 export * from "./stream-embed.js";
 export * from "./bid.js";
 export * from "./buyer-premium.js";

@@ -46,6 +46,14 @@ export async function adminRemoveSaleDocumentResultAction(
   return actionSuccess(undefined);
 }
 
+function revalidateAdminLotEdit(lotId: string) {
+  revalidatePath(`/admin/lots/${lotId}/edit`);
+  revalidatePath(`/admin/lots/${lotId}/edit/catalog`);
+  revalidatePath(`/admin/lots/${lotId}/edit/documents`);
+  revalidatePath(`/admin/lots/${lotId}`);
+  revalidatePath(`/admin/lots/${lotId}/documents`);
+}
+
 export async function adminAttachLotDocumentResultAction(
   lotId: string,
   input: AttachPayload,
@@ -59,8 +67,7 @@ export async function adminAttachLotDocumentResultAction(
   const payload = (await res.json().catch(() => ({}))) as { data?: EntityDocument; error?: string };
   if (!res.ok) return actionFailure(payload.error ?? "attach_failed");
   if (!payload.data) return actionFailure("invalid_response");
-  revalidatePath(`/admin/lots/${lotId}/edit`);
-  revalidatePath(`/admin/lots/${lotId}`);
+  revalidateAdminLotEdit(lotId);
   return actionSuccess(payload.data);
 }
 
@@ -76,8 +83,7 @@ export async function adminRemoveLotDocumentResultAction(
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     return actionFailure(body.error ?? "remove_failed");
   }
-  revalidatePath(`/admin/lots/${lotId}/edit`);
-  revalidatePath(`/admin/lots/${lotId}`);
+  revalidateAdminLotEdit(lotId);
   return actionSuccess(undefined);
 }
 
