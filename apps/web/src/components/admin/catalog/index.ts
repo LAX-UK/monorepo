@@ -16,5 +16,24 @@ export { CatalogDetailMobileMeta } from "./catalog-detail-mobile-meta";
 export { CatalogListMobileSummary } from "./catalog-list-mobile-summary";
 export { CatalogFormSectionNav, type CatalogFormSection } from "./catalog-form-section-nav";
 export { CatalogDetailActionError } from "./catalog-detail-action-error";
-export { CatalogDetailTabNav, type CatalogDetailTabSpec } from "./catalog-detail-tab-nav";
+export {
+  CatalogDetailTabNav,
+  type CatalogDetailTabBadge,
+  type CatalogDetailTabEntityKind,
+  type CatalogDetailTabSpec,
+} from "./catalog-detail-tab-nav";
 export { CatalogListPageSkeleton, CatalogListErrorShell } from "./catalog-list-states";
+export { CatalogDetailSection } from "./catalog-detail-section";
+export { CatalogDetailTabPanel } from "./catalog-detail-tab-panel";
+export {
+  CatalogDetailSummaryStrip,
+  type CatalogDetailSummaryItem,
+} from "./catalog-detail-summary-strip";
+export { CatalogContextRail } from "./catalog-context-rail";
+export { CatalogPublishReadiness } from "./catalog-publish-readiness";
+export { CatalogDomainEventsTimeline } from "./catalog-domain-events-timeline";
+export {
+  CatalogDetailStickyMiniBar,
+  type CatalogDetailStickyMiniItem,
+} from "./catalog-detail-sticky-mini-bar";
+export { CatalogExternalLink } from "./catalog-external-link";

@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import {
   type CreateSaleInput,
   type Lot,
@@ -27,6 +28,7 @@ import {
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -50,6 +52,8 @@ export type SaleServiceOptions = {
   saleFollowReader?: SaleFollowReader | null;
   mediaUrlResolver?: MediaUrlResolver;
   englishOnlyAuctions?: boolean;
+  db?: Database;
+  domainEventPublisher?: DomainEventPublisher | null;
 };
 
 export class SaleService {
@@ -61,6 +65,8 @@ export class SaleService {
   private readonly saleFollowReader: SaleFollowReader | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
   private readonly englishOnlyAuctions: boolean;
+  private readonly db: Database | undefined;
+  private readonly domainEventPublisher: DomainEventPublisher | null;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -71,9 +77,27 @@ export class SaleService {
     this.saleFollowReader = opts.saleFollowReader ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+    this.db = opts.db;
+    this.domainEventPublisher = opts.domainEventPublisher ?? null;
   }
 
-  async create(_adminId: string, input: ValidatorCreateSale): Promise<Sale> {
+  private async publishSaleEvent(
+    actorUserId: string,
+    saleId: string,
+    eventType: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.db || !this.domainEventPublisher) return;
+    await this.domainEventPublisher.publish(this.db, {
+      aggregateType: "sale",
+      aggregateId: saleId,
+      eventType,
+      payload,
+      actorUserId,
+    });
+  }
+
+  async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
     if (input.endTime <= input.startTime) {
       throw new LotError("endTime must be after startTime");
     }
@@ -105,6 +129,12 @@ export class SaleService {
         });
       }
     }
+    await this.publishSaleEvent(adminId, sale.id, "sale.created", {
+      from_status: null,
+      to_status: sale.status,
+      deliveryMode: sale.deliveryMode,
+      lotCount: input.lots?.length ?? 0,
+    });
     return sale;
   }
 
@@ -222,7 +252,7 @@ export class SaleService {
   }
 
   async publish(
-    _userId: string,
+    userId: string,
     userRole: string,
     saleId: string,
     userStaffRole?: string | null,
@@ -288,6 +318,12 @@ export class SaleService {
     const updatedSale = await this.saleRepo.findById(saleId);
     if (!updatedSale) return err(new LotError("Sale not found", 404));
     const updatedLots = await this.lotRepo.findBySaleId(saleId);
+    await this.publishSaleEvent(userId, saleId, "sale.published", {
+      from_status: "draft",
+      to_status: "scheduled",
+      lotCount: updatedLots.length,
+      deliveryMode: updatedSale.deliveryMode,
+    });
     return ok({ sale: updatedSale, lots: updatedLots });
   }
 
@@ -295,7 +331,7 @@ export class SaleService {
    *  Guard: only allowed when the sale is `scheduled` and all lots are still `scheduled`
    *  (i.e. no lot has gone active or ended yet — meaning no bids have been placed). */
   async unpublish(
-    _userId: string,
+    userId: string,
     userRole: string,
     saleId: string,
     userStaffRole?: string | null,
@@ -332,11 +368,15 @@ export class SaleService {
     await this.saleRepo.updateStatus(saleId, "draft");
     const updated = await this.saleRepo.findById(saleId);
     if (!updated) return err(new LotError("Sale not found", 404));
+    await this.publishSaleEvent(userId, saleId, "sale.unpublished", {
+      from_status: "scheduled",
+      to_status: "draft",
+    });
     return ok(updated);
   }
 
   async cancel(
-    _userId: string,
+    userId: string,
     userRole: string,
     saleId: string,
     userStaffRole?: string | null,
@@ -365,6 +405,11 @@ export class SaleService {
     await this.saleRepo.updateStatus(saleId, "cancelled");
     const updated = await this.saleRepo.findById(saleId);
     if (!updated) return err(new LotError("Sale not found", 404));
+    await this.publishSaleEvent(userId, saleId, "sale.cancelled", {
+      from_status: sale.status,
+      to_status: "cancelled",
+      lotCount: lots.length,
+    });
     return ok(updated);
   }
 

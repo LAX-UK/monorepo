@@ -12,21 +12,31 @@ type Props = {
 /** Shared metric tile for catalog detail KPI strips. */
 export function CatalogKpiCard({ label, value, hint, href }: Props) {
   const body = (
-    <Surface variant="card" className="border-border-hairline bg-surface-container-low/30 p-4">
-      <p className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+    <Surface
+      variant="card"
+      className="flex h-full min-w-0 flex-col overflow-hidden border-border-hairline bg-surface-container-low/30 p-3 sm:p-4"
+    >
+      <p className="line-clamp-2 break-words font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         {label}
       </p>
-      <p className="mt-1 font-body text-lg font-semibold tabular-nums text-on-surface">{value}</p>
-      {hint ? <p className="mt-1 font-body text-xs text-on-surface-variant">{hint}</p> : null}
+      <p className="mt-1 min-w-0 truncate text-base font-semibold tabular-nums text-on-surface sm:text-lg">
+        {value}
+      </p>
+      <div className="mt-auto min-h-[2.5rem] pt-1 font-body text-xs text-on-surface-variant">
+        {hint ? <p className="line-clamp-2 break-words">{hint}</p> : null}
+      </div>
     </Surface>
   );
 
   if (href) {
     return (
-      <Link href={href} className="block transition-opacity hover:opacity-90">
+      <Link
+        href={href}
+        className="block h-full min-w-0 overflow-hidden transition-opacity hover:opacity-90"
+      >
         {body}
       </Link>
     );
   }
-  return body;
+  return <div className="h-full min-w-0 overflow-hidden">{body}</div>;
 }

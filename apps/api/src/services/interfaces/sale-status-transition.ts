@@ -18,6 +18,7 @@ export interface ISaleStatusTransitionService {
     saleId: string,
     reason?: string,
     userStaffRole?: string | null,
+    actorUserId?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
   /** Cancel a single lot within a draft or scheduled sale. Useful when an admin
