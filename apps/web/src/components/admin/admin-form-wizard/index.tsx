@@ -232,12 +232,14 @@ export function AdminFormWizard({
           }}
         />
       ) : null}
-      <WizardStepIndicator
-        steps={steps}
-        currentIndex={stepIndex}
-        onStepClick={(index) => void handleStepClick(index)}
-        stepNavigationDisabled={stepJumpPending || pending}
-      />
+      <div className="border-b border-border-hairline pb-4">
+        <WizardStepIndicator
+          steps={steps}
+          currentIndex={stepIndex}
+          onStepClick={(index) => void handleStepClick(index)}
+          stepNavigationDisabled={stepJumpPending || pending}
+        />
+      </div>
       <div className="min-h-[12rem]">{stepBody}</div>
       <StickySaveBar className={cn(hideStickyOnMobile && "hidden md:block")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -9,19 +9,6 @@ const optionalText = (max = 2000) =>
     .optional()
     .transform((value) => (value ? value : undefined));
 
-const optionalSlug = z
-  .union([
-    z
-      .string()
-      .trim()
-      .min(1)
-      .max(160)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens"),
-    z.literal(""),
-  ])
-  .optional()
-  .transform((value) => (value ? value : undefined));
-
 const optionalMediaReference = z
   .union([mediaReferenceSchema, z.literal("")])
   .optional()
@@ -97,7 +84,6 @@ export const adminArtistListQuerySchema = z.object({
 
 export const adminCreateArtistBodySchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required").max(200),
-  slug: optionalSlug,
   /** Catalogue taxonomy. Admin-created profiles default to `artist`; the API
    * coerces a missing kind into `"artist"` server-side so we keep the schema
    * input/output shapes aligned for the admin form. */

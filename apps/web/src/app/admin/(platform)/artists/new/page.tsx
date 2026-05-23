@@ -54,7 +54,6 @@ export default async function NewAdminArtistPage({
             htmlFormId={CATALOG_FORM_IDS.artist}
             defaultValues={{
               displayName: displayFromUrl,
-              slug: "",
               kind: "artist",
               status: "approved",
               portraitUrl: "",

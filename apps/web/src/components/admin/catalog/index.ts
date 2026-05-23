@@ -23,6 +23,8 @@ export {
   type CatalogDetailTabSpec,
 } from "./catalog-detail-tab-nav";
 export { CatalogListPageSkeleton, CatalogListErrorShell } from "./catalog-list-states";
+export { CatalogDetailErrorShell } from "./catalog-detail-error-shell";
+export { CatalogDetailTabContentSkeleton } from "./catalog-detail-tab-content-skeleton";
 export { CatalogDetailSection } from "./catalog-detail-section";
 export { CatalogDetailTabPanel } from "./catalog-detail-tab-panel";
 export {

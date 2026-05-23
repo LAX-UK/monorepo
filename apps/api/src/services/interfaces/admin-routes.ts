@@ -142,11 +142,15 @@ export interface IAdminDashboardQueryService {
 
 export interface IAdminCatalogApplicationService {
   listCategoriesForAdmin(input: { includeArchived: boolean }): Promise<AdminCategory[]>;
-  createCategory(body: CreateCategoryInput): Promise<Category>;
+  createCategory(body: CreateCategoryInput, actorUserId?: string | null): Promise<Category>;
   getCategory(categoryId: string): Promise<AdminCategory | null>;
-  updateCategory(categoryId: string, body: UpdateCategoryInput): Promise<Category>;
-  archiveCategory(categoryId: string): Promise<Category>;
-  deleteCategory(categoryId: string): Promise<void>;
+  updateCategory(
+    categoryId: string,
+    body: UpdateCategoryInput,
+    actorUserId?: string | null,
+  ): Promise<Category>;
+  archiveCategory(categoryId: string, actorUserId?: string | null): Promise<Category>;
+  deleteCategory(categoryId: string, actorUserId?: string | null): Promise<void>;
   listArtists(input: AdminArtistListOptions): Promise<AdminArtistListResult>;
   getArtistStats(): Promise<AdminArtistStats>;
   listArtistDuplicateCandidates(artistId: string): Promise<ArtistSearchHit[]>;

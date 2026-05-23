@@ -18,6 +18,8 @@ function mapCategory(r: typeof category.$inferSelect): Category {
     sortOrder: r.sortOrder,
     parentId: r.parentId,
     heroImageKey: r.heroImageKey ?? null,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   };
 }
 
@@ -79,6 +81,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         ...(input.archived !== undefined ? { archived: input.archived } : {}),
         ...(input.heroImageKey !== undefined ? { heroImageKey: input.heroImageKey ?? null } : {}),
+        updatedAt: new Date(),
       })
       .where(eq(category.id, id))
       .returning();

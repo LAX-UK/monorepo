@@ -14,6 +14,8 @@ function parseCategory(raw: unknown): Category {
     sortOrder: Number(o.sortOrder ?? 0),
     parentId: o.parentId == null ? null : String(o.parentId),
     heroImageKey: o.heroImageKey == null || o.heroImageKey === "" ? null : String(o.heroImageKey),
+    createdAt: o.createdAt ? new Date(String(o.createdAt)) : new Date(),
+    updatedAt: o.updatedAt ? new Date(String(o.updatedAt)) : new Date(),
   };
 }
 

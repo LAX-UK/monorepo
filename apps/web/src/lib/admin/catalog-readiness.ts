@@ -1,4 +1,8 @@
-import type { Lot, Sale } from "@auction/types";
+import {
+  categoryDetailTabHref,
+  categoryEditHref,
+} from "@/components/admin/category-detail/category-detail-types";
+import type { AdminCategory, Lot, Sale } from "@auction/types";
 
 export type CatalogReadinessItem = {
   id: string;
@@ -130,6 +134,54 @@ export function buildSalePublishReadiness(
       ok: venueOk,
       severity: isOnsite ? "required" : "warning",
       href: `/admin/sales/${saleId}/edit`,
+    },
+  ];
+
+  const completeCount = items.filter((i) => i.ok).length;
+  const firstFailing = items.find((i) => !i.ok);
+
+  return {
+    items,
+    completeCount,
+    totalCount: items.length,
+    percent: pct(completeCount, items.length),
+    ...(firstFailing ? { firstFailing } : {}),
+  };
+}
+
+export function buildCategoryTaxonomyReadiness(
+  categoryId: string,
+  category: AdminCategory,
+  directChildCount: number,
+): CatalogReadinessResult {
+  const items: CatalogReadinessItem[] = [
+    {
+      id: "description",
+      label: "Category description",
+      ok: Boolean(category.description?.trim()),
+      severity: "warning",
+      href: categoryEditHref(categoryId),
+    },
+    {
+      id: "hero",
+      label: "Hero image",
+      ok: Boolean(category.heroImageKey),
+      severity: "warning",
+      href: categoryEditHref(categoryId),
+    },
+    {
+      id: "archive",
+      label: "Not archived while in use",
+      ok: !category.archived || category.usage.total === 0,
+      severity: "warning",
+      href: categoryEditHref(categoryId),
+    },
+    {
+      id: "branch",
+      label: "Branch has lots or children",
+      ok: category.usage.lots > 0 || directChildCount > 0 || category.usage.total === 0,
+      severity: "warning",
+      href: categoryDetailTabHref(categoryId, "lots"),
     },
   ];
 
