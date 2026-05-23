@@ -38,13 +38,3 @@ module "project" {
   environment   = local.environment
   resource_urns = []
 }
-
-module "sentry_projects" {
-  count = var.sentry_auth_token != "" ? 1 : 0
-
-  source            = "../../modules/sentry-projects"
-  organization_slug = var.sentry_organization_slug
-  team_slug         = var.sentry_team_slug
-  environment       = local.environment
-  project_names     = [for app in ["web", "api", "auth", "ws", "worker"] : "lax-${local.environment}-${app}"]
-}
