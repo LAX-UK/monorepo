@@ -1,7 +1,7 @@
 locals {
   environment = "prod"
   # Token presence is safe to expose for count/for_each gating; the token itself stays sensitive.
-  enabled = nonsensitive(trimspace(var.sentry_auth_token) != "")
+  enabled          = nonsensitive(trimspace(var.sentry_auth_token) != "")
   enable_slack     = var.slack_channel_id != ""
   enable_pagerduty = var.pagerduty_integration_key != ""
   enable_alerts    = local.enable_slack || local.enable_pagerduty
