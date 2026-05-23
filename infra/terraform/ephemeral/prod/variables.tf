@@ -397,13 +397,6 @@ variable "next_public_gtm_id" {
   description = "Google Tag Manager container ID (e.g. GTM-W6K4N67Z). GA4 is configured inside GTM. Empty disables analytics."
 }
 
-variable "gtm_sst_container_config" {
-  type        = string
-  default     = ""
-  sensitive   = true
-  description = "GTM server container CONTAINER_CONFIG (from GTM Admin > Manually provision tagging server)."
-}
-
 variable "meta_pixel_id" {
   type        = string
   default     = ""

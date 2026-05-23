@@ -151,6 +151,11 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "item_submission.restricted_entity_write": new Set(["action", "reason"]),
   /** lot voided at close (anti-shilling). */
   "lot.voided": new Set(["reason"]),
+  "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount"]),
+  "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
+  "sale.unpublished": new Set(["from_status", "to_status"]),
+  "sale.cancelled": new Set(["from_status", "to_status", "lotCount"]),
+  "sale.ended": new Set(["from_status", "to_status", "reason"]),
   /** member removed from entity. */
   "legal_entity.member_removed": new Set([
     "member_user_id",

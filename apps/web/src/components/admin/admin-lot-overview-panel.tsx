@@ -1,12 +1,18 @@
-import { CatalogInfoCard } from "@/components/admin/catalog";
+import {
+  CatalogDetailSection,
+  CatalogDetailSummaryStrip,
+  CatalogExternalLink,
+  CatalogInfoCard,
+  CatalogPublishReadiness,
+} from "@/components/admin/catalog";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
-import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
 import { MediaImage } from "@/components/ui/media-image";
+import { buildLotSummaryItems } from "@/lib/admin/build-lot-summary-items";
+import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import { formatDateTime, formatMoney, formatPercent } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
 import { Badge } from "@auction/ui";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -15,57 +21,81 @@ type Props = {
   auction: Lot;
   imageAlts: string[];
   context: LotDetailContext;
+  bidCount: number | null;
+  connectRequired?: boolean;
 };
 
-export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context }: Props) {
+export function AdminLotOverviewPanel({
+  lotId,
+  auction,
+  imageAlts,
+  context,
+  bidCount,
+  connectRequired = false,
+}: Props) {
   const premiumPct = Number.parseFloat(auction.buyerPremiumRate);
   const premiumLabel = Number.isNaN(premiumPct)
     ? auction.buyerPremiumRate
     : formatPercent(premiumPct * 100);
 
+  const summaryItems = buildLotSummaryItems(lotId, auction, bidCount);
+  const marketing = auction.marketingDetails;
+  const readiness =
+    auction.status === "draft" ? buildLotPublishReadiness(lotId, auction, connectRequired) : null;
+
   return (
-    <SplitDetailLayout
-      mediaSlot={
-        auction.images[0] ? (
-          <Surface variant="section" padding="none" className="overflow-hidden">
-            <div className="relative aspect-[4/5] max-h-[min(520px,70vh)] w-full bg-surface-container-low lg:aspect-[3/4]">
-              <MediaImage
-                src={auction.images[0]}
-                alt={imageAlts[0] ?? auction.title}
-                label="Primary lot image"
-                imgClassName="object-contain"
-                sizes="(max-width: 1024px) 100vw, 45vw"
-              />
+    <div className="space-y-8">
+      {readiness ? (
+        <CatalogPublishReadiness
+          title="Catalog readiness"
+          readiness={readiness}
+          dismissKey={`lot-overview:${lotId}`}
+        />
+      ) : null}
+
+      <CatalogDetailSummaryStrip items={summaryItems} />
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <CatalogDetailSection
+          title="Primary image"
+          description="Hero image shown on the public lot page and in catalog listings."
+        >
+          {auction.images[0] ? (
+            <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-low/40">
+              <div className="relative aspect-[4/5] max-h-[min(480px,65vh)] w-full bg-surface-container-low">
+                <MediaImage
+                  src={auction.images[0]}
+                  alt={imageAlts[0] ?? auction.title}
+                  label="Primary lot image"
+                  imgClassName="object-contain"
+                  sizes="(max-width: 1024px) 100vw, 45vw"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
+                <span className="font-body text-sm text-on-surface-variant">
+                  {auction.images.length} image{auction.images.length === 1 ? "" : "s"}
+                </span>
+                <Link
+                  href={lotDetailTabHref(lotId, "images")}
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                >
+                  Manage images →
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
-              <span className="font-body text-sm text-on-surface-variant">
-                {auction.images.length} image{auction.images.length === 1 ? "" : "s"}
-              </span>
+          ) : (
+            <p className="rounded-xl border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
+              No images yet.{" "}
               <Link
                 href={lotDetailTabHref(lotId, "images")}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                className="font-medium text-primary hover:underline"
               >
-                Manage images →
+                Add images →
               </Link>
-            </div>
-          </Surface>
-        ) : (
-          <Surface
-            variant="quiet"
-            padding="md"
-            className="space-y-2 text-sm text-on-surface-variant"
-          >
-            <p>No images yet.</p>
-            <Link
-              href={lotDetailTabHref(lotId, "images")}
-              className="font-medium text-primary hover:underline"
-            >
-              Add images in the Images tab →
-            </Link>
-          </Surface>
-        )
-      }
-      metaSlot={
+            </p>
+          )}
+        </CatalogDetailSection>
+
         <div className="space-y-4">
           <CatalogInfoCard title="Commercial">
             <dl className="space-y-3 font-body text-sm">
@@ -85,7 +115,7 @@ export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context }: Pr
               ) : null}
               <DetailRow
                 label="Auction type"
-                value={<span className="capitalize">{auction.auctionType}</span>}
+                value={<span className="capitalize">{auction.auctionType.replace(/_/g, " ")}</span>}
               />
             </dl>
           </CatalogInfoCard>
@@ -100,93 +130,116 @@ export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context }: Pr
             </p>
           </CatalogInfoCard>
         </div>
-      }
-      secondarySlot={
-        <div className="space-y-4">
-          <CatalogInfoCard title="Catalogue">
-            {auction.description ? (
-              <p className="whitespace-pre-wrap font-body text-sm leading-relaxed text-on-surface">
-                {auction.description}
-              </p>
-            ) : (
-              <p className="text-sm text-on-surface-variant">No description.</p>
-            )}
-            {(auction.medium || auction.dimensions) && (
-              <dl className="mt-4 space-y-2 border-t border-border-hairline pt-4 font-body text-sm">
-                {auction.medium ? <DetailRow label="Medium" value={auction.medium} /> : null}
-                {auction.dimensions ? (
-                  <DetailRow label="Dimensions" value={auction.dimensions} />
-                ) : null}
-              </dl>
-            )}
-            {context.categories.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border-hairline pt-4">
-                {context.categories.map((cat) => (
-                  <Link key={cat.id} href={`/admin/categories/${cat.id}`}>
-                    <Badge variant="secondary">{cat.name}</Badge>
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-          </CatalogInfoCard>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <CatalogInfoCard title="Sale">
-              {context.sale ? (
-                <div className="space-y-1">
-                  <Link
-                    href={`/admin/sales/${context.sale.id}/lots`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {context.sale.title}
-                  </Link>
-                  {auction.lotNumber != null ? (
-                    <p className="text-xs text-on-surface-variant">Lot #{auction.lotNumber}</p>
-                  ) : null}
-                </div>
-              ) : (
-                <span className="text-sm text-on-surface-variant">Not assigned to a sale</span>
-              )}
-            </CatalogInfoCard>
-            <CatalogInfoCard title="Artist">
-              {context.artist ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/admin/artists/${context.artist.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {context.artist.displayName}
-                  </Link>
-                  {auction.artistReviewRequired ? (
-                    <Badge variant="outline" className="border-warning/40 text-warning">
-                      Review required
-                    </Badge>
-                  ) : null}
-                </div>
-              ) : (
-                <span className="text-sm text-on-surface-variant">Not assigned</span>
-              )}
-            </CatalogInfoCard>
-            <CatalogInfoCard title="Seller">
-              {context.seller ? (
-                <div className="space-y-1">
-                  <Link
-                    href={`/admin/legal-entities/${context.seller.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {context.seller.displayName}
-                  </Link>
-                  {auction.archivedSeller ? (
-                    <p className="text-xs text-warning">Seller entity archived</p>
-                  ) : null}
-                </div>
-              ) : (
-                <span className="text-sm text-on-surface-variant">Not set</span>
-              )}
-            </CatalogInfoCard>
-          </div>
+      </div>
+
+      <CatalogDetailSection
+        title="Catalogue"
+        description="Full description and physical details shown to bidders."
+      >
+        <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
+          {auction.description ? (
+            <p className="whitespace-pre-wrap font-body text-sm leading-relaxed text-on-surface">
+              {auction.description}
+            </p>
+          ) : (
+            <p className="rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
+              No catalogue description yet.
+            </p>
+          )}
+          {(auction.medium || auction.dimensions) && (
+            <dl className="mt-4 space-y-2 border-t border-border-hairline pt-4 font-body text-sm">
+              {auction.medium ? <DetailRow label="Medium" value={auction.medium} /> : null}
+              {auction.dimensions ? (
+                <DetailRow label="Dimensions" value={auction.dimensions} />
+              ) : null}
+            </dl>
+          )}
+          {context.categories.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border-hairline pt-4">
+              {context.categories.map((cat) => (
+                <Link key={cat.id} href={`/admin/categories/${cat.id}`}>
+                  <Badge variant="secondary">{cat.name}</Badge>
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
-      }
-    />
+      </CatalogDetailSection>
+
+      {marketing.estimate ? (
+        <CatalogDetailSection title="Estimates" description="Pre-sale estimate range for bidders.">
+          <p className="font-body text-sm tabular-nums text-on-surface">
+            {formatMoney(marketing.estimate.low)} – {formatMoney(marketing.estimate.high)}{" "}
+            <span className="text-on-surface-variant">{marketing.estimate.currency}</span>
+          </p>
+        </CatalogDetailSection>
+      ) : null}
+
+      {marketing.conditionReport?.summary || marketing.conditionReport?.details ? (
+        <CatalogDetailSection
+          title="Condition"
+          description="Condition report summary from marketing details."
+        >
+          <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
+            {marketing.conditionReport.summary ? (
+              <p className="font-body text-sm text-on-surface">
+                {marketing.conditionReport.summary}
+              </p>
+            ) : null}
+            {marketing.conditionReport.details ? (
+              <p className="mt-2 whitespace-pre-wrap font-body text-sm text-on-surface-variant">
+                {marketing.conditionReport.details}
+              </p>
+            ) : null}
+            {marketing.conditionReport.downloadUrl ? (
+              <p className="mt-3">
+                <CatalogExternalLink
+                  href={marketing.conditionReport.downloadUrl}
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                >
+                  Download report
+                </CatalogExternalLink>
+              </p>
+            ) : null}
+          </div>
+        </CatalogDetailSection>
+      ) : null}
+
+      {marketing.provenance && marketing.provenance.length > 0 ? (
+        <CatalogDetailSection title="Provenance" description="Ownership and history notes.">
+          <ul className="space-y-2 font-body text-sm text-on-surface">
+            {marketing.provenance.map((entry, i) => (
+              <li key={`${i}-${entry.note.slice(0, 24)}`}>
+                {entry.period ? (
+                  <span className="font-medium text-on-surface-variant">{entry.period}: </span>
+                ) : null}
+                {entry.note}
+              </li>
+            ))}
+          </ul>
+        </CatalogDetailSection>
+      ) : null}
+
+      {marketing.exhibitions && marketing.exhibitions.length > 0 ? (
+        <CatalogDetailSection title="Exhibitions" description="Exhibition history.">
+          <ul className="space-y-2 font-body text-sm text-on-surface">
+            {marketing.exhibitions.map((entry, i) => (
+              <li key={`${i}-${entry.venue}`}>
+                {entry.year ? (
+                  <span className="font-medium tabular-nums text-on-surface-variant">
+                    {entry.year}{" "}
+                  </span>
+                ) : null}
+                {entry.venue}
+                {entry.note ? (
+                  <span className="text-on-surface-variant"> — {entry.note}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </CatalogDetailSection>
+      ) : null}
+    </div>
   );
 }
 

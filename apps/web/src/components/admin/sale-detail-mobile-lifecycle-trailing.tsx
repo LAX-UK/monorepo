@@ -1,10 +1,6 @@
 "use client";
 
 import {
-  type CatalogMobileAction,
-  CatalogMobileActionBar,
-} from "@/components/admin/catalog/catalog-mobile-action-bar";
-import {
   SALE_PUBLISH_PHRASE,
   useSaleLifecycleActions,
 } from "@/components/admin/sale-actions/use-sale-lifecycle-actions";
@@ -12,16 +8,13 @@ import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-d
 import {
   type SaleLifecycleActionKind,
   buildSaleLifecycleActionItems,
-  buildSaleNavigationActionItems,
 } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
+import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 type Props = {
   saleId: string;
-  publicHref: string;
-  canEdit: boolean;
-  liveish: boolean;
   canPublish: boolean;
   canUnpublish: boolean;
   canCancel: boolean;
@@ -53,12 +46,9 @@ function lifecycleConfirmCopy(kind: SaleLifecycleActionKind) {
   }
 }
 
-/** Unified mobile bar — one primary lifecycle or navigation action, rest in overflow. */
-export function SaleDetailMobileActionBar({
+/** Lifecycle publish/cancel actions for sale detail mobile bar trailing slot. */
+export function SaleDetailMobileLifecycleTrailing({
   saleId,
-  publicHref,
-  canEdit,
-  liveish,
   canPublish,
   canUnpublish,
   canCancel,
@@ -67,6 +57,13 @@ export function SaleDetailMobileActionBar({
   const { pending, publish, unpublish, markOnsiteEnded, cancel } = useSaleLifecycleActions(saleId);
   const [publishOpen, setPublishOpen] = useState(false);
   const [confirmKind, setConfirmKind] = useState<SaleLifecycleActionKind | null>(null);
+
+  const lifecycleItems = buildSaleLifecycleActionItems({
+    canPublish,
+    canUnpublish,
+    canMarkOnsiteEnded,
+    canCancel,
+  });
 
   const runLifecycle = useCallback(
     (kind: SaleLifecycleActionKind) => {
@@ -78,74 +75,30 @@ export function SaleDetailMobileActionBar({
     [cancel, markOnsiteEnded, publish, unpublish],
   );
 
-  const openLifecycle = useCallback((kind: SaleLifecycleActionKind) => {
-    if (kind === "publish") {
-      setPublishOpen(true);
-      return;
-    }
-    setConfirmKind(kind);
-  }, []);
-
-  const lifecycleItems = buildSaleLifecycleActionItems({
-    canPublish,
-    canUnpublish,
-    canMarkOnsiteEnded,
-    canCancel,
-  });
-  const navItems = buildSaleNavigationActionItems({
-    saleId,
-    publicHref,
-    canEdit,
-    liveish,
-  });
-
-  const primaryLifecycle = lifecycleItems[0] ?? null;
-  const secondaryLifecycle = lifecycleItems.slice(1);
-
-  const mobileActions = useMemo((): CatalogMobileAction[] => {
-    const actions: CatalogMobileAction[] = [];
-
-    if (primaryLifecycle) {
-      actions.push({
-        id: primaryLifecycle.id,
-        label: primaryLifecycle.label,
-        variant: "primary",
-        disabled: pending,
-        onClick: () => openLifecycle(primaryLifecycle.kind),
-      });
-    }
-
-    for (const nav of navItems) {
-      actions.push({
-        id: nav.id,
-        label: nav.label,
-        href: nav.href,
-        ...(primaryLifecycle
-          ? { variant: "secondary" as const }
-          : nav.variant
-            ? { variant: nav.variant }
-            : {}),
-      });
-    }
-
-    for (const item of secondaryLifecycle) {
-      actions.push({
-        id: item.id,
-        label: item.label,
-        variant: "secondary",
-        disabled: pending,
-        onClick: () => openLifecycle(item.kind),
-      });
-    }
-
-    return actions;
-  }, [navItems, openLifecycle, pending, primaryLifecycle, secondaryLifecycle]);
+  if (lifecycleItems.length === 0) return null;
 
   const confirmCopy = confirmKind ? lifecycleConfirmCopy(confirmKind) : null;
 
   return (
     <>
-      <CatalogMobileActionBar actions={mobileActions} />
+      <div className="flex flex-wrap justify-end gap-1">
+        {lifecycleItems.map((item) => (
+          <Button
+            key={item.id}
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            className="min-h-11"
+            onClick={() => {
+              if (item.kind === "publish") setPublishOpen(true);
+              else setConfirmKind(item.kind);
+            }}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </div>
       {canPublish ? (
         <TypedConfirmationDialog
           open={publishOpen}

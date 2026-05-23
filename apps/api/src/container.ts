@@ -716,11 +716,15 @@ export function createContainer(env: Env): Container {
     saleFollowReader: saleFollowService,
     mediaUrlResolver,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+    db,
+    domainEventPublisher,
   });
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
     lotJobScheduler,
+    db,
+    domainEventPublisher,
   );
 
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);

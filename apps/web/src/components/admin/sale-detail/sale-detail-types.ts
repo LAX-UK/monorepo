@@ -4,6 +4,7 @@ export const SALE_DETAIL_TABS = [
   "lots",
   "documents",
   "registrations",
+  "activity",
 ] as const;
 
 export type SaleDetailTab = (typeof SALE_DETAIL_TABS)[number];

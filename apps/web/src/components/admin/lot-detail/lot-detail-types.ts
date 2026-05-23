@@ -1,4 +1,4 @@
-export const LOT_DETAIL_TABS = ["overview", "images", "documents", "bids"] as const;
+export const LOT_DETAIL_TABS = ["overview", "images", "documents", "bids", "activity"] as const;
 
 export type LotDetailTab = (typeof LOT_DETAIL_TABS)[number];
 

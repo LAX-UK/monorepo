@@ -1,28 +1,20 @@
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminSaleDetailKpiStrip } from "@/components/admin/admin-sale-detail-kpi-strip";
 import { AdminSaleHeaderActions } from "@/components/admin/admin-sale-header-actions";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   CatalogBreadcrumbs,
   CatalogDetailMobileMeta,
   CatalogDetailShell,
+  CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
-  CatalogInfoAside,
 } from "@/components/admin/catalog";
 import { AdminSaleEditableTitle } from "@/components/admin/editable-titles";
-import { SaleDetailMobileActionBar } from "@/components/admin/sale-detail-mobile-action-bar";
-import { SaleDetailAsideLinks } from "@/components/admin/sale-detail/sale-detail-aside-links";
-import {
-  isSaleLiveish,
-  sumLotHammers,
-  venueOneLiner,
-} from "@/components/admin/sale-detail/sale-detail-helpers";
-import {
-  parseSaleDetailTabFromPath,
-  saleDetailTabHref,
-} from "@/components/admin/sale-detail/sale-detail-types";
-import { clampCatalogDescription } from "@/lib/admin/catalog-detail-description";
-import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { SaleDetailMobileLifecycleTrailing } from "@/components/admin/sale-detail-mobile-lifecycle-trailing";
+import { SaleContextRail } from "@/components/admin/sale-detail/sale-context-rail";
+import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
+import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { buildSaleNavigationActionItems } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
+import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -31,10 +23,19 @@ type Props = {
   saleId: string;
   bundle: AdminSaleListRow;
   registrationCount?: number | null;
+  documentCount?: number | null;
+  activityEvents?: readonly AdminDomainEventRow[];
   children: ReactNode;
 };
 
-export function SaleDetailShell({ saleId, bundle, registrationCount = null, children }: Props) {
+export function SaleDetailShell({
+  saleId,
+  bundle,
+  registrationCount = null,
+  documentCount = null,
+  activityEvents = [],
+  children,
+}: Props) {
   const { sale, lots } = bundle;
   const liveish = isSaleLiveish(sale);
   const venueLine = venueOneLiner(sale);
@@ -48,29 +49,50 @@ export function SaleDetailShell({ saleId, bundle, registrationCount = null, chil
   const isOnsite = sale.deliveryMode === "onsite";
   const canMarkOnsiteEnded = isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
+  const pendingRegs =
+    liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
+
   const tabSpecs = [
-    { id: "overview", label: "Overview", href: saleDetailTabHref(saleId, "overview") },
-    { id: "schedule", label: "Schedule", href: saleDetailTabHref(saleId, "schedule") },
+    {
+      id: "overview",
+      label: "Overview",
+      href: saleDetailTabHref(saleId, "overview"),
+    },
+    {
+      id: "schedule",
+      label: "Schedule",
+      href: saleDetailTabHref(saleId, "schedule"),
+    },
     {
       id: "lots",
-      label: `Lots${lots.length > 0 ? ` (${lots.length})` : ""}`,
+      label: `Lots (${lots.length})`,
       href: saleDetailTabHref(saleId, "lots"),
+      ...(sale.status === "draft" && lots.length === 0 ? { badge: "warning" as const } : {}),
     },
     {
       id: "documents",
-      label: "Documents",
+      label: `Documents (${documentCount ?? 0})`,
       href: saleDetailTabHref(saleId, "documents"),
     },
     {
       id: "registrations",
-      label: `Registrations${
-        liveish && registrationCount != null && registrationCount > 0
-          ? ` (${registrationCount})`
-          : ""
-      }`,
+      label: liveish ? `Registrations (${registrationCount ?? 0})` : "Registrations",
       href: saleDetailTabHref(saleId, "registrations"),
+      ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
+    },
+    {
+      id: "activity",
+      label: "Activity",
+      href: saleDetailTabHref(saleId, "activity"),
     },
   ];
+
+  const mobileActions = buildSaleNavigationActionItems({
+    saleId,
+    publicHref,
+    canEdit,
+    liveish,
+  });
 
   return (
     <CatalogDetailShell
@@ -81,15 +103,12 @@ export function SaleDetailShell({ saleId, bundle, registrationCount = null, chil
       }
       eyebrow="Sale"
       title={<AdminSaleEditableTitle saleId={saleId} value={sale.title} />}
-      description={clampCatalogDescription(sale.description)}
+      {...(venueLine ? { description: venueLine } : {})}
       meta={
         <div className="flex flex-wrap items-center gap-2">
           <AdminStatusBadge domain="sale" status={sale.status} />
           <Badge variant="secondary" className="capitalize">
             {sale.deliveryMode}
-          </Badge>
-          <Badge variant="outline">
-            {lots.length} lot{lots.length === 1 ? "" : "s"}
           </Badge>
         </div>
       }
@@ -108,12 +127,10 @@ export function SaleDetailShell({ saleId, bundle, registrationCount = null, chil
           />
         </div>
       }
-      mobileActionBar={
-        <SaleDetailMobileActionBar
+      mobileActions={mobileActions}
+      mobileActionBarTrailing={
+        <SaleDetailMobileLifecycleTrailing
           saleId={saleId}
-          publicHref={publicHref}
-          canEdit={canEdit}
-          liveish={liveish}
           canPublish={canPublish}
           canUnpublish={canUnpublish}
           canCancel={canCancel}
@@ -127,51 +144,62 @@ export function SaleDetailShell({ saleId, bundle, registrationCount = null, chil
           publicHref={publicHref}
           publicLabel="View on site"
           status={<AdminStatusBadge domain="sale" status={sale.status} />}
-        >
-          <SaleDetailAsideLinks
-            saleId={saleId}
-            lotCount={lots.length}
-            liveish={liveish}
-            venueLine={venueLine}
-          />
-        </CatalogDetailMobileMeta>
+          quickLinks={[
+            ...(liveish ? [{ label: "Open saleroom", href: `/admin/saleroom/${saleId}` }] : []),
+          ]}
+          primaryAction={
+            liveish ? (
+              <a
+                href={`/admin/saleroom/${saleId}`}
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              >
+                Open saleroom →
+              </a>
+            ) : canEdit ? (
+              <a
+                href={`/admin/sales/${saleId}/edit`}
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              >
+                Edit draft →
+              </a>
+            ) : undefined
+          }
+        />
       }
       aside={
-        <CatalogInfoAside
-          entityId={saleId}
-          updatedAt={sale.updatedAt}
-          publicHref={publicHref}
-          publicLabel="View on site"
+        <SaleContextRail
+          saleId={saleId}
+          sale={sale}
+          lots={lots}
+          liveish={liveish}
+          registrationCount={registrationCount}
+          activityEvents={activityEvents}
           status={<AdminStatusBadge domain="sale" status={sale.status} />}
-        >
-          <SaleDetailAsideLinks
-            saleId={saleId}
-            lotCount={lots.length}
-            liveish={liveish}
-            venueLine={venueLine}
-          />
-        </CatalogInfoAside>
+          publicHref={publicHref}
+        />
       }
-      tabs={
-        <div className="space-y-6">
-          <AdminSaleDetailKpiStrip
-            saleId={saleId}
-            sale={sale}
-            lotCount={lots.length}
-            aggregateHammer={sumLotHammers(lots)}
-            liveish={liveish}
-            registrationCount={registrationCount}
-          />
+      stickySubnav={
+        <>
           <CatalogDetailTabNav
             tabs={tabSpecs}
-            resolveActiveTab={(pathname) => parseSaleDetailTabFromPath(pathname, saleId)}
+            entityKind="sale"
+            entityId={saleId}
             aria-label="Sale sections"
           />
-          <div>{children}</div>
-        </div>
+          <CatalogDetailStickyMiniBar
+            items={[
+              { id: "lots", label: "Lots", value: lots.length },
+              {
+                id: "registrations",
+                label: "Registrations",
+                value: liveish ? (registrationCount ?? 0) : "—",
+              },
+            ]}
+          />
+        </>
       }
     >
-      {null}
+      {children}
     </CatalogDetailShell>
   );
 }
