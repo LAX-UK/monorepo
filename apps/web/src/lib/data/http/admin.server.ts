@@ -251,6 +251,7 @@ export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[
 export async function getAdminCategoryList(
   params: {
     includeArchived?: boolean;
+    q?: string;
   } = {},
 ): Promise<AdminCategory[]> {
   const qs = new URLSearchParams();
@@ -258,7 +259,14 @@ export async function getAdminCategoryList(
   const res = await authedServerFetch(`/admin/categories${qs.size ? `?${qs.toString()}` : ""}`);
   if (!res.ok) throw new Error(`Failed to load categories: ${res.status}`);
   const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseAdminCategory);
+  const categories = body.data.map(parseAdminCategory);
+  const needle = params.q?.trim().toLowerCase();
+  if (!needle) return categories;
+  return categories.filter((category) =>
+    [category.name, category.slug, category.description ?? ""].some((value) =>
+      value.toLowerCase().includes(needle),
+    ),
+  );
 }
 
 export async function getAdminCategoryById(id: string): Promise<AdminCategory | null> {
@@ -285,6 +293,9 @@ export type GetAdminArtistListParams = {
   offset?: number;
 };
 
+/** Matches {@link adminArtistListQuerySchema} max on the API. */
+const ADMIN_ARTIST_LIST_MAX_LIMIT = 200;
+
 export async function getAdminArtistList(
   params: GetAdminArtistListParams = {},
 ): Promise<AdminArtistListResult> {
@@ -300,7 +311,8 @@ export async function getAdminArtistList(
   if (params.verified === true) qs.set("verified", "true");
   if (params.linked) qs.set("linked", params.linked);
   if (params.sort) qs.set("sort", params.sort);
-  qs.set("limit", String(params.limit ?? 50));
+  const limit = Math.min(ADMIN_ARTIST_LIST_MAX_LIMIT, Math.max(10, params.limit ?? 50));
+  qs.set("limit", String(limit));
   qs.set("offset", String(params.offset ?? 0));
   const query = qs.toString();
   const res = await authedServerFetch(`/admin/artists?${query}`);
@@ -381,15 +393,20 @@ export async function getAdminSalesList(
   params: {
     status?: Sale["status"];
     q?: string;
+    deliveryMode?: Sale["deliveryMode"];
+    settlementStatus?: "settled" | "unsettled";
     limit?: number;
     offset?: number;
   } = {},
 ): Promise<AdminSaleListRow[]> {
   const qs = new URLSearchParams();
-  qs.set("limit", String(params.limit ?? 50));
+  // GET /sales rejects limit > 100 (listSalesQuerySchema.max(100)).
+  qs.set("limit", String(Math.min(params.limit ?? 50, 100)));
   qs.set("offset", String(params.offset ?? 0));
   if (params.status) qs.set("status", params.status);
   if (params.q?.trim()) qs.set("q", params.q.trim());
+  if (params.deliveryMode) qs.set("deliveryMode", params.deliveryMode);
+  if (params.settlementStatus) qs.set("settlementStatus", params.settlementStatus);
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };

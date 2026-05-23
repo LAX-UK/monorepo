@@ -1,3 +1,4 @@
+import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { AdminLotForm } from "@/components/admin/lot-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
@@ -12,7 +13,6 @@ import {
   emptyAdminLotFormValues,
   lotToAdminLotFormValues,
 } from "@/lib/forms/schemas/admin-lot-defaults";
-import Link from "next/link";
 
 type PageProps = { searchParams: Promise<{ fromLot?: string }> };
 
@@ -42,7 +42,7 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
   const [categoriesResult, salesResult, artistResult] = await Promise.allSettled([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminSalesList({ limit: 200 }),
-    getAdminArtistList({ includeArchived: false, limit: 500 }),
+    getAdminArtistList({ includeArchived: false, limit: 200 }),
   ]);
   const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
   const sales = salesResult.status === "fulfilled" ? salesResult.value.map((r) => r.sale) : [];
@@ -60,30 +60,14 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
 
   return (
     <CatalogFormShell
-      breadcrumbs={
-        <Link
-          href="/admin/lots"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← Lots
-        </Link>
-      }
+      breadcrumbs={<CatalogBreadcrumbs segments={[{ label: "Lots", href: "/admin/lots" }]} />}
       title="New lot"
       {...(description ? { description } : {})}
-      mobileActions={[
-        {
-          id: "save",
-          label: "Create draft",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.lot,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: "/admin/lots",
-        },
-      ]}
+      wizardMobile={{
+        formId: CATALOG_FORM_IDS.lot,
+        submitLabel: "Create draft",
+        cancelHref: "/admin/lots",
+      }}
     >
       <AdminLotForm
         mode="create"

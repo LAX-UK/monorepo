@@ -46,6 +46,7 @@ export function AdminListSearch({ paramName = "q", placeholder = "Search…", cl
           aria-hidden
         />
         <Input
+          key={value}
           id={id}
           name={paramName}
           defaultValue={value}

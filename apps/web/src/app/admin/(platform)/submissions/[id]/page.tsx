@@ -132,6 +132,7 @@ export default async function AdminSubmissionDetailPage({
     getServerSubmissionDocuments(id),
   ]);
   const submitterDisplayName = submitterEntity?.displayName;
+  const submitterUserId = submitterEntity?.createdByUserId ?? null;
 
   const submissionRecord = (
     <div className="space-y-4">
@@ -202,6 +203,7 @@ export default async function AdminSubmissionDetailPage({
       submissionId={s.id}
       status={s.status}
       {...(submitterDisplayName ? { submitterDisplayName } : {})}
+      {...(submitterUserId ? { submitterUserId } : {})}
     />
   );
 

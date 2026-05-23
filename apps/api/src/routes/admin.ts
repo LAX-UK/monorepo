@@ -64,6 +64,7 @@ import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   createRequireCapability,
   requireAuctionManage,
+  requireCatalogueWrite,
   requireFinanceAccess,
   requireOperationsFulfilment,
   requirePlatformAdmin,
@@ -102,6 +103,10 @@ const impersonationRecordFailedEndBodySchema = z.object({
 const adminPaymentIdParamSchema = z.object({
   id: z.string().uuid(),
 });
+
+/** Only match UUID segments so static routes (`search`, `stats`, …) are never captured. */
+const adminArtistIdSegment =
+  ":artistId{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}";
 
 export function createAdminRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -146,6 +151,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   /** Seller intake → catalogue → live: submissions joined to converted lots (recent first). */
   platform.get(
     "/conveyor-pipeline",
+    requireOperationsFulfilment,
     zValidator("query", adminConveyorPipelineQuerySchema),
     async (c) => {
       const { limit } = c.req.valid("query");
@@ -774,11 +780,16 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ data });
   });
 
-  platform.post("/categories", zValidator("json", adminCreateCategoryBodySchema), async (c) => {
-    const body = c.req.valid("json");
-    const data = await container.admin.catalog.createCategory(body);
-    return c.json({ data }, 201);
-  });
+  platform.post(
+    "/categories",
+    requireCatalogueWrite,
+    zValidator("json", adminCreateCategoryBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const data = await container.admin.catalog.createCategory(body);
+      return c.json({ data }, 201);
+    },
+  );
 
   platform.get("/categories/:categoryId", zValidator("param", categoryIdParamSchema), async (c) => {
     const { categoryId } = c.req.valid("param");
@@ -789,6 +800,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.patch(
     "/categories/:categoryId",
+    requireCatalogueWrite,
     zValidator("param", categoryIdParamSchema),
     zValidator("json", adminUpdateCategoryBodySchema),
     async (c) => {
@@ -801,6 +813,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post(
     "/categories/:categoryId/archive",
+    requireCatalogueWrite,
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
@@ -811,6 +824,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.delete(
     "/categories/:categoryId",
+    requireCatalogueWrite,
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
@@ -821,6 +835,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get("/artists/stats", async (c) => {
     const data = await container.admin.catalog.getArtistStats();
+    return c.json({ data });
+  });
+
+  const adminArtistSearchQuerySchema = z.object({
+    q: z.string().trim().min(1).max(200),
+    limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+  });
+
+  /** Staff registry search for admin pickers — includes pending/rejected; no public approved-only filter. */
+  platform.get("/artists/search", zValidator("query", adminArtistSearchQuerySchema), async (c) => {
+    const { q, limit } = c.req.valid("query");
+    const data = await container.artistRegistryService.search(q, limit);
     return c.json({ data });
   });
 
@@ -851,7 +877,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   });
 
   platform.get(
-    "/artists/:artistId/duplicates",
+    `/artists/${adminArtistIdSegment}/duplicates`,
     zValidator("param", artistIdParamSchema),
     async (c) => {
       const { artistId } = c.req.valid("param");
@@ -860,15 +886,19 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/artists/:artistId", zValidator("param", artistIdParamSchema), async (c) => {
-    const { artistId } = c.req.valid("param");
-    const data = await container.admin.catalog.getArtist(artistId);
-    if (!data) return c.json({ error: "Not found" }, 404);
-    return c.json({ data });
-  });
+  platform.get(
+    `/artists/${adminArtistIdSegment}`,
+    zValidator("param", artistIdParamSchema),
+    async (c) => {
+      const { artistId } = c.req.valid("param");
+      const data = await container.admin.catalog.getArtist(artistId);
+      if (!data) return c.json({ error: "Not found" }, 404);
+      return c.json({ data });
+    },
+  );
 
   platform.patch(
-    "/artists/:artistId",
+    `/artists/${adminArtistIdSegment}`,
     zValidator("param", artistIdParamSchema),
     zValidator("json", adminUpdateArtistBodySchema),
     async (c) => {

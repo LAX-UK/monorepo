@@ -22,7 +22,6 @@ import { useMemo, useState, useTransition } from "react";
 
 type Props = {
   categories: AdminCategory[];
-  searchQuery?: string;
 };
 
 type CategoryNode = AdminCategory & { children: CategoryNode[] };
@@ -52,22 +51,13 @@ function buildTree(categories: AdminCategory[]): CategoryNode[] {
   return sortNodes(roots);
 }
 
-export function AdminCategoriesBoard({ categories, searchQuery = "" }: Props) {
+export function AdminCategoriesBoard({ categories }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<PendingAction | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const filtered = useMemo(() => {
-    const needle = searchQuery.trim().toLowerCase();
-    if (!needle) return categories;
-    return categories.filter((category) =>
-      [category.name, category.slug, category.description ?? ""].some((value) =>
-        value.toLowerCase().includes(needle),
-      ),
-    );
-  }, [categories, searchQuery]);
-  const tree = useMemo(() => buildTree(filtered), [filtered]);
+  const tree = useMemo(() => buildTree(categories), [categories]);
 
   const runAction = (category: AdminCategory, action: "archive" | "delete") => {
     startTransition(async () => {
@@ -192,7 +182,7 @@ function CategoryTreeRow({
         </div>
         <div className="flex flex-wrap items-center gap-2 md:justify-end">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/categories/${node.id}?tab=edit`}>
+            <Link href={`/admin/categories/${node.id}/edit`}>
               <Pencil className="size-3.5" aria-hidden />
               Edit
             </Link>

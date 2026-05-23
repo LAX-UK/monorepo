@@ -4,18 +4,21 @@ import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogSalesFilterToolbar } from "@/components/admin/catalog/catalog-sales-filter-toolbar";
-import { Button } from "@/components/ui/button";
+import { SaleFilterForm } from "@/components/admin/sale-filter-form";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import type { SalePresetId } from "@/lib/admin/list-presets/sales-presets";
 import { saleListActivePreset, saleListPresetHref } from "@/lib/admin/list-presets/sales-presets";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
+import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -36,6 +39,7 @@ export default async function AdminSalesPage({
   searchParams: Promise<{
     status?: string;
     lifecycle?: string;
+    delivery?: string;
     q?: string;
     error?: string;
     limit?: string;
@@ -45,11 +49,12 @@ export default async function AdminSalesPage({
 }) {
   const sp = await searchParams;
   const periodDays = parseAdminKpiPeriod(sp.period);
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const query = salesListController.parseQuery(sp);
   const q = query.q;
   const statusFilter = query.status;
   const lifecycleSlug = query.lifecycle ?? null;
+  const deliveryFilter = query.delivery ?? null;
 
   const salesTrend = await getAdminSalesKpiTrend(periodDays).catch(() => ({
     currentTotal: 0,
@@ -59,9 +64,11 @@ export default async function AdminSalesPage({
 
   let err: string | null = null;
   let rows = [] as Awaited<ReturnType<typeof salesListController.fetch>>["rows"];
+  let salesTotal: number | undefined;
   try {
     const result = await salesListController.fetch(query);
     rows = result.rows;
+    salesTotal = result.total;
   } catch (e) {
     err = e instanceof Error ? e.message : "Could not load sales.";
   }
@@ -77,10 +84,17 @@ export default async function AdminSalesPage({
   }));
 
   const activeLensId = saleListActivePreset(sp);
-  const activeFilterCount = [q ?? ""].filter((s) => String(s).trim() !== "").length;
+  const activeFilterCount = [
+    q ?? "",
+    deliveryFilter ?? "",
+    lifecycleSlug != null && activeLensId === "all" ? lifecycleSlug : "",
+  ].filter((s) => String(s).trim() !== "").length;
 
   const pagination =
-    !err && (query.offset > 0 || rows.length === query.limit) ? (
+    !err &&
+    (salesTotal != null
+      ? salesTotal > 0 && (query.offset > 0 || query.offset + rows.length < salesTotal)
+      : query.offset > 0 || rows.length === query.limit) ? (
       <CatalogPagination
         offset={query.offset}
         limit={query.limit}
@@ -93,16 +107,20 @@ export default async function AdminSalesPage({
             : null
         }
         nextHref={
-          rows.length === query.limit
-            ? buildListHref("/admin/sales", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
+          salesTotal != null
+            ? query.offset + rows.length < salesTotal
+              ? buildListHref("/admin/sales", sp, { offset: query.offset + query.limit })
+              : null
+            : rows.length === query.limit
+              ? buildListHref("/admin/sales", sp, {
+                  offset: query.offset + query.limit,
+                })
+              : null
         }
       />
     ) : null;
 
-  const hasListFilters = Boolean(statusFilter || q || lifecycleSlug != null);
+  const hasListFilters = Boolean(statusFilter || q || lifecycleSlug != null || deliveryFilter);
 
   const empty =
     !err && rows.length === 0 ? (
@@ -119,7 +137,7 @@ export default async function AdminSalesPage({
               <Link href="/admin/sales">Clear filters</Link>
             </Button>
           ) : (
-            <Button variant="primary" asChild>
+            <Button variant="default" asChild>
               <Link href="/admin/sales/new">
                 <Plus className="size-4" aria-hidden />
                 New sale
@@ -135,7 +153,7 @@ export default async function AdminSalesPage({
       title="Sales"
       description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
       primaryAction={
-        <Button variant="primary" asChild>
+        <Button variant="default" asChild>
           <Link href="/admin/sales/new">
             <Plus className="size-4" aria-hidden />
             New sale
@@ -147,14 +165,25 @@ export default async function AdminSalesPage({
           lenses={lenses}
           activeLensId={activeLensId}
           activeFilterCount={activeFilterCount}
+          sheetFilters={
+            <SaleFilterForm
+              activeLensId={activeLensId}
+              {...(q?.trim() ? { q } : {})}
+              {...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {})}
+              {...(deliveryFilter ? { delivery: deliveryFilter } : {})}
+            />
+          }
         />
       }
       mobileSummary={
-        <p className="font-body text-sm text-on-surface-variant">
-          {boardRows.length} on page
-          {liveOnPage > 0 ? ` · ${liveOnPage} live` : ""}
-          {draftOnPage > 0 ? ` · ${draftOnPage} draft` : ""}
-        </p>
+        <CatalogListMobileSummary
+          segments={[
+            salesTotal != null ? `${salesTotal} total` : `${boardRows.length} on page`,
+            liveOnPage > 0 ? `${liveOnPage} live` : null,
+            draftOnPage > 0 ? `${draftOnPage} draft` : null,
+            activeLensId !== "all" ? PRESET_LABELS[activeLensId] : null,
+          ]}
+        />
       }
       toolbarEnd={
         <>
@@ -190,14 +219,14 @@ export default async function AdminSalesPage({
           <AdminListAlert title="Could not load sales">{err ?? error}</AdminListAlert>
         ) : null
       }
+      empty={empty}
+      pagination={pagination}
     >
       {!err && boardRows.length > 0 ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
         </Suspense>
       ) : null}
-      {!err && rows.length === 0 ? empty : null}
-      {pagination}
     </CatalogListShell>
   );
 }

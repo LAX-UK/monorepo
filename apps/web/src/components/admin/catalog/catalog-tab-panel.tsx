@@ -25,24 +25,38 @@ export type CatalogTabPanelItem = {
 type Props = {
   defaultValue: string;
   tabs: readonly CatalogTabPanelItem[];
+  /** Accessible name for the tab list (required). */
+  "aria-label": string;
   syncUrl?: boolean;
   className?: string;
 };
 
 /** Non-sticky tab panel for catalog detail pages. */
-export function CatalogTabPanel({ defaultValue, tabs, syncUrl = true, className }: Props) {
+export function CatalogTabPanel({
+  defaultValue,
+  tabs,
+  "aria-label": tabListAriaLabel,
+  syncUrl = true,
+  className,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab");
-  const initial = urlTab && tabs.some((t) => t.value === urlTab) ? urlTab : defaultValue;
-  const [active, setActive] = useState(initial);
+  const tabValueKey = tabs.map((t) => t.value).join("|");
+  const resolveTab = useCallback(
+    (value: string | null) => {
+      const validValues = tabValueKey.split("|");
+      return value && validValues.includes(value) ? value : defaultValue;
+    },
+    [tabValueKey, defaultValue],
+  );
+  const [active, setActive] = useState(() => resolveTab(urlTab));
 
   useEffect(() => {
     if (!syncUrl) return;
-    const next = urlTab && tabs.some((t) => t.value === urlTab) ? urlTab : defaultValue;
-    setActive(next);
-  }, [urlTab, syncUrl, defaultValue, tabs]);
+    setActive(resolveTab(urlTab));
+  }, [urlTab, syncUrl, resolveTab]);
 
   const onValueChange = useCallback(
     (value: string) => {
@@ -59,6 +73,7 @@ export function CatalogTabPanel({ defaultValue, tabs, syncUrl = true, className 
   return (
     <Tabs value={active} onValueChange={onValueChange} className={cn("w-full", className)}>
       <TabsList
+        aria-label={tabListAriaLabel}
         className={cn(
           "mb-6 flex h-auto w-full min-w-0 justify-start gap-1 overflow-x-auto rounded-none border-b border-border-hairline bg-transparent p-0",
           "snap-x snap-mandatory scrollbar-thin",
@@ -69,7 +84,7 @@ export function CatalogTabPanel({ defaultValue, tabs, syncUrl = true, className 
             key={tab.value}
             value={tab.value}
             className={cn(
-              "shrink-0 snap-start rounded-none border-b-2 border-transparent px-3 py-2.5",
+              "min-h-11 shrink-0 snap-start rounded-none border-b-2 border-transparent px-3 py-2.5",
               "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
               "data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-on-surface",
               "text-on-surface-variant",
@@ -79,11 +94,21 @@ export function CatalogTabPanel({ defaultValue, tabs, syncUrl = true, className 
           </TabsTrigger>
         ))}
       </TabsList>
-      {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value} className="mt-0 focus-visible:outline-none">
-          <Suspense fallback={<TabContentFallback />}>{tab.content}</Suspense>
-        </TabsContent>
-      ))}
+      {tabs.map((tab) => {
+        const isActiveTab = tab.value === active;
+        const renderable = tab.content != null && tab.content !== false;
+        return (
+          <TabsContent
+            key={tab.value}
+            value={tab.value}
+            className="mt-0 focus-visible:outline-none"
+          >
+            <Suspense fallback={<TabContentFallback />}>
+              {renderable ? tab.content : isActiveTab ? <TabContentFallback /> : null}
+            </Suspense>
+          </TabsContent>
+        );
+      })}
     </Tabs>
   );
 }

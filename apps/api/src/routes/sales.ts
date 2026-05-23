@@ -56,6 +56,8 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       categoryId: query.categoryId,
       categoryIds: query.categoryIds,
       q: query.q,
+      deliveryMode: query.deliveryMode,
+      settlementStatus: query.settlementStatus,
       limit: query.limit,
       offset: query.offset,
       sort: query.sort,

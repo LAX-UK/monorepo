@@ -1,0 +1,102 @@
+"use client";
+
+import { CatalogInfoAsideCopyId } from "@/components/admin/catalog/catalog-info-aside-copy-id";
+import { formatDateTime } from "@/lib/ui/format";
+import { Button } from "@auction/ui/components/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@auction/ui/components/sheet";
+import { ExternalLink, Info } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+type Props = {
+  entityId?: string;
+  updatedAt?: Date | string;
+  publicHref?: string;
+  publicLabel?: string;
+  status?: ReactNode;
+  children?: ReactNode;
+};
+
+/** Compact facts row on mobile with expandable sheet for full metadata. */
+export function CatalogDetailMobileMeta({
+  entityId,
+  updatedAt,
+  publicHref,
+  publicLabel = "View on site",
+  status,
+  children,
+}: Props) {
+  const updated = updatedAt instanceof Date ? updatedAt : updatedAt ? new Date(updatedAt) : null;
+  const hasSheetContent =
+    Boolean(entityId) ||
+    Boolean(updated && !Number.isNaN(updated.getTime())) ||
+    Boolean(publicHref) ||
+    Boolean(children);
+
+  if (!status && !hasSheetContent) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 lg:hidden">
+      {status ? <div className="min-w-0">{status}</div> : <span />}
+      {hasSheetContent ? (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button type="button" variant="secondary" size="sm" className="shrink-0 gap-1.5">
+              <Info className="size-4" aria-hidden />
+              Details
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle>Record details</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-4 text-sm">
+              {status ? (
+                <div>
+                  <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                    Status
+                  </p>
+                  <div className="mt-2">{status}</div>
+                </div>
+              ) : null}
+              {entityId ? (
+                <div>
+                  <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                    ID
+                  </p>
+                  <CatalogInfoAsideCopyId entityId={entityId} />
+                </div>
+              ) : null}
+              {updated && !Number.isNaN(updated.getTime()) ? (
+                <div>
+                  <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                    Updated
+                  </p>
+                  <p className="mt-1 text-on-surface-variant">{formatDateTime(updated)}</p>
+                </div>
+              ) : null}
+              {publicHref ? (
+                <Link
+                  href={publicHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                >
+                  {publicLabel}
+                  <ExternalLink className="size-3" aria-hidden />
+                </Link>
+              ) : null}
+              {children}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
+    </div>
+  );
+}

@@ -13,6 +13,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { CatalogMobileAction } from "./catalog-mobile-action-bar";
 
+export type CatalogMobileActionsPlacement = "header" | "bar" | "none";
+
 type Props = {
   title: ReactNode;
   description?: string;
@@ -21,8 +23,10 @@ type Props = {
   eyebrow?: ReactNode;
   /** Shown on md+ in the header row */
   actions?: ReactNode;
-  /** Primary + overflow on mobile bottom sheet area (detail/edit) */
+  /** Primary + overflow on mobile — rendered per `mobileActionsPlacement` */
   mobileActions?: readonly CatalogMobileAction[];
+  /** Where mobile actions render; default `none` (shells use fixed bottom bar). */
+  mobileActionsPlacement?: CatalogMobileActionsPlacement;
   className?: string;
 };
 
@@ -35,10 +39,13 @@ export function CatalogPageHeader({
   eyebrow,
   actions,
   mobileActions,
+  mobileActionsPlacement = "none",
   className,
 }: Props) {
   const primaryMobile = mobileActions?.find((a) => a.variant === "primary") ?? mobileActions?.[0];
   const overflowMobile = mobileActions?.filter((a) => a.id !== primaryMobile?.id) ?? [];
+  const showHeaderMobile =
+    mobileActionsPlacement === "header" && mobileActions && mobileActions.length > 0;
 
   return (
     <header className={cn("mx-auto w-full max-w-7xl", className)}>
@@ -67,7 +74,7 @@ export function CatalogPageHeader({
         {actions ? (
           <div className="hidden shrink-0 flex-wrap items-center gap-2 md:flex">{actions}</div>
         ) : null}
-        {mobileActions && mobileActions.length > 0 ? (
+        {showHeaderMobile ? (
           <div className="flex flex-wrap items-center gap-2 md:hidden">
             {primaryMobile ? <CatalogHeaderActionButton action={primaryMobile} fullWidth /> : null}
             {overflowMobile.length > 0 ? (
@@ -116,6 +123,18 @@ function CatalogHeaderActionButton({
   fullWidth?: boolean;
 }) {
   const variant = action.variant === "primary" ? "default" : "secondary";
+  if (action.disabled && action.href) {
+    return (
+      <Button
+        variant={variant}
+        size="sm"
+        className={fullWidth ? "min-h-11 flex-1" : "min-h-11"}
+        disabled
+      >
+        {action.label}
+      </Button>
+    );
+  }
   if (action.href) {
     return (
       <Button

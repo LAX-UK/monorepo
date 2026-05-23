@@ -12,11 +12,9 @@
  *   - passes through absolute URLs (`http(s)://`), data/blob URLs, and
  *     root-relative paths unchanged;
  *   - prefixes everything else with `NEXT_PUBLIC_MEDIA_BASE_URL` when set,
- *     producing a fully qualified CDN URL.
- *
- * If `NEXT_PUBLIC_MEDIA_BASE_URL` is not configured we leave the value as-is
- * so behaviour matches the pre-helper code path (broken in prod, but the only
- * safe default — silently prefixing with a wrong origin would be worse).
+ *     producing a fully qualified CDN URL;
+ *   - returns `null` when the resolved value is not a valid `next/image` src
+ *     (e.g. bare object keys with no media base configured).
  */
 export function resolveMediaSrc(value: string | null | undefined): string | null {
   if (value == null) return null;
@@ -30,11 +28,25 @@ export function resolveMediaSrc(value: string | null | undefined): string | null
     trimmed.startsWith("blob:") ||
     trimmed.startsWith("/")
   ) {
-    return trimmed;
+    return isNextImageSrc(trimmed) ? trimmed : null;
   }
 
   const base = process.env.NEXT_PUBLIC_MEDIA_BASE_URL?.replace(/\/$/, "");
-  if (!base) return trimmed;
+  if (!base) return null;
+
   const key = trimmed.replace(/^\/+/, "");
-  return `${base}/${key}`;
+  const resolved = `${base}/${key}`;
+  return isNextImageSrc(resolved) ? resolved : null;
+}
+
+/** Whether `next/image` can load this src without throwing on URL construction. */
+function isNextImageSrc(value: string): boolean {
+  if (value.startsWith("/")) return true;
+  if (value.startsWith("data:") || value.startsWith("blob:")) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }

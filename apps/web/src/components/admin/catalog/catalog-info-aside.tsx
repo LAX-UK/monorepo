@@ -1,5 +1,4 @@
-"use client";
-
+import { CatalogInfoAsideCopyId } from "@/components/admin/catalog/catalog-info-aside-copy-id";
 import { formatDateTime } from "@/lib/ui/format";
 import { Surface } from "@auction/ui/components/surface";
 import { ExternalLink } from "lucide-react";
@@ -41,13 +40,7 @@ export function CatalogInfoAside({
           <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             ID
           </p>
-          <button
-            type="button"
-            className="mt-1 block w-full truncate text-left font-mono text-xs text-on-surface hover:text-primary"
-            onClick={() => void navigator.clipboard.writeText(entityId)}
-          >
-            {entityId}
-          </button>
+          <CatalogInfoAsideCopyId entityId={entityId} />
         </div>
       ) : null}
       {updated && !Number.isNaN(updated.getTime()) ? (

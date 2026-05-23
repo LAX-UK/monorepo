@@ -4,6 +4,7 @@ import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-pi
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
+import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import type { Sale } from "@auction/types";
 import {
@@ -13,9 +14,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { saleModeInheritsLotTiming } from "@auction/validators";
+import Link from "next/link";
 import type { UseFormReturn } from "react-hook-form";
 
-type SaleOption = Pick<Sale, "id" | "title" | "status">;
+type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
 type Props = {
   form: UseFormReturn<AdminLotFormValues>;
@@ -26,7 +29,7 @@ export function LotSaleSellerStep({ form, sales }: Props) {
   return (
     <CatalogFormSection
       title="Sale & seller"
-      description="Assign the owning legal entity and optional sale / paddle number."
+      description="Assign the owning legal entity and the sale this lot belongs to. Online lots must fall within the sale window; onsite lots inherit the sale schedule."
       collapsible={false}
     >
       <FormField
@@ -62,20 +65,45 @@ export function LotSaleSellerStep({ form, sales }: Props) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                <LabelCaps>Assign to sale (optional)</LabelCaps>
+                <LabelCaps>Assign to sale</LabelCaps>
               </FormLabel>
               <select
-                value={field.value ?? ""}
-                onChange={(e) => field.onChange(e.target.value || null)}
+                value={field.value || ""}
+                onChange={(e) => {
+                  const nextSaleId = e.target.value;
+                  field.onChange(nextSaleId);
+                  const sale = sales.find((s) => s.id === nextSaleId);
+                  if (sale && saleModeInheritsLotTiming(sale.deliveryMode)) {
+                    form.setValue("startTime", toDatetimeLocalValue(sale.startTime), {
+                      shouldDirty: true,
+                    });
+                    form.setValue("endTime", toDatetimeLocalValue(sale.endTime), {
+                      shouldDirty: true,
+                    });
+                  }
+                }}
+                required
+                aria-required="true"
                 className="mt-1 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body text-sm"
               >
-                <option value="">— No sale —</option>
+                <option value="" disabled>
+                  Select a sale
+                </option>
                 {sales.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title} ({s.status})
                   </option>
                 ))}
               </select>
+              {sales.length === 0 ? (
+                <p className="mt-2 font-body text-xs text-on-surface-variant">
+                  No sales are available yet.{" "}
+                  <Link href="/admin/sales/new" className="text-primary hover:underline">
+                    Create a sale
+                  </Link>{" "}
+                  first, then return to assign this lot.
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}

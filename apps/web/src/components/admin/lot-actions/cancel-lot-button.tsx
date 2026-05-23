@@ -3,6 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminCancelLotResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -19,13 +20,13 @@ export function CancelLotButton({ lotId, disabled }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Can requirement="auction.manage">
+    <Can requirement={SALES_ACCESS}>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
+        size="sm"
         disabled={disabled || pending}
         onClick={() => setOpen(true)}
-        className="h-auto rounded-md border border-error/40 bg-transparent px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-error hover:bg-error/10 hover:text-error disabled:opacity-60"
       >
         Cancel auction
       </Button>
@@ -37,18 +38,20 @@ export function CancelLotButton({ lotId, disabled }: Props) {
         actionLabel="Cancel auction"
         confirmationPhrase={lotId}
         severity="danger"
-        onConfirm={() => {
-          startTransition(() => {
-            void (async () => {
-              const r = await adminCancelLotResultAction(lotId, {});
-              if (r.ok) {
-                notify.success("Auction cancelled");
-                router.refresh();
-                return;
-              }
-              notify.error(r.error);
-            })();
-          });
+        onConfirm={async () => {
+          const r = await new Promise<Awaited<ReturnType<typeof adminCancelLotResultAction>>>(
+            (resolve) => {
+              startTransition(() => {
+                void adminCancelLotResultAction(lotId, {}).then(resolve);
+              });
+            },
+          );
+          if (!r.ok) {
+            notify.error(r.error);
+            throw new Error(r.error);
+          }
+          notify.success("Auction cancelled");
+          router.refresh();
         }}
       />
     </Can>

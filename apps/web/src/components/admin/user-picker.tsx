@@ -1,6 +1,7 @@
 "use client";
 
 import { AsyncCombobox } from "@/components/admin/_picker/async-combobox";
+import { apiBaseUrl } from "@/lib/auth/api-base";
 
 type AdminUserRow = {
   id: string;
@@ -8,10 +9,6 @@ type AdminUserRow = {
   name: string;
   role: string;
 };
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-}
 
 type Props = {
   value: string | null;
@@ -29,7 +26,7 @@ export function UserPicker({ value, onChange, disabled = false }: Props) {
       placeholder="Search users by name or email…"
       searchHits={async (q) => {
         const qs = new URLSearchParams({ q, limit: "10", offset: "0" });
-        const res = await fetch(`${apiBase()}/admin/users?${qs.toString()}`, {
+        const res = await fetch(`${apiBaseUrl()}/admin/users?${qs.toString()}`, {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Search failed");
@@ -37,7 +34,7 @@ export function UserPicker({ value, onChange, disabled = false }: Props) {
         return body.data.rows;
       }}
       resolveHit={async (id) => {
-        const res = await fetch(`${apiBase()}/admin/users/${encodeURIComponent(id)}`, {
+        const res = await fetch(`${apiBaseUrl()}/admin/users/${encodeURIComponent(id)}`, {
           credentials: "include",
         });
         if (!res.ok) return null;

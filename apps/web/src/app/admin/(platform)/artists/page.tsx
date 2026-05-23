@@ -13,6 +13,7 @@ import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
 import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -27,7 +28,7 @@ export default async function AdminArtistsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
-  const error = typeof sp.error === "string" ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const showBackfill = sp.backfill === "1";
   const showDuplicates = sp.duplicates === "1";
   const skipIndexedList = showBackfill || showDuplicates;
@@ -119,22 +120,21 @@ export default async function AdminArtistsPage({
     },
   ];
 
-  const advancedFilterInputs = skipIndexedList
-    ? []
+  const activeFilterCount = skipIndexedList
+    ? 0
     : [
-        q ?? "",
-        query.status ?? "",
-        query.kind ?? "",
-        ...(query.sort !== undefined && query.sort !== "" && query.sort !== "name_asc"
-          ? [query.sort]
-          : []),
-      ].filter(Boolean);
-  const checkboxCount = skipIndexedList
-    ? []
-    : [query.featured === true, query.verified === true, query.includeArchived === true].filter(
-        Boolean,
-      );
-  const activeFilterCount = advancedFilterInputs.length + checkboxCount.length;
+        q,
+        query.status,
+        query.kind,
+        query.kinds,
+        query.ownerUserId,
+        query.linked && query.linked !== "any" ? query.linked : "",
+        query.archivedOnly ? "archivedOnly" : "",
+        query.sort && query.sort !== "name_asc" ? query.sort : "",
+        query.featured === true ? "featured" : "",
+        query.verified === true ? "verified" : "",
+        query.includeArchived === true ? "includeArchived" : "",
+      ].filter(Boolean).length;
 
   const errorAlert =
     error || loadError ? (

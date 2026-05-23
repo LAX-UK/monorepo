@@ -144,6 +144,7 @@ export function ArtistPicker({
           setCreateOpen(true);
         }}
         disabled={disabled}
+        mode="admin"
         placeholder="Search by name, alias, or maker…"
       />
       {value !== null ? (

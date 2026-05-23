@@ -1,6 +1,7 @@
 "use client";
 
 import { isEditableTarget } from "@/lib/hotkeys/is-editable-target";
+import { cn } from "@auction/ui";
 import { StickySaveBar } from "@auction/ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,12 +16,18 @@ import {
   writeWizardDraft,
 } from "./wizard-draft";
 import { WizardResumeBanner } from "./wizard-resume-banner";
+import {
+  createWizardStepOwner,
+  publishWizardStep,
+  registerWizardMobileNavigation,
+  resetWizardStepSync,
+} from "./wizard-step-sync";
 
 export type AdminFormWizardProps = {
   steps: readonly WizardStepSpec[];
-  /** Render prop for the active step body. */
-  children: (stepIndex: number) => ReactNode;
-  /** When true, enables beforeunload via parent FormDirtyGuard. */
+  /** Step body — static node or render prop receiving the active step index. */
+  children: ReactNode | ((stepIndex: number) => ReactNode);
+  /** When true, parent should mount {@link FormDirtyGuard} for unsaved-change prompts. */
   isDirty?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   /** Footer actions on the last step (submit + cancel). */
@@ -30,11 +37,19 @@ export type AdminFormWizardProps = {
   pending?: boolean;
   className?: string;
   /** When set, autosaves draft every 30s while dirty and shows resume banner on load. */
-  draft?: { entityKind: string; entityId: string; values?: Record<string, unknown> };
+  draft?: {
+    entityKind: string;
+    entityId: string;
+    getValues?: () => Record<string, unknown>;
+  };
   /** Hydrate owning form fields when operator chooses Resume draft. */
   onDraftResume?: (payload: WizardDraftPayload) => void;
   /** Return false to block advancing to the next step (e.g. field validation). */
   onBeforeNext?: (stepIndex: number) => boolean | Promise<boolean>;
+  /** Hide duplicate sticky submit on mobile when CatalogMobileActionBar submits the form. */
+  hideStickyOnMobile?: boolean;
+  /** Exposes goTo for submit-time navigation to the first invalid step. */
+  onStepControl?: (control: { goTo: (index: number) => void }) => void;
 };
 
 /** Multi-step admin form shell with step indicator, navigation, and sticky actions. */
@@ -50,28 +65,115 @@ export function AdminFormWizard({
   draft,
   onDraftResume,
   onBeforeNext,
+  hideStickyOnMobile = false,
+  onStepControl,
 }: AdminFormWizardProps) {
   const draftKey = draft ? wizardDraftCookieKey(draft.entityKind, draft.entityId) : null;
-  const initialDraft = draftKey ? readWizardDraft(draftKey) : null;
   const { stepIndex, goNext, goPrev, goTo, isFirst, isLast, setDirty } = useWizardState(
     steps.length,
-    initialDraft?.stepIndex,
+    0,
   );
-  const [showResume, setShowResume] = useState(Boolean(initialDraft));
+  const [showResume, setShowResume] = useState(false);
+  const [storedDraft, setStoredDraft] = useState<WizardDraftPayload | null>(null);
+  const [stepJumpPending, setStepJumpPending] = useState(false);
   const submitRef = useRef<HTMLDivElement>(null);
+  const draftGetValuesRef = useRef(draft?.getValues);
+  draftGetValuesRef.current = draft?.getValues;
+
+  const persistDraft = useCallback(() => {
+    if (!draftKey || !isDirty) return;
+    writeWizardDraft(draftKey, {
+      stepIndex,
+      values: draftGetValuesRef.current?.() ?? {},
+      savedAt: new Date().toISOString(),
+    });
+  }, [draftKey, isDirty, stepIndex]);
 
   useEffect(() => {
     setDirty(isDirty);
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange, setDirty]);
 
+  useEffect(() => {
+    if (!draftKey) return;
+    const found = readWizardDraft(draftKey);
+    if (!found) return;
+    setStoredDraft(found);
+    setShowResume(true);
+  }, [draftKey]);
+
+  const wizardOwnerRef = useRef<symbol | null>(null);
+  if (wizardOwnerRef.current === null) {
+    wizardOwnerRef.current = createWizardStepOwner();
+  }
+
+  useEffect(() => {
+    const owner = wizardOwnerRef.current;
+    if (!owner) return;
+    publishWizardStep(owner, { stepIndex, stepCount: steps.length, pending });
+  }, [pending, stepIndex, steps.length]);
+
+  useEffect(() => {
+    const owner = wizardOwnerRef.current;
+    return () => {
+      if (owner) resetWizardStepSync(owner);
+    };
+  }, []);
+
+  const onStepControlRef = useRef(onStepControl);
+  onStepControlRef.current = onStepControl;
+  useEffect(() => {
+    onStepControlRef.current?.({ goTo });
+  }, [goTo]);
+
   const handleNext = useCallback(async () => {
     if (onBeforeNext) {
       const ok = await onBeforeNext(stepIndex);
       if (!ok) return;
     }
+    persistDraft();
     goNext();
-  }, [goNext, onBeforeNext, stepIndex]);
+  }, [goNext, onBeforeNext, persistDraft, stepIndex]);
+
+  useEffect(() => {
+    const owner = wizardOwnerRef.current;
+    if (!owner) return;
+    registerWizardMobileNavigation(owner, { requestNext: handleNext });
+    return () => registerWizardMobileNavigation(owner, null);
+  }, [handleNext]);
+
+  const handleStepClick = useCallback(
+    async (targetIndex: number) => {
+      if (stepJumpPending || targetIndex === stepIndex) return;
+      if (targetIndex < stepIndex) {
+        persistDraft();
+        goTo(targetIndex);
+        return;
+      }
+      setStepJumpPending(true);
+      try {
+        for (let i = stepIndex; i < targetIndex; i++) {
+          if (onBeforeNext) {
+            const ok = await onBeforeNext(i);
+            if (!ok) {
+              goTo(i);
+              return;
+            }
+          }
+        }
+        persistDraft();
+        goTo(targetIndex);
+      } finally {
+        setStepJumpPending(false);
+      }
+    },
+    [goTo, onBeforeNext, persistDraft, stepIndex, stepJumpPending],
+  );
+
+  const handleBack = useCallback(() => {
+    persistDraft();
+    goPrev();
+  }, [goPrev, persistDraft]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -93,43 +195,58 @@ export function AdminFormWizard({
   }, [handleNext, isLast, pending]);
 
   useEffect(() => {
-    if (!draftKey || !isDirty || !draft) return;
+    if (!draftKey || !isDirty) return;
     const timer = window.setInterval(() => {
-      writeWizardDraft(draftKey, {
-        stepIndex,
-        values: draft.values ?? {},
-        savedAt: new Date().toISOString(),
-      });
+      persistDraft();
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [draft, draftKey, isDirty, stepIndex]);
+  }, [draftKey, isDirty, persistDraft]);
+
+  useEffect(() => {
+    if (!draftKey || !isDirty) return;
+    const onPageHide = () => persistDraft();
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onPageHide);
+    };
+  }, [draftKey, isDirty, persistDraft]);
+
+  const stepBody = typeof children === "function" ? children(stepIndex) : children;
 
   return (
     <div className={className ?? "space-y-8"}>
-      {showResume && initialDraft ? (
+      {showResume && storedDraft ? (
         <WizardResumeBanner
-          draft={initialDraft}
+          draft={storedDraft}
           onResume={() => {
-            onDraftResume?.(initialDraft);
-            goTo(initialDraft.stepIndex);
+            onDraftResume?.(storedDraft);
+            goTo(storedDraft.stepIndex);
             setShowResume(false);
           }}
           onDiscard={() => {
             if (draftKey) clearWizardDraft(draftKey);
+            setStoredDraft(null);
             setShowResume(false);
           }}
         />
       ) : null}
-      <WizardStepIndicator steps={steps} currentIndex={stepIndex} onStepClick={goTo} />
-      <div className="min-h-[12rem]">{children(stepIndex)}</div>
-      <StickySaveBar>
+      <WizardStepIndicator
+        steps={steps}
+        currentIndex={stepIndex}
+        onStepClick={(index) => void handleStepClick(index)}
+        stepNavigationDisabled={stepJumpPending || pending}
+      />
+      <div className="min-h-[12rem]">{stepBody}</div>
+      <StickySaveBar className={cn(hideStickyOnMobile && "hidden md:block")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {leadingSlot ?? <span />}
           <div ref={submitRef}>
             <WizardActions
               isFirst={isFirst}
               isLast={isLast}
-              onBack={goPrev}
+              onBack={handleBack}
               onNext={() => void handleNext()}
               submitSlot={submitSlot}
               pending={pending}
