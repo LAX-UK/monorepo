@@ -10,6 +10,28 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@auction/api", "@auction/types", "@auction/ui"],
+  async headers() {
+    return [
+      {
+        source: "/dashboard/verify-identity/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self)",
+          },
+        ],
+      },
+      {
+        source: "/onboarding/organisation/step/identity",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self)",
+          },
+        ],
+      },
+    ];
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,

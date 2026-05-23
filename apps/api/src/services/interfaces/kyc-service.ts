@@ -1,16 +1,11 @@
 import type { MarketingEvent } from "@auction/types";
 import type { KycVerification, UserKycStatus } from "@auction/types";
-import type Stripe from "stripe";
 
 export type CreateKycSessionResult = {
-  /** Stripe Identity verification session id (vi_…). */
+  /** Provider session id (Veriff UUID). */
   sessionId: string;
-  /** Stripe-hosted client secret for the verifier flow. */
-  clientSecret: string;
-  /** URL to redirect the user to (Stripe-hosted verifier). Set when using the
-   * redirect/return mode.
-   */
-  hostedUrl: string | null;
+  /** URL for InContext SDK or redirect fallback. */
+  verificationUrl: string;
   verification: KycVerification;
 };
 
@@ -18,7 +13,7 @@ export type KycWebhookHandleResult = {
   verification: KycVerification | null;
   /** True when this delivery updated user KYC columns (not a stale session / no-op branch). */
   appliedUserKycUpdate: boolean;
-  /** True when Identity verified the *current* session — run post-verification progression. */
+  /** True when the *current* session was approved — run post-verification progression. */
   shouldProgressIndividuals: boolean;
   /** Staged in the same transaction as KYC approval; enqueue after handleWebhook returns. */
   marketingEventToEnqueue?: MarketingEvent;
@@ -37,13 +32,26 @@ export type KycStatusSummary = {
   requiresKyc: boolean;
 };
 
-/** Surfaces the configuration sentinel for routes that should refuse to run
- * when STRIPE_SECRET_KEY is missing (e.g. in tests / dev).
- */
 export class KycNotConfiguredError extends Error {
   constructor() {
-    super("kyc_not_configured: set STRIPE_SECRET_KEY to enable Stripe Identity");
+    super("kyc_not_configured: set VERIFF_API_KEY and VERIFF_SHARED_SECRET to enable KYC");
     this.name = "KycNotConfiguredError";
+  }
+}
+
+export class KycAlreadyApprovedError extends Error {
+  readonly status = 409;
+  readonly code = "kyc_already_approved";
+  constructor() {
+    super("kyc_already_approved");
+    this.name = "KycAlreadyApprovedError";
+  }
+}
+
+export class VeriffWebhookPayloadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VeriffWebhookPayloadError";
   }
 }
 
@@ -58,28 +66,19 @@ export class KycRequiredError extends Error {
 }
 
 export interface IKycService {
-  /** True when STRIPE_SECRET_KEY is present and the SDK initialised. */
   isConfigured(): boolean;
-
-  /** Create a Stripe Identity verification session for the user. */
   createSession(userId: string, returnUrl: string): Promise<CreateKycSessionResult>;
-
-  /** Latest verification record (any status). */
   getLatestForUser(userId: string): Promise<KycVerification | null>;
-
-  /** Status snapshot: current user.kyc_status + latest session + exposure. */
   getStatus(userId: string): Promise<KycStatusSummary>;
-
-  /** Verify and process an `identity.verification_session.*` event.
-   * Returns `{ verification: null }` when the event is unrelated or unmatched.
-   */
-  handleWebhook(rawBody: string, signature: string | undefined): Promise<KycWebhookHandleResult>;
-
-  /** Process a verified Identity webhook event (after signature verification). */
-  handleIdentityEvent(event: Stripe.Event): Promise<KycWebhookHandleResult>;
-
-  /** Pure helper used by middleware: throws KycRequiredError when the user is
-   * over threshold and not approved.
-   */
+  handleDecisionWebhook(
+    rawBody: string,
+    signature: string | undefined,
+    authClient: string | undefined,
+  ): Promise<KycWebhookHandleResult>;
+  handleEventWebhook(
+    rawBody: string,
+    signature: string | undefined,
+    authClient: string | undefined,
+  ): Promise<void>;
   enforceThreshold(userId: string): Promise<void>;
 }

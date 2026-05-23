@@ -3,8 +3,8 @@ import { legalEntity } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 
-/** After Stripe Identity marks a session verified, advance sole-trader individuals stuck in `lead`. */
-export async function progressIndividualsAfterIdentityVerification(
+/** After KYC approval, advance sole-trader individuals stuck in `lead`. Idempotent. */
+export async function progressIndividualsAfterKycApproval(
   db: Database,
   publisher: DomainEventPublisher | undefined,
   userId: string,
@@ -49,7 +49,7 @@ export async function progressIndividualsAfterIdentityVerification(
         payload: {
           from_status: "lead",
           to_status: "connect_pending",
-          reason: "identity_verified",
+          reason: "kyc_approved",
         },
         actorUserId: null,
         actingLegalEntityId: row.id,
@@ -57,3 +57,6 @@ export async function progressIndividualsAfterIdentityVerification(
     }
   });
 }
+
+/** @deprecated Use {@link progressIndividualsAfterKycApproval}. */
+export const progressIndividualsAfterIdentityVerification = progressIndividualsAfterKycApproval;

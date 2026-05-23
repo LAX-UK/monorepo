@@ -11,7 +11,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-/** KYC status for Stripe Identity verification */
+/** KYC status for identity verification */
 export const userKycStatusEnum = pgEnum("user_kyc_status", [
   "unverified",
   "pending",
@@ -55,9 +55,9 @@ export const user = pgTable(
     }),
     suspendedAt: timestamp("suspended_at", { mode: "date", withTimezone: true }),
     suspendedReason: text("suspended_reason"),
-    /** Stripe Identity KYC status  */
+    /** Identity verification KYC status */
     kycStatus: userKycStatusEnum("kyc_status").notNull().default("unverified"),
-    /** Latest Stripe Identity session id; webhooks for older sessions are ignored for user state. */
+    /** Latest provider session id; webhooks for older sessions are ignored for user state. */
     currentKycSessionId: text("current_kyc_session_id"),
     /** Count of hard verification failures (not `requires_input` retries). */
     kycRetryCount: integer("kyc_retry_count").notNull().default(0),

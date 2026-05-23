@@ -470,6 +470,13 @@
       "when": 1782400000000,
       "tag": "0068_category_timestamps",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1782500000000,
+      "tag": "0069_kyc_veriff",
+      "breakpoints": true
     }
   ]
 }

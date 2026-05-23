@@ -1,0 +1,151 @@
+import type { Database } from "@auction/db";
+import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
+import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
+import type { IKycRepository } from "../interfaces/kyc-repository.js";
+import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
+import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
+
+export type KycVerifiedFields = {
+  verifiedFirstName: string | null;
+  verifiedLastName: string | null;
+  verifiedDateOfBirth: Date | null;
+  verifiedIdNumberLast4: string | null;
+  verifiedIdCountry: string | null;
+  verifiedIdType: string | null;
+  verifiedIdExpiry: Date | null;
+};
+
+export type KycDecisionApplyInput = {
+  providerSessionId: string;
+  providerAttemptId: string | null;
+  verificationStatus: KycVerification["status"];
+  userKycUpdate: {
+    setStatus: UserKycStatus | null;
+    verifiedAt: Date | null;
+    incrementRetry: boolean;
+  };
+  verifiedFields: KycVerifiedFields;
+  decisionPayload: Record<string, unknown>;
+  decisionAt: Date | null;
+  isApproved: boolean;
+};
+
+const TERMINAL_VERIFICATION_STATUSES = new Set<KycVerification["status"]>(["verified", "canceled"]);
+
+/** Applies a normalized KYC decision to persistence and user columns. */
+export class KycDecisionProcessor {
+  constructor(
+    private readonly repo: IKycRepository,
+    private readonly marketingEvents: IMarketingEventService | null = null,
+  ) {}
+
+  async apply(
+    input: KycDecisionApplyInput,
+    conn: Database | null,
+  ): Promise<KycWebhookHandleResult> {
+    const existing = await this.repo.findByProviderSessionId(
+      input.providerSessionId,
+      conn ?? undefined,
+    );
+    if (!existing) {
+      return { verification: null, appliedUserKycUpdate: false, shouldProgressIndividuals: false };
+    }
+
+    const userState = await this.repo.getUserKycState(existing.userId, conn ?? undefined);
+    const userAlreadyApproved = userState?.kycStatus === "approved";
+    const verificationTerminal = TERMINAL_VERIFICATION_STATUSES.has(existing.status);
+    const skipVerificationDowngrade = verificationTerminal && !input.isApproved;
+    const skipUserDowngrade = userAlreadyApproved && !input.isApproved;
+
+    let updated = existing;
+    if (!skipVerificationDowngrade) {
+      updated = await this.repo.update(
+        existing.id,
+        {
+          status: input.verificationStatus,
+          providerAttemptId: input.providerAttemptId,
+          decisionAt: input.decisionAt,
+          decisionPayload: input.decisionPayload,
+          verifiedFirstName: input.verifiedFields.verifiedFirstName,
+          verifiedLastName: input.verifiedFields.verifiedLastName,
+          verifiedDateOfBirth: input.verifiedFields.verifiedDateOfBirth,
+          verifiedIdNumberLast4: input.verifiedFields.verifiedIdNumberLast4,
+          verifiedIdCountry: input.verifiedFields.verifiedIdCountry,
+          verifiedIdType: input.verifiedFields.verifiedIdType,
+          verifiedIdExpiry: input.verifiedFields.verifiedIdExpiry,
+        },
+        conn ?? undefined,
+      );
+    }
+
+    const webhookState = await this.repo.getUserKycWebhookState(existing.userId, conn ?? undefined);
+    const isCurrentSession =
+      Boolean(webhookState) && webhookState?.currentKycSessionId === existing.providerSessionId;
+
+    const { setStatus, verifiedAt, incrementRetry } = input.userKycUpdate;
+
+    let appliedUserKycUpdate = false;
+    let shouldProgressIndividuals = false;
+    let marketingEventToEnqueue: MarketingEvent | undefined;
+
+    if (isCurrentSession) {
+      if (setStatus !== null && !skipUserDowngrade) {
+        if (input.isApproved && conn && this.marketingEvents && !userAlreadyApproved) {
+          marketingEventToEnqueue = {
+            name: "CompleteRegistration",
+            eventId: `kyc_approved_${existing.userId}`,
+            eventTime: nowUnixSeconds(),
+            actionSource: "system_generated",
+            userIdOrAnon: { kind: "user", userId: existing.userId },
+            consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
+            customData: { kycStatus: "approved" },
+          };
+          await this.repo.setUserKycStatus(existing.userId, setStatus, verifiedAt, conn);
+          await this.marketingEvents.stage(marketingEventToEnqueue, conn);
+        } else if (!userAlreadyApproved) {
+          await this.repo.setUserKycStatus(
+            existing.userId,
+            setStatus,
+            verifiedAt,
+            conn ?? undefined,
+          );
+        }
+        appliedUserKycUpdate = true;
+      }
+      if (incrementRetry && !userAlreadyApproved) {
+        await this.repo.incrementUserKycRetryCount(existing.userId, conn ?? undefined);
+        appliedUserKycUpdate = true;
+      }
+      shouldProgressIndividuals = input.isApproved && !userAlreadyApproved;
+    } else {
+      console.warn(
+        JSON.stringify({
+          msg: "kyc_webhook_stale_session",
+          userId: existing.userId,
+          sessionInWebhook: input.providerSessionId,
+          userCurrentSessionId: webhookState?.currentKycSessionId ?? null,
+        }),
+      );
+    }
+
+    if (skipUserDowngrade || skipVerificationDowngrade) {
+      console.warn(
+        JSON.stringify({
+          msg: "kyc_webhook_decision_downgrade_skipped",
+          userId: existing.userId,
+          sessionInWebhook: input.providerSessionId,
+          userAlreadyApproved,
+          verificationTerminal,
+          incomingApproved: input.isApproved,
+        }),
+      );
+    }
+
+    return {
+      verification: updated,
+      appliedUserKycUpdate,
+      shouldProgressIndividuals,
+      ...(marketingEventToEnqueue ? { marketingEventToEnqueue } : {}),
+    };
+  }
+}

@@ -118,7 +118,7 @@ export type FinanceIssueSnapshot = {
   staleBlockedScheduledPayoutCount: number;
   entitiesPendingReviewCount: number;
   artistsPendingApprovalCount: number;
-  staleIdentitySessionsCount: number;
+  staleKycSessionsCount: number;
   documentsAwaitingReviewCount: number;
   staleLeadOrganisationsCount: number;
 };

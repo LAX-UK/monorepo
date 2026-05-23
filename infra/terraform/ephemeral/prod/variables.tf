@@ -217,11 +217,22 @@ variable "stripe_publishable_key" {
   sensitive   = true
   description = "Stripe publishable key (pk_live_… in production)."
 }
-variable "stripe_identity_webhook_secret" {
+variable "veriff_api_key" {
   type        = string
   default     = ""
   sensitive   = true
-  description = "Stripe Identity webhook signing secret (whsec_…)."
+  description = "Veriff API key (X-AUTH-CLIENT)."
+}
+variable "veriff_shared_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Veriff shared secret for webhook HMAC verification."
+}
+variable "veriff_api_base_url" {
+  type        = string
+  default     = "https://stationapi.veriff.com"
+  description = "Veriff API base URL."
 }
 variable "stripe_connect_webhook_secret" {
   type        = string

@@ -164,8 +164,15 @@ const envSchema = z
     STRIPE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Stripe publishable key (pk_test_… / pk_live_…). Public for client SDK. */
     STRIPE_PUBLISHABLE_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
-    /** Stripe Identity webhook signing secret (whsec_…). */
-    STRIPE_IDENTITY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Veriff API key (X-AUTH-CLIENT). Optional until KYC enabled. */
+    VERIFF_API_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Veriff shared secret for webhook HMAC verification. */
+    VERIFF_SHARED_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Veriff API base URL (sandbox and production use stationapi.veriff.com). */
+    VERIFF_API_BASE_URL: z.preprocess(
+      emptyToUndefined,
+      z.string().url().default("https://stationapi.veriff.com"),
+    ),
     /** Stripe Connect webhook signing secret (whsec_…). */
     STRIPE_CONNECT_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Payments webhook signing secret (whsec_…) for disputes/refunds. */
@@ -289,7 +296,6 @@ const envSchema = z
         });
       }
       for (const [key, val] of [
-        ["STRIPE_IDENTITY_WEBHOOK_SECRET", e.STRIPE_IDENTITY_WEBHOOK_SECRET] as const,
         ["STRIPE_CONNECT_WEBHOOK_SECRET", e.STRIPE_CONNECT_WEBHOOK_SECRET] as const,
         ["STRIPE_TRANSFERS_WEBHOOK_SECRET", e.STRIPE_TRANSFERS_WEBHOOK_SECRET] as const,
         ["STRIPE_PAYMENTS_WEBHOOK_SECRET", e.STRIPE_PAYMENTS_WEBHOOK_SECRET] as const,

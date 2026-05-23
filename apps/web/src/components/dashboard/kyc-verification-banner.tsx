@@ -1,5 +1,4 @@
-import "server-only";
-
+import { KYC_BANNER_DESCRIPTION } from "@/components/kyc";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { formatMoney } from "@/lib/format-currency";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -18,7 +17,7 @@ export function KycVerificationBanner({ summary }: Props) {
       <AlertTitle>Identity verification required</AlertTitle>
       <AlertDescription className="text-pretty">
         Your outstanding bids and commitments ({exposure}) meet our verification threshold (
-        {threshold}). Complete Stripe Identity verification to keep bidding.
+        {threshold}). {KYC_BANNER_DESCRIPTION}
         <span className="mt-2 block">
           <Link
             className="font-medium underline underline-offset-2"
