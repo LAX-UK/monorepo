@@ -1,0 +1,75 @@
+name: Sentry auth preflight
+description: Verify SENTRY_AUTH_TOKEN before applying the sentry Terraform layer
+inputs:
+  organization-slug:
+    description: Sentry organization slug
+    required: false
+    default: lax-bid
+  team-slug:
+    description: Sentry team slug used to verify org-scoped API access
+    required: false
+    default: lax-engineering
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SENTRY_ORG_SLUG: ${{ inputs.organization-slug }}
+        SENTRY_TEAM_SLUG: ${{ inputs.team-slug }}
+      run: |
+        token="$(printf '%s' "${SENTRY_AUTH_TOKEN:-}" | tr -d '[:space:]')"
+        if [ -z "$token" ]; then
+          echo "::error::SENTRY_AUTH_TOKEN is not set. Create the terraform-bot internal integration (infra/terraform/BOOTSTRAP.md §6) and run: gh secret set SENTRY_AUTH_TOKEN"
+          exit 1
+        fi
+        http_code="$(curl -sS -o /tmp/sentry-health.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          https://sentry.io/api/0/)"
+        if [ "$http_code" != "200" ]; then
+          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not an Organization Token), regenerate terraform-bot, then gh secret set SENTRY_AUTH_TOKEN (and --env test if using the test environment)."
+          head -c 500 /tmp/sentry-health.json 2>/dev/null || true
+          exit 1
+        fi
+        org_code="$(curl -sS -o /tmp/sentry-org.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/")"
+        if [ "$org_code" != "200" ]; then
+          echo "::error::Sentry org lookup returned HTTP ${org_code} for slug '${SENTRY_ORG_SLUG}'. Confirm the slug in Sentry → Settings → General (URL is sentry.io/settings/{slug}/)."
+          head -c 500 /tmp/sentry-org.json 2>/dev/null || true
+          exit 1
+        fi
+        teams_code="$(curl -sS -o /tmp/sentry-teams.json -w '%{http_code}' \
+          -H "Authorization: Bearer ${token}" \
+          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
+        if [ "$teams_code" != "200" ]; then
+          echo "::error::Could not list teams for org '${SENTRY_ORG_SLUG}' (HTTP ${teams_code}). Check terraform-bot Team permission and org slug."
+          head -c 500 /tmp/sentry-teams.json 2>/dev/null || true
+          exit 1
+        fi
+        if ! SENTRY_ORG_SLUG="$SENTRY_ORG_SLUG" python3 - "$SENTRY_TEAM_SLUG" <<'PY'
+        import json
+        import os
+        import sys
+
+        want = sys.argv[1]
+        org = os.environ["SENTRY_ORG_SLUG"]
+        teams = json.load(open("/tmp/sentry-teams.json"))
+        slugs = [t.get("slug") for t in teams if t.get("slug")]
+        if want in slugs:
+            sys.exit(0)
+        print(f"::error::Team slug '{want}' not found in org '{org}'.")
+        print("Teams visible to this token (use slug, not display name):")
+        for t in teams:
+            print(f"  slug={t.get('slug')}  name={t.get('name')}")
+        if not teams:
+            print("  (none — create a team under Sentry → Settings → Teams)")
+        print("Update sentry_team_slug in infra/terraform/sentry/{env}/variables.tf to match.")
+        sys.exit(1)
+        PY
+        then
+          exit 1
+        fi
+        if [ -z "${SENTRY_GITHUB_INTEGRATION_ID:-}" ] && [ -z "${TF_VAR_github_integration_id:-}" ]; then
+          echo "::warning::SENTRY_GITHUB_INTEGRATION_ID is not set — apply will create projects/DSNs but skip GitHub code mappings. See BOOTSTRAP.md §6."
+        fi
+        echo "Sentry auth OK (org=${SENTRY_ORG_SLUG}, team=${SENTRY_TEAM_SLUG})"

@@ -1,5 +1,5 @@
+import { initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
-import * as Sentry from "@sentry/node";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
@@ -7,10 +7,11 @@ import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 
 const env = loadEnv();
 if (env.SENTRY_DSN_API) {
-  Sentry.init({
+  initNodeSentry({
     dsn: env.SENTRY_DSN_API,
-    environment: env.NODE_ENV,
-    tracesSampleRate: env.NODE_ENV === "production" ? 0.05 : 1,
+    appEnv: env.APP_ENV,
+    nodeEnv: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1,
   });
 }
 const container = createContainer(env);

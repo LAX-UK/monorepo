@@ -29,11 +29,17 @@ variable "sentry_auth_token" {
 }
 variable "sentry_organization_slug" {
   type    = string
-  default = "lax"
+  default = "lax-bid"
 }
 variable "sentry_team_slug" {
   type    = string
   default = "lax-engineering"
+}
+
+variable "sentry_release" {
+  type        = string
+  default     = ""
+  description = "Git SHA or release tag emitted by Sentry SDK and source-map upload workflow."
 }
 variable "repository_clone_url" {
   type    = string
