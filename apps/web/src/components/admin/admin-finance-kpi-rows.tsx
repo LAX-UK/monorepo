@@ -112,11 +112,11 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
             },
             {
               id: "identity",
-              label: "Stale Identity",
-              value: String(financeIssues.staleIdentitySessionsCount ?? 0),
+              label: "Stale KYC",
+              value: String(financeIssues.staleKycSessionsCount ?? 0),
               trendSlot: (
                 <Link
-                  href="/admin/onboarding-issues#stale-identity"
+                  href="/admin/onboarding-issues#stale-kyc"
                   className="text-xs font-semibold text-primary hover:underline"
                 >
                   Queue

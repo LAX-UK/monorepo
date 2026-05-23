@@ -4,13 +4,14 @@ import {
   legalEntityMember,
   lot,
   saleRegistration,
-  user,
 } from "@auction/db/schema";
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./interfaces/bid-eligibility.js";
+import type { IKycService } from "./interfaces/kyc-service.js";
+import { KycRequiredError } from "./interfaces/kyc-service.js";
 
 function parseMoneyCap(raw: string | null | undefined): number | null {
   if (raw == null || raw === "") return null;
@@ -25,23 +26,25 @@ function minPositiveCap(a: number | null, b: number | null): number | null {
 }
 
 export class BidEligibilityService implements IBidEligibility {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly kycService: IKycService | null = null,
+  ) {}
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
     const { placedByUserId, buyerLegalEntityId, lotId, amount } = input;
 
-    const [u] = await this.db
-      .select({ kycStatus: user.kycStatus })
-      .from(user)
-      .where(eq(user.id, placedByUserId))
-      .limit(1);
-    if (!u) {
-      return err(new BidError("User not found", 404));
-    }
-    if (u.kycStatus !== "approved") {
-      return err(
-        new BidError("Complete identity verification before bidding", 403, "kyc_required"),
-      );
+    if (this.kycService?.isConfigured()) {
+      try {
+        await this.kycService.enforceThreshold(placedByUserId);
+      } catch (caught) {
+        if (caught instanceof KycRequiredError) {
+          return err(
+            new BidError("Complete identity verification before bidding", 402, "kyc_required"),
+          );
+        }
+        throw caught;
+      }
     }
 
     const [lotRow] = await this.db

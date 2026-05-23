@@ -28,7 +28,8 @@ jobs:
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-      TF_VAR_stripe_identity_webhook_secret: ${{ secrets.STRIPE_IDENTITY_WEBHOOK_SECRET }}
+      TF_VAR_veriff_api_key: ${{ secrets.VERIFF_API_KEY }}
+      TF_VAR_veriff_shared_secret: ${{ secrets.VERIFF_SHARED_SECRET }}
       TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
       TF_VAR_stripe_transfers_webhook_secret: ${{ secrets.STRIPE_TRANSFERS_WEBHOOK_SECRET }}
       TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}

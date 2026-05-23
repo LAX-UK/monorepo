@@ -50,9 +50,9 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
     // Include configured API/auth origins. In local dev these vars are typically
     // absent so we fall back to localhost ports to avoid CSP violations.
     // DigitalOcean Spaces presigned PUTs go directly to *.digitaloceanspaces.com
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net`.trim(),
-    // Cloudflare Turnstile + YouTube embeds (live-stream hero) render iframes.
-    "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com",
+    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net https://*.veriff.com https://*.veriff.me https://*.probity.io`.trim(),
+    // Cloudflare Turnstile + YouTube embeds (live-stream hero) + Veriff InContext SDK iframes.
+    "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://*.veriff.com https://*.veriff.me https://*.hotjar.com",
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

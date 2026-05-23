@@ -1,5 +1,6 @@
 import type { AttentionListItem } from "@/components/dashboard/attention-list";
 import { formatSettlementTotal } from "@/components/dashboard/overview/overview-presenters";
+import { KYC_ATTENTION_REQUIRED_HINT } from "@/components/kyc/kyc-copy";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotPath } from "@/lib/seo/url";
@@ -22,15 +23,7 @@ export function buildAttentionItems({
   const items: AttentionListItem[] = [];
 
   if (kyc) {
-    if (kyc.status === "rejected") {
-      items.push({
-        id: "kyc-rejected",
-        title: "Identity verification was rejected",
-        hint: "Resubmit to keep bidding above the threshold",
-        href: "/dashboard/verify-identity",
-        ctaLabel: "Resubmit",
-      });
-    } else if (kyc.status === "pending") {
+    if (kyc.status === "pending") {
       items.push({
         id: "kyc-pending",
         title: "Identity verification in review",
@@ -38,11 +31,19 @@ export function buildAttentionItems({
         href: "/dashboard/verify-identity",
         ctaLabel: "View",
       });
+    } else if (kyc.status === "rejected") {
+      items.push({
+        id: "kyc-rejected",
+        title: "Identity verification was rejected",
+        hint: "Resubmit to keep bidding above the threshold",
+        href: "/dashboard/verify-identity",
+        ctaLabel: "Resubmit",
+      });
     } else if (kyc.requiresKyc && kyc.status !== "approved") {
       items.push({
         id: "kyc-required",
         title: "Identity verification required",
-        hint: "Required to settle pending invoices",
+        hint: KYC_ATTENTION_REQUIRED_HINT,
         href: "/dashboard/verify-identity",
         ctaLabel: "Verify",
       });
