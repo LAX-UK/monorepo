@@ -50,6 +50,10 @@ export function createKycRoutes(container: Container, authenticator: IAuthentica
       if (err instanceof KycAlreadyApprovedError) {
         return c.json({ error: err.code }, 409);
       }
+      const message = err instanceof Error ? err.message : "";
+      if (message === "kyc_return_url_must_be_https" || message === "kyc_return_url_invalid") {
+        return c.json({ error: message }, 400);
+      }
       throw err;
     }
   });

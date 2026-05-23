@@ -148,6 +148,7 @@ locals {
       primary_domain    = true
       env = concat(local.common_secret_env, local.sentry_env_for["web"], [
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_MEDIA_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
