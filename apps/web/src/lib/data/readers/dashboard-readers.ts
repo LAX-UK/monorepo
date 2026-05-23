@@ -90,6 +90,9 @@ export type DashboardKycReader = {
 
 export type DashboardNotificationsReader = {
   listMine(params?: ListMyNotificationsParams): Promise<UserNotification[]>;
+  listMineSafe(
+    params?: ListMyNotificationsParams,
+  ): Promise<{ items: UserNotification[]; failed: boolean }>;
 };
 
 export type DashboardAddressesReader = {

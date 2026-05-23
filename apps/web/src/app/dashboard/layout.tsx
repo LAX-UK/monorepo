@@ -1,4 +1,5 @@
 import { DashboardBannerStack } from "@/components/dashboard/dashboard-banner-stack";
+import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { DashboardThemeSync } from "@/components/dashboard/dashboard-theme-sync";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
@@ -6,6 +7,7 @@ import { ClientShell } from "@/components/shell/client-shell";
 import { ContextBanner } from "@/components/shell/context-banner";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
@@ -32,11 +34,41 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
   const pendingGw = createPendingInvitationsGateway();
-  const [kycSummary, orgOnboardingResume, pendingInvites] = await Promise.all([
-    c.kyc.getSummary().catch(() => null),
-    c.orgOnboarding.getResume().catch(() => null),
-    pendingGw.listMine().catch(() => []),
+  const [kycR, orgR, pendingR] = await Promise.allSettled([
+    c.kyc.getSummary(),
+    c.orgOnboarding.getResume(),
+    pendingGw.listMine(),
   ]);
+  const kycSummary = kycR.status === "fulfilled" ? kycR.value : null;
+  const orgOnboardingResume = orgR.status === "fulfilled" ? orgR.value : null;
+  const pendingInvites = pendingR.status === "fulfilled" ? pendingR.value : [];
+  const layoutWarnings: { title: string; message: string }[] = [];
+  if (kycR.status === "rejected") {
+    layoutWarnings.push({
+      title: "Verification status unavailable",
+      message: dashboardSliceFailureMessage(kycR.reason, "kyc", "Could not load KYC status."),
+    });
+  }
+  if (orgR.status === "rejected") {
+    layoutWarnings.push({
+      title: "Organisation onboarding unavailable",
+      message: dashboardSliceFailureMessage(
+        orgR.reason,
+        "orgOnboarding",
+        "Could not load organisation onboarding.",
+      ),
+    });
+  }
+  if (pendingR.status === "rejected") {
+    layoutWarnings.push({
+      title: "Pending invitations unavailable",
+      message: dashboardSliceFailureMessage(
+        pendingR.reason,
+        "invitations",
+        "Could not load pending invitations.",
+      ),
+    });
+  }
 
   const jar = await cookies();
   const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
@@ -83,6 +115,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       contextBanner={
         <>
           <ContextBanner acting={acting} />
+          {layoutWarnings.map((w) => (
+            <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
+          ))}
           <DashboardBannerStack
             user={user}
             acting={actingContext.acting}

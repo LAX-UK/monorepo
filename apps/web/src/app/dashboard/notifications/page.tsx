@@ -3,6 +3,10 @@ import { NotificationsInboxBoard } from "@/components/dashboard/notifications-in
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Suspense } from "react";
 
@@ -20,21 +24,36 @@ async function NotificationsInboxContent({
   const tab = parseTab(sp.tab);
   const type = (sp.type ?? "").trim();
   const c = await getServerDataContainer();
-  const items = await c.notifications.listMine({
-    tab,
-    limit: NOTIFICATIONS_PAGE_SIZE,
-    offset: 0,
-    ...(type ? { type } : {}),
-  });
-  const hasMore = items.length === NOTIFICATIONS_PAGE_SIZE;
+  let items: Awaited<ReturnType<typeof c.notifications.listMine>> = [];
+  let loadFailure: DashboardSliceFailure | null = null;
+  try {
+    items = await c.notifications.listMine({
+      tab,
+      limit: NOTIFICATIONS_PAGE_SIZE,
+      offset: 0,
+      ...(type ? { type } : {}),
+    });
+  } catch (e) {
+    loadFailure = describeDashboardSliceFailure(
+      e,
+      "notifications",
+      "Could not load notifications.",
+    );
+  }
+  const hasMore = !loadFailure && items.length === NOTIFICATIONS_PAGE_SIZE;
   return (
     <NotificationsInboxBoard
-      initialPage={{
-        tab,
-        type,
-        items,
-        hasMore,
-      }}
+      loadFailure={loadFailure}
+      {...(loadFailure
+        ? {}
+        : {
+            initialPage: {
+              tab,
+              type,
+              items,
+              hasMore,
+            },
+          })}
     />
   );
 }

@@ -3,21 +3,23 @@ import {
   DashboardComplianceStripSkeleton,
 } from "@/components/dashboard/dashboard-compliance-strip";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import {
   type PortfolioFilterValue,
   PortfolioFilters,
 } from "@/components/dashboard/portfolio-filters";
 import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
-import {
-  DashboardEmptyState,
-  DashboardErrorAlert,
-  DashboardSection,
-} from "@/components/dashboard/primitives";
+import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { Button } from "@/components/ui/button";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
@@ -63,12 +65,12 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
 
   const container = await getServerDataContainer();
   let won: Awaited<ReturnType<typeof container.portfolio.listMine>> = [];
-  let fetchError: string | null = null;
+  let loadFailure: DashboardSliceFailure | null = null;
   try {
     won = await container.portfolio.listMine();
   } catch (e) {
     won = [];
-    fetchError = e instanceof Error ? e.message : "Could not load portfolio.";
+    loadFailure = describeDashboardSliceFailure(e, "portfolio", "Could not load portfolio.");
   }
 
   const analytics = buildPortfolioAnalytics(won);
@@ -90,14 +92,9 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
         <DashboardComplianceStrip loginNext="/dashboard/portfolio" />
       </Suspense>
 
-      {fetchError ? (
-        <DashboardErrorAlert
-          title="Could not load portfolio"
-          message={`${fetchError} Refresh the page or try again in a few minutes.`}
-        />
-      ) : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
-      {!fetchError && analytics.totalRows > 0 ? (
+      {!loadFailure && analytics.totalRows > 0 ? (
         <KpiRow
           variant="hero"
           columns={4}
@@ -125,7 +122,7 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
         />
       ) : null}
 
-      {!fetchError ? (
+      {!loadFailure ? (
         <DashboardToolbar
           search={
             <PortfolioFilters
@@ -138,24 +135,26 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
         />
       ) : null}
 
-      {!fetchError ? (
+      {!loadFailure ? (
         <DashboardSection id="portfolio-grid" title="Acquired works">
           {filtered.length === 0 ? (
             <DashboardEmptyState
               variant={!qRaw && payment === "all" && year == null ? "hero" : "quiet"}
               icon={!qRaw && payment === "all" && year == null ? <Inbox aria-hidden /> : undefined}
               title={
-                qRaw || payment !== "all" || year != null ? "No matches" : "No acquired works yet"
+                qRaw || payment !== "all" || year != null
+                  ? "No matches"
+                  : DASHBOARD_EMPTY.portfolio.title
               }
               description={
                 qRaw || payment !== "all" || year != null
                   ? "Try a different search term or clear the filters."
-                  : "You haven't won any lots yet. Browse live auctions and place your best bid."
+                  : DASHBOARD_EMPTY.portfolio.description
               }
               action={
                 !qRaw && payment === "all" && year == null ? (
                   <Button variant="primary" asChild>
-                    <Link href="/search">Browse auctions</Link>
+                    <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
                   </Button>
                 ) : undefined
               }

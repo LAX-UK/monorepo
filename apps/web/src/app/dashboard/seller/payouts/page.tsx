@@ -1,15 +1,23 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { PayoutsExportButton } from "@/components/dashboard/payouts-export-button";
-import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import {
+  SellerOrgContextBanner,
+  SellerProfileUnavailableAlert,
+} from "@/components/dashboard/seller-org-context-banner";
+import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { buildSellerPayoutFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.server";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { getPayoutStatusView } from "@/lib/presenters/payment-status";
 import type { Payout } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 
 function formatMoney(amount: string, currency: string): string {
   const value = Number.parseFloat(amount);
@@ -25,31 +33,27 @@ export default async function SellerPayoutsPage() {
     shell: "client",
     loginNext: "/dashboard/seller/payouts",
   });
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
-  if (!acting) redirect("/dashboard");
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const c = await getServerDataContainer();
-  const [listRes, previewRes] = await Promise.all([
-    c.sellerPayouts.listForLegalEntity(acting.id),
-    c.sellerPayouts.previewNextForLegalEntity(acting.id),
-  ]);
-
   let payouts: Payout[] = [];
-  let listError: string | null = null;
-  if (listRes.ok) {
-    payouts = listRes.payouts;
-  } else {
-    const messages: Record<string, string> = {
-      unauthorized: "Your session has expired. Please sign in again.",
-      forbidden: "You do not have permission to view payouts for this entity.",
-      server_error: "Could not load payouts. Please try again later.",
-    };
-    listError = messages[listRes.error] ?? "Could not load payouts.";
-  }
-
+  let listFailure = null;
   let preview: SellerPayoutPendingPreview | null = null;
-  if (previewRes.ok) {
-    preview = previewRes.data;
+
+  if (sellerEntityId) {
+    const [listRes, previewRes] = await Promise.all([
+      c.sellerPayouts.listForLegalEntity(sellerEntityId),
+      c.sellerPayouts.previewNextForLegalEntity(sellerEntityId),
+    ]);
+    if (listRes.ok) {
+      payouts = listRes.payouts;
+    } else {
+      listFailure = buildSellerPayoutFailure(listRes.error);
+    }
+    if (previewRes.ok) {
+      preview = previewRes.data;
+    }
   }
 
   return (
@@ -77,7 +81,10 @@ export default async function SellerPayoutsPage() {
         }
       />
 
-      {listError && <DashboardErrorAlert title="Could not load payouts" message={listError} />}
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
+      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {listFailure ? <DashboardSliceErrorAlert failure={listFailure} /> : null}
 
       {preview && (
         <Surface variant="section" padding="md" className="space-y-2">
@@ -120,10 +127,20 @@ export default async function SellerPayoutsPage() {
         </Surface>
       )}
 
-      {payouts.length === 0 && !listError ? (
+      {payouts.length === 0 && !listFailure ? (
         <DashboardEmptyState
-          title="No payouts yet"
-          description="When LAX processes a settlement batch for your sales, the payout statement will appear here with line-by-line breakdowns."
+          title={DASHBOARD_EMPTY.sellerPayouts.title}
+          description={DASHBOARD_EMPTY.sellerPayouts.description}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="primary" asChild>
+                <Link href={DASHBOARD_ROUTES.sellerInSale}>{DASHBOARD_CTA.itemsInSale}</Link>
+              </Button>
+              <Button variant="secondary" asChild>
+                <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
+              </Button>
+            </div>
+          }
         />
       ) : payouts.length > 0 ? (
         <ul className="space-y-3">
@@ -162,7 +179,7 @@ export default async function SellerPayoutsPage() {
                   </div>
                   <div className="flex justify-end sm:justify-center">
                     <a
-                      href={`/dashboard/legal-entities/${encodeURIComponent(acting.id)}/payouts/${encodeURIComponent(p.id)}/statement`}
+                      href={`/dashboard/legal-entities/${encodeURIComponent(sellerEntityId ?? "")}/payouts/${encodeURIComponent(p.id)}/statement`}
                       className="text-xs font-semibold text-primary underline underline-offset-2"
                     >
                       Statement PDF

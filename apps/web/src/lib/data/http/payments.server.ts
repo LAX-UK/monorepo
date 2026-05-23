@@ -1,5 +1,6 @@
 import "server-only";
 
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { PaymentStatus } from "@auction/types";
 import { authedServerFetch } from "./authed-fetch.server";
 
@@ -34,9 +35,7 @@ export async function getServerMyPayments(
   if (params.status) qs.set("status", params.status);
   const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
   const res = await authedServerFetch(`/payments/me${suffix}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load payments: ${res.status}`);
-  }
+  await throwIfNotOk(res, "payments");
   const body = (await res.json()) as { data: MyPaymentRow[] };
   return body.data;
 }
