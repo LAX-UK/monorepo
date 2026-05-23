@@ -196,6 +196,8 @@ const envSchema = z
     ENGLISH_ONLY_AUCTIONS: z
       .preprocess((v) => v === "true" || v === true, z.boolean())
       .default(true),
+    /** Platform org entity stamped on staff-created sales (`created_by_legal_entity_id`). Falls back to DB lookup when unset. */
+    PLATFORM_CATALOG_LEGAL_ENTITY_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
     /** Support inbox for money-path alerts and ops (required in production). */
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** On-call / escalation inbox (required in production). */

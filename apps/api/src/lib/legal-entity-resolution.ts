@@ -1,12 +1,21 @@
 import type { Database } from "@auction/db";
 import { legalEntity, legalEntityMember } from "@auction/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+
+/** Active owner membership on the user's personal `individual` entity (matches legal-entity repo). */
+function personalEntityMembershipJoin(userId: string) {
+  return and(
+    eq(legalEntityMember.legalEntityId, legalEntity.id),
+    eq(legalEntityMember.userId, userId),
+    eq(legalEntityMember.role, "owner"),
+    isNull(legalEntityMember.removedAt),
+    isNotNull(legalEntityMember.acceptedAt),
+  );
+}
 
 /** Resolves a user's individual legal entity ID.
- * During the dual-write period , this is used to populate the new
+ * During the dual-write period, this is used to populate the new
  * legal_entity_id columns when only the user_id is available.
- * * Cached per request - this function should be called within a request context
- * and results memoized for the duration of the request.
  */
 export async function resolveUserIndividualEntity(
   db: Database,
@@ -15,24 +24,14 @@ export async function resolveUserIndividualEntity(
   const rows = await db
     .select({ entityId: legalEntity.id })
     .from(legalEntity)
-    .innerJoin(
-      legalEntityMember,
-      and(
-        eq(legalEntityMember.legalEntityId, legalEntity.id),
-        eq(legalEntityMember.userId, userId),
-        eq(legalEntityMember.role, "owner"),
-        eq(legalEntityMember.isPrimaryAdmin, true),
-      ),
-    )
+    .innerJoin(legalEntityMember, personalEntityMembershipJoin(userId))
     .where(and(eq(legalEntity.kind, "individual"), eq(legalEntity.createdByUserId, userId)))
     .limit(1);
 
   return rows[0]?.entityId ?? null;
 }
 
-/** Batch resolve multiple user IDs to their individual entity IDs.
- * More efficient than calling resolveUserIndividualEntity in a loop.
- */
+/** Batch resolve multiple user IDs to their individual entity IDs. */
 export async function resolveUserIndividualEntities(
   db: Database,
   userIds: string[],
@@ -49,8 +48,10 @@ export async function resolveUserIndividualEntities(
       legalEntityMember,
       and(
         eq(legalEntityMember.legalEntityId, legalEntity.id),
+        eq(legalEntityMember.userId, legalEntity.createdByUserId),
         eq(legalEntityMember.role, "owner"),
-        eq(legalEntityMember.isPrimaryAdmin, true),
+        isNull(legalEntityMember.removedAt),
+        isNotNull(legalEntityMember.acceptedAt),
       ),
     )
     .where(and(eq(legalEntity.kind, "individual"), inArray(legalEntity.createdByUserId, userIds)));

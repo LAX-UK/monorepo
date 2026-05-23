@@ -26,6 +26,7 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
+import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -40,13 +41,11 @@ type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
 
 const SALE_CANCELLABLE: ReadonlySet<Sale["status"]> = new Set(["draft", "scheduled", "active"]);
 
-export type CreatorLegalEntityResolver = (userId: string) => Promise<string | null>;
-
 export type SaleServiceOptions = {
   saleRepo: ISaleRepository;
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
-  resolveCreatorLegalEntityId: CreatorLegalEntityResolver;
+  resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   imageCleanup?: ImageCleanupService;
   saleFollowReader?: SaleFollowReader | null;
   mediaUrlResolver?: MediaUrlResolver;
@@ -57,7 +56,7 @@ export class SaleService {
   private readonly saleRepo: ISaleRepository;
   private readonly lotRepo: ILotRepository;
   private readonly jobScheduler: ILotJobScheduler | null;
-  private readonly resolveCreatorLegalEntityId: CreatorLegalEntityResolver;
+  private readonly resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   private readonly imageCleanup: ImageCleanupService | undefined;
   private readonly saleFollowReader: SaleFollowReader | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
@@ -67,23 +66,20 @@ export class SaleService {
     this.saleRepo = opts.saleRepo;
     this.lotRepo = opts.lotRepo;
     this.jobScheduler = opts.jobScheduler;
-    this.resolveCreatorLegalEntityId = opts.resolveCreatorLegalEntityId;
+    this.resolvePlatformCatalogLegalEntityId = opts.resolvePlatformCatalogLegalEntityId;
     this.imageCleanup = opts.imageCleanup;
     this.saleFollowReader = opts.saleFollowReader ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
   }
 
-  async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
+  async create(_adminId: string, input: ValidatorCreateSale): Promise<Sale> {
     if (input.endTime <= input.startTime) {
       throw new LotError("endTime must be after startTime");
     }
-    const createdByLegalEntityId = await this.resolveCreatorLegalEntityId(adminId);
+    const createdByLegalEntityId = await this.resolvePlatformCatalogLegalEntityId();
     if (!createdByLegalEntityId) {
-      throw new LotError(
-        "Could not resolve your legal entity for this sale. Complete account setup and try again.",
-        400,
-      );
+      throw new LotError("Platform catalog legal entity is not configured. Contact support.", 400);
     }
     const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
     if (input.lots?.length) {
