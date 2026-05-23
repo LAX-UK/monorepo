@@ -5,6 +5,7 @@ import type {
   ActiveMembership,
   ILegalEntityRepository,
 } from "../services/interfaces/legal-entity-repository.js";
+import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import {
   X_LEGAL_ENTITY_ID_HEADER,
   createOptionalLegalEntityContext,
@@ -31,6 +32,23 @@ function repo(
     ensurePersonalEntity: ensurePersonalEntity ?? vi.fn(),
   };
   return { stub, findActiveMembership };
+}
+
+function submissionsMiddleware(
+  stub: ILegalEntityRepository,
+  resolvePersonalEntity: (userId: string) => Promise<{
+    id: string;
+    displayName: string;
+    kind: "individual";
+    subkind: "private_collector";
+    status: "approved";
+    role: "owner";
+    isPrimaryAdmin: boolean;
+  }>,
+) {
+  return createSubmissionsLegalEntityContext(stub, {
+    resolvePersonalEntity,
+  });
 }
 
 function appWithMiddleware(
@@ -247,6 +265,15 @@ describe("createRequireLegalEntityContext (required)", () => {
 
 describe("createSubmissionsLegalEntityContext", () => {
   const PERSONAL_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const personalSummary = {
+    id: PERSONAL_ID,
+    displayName: "Me",
+    kind: "individual" as const,
+    subkind: "private_collector" as const,
+    status: "approved" as const,
+    role: "owner" as const,
+    isPrimaryAdmin: true,
+  };
 
   it("uses personal entity when header is missing and membership is active", async () => {
     const membership: ActiveMembership = {
@@ -255,33 +282,27 @@ describe("createSubmissionsLegalEntityContext", () => {
       role: "owner",
       isPrimaryAdmin: true,
     };
-    const ensurePersonalEntity = vi.fn().mockResolvedValue({
-      id: PERSONAL_ID,
-      displayName: "Me",
-      kind: "individual" as const,
-      subkind: "private_collector" as const,
-      status: "approved" as const,
-      role: "owner" as const,
-      isPrimaryAdmin: true,
-    });
-    const { stub, findActiveMembership } = repo(membership, ensurePersonalEntity);
-    const app = appWithMiddleware(createSubmissionsLegalEntityContext(stub), {
+    const resolvePersonalEntity = vi.fn().mockResolvedValue(personalSummary);
+    const { stub, findActiveMembership } = repo(membership);
+    const app = appWithMiddleware(submissionsMiddleware(stub, resolvePersonalEntity), {
       setUserId: USER_ID,
     });
 
     const res = await app.request("/");
 
     expect(res.status).toBe(200);
-    expect(ensurePersonalEntity).toHaveBeenCalledWith(USER_ID);
+    expect(resolvePersonalEntity).toHaveBeenCalledWith(USER_ID);
     expect(findActiveMembership).toHaveBeenCalledWith(USER_ID, PERSONAL_ID);
     const body = (await res.json()) as { context: ActiveMembership };
     expect(body.context?.legalEntityId).toBe(PERSONAL_ID);
   });
 
   it("returns 403 when personal entity cannot be resolved", async () => {
-    const ensurePersonalEntity = vi.fn().mockRejectedValue(new Error("missing"));
-    const { stub, findActiveMembership } = repo(null, ensurePersonalEntity);
-    const app = appWithMiddleware(createSubmissionsLegalEntityContext(stub), {
+    const resolvePersonalEntity = vi
+      .fn()
+      .mockRejectedValue(new PersonalLegalEntityUnavailableError(USER_ID));
+    const { stub, findActiveMembership } = repo(null);
+    const app = appWithMiddleware(submissionsMiddleware(stub, resolvePersonalEntity), {
       setUserId: USER_ID,
     });
 
@@ -294,17 +315,12 @@ describe("createSubmissionsLegalEntityContext", () => {
   });
 
   it("returns 403 when personal entity exists but membership is not active", async () => {
-    const ensurePersonalEntity = vi.fn().mockResolvedValue({
-      id: PERSONAL_ID,
-      displayName: "Me",
-      kind: "individual" as const,
-      subkind: "private_collector" as const,
+    const resolvePersonalEntity = vi.fn().mockResolvedValue({
+      ...personalSummary,
       status: "rejected" as const,
-      role: "owner" as const,
-      isPrimaryAdmin: true,
     });
-    const { stub, findActiveMembership } = repo(null, ensurePersonalEntity);
-    const app = appWithMiddleware(createSubmissionsLegalEntityContext(stub), {
+    const { stub, findActiveMembership } = repo(null);
+    const app = appWithMiddleware(submissionsMiddleware(stub, resolvePersonalEntity), {
       setUserId: USER_ID,
     });
 
@@ -315,9 +331,9 @@ describe("createSubmissionsLegalEntityContext", () => {
   });
 
   it("still validates explicit header (403 for unknown entity)", async () => {
-    const ensurePersonalEntity = vi.fn();
-    const { stub, findActiveMembership } = repo(null, ensurePersonalEntity);
-    const app = appWithMiddleware(createSubmissionsLegalEntityContext(stub), {
+    const resolvePersonalEntity = vi.fn();
+    const { stub, findActiveMembership } = repo(null);
+    const app = appWithMiddleware(submissionsMiddleware(stub, resolvePersonalEntity), {
       setUserId: USER_ID,
     });
 
@@ -326,8 +342,28 @@ describe("createSubmissionsLegalEntityContext", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(ensurePersonalEntity).not.toHaveBeenCalled();
+    expect(resolvePersonalEntity).not.toHaveBeenCalled();
     expect(findActiveMembership).toHaveBeenCalledWith(USER_ID, ENTITY_ID);
+  });
+
+  it("lazy-provisions personal entity via resolver when header is missing", async () => {
+    const membership: ActiveMembership = {
+      legalEntityId: PERSONAL_ID,
+      userId: USER_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+    };
+    const resolvePersonalEntity = vi.fn().mockResolvedValue(personalSummary);
+    const { stub, findActiveMembership } = repo(membership);
+    const app = appWithMiddleware(submissionsMiddleware(stub, resolvePersonalEntity), {
+      setUserId: USER_ID,
+    });
+
+    const res = await app.request("/");
+
+    expect(res.status).toBe(200);
+    expect(resolvePersonalEntity).toHaveBeenCalledTimes(1);
+    expect(findActiveMembership).toHaveBeenCalledWith(USER_ID, PERSONAL_ID);
   });
 });
 

@@ -1,9 +1,16 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert, DashboardSkeleton } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardSkeleton } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { Button } from "@/components/ui/button";
+import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeSettingsActionError,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
@@ -34,7 +41,7 @@ export default async function DashboardSubmissionsPage({
   const c = await getServerDataContainer();
   let rows: ItemSubmission[] = [];
   let allForCounts: ItemSubmission[] = [];
-  let loadError: string | null = null;
+  let loadFailure: DashboardSliceFailure | null = null;
   try {
     const [filtered, all] = await Promise.all([
       c.submissions.listMine(
@@ -45,8 +52,10 @@ export default async function DashboardSubmissionsPage({
     rows = filtered;
     allForCounts = all;
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load submissions.";
+    loadFailure = submissionsFailureFromCaught(e);
   }
+
+  const queryFailure = error ? describeSettingsActionError(error) : null;
 
   const statusCounts: Record<ItemSubmissionStatus | "all", number> = {
     all: allForCounts.length,
@@ -72,6 +81,8 @@ export default async function DashboardSubmissionsPage({
   const tableRows =
     initialQ.length === 0 ? mapped : mapped.filter((r) => r.title.toLowerCase().includes(qLower));
 
+  const hasBlockingError = Boolean(queryFailure || loadFailure);
+
   return (
     <DashboardPage>
       <DashboardPageHeader
@@ -80,20 +91,16 @@ export default async function DashboardSubmissionsPage({
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
         actions={
           <Button variant="primary" asChild>
-            <Link href="/dashboard/submissions/new">
+            <Link href={DASHBOARD_ROUTES.submissionsNew}>
               <Plus className="size-4" aria-hidden />
-              New submission
+              {DASHBOARD_CTA.newSubmission}
             </Link>
           </Button>
         }
       />
-      {error || loadError ? (
-        <DashboardErrorAlert title="Could not load" message={loadError ?? error ?? ""}>
-          <Button variant="secondary" asChild>
-            <Link href="/dashboard/submissions">Try again</Link>
-          </Button>
-        </DashboardErrorAlert>
-      ) : (
+      {queryFailure ? <DashboardSliceErrorAlert failure={queryFailure} /> : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+      {!hasBlockingError ? (
         <Suspense fallback={<DashboardSkeleton variant="list" />}>
           <SubmissionsBoard
             rows={tableRows}
@@ -103,7 +110,7 @@ export default async function DashboardSubmissionsPage({
             statusCounts={statusCounts}
           />
         </Suspense>
-      )}
+      ) : null}
     </DashboardPage>
   );
 }

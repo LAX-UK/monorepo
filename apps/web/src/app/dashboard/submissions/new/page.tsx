@@ -1,7 +1,8 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
+import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import Link from "next/link";
 
@@ -30,7 +31,7 @@ export default async function NewSubmissionPage({
           </Link>
         }
       />
-      {error ? <DashboardErrorAlert title="Could not save" message={error} /> : null}
+      {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}
       <SubmissionWizard mode={{ kind: "create" }} categories={categories} />
     </DashboardPage>
   );

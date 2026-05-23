@@ -2,6 +2,10 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { parseItemSubmission } from "@/lib/data/http/parse";
+import {
+  SubmissionsAccessError,
+  parseSubmissionsAccessFailure,
+} from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 
 /** Admin submissions decision-queue tabs (`GET /submissions?queue=`). */
@@ -18,16 +22,33 @@ export async function getMySubmissions(
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
   if (params.status) qs.set("status", params.status);
-  const res = await authedServerFetch(`/submissions/mine?${qs.toString()}`);
-  if (!res.ok) throw new Error(`Failed to load submissions: ${res.status}`);
+
+  let res = await authedServerFetch(`/submissions/mine?${qs.toString()}`);
+  if (res.status === 403) {
+    // Stale acting-entity cookie/header: retry on personal entity fallback.
+    res = await authedServerFetch(`/submissions/mine?${qs.toString()}`, {
+      skipActingLegalEntityHeader: true,
+    });
+  }
+  if (!res.ok) {
+    throw new SubmissionsAccessError(await parseSubmissionsAccessFailure(res));
+  }
+
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseItemSubmission);
 }
 
 export async function getSubmissionForUser(id: string): Promise<ItemSubmission | null> {
-  const res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}`);
+  let res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}`);
+  if (res.status === 403) {
+    res = await authedServerFetch(`/submissions/${encodeURIComponent(id)}`, {
+      skipActingLegalEntityHeader: true,
+    });
+  }
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load submission: ${res.status}`);
+  if (!res.ok) {
+    throw new SubmissionsAccessError(await parseSubmissionsAccessFailure(res));
+  }
   const body = (await res.json()) as { data: unknown };
   return parseItemSubmission(body.data);
 }

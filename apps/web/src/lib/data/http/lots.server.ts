@@ -1,4 +1,5 @@
 import "server-only";
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type {
   ArchiveEndedSummary,
   ArchiveMetricsReader,
@@ -82,9 +83,7 @@ export async function getServerLotReader(): Promise<LotReader> {
   return {
     async list(params: ListLotsParams): Promise<Lot[]> {
       const res = await client.lots.$get({ query: buildLotListQuery(params) });
-      if (!res.ok) {
-        throw new Error(`Failed to list lots: ${res.status}`);
-      }
+      await throwIfNotOk(res, "sellerLots");
       const body = (await res.json()) as { data: unknown[] };
       return body.data.map(parseLot);
     },

@@ -1,13 +1,17 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import {
+  SellerOrgContextBanner,
+  SellerProfileUnavailableAlert,
+} from "@/components/dashboard/seller-org-context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { SellerConnectActions } from "./seller-connect-actions";
 
 export default async function SellerStripeConnectPage() {
@@ -15,25 +19,27 @@ export default async function SellerStripeConnectPage() {
     shell: "client",
     loginNext: "/dashboard/seller/connect",
   });
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
-  if (!acting || acting.kind !== "individual") {
-    redirect("/dashboard/seller");
-  }
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const c = await getServerDataContainer();
-  const connectRes = await c.stripeConnect.getStatus();
-
   let status: StripeConnectStatus | null = null;
-  let err: string | null = null;
-  if (connectRes.ok) {
-    status = connectRes.data;
-  } else {
-    const messages: Record<string, string> = {
-      unauthorized: "Your session has expired. Please sign in again.",
-      not_connected: "No Stripe Connect account found for this entity.",
-      server_error: "Could not load Stripe Connect status. Please try again later.",
-    };
-    err = messages[connectRes.error] ?? "Could not load Stripe Connect status.";
+  let connectFailure = null;
+  if (sellerEntityId) {
+    const connectRes = await c.stripeConnect.getStatus();
+    if (connectRes.ok) {
+      status = connectRes.data;
+    } else {
+      connectFailure = buildSellerConnectFailure(connectRes.error);
+      if (connectRes.error === "not_connected") {
+        connectFailure = {
+          ...connectFailure,
+          title: "Stripe Connect not set up",
+          message:
+            "No Stripe Connect account found for this entity. Start onboarding to receive payouts.",
+        };
+      }
+    }
   }
 
   return (
@@ -44,8 +50,11 @@ export default async function SellerStripeConnectPage() {
         description="Complete payout verification so approved lots can be scheduled once finance enables Connect in production."
       />
 
-      {err ? (
-        <DashboardErrorAlert message={err} />
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
+      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {connectFailure ? (
+        <DashboardSliceErrorAlert failure={connectFailure} />
       ) : status ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <dl className="grid gap-2 font-body text-sm">
