@@ -1,9 +1,13 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function AdminSalesLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] space-y-6 py-6">
-      <PageSkeleton variant="table" />
-    </div>
+    <CatalogListPageSkeleton
+      title="Sales"
+      description="Loading sales…"
+      kpiTiles={3}
+      tableRows={10}
+      tableColumns={5}
+    />
   );
 }

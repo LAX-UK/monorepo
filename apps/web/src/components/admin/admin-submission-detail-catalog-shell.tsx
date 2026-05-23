@@ -5,6 +5,8 @@ import type { CatalogMobileAction } from "@/components/admin/catalog/catalog-mob
 import { adminStartSubmissionReviewResultAction } from "@/lib/actions/admin-submissions";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { adminStatusLabel, adminStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { StatusBadge } from "@auction/ui";
@@ -27,6 +29,8 @@ export function AdminSubmissionDetailCatalogShell({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const { can } = useViewerCapabilities();
+  const canReview = can(SUBMISSIONS_ACCESS);
 
   const mobileActions = useMemo((): CatalogMobileAction[] => {
     const back: CatalogMobileAction = {
@@ -35,6 +39,10 @@ export function AdminSubmissionDetailCatalogShell({
       variant: "secondary",
       href: "/admin/submissions",
     };
+
+    if (!canReview) {
+      return [back];
+    }
 
     if (status === "submitted") {
       return [
@@ -80,7 +88,7 @@ export function AdminSubmissionDetailCatalogShell({
     }
 
     return [back];
-  }, [status, submissionId, pending, router]);
+  }, [status, submissionId, pending, router, canReview]);
 
   return (
     <CatalogFormShell

@@ -2,56 +2,59 @@
 
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 type Props = {
   lotId: string;
+  publicHref: string;
   sellerLegalEntityId: string | null;
   canPublish: boolean;
   canCancel: boolean;
   showEditDraft: boolean;
-  /** Draft + scheduled + active: open /edit for catalog (core form only for draft). */
+  showEditLot: boolean;
   showEditCatalog: boolean;
 };
 
 export function AdminLotDetailActions({
   lotId,
+  publicHref,
   sellerLegalEntityId,
   canPublish,
   canCancel,
   showEditDraft,
+  showEditLot,
   showEditCatalog,
 }: Props) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
-        {showEditDraft ? (
-          <Link
-            href={`/admin/lots/${lotId}/edit`}
-            className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
-          >
-            Edit draft
-          </Link>
-        ) : null}
-        {showEditCatalog && !showEditDraft ? (
-          <Link
-            href={`/admin/lots/${lotId}/edit`}
-            className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
-          >
-            Edit catalog copy
-          </Link>
-        ) : null}
-        <Link
-          href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}
-          className="inline-flex items-center justify-center rounded-md border border-border-hairline px-8 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low"
-        >
-          Duplicate as new draft
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {showEditDraft ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/lots/${lotId}/edit`}>Edit draft</Link>
+        </Button>
+      ) : null}
+      {showEditLot ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/lots/${lotId}/edit`}>Edit lot</Link>
+        </Button>
+      ) : null}
+      {showEditCatalog ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/lots/${lotId}/edit/catalog`}>Edit catalog copy</Link>
+        </Button>
+      ) : null}
+      <Button variant="outline" size="sm" asChild>
+        <Link href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}>Duplicate draft</Link>
+      </Button>
+      {canPublish ? (
+        <PublishLotButton lotId={lotId} sellerLegalEntityId={sellerLegalEntityId} />
+      ) : null}
+      {canCancel ? <CancelLotButton lotId={lotId} /> : null}
+      <Button variant="ghost" size="sm" asChild>
+        <Link href={publicHref} target="_blank" rel="noopener noreferrer">
+          View on site
         </Link>
-        {canPublish ? (
-          <PublishLotButton lotId={lotId} sellerLegalEntityId={sellerLegalEntityId} />
-        ) : null}
-        {canCancel ? <CancelLotButton lotId={lotId} /> : null}
-      </div>
+      </Button>
     </div>
   );
 }

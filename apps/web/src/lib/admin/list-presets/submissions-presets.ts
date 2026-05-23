@@ -10,7 +10,6 @@ export function submissionsDecisionQueueHref(
 ): string {
   return buildListHref(BASE, current, {
     queue,
-    status: "",
     offset: 0,
   });
 }

@@ -60,6 +60,7 @@ export function LotFilterForm({
 
   return (
     <form method="get" action="/admin/lots" className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="offset" value="0" />
       {/* Preserve existing params */}
       {status ? <input type="hidden" name="status" value={status} /> : null}
       {viewPipeline ? <input type="hidden" name="view" value="pipeline" /> : null}

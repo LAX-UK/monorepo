@@ -1,4 +1,5 @@
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { firstString } from "@/lib/admin/admin-list-params";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
@@ -9,7 +10,6 @@ import {
   emptyAdminSaleFormValues,
   saleToAdminSaleFormValues,
 } from "@/lib/forms/schemas/admin-sale-defaults";
-import Link from "next/link";
 
 export default async function AdminNewSalePage({
   searchParams,
@@ -38,29 +38,13 @@ export default async function AdminNewSalePage({
 
   return (
     <CatalogFormShell
-      breadcrumbs={
-        <Link
-          href="/admin/sales"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← Sales
-        </Link>
-      }
+      breadcrumbs={<CatalogBreadcrumbs segments={[{ label: "Sales", href: "/admin/sales" }]} />}
       title="New sale"
-      mobileActions={[
-        {
-          id: "save",
-          label: "Create draft sale",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.sale,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: "/admin/sales",
-        },
-      ]}
+      wizardMobile={{
+        formId: CATALOG_FORM_IDS.sale,
+        submitLabel: "Create draft sale",
+        cancelHref: "/admin/sales",
+      }}
     >
       <AdminSaleForm
         mode="create"

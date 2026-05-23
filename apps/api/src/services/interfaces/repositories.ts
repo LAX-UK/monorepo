@@ -52,6 +52,9 @@ export type ListSalesFilter = {
   categoryIds?: string[] | undefined;
   /** Case-insensitive substring on title (staff lists). */
   q?: string | undefined;
+  deliveryMode?: Sale["deliveryMode"] | undefined;
+  /** Applies to ended sales — filters by buyer payment settlement on sold lots. */
+  settlementStatus?: "settled" | "unsettled" | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

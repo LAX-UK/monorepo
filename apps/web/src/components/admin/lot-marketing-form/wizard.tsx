@@ -2,6 +2,11 @@
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import {
+  type LotEditSectionId,
+  useLotEditSectionDirty,
+} from "@/components/admin/lot-form/lot-edit-form-context";
+import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotMarketingDetailsResultAction } from "@/lib/actions/admin";
 import {
@@ -10,6 +15,8 @@ import {
   formValuesToApiPatch,
   marketingDetailsToFormValues,
 } from "@/lib/admin/admin-lot-marketing-mappers";
+import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
+import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, LotMarketingDetails } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -18,7 +25,7 @@ import { LoadingButton } from "@auction/ui/components/loading-button";
 import { updateLotMarketingDetailsSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { ArtistAttributionPanel } from "./artist-attribution-panel";
 import { LotMarketingArtistStoryStep } from "./steps/artist-story-step";
@@ -29,6 +36,11 @@ const LOT_MARKETING_FORM_STEPS = [
   { id: "artist-story", label: "Artist story" },
 ] as const;
 
+const LOT_MARKETING_STEP_FIELDS: (keyof AdminLotMarketingFormValues)[][] = [
+  ["estimate", "conditionReport", "provenance", "exhibitions"],
+  ["artistNote"],
+];
+
 type Props = {
   lotId: string;
   marketingDetails: LotMarketingDetails;
@@ -38,6 +50,7 @@ type Props = {
   artistId: string | null;
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
+  lotEditSection?: LotEditSectionId;
 };
 
 export function AdminLotMarketingForm({
@@ -46,17 +59,24 @@ export function AdminLotMarketingForm({
   artists,
   artistId,
   htmlFormId,
+  lotEditSection,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const { guardedPush } = useGuardedNavigation();
   const form = useForm<AdminLotMarketingFormValues>({
     resolver: zodResolver(adminLotMarketingFormValuesSchema),
     defaultValues: marketingDetailsToFormValues(marketingDetails),
   });
+  useLotEditSectionDirty(
+    "catalog",
+    Boolean(lotEditSection === "catalog" && form.formState.isDirty),
+  );
+  const wizardGoToRef = useRef<(index: number) => void>(() => {});
 
   return (
     <>
-      <FormDirtyGuard isDirty={form.formState.isDirty} />
+      {!lotEditSection ? <FormDirtyGuard isDirty={form.formState.isDirty} /> : null}
       <div className="space-y-8 rounded-sm border border-border-hairline bg-surface-container-lowest/40 p-6">
         <div>
           <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
@@ -88,9 +108,16 @@ export function AdminLotMarketingForm({
                 void (async () => {
                   const r = await adminUpdateLotMarketingDetailsResultAction(lotId, valid.data);
                   if (r.ok) {
+                    form.reset(marketingDetailsToFormValues(valid.data as LotMarketingDetails));
                     notify.success("Catalog details saved");
                     router.refresh();
                     return;
+                  }
+                  if (r.fieldErrors) {
+                    applyActionFieldErrors(form, r.fieldErrors, {
+                      stepFields: LOT_MARKETING_STEP_FIELDS,
+                      goTo: wizardGoToRef.current,
+                    });
                   }
                   notify.error(r.error);
                 })();
@@ -98,16 +125,25 @@ export function AdminLotMarketingForm({
             })}
           >
             <AdminFormWizard
+              key={lotId}
               steps={LOT_MARKETING_FORM_STEPS}
               isDirty={form.formState.isDirty}
               pending={pending}
+              onStepControl={({ goTo }) => {
+                wizardGoToRef.current = goTo;
+              }}
+              onBeforeNext={async (stepIndex) => {
+                const fields = LOT_MARKETING_STEP_FIELDS[stepIndex];
+                if (!fields?.length) return true;
+                return validateWizardStep(form, adminLotMarketingFormValuesSchema, fields);
+              }}
               leadingSlot={
                 <Button
                   type="button"
                   variant="outline"
                   disabled={pending}
                   className="min-h-11 w-full sm:w-auto"
-                  onClick={() => router.push(`/admin/lots/${lotId}`)}
+                  onClick={() => guardedPush(`/admin/lots/${lotId}`)}
                 >
                   Back to lot
                 </Button>

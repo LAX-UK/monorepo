@@ -17,7 +17,9 @@ import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
+import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
+import { findPostgresError } from "../lib/pg-error.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -28,6 +30,7 @@ import type {
   ArchiveEndedAggregateFilter,
   IBidRepository,
   ILotRepository,
+  ISaleRepository,
   ListLotsFilter,
 } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -37,6 +40,36 @@ import type { MediaUrlResolver } from "./media-url-resolver.js";
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
 const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
+
+const LOT_NUMBER_CONFLICT_MSG =
+  "Lot number already used in that sale — pick a different number or leave it blank to auto-assign.";
+
+function lotNumberConflictError(): LotError {
+  return new LotError(LOT_NUMBER_CONFLICT_MSG, 400);
+}
+
+function lotNumberTakenInSale(lots: Lot[], lotNumber: number, excludeLotId: string): boolean {
+  return lots.some((l) => l.id !== excludeLotId && l.lotNumber === lotNumber);
+}
+
+function nextLotNumberInSale(lots: Lot[], excludeLotId: string): number {
+  const maxNum = lots
+    .filter((l) => l.id !== excludeLotId)
+    .reduce((m, l) => Math.max(m, l.lotNumber ?? 0), 0);
+  return maxNum + 1;
+}
+
+function mapLotUpdateDbError(error: unknown): LotError | null {
+  const pg = findPostgresError(error);
+  if (
+    pg?.code === "23505" &&
+    (pg.message.includes("lot_sale_id_lot_number") ||
+      pg.message.includes("lot_sale_id_lot_number_uid"))
+  ) {
+    return lotNumberConflictError();
+  }
+  return null;
+}
 
 export type LotBidPublicApiRow = Omit<Bid, "placedByUserId"> & {
   bidderRef: string;
@@ -54,6 +87,7 @@ function clampLotBidsLimitQuery(raw: string | undefined): number {
 
 export type LotServiceOptions = {
   lotRepo: ILotRepository;
+  saleRepo?: ISaleRepository | null;
   bids: IBidRepository;
   watchlist: IWatchlistRepository;
   jobScheduler: ILotJobScheduler | null;
@@ -71,6 +105,7 @@ export type LotServiceOptions = {
 
 export class LotService {
   private readonly lotRepo: ILotRepository;
+  private readonly saleRepo: ISaleRepository | null;
   private readonly bids: IBidRepository;
   private readonly watchlist: IWatchlistRepository;
   private readonly jobScheduler: ILotJobScheduler | null;
@@ -86,6 +121,7 @@ export class LotService {
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
+    this.saleRepo = opts.saleRepo ?? null;
     this.bids = opts.bids;
     this.watchlist = opts.watchlist;
     this.jobScheduler = opts.jobScheduler;
@@ -111,7 +147,11 @@ export class LotService {
     if (lockMsg) {
       return err(new LotError(lockMsg));
     }
-    const created = await this.lotRepo.create(input);
+    const timingResult = await this.applySaleTimingPolicyToInput(input.saleId ?? null, input);
+    if (timingResult.isErr()) {
+      return err(timingResult.error);
+    }
+    const created = await this.lotRepo.create(timingResult.value);
     return ok(created);
   }
 
@@ -133,6 +173,24 @@ export class LotService {
     }
     if (a.startTime.getTime() <= Date.now()) {
       return err(new LotError("startTime must be in the future to publish"));
+    }
+    if (a.saleId) {
+      const timingPatchResult = await this.applySaleTimingPolicyToLot(a, {});
+      if (timingPatchResult.isErr()) {
+        return err(timingPatchResult.error);
+      }
+      const aligned = timingPatchResult.value;
+      if (
+        aligned.startTime &&
+        aligned.endTime &&
+        (aligned.startTime.getTime() !== a.startTime.getTime() ||
+          aligned.endTime.getTime() !== a.endTime.getTime())
+      ) {
+        await this.lotRepo.update(lotId, {
+          startTime: aligned.startTime,
+          endTime: aligned.endTime,
+        });
+      }
     }
     if (
       this.enforceIndividualConnectOnPublish &&
@@ -226,19 +284,19 @@ export class LotService {
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
 
-    if (a.status !== "draft") {
+    if (a.status === "ended" || a.status === "cancelled" || a.status === "voided") {
+      return err(new LotError("This lot cannot be edited"));
+    }
+
+    if (a.status === "active") {
       if (input.images === undefined) {
-        return err(new LotError("Only draft lots can be edited"));
+        return err(new LotError("Only images can be edited on an active lot"));
       }
       const updated = await this.lotRepo.update(lotId, { images: input.images });
       await this.imageCleanup?.enqueueRemovedMany(a.images, input.images);
       return ok(updated);
     }
-    const nextStart = input.startTime ?? a.startTime;
-    const nextEnd = input.endTime ?? a.endTime;
-    if (nextEnd <= nextStart) {
-      return err(new LotError("endTime must be after startTime"));
-    }
+
     const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
       enabled: this.englishOnlyAuctions,
       existing: a.auctionType,
@@ -247,11 +305,155 @@ export class LotService {
     if (lockMsg) {
       return err(new LotError(lockMsg));
     }
-    const updated = await this.lotRepo.update(lotId, input);
-    if (input.images !== undefined) {
-      await this.imageCleanup?.enqueueRemovedMany(a.images, input.images);
+    const patchResult = await this.prepareSaleAssignmentPatch(lotId, a, input);
+    if (patchResult.isErr()) {
+      return err(patchResult.error);
+    }
+    const timingPatchResult = await this.applySaleTimingPolicyToLot(a, patchResult.value);
+    if (timingPatchResult.isErr()) {
+      return err(timingPatchResult.error);
+    }
+    const patch = timingPatchResult.value;
+    const nextStart = patch.startTime ?? a.startTime;
+    const nextEnd = patch.endTime ?? a.endTime;
+    if (nextEnd <= nextStart) {
+      return err(new LotError("endTime must be after startTime"));
+    }
+    if (
+      a.status === "scheduled" &&
+      (patch.startTime !== undefined || patch.endTime !== undefined) &&
+      nextStart.getTime() <= Date.now()
+    ) {
+      return err(new LotError("startTime must be in the future for scheduled lots"));
+    }
+    let updated: Lot;
+    try {
+      updated = await this.lotRepo.update(lotId, patch);
+    } catch (error) {
+      const mapped = mapLotUpdateDbError(error);
+      if (mapped) {
+        return err(mapped);
+      }
+      throw error;
+    }
+    if (patch.images !== undefined) {
+      await this.imageCleanup?.enqueueRemovedMany(a.images, patch.images);
+    }
+    if (a.status === "scheduled" && this.jobScheduler) {
+      const timesChanged =
+        nextStart.getTime() !== a.startTime.getTime() || nextEnd.getTime() !== a.endTime.getTime();
+      if (timesChanged) {
+        await this.jobScheduler.cancelLotJobs(lotId);
+        await this.jobScheduler.scheduleLot(lotId, nextStart, nextEnd);
+      }
     }
     return ok(updated);
+  }
+
+  private async prepareSaleAssignmentPatch(
+    lotId: string,
+    lot: Lot,
+    input: Partial<CreateLotInput>,
+  ): Promise<Result<Partial<CreateLotInput>, LotError>> {
+    const patch: Partial<CreateLotInput> = { ...input };
+
+    if (input.saleId === undefined) {
+      if (input.lotNumber !== undefined && input.lotNumber !== null && lot.saleId != null) {
+        const inSale = await this.lotRepo.findBySaleId(lot.saleId);
+        if (lotNumberTakenInSale(inSale, input.lotNumber, lotId)) {
+          return err(lotNumberConflictError());
+        }
+      }
+      return ok(patch);
+    }
+
+    if (input.saleId === lot.saleId) {
+      if (input.lotNumber !== undefined && input.lotNumber !== null && input.saleId != null) {
+        const inSale = await this.lotRepo.findBySaleId(input.saleId);
+        if (lotNumberTakenInSale(inSale, input.lotNumber, lotId)) {
+          return err(lotNumberConflictError());
+        }
+      }
+      return ok(patch);
+    }
+
+    if (input.saleId === null) {
+      patch.lotNumber = null;
+      return ok(patch);
+    }
+
+    if (!this.saleRepo) {
+      return err(new LotError("Sale repository not configured", 500));
+    }
+
+    const sale = await this.saleRepo.findById(input.saleId);
+    if (!sale) {
+      return err(new LotError("Sale not found", 404));
+    }
+
+    const inSale = await this.lotRepo.findBySaleId(input.saleId);
+    const requestedNumber =
+      input.lotNumber !== undefined && input.lotNumber !== null ? input.lotNumber : undefined;
+
+    if (requestedNumber !== undefined) {
+      if (lotNumberTakenInSale(inSale, requestedNumber, lotId)) {
+        return err(lotNumberConflictError());
+      }
+      patch.lotNumber = requestedNumber;
+    } else {
+      patch.lotNumber = nextLotNumberInSale(inSale, lotId);
+    }
+
+    return ok(patch);
+  }
+
+  private async applySaleTimingPolicyToInput(
+    saleId: string | null,
+    input: Pick<CreateLotInput, "startTime" | "endTime"> & Partial<CreateLotInput>,
+  ): Promise<Result<CreateLotInput, LotError>> {
+    if (saleId == null) {
+      return ok(input as CreateLotInput);
+    }
+    if (!this.saleRepo) {
+      return err(new LotError("Sale repository not configured", 500));
+    }
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) {
+      return err(new LotError("Sale not found", 404));
+    }
+    const resolved = resolveLotTimingForSale(sale, input.startTime, input.endTime);
+    if (!resolved.ok) {
+      return err(new LotError(resolved.message, 400));
+    }
+    return ok({
+      ...(input as CreateLotInput),
+      startTime: resolved.startTime,
+      endTime: resolved.endTime,
+    });
+  }
+
+  private async applySaleTimingPolicyToLot(
+    lot: Lot,
+    patch: Partial<CreateLotInput>,
+  ): Promise<Result<Partial<CreateLotInput>, LotError>> {
+    const saleId = patch.saleId !== undefined ? patch.saleId : lot.saleId;
+    if (saleId == null) {
+      return ok(patch);
+    }
+    if (!this.saleRepo) {
+      return err(new LotError("Sale repository not configured", 500));
+    }
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) {
+      return err(new LotError("Sale not found", 404));
+    }
+    const lotStart = patch.startTime ?? lot.startTime;
+    const lotEnd = patch.endTime ?? lot.endTime;
+    const resolved = resolveLotTimingForSale(sale, lotStart, lotEnd);
+    if (!resolved.ok) {
+      return err(new LotError(resolved.message, 400));
+    }
+    return ok(mergeSaleTimingIntoPatch(sale, lot, patch, resolved));
   }
 
   async updateMarketingDetails(

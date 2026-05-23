@@ -15,8 +15,12 @@ type Props = {
   mobileActions?: readonly CatalogMobileAction[];
   /** Buttons rendered after URL actions on the fixed mobile bar only */
   mobileActionBarTrailing?: ReactNode;
+  /** Replaces default mobile action bar when provided (mobile only) */
+  mobileActionBar?: ReactNode;
   /** Quiet facts column (lg+) */
   aside?: ReactNode;
+  /** Compact metadata row visible below header on mobile only */
+  mobileMeta?: ReactNode;
   /** Tabs row rendered above main content */
   tabs?: ReactNode;
   /** Title-adjacent nav (e.g. prev/next lot) */
@@ -35,7 +39,9 @@ export function CatalogDetailShell({
   actions,
   mobileActions,
   mobileActionBarTrailing,
+  mobileActionBar,
   aside,
+  mobileMeta,
   tabs,
   titleAddon,
   children,
@@ -50,9 +56,18 @@ export function CatalogDetailShell({
     title
   );
 
+  const showMobileBar =
+    Boolean(mobileActionBar) ||
+    (mobileActions && mobileActions.length > 0) ||
+    Boolean(mobileActionBarTrailing);
+
   return (
     <AppScreen
-      className={cn("mx-auto w-full max-w-7xl space-y-6 pb-28 md:space-y-8 md:pb-8", className)}
+      className={cn(
+        "mx-auto w-full max-w-7xl space-y-6 md:space-y-8 md:pb-8",
+        showMobileBar ? "pb-28" : "pb-8",
+        className,
+      )}
     >
       <CatalogPageHeader
         title={titleNode}
@@ -61,8 +76,9 @@ export function CatalogDetailShell({
         {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(eyebrow ? { eyebrow } : {})}
         actions={actions}
-        {...(mobileActions ? { mobileActions } : {})}
+        mobileActionsPlacement="none"
       />
+      {mobileMeta ? <div className="lg:hidden">{mobileMeta}</div> : null}
       <div
         className={cn(
           "gap-8",
@@ -75,12 +91,14 @@ export function CatalogDetailShell({
         </div>
         {aside ? <aside className="hidden min-w-0 space-y-4 lg:block">{aside}</aside> : null}
       </div>
-      {(mobileActions && mobileActions.length > 0) || mobileActionBarTrailing ? (
-        <CatalogMobileActionBar
-          actions={mobileActions ?? []}
-          {...(mobileActionBarTrailing ? { trailing: mobileActionBarTrailing } : {})}
-        />
-      ) : null}
+      {showMobileBar
+        ? (mobileActionBar ?? (
+            <CatalogMobileActionBar
+              actions={mobileActions ?? []}
+              {...(mobileActionBarTrailing ? { trailing: mobileActionBarTrailing } : {})}
+            />
+          ))
+        : null}
     </AppScreen>
   );
 }

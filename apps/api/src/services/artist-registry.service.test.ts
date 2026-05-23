@@ -89,7 +89,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
     expect(chains).toHaveLength(1);
   });
 
-  it("falls through to alias and fuzzy passes when exact pass is empty", async () => {
+  it("falls through to alias, partial, and fuzzy passes when exact pass is empty", async () => {
     const aliasRow = {
       id: "a-2",
       displayName: "Pablo Ruiz Picasso",
@@ -106,14 +106,42 @@ describe("ArtistRegistryService.search (3-pass)", () => {
       status: "approved",
       score: 0.7,
     };
-    const { db, chains } = makeFluentDb([[], [aliasRow], [fuzzyRow]]);
+    const { db, chains } = makeFluentDb([[], [aliasRow], [], [fuzzyRow]]);
     const svc = new ArtistRegistryService(db);
     const hits = await svc.search("Picasso", 5);
 
-    expect(chains).toHaveLength(3); // exact, alias, fuzzy
+    expect(chains).toHaveLength(4); // exact, alias, partial, fuzzy
     expect(hits.map((h) => h.matchType)).toEqual(["alias", "fuzzy"]);
     expect(hits[0]?.matchedAlias).toBe("Picasso");
     expect(hits[1]?.score).toBe(0.7);
+  });
+
+  it("returns partial substring matches when the query is not an exact name", async () => {
+    const partialRow = {
+      id: "b-1",
+      displayName: "Rolex SA",
+      slug: "rolex-sa",
+      kind: "brand",
+      status: "approved",
+      alias: null,
+    };
+    const { db, chains } = makeFluentDb([[], [], [partialRow], []]);
+    const svc = new ArtistRegistryService(db);
+    const hits = await svc.search("Role", 5);
+
+    expect(chains).toHaveLength(4);
+    expect(hits).toEqual([
+      {
+        id: "b-1",
+        displayName: "Rolex SA",
+        slug: "rolex-sa",
+        kind: "brand",
+        status: "approved",
+        matchedAlias: null,
+        matchType: "partial",
+        score: 0.85,
+      },
+    ]);
   });
 
   it("dedupes alias hits that overlap with exact hits", async () => {
@@ -125,7 +153,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
       status: "approved",
     };
     const aliasRow = { ...sharedRow, alias: "Picasso" };
-    const { db } = makeFluentDb([[sharedRow], [aliasRow], []]);
+    const { db } = makeFluentDb([[sharedRow], [aliasRow], [], []]);
     const svc = new ArtistRegistryService(db);
     const hits = await svc.search("Picasso", 5);
     expect(hits.map((h) => h.id)).toEqual(["a-1"]);

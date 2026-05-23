@@ -24,7 +24,6 @@ import {
 } from "@auction/ui/components/form";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 const QRCodeSVG = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), {
   ssr: false,
@@ -57,18 +56,6 @@ export function TwoFactorEnableWizard() {
     goToConfirm,
     resetWizard,
   } = useEnableTwoFactorController();
-
-  const [backupAcknowledged, setBackupAcknowledged] = useState(false);
-
-  useEffect(() => {
-    if (step !== "backup" || backupAcknowledged) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [step, backupAcknowledged]);
 
   const secret = totpURI ? parseTotpSecretFromUri(totpURI) : null;
 
@@ -236,7 +223,6 @@ export function TwoFactorEnableWizard() {
               requireConfirmation
               disabled={busy}
               onConfirm={() => {
-                setBackupAcknowledged(true);
                 notify.success("Two-factor authentication is on", {
                   description: "You’ll be asked for a code when you sign in on new devices.",
                 });

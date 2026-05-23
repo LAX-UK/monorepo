@@ -11,7 +11,12 @@ import {
 import { ArtistTextField } from "../fields";
 import type { ArtistFormSectionProps } from "../types";
 
-export function MediaSection({ control, disabled = false }: ArtistFormSectionProps) {
+type Props = ArtistFormSectionProps & {
+  /** Map storage key → resolved URL for thumbnails (admin edit of seeded media). */
+  previewUrlByKey?: Record<string, string>;
+};
+
+export function MediaSection({ control, disabled = false, previewUrlByKey = {} }: Props) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField
@@ -26,6 +31,7 @@ export function MediaSection({ control, disabled = false }: ArtistFormSectionPro
                 multiple={false}
                 maxFiles={1}
                 disabled={disabled}
+                previewUrlByKey={previewUrlByKey}
                 value={field.value ? [field.value] : []}
                 onChange={(next) => field.onChange(next[0] ?? "")}
               />
@@ -46,6 +52,7 @@ export function MediaSection({ control, disabled = false }: ArtistFormSectionPro
                 multiple={false}
                 maxFiles={1}
                 disabled={disabled}
+                previewUrlByKey={previewUrlByKey}
                 value={field.value ? [field.value] : []}
                 onChange={(next) => field.onChange(next[0] ?? "")}
               />

@@ -14,13 +14,22 @@ type Props = {
 export function CatalogPagination({ offset, limit, countOnPage, prevHref, nextHref }: Props) {
   const hasMore = nextHref != null;
 
+  const showMobileNav = prevHref != null || hasMore;
+
   return (
     <>
-      {hasMore ? (
-        <div className="mt-6 flex justify-center md:hidden">
-          <Button variant="secondary" size="sm" className="min-h-11 w-full max-w-sm" asChild>
-            <Link href={nextHref}>Load more</Link>
-          </Button>
+      {showMobileNav ? (
+        <div className="mt-6 flex flex-col gap-2 md:hidden">
+          {prevHref ? (
+            <Button variant="outline" size="sm" className="min-h-11 w-full max-w-sm" asChild>
+              <Link href={prevHref}>Previous</Link>
+            </Button>
+          ) : null}
+          {hasMore ? (
+            <Button variant="secondary" size="sm" className="min-h-11 w-full max-w-sm" asChild>
+              <Link href={nextHref}>Next page</Link>
+            </Button>
+          ) : null}
         </div>
       ) : null}
       <div className="mt-6 hidden md:block">

@@ -1,7 +1,7 @@
 export type ArtistKind = "artist" | "maker" | "brand" | "marque";
 export type ArtistStatus = "pending" | "approved" | "rejected" | "merged_into";
 
-export type ArtistSearchMatchType = "exact" | "alias" | "fuzzy";
+export type ArtistSearchMatchType = "exact" | "alias" | "partial" | "fuzzy";
 
 export type ArtistSearchHit = {
   id: string;

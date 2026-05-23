@@ -38,7 +38,6 @@ import type {
   AdminArtistListRow,
   AdminCategory,
   ItemSubmission,
-  ItemSubmissionStatus,
   Lot,
   LotStatus,
   PaymentStatus,
@@ -55,6 +54,8 @@ export type SalesListQuery = AdminListQueryBase & {
   status?: SaleStatus | undefined;
   /** Mutually exclusive with raw `status` for URL bookmarking — derived into `status` for fetch */
   lifecycle?: SaleLifecycleSlug | undefined;
+  /** Server-side filter — online | onsite */
+  delivery?: "online" | "onsite" | undefined;
 };
 
 const saleLifecycleStatuses: Partial<Record<SaleLifecycleSlug, SaleStatus>> = {
@@ -82,15 +83,38 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
           ? (st as SaleStatus)
           : undefined;
     const status = lifecycleStatus ?? explicitStatus;
-    return { ...base, lifecycle: life, status, limit: Math.min(100, base.limit) };
+    const deliveryRaw = firstString(sp.delivery)?.trim()?.toLowerCase();
+    const delivery =
+      deliveryRaw === "online" || deliveryRaw === "onsite"
+        ? (deliveryRaw as "online" | "onsite")
+        : undefined;
+    return { ...base, lifecycle: life, status, delivery, limit: Math.min(100, base.limit) };
   },
   async fetch(q) {
-    const p: { limit: number; offset: number; status?: SaleStatus; q?: string } = {
+    const life = q.lifecycle;
+    const settlementStatus =
+      life === "closed"
+        ? ("unsettled" as const)
+        : life === "settled"
+          ? ("settled" as const)
+          : undefined;
+
+    const p: {
+      limit: number;
+      offset: number;
+      status?: SaleStatus;
+      q?: string;
+      deliveryMode?: "online" | "onsite";
+      settlementStatus?: "settled" | "unsettled";
+    } = {
       limit: q.limit,
       offset: q.offset,
     };
     if (q.status !== undefined) p.status = q.status;
+    else if (settlementStatus) p.status = "ended";
     if (q.q !== undefined && q.q !== "") p.q = q.q;
+    if (q.delivery) p.deliveryMode = q.delivery;
+    if (settlementStatus) p.settlementStatus = settlementStatus;
     const rows = await getAdminSalesList(p);
     return { rows, offset: q.offset, limit: q.limit };
   },
@@ -247,9 +271,7 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
 export type SubmissionDecisionQueue = "awaiting" | "accepted" | "rejected";
 
 export type SubmissionsListQuery = AdminListQueryBase & {
-  /** Legacy single-status filter (`status` URL param); ignored when `queue` is set. */
-  status?: ItemSubmissionStatus | undefined;
-  /** Decision-queue tabs (preferred). Maps to grouped statuses via API `queue`. */
+  /** Decision-queue tabs. Maps to grouped statuses via API `queue`. */
   queue?: SubmissionDecisionQueue | undefined;
 };
 
@@ -258,33 +280,22 @@ export const submissionsListController: IAdminListController<ItemSubmission, Sub
     id: "submissions",
     parseQuery(sp) {
       const base = parseListSearchParams(sp);
-      const st = firstString(sp.status);
-      const legacyStatus = st && st !== "all" ? (st as ItemSubmissionStatus) : undefined;
-
       const qt = firstString(sp.queue);
       const queueAllowed: SubmissionDecisionQueue[] = ["awaiting", "accepted", "rejected"];
       const queueExplicit =
         qt && (queueAllowed as readonly string[]).includes(qt)
           ? (qt as SubmissionDecisionQueue)
           : undefined;
-
-      /** Tabs default to awaiting when no legacy `status` bookmark is present. */
-      const queue =
-        queueExplicit ??
-        (legacyStatus === undefined ? ("awaiting" as SubmissionDecisionQueue) : undefined);
-      const status = queueExplicit !== undefined ? undefined : legacyStatus;
-
-      /** Default page size 100 (parseListSearchParams defaults to 50). */
+      const queue = queueExplicit ?? ("awaiting" as SubmissionDecisionQueue);
       const limit = base.limit === 50 ? 100 : Math.min(100, base.limit);
-      return { ...base, status, queue, limit };
+      return { ...base, queue, limit };
     },
     async fetch(q) {
       const p: Parameters<typeof getAdminSubmissions>[0] = {
         limit: q.limit,
         offset: q.offset,
+        queue: q.queue ?? "awaiting",
       };
-      if (q.queue !== undefined) p.queue = q.queue;
-      else if (q.status !== undefined) p.status = q.status;
       if (q.q !== undefined && q.q !== "") p.q = q.q;
       const { rows, total } = await getAdminSubmissions(p);
       return { rows, offset: q.offset, limit: q.limit, total };
@@ -396,10 +407,13 @@ export const categoriesListController: IAdminListController<AdminCategory, Categ
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
     const includeArchived = firstString(sp.includeArchived) === "true";
-    return { ...base, includeArchived };
+    return { ...base, includeArchived, limit: Math.min(200, base.limit) };
   },
   async fetch(q) {
-    const all = await getAdminCategoryList({ includeArchived: Boolean(q.includeArchived) });
+    const all = await getAdminCategoryList({
+      includeArchived: Boolean(q.includeArchived),
+      ...(q.q !== undefined && q.q !== "" ? { q: q.q } : {}),
+    });
     const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
     return { rows, offset: q.offset, limit: q.limit, total };
   },

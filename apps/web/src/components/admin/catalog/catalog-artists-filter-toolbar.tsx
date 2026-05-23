@@ -30,6 +30,7 @@ function ArtistRegistryFilterForm({
 }) {
   return (
     <form method="get" action="/admin/artists" className="space-y-4">
+      <input type="hidden" name="offset" value="0" />
       <input type="hidden" name="backfill" value="" />
       <input type="hidden" name="duplicates" value="" />
 

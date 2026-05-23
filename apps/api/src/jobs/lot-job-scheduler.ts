@@ -3,6 +3,11 @@ import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 
 export type LotJobData = { lotId: string };
 
+/** BullMQ custom job ids must not contain `:`. */
+function lotLifecycleJobId(kind: "activate" | "end", lotId: string): string {
+  return `${kind}-${lotId}`;
+}
+
 export class LotJobScheduler implements ILotJobScheduler {
   readonly queue: Queue<LotJobData>;
 
@@ -35,7 +40,7 @@ export class LotJobScheduler implements ILotJobScheduler {
       { lotId },
       {
         delay: activateDelay,
-        jobId: `activate:${lotId}`,
+        jobId: lotLifecycleJobId("activate", lotId),
         removeOnComplete: 500,
         attempts: 3,
         backoff: { type: "exponential", delay: 2000 },
@@ -46,7 +51,7 @@ export class LotJobScheduler implements ILotJobScheduler {
       { lotId },
       {
         delay: endDelay,
-        jobId: `end:${lotId}`,
+        jobId: lotLifecycleJobId("end", lotId),
         removeOnComplete: 500,
         attempts: 3,
         backoff: { type: "exponential", delay: 2000 },
@@ -55,7 +60,7 @@ export class LotJobScheduler implements ILotJobScheduler {
   }
 
   async rescheduleEnd(lotId: string, endTime: Date): Promise<void> {
-    const existing = await this.queue.getJob(`end:${lotId}`);
+    const existing = await this.queue.getJob(lotLifecycleJobId("end", lotId));
     if (existing) await existing.remove();
     const delay = Math.max(0, endTime.getTime() - Date.now());
     await this.queue.add(
@@ -63,7 +68,7 @@ export class LotJobScheduler implements ILotJobScheduler {
       { lotId },
       {
         delay,
-        jobId: `end:${lotId}`,
+        jobId: lotLifecycleJobId("end", lotId),
         removeOnComplete: 500,
         attempts: 3,
         backoff: { type: "exponential", delay: 2000 },
@@ -72,7 +77,7 @@ export class LotJobScheduler implements ILotJobScheduler {
   }
 
   async cancelLotJobs(lotId: string): Promise<void> {
-    for (const jid of [`activate:${lotId}`, `end:${lotId}`]) {
+    for (const jid of [lotLifecycleJobId("activate", lotId), lotLifecycleJobId("end", lotId)]) {
       const j = await this.queue.getJob(jid);
       if (j) await j.remove();
     }

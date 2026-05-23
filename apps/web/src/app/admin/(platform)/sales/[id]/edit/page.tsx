@@ -1,4 +1,5 @@
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
@@ -9,7 +10,6 @@ import {
   buildCoverImagePreviewMap,
   saleToAdminSaleFormValues,
 } from "@/lib/forms/schemas/admin-sale-defaults";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function AdminEditSalePage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,28 +33,20 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
   return (
     <CatalogFormShell
       breadcrumbs={
-        <Link
-          href={`/admin/sales/${id}`}
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          ← Sale
-        </Link>
+        <CatalogBreadcrumbs
+          segments={[
+            { label: "Sales", href: "/admin/sales" },
+            { label: sale.title, href: `/admin/sales/${id}` },
+            { label: "Edit" },
+          ]}
+        />
       }
       title="Edit sale"
-      mobileActions={[
-        {
-          id: "save",
-          label: "Save",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.sale,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: `/admin/sales/${id}`,
-        },
-      ]}
+      wizardMobile={{
+        formId: CATALOG_FORM_IDS.sale,
+        submitLabel: "Save",
+        cancelHref: `/admin/sales/${id}`,
+      }}
     >
       <AdminSaleForm
         mode="edit"

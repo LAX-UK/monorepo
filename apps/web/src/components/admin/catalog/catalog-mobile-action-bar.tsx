@@ -57,10 +57,12 @@ export function CatalogMobileActionBar({
       role="toolbar"
       aria-label="Page actions"
     >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
-        {inline.map((action) => (
-          <CatalogMobileActionButton key={action.id} action={action} className="flex-1" />
-        ))}
+      <div className="mx-auto flex max-w-7xl items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {inline.map((action) => (
+            <CatalogMobileActionButton key={action.id} action={action} className="min-w-0 flex-1" />
+          ))}
+        </div>
         {trailing ? <div className="flex shrink-0 items-center gap-1">{trailing}</div> : null}
         {overflow.length > 0 ? (
           <Sheet>
@@ -100,6 +102,13 @@ function CatalogMobileActionButton({
   className?: string;
 }) {
   const variant = action.variant === "primary" ? "default" : "secondary";
+  if (action.disabled && action.href) {
+    return (
+      <Button variant={variant} size="sm" className={cn("min-h-11", className)} disabled>
+        {action.label}
+      </Button>
+    );
+  }
   if (action.href) {
     return (
       <Button variant={variant} size="sm" className={cn("min-h-11", className)} asChild>
