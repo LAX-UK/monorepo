@@ -7,18 +7,18 @@ import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
 
 const TEST_ADMIN_USER_ID = "admin-1";
-const TEST_ADMIN_LEGAL_ENTITY_ID = "00000000-0000-4000-8000-000000000001";
+const TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID = "30000000-0000-4000-9000-000000000001";
 
-async function testResolveCreatorLegalEntityId(userId: string): Promise<string | null> {
-  return userId === TEST_ADMIN_USER_ID ? TEST_ADMIN_LEGAL_ENTITY_ID : null;
+async function testResolvePlatformCatalogLegalEntityId(): Promise<string | null> {
+  return TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID;
 }
 
 function saleServiceOpts(
-  overrides: Omit<SaleServiceOptions, "resolveCreatorLegalEntityId"> &
-    Partial<Pick<SaleServiceOptions, "resolveCreatorLegalEntityId">>,
+  overrides: Omit<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId"> &
+    Partial<Pick<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId">>,
 ): SaleServiceOptions {
   return {
-    resolveCreatorLegalEntityId: testResolveCreatorLegalEntityId,
+    resolvePlatformCatalogLegalEntityId: testResolvePlatformCatalogLegalEntityId,
     ...overrides,
   };
 }
@@ -163,7 +163,7 @@ describe("SaleService.create", () => {
 
     expect(saleRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        createdByLegalEntityId: TEST_ADMIN_LEGAL_ENTITY_ID,
+        createdByLegalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
       }),
     );
     expect(lotCreate).toHaveBeenCalledWith(
@@ -254,7 +254,7 @@ describe("SaleService.create", () => {
     expect(lotCreate).not.toHaveBeenCalled();
   });
 
-  it("rejects create when creator legal entity cannot be resolved", async () => {
+  it("rejects create when platform catalog legal entity cannot be resolved", async () => {
     const saleRepo: ISaleRepository = {
       create: vi.fn(),
     } as unknown as ISaleRepository;
@@ -264,7 +264,7 @@ describe("SaleService.create", () => {
         saleRepo,
         lotRepo,
         jobScheduler: null,
-        resolveCreatorLegalEntityId: async () => null,
+        resolvePlatformCatalogLegalEntityId: async () => null,
       }),
     );
 
