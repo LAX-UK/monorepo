@@ -1,9 +1,5 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { AdminSubmissionDetailSkeleton } from "@/components/admin/admin-submission-detail-skeleton";
 
 export default function AdminSubmissionDetailLoading() {
-  return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
-      <PageSkeleton variant="dashboard" />
-    </div>
-  );
+  return <AdminSubmissionDetailSkeleton />;
 }

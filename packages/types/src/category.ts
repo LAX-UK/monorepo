@@ -7,6 +7,8 @@ export type Category = {
   sortOrder: number;
   parentId: string | null;
   heroImageKey: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type CategoryNode = Category & {

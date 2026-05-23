@@ -1,10 +1,12 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { CatalogLotFulfilmentFilterToolbar } from "@/components/admin/catalog/catalog-lot-fulfilment-filter-toolbar";
 import { AdminLotFulfilmentBoard } from "@/components/admin/lot-fulfilment-board";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { loadAdminLotFulfilmentQueue } from "@/lib/data/http/admin.server";
+import { Suspense } from "react";
 
 const FILTER_STATUSES = [
   "awaiting_payment",
@@ -28,7 +30,7 @@ type Props = {
 export default async function AdminLotFulfilmentQueuePage({ searchParams }: Props) {
   const sp = await searchParams;
   const statusFilter = parseStatusFilter(typeof sp.status === "string" ? sp.status : undefined);
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
 
   const loaded = await loadAdminLotFulfilmentQueue(
     statusFilter !== undefined ? { status: statusFilter } : {},
@@ -36,8 +38,7 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
 
   if (loaded.access === "forbidden") {
     return (
-      <AdminListPage
-        className="max-w-5xl"
+      <CatalogListShell
         title="Lot fulfilment"
         description="Release, shipping, and collection workflow for sold lots."
         errorAlert={
@@ -45,39 +46,38 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
             Your account does not have the operations fulfilment staff role.
           </AdminListAlert>
         }
-        view={null}
-      />
+      >
+        {null}
+      </CatalogListShell>
     );
   }
 
   if (loaded.access === "error") {
     return (
-      <AdminListPage
-        className="max-w-5xl"
+      <CatalogListShell
         title="Lot fulfilment"
         description="Release, shipping, and collection workflow for sold lots."
         errorAlert={<AdminListAlert title="Could not load queue">{loaded.message}</AdminListAlert>}
-        view={null}
-      />
+      >
+        {null}
+      </CatalogListShell>
     );
   }
 
   const rows = loaded.rows;
   const returnStatus = statusFilter ?? "";
 
-  const chips = (
-    <FilterChipRow
-      label="Filter by fulfilment status"
-      chips={(["all", ...FILTER_STATUSES] as const).map((s) => ({
-        id: s,
-        label: s === "all" ? "All" : s.replaceAll("_", " "),
-        href: buildListHref("/admin/lot-fulfilment", sp, {
-          status: s === "all" ? "" : s,
-          offset: 0,
-        }),
-        active: (s === "all" && !statusFilter) || sp.status === s,
-      }))}
-    />
+  const filterBar = (
+    <Suspense
+      fallback={
+        <div
+          className="min-h-[3.25rem] rounded-md border border-border-hairline bg-surface-container-low/40"
+          aria-hidden
+        />
+      }
+    >
+      <CatalogLotFulfilmentFilterToolbar activeStatus={statusFilter} searchParams={sp} />
+    </Suspense>
   );
 
   const errorAlert = error ? <AdminListAlert title="Action failed">{error}</AdminListAlert> : null;
@@ -94,19 +94,28 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
       />
     ) : null;
 
+  const view =
+    rows.length > 0 ? <AdminLotFulfilmentBoard rows={rows} returnStatus={returnStatus} /> : null;
+
   return (
-    <AdminListPage
-      className="max-w-5xl"
+    <CatalogListShell
       title="Lot fulfilment"
       description="After payment is captured, approve release, then ship or mark ready for collection."
+      filterBar={filterBar}
       errorAlert={errorAlert}
-      chips={chips}
-      view={
+      mobileSummary={
         rows.length > 0 ? (
-          <AdminLotFulfilmentBoard rows={rows} returnStatus={returnStatus} statusChips={chips} />
+          <CatalogListMobileSummary
+            segments={[
+              `${rows.length} in queue`,
+              statusFilter ? statusFilter.replaceAll("_", " ") : null,
+            ]}
+          />
         ) : null
       }
       empty={empty}
-    />
+    >
+      {view}
+    </CatalogListShell>
   );
 }

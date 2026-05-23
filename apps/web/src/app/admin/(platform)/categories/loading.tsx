@@ -1,14 +1,13 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function AdminCategoriesLoading() {
   return (
-    <AdminListPageSkeleton
+    <CatalogListPageSkeleton
       title="Categories"
       description="Loading categories…"
       kpiTiles={0}
       tableRows={8}
       tableColumns={4}
-      showToolbar
     />
   );
 }

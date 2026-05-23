@@ -1,0 +1,50 @@
+"use client";
+
+import {
+  CatalogFilterBar,
+  type CatalogSegmentItem,
+} from "@/components/admin/catalog/catalog-filter-bar";
+import { buildListHref } from "@/lib/admin/admin-list-params";
+
+const FILTER_STATUSES = [
+  "awaiting_payment",
+  "awaiting_release",
+  "released",
+  "ready_for_collection",
+  "in_transit",
+  "delivered",
+  "cancelled",
+] as const;
+
+type Props = {
+  activeStatus: string | undefined;
+  searchParams: Record<string, string | string[] | undefined>;
+};
+
+function statusLabel(status: string): string {
+  return status.replaceAll("_", " ");
+}
+
+export function CatalogLotFulfilmentFilterToolbar({ activeStatus, searchParams }: Props) {
+  const lenses: CatalogSegmentItem[] = (["all", ...FILTER_STATUSES] as const).map((s) => ({
+    id: s,
+    label: s === "all" ? "All" : statusLabel(s),
+    href: buildListHref("/admin/lot-fulfilment", searchParams, {
+      status: s === "all" ? "" : s,
+      offset: 0,
+    }),
+  }));
+
+  const activeLensId = activeStatus ?? "all";
+
+  return (
+    <CatalogFilterBar
+      lenses={lenses}
+      activeLensId={activeLensId}
+      lensAriaLabel="Fulfilment status"
+      sheetTitle="Fulfilment filters"
+      sheetFilters={<span className="sr-only">No additional filters</span>}
+      showFilterTrigger={false}
+    />
+  );
+}

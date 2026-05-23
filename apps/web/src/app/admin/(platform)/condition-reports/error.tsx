@@ -1,9 +1,9 @@
 "use client";
 
-import { AdminErrorPage } from "@/components/admin/admin-error-page";
+import { CatalogListErrorShell } from "@/components/admin/catalog/catalog-list-states";
 import { useEffect } from "react";
 
-export default function AdminRouteError({
+export default function AdminConditionReportsError({
   error,
   reset,
 }: {
@@ -13,5 +13,14 @@ export default function AdminRouteError({
   useEffect(() => {
     console.error(error);
   }, [error]);
-  return <AdminErrorPage reset={reset} />;
+
+  return (
+    <CatalogListErrorShell
+      title="Condition report requests"
+      listLabel="Condition reports"
+      listHref="/admin/condition-reports"
+      reset={reset}
+      {...(error.message ? { message: error.message } : {})}
+    />
+  );
 }

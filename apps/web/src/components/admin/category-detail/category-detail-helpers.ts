@@ -16,6 +16,27 @@ export function categoryDepthOf(categoryId: string, map: Map<string, AdminCatego
   return d;
 }
 
+export function categoryDirectChildrenOf(rootId: string, all: AdminCategory[]): AdminCategory[] {
+  return all
+    .filter((c) => c.parentId === rootId)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+}
+
+export function categoryAncestorsOf(categoryId: string, all: AdminCategory[]): AdminCategory[] {
+  const map = categoryByIdMap(all);
+  const out: AdminCategory[] = [];
+  let cur = map.get(categoryId);
+  const seen = new Set<string>();
+  while (cur?.parentId && map.has(cur.parentId) && !seen.has(cur.parentId)) {
+    seen.add(cur.parentId);
+    const parent = map.get(cur.parentId);
+    if (!parent) break;
+    out.unshift(parent);
+    cur = parent;
+  }
+  return out;
+}
+
 export function categoryDescendantsOf(rootId: string, all: AdminCategory[]): AdminCategory[] {
   const byParent = new Map<string | null, AdminCategory[]>();
   for (const c of all) {

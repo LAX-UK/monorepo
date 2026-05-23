@@ -34,6 +34,8 @@ import { useForm, useWatch } from "react-hook-form";
 type Props = {
   mode: "create" | "edit";
   artistId?: string;
+  /** Read-only slug for edit display (not part of form values). */
+  slug?: string;
   defaultValues: ArtistFormValues;
   /** From URL `?scenario=historical` or `maker-seller` */
   initialScenario?: ArtistScenario | null;
@@ -46,6 +48,7 @@ type Props = {
 export function AdminArtistForm({
   mode,
   artistId,
+  slug,
   defaultValues,
   initialScenario = null,
   readOnly = false,
@@ -170,10 +173,19 @@ export function AdminArtistForm({
 
                 <ArtistFormSection
                   title="Identity"
-                  description="Public name, URL slug, and place."
+                  description={
+                    mode === "edit"
+                      ? "Public name and place. URL slug is set at creation."
+                      : "Public name and place — a unique slug is generated when you save."
+                  }
                   defaultOpen
                 >
-                  <IdentitySection control={form.control} disabled={pending || readOnly} />
+                  <IdentitySection
+                    control={form.control}
+                    mode={mode}
+                    {...(mode === "edit" && slug ? { slug } : {})}
+                    disabled={pending || readOnly}
+                  />
                 </ArtistFormSection>
 
                 <ArtistFormSection

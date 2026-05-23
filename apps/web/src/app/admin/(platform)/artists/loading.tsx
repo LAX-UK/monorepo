@@ -1,11 +1,11 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function AdminArtistsLoading() {
   return (
-    <AdminListPageSkeleton
+    <CatalogListPageSkeleton
       title="Artists"
       description="Loading artists…"
-      kpiTiles={4}
+      kpiTiles={6}
       tableRows={10}
       tableColumns={8}
     />

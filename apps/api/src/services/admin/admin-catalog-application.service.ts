@@ -19,24 +19,24 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
     return this.categoryService.listForAdmin({ includeArchived: input.includeArchived });
   }
 
-  createCategory(body: CreateCategoryInput) {
-    return this.categoryService.create(body);
+  createCategory(body: CreateCategoryInput, actorUserId?: string | null) {
+    return this.categoryService.create(body, { actorUserId: actorUserId ?? null });
   }
 
   getCategory(categoryId: string) {
     return this.categoryService.getForAdmin(categoryId);
   }
 
-  updateCategory(categoryId: string, body: UpdateCategoryInput) {
-    return this.categoryService.update(categoryId, body);
+  updateCategory(categoryId: string, body: UpdateCategoryInput, actorUserId?: string | null) {
+    return this.categoryService.update(categoryId, body, { actorUserId: actorUserId ?? null });
   }
 
-  archiveCategory(categoryId: string) {
-    return this.categoryService.archive(categoryId);
+  archiveCategory(categoryId: string, actorUserId?: string | null) {
+    return this.categoryService.archive(categoryId, { actorUserId: actorUserId ?? null });
   }
 
-  deleteCategory(categoryId: string) {
-    return this.categoryService.delete(categoryId);
+  deleteCategory(categoryId: string, actorUserId?: string | null) {
+    return this.categoryService.delete(categoryId, { actorUserId: actorUserId ?? null });
   }
 
   listArtists(input: AdminArtistListOptions) {

@@ -12,7 +12,13 @@ import {
 import { ArtistTextField } from "../fields";
 import type { ArtistFormSectionProps } from "../types";
 
-export function IdentitySection({ control, disabled = false }: ArtistFormSectionProps) {
+type Props = ArtistFormSectionProps & {
+  mode: "create" | "edit";
+  /** Read-only slug shown on edit (server-generated at create). */
+  slug?: string;
+};
+
+export function IdentitySection({ control, mode, slug, disabled = false }: Props) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField
@@ -30,26 +36,17 @@ export function IdentitySection({ control, disabled = false }: ArtistFormSection
           </FormItem>
         )}
       />
-      <FormField
-        control={control}
-        name="slug"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <LabelCaps>Slug</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput
-                placeholder="Auto-generated if empty"
-                {...field}
-                value={field.value ?? ""}
-                disabled={disabled}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {mode === "edit" && slug ? (
+        <div className="sm:col-span-2">
+          <p className="mb-2 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+            Slug
+          </p>
+          <p className="font-mono text-sm text-on-surface">/{slug}</p>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            Generated at creation and cannot be changed.
+          </p>
+        </div>
+      ) : null}
       <ArtistTextField
         control={control}
         name="nationality"
