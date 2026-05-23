@@ -6,6 +6,7 @@ import { createNestedLotForSaleSchema } from "./lot.js";
 import { mediaReferenceSchema } from "./media.js";
 import { isUkPostcode, normalizeUkPostcode } from "./onsite-location.js";
 import { getSaleModeCapabilities } from "./sale-mode-policy.js";
+import { saleSettlementStatuses } from "./sale-settlement.js";
 import { isAllowedStreamUrl } from "./stream-embed.js";
 
 const buyerPremiumRateString = z
@@ -183,6 +184,9 @@ export const listSalesQuerySchema = z.object({
     }),
   /** Case-insensitive title search (admin / staff catalogue views). */
   q: z.string().trim().max(200).optional(),
+  deliveryMode: z.enum(saleDeliveryModes).optional(),
+  /** Ended sales only — settled when all sold lots have captured/refunded payments. */
+  settlementStatus: z.enum(saleSettlementStatuses).optional(),
   categoryId: z.string().uuid().optional(),
   categoryIds: z
     .string()

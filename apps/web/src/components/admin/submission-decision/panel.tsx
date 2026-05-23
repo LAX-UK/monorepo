@@ -4,6 +4,7 @@ import { AsyncCombobox } from "@/components/admin/_picker/async-combobox";
 import type { ArtistSearchHit } from "@/components/artists/artist-search";
 import { CreateArtistDialog } from "@/components/artists/create-artist-dialog";
 import { LabelCaps } from "@/components/ui/typography";
+import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import {
   adminApproveSubmissionResultAction,
   adminRejectSubmissionResultAction,
@@ -11,7 +12,10 @@ import {
 } from "@/lib/actions/admin-submissions";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
+import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Can } from "@/lib/auth/capabilities";
+import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -40,19 +44,14 @@ type ApproveFormValues = z.infer<typeof approveFormSchema>;
 const rejectFormSchema = rejectSubmissionBodySchema;
 type RejectFormValues = z.infer<typeof rejectFormSchema>;
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 async function searchArtistHits(trimmed: string): Promise<ArtistSearchHit[]> {
-  const res = await fetch(`${API_BASE}/artists/search?q=${encodeURIComponent(trimmed)}`, {
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("search");
-  const body = (await res.json()) as { data: ArtistSearchHit[] };
-  return body.data.filter((h) => h.status !== "merged_into");
+  const result = await searchAdminArtistsAction(trimmed);
+  if (!result.ok) throw new Error("search");
+  return result.data ?? [];
 }
 
 async function resolveArtistHit(id: string): Promise<ArtistSearchHit | null> {
-  const res = await fetch(`${API_BASE}/admin/artists/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${apiBaseUrl()}/admin/artists/${encodeURIComponent(id)}`, {
     credentials: "include",
   });
   if (res.status === 404) return null;
@@ -90,12 +89,17 @@ type Props = {
   /** Display name to seed the inline-create dialog when the admin clicks
    * "Use submitter as artist". Typically the submitter's legal entity name. */
   submitterDisplayName?: string;
+  /** User id behind the submitter's legal entity (createdByUserId). When
+   * present, inline-creating an artist links the new profile to this user
+   * via {@link CreateArtistDialog.ownerUserId}. */
+  submitterUserId?: string;
 };
 
 export function AdminSubmissionDecisionPanel({
   submissionId,
   status,
   submitterDisplayName,
+  submitterUserId,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -154,7 +158,7 @@ export function AdminSubmissionDecisionPanel({
 
   return (
     <Can
-      requirement="artist.review"
+      requirement={SUBMISSIONS_ACCESS}
       fallback={
         <p className="font-body text-sm text-on-surface-variant">
           You do not have permission to review submissions.
@@ -214,6 +218,9 @@ export function AdminSubmissionDecisionPanel({
                         }
                         router.refresh();
                         return;
+                      }
+                      if (r.fieldErrors) {
+                        applyActionFieldErrors(approveForm, r.fieldErrors);
                       }
                       notify.error(r.error);
                     })();
@@ -335,6 +342,9 @@ export function AdminSubmissionDecisionPanel({
                         router.refresh();
                         return;
                       }
+                      if (r.fieldErrors) {
+                        applyActionFieldErrors(rejectForm, r.fieldErrors);
+                      }
                       notify.error(r.error);
                     })();
                   });
@@ -397,6 +407,8 @@ export function AdminSubmissionDecisionPanel({
         <CreateArtistDialog
           open={createOpen}
           initialName={createSeed ?? ""}
+          approveOnCreate
+          {...(submitterUserId ? { ownerUserId: submitterUserId } : {})}
           onCreated={(a) => {
             setCreateOpen(false);
             setCreateSeed(null);

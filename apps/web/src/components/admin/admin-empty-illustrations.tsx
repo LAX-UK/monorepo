@@ -19,7 +19,7 @@ function IllustrationFrame({ children, className, ...props }: IllustrationProps)
 }
 
 /** Empty search / filter results */
-export function EmptySearchIllustration(props: IllustrationProps) {
+function EmptySearchIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <circle cx="44" cy="36" r="18" stroke="currentColor" strokeWidth="2" opacity="0.35" />
@@ -42,7 +42,7 @@ export function EmptySearchIllustration(props: IllustrationProps) {
 }
 
 /** Empty queue / inbox */
-export function EmptyQueueIllustration(props: IllustrationProps) {
+function EmptyQueueIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <rect
@@ -67,7 +67,7 @@ export function EmptyQueueIllustration(props: IllustrationProps) {
 }
 
 /** Empty payments / money */
-export function EmptyPaymentsIllustration(props: IllustrationProps) {
+function EmptyPaymentsIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <rect
@@ -93,7 +93,7 @@ export function EmptyPaymentsIllustration(props: IllustrationProps) {
 }
 
 /** Empty users / clients */
-export function EmptyUsersIllustration(props: IllustrationProps) {
+function EmptyUsersIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <circle cx="48" cy="34" r="10" stroke="currentColor" strokeWidth="2" opacity="0.35" />
@@ -110,7 +110,7 @@ export function EmptyUsersIllustration(props: IllustrationProps) {
 }
 
 /** Empty lots / catalogue */
-export function EmptyLotsIllustration(props: IllustrationProps) {
+function EmptyLotsIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <rect
@@ -148,7 +148,7 @@ export function EmptyLotsIllustration(props: IllustrationProps) {
 }
 
 /** Empty sales / calendar */
-export function EmptySalesIllustration(props: IllustrationProps) {
+function EmptySalesIllustration(props: IllustrationProps) {
   return (
     <IllustrationFrame {...props}>
       <rect

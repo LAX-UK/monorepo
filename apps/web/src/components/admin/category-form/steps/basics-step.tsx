@@ -137,7 +137,7 @@ export function CategoryBasicsStep({ form, categoryId, categories }: Props) {
                           {eligibleParents.map((c) => (
                             <CommandItem
                               key={c.id}
-                              value={c.name}
+                              value={c.id}
                               onSelect={() => {
                                 field.onChange(c.id);
                                 setParentPopoverOpen(false);

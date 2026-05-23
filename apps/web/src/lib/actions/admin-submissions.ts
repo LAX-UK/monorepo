@@ -1,5 +1,6 @@
 "use server";
 
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -8,6 +9,7 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -73,6 +75,8 @@ export async function adminRejectSubmissionAction(formData: FormData): Promise<v
 export async function adminStartSubmissionReviewResultAction(
   submissionId: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+  if (denied) return denied;
   const id = submissionId.trim();
   if (!id) {
     return actionFailure("Missing submission");
@@ -91,6 +95,8 @@ export async function adminApproveSubmissionResultAction(
   submissionId: string,
   body: z.infer<typeof approveSubmissionBodySchema>,
 ): Promise<ActionResult<{ lotId: string | undefined }>> {
+  const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+  if (denied) return denied;
   const id = submissionId.trim();
   if (!id) {
     return actionFailure("Missing submission");
@@ -115,6 +121,8 @@ export async function adminRejectSubmissionResultAction(
   submissionId: string,
   body: z.infer<typeof rejectSubmissionBodySchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+  if (denied) return denied;
   const id = submissionId.trim();
   if (!id) {
     return actionFailure("Missing submission");

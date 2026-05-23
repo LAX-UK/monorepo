@@ -1,9 +1,24 @@
 import type { Database } from "@auction/db";
-import { sale, saleCategories } from "@auction/db/schema";
+import { lot, payment, sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
+
+/** Sold lot without captured/refunded buyer payment. */
+function soldLotMissingSettledPayment() {
+  return sql`exists (
+    select 1 from ${lot} l
+    where l.sale_id = ${sale.id}
+      and l.status = 'ended'
+      and l.winner_id is not null
+      and not exists (
+        select 1 from ${payment} p
+        where p.lot_id = l.id
+          and p.status in ('captured', 'refunded')
+      )
+  )`;
+}
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [];
@@ -30,6 +45,12 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
     if (safe.length > 0) {
       conditions.push(ilike(sale.title, `%${safe}%`));
     }
+  }
+  if (input.deliveryMode) conditions.push(eq(sale.deliveryMode, input.deliveryMode));
+  if (input.settlementStatus === "settled") {
+    conditions.push(sql`not ${soldLotMissingSettledPayment()}`);
+  } else if (input.settlementStatus === "unsettled") {
+    conditions.push(soldLotMissingSettledPayment());
   }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }

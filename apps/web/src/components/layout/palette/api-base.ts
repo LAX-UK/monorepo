@@ -1,3 +1,5 @@
+import { apiBaseUrl } from "@/lib/auth/api-base";
+
 export function paletteApiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+  return apiBaseUrl();
 }

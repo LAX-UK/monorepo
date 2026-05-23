@@ -1,4 +1,4 @@
-import type { Bid, CreateLotInput, LegalEntity, Lot } from "@auction/types";
+import type { Bid, CreateLotInput, LegalEntity, Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
@@ -6,12 +6,45 @@ import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
-import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
+import type { IBidRepository, ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { LotService } from "./lot.service.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
 const categoryId = "00000000-0000-4000-8000-0000000000c0";
+const saleAId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const saleBId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+function mkSale(overrides: Partial<Sale> = {}): Sale {
+  return {
+    id: saleBId,
+    title: "Target sale",
+    description: null,
+    coverImages: [],
+    categoryId,
+    deliveryMode: "online",
+    streamUrl: null,
+    locationName: null,
+    locationAddress: null,
+    locationMapUrl: null,
+    locationAddressLine1: null,
+    locationAddressLine2: null,
+    locationCity: null,
+    locationCounty: null,
+    locationPostcode: null,
+    locationCountry: null,
+    startTime: new Date("2026-06-01T10:00:00Z"),
+    endTime: new Date("2026-06-07T18:00:00Z"),
+    previewStartTime: null,
+    status: "draft",
+    buyerPremiumRate: "0.25",
+    buyerPremiumTiers: null,
+    terms: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
 
 const baseLot: Lot = {
   id: lotId,
@@ -170,6 +203,311 @@ describe("LotService.update", () => {
 
     expect(result.isOk()).toBe(true);
     expect(update).toHaveBeenCalledWith(lotId, { images: ["new.jpg"] });
+  });
+
+  it("allows full patch on scheduled lot and reschedules lifecycle jobs when times change", async () => {
+    const startTime = new Date(Date.now() + 86_400_000);
+    const endTime = new Date(Date.now() + 172_800_000);
+    const lot: Lot = { ...baseLot, status: "scheduled", startTime, endTime };
+    const nextStart = new Date(Date.now() + 100_800_000);
+    const nextEnd = new Date(Date.now() + 259_200_000);
+    const updated: Lot = { ...lot, title: "Renamed", startTime: nextStart, endTime: nextEnd };
+    const update = vi.fn().mockResolvedValue(updated);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      update,
+    } as unknown as ILotRepository;
+    const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
+    const scheduleLot = vi.fn().mockResolvedValue(undefined);
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: { cancelLotJobs, scheduleLot, rescheduleEnd: vi.fn() },
+      lotNotifications: null,
+    });
+
+    const result = await svc.update(
+      "staff",
+      lotId,
+      { title: "Renamed", startTime: nextStart, endTime: nextEnd },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, {
+      title: "Renamed",
+      startTime: nextStart,
+      endTime: nextEnd,
+    });
+    expect(cancelLotJobs).toHaveBeenCalledWith(lotId);
+    expect(scheduleLot).toHaveBeenCalledWith(lotId, nextStart, nextEnd);
+  });
+
+  it("rejects non-image patch on active lot", async () => {
+    const lot: Lot = { ...baseLot, status: "active", images: ["old.jpg"] };
+    const update = vi.fn();
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      update,
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update("staff", lotId, { title: "Renamed" }, "catalogue_manager");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr())
+      expect(result.error.message).toBe("Only images can be edited on an active lot");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reassigns scheduled lot to a new sale with auto lot number", async () => {
+    const saleStart = new Date(Date.now() + 43_200_000);
+    const saleEnd = new Date(Date.now() + 604_800_000);
+    const startTime = new Date(Date.now() + 86_400_000);
+    const endTime = new Date(Date.now() + 172_800_000);
+    const lot: Lot = {
+      ...baseLot,
+      status: "scheduled",
+      saleId: saleAId,
+      lotNumber: 1,
+      startTime,
+      endTime,
+    };
+    const updated: Lot = { ...lot, saleId: saleBId, lotNumber: 3 };
+    const update = vi.fn().mockResolvedValue(updated);
+    const findBySaleId = vi.fn().mockImplementation(async (saleId: string) =>
+      saleId === saleBId
+        ? [
+            { ...lot, id: "other-1", lotNumber: 1 },
+            { ...lot, id: "other-2", lotNumber: 2 },
+          ]
+        : [],
+    );
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId,
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi
+        .fn()
+        .mockResolvedValue(
+          mkSale({ id: saleBId, deliveryMode: "online", startTime: saleStart, endTime: saleEnd }),
+        ),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, {
+      saleId: saleBId,
+      lotNumber: 3,
+      startTime,
+      endTime,
+    });
+  });
+
+  it("returns 400 when reassigning to a sale with a conflicting lot number", async () => {
+    const lot: Lot = {
+      ...baseLot,
+      status: "draft",
+      saleId: saleAId,
+      lotNumber: 1,
+    };
+    const update = vi.fn();
+    const findBySaleId = vi.fn().mockResolvedValue([{ ...lot, id: "other-1", lotNumber: 5 }]);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId,
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(mkSale({ id: saleBId })),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update(
+      "staff",
+      lotId,
+      { saleId: saleBId, lotNumber: 5 },
+      "catalogue_manager",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(LotError);
+      expect(result.error.status).toBe(400);
+      expect(result.error.message).toContain("Lot number already used");
+    }
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("inherits onsite sale timing when reassigning lot to that sale", async () => {
+    const saleStart = new Date("2026-07-01T10:00:00Z");
+    const saleEnd = new Date("2026-07-07T18:00:00Z");
+    const lot: Lot = {
+      ...baseLot,
+      status: "scheduled",
+      saleId: saleAId,
+      lotNumber: 1,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+    };
+    const update = vi.fn().mockImplementation(async (_id, patch) => ({
+      ...lot,
+      ...patch,
+    }));
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId: vi.fn().mockResolvedValue([]),
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi
+        .fn()
+        .mockResolvedValue(
+          mkSale({ id: saleBId, deliveryMode: "onsite", startTime: saleStart, endTime: saleEnd }),
+        ),
+    } as unknown as ISaleRepository;
+    const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
+    const scheduleLot = vi.fn().mockResolvedValue(undefined);
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: { cancelLotJobs, scheduleLot, rescheduleEnd: vi.fn() },
+      lotNotifications: null,
+    });
+
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(lotId, {
+      saleId: saleBId,
+      lotNumber: 1,
+      startTime: saleStart,
+      endTime: saleEnd,
+    });
+    expect(cancelLotJobs).toHaveBeenCalledWith(lotId);
+    expect(scheduleLot).toHaveBeenCalledWith(lotId, saleStart, saleEnd);
+  });
+
+  it("maps lot number unique violations from the database to a 400 LotError", async () => {
+    const lot: Lot = {
+      ...baseLot,
+      status: "draft",
+      saleId: saleAId,
+      lotNumber: 1,
+      startTime: new Date("2026-06-02T10:00:00Z"),
+      endTime: new Date("2026-06-03T18:00:00Z"),
+    };
+    const pgError = Object.assign(
+      new Error('duplicate key value violates unique constraint "lot_sale_id_lot_number_uid"'),
+      {
+        code: "23505",
+      },
+    );
+    const update = vi.fn().mockRejectedValue(pgError);
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId: vi.fn().mockResolvedValue([]),
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(mkSale({ id: saleBId })),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, "catalogue_manager");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status).toBe(400);
+      expect(result.error.message).toContain("Lot number already used");
+    }
+  });
+
+  it("rejects online lot times outside the assigned sale window", async () => {
+    const saleStart = new Date("2026-06-01T10:00:00Z");
+    const saleEnd = new Date("2026-06-07T18:00:00Z");
+    const lot: Lot = {
+      ...baseLot,
+      status: "draft",
+      saleId: saleAId,
+      lotNumber: 1,
+      startTime: new Date("2026-06-02T10:00:00Z"),
+      endTime: new Date("2026-06-03T18:00:00Z"),
+    };
+    const update = vi.fn();
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(
+        mkSale({
+          id: saleAId,
+          deliveryMode: "online",
+          startTime: saleStart,
+          endTime: saleEnd,
+        }),
+      ),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+
+    const result = await svc.update(
+      "staff",
+      lotId,
+      {
+        startTime: new Date("2026-05-31T10:00:00Z"),
+        endTime: new Date("2026-06-03T18:00:00Z"),
+      },
+      "catalogue_manager",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("before the sale start");
+    }
+    expect(update).not.toHaveBeenCalled();
   });
 });
 

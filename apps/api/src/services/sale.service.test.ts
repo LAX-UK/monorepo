@@ -4,7 +4,24 @@ import { AuthzError, LotError } from "../lib/errors.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import { SaleService } from "./sale.service.js";
+import { SaleService, type SaleServiceOptions } from "./sale.service.js";
+
+const TEST_ADMIN_USER_ID = "admin-1";
+const TEST_ADMIN_LEGAL_ENTITY_ID = "00000000-0000-4000-8000-000000000001";
+
+async function testResolveCreatorLegalEntityId(userId: string): Promise<string | null> {
+  return userId === TEST_ADMIN_USER_ID ? TEST_ADMIN_LEGAL_ENTITY_ID : null;
+}
+
+function saleServiceOpts(
+  overrides: Omit<SaleServiceOptions, "resolveCreatorLegalEntityId"> &
+    Partial<Pick<SaleServiceOptions, "resolveCreatorLegalEntityId">>,
+): SaleServiceOptions {
+  return {
+    resolveCreatorLegalEntityId: testResolveCreatorLegalEntityId,
+    ...overrides,
+  };
+}
 
 function baseSale(overrides: Partial<Sale> = {}): Sale {
   return {
@@ -112,11 +129,11 @@ describe("SaleService.create", () => {
     } as unknown as ILotRepository;
 
     const jobs = null as ILotJobScheduler | null;
-    const svc = new SaleService({ saleRepo, lotRepo, jobScheduler: jobs });
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: jobs }));
 
     const start = new Date(Date.now() + 86_400_000);
     const end = new Date(Date.now() + 172_800_000);
-    await svc.create("admin-1", {
+    await svc.create(TEST_ADMIN_USER_ID, {
       title: "Evening",
       startTime: start,
       endTime: end,
@@ -144,7 +161,11 @@ describe("SaleService.create", () => {
       ],
     });
 
-    expect(saleRepo.create).toHaveBeenCalled();
+    expect(saleRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdByLegalEntityId: TEST_ADMIN_LEGAL_ENTITY_ID,
+      }),
+    );
     expect(lotCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         saleId: "s-new",
@@ -191,16 +212,18 @@ describe("SaleService.create", () => {
     const lotRepo: ILotRepository = {
       create: lotCreate,
     } as unknown as ILotRepository;
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo,
-      jobScheduler: null,
-      englishOnlyAuctions: true,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        englishOnlyAuctions: true,
+      }),
+    );
     const start = new Date(Date.now() + 86_400_000);
     const end = new Date(Date.now() + 172_800_000);
     await expect(
-      svc.create("admin-1", {
+      svc.create(TEST_ADMIN_USER_ID, {
         title: "Evening",
         startTime: start,
         endTime: end,
@@ -230,6 +253,42 @@ describe("SaleService.create", () => {
     ).rejects.toThrow(LotError);
     expect(lotCreate).not.toHaveBeenCalled();
   });
+
+  it("rejects create when creator legal entity cannot be resolved", async () => {
+    const saleRepo: ISaleRepository = {
+      create: vi.fn(),
+    } as unknown as ISaleRepository;
+    const lotRepo = {} as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        resolveCreatorLegalEntityId: async () => null,
+      }),
+    );
+
+    const start = new Date(Date.now() + 86_400_000);
+    const end = new Date(Date.now() + 172_800_000);
+    await expect(
+      svc.create(TEST_ADMIN_USER_ID, {
+        title: "Evening",
+        startTime: start,
+        endTime: end,
+        streamUrl: null,
+        locationName: null,
+        locationAddress: null,
+        locationMapUrl: null,
+        locationAddressLine1: null,
+        locationAddressLine2: null,
+        locationCity: null,
+        locationCounty: null,
+        locationPostcode: null,
+        locationCountry: null,
+      }),
+    ).rejects.toThrow(LotError);
+    expect(saleRepo.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("SaleService.updateDraft", () => {
@@ -242,12 +301,14 @@ describe("SaleService.updateDraft", () => {
     } as unknown as ISaleRepository;
     const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
     const imageCleanup = { enqueueRemovedMany } as unknown as ImageCleanupService;
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-      imageCleanup,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        imageCleanup,
+      }),
+    );
 
     const result = await svc.updateDraft(
       "staff",
@@ -269,12 +330,14 @@ describe("SaleService.updateDraft", () => {
       update: vi.fn().mockResolvedValue(updated),
     } as unknown as ISaleRepository;
     const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+      }),
+    );
 
     const result = await svc.updateDraft(
       "staff",
@@ -296,12 +359,14 @@ describe("SaleService.updateDraft", () => {
       update: vi.fn().mockResolvedValue(updated),
     } as unknown as ISaleRepository;
     const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-      imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+      }),
+    );
 
     const result = await svc.updateDraft(
       "staff",
@@ -324,11 +389,13 @@ describe("SaleService.updateDraft", () => {
       findById: vi.fn().mockResolvedValue(sale),
       update: vi.fn().mockResolvedValue(updated),
     } as unknown as ISaleRepository;
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
 
     const result = await svc.updateDraft(
       "staff",
@@ -347,11 +414,13 @@ describe("SaleService.updateDraft", () => {
       findById: vi.fn().mockResolvedValue(sale),
       update: vi.fn(),
     } as unknown as ISaleRepository;
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
 
     const result = await svc.updateDraft(
       "staff",
@@ -372,11 +441,13 @@ describe("SaleService.updateDraft", () => {
       findById: vi.fn().mockResolvedValue(sale),
       update: vi.fn(),
     } as unknown as ISaleRepository;
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo: {} as ILotRepository,
-      jobScheduler: null,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
 
     const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, "staff_viewer");
 
@@ -392,7 +463,7 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
       findById: vi.fn().mockResolvedValue(null),
     } as unknown as ISaleRepository;
     const lotRepo = {} as unknown as ILotRepository;
-    const svc = new SaleService({ saleRepo, lotRepo, jobScheduler: null });
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
     const r = await svc.getSaleDetailForPublicApi("missing", undefined);
     expect(r).toBeNull();
   });
@@ -432,12 +503,14 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
       findBySaleId: vi.fn().mockResolvedValue([]),
     } as unknown as ILotRepository;
     const follow = { isFollowing: vi.fn().mockResolvedValue(true) };
-    const svc = new SaleService({
-      saleRepo,
-      lotRepo,
-      jobScheduler: null,
-      saleFollowReader: follow,
-    });
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        saleFollowReader: follow,
+      }),
+    );
     const r = await svc.getSaleDetailForPublicApi("s1", "user-1");
     expect(r).not.toBeNull();
     if (!r) return;

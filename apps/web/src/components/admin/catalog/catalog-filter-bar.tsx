@@ -8,7 +8,7 @@ import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sh
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export type { CatalogSegmentItem };
 
@@ -19,6 +19,8 @@ type Props = {
   sheetTitle?: string;
   sheetFilters: ReactNode;
   activeFilterCount?: number;
+  /** When false, hides the filter sheet trigger (e.g. search-only toolbars). */
+  showFilterTrigger?: boolean;
   /** Optional search row shown beside More filters on md+ */
   searchSlot?: ReactNode;
   className?: string;
@@ -32,10 +34,12 @@ export function CatalogFilterBar({
   sheetTitle = "Filters",
   sheetFilters,
   activeFilterCount = 0,
+  showFilterTrigger = true,
   searchSlot,
   className,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const filterPanelId = useId();
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -43,17 +47,33 @@ export function CatalogFilterBar({
         <CatalogSegmentNav items={lenses} activeId={activeLensId} aria-label={lensAriaLabel} />
         <div className="flex shrink-0 items-center gap-2">
           {searchSlot ? (
-            <div className="hidden min-w-0 flex-1 sm:block md:max-w-xs">{searchSlot}</div>
+            <div
+              className={cn(
+                "min-w-0 flex-1 md:max-w-xs",
+                showFilterTrigger ? "hidden sm:block" : "block",
+              )}
+            >
+              {searchSlot}
+            </div>
           ) : null}
-          <MarketingFilterTrigger onClick={() => setOpen(true)} activeCount={activeFilterCount} />
+          {showFilterTrigger ? (
+            <MarketingFilterTrigger
+              onClick={() => setOpen(true)}
+              activeCount={activeFilterCount}
+              aria-expanded={open}
+              aria-controls={filterPanelId}
+            />
+          ) : null}
         </div>
       </div>
-      <MarketingFilterSheet open={open} onOpenChange={setOpen} title={sheetTitle}>
-        <div className="space-y-4">
-          {searchSlot ? <div className="sm:hidden">{searchSlot}</div> : null}
-          {sheetFilters}
-        </div>
-      </MarketingFilterSheet>
+      {showFilterTrigger ? (
+        <MarketingFilterSheet open={open} onOpenChange={setOpen} title={sheetTitle}>
+          <div id={filterPanelId} className="space-y-4">
+            {searchSlot ? <div className="sm:hidden">{searchSlot}</div> : null}
+            {sheetFilters}
+          </div>
+        </MarketingFilterSheet>
+      ) : null}
     </div>
   );
 }

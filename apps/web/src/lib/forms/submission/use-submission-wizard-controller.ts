@@ -235,16 +235,6 @@ export function useSubmissionWizardController(
     };
   }, [form, formIsSubmitting, isDirty, mode, persistUpdate, submissionId]);
 
-  useEffect(() => {
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (form.formState.isDirty) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [form.formState.isDirty]);
-
   const onSubmit = form.handleSubmit(() => saveDraft());
 
   return {

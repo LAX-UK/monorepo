@@ -3,7 +3,7 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { TableScroll } from "@/components/ui/table-scroll";
-import { formatDateTime } from "@/lib/ui/format";
+import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import type { Bid } from "@auction/types";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -15,8 +15,8 @@ function columns(): ColumnDef<Bid>[] {
       header: "Amount",
       meta: { numeric: true },
       cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.amount}
+        <span className="font-medium tabular-nums">
+          {formatMoney(row.original.amount)}
           {row.original.isWinning ? (
             <span className="ml-2 rounded bg-success/10 px-1.5 py-0.5 font-label text-[10px] uppercase text-success">
               Winning
@@ -55,8 +55,19 @@ function columns(): ColumnDef<Bid>[] {
   ];
 }
 
+function highestBidAmount(bids: Bid[]): string | null {
+  if (bids.length === 0) return null;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const bid of bids) {
+    const n = Number.parseFloat(String(bid.amount));
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return Number.isFinite(max) ? String(max) : null;
+}
+
 export function AdminLotBidsTable({ bids }: { bids: Bid[] }) {
   const tableColumns = useMemo(() => columns(), []);
+  const high = highestBidAmount(bids);
 
   if (bids.length === 0) {
     return (
@@ -68,13 +79,25 @@ export function AdminLotBidsTable({ bids }: { bids: Bid[] }) {
   }
 
   return (
-    <TableScroll>
-      <AdminDataTable
-        ariaLabel="Lot bids"
-        columns={tableColumns}
-        data={bids}
-        getRowId={(b) => b.id}
-      />
-    </TableScroll>
+    <div className="space-y-4">
+      <p className="font-body text-sm text-on-surface-variant">
+        {bids.length} bid{bids.length === 1 ? "" : "s"}
+        {high ? (
+          <>
+            {" "}
+            · high{" "}
+            <span className="font-medium tabular-nums text-on-surface">{formatMoney(high)}</span>
+          </>
+        ) : null}
+      </p>
+      <TableScroll>
+        <AdminDataTable
+          ariaLabel="Lot bids"
+          columns={tableColumns}
+          data={bids}
+          getRowId={(b) => b.id}
+        />
+      </TableScroll>
+    </div>
   );
 }

@@ -2,7 +2,12 @@
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
+import {
+  clearWizardDraft,
+  wizardDraftCookieKey,
+} from "@/components/admin/admin-form-wizard/wizard-draft";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import {
   adminCreateSaleResultAction,
   adminUpdateSaleResultAction,
@@ -11,6 +16,7 @@ import {
   applyZodErrorsToForm,
   zodIssuePathForForm as zodPathJoin,
 } from "@/lib/admin/zod-form-errors";
+import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import {
   type AdminSaleFormValues,
   adminSaleFormValuesSchema,
@@ -19,6 +25,7 @@ import {
   safeParseUpdatePublishedSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
+import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { CategoryNode, EntityDocument } from "@auction/types";
@@ -33,8 +40,8 @@ import {
 } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useTransition } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useCallback, useMemo, useRef, useTransition } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
@@ -44,6 +51,22 @@ const SALE_FORM_STEPS = [
   { id: "schedule", label: "Schedule" },
   { id: "documents", label: "Documents" },
 ] as const;
+
+const SALE_STEP_FIELDS: (keyof AdminSaleFormValues)[][] = [
+  ["title", "description", "coverImages", "categoryId"],
+  [
+    "deliveryMode",
+    "startTime",
+    "endTime",
+    "previewStartTime",
+    "streamUrl",
+    "locationName",
+    "locationPostcode",
+    "buyerPremiumRate",
+    "buyerPremiumTiers",
+  ],
+  ["terms"],
+];
 
 type Props = {
   mode: "create" | "edit";
@@ -86,15 +109,29 @@ export function AdminSaleForm({
   const isDraft = mode === "create" || !saleStatus || saleStatus === "draft";
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const { guardedPush } = useGuardedNavigation();
   const baselineRef = useRef(defaultValues);
   baselineRef.current = defaultValues;
+  const wizardGoToRef = useRef<(index: number) => void>(() => {});
 
   const form = useForm<AdminSaleFormValues>({
     resolver: zodResolver(adminSaleFormValuesSchema),
     defaultValues,
   });
+  const getValuesRef = useRef(form.getValues);
+  getValuesRef.current = form.getValues;
+  const createIdempotencyKeyRef = useRef(`sale-create-${crypto.randomUUID()}`);
 
-  const draftSnapshot = useWatch({ control: form.control }) as Record<string, unknown>;
+  const validateAllWizardSteps = useCallback(async () => {
+    for (let i = 0; i < SALE_STEP_FIELDS.length; i++) {
+      const fields = SALE_STEP_FIELDS[i];
+      if (fields?.length && !(await validateWizardStep(form, adminSaleFormValuesSchema, fields))) {
+        wizardGoToRef.current(i);
+        return false;
+      }
+    }
+    return true;
+  }, [form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -148,7 +185,7 @@ export function AdminSaleForm({
           draft: {
             entityKind: "admin_sale_new",
             entityId: wizardDraftEntityId ?? "new",
-            values: draftSnapshot ?? {},
+            getValues: () => getValuesRef.current() as Record<string, unknown>,
           },
           onDraftResume: (payload: WizardDraftPayload) => {
             form.reset({
@@ -166,7 +203,11 @@ export function AdminSaleForm({
         <form
           id={htmlFormId}
           className="space-y-8"
-          onSubmit={form.handleSubmit((values) => {
+          onSubmit={form.handleSubmit(async (values) => {
+            if (!(await validateAllWizardSteps())) {
+              notify.error("Check the form for errors");
+              return;
+            }
             startTransition(async () => {
               form.clearErrors("root");
               if (mode === "create") {
@@ -178,8 +219,14 @@ export function AdminSaleForm({
                   notify.error("Check the form for errors");
                   return;
                 }
-                const r = await adminCreateSaleResultAction(api.data);
+                const r = await adminCreateSaleResultAction(
+                  api.data,
+                  createIdempotencyKeyRef.current,
+                );
                 if (r.ok) {
+                  clearWizardDraft(
+                    wizardDraftCookieKey("admin_sale_new", wizardDraftEntityId ?? "new"),
+                  );
                   notify.success("Draft sale created");
                   if (r.data?.id) {
                     router.push(`/admin/sales/${r.data.id}`);
@@ -198,6 +245,12 @@ export function AdminSaleForm({
                     meta: r.meta,
                   }),
                 );
+                if (r.fieldErrors) {
+                  applyActionFieldErrors(form, r.fieldErrors, {
+                    stepFields: SALE_STEP_FIELDS,
+                    goTo: wizardGoToRef.current,
+                  });
+                }
                 return;
               }
               if (!saleId) {
@@ -227,14 +280,19 @@ export function AdminSaleForm({
                   meta: r.meta,
                 }),
               );
+              if (r.fieldErrors) {
+                applyActionFieldErrors(form, r.fieldErrors, {
+                  stepFields: SALE_STEP_FIELDS,
+                  goTo: wizardGoToRef.current,
+                });
+              }
             });
           })}
         >
           {englishOnlyAuctionsLocked ? (
             <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
               English-only mode is on: any lots created with this sale must use the{" "}
-              <span className="font-medium text-on-surface">english</span> auction type (the
-              database enum is unchanged for legacy rows).
+              <span className="font-medium text-on-surface">english</span> auction type
             </p>
           ) : null}
 
@@ -242,6 +300,15 @@ export function AdminSaleForm({
             steps={SALE_FORM_STEPS}
             isDirty={form.formState.isDirty}
             pending={pending}
+            hideStickyOnMobile={Boolean(htmlFormId)}
+            onStepControl={({ goTo }) => {
+              wizardGoToRef.current = goTo;
+            }}
+            onBeforeNext={async (stepIndex) => {
+              const fields = SALE_STEP_FIELDS[stepIndex];
+              if (!fields?.length) return true;
+              return validateWizardStep(form, adminSaleFormValuesSchema, fields);
+            }}
             leadingSlot={
               <Button
                 type="button"
@@ -249,7 +316,7 @@ export function AdminSaleForm({
                 disabled={pending}
                 className="min-h-11 w-full sm:w-auto"
                 onClick={() =>
-                  router.push(
+                  guardedPush(
                     mode === "create"
                       ? "/admin/sales"
                       : saleId

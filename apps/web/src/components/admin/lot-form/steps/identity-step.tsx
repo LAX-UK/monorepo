@@ -4,6 +4,7 @@ import { CatalogFormSection } from "@/components/admin/forms/catalog-form-sectio
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
+import { LOT_AUCTION_TYPE_DESCRIPTIONS, LOT_AUCTION_TYPE_LABELS } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import type { LotAuctionType } from "@auction/types";
 import {
@@ -20,9 +21,16 @@ type Props = {
   form: UseFormReturn<AdminLotFormValues>;
   auctionTypeOptions: readonly LotAuctionType[];
   englishOnlyAuctionsLocked: boolean;
+  /** Clears catalogue fields that do not apply after an explicit lot-type change. */
+  onAuctionTypeChange?: (previous: LotAuctionType, next: LotAuctionType) => void;
 };
 
-export function LotIdentityStep({ form, auctionTypeOptions, englishOnlyAuctionsLocked }: Props) {
+export function LotIdentityStep({
+  form,
+  auctionTypeOptions,
+  englishOnlyAuctionsLocked,
+  onAuctionTypeChange,
+}: Props) {
   return (
     <CatalogFormSection
       title="Identity"
@@ -71,11 +79,24 @@ export function LotIdentityStep({ form, auctionTypeOptions, englishOnlyAuctionsL
             </FormLabel>
             <RhfSelect
               value={field.value}
-              onValueChange={field.onChange}
+              onValueChange={(next) => {
+                const previous = field.value as LotAuctionType;
+                if (previous === next) return;
+                field.onChange(next);
+                onAuctionTypeChange?.(previous, next as LotAuctionType);
+              }}
               onBlur={field.onBlur}
-              options={auctionTypeOptions.map((t) => ({ value: t, label: t }))}
+              options={auctionTypeOptions.map((t) => ({
+                value: t,
+                label: LOT_AUCTION_TYPE_LABELS[t],
+              }))}
               triggerClassName="w-full font-body text-sm"
             />
+            {field.value ? (
+              <p className="mt-2 font-body text-xs text-on-surface-variant">
+                {LOT_AUCTION_TYPE_DESCRIPTIONS[field.value as LotAuctionType]}
+              </p>
+            ) : null}
             {englishOnlyAuctionsLocked ? (
               <p className="mt-2 font-body text-xs text-on-surface-variant">
                 English-only mode is on: new drafts use the English auction type. Legacy non-English

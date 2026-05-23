@@ -10,6 +10,7 @@ import {
 } from "@/lib/legal-entity/member-management.actions";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { legalEntityMemberRoles } from "@auction/types";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,9 @@ export function MemberList({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<PendingDialog | null>(null);
+  const [simpleRemove, setSimpleRemove] = useState<{ memberId: string; memberName: string } | null>(
+    null,
+  );
 
   function handleRoleChange(memberId: string, role: LegalEntityMemberRole) {
     setError(null);
@@ -68,11 +72,7 @@ export function MemberList({
       });
       return;
     }
-    if (!window.confirm(`Remove ${m.user.name} from this organisation?`)) return;
-    startTransition(async () => {
-      const res = await removeMemberAction(legalEntityId, m.id);
-      if (!res.ok) setError(res.error);
-    });
+    setSimpleRemove({ memberId: m.id, memberName: m.user.name });
   }
 
   function handleTransferClick(m: MemberRow) {
@@ -181,6 +181,27 @@ export function MemberList({
             }
             const res = await transferPrimaryAdminAction(legalEntityId, d.memberId, d.phrase);
             if (!res.ok) throw new Error(res.error);
+          }}
+        />
+      ) : null}
+      {simpleRemove ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSimpleRemove(null);
+          }}
+          title="Remove member"
+          body={`Remove ${simpleRemove.memberName} from this organisation?`}
+          confirmLabel="Remove"
+          tone="danger"
+          loading={pending}
+          onConfirm={() => {
+            const target = simpleRemove;
+            setSimpleRemove(null);
+            startTransition(async () => {
+              const res = await removeMemberAction(legalEntityId, target.memberId);
+              if (!res.ok) setError(res.error);
+            });
           }}
         />
       ) : null}

@@ -1,6 +1,16 @@
 "use server";
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
+import {
+  getIdempotentCategoryCreate,
+  getIdempotentLotCreate,
+  getIdempotentLotPublish,
+  setIdempotentCategoryCreate,
+  setIdempotentLotCreate,
+  setIdempotentLotPublish,
+} from "@/lib/actions/idempotency-cache";
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -10,6 +20,8 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
+import { CATEGORIES_ACCESS, LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import type { CapabilityRequirement } from "@auction/types";
 import {
   adminBulkInvitationsBodySchema,
   adminBulkSubmissionsBodySchema,
@@ -36,6 +48,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+const AUCTION_MANAGE_ACCESS: CapabilityRequirement = SALES_ACCESS;
+
+const ARTIST_WRITE_ACCESS: CapabilityRequirement = {
+  anyOf: ["catalogue.write", "artist.review", "artist.merge", "platform.admin.full"],
+};
+
+const ARTIST_REVIEW_ACCESS: CapabilityRequirement = {
+  anyOf: ["artist.review", "platform.admin.full"],
+};
+
+const ARTIST_MERGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["artist.merge", "platform.admin.full"],
+};
+
 function revalidateAdminUserListPaths(): void {
   revalidatePath("/admin/clients");
   revalidatePath("/admin/staff");
@@ -45,6 +71,25 @@ function revalidateAdminUserDetailPaths(userId: string): void {
   revalidateAdminUserListPaths();
   revalidatePath(`/admin/clients/${userId}`);
   revalidatePath(`/admin/staff/${userId}`);
+}
+
+function revalidateAdminLotDetail(lotId: string): void {
+  revalidatePath("/admin/lots");
+  revalidatePath(`/admin/lots/${lotId}`);
+  revalidatePath(`/admin/lots/${lotId}/images`);
+  revalidatePath(`/admin/lots/${lotId}/documents`);
+  revalidatePath(`/admin/lots/${lotId}/bids`);
+  revalidatePath(`/admin/lots/${lotId}/edit`);
+  revalidatePath(`/admin/lots/${lotId}/edit/catalog`);
+  revalidatePath(`/admin/lots/${lotId}/edit/documents`);
+}
+
+function revalidateAdminCategoryDetail(categoryId: string): void {
+  revalidatePath("/admin/categories");
+  revalidatePath(`/admin/categories/${categoryId}`);
+  revalidatePath(`/admin/categories/${categoryId}/edit`);
+  revalidatePath(`/admin/categories/${categoryId}/children`);
+  revalidatePath(`/admin/categories/${categoryId}/lots`);
 }
 
 async function postBulkAction(
@@ -95,8 +140,7 @@ export async function adminPublishLotAction(formData: FormData): Promise<void> {
     if (r.code) q.set("error_code", r.code);
     redirect(`/admin/lots/${id}?${q.toString()}`);
   }
-  revalidatePath("/admin/lots");
-  revalidatePath(`/admin/lots/${id}`);
+  revalidateAdminLotDetail(id);
   redirect(`/admin/lots/${id}`);
 }
 
@@ -114,8 +158,7 @@ export async function adminCancelLotAction(formData: FormData): Promise<void> {
   if (!r.ok) {
     redirect(`/admin/lots/${id}?error=${encodeURIComponent(r.message)}`);
   }
-  revalidatePath("/admin/lots");
-  revalidatePath(`/admin/lots/${id}`);
+  revalidateAdminLotDetail(id);
   redirect(`/admin/lots/${id}`);
 }
 
@@ -262,7 +305,12 @@ export async function adminUpdateLotAction(formData: FormData): Promise<void> {
 
 export async function adminCreateLotResultAction(
   input: z.infer<typeof createLotSchema>,
+  idempotencyKey?: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+  if (denied) return denied;
+  const cachedId = getIdempotentLotCreate(idempotencyKey);
+  if (cachedId) return actionSuccess({ id: cachedId });
   const parsed = createLotSchema.safeParse(input);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -275,13 +323,19 @@ export async function adminCreateLotResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
+  setIdempotentLotCreate(idempotencyKey, r.data.id);
   revalidatePath("/admin/lots");
   return actionSuccess({ id: r.data.id });
 }
 
 export async function adminCreateCategoryResultAction(
   input: z.infer<typeof adminCreateCategoryBodySchema>,
+  idempotencyKey?: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessAdminCapability(CATEGORIES_ACCESS);
+  if (denied) return denied;
+  const cachedId = getIdempotentCategoryCreate(idempotencyKey);
+  if (cachedId) return actionSuccess({ id: cachedId });
   const parsed = adminCreateCategoryBodySchema.safeParse(input);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -291,6 +345,7 @@ export async function adminCreateCategoryResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
+  setIdempotentCategoryCreate(idempotencyKey, r.data.id);
   revalidatePath("/admin/categories");
   return actionSuccess({ id: r.data.id });
 }
@@ -299,6 +354,8 @@ export async function adminUpdateCategoryResultAction(
   categoryId: string,
   input: z.infer<typeof adminUpdateCategoryBodySchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(CATEGORIES_ACCESS);
+  if (denied) return denied;
   const id = categoryId.trim();
   if (!id) return actionFailure("Missing category");
   const parsed = adminUpdateCategoryBodySchema.safeParse(input);
@@ -310,14 +367,15 @@ export async function adminUpdateCategoryResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/categories");
-  revalidatePath(`/admin/categories/${id}/edit`);
+  revalidateAdminCategoryDetail(id);
   return actionSuccess();
 }
 
 export async function adminArchiveCategoryResultAction(
   categoryId: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(CATEGORIES_ACCESS);
+  if (denied) return denied;
   const id = categoryId.trim();
   if (!id) return actionFailure("Missing category");
   const { adminCategories } = getWriteContainer();
@@ -325,14 +383,15 @@ export async function adminArchiveCategoryResultAction(
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status);
   }
-  revalidatePath("/admin/categories");
-  revalidatePath(`/admin/categories/${id}/edit`);
+  revalidateAdminCategoryDetail(id);
   return actionSuccess();
 }
 
 export async function adminDeleteCategoryResultAction(
   categoryId: string,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(CATEGORIES_ACCESS);
+  if (denied) return denied;
   const id = categoryId.trim();
   if (!id) return actionFailure("Missing category");
   const { adminCategories } = getWriteContainer();
@@ -347,6 +406,8 @@ export async function adminDeleteCategoryResultAction(
 export async function adminCreateArtistResultAction(
   input: z.infer<typeof adminCreateArtistBodySchema>,
 ): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessAdminCapability(ARTIST_WRITE_ACCESS);
+  if (denied) return denied;
   const parsed = adminCreateArtistBodySchema.safeParse(input);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -368,6 +429,8 @@ export async function adminReviewArtistResultAction(
   artistId: string,
   input: { decision: "approved" | "rejected"; reviewNotes?: string; rejectionReason?: string },
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(ARTIST_REVIEW_ACCESS);
+  if (denied) return denied;
   const res = await authedServerFetch(`/artists/${encodeURIComponent(artistId)}/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -390,6 +453,8 @@ export async function adminMergeArtistResultAction(
   fromArtistId: string,
   input: z.infer<typeof mergeArtistPhraseSchema>,
 ): Promise<ActionResult<{ remainingId: string }>> {
+  const denied = await denyUnlessAdminCapability(ARTIST_MERGE_ACCESS);
+  if (denied) return denied;
   const fromId = fromArtistId.trim();
   if (!fromId) return actionFailure("Missing artist");
 
@@ -454,6 +519,8 @@ export async function adminUpdateArtistResultAction(
   artistId: string,
   input: z.infer<typeof adminUpdateArtistBodySchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(ARTIST_WRITE_ACCESS);
+  if (denied) return denied;
   const id = artistId.trim();
   if (!id) return actionFailure("Missing artist");
   const parsed = adminUpdateArtistBodySchema.safeParse(input);
@@ -472,6 +539,8 @@ export async function adminUpdateLotMarketingDetailsResultAction(
   lotId: string,
   input: z.infer<typeof updateLotMarketingDetailsSchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+  if (denied) return denied;
   const id = lotId.trim();
   if (!id) {
     return actionFailure("Missing lot");
@@ -495,6 +564,8 @@ export async function adminUpdateLotResultAction(
   lotId: string,
   input: z.infer<typeof updateLotSchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+  if (denied) return denied;
   const id = lotId.trim();
   if (!id) {
     return actionFailure("Missing lot");
@@ -506,27 +577,46 @@ export async function adminUpdateLotResultAction(
   if (parsed.data == null) {
     return actionFailure("Invalid update payload");
   }
+  const existing = await getAdminLotById(id).catch(() => null);
+  const previousSaleId = existing?.saleId ?? null;
   const { adminLots } = getWriteContainer();
   const r = await adminLots.update(id, parsed.data);
   if (!r.ok) {
     const meta = readApiActionErrorMeta(r.body);
     return actionFailure(r.message, undefined, r.status, r.code, meta);
   }
-  revalidatePath("/admin/lots");
-  revalidatePath(`/admin/lots/${id}`);
+  const newSaleId =
+    parsed.data.saleId !== undefined ? (parsed.data.saleId ?? null) : previousSaleId;
+  revalidateAdminLotDetail(id);
+  revalidatePath("/admin/sales");
+  if (previousSaleId) {
+    revalidatePath(`/admin/sales/${previousSaleId}`);
+  }
+  if (newSaleId && newSaleId !== previousSaleId) {
+    revalidatePath(`/admin/sales/${newSaleId}`);
+  }
   return actionSuccess();
 }
 
-export async function adminPublishLotResultAction(lotId: string): Promise<ActionResult<void>> {
+export async function adminPublishLotResultAction(
+  lotId: string,
+  idempotencyKey?: string,
+): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+  if (denied) return denied;
   const id = lotId.trim();
   if (!id) {
     return actionFailure("Missing lot");
+  }
+  if (getIdempotentLotPublish(id, idempotencyKey)) {
+    return actionSuccess();
   }
   const { adminLots } = getWriteContainer();
   const r = await adminLots.publish(id);
   if (!r.ok) {
     return actionFailure(r.message, undefined, r.status, r.code);
   }
+  setIdempotentLotPublish(id, idempotencyKey);
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${id}`);
   return actionSuccess();
@@ -536,6 +626,8 @@ export async function adminCancelLotResultAction(
   lotId: string,
   body: z.infer<typeof cancelLotBodySchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+  if (denied) return denied;
   const id = lotId.trim();
   if (!id) {
     return actionFailure("Missing lot");
@@ -577,6 +669,8 @@ export async function adminApproveWithdrawalRequestResultAction(
 export async function adminBulkLotsResultAction(
   body: z.infer<typeof bulkLotsBodySchema>,
 ): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+  if (denied) return denied;
   const parsed = bulkLotsBodySchema.safeParse(body);
   if (!parsed.success) {
     return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));

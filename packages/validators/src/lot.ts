@@ -47,7 +47,7 @@ const createLotBodySchema = z.object({
   dutchDecrementIntervalMs: z.coerce.number().int().min(1000).max(86_400_000).optional(),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
-  saleId: z.string().uuid().nullable().optional(),
+  saleId: z.string().uuid("Choose a sale"),
   lotNumber: z.coerce.number().int().positive().nullable().optional(),
   artistId: z.string().uuid().nullable().optional(),
 });
@@ -112,10 +112,17 @@ export const archiveCountQuerySchema = z.object({
 export type CreateLotInput = z.infer<typeof createLotSchema>;
 
 /** Partial update for draft lots (admin). */
-export const updateLotSchema = z.preprocess(
-  normalizeCategoryIdsInput,
-  createLotBodySchema.partial(),
-);
+export const updateLotSchema = z
+  .preprocess(normalizeCategoryIdsInput, createLotBodySchema.partial())
+  .superRefine((values, ctx) => {
+    if (values.saleId === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose a sale",
+        path: ["saleId"],
+      });
+    }
+  });
 
 export const lotIdParamSchema = z.object({
   id: z.string().uuid(),

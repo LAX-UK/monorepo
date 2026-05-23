@@ -4,6 +4,7 @@ import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogLotsFilterToolbar } from "@/components/admin/catalog/catalog-lots-filter-toolbar";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
@@ -14,11 +15,12 @@ import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { getLotWithdrawalRequests } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -49,7 +51,7 @@ export default async function AdminLotsPage({
   const activeLens = lotActiveLensId(sp);
   const attentionLens = activeLens === "attention";
   const periodDays = parseAdminKpiPeriod(sp.period);
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const sort = VALID_SORTS.includes(sp.sort as LotSort) ? (sp.sort as LotSort) : undefined;
 
   const query = lotsListController.parseQuery({
@@ -64,7 +66,7 @@ export default async function AdminLotsPage({
   const [lotResult, lotsTrendResult, withdrawalResult, navCounts] = await Promise.allSettled([
     attentionLens
       ? lotsListController.fetch({ ...query, status: "draft", limit: 200 })
-      : lotsListController.fetch(query),
+      : lotsListController.fetch({ ...query, limit: query.limit + 1 }),
     getAdminLotsKpiTrend(periodDays),
     attentionLens ? getLotWithdrawalRequests() : Promise.resolve([]),
     getAdminNavCounts(),
@@ -79,6 +81,8 @@ export default async function AdminLotsPage({
   if (attentionLens) {
     lotRows = lotRows.filter((l) => l.images.length === 0);
   }
+  const hasNextPage = !attentionLens && !query.viewPipeline && lotRows.length > query.limit;
+  const pageRows = hasNextPage ? lotRows.slice(0, query.limit) : lotRows;
 
   const withdrawalTasks = withdrawalResult.status === "fulfilled" ? withdrawalResult.value : [];
   const withdrawalLoadError =
@@ -110,7 +114,7 @@ export default async function AdminLotsPage({
     Boolean,
   ).length;
 
-  const lotTableRows: AdminLotTableRow[] = lotRows.map((a) => ({
+  const lotTableRows: AdminLotTableRow[] = pageRows.map((a) => ({
     id: a.id,
     title: a.title,
     auctionType: a.auctionType,
@@ -129,11 +133,11 @@ export default async function AdminLotsPage({
       : lotLensItems(sp);
 
   const pagination =
-    !listError && !viewPipeline && (query.offset > 0 || lotRows.length === query.limit) ? (
+    !listError && !viewPipeline && !attentionLens && (query.offset > 0 || hasNextPage) ? (
       <CatalogPagination
         offset={query.offset}
         limit={query.limit}
-        countOnPage={lotRows.length}
+        countOnPage={pageRows.length}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/lots", sp, {
@@ -142,11 +146,37 @@ export default async function AdminLotsPage({
             : null
         }
         nextHref={
-          lotRows.length === query.limit
+          hasNextPage
             ? buildListHref("/admin/lots", sp, {
                 offset: query.offset + query.limit,
               })
             : null
+        }
+      />
+    ) : null;
+
+  const empty =
+    !listError && !viewPipeline && lotRows.length === 0 ? (
+      <AdminEmptyState
+        title={q || activeLens !== "all" ? "No matching lots" : "No lots yet"}
+        description={
+          q || activeLens !== "all"
+            ? "Try another lens or clear filters in More filters."
+            : "Create the first draft lot and assign a seller."
+        }
+        action={
+          !q && activeLens === "all" ? (
+            <Button variant="default" asChild>
+              <Link href="/admin/lots/new">
+                <Plus className="size-4" aria-hidden />
+                New lot
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="secondary" asChild>
+              <Link href="/admin/lots">Clear filters</Link>
+            </Button>
+          )
         }
       />
     ) : null;
@@ -187,11 +217,17 @@ export default async function AdminLotsPage({
         />
       }
       mobileSummary={
-        <p className="font-body text-sm text-on-surface-variant">
-          {lotTableRows.length} on page
-          {activeOnPage > 0 ? ` · ${activeOnPage} live` : ""}
-          {draftOnPage > 0 ? ` · ${draftOnPage} draft` : ""}
-        </p>
+        <CatalogListMobileSummary
+          segments={[
+            lotsTrend.currentTotal > 0 ? `${lotsTrend.currentTotal} new (${periodDays}d)` : null,
+            `${lotTableRows.length} on page`,
+            activeOnPage > 0 ? `${activeOnPage} live` : null,
+            draftOnPage > 0 ? `${draftOnPage} draft` : null,
+            attentionLens && nav.withdrawalsPending > 0
+              ? `${nav.withdrawalsPending} need attention`
+              : null,
+          ]}
+        />
       }
       kpiStrip={
         !viewPipeline && lotTableRows.length > 0 ? (
@@ -205,18 +241,30 @@ export default async function AdminLotsPage({
                 compareHint: `Live ${activeOnPage} · draft ${draftOnPage}`,
               },
               buildTrendKpiTile("Catalog activity", lotsTrend, periodDays, {
-                trendTone: "lot-orange",
+                trendTone: "secondary",
               }),
             ]}
           />
         ) : null
       }
-      toolbarEnd={<AdminListExportLink />}
+      toolbarEnd={
+        <>
+          <Link
+            href="/sales"
+            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
+          >
+            Public catalog
+          </Link>
+          <AdminListExportLink />
+        </>
+      }
       errorAlert={
         error || listError ? (
           <AdminListAlert title="Could not load lots">{listError ?? error}</AdminListAlert>
         ) : null
       }
+      empty={empty}
+      pagination={pagination}
     >
       {attentionLens && withdrawalLoadError ? (
         <AdminListAlert title="Could not load withdrawals">{withdrawalLoadError}</AdminListAlert>
@@ -234,7 +282,7 @@ export default async function AdminLotsPage({
           Drafts missing photos
         </h2>
       ) : null}
-      {!listError ? (
+      {!listError && (viewPipeline || lotTableRows.length > 0) ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminLotsBoard
             rows={lotTableRows}
@@ -246,31 +294,6 @@ export default async function AdminLotsPage({
           />
         </Suspense>
       ) : null}
-      {!listError && !viewPipeline && lotRows.length === 0 ? (
-        <AdminEmptyState
-          title={q || activeLens !== "all" ? "No matching lots" : "No lots yet"}
-          description={
-            q || activeLens !== "all"
-              ? "Try another lens or clear filters in More filters."
-              : "Create the first draft lot and assign a seller."
-          }
-          action={
-            !q && activeLens === "all" ? (
-              <Button variant="default" asChild>
-                <Link href="/admin/lots/new">
-                  <Plus className="size-4" aria-hidden />
-                  New lot
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="secondary" asChild>
-                <Link href="/admin/lots">Clear filters</Link>
-              </Button>
-            )
-          }
-        />
-      ) : null}
-      {pagination}
     </CatalogListShell>
   );
 }

@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
 import { getAdminLotList } from "@/lib/data/http/admin.server";
+import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -13,7 +13,7 @@ type Props = {
 export async function LotDetailQueueNav({ lotId, saleId, lotNumber }: Props) {
   if (!saleId) return null;
 
-  const lots = await getAdminLotList({ saleId, limit: 500, sort: "createdDesc" }).catch(() => []);
+  const lots = await getAdminLotList({ saleId, limit: 200, sort: "createdDesc" }).catch(() => []);
   if (lots.length < 2) return null;
 
   const ordered = [...lots].sort((a, b) => {
