@@ -14,10 +14,6 @@ terraform {
       source  = "cyrilgdn/postgresql"
       version = "= 1.23.0"
     }
-    sentry = {
-      source  = "jianyuan/sentry"
-      version = "= 0.13.0"
-    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
@@ -45,8 +41,4 @@ provider "digitalocean" {
 
 provider "cloudflare" {
   api_token = var.cloudflare_api_token
-}
-
-provider "sentry" {
-  token = var.sentry_auth_token
 }

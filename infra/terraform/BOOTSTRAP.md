@@ -263,8 +263,16 @@ configure once in Sentry UI → Project → Security & Privacy, and rely on SDK
 **Cron monitors** are upserted by worker SDK check-ins using slugs from
 `sentry/{env}` outputs until `sentry_cron_monitor` lands in a future provider release.
 
-Legacy Sentry projects in `persistent/{env}` are migrated via controlled
-`terraform state mv` (see `.cursor/plans/sentry_terraform_stack_17319c6f.plan.md`).
+Legacy Sentry projects in `persistent/{env}` were removed; management lives in
+`sentry/{env}` only. If your persistent state still tracks the old modules, drop
+them without destroying Sentry projects (run from `persistent/{env}` after init):
+
+```sh
+terraform state rm 'module.sentry_projects[0]' 2>/dev/null || true
+terraform state rm 'module.sentry_alerts[0]' 2>/dev/null || true
+```
+
+Then re-apply `persistent/{env}` before applying `sentry/{env}`.
 
 ## 7. GitHub environments and secrets
 
