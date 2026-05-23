@@ -3,17 +3,20 @@ import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-type Props = {
-  lotId: string;
-  saleId: string | null;
-  lotNumber: number | null;
+const QUEUE_LIMIT = 500;
+
+type QueueSlice = {
+  prev: { id: string; lotNumber: number | null } | null;
+  next: { id: string; lotNumber: number | null } | null;
+  index: number;
+  total: number;
+  partial: boolean;
 };
 
-/** Previous / next lot within the same sale (by lot number, then title). */
-export async function LotDetailQueueNav({ lotId, saleId, lotNumber }: Props) {
-  if (!saleId) return null;
-
-  const lots = await getAdminLotList({ saleId, limit: 200, sort: "createdDesc" }).catch(() => []);
+async function loadSaleLotQueue(lotId: string, saleId: string): Promise<QueueSlice | null> {
+  const lots = await getAdminLotList({ saleId, limit: QUEUE_LIMIT, sort: "createdDesc" }).catch(
+    () => [],
+  );
   if (lots.length < 2) return null;
 
   const ordered = [...lots].sort((a, b) => {
@@ -26,36 +29,74 @@ export async function LotDetailQueueNav({ lotId, saleId, lotNumber }: Props) {
   const idx = ordered.findIndex((l) => l.id === lotId);
   if (idx < 0) return null;
 
-  const prev = idx > 0 ? ordered[idx - 1] : null;
-  const next = idx < ordered.length - 1 ? ordered[idx + 1] : null;
-  if (!prev && !next) return null;
+  const prevLot = idx > 0 ? ordered[idx - 1] : undefined;
+  const nextLot = idx < ordered.length - 1 ? ordered[idx + 1] : undefined;
+
+  return {
+    prev: prevLot ?? null,
+    next: nextLot ?? null,
+    index: idx,
+    total: ordered.length,
+    partial: lots.length >= QUEUE_LIMIT,
+  };
+}
+
+type Props = {
+  lotId: string;
+  saleId: string | null;
+  lotNumber: number | null;
+  /** Compact row for sticky subnav (no outer wrap). */
+  compact?: boolean;
+};
+
+/** Previous / next lot within the same sale (by lot number, then title). */
+export async function LotDetailQueueNav({ lotId, saleId, lotNumber, compact = false }: Props) {
+  if (!saleId) return null;
+
+  const queue = await loadSaleLotQueue(lotId, saleId);
+  if (!queue || (!queue.prev && !queue.next)) return null;
 
   const position =
     lotNumber != null
-      ? `Lot ${lotNumber} · ${idx + 1} of ${ordered.length}`
-      : `${idx + 1} of ${ordered.length} in sale`;
+      ? `Lot ${lotNumber} · ${queue.index + 1} of ${queue.total}${queue.partial ? "+" : ""}`
+      : `${queue.index + 1} of ${queue.total}${queue.partial ? "+" : ""} in sale`;
 
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {prev ? (
+  const nav = (
+    <>
+      {queue.prev ? (
         <Button variant="secondary" size="sm" asChild>
-          <Link href={`/admin/lots/${prev.id}`}>
+          <Link href={`/admin/lots/${queue.prev.id}`}>
             <ChevronLeft className="size-4" aria-hidden />
-            Previous
+            {compact ? null : "Previous"}
           </Link>
         </Button>
       ) : null}
       <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
         {position}
       </span>
-      {next ? (
+      {queue.next ? (
         <Button variant="secondary" size="sm" asChild>
-          <Link href={`/admin/lots/${next.id}`}>
-            Next
+          <Link href={`/admin/lots/${queue.next.id}`}>
+            {compact ? null : "Next"}
             <ChevronRight className="size-4" aria-hidden />
           </Link>
         </Button>
       ) : null}
-    </div>
+      {queue.partial ? (
+        <span className="w-full font-body text-[10px] text-warning sm:w-auto">
+          Partial queue — only first {QUEUE_LIMIT} lots loaded.
+        </span>
+      ) : null}
+    </>
   );
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 border-t border-border-hairline/60 px-1 py-2">
+        {nav}
+      </div>
+    );
+  }
+
+  return <div className="flex flex-wrap items-center gap-2">{nav}</div>;
 }

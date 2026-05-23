@@ -3,6 +3,7 @@ import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-det
 import { LotOverviewTab } from "@/components/admin/lot-detail/tabs/overview-tab";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getServerLotBids } from "@/lib/data/http/lots.server";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -12,7 +13,10 @@ type Props = {
 export default async function AdminLotOverviewPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const bundle = await loadAdminLotDetail(id);
+  const [bundle, bids] = await Promise.all([
+    loadAdminLotDetail(id),
+    getServerLotBids(id, 100).catch(() => []),
+  ]);
   const errorDetail = safeDecodeAdminErrorParam(sp.error);
 
   return (
@@ -25,7 +29,13 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
       ) : (
         <CatalogDetailActionError error={sp.error} />
       )}
-      <LotOverviewTab lotId={id} auction={bundle.auction} context={bundle.context} />
+      <LotOverviewTab
+        lotId={id}
+        auction={bundle.auction}
+        context={bundle.context}
+        bidCount={bids.length}
+        connectRequired={sp.error_code === "connect_required"}
+      />
     </>
   );
 }

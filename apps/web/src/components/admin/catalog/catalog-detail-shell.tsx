@@ -21,15 +21,17 @@ type Props = {
   aside?: ReactNode;
   /** Compact metadata row visible below header on mobile only */
   mobileMeta?: ReactNode;
-  /** Tabs row rendered above main content */
+  /** Tabs row rendered above main content (prefer stickySubnav). */
   tabs?: ReactNode;
+  /** Sticky zone: tab nav + optional compact status row. */
+  stickySubnav?: ReactNode;
   /** Title-adjacent nav (e.g. prev/next lot) */
   titleAddon?: ReactNode;
   children: ReactNode;
   className?: string;
 };
 
-/** Catalog entity detail — non-sticky, mobile single column, quiet aside on lg+. */
+/** Catalog entity detail — sticky tab bar, mobile single column, quiet aside on lg+. */
 export function CatalogDetailShell({
   title,
   description,
@@ -42,11 +44,13 @@ export function CatalogDetailShell({
   mobileActionBar,
   aside,
   mobileMeta,
-  tabs,
+  tabs: tabsSlot,
+  stickySubnav,
   titleAddon,
   children,
   className,
 }: Props) {
+  const subnav = stickySubnav ?? tabsSlot;
   const titleNode = titleAddon ? (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">{title}</div>
@@ -86,7 +90,9 @@ export function CatalogDetailShell({
         )}
       >
         <div className="min-w-0 space-y-6">
-          {tabs}
+          {subnav ? (
+            <div className="sticky top-0 z-20 -mx-px bg-surface/95 backdrop-blur-sm">{subnav}</div>
+          ) : null}
           {children}
         </div>
         {aside ? <aside className="hidden min-w-0 space-y-4 lg:block">{aside}</aside> : null}

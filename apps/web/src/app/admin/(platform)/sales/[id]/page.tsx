@@ -1,8 +1,7 @@
 import { CatalogDetailActionError } from "@/components/admin/catalog";
 import { isSaleLiveish, saleVenueLines } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleOverviewTab } from "@/components/admin/sale-detail/tabs/overview-tab";
-import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
-import { getAdminSaleRegistrations } from "@/lib/data/http/admin.server";
+import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -17,9 +16,7 @@ export default async function AdminSaleOverviewPage({ params, searchParams }: Pr
   const { sale, lots } = bundle;
   const liveish = isSaleLiveish(sale);
   const isOnsite = sale.deliveryMode === "onsite";
-
-  const registrations = liveish ? await getAdminSaleRegistrations(id).catch(() => []) : [];
-  const registrationCount = liveish ? registrations.length : null;
+  const registrationCount = await loadAdminSaleRegistrationCount(id, sale);
 
   return (
     <>

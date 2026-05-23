@@ -7,6 +7,6 @@ type Props = {
 
 export default async function AdminSaleSchedulePage({ params }: Props) {
   const { id } = await params;
-  const { sale } = await loadAdminSaleDetail(id);
-  return <SaleScheduleTab sale={sale} />;
+  const { sale, lots } = await loadAdminSaleDetail(id);
+  return <SaleScheduleTab saleId={id} sale={sale} lots={lots} />;
 }
