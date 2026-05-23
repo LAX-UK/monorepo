@@ -11,6 +11,10 @@ const LABELS: Record<string, string> = {
   "condition_report.requested": "Condition report requested",
   "condition_report.fulfilled": "Condition report fulfilled",
   "condition_report.declined": "Condition report declined",
+  "category.created": "Category created",
+  "category.updated": "Category updated",
+  "category.archived": "Category archived",
+  "category.deleted": "Category deleted",
 };
 
 export function domainEventLabel(eventType: string): string {

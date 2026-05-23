@@ -2,8 +2,10 @@ import { AdminCategoriesBoard } from "@/components/admin/admin-categories-board"
 import { AdminCategoryCreateSheet } from "@/components/admin/admin-category-create-sheet";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogCategoriesFilterToolbar } from "@/components/admin/catalog/catalog-categories-filter-toolbar";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { Button } from "@/components/ui/button";
@@ -141,6 +143,35 @@ export default async function AdminCategoriesPage({
             activeLensId={activeLensId}
             activeFilterCount={activeFilterCount}
           />
+        }
+        mobileSummary={
+          !listError && categories.length > 0 ? (
+            <CatalogListMobileSummary
+              segments={[
+                `${categories.length} on page`,
+                total > 0 ? `${total} total` : null,
+                includeArchived ? "Include archived" : null,
+              ]}
+            />
+          ) : null
+        }
+        kpiStrip={
+          !listError && categories.length > 0 ? (
+            <AdminListKpiStrip
+              ariaLabel="Categories summary"
+              tiles={[
+                {
+                  label: "On this page",
+                  value: categories.length,
+                  delta: total > 0 ? `${total} total` : undefined,
+                },
+                {
+                  label: "Lens",
+                  value: includeArchived ? "Archived" : "Active",
+                },
+              ]}
+            />
+          ) : null
         }
       >
         {view}

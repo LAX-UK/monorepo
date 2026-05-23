@@ -9,7 +9,6 @@ vi.mock("@/lib/actions/admin", () => ({
 
 vi.mock("@/lib/actions/admin/field-updates", () => ({
   adminUpdateCategoryNameFieldAction: vi.fn(),
-  adminUpdateCategorySlugFieldAction: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -25,6 +24,8 @@ const baseCategory = {
   sortOrder: 0,
   parentId: null,
   heroImageKey: null,
+  createdAt: new Date("2024-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2024-01-01T00:00:00.000Z"),
   usage: { lots: 1, sales: 0, submissions: 0, total: 1 },
 };
 

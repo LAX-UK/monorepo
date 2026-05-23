@@ -1,9 +1,14 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
-export default function Loading() {
+export default function AdminLotWithdrawalsLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
-    </div>
+    <CatalogListPageSkeleton
+      title="Lots"
+      description="Loading withdrawal queue…"
+      kpiTiles={0}
+      tableRows={6}
+      tableColumns={5}
+      showFilterBar={false}
+    />
   );
 }

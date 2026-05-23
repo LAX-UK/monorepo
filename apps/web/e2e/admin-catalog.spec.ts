@@ -132,9 +132,6 @@ test.describe("admin category create flow", () => {
     const nameInput = page.getByLabel(/name/i).first();
     await nameInput.fill(`E2E Test Category ${Date.now()}`);
 
-    const slugInput = page.getByLabel(/slug/i).first();
-    await slugInput.fill(`e2e-test-cat-${Date.now()}`);
-
     await page.getByRole("button", { name: /save|create/i }).click();
 
     // Should redirect to categories list or edit page

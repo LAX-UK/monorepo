@@ -741,7 +741,7 @@ export function createContainer(env: Env): Container {
     mediaUrlResolver,
   );
 
-  const categoryService = new CategoryService(categoryRepo);
+  const categoryService = new CategoryService(categoryRepo, db, domainEventPublisher);
   const artistProfileService = new ArtistProfileService(
     new DrizzleArtistProfileRepository(db),
     artistRegistryService,

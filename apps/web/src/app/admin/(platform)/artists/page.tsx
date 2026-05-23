@@ -6,6 +6,7 @@ import { ArtistBackfillReviewSection } from "@/components/admin/artist-backfill-
 import { ArtistDuplicateReviewSection } from "@/components/admin/artist-duplicate-review-section";
 import { CatalogArtistsFilterToolbar } from "@/components/admin/catalog/catalog-artists-filter-toolbar";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { Button } from "@/components/ui/button";
@@ -256,11 +257,9 @@ export default async function AdminArtistsPage({
       }
       mobileSummary={
         skipIndexedList ? null : (
-          <p className="font-body text-sm text-on-surface-variant">
-            {total > 0
-              ? `Showing ${artists.length} on page (${total} total)`
-              : `${artists.length} artists on page`}
-          </p>
+          <CatalogListMobileSummary
+            segments={[total > 0 ? `${total} total` : null, `${artists.length} on page`]}
+          />
         )
       }
       kpiStrip={

@@ -39,13 +39,15 @@ const CATEGORY_FORM_STEPS = [
 type CategoryFormValues = z.infer<typeof adminCategoryFormSchema>;
 
 const CATEGORY_STEP_FIELDS: (keyof CategoryFormValues)[][] = [
-  ["name", "slug", "parentId", "sortOrder"],
+  ["name", "parentId", "sortOrder"],
   ["heroImageKey", "archived", "description"],
 ];
 
 type Props = {
   mode: "create" | "edit";
   categoryId?: string;
+  /** Read-only slug for edit display (not part of form values). */
+  slug?: string;
   categories: Category[];
   defaultValues: CategoryFormValues;
   /** Skip redirect to /admin/categories after save (/detail tab + sheet layouts). */
@@ -61,6 +63,7 @@ type Props = {
 export function AdminCategoryForm({
   mode,
   categoryId,
+  slug,
   categories,
   defaultValues,
   preventNavigateAfterSave = false,
@@ -141,6 +144,7 @@ export function AdminCategoryForm({
           })}
         >
           <AdminFormWizard
+            className="space-y-6"
             steps={CATEGORY_FORM_STEPS}
             isDirty={form.formState.isDirty}
             pending={pending}
@@ -179,7 +183,9 @@ export function AdminCategoryForm({
                 {stepIndex === 0 ? (
                   <CategoryBasicsStep
                     form={form}
+                    mode={mode}
                     {...(categoryId ? { categoryId } : {})}
+                    {...(mode === "edit" && slug ? { slug } : {})}
                     categories={categories}
                   />
                 ) : null}
