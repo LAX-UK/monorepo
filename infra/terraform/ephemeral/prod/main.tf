@@ -16,11 +16,10 @@ locals {
     auth        = "auth.lax.bid"
     ws          = "ws.lax.bid"
     media       = "media.lax.bid"
-    gtm         = "gtm.lax.bid"
-    gtm_preview = "gtm-preview.lax.bid"
+    gtm = "gtm.lax.bid"
   }
 
-  gtm_sst_endpoint_url = "https://${local.domain.gtm}"
+  sgtm_endpoint_url = "https://${local.domain.gtm}"
 }
 
 resource "random_password" "better_auth_secret" {
@@ -216,7 +215,7 @@ locals {
         { key = "TURNSTILE_SECRET_KEY", value = var.turnstile_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "VERIFY_ORIGIN", value = var.verify_origin, type = "GENERAL", scope = "RUN_TIME" },
         { key = "SSR_TRUSTED_ORIGINS", value = var.ssr_trusted_origins, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "SGTM_ENDPOINT_URL", value = local.gtm_sst_endpoint_url, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "SGTM_ENDPOINT_URL", value = local.sgtm_endpoint_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "META_PIXEL_ID", value = var.meta_pixel_id, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_ACCESS_TOKEN", value = var.meta_capi_access_token, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_TEST_EVENT_CODE", value = var.meta_capi_test_event_code, type = "SECRET", scope = "RUN_TIME" },
@@ -305,49 +304,13 @@ locals {
         { key = "API_INTERNAL_BASE_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "SGTM_ENDPOINT_URL", value = local.gtm_sst_endpoint_url, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "SGTM_ENDPOINT_URL", value = local.sgtm_endpoint_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "META_PIXEL_ID", value = var.meta_pixel_id, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_ACCESS_TOKEN", value = var.meta_capi_access_token, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_TEST_EVENT_CODE", value = var.meta_capi_test_event_code, type = "SECRET", scope = "RUN_TIME" },
         { key = "GA4_MEASUREMENT_ID", value = var.ga4_measurement_id, type = "GENERAL", scope = "RUN_TIME" },
         { key = "MARKETING_EVENT_WORKER_CONCURRENCY", value = "5", type = "GENERAL", scope = "RUN_TIME" }
       ])
-    },
-    {
-      name              = "gtm-tagging"
-      kind              = "service"
-      source_dir        = "/"
-      dockerfile_path   = "infra/docker/gtm-sst/Dockerfile"
-      http_port         = 8080
-      instance_size     = "professional-s"
-      instance_count    = 2
-      health_check_path = "/healthy"
-      domain            = local.domain.gtm
-      primary_domain    = false
-      env = [
-        { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "PORT", value = "8080", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "CONTAINER_CONFIG", value = var.gtm_sst_container_config, type = "SECRET", scope = "RUN_TIME" },
-        { key = "PREVIEW_SERVER_URL", value = "https://${local.domain.gtm_preview}", type = "GENERAL", scope = "RUN_TIME" }
-      ]
-    },
-    {
-      name              = "gtm-preview"
-      kind              = "service"
-      source_dir        = "/"
-      dockerfile_path   = "infra/docker/gtm-preview/Dockerfile"
-      http_port         = 8080
-      instance_size     = "professional-xs"
-      instance_count    = 1
-      health_check_path = "/healthy"
-      domain            = local.domain.gtm_preview
-      primary_domain    = false
-      env = [
-        { key = "NODE_ENV", value = "production", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "PORT", value = "8080", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "CONTAINER_CONFIG", value = var.gtm_sst_container_config, type = "SECRET", scope = "RUN_TIME" },
-        { key = "RUN_AS_PREVIEW_SERVER", value = "true", type = "GENERAL", scope = "RUN_TIME" }
-      ]
     },
     {
       name            = "migrate"
@@ -390,7 +353,6 @@ module "monitoring" {
     api         = "https://${local.domain.api}/health/live"
     auth        = "https://${local.domain.auth}/health/live"
     ws          = "https://${local.domain.ws}/health/live"
-    gtm         = "https://${local.domain.gtm}/healthy"
-    gtm_preview = "https://${local.domain.gtm_preview}/healthy"
+    gtm = "https://${local.domain.gtm}/healthy"
   }
 }
