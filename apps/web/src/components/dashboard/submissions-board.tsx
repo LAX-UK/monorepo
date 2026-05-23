@@ -1,11 +1,12 @@
 "use client";
 
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { Button } from "@/components/ui/button";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { DataTable } from "@auction/ui/components/data-table";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import {
   Form,
   FormControl,
@@ -142,7 +143,7 @@ type Props = {
 function StartSubmissionAction() {
   return (
     <Button variant="primary" asChild>
-      <Link href="/dashboard/submissions/new">Start a submission</Link>
+      <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
     </Button>
   );
 }
@@ -241,7 +242,7 @@ export function SubmissionsBoard({
 
       {rows.length === 0 ? (
         fetchedCount > 0 ? (
-          <EmptyState
+          <DashboardEmptyState
             title="No title matches"
             description="Nothing in the current list matches that title. Try another phrase or clear the title filter."
             action={
@@ -254,22 +255,22 @@ export function SubmissionsBoard({
             }
           />
         ) : initialStatus !== "all" ? (
-          <EmptyState
+          <DashboardEmptyState
             title="Nothing in this status"
             description="Try a different status or start a new submission for specialist review."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button type="button" variant="secondary" asChild>
-                  <Link href="/dashboard/submissions">Show all</Link>
+                  <Link href={DASHBOARD_ROUTES.submissions}>Show all</Link>
                 </Button>
                 <StartSubmissionAction />
               </div>
             }
           />
         ) : (
-          <EmptyState
-            title="No submissions yet"
-            description="Start a submission to have our specialists review your item for auction."
+          <DashboardEmptyState
+            title={DASHBOARD_EMPTY.submissions.title}
+            description={DASHBOARD_EMPTY.submissions.description}
             action={<StartSubmissionAction />}
           />
         )

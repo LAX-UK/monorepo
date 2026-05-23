@@ -1,8 +1,12 @@
 import { BiddingPreferencesForm } from "@/components/dashboard/bidding-preferences-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import {
+  describeDashboardSliceFailure,
+  describeSettingsActionError,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
@@ -27,27 +31,46 @@ export default async function BiddingSettingsPage({
   });
 
   const c = await getServerDataContainer();
-  const full = await c.notificationPreferences.getMine();
-  const prefs: BiddingPrefsSlice | null = full
-    ? {
+  let prefs: BiddingPrefsSlice | null = null;
+  let loadFailure = null;
+  try {
+    const full = await c.notificationPreferences.getMine();
+    if (!full) {
+      loadFailure = describeDashboardSliceFailure(
+        new Error("preferences_unavailable"),
+        "notifications",
+        "Could not load bidding preferences.",
+      );
+    } else {
+      prefs = {
         outbidInApp: full.outbidInApp,
         outbidPush: full.outbidPush,
         endingSoonPush: full.endingSoonPush,
-      }
-    : null;
+      };
+    }
+  } catch (e) {
+    loadFailure = describeDashboardSliceFailure(
+      e,
+      "notifications",
+      "Could not load bidding preferences.",
+    );
+  }
 
   return (
     <DashboardPage className="mx-auto max-w-2xl space-y-8">
       <SettingsFormHeader title="Bidding preferences" />
-      {saved ? (
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+      {!loadFailure && saved ? (
         <Alert>
           <AlertTitle>Saved</AlertTitle>
           <AlertDescription>Your preferences were updated.</AlertDescription>
         </Alert>
       ) : null}
-      {error ? <DashboardErrorAlert title="Could not save" message={error} /> : null}
+      {!loadFailure && error ? (
+        <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} />
+      ) : null}
 
-      <BiddingPreferencesForm initial={prefs} />
+      {!loadFailure && prefs ? <BiddingPreferencesForm initial={prefs} /> : null}
     </DashboardPage>
   );
 }

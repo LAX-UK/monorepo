@@ -3,6 +3,7 @@ import {
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
 } from "@auction/types";
+import type { LegalEntitySummary } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import type { ImpersonationSessionService } from "../services/impersonation-session.service.js";
@@ -10,6 +11,7 @@ import type {
   ActiveMembership,
   ILegalEntityRepository,
 } from "../services/interfaces/legal-entity-repository.js";
+import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 
 export const X_LEGAL_ENTITY_ID_HEADER = "x-legal-entity-id";
 
@@ -154,6 +156,15 @@ export function createRequireLegalEntityContext(
   });
 }
 
+export type SubmissionsLegalEntityContextOptions = Pick<
+  RequireLegalEntityContextOptions,
+  "impersonationSessions" | "onImpersonationExpired"
+> & {
+  /** Resolves (and lazily provisions) the user's personal entity when the
+   * acting header is absent. */
+  resolvePersonalEntity: (userId: string) => Promise<LegalEntitySummary>;
+};
+
 /** Like {@link createRequireLegalEntityContext}, but when `X-Legal-Entity-Id` is
  * absent, falls back to the user's personal `individual` entity (created by
  * them, active membership, entity not rejected/archived). Preserves IDOR
@@ -162,10 +173,7 @@ export function createRequireLegalEntityContext(
  */
 export function createSubmissionsLegalEntityContext(
   repo: ILegalEntityRepository,
-  opts: Pick<
-    RequireLegalEntityContextOptions,
-    "impersonationSessions" | "onImpersonationExpired"
-  > = {},
+  opts: SubmissionsLegalEntityContextOptions,
 ) {
   return createMiddleware<{
     Variables: {
@@ -199,16 +207,19 @@ export function createSubmissionsLegalEntityContext(
 
     let personalId: string;
     try {
-      const personal = await repo.ensurePersonalEntity(userId);
+      const personal = await opts.resolvePersonalEntity(userId);
       personalId = personal.id;
-    } catch {
-      return c.json(
-        {
-          error: "no_valid_legal_entity_for_submissions",
-          code: "no_valid_legal_entity_for_submissions",
-        },
-        403,
-      );
+    } catch (err) {
+      if (err instanceof PersonalLegalEntityUnavailableError) {
+        return c.json(
+          {
+            error: "no_valid_legal_entity_for_submissions",
+            code: "no_valid_legal_entity_for_submissions",
+          },
+          403,
+        );
+      }
+      throw err;
     }
 
     const membership = await repo.findActiveMembership(userId, personalId);
