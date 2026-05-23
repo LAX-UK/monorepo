@@ -12,8 +12,8 @@ import {
 import { createDb } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
+import { Sentry, initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
-import * as Sentry from "@sentry/node";
 import { Queue } from "bullmq";
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
@@ -29,10 +29,10 @@ import { createSecurityHeadersMiddleware } from "./middleware/security-headers.j
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
-  Sentry.init({
+  initNodeSentry({
     dsn: env.SENTRY_DSN_AUTH,
-    environment: env.NODE_ENV,
-    tracesSampleRate: env.NODE_ENV === "production" ? 0.05 : 1,
+    nodeEnv: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1,
   });
 }
 

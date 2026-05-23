@@ -1,9 +1,10 @@
 import * as Sentry from "@sentry/nextjs";
+import { createWebSentryOptions } from "./sentry.shared.config.js";
 
-if (process.env.SENTRY_DSN_WEB) {
+const serverDsn = process.env.SENTRY_DSN_WEB;
+if (serverDsn) {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN_WEB,
-    environment: process.env.NODE_ENV,
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1,
+    ...createWebSentryOptions(serverDsn),
+    integrations: [Sentry.captureConsoleIntegration({ levels: ["error", "warn"] })],
   });
 }

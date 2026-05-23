@@ -1,0 +1,62 @@
+name: Sentry release
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        options: [test, prod]
+      git_sha:
+        description: Release identifier (defaults to workflow SHA)
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      git_sha:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      RELEASE: ${{ inputs.git_sha || github.sha }}
+      ENV_SUFFIX: ${{ inputs.environment }}
+      SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, api, auth, ws, worker]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Sentry CLI
+        run: npm i -g @sentry/cli
+      - name: Create release and upload source maps
+        run: |
+          project="lax-${ENV_SUFFIX}-${{ matrix.app }}"
+          sentry-cli releases new "$RELEASE" -p "$project"
+          sentry-cli releases set-commits "$RELEASE" --auto
+          if [ "${{ matrix.app }}" = "web" ]; then
+            pnpm --filter @auction/web build
+            sentry-cli sourcemaps inject apps/web/.next
+            sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" apps/web/.next
+          else
+            pnpm --filter "@auction/${{ matrix.app }}" build
+            sentry-cli sourcemaps inject "apps/${{ matrix.app }}/dist"
+            sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app }}/dist"
+          fi
+          sentry-cli releases finalize "$RELEASE"
+          sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"

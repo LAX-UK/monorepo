@@ -5,7 +5,7 @@ on:
       layer:
         type: choice
         required: true
-        options: [persistent, ephemeral]
+        options: [persistent, sentry, ephemeral]
 concurrency:
   group: terraform-test-${{ inputs.layer }}
   cancel-in-progress: false
@@ -19,6 +19,9 @@ jobs:
       TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TF_VAR_sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      TF_VAR_github_integration_id: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
+      SENTRY_GITHUB_INTEGRATION_ID: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
       TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
       TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
       TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -57,8 +60,15 @@ jobs:
       # set to "true" hides the cookie banner and auto-grants consent for GA4 validation.
       # Must be "false" (or unset) before go-live. See apps/web/src/lib/analytics/consent/disable-banner.ts.
       TF_VAR_next_public_disable_consent_banner: ${{ vars.NEXT_PUBLIC_DISABLE_CONSENT_BANNER || 'false' }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/sentry-auth-preflight
+        if: inputs.layer == 'sentry'
+        with:
+          organization-slug: lax-bid
+          team-slug: lax-engineering
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: infra/terraform/${{ inputs.layer }}/test

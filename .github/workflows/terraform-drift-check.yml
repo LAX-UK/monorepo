@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         env: [test, prod]
-        layer: [persistent, ephemeral]
+        layer: [persistent, sentry, ephemeral]
     runs-on: ubuntu-latest
     environment: ${{ matrix.env }}
     env:
@@ -40,6 +40,8 @@ jobs:
       TF_VAR_verify_origin: "true"
       TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/terraform-setup
@@ -47,6 +49,19 @@ jobs:
           working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Resolve sentry remote state (ephemeral)
+        if: matrix.layer == 'ephemeral'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          KEY="sentry-${{ matrix.env }}/terraform.tfstate"
+          if aws --endpoint-url https://lon1.digitaloceanspaces.com s3 ls "s3://lax-tf-state/$KEY" >/dev/null 2>&1; then
+            echo "TF_VAR_enable_sentry_remote_state=true" >> "$GITHUB_ENV"
+          else
+            echo "TF_VAR_enable_sentry_remote_state=false" >> "$GITHUB_ENV"
+          fi
       - name: Detect drift
         id: plan
         working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}

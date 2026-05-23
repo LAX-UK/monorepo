@@ -7,9 +7,9 @@ import {
   SgtmMarketingEventPublisher,
   Sha256PiiHasher,
 } from "@auction/marketing-events";
+import { initNodeSentry } from "@auction/observability";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
-import * as Sentry from "@sentry/node";
 import { Queue, Worker } from "bullmq";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
@@ -47,6 +47,7 @@ import {
   getMarketingEventsConfig,
   isMarketingEventsEnabled,
 } from "./lib/marketing-events-enabled.js";
+import { loadSentryMonitorSlugs, withSentryCronMonitor } from "./lib/sentry-cron.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
 import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
@@ -65,10 +66,11 @@ if (env.EMAIL_PROVIDER === "postmark" && !env.POSTMARK_SERVER_TOKEN?.trim()) {
   process.exit(1);
 }
 if (env.SENTRY_DSN_WORKER) {
-  Sentry.init({
+  initNodeSentry({
     dsn: env.SENTRY_DSN_WORKER,
-    environment: env.NODE_ENV,
-    tracesSampleRate: env.NODE_ENV === "production" ? 0.05 : 1,
+    appEnv: env.APP_ENV,
+    nodeEnv: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1,
   });
 }
 
@@ -85,6 +87,7 @@ const publicUploadBase =
     ? (env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`)
     : undefined;
 const bootedAt = Date.now();
+const sentryMonitorSlugs = loadSentryMonitorSlugs();
 
 /** BullMQ `repeat.pattern` uses cron-parser; Monday 09:00 UTC. */
 const BULK_PAYOUT_SETTLEMENT_CRON_PATTERN = "0 9 * * 1";
@@ -204,9 +207,11 @@ const emailWorker = new Worker<EmailQueueJobData>(
   "email",
   async (job) => {
     if (job.name === "outbox-drain") {
-      const count = await enqueueStaleEmailOutboxRows({ db, queue: emailQueue });
-      log.info({ count }, "email outbox drain completed");
-      await heartbeat("email");
+      await withSentryCronMonitor("email-outbox-drain", sentryMonitorSlugs, async () => {
+        const count = await enqueueStaleEmailOutboxRows({ db, queue: emailQueue });
+        log.info({ count }, "email outbox drain completed");
+        await heartbeat("email");
+      });
       return;
     }
     await sendEmailJob({ db, sender: emailSender, log }, job.data as SendEmailJobData);
@@ -336,14 +341,16 @@ if (marketingConfig) {
   marketingOutboxPollerWorker = new Worker(
     "marketing-outbox-poller",
     async () => {
-      const eventsQueue = marketingEventsQueue;
-      if (!eventsQueue) return;
-      await runMarketingEventOutboxPoller({
-        db,
-        log,
-        enqueue: async (event) => {
-          await eventsQueue.add("publish", event, { jobId: event.eventId });
-        },
+      await withSentryCronMonitor("marketing-outbox-poller", sentryMonitorSlugs, async () => {
+        const eventsQueue = marketingEventsQueue;
+        if (!eventsQueue) return;
+        await runMarketingEventOutboxPoller({
+          db,
+          log,
+          enqueue: async (event) => {
+            await eventsQueue.add("publish", event, { jobId: event.eventId });
+          },
+        });
       });
     },
     { connection: redis },
@@ -497,12 +504,14 @@ if (env.CRON_INTERNAL_SECRET) {
   payoutSettlementWorker = new Worker(
     "payout-settlement",
     async () => {
-      await runBulkPayoutSettlementJob({
-        apiBaseUrl: env.API_INTERNAL_BASE_URL,
-        cronSecret,
-        log,
+      await withSentryCronMonitor("payout-settlement", sentryMonitorSlugs, async () => {
+        await runBulkPayoutSettlementJob({
+          apiBaseUrl: env.API_INTERNAL_BASE_URL,
+          cronSecret,
+          log,
+        });
+        await heartbeat("payout-settlement");
       });
-      await heartbeat("payout-settlement");
     },
     { connection: redis },
   );

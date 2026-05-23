@@ -58,6 +58,8 @@ Terraform state keys:
 
 - `persistent-test/terraform.tfstate`
 - `persistent-prod/terraform.tfstate`
+- `sentry-test/terraform.tfstate`
+- `sentry-prod/terraform.tfstate`
 - `ephemeral-test/terraform.tfstate`
 - `ephemeral-prod/terraform.tfstate`
 
@@ -120,21 +122,157 @@ Apple Sign-In is disabled for v1, but the future redirect URIs are:
 
 ## 6. Sentry
 
-Create the Sentry organization and team used by Terraform:
+Create the Sentry organization and team used by Terraform. **Confirm slugs in the Sentry UI** — do not guess:
 
-- Organization slug: `lax`
-- Team slug: `lax-engineering`
+| Setting | Where to find it | Terraform default |
+|---|---|---|
+| Organization slug | Settings → General Settings (URL: `sentry.io/settings/{slug}/`) | `lax-bid` |
+| Team slug | Settings → Teams → pick team → slug in URL or team settings | `lax-engineering` |
 
-Then add:
+If the team does not exist yet, create it under **Settings → Teams** before running apply.
+Projects are assigned to this team automatically.
+
+**Important:** the **slug** is not always the same as the display name. After creating or
+renaming a team, open it in Sentry and copy the slug from the URL:
+`sentry.io/settings/lax-bid/teams/{slug}/`
+
+### Validate before first apply
+
+Check each value against your Sentry / GitHub setup:
+
+| Assumption | Default | Required now? | How to verify |
+|---|---|---|---|
+| Org slug | `lax-bid` | **Yes** | Settings → General |
+| Team slug | `lax-engineering` | **Yes** | Settings → Teams (404 = wrong slug or team missing) |
+| GitHub repo for code mappings | `LAX-UK/monorepo` | Only if `SENTRY_GITHUB_INTEGRATION_ID` set | Settings → Integrations → GitHub |
+| GitHub integration ID | (secret) | Optional | Personal token curl — see below |
+| Slack integration name | `Slack` | No (alerts skipped) | When enabling Slack later |
+| Slack channel | `#alerts-engineering` | No | When `SENTRY_SLACK_CHANNEL_ID` set |
+| PagerDuty service | `lax-primary` | No (prod paging deferred) | When `PAGERDUTY_INTEGRATION_KEY` set |
+| Alert email | `support@lax.bid` | No (alerts skipped) | When alerts enabled |
+| Project names | `lax-test-{web,api,auth,ws,worker}` | Auto-created | No pre-existing projects needed |
+
+### Internal integration (terraform-bot)
+
+> **Do not use an Organization Token** (Settings → Auth Tokens → Organization Tokens).
+> Those only grant `org:ci` for sentry-cli. Terraform needs an **Internal Integration**
+> under **Developer Settings → Internal Integrations**.
+
+> **Internal integration tokens cannot list org integrations** (Sentry returns HTTP 403
+> on `/organizations/{slug}/integrations/` even with full scopes). Terraform accepts
+> the GitHub integration ID via `SENTRY_GITHUB_INTEGRATION_ID` instead.
+
+In Sentry → **Settings → Developer Settings → Internal Integrations**, create
+`terraform-bot` and grant these **Permissions**:
+
+| Permission | Level | Notes |
+|---|---|---|
+| Organization | Read | `org:read` |
+| Team | Read & Write | `team:write` |
+| Project | Admin | `project:admin` |
+| Release | Admin | `project:releases` |
+| Member | Read | `member:read` |
+| Alerts | Read & Write | `alerts:write` |
+| Continuous Integration (CI) | ✅ enabled | `org:ci` for code mappings |
+
+After editing permissions, **generate a new token** (existing tokens do not pick up changes).
+
+Store the token (set on repo **and** `--env test` / `--env prod` if workflows use environments):
 
 ```sh
 gh secret set SENTRY_AUTH_TOKEN
+gh secret set SENTRY_AUTH_TOKEN --env test
+gh secret set SENTRY_AUTH_TOKEN --env prod
 ```
 
-Sentry is optional for the first infrastructure bring-up. If
-`SENTRY_AUTH_TOKEN` is absent or empty, Terraform skips Sentry project creation;
-add the secret later and re-apply `persistent/test` and `persistent/prod` to
-create the projects.
+Use an **Internal Integration** token (`terraform-bot`), not a personal user auth token
+and not an **Organization Token** (`org:ci` only).
+
+```sh
+# Quick local check (paste terraform-bot token at prompt)
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer {}" https://sentry.io/api/0/
+
+# Org-scoped access (internal integration tokens support this)
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer {}" \
+  "https://sentry.io/api/0/organizations/lax-bid/teams/lax-engineering/"
+```
+
+### GitHub integration ID (for code mappings)
+
+1. Install **GitHub** in Sentry → **Settings → Integrations** and link `LAX-UK/monorepo`.
+2. Look up the integration ID **once** with a personal auth token (internal integration tokens cannot list integrations):
+
+```sh
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS \
+  -H "Authorization: Bearer {}" \
+  "https://sentry.io/api/0/organizations/lax-bid/integrations/?providerKey=github"
+```
+
+Copy the `"id"` field from the response (numeric string, e.g. `"123456"`).
+
+3. Store as a GitHub secret:
+
+```sh
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --body "123456"
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --env test --body "123456"
+gh secret set SENTRY_GITHUB_INTEGRATION_ID --env prod --body "123456"
+```
+
+Without this secret, sentry apply still creates **projects and DSNs** but skips GitHub code mappings.
+
+### Third-party integrations (optional for first apply)
+
+**Slack and PagerDuty alerts are deferred until you set the matching GitHub secrets.** With only `SENTRY_AUTH_TOKEN`, Terraform still creates projects and DSN keys — but skips issue/metric alerts and GitHub code mappings until `SENTRY_GITHUB_INTEGRATION_ID` is set.
+
+When you are ready for Slack alerts:
+
+1. Install **Slack** in Sentry → **Settings → Integrations** and connect `#alerts-engineering`.
+2. Copy the Slack **channel ID** (`C…`) from the channel About tab.
+3. Set `SENTRY_SLACK_CHANNEL_ID` on the `test` and/or `prod` GitHub environment.
+4. Re-apply `infra/terraform/sentry/{env}` — alert rules are created on the next plan/apply.
+
+For prod paging, also install **PagerDuty** in Sentry and set `PAGERDUTY_INTEGRATION_KEY` on the `prod` environment.
+
+Add GitHub environment secrets when ready:
+
+```sh
+gh secret set SENTRY_SLACK_CHANNEL_ID --env prod --body "C0123456789"
+gh secret set SENTRY_SLACK_CHANNEL_ID --env test  --body "C0123456789"
+gh secret set PAGERDUTY_INTEGRATION_KEY --env prod   # prod only, when paging is ready
+```
+
+### Apply order
+
+Sentry now lives in **`infra/terraform/sentry/{prod,test}`** (state keys
+`sentry-prod/terraform.tfstate`, `sentry-test/terraform.tfstate`). Apply **after**
+`persistent/{env}` and **before** `ephemeral/{env}` so DSN outputs can be consumed
+via `terraform_remote_state`.
+
+If `SENTRY_AUTH_TOKEN` is absent, the sentry stack creates no resources; ephemeral
+continues without DSN env vars until you add the token and apply `sentry/{env}`.
+
+**Data scrubbing** (sensitive fields) is not yet exposed by provider `0.14.13`;
+configure once in Sentry UI → Project → Security & Privacy, and rely on SDK
+`beforeSend` scrubbing in `@auction/observability`.
+
+**Cron monitors** are upserted by worker SDK check-ins using slugs from
+`sentry/{env}` outputs until `sentry_cron_monitor` lands in a future provider release.
+
+Legacy Sentry projects in `persistent/{env}` were removed; management lives in
+`sentry/{env}` only. If your persistent state still tracks the old modules, drop
+them without destroying Sentry projects (run from `persistent/{env}` after init):
+
+```sh
+terraform state rm 'module.sentry_projects[0]' 2>/dev/null || true
+terraform state rm 'module.sentry_alerts[0]' 2>/dev/null || true
+```
+
+Then re-apply `persistent/{env}` before applying `sentry/{env}`.
 
 ## 7. GitHub environments and secrets
 
