@@ -1,9 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
@@ -21,14 +23,29 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
   const c = await getServerDataContainer();
-  const [auction, fulfilment, addresses] = await Promise.all([
+  const [lotR, fulfilmentR, addressesR] = await Promise.allSettled([
     c.buyerLots.getById(lotId),
-    c.payments.getLotFulfilmentForWinner(lotId).catch(() => null),
+    c.payments.getLotFulfilmentForWinner(lotId),
     c.addresses.listMine(),
   ]);
+  if (lotR.status === "rejected") {
+    throw lotR.reason;
+  }
+  const auction = lotR.value;
   if (!auction || auction.winnerId !== user.id) {
     redirect("/dashboard/portfolio?notice=not-winner");
   }
+
+  const fulfilment = fulfilmentR.status === "fulfilled" ? fulfilmentR.value : null;
+  const fulfilmentFailure =
+    fulfilmentR.status === "rejected"
+      ? describeDashboardSliceFailure(
+          fulfilmentR.reason,
+          "checkout",
+          "Could not load fulfilment status for this lot.",
+        )
+      : null;
+  const addresses = addressesR.status === "fulfilled" ? addressesR.value : [];
 
   const checkoutPricing = auction.checkoutPricing;
   const hasPricing = checkoutPricing != null;
@@ -111,6 +128,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                         2 · Confirm
                       </span>
                     </nav>
+                    {fulfilmentFailure ? (
+                      <DashboardSliceErrorAlert failure={fulfilmentFailure} />
+                    ) : null}
                     <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
 
                     <CheckoutPurchasePanel

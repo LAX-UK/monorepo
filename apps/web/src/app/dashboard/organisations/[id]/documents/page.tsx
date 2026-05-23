@@ -1,3 +1,4 @@
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
@@ -7,6 +8,7 @@ import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
+import { FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -52,9 +54,18 @@ export default async function OrganisationDocumentsPage({
         </div>
         <div>
           {docs.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">
-              No document rows returned for this organisation yet. Use onboarding to add KYB files.
-            </p>
+            <DashboardEmptyState
+              icon={<FileText className="size-6" aria-hidden />}
+              title="No documents yet"
+              description="Use onboarding to add KYB files for this organisation."
+              action={
+                <Button asChild variant="cta" size="sm">
+                  <Link href={href} prefetch>
+                    Upload documents
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
               {docs.map((doc) => (
@@ -86,13 +97,15 @@ export default async function OrganisationDocumentsPage({
             </ul>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="cta" size="sm">
-            <Link href={href} prefetch>
-              Upload more
-            </Link>
-          </Button>
-        </div>
+        {docs.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="cta" size="sm">
+              <Link href={href} prefetch>
+                Upload more
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </Surface>
     </div>
   );

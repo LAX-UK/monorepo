@@ -1,13 +1,16 @@
 "use client";
 
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
-import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
@@ -274,7 +277,8 @@ function triggerCsvDownload(filename: string, content: string) {
 }
 
 export function BidsBoard({
-  fetchError,
+  loadFailure,
+  sessionFailure = null,
   active,
   won,
   lost,
@@ -282,7 +286,8 @@ export function BidsBoard({
   initialQ,
   artistNameById = {},
 }: {
-  fetchError: string | null;
+  loadFailure: DashboardSliceFailure | null;
+  sessionFailure?: DashboardSliceFailure | null;
   active: BidBoardRow[];
   won: BidBoardRow[];
   lost: BidBoardRow[];
@@ -389,133 +394,134 @@ export function BidsBoard({
         }
       />
 
-      {fetchError ? <DashboardErrorAlert title="Could not load bids" message={fetchError} /> : null}
+      {sessionFailure ? <DashboardSliceErrorAlert failure={sessionFailure} /> : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
-      <SectionTabsNav
-        ariaLabel="Bid status"
-        className="mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
-        items={[
-          {
-            href: tabHref(pathname, "active", appliedQ),
-            label: "Active",
-            badge: active.length,
-            isActive: tab === "active",
-          },
-          {
-            href: tabHref(pathname, "won", appliedQ),
-            label: "Won",
-            badge: won.length,
-            isActive: tab === "won",
-          },
-          {
-            href: tabHref(pathname, "lost", appliedQ),
-            label: "Lost",
-            badge: lost.length,
-            isActive: tab === "lost",
-          },
-        ]}
-      />
+      {!loadFailure ? (
+        <>
+          <SectionTabsNav
+            ariaLabel="Bid status"
+            className="mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
+            items={[
+              {
+                href: tabHref(pathname, "active", appliedQ),
+                label: "Active",
+                badge: active.length,
+                isActive: tab === "active",
+              },
+              {
+                href: tabHref(pathname, "won", appliedQ),
+                label: "Won",
+                badge: won.length,
+                isActive: tab === "won",
+              },
+              {
+                href: tabHref(pathname, "lost", appliedQ),
+                label: "Lost",
+                badge: lost.length,
+                isActive: tab === "lost",
+              },
+            ]}
+          />
 
-      <DashboardToolbar
-        search={
-          <Form {...searchForm}>
-            <form
-              className="flex flex-col gap-3 sm:flex-row sm:items-end"
-              onSubmit={searchForm.handleSubmit((v) => {
-                applySearch(v.q);
-              })}
-            >
-              <FormField
-                control={searchForm.control}
-                name="q"
-                render={({ field }) => (
-                  <FormItem className="min-w-0 flex-1 space-y-2">
-                    <FormLabel
-                      htmlFor="bids-q"
-                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-                    >
-                      Filter by lot title
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        id="bids-q"
-                        placeholder="e.g. oil on canvas"
-                        className="max-w-md bg-surface-container-low"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" variant="secondary">
-                Apply
-              </Button>
-            </form>
-          </Form>
-        }
-        filters={
-          <p className="font-body text-xs text-on-surface-variant">
-            Latest bid per lot · URL shares <span className="font-mono">tab</span> and{" "}
-            <span className="font-mono">q</span>
-          </p>
-        }
-      />
+          <DashboardToolbar
+            search={
+              <Form {...searchForm}>
+                <form
+                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                  onSubmit={searchForm.handleSubmit((v) => {
+                    applySearch(v.q);
+                  })}
+                >
+                  <FormField
+                    control={searchForm.control}
+                    name="q"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 flex-1 space-y-2">
+                        <FormLabel
+                          htmlFor="bids-q"
+                          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+                        >
+                          Filter by lot title
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            id="bids-q"
+                            placeholder="e.g. oil on canvas"
+                            className="max-w-md bg-surface-container-low"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" variant="secondary">
+                    Apply
+                  </Button>
+                </form>
+              </Form>
+            }
+            filters={
+              <p className="font-body text-xs text-on-surface-variant">
+                Latest bid per lot · URL shares <span className="font-mono">tab</span> and{" "}
+                <span className="font-mono">q</span>
+              </p>
+            }
+          />
 
-      {currentRows.all.length === 0 ? (
-        <DashboardEmptyState
-          title={
-            tab === "active"
-              ? fetchError
-                ? "Unable to load"
-                : "No active bids"
-              : tab === "won"
-                ? "No wins yet"
-                : "No closed losses"
-          }
-          description={
-            fetchError
-              ? "Try again later."
-              : tab === "active"
-                ? "Browse live auctions and place your first bid on a lot you love."
-                : tab === "won"
-                  ? "When you win a lot, it will appear here."
-                  : "Lots you did not win will show here."
-          }
-          action={
-            tab === "active" && !fetchError ? (
-              <Button variant="primary" asChild>
-                <Link href="/search">Browse auctions</Link>
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : currentRows.filtered.length === 0 ? (
-        <DashboardEmptyState
-          title="No matches"
-          description="Nothing in this tab matches your search. Clear the filter or try another title."
-          action={
-            <Button type="button" variant="secondary" onClick={() => clearSearch(tab)}>
-              Clear search
-            </Button>
-          }
-        />
-      ) : (
-        <BoardTable
-          rows={currentRows.filtered}
-          artistNameById={artistNameById}
-          onOpenHistory={openHistory}
-        />
-      )}
+          {currentRows.all.length === 0 ? (
+            <DashboardEmptyState
+              title={
+                tab === "active"
+                  ? DASHBOARD_EMPTY.bids.title
+                  : tab === "won"
+                    ? "No wins yet"
+                    : "No closed losses"
+              }
+              description={
+                tab === "active"
+                  ? DASHBOARD_EMPTY.bids.description
+                  : tab === "won"
+                    ? "When you win a lot, it will appear here."
+                    : "Lots you did not win will show here."
+              }
+              action={
+                tab === "active" ? (
+                  <Button variant="primary" asChild>
+                    <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : currentRows.filtered.length === 0 ? (
+            <DashboardEmptyState
+              title="No matches"
+              description="Nothing in this tab matches your search. Clear the filter or try another title."
+              action={
+                <Button type="button" variant="secondary" onClick={() => clearSearch(tab)}>
+                  Clear search
+                </Button>
+              }
+            />
+          ) : (
+            <BoardTable
+              rows={currentRows.filtered}
+              artistNameById={artistNameById}
+              onOpenHistory={openHistory}
+            />
+          )}
 
-      <BidHistoryDrawer
-        open={history != null}
-        lotId={history?.lotId ?? null}
-        lotTitle={history?.title ?? ""}
-        onOpenChange={(o) => {
-          if (!o) setHistory(null);
-        }}
-      />
+          <BidHistoryDrawer
+            open={history != null}
+            lotId={history?.lotId ?? null}
+            lotTitle={history?.title ?? ""}
+            onOpenChange={(o) => {
+              if (!o) setHistory(null);
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

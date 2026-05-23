@@ -1,3 +1,4 @@
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
@@ -7,6 +8,7 @@ import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatStrip } from "@auction/ui/components/stat-strip";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
+import { WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -59,7 +61,18 @@ export default async function OrganisationConnectPage({
               </p>
             </div>
             {reqs.length === 0 ? (
-              <p className="text-sm text-on-surface-variant">No outstanding requirements.</p>
+              <DashboardEmptyState
+                icon={<WalletCards className="size-6" aria-hidden />}
+                title="No outstanding requirements"
+                description="Stripe Connect looks complete for this organisation."
+                action={
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={href} prefetch>
+                      Review Connect settings
+                    </Link>
+                  </Button>
+                }
+              />
             ) : (
               <ul className="list-inside list-disc space-y-1 text-sm text-on-surface-variant">
                 {reqs.map((r) => (
@@ -84,16 +97,18 @@ export default async function OrganisationConnectPage({
           </Surface>
         </>
       ) : (
-        <Surface variant="section" padding="md" className="space-y-4">
-          <p className="text-sm text-on-surface-variant">
-            Connect details are not available yet. Try again shortly.
-          </p>
-          <Button asChild variant="cta" size="sm">
-            <Link href={href} prefetch>
-              Open Connect onboarding
-            </Link>
-          </Button>
-        </Surface>
+        <DashboardEmptyState
+          icon={<WalletCards className="size-6" aria-hidden />}
+          title="Connect not available yet"
+          description="Payout setup details are not available for this organisation. Try again shortly or continue onboarding."
+          action={
+            <Button asChild variant="cta" size="sm">
+              <Link href={href} prefetch>
+                Open Connect onboarding
+              </Link>
+            </Button>
+          }
+        />
       )}
     </div>
   );

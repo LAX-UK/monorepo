@@ -1,12 +1,23 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import {
+  SellerOrgContextBanner,
+  SellerProfileUnavailableAlert,
+} from "@/components/dashboard/seller-org-context-banner";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { formatMoney } from "@/lib/format-currency";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
@@ -108,23 +119,33 @@ function buildPayoutForecast(lots: Lot[]): PayoutForecast {
 
 export default async function SellerOverviewPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard/seller" });
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const c = await getServerDataContainer();
   let rows: ItemSubmission[] = [];
-  let err: string | null = null;
+  let submissionsFailure: DashboardSliceFailure | null = null;
+  let lotsFailure: DashboardSliceFailure | null = null;
   let sellerLots: Lot[] = [];
   const [subRes, lotsRes] = await Promise.allSettled([
     c.submissions.listMine({ limit: 100, offset: 0 }),
-    acting ? c.sellerLots.list({ sellerId: acting.id, limit: 100 }) : Promise.resolve([] as Lot[]),
+    sellerEntityId
+      ? c.sellerLots.list({ sellerId: sellerEntityId, limit: 100 })
+      : Promise.resolve([] as Lot[]),
   ]);
   if (subRes.status === "fulfilled") {
     rows = subRes.value;
   } else {
-    err = subRes.reason instanceof Error ? subRes.reason.message : "Could not load submissions.";
+    submissionsFailure = submissionsFailureFromCaught(subRes.reason);
   }
   if (lotsRes.status === "fulfilled") {
     sellerLots = lotsRes.value;
+  } else if (sellerEntityId) {
+    lotsFailure = describeDashboardSliceFailure(
+      lotsRes.reason,
+      "sellerLots",
+      "Could not load your lots.",
+    );
   }
 
   const upcomingSaleIds = Array.from(
@@ -193,23 +214,34 @@ export default async function SellerOverviewPage() {
         description="Track consignments from first submission through cataloguing, sale, and settlement."
       />
 
-      {err ? <DashboardErrorAlert title="Could not load submissions" message={err} /> : null}
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
+      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
 
-      {!err && rows.length === 0 ? (
+      {submissionsFailure ? (
+        <div className="space-y-3">
+          <DashboardSliceErrorAlert failure={submissionsFailure} />
+          <Button variant="secondary" asChild>
+            <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
+          </Button>
+        </div>
+      ) : null}
+      {lotsFailure ? <DashboardSliceErrorAlert failure={lotsFailure} /> : null}
+
+      {!submissionsFailure && rows.length === 0 ? (
         <DashboardEmptyState
-          title="Start your first submission"
-          description="Tell our specialists about an artwork or collectible. When approved, we draft the catalogue lot for you."
+          title={DASHBOARD_EMPTY.seller.title}
+          description={DASHBOARD_EMPTY.seller.description}
           action={
             <Button variant="primary" asChild>
-              <Link href="/dashboard/submissions/new">
-                New submission <ArrowRight className="size-4" aria-hidden />
+              <Link href={DASHBOARD_ROUTES.submissionsNew}>
+                {DASHBOARD_CTA.newSubmission} <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
           }
         />
       ) : null}
 
-      {!err && rows.length > 0 ? (
+      {!submissionsFailure && rows.length > 0 ? (
         <KpiRow
           track="selling"
           columns={4}
@@ -228,7 +260,7 @@ export default async function SellerOverviewPage() {
         />
       ) : null}
 
-      {!err && (upcomingSales.length > 0 || forecast.liveLots > 0) ? (
+      {!submissionsFailure && (upcomingSales.length > 0 || forecast.liveLots > 0) ? (
         <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <Surface variant="quiet" padding="md" className="space-y-4">
             <header className="flex items-center gap-3">
