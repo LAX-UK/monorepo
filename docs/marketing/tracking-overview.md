@@ -191,8 +191,8 @@ These IDs **appear in any browser network tab** when the site loads. They are sa
 | Web container (browser side) | `GTM-W6K4N67Z` |
 | Server container (server-side GTM) | `GTM-575HV8LQ` |
 | Google Analytics 4 property | `G-GDG4D2YELR` (configured inside the server container) |
-| Server-side GTM URL | `https://gtm.lax.bid` (currently routed to Stape, set as the GA4 `transport_url`) |
-| GTM Preview server | `https://gtm-preview.lax.bid` (will be migrated/dropped — separate decision) |
+| Server-side GTM URL | `https://gtm.lax.bid` (hosted on Stape; set as the GA4 `transport_url`) |
+| GTM Preview | Google Tag Assistant (`https://tagassistant.google.com/`) or Stape preview in the Stape dashboard |
 | Meta Pixel ID | Held in env var `META_PIXEL_ID` (the Pixel ID itself is visible in browser pixel calls — not a real secret, just kept out of the repo as a config value) |
 
 ### Real secrets — never share their values
@@ -202,7 +202,6 @@ The values of these env vars must **never** leave our secrets manager (Terraform
 | Secret | What it does |
 |----|----|
 | `META_CAPI_ACCESS_TOKEN` | Bearer token for posting server-side conversions to Meta. **Never share.** |
-| `GTM_SST_CONTAINER_CONFIG` | Encrypted server-container config for sGTM. **Never share.** |
 | `META_CAPI_TEST_EVENT_CODE` | QA-only code routing test events to Meta's test view. Low-risk but still treat as confidential. |
 
 If a Meta rep, an agency, or anyone else asks marketing to share `META_CAPI_ACCESS_TOKEN` — even "just to debug" — the answer is **no**. They don't need it. They debug through Meta Events Manager → Test events using their own Meta access.
@@ -297,7 +296,7 @@ Follow this list **in order**. The first three steps verify the browser → web 
    curl -sS -o /dev/null -w "%{http_code}\n" https://gtm.lax.bid/healthy
    ```
 
-   Expected: `200`. If anything else, sGTM is down — investigate Stape (where `gtm.lax.bid` currently resolves; see [`sgtm-setup.md`](./sgtm-setup.md)) or DigitalOcean.
+   Expected: `200`. If anything else, sGTM is down — investigate Stape (where `gtm.lax.bid` resolves; see [`sgtm-setup.md`](./sgtm-setup.md)).
 
 5. In the GTM web UI, switch to the **server container `GTM-575HV8LQ`** and check **all four** of these:
 
@@ -310,7 +309,7 @@ Follow this list **in order**. The first three steps verify the browser → web 
 
    **Saving is not publishing.** Even after months of edits, until you click **Submit → Publish**, the live `gtm.lax.bid` keeps running the previous published version.
 
-6. In sGTM **Preview** (`https://gtm-preview.lax.bid` or the Preview button inside GTM), reload `lax.bid` and confirm:
+6. In **Tag Assistant** or Stape preview, reload `lax.bid` and confirm:
    - The GA4 Client **claims** each incoming `/g/collect` request.
    - The GA4 tag fires once per claim with status **Succeeded**.
    - If the GA4 tag is **Skipped**, click into it and read the firing condition that failed — usually a consent-check trigger.

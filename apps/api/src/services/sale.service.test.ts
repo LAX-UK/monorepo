@@ -1,6 +1,8 @@
+import type { Database } from "@auction/db";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -454,6 +456,92 @@ describe("SaleService.updateDraft", () => {
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
     expect(result.error).toBeInstanceOf(AuthzError);
+  });
+});
+
+describe("SaleService.publish domain events", () => {
+  it("emits sale.published when a draft sale is published", async () => {
+    const sale = baseSale({ id: "s-pub", status: "draft" });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: "s-pub",
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work",
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+
+    let findCalls = 0;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockImplementation(async () => {
+        findCalls += 1;
+        return findCalls === 1 ? sale : { ...sale, status: "scheduled" };
+      }),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ISaleRepository;
+
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+      update: vi.fn(),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const db = {} as Database;
+
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: {
+          scheduleLot: vi.fn(),
+          cancelLotJobs: vi.fn(),
+          rescheduleEnd: vi.fn(),
+        } as ILotJobScheduler,
+        db,
+        domainEventPublisher: { publish } as DomainEventPublisher,
+      }),
+    );
+
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", "super_admin");
+    if (result.isErr()) {
+      throw new Error(`publish failed: ${result.error.message}`);
+    }
+    expect(publish).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        aggregateType: "sale",
+        aggregateId: "s-pub",
+        eventType: "sale.published",
+        actorUserId: TEST_ADMIN_USER_ID,
+        payload: expect.objectContaining({
+          from_status: "draft",
+          to_status: "scheduled",
+        }),
+      }),
+    );
   });
 });
 

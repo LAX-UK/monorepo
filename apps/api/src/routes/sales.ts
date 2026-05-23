@@ -331,6 +331,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
+      const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const result = await container.saleStatusTransitionService.markOnsiteSaleEnded(
@@ -338,6 +339,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         id,
         reason,
         staffRole,
+        userId,
       );
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));

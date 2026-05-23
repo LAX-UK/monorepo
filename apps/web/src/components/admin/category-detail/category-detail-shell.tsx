@@ -5,10 +5,7 @@ import {
   CatalogInfoAside,
   type CatalogMobileAction,
 } from "@/components/admin/catalog";
-import {
-  categoryDetailTabHref,
-  parseCategoryDetailTabFromPath,
-} from "@/components/admin/category-detail/category-detail-types";
+import { categoryDetailTabHref } from "@/components/admin/category-detail/category-detail-types";
 import type { AdminCategory } from "@auction/types";
 import { Button } from "@auction/ui";
 import Link from "next/link";
@@ -86,7 +83,8 @@ export function CategoryDetailShell({
         <div className="space-y-6">
           <CatalogDetailTabNav
             tabs={tabSpecs}
-            resolveActiveTab={(pathname) => parseCategoryDetailTabFromPath(pathname, categoryId)}
+            entityKind="category"
+            entityId={categoryId}
             aria-label="Category sections"
           />
           <div>{children}</div>

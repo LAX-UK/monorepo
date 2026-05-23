@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import {
   type Lot,
   type LotStatus,
@@ -9,6 +10,7 @@ import {
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
@@ -30,13 +32,16 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     private readonly saleRepo: ISaleRepository,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
+    private readonly db: Database | null = null,
+    private readonly domainEventPublisher: DomainEventPublisher | null = null,
   ) {}
 
   async markOnsiteSaleEnded(
     userRole: string,
     saleId: string,
-    _reason?: string,
+    reason?: string,
     userStaffRole?: string | null,
+    actorUserId?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
     if (
       !roleHasCapability(
@@ -70,6 +75,19 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     const updatedSale = await this.saleRepo.findById(saleId);
     if (!updatedSale) return err(new LotError("Sale not found", 404));
     const updatedLots = await this.lotRepo.findBySaleId(saleId);
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "sale",
+        aggregateId: saleId,
+        eventType: "sale.ended",
+        payload: {
+          from_status: sale.status,
+          to_status: "ended",
+          ...(reason ? { reason } : {}),
+        },
+        actorUserId: actorUserId ?? null,
+      });
+    }
     return ok({ sale: updatedSale, lots: updatedLots });
   }
 

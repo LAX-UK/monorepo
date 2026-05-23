@@ -1,4 +1,4 @@
-import { formatNumber } from "@/lib/ui/format";
+import { formatMoney } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 
 export function sumLotHammers(lots: Lot[]): string {
@@ -7,7 +7,7 @@ export function sumLotHammers(lots: Lot[]): string {
     const n = Number.parseFloat(String(l.currentPrice ?? "0"));
     if (!Number.isNaN(n)) total += n;
   }
-  return formatNumber(total, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return formatMoney(total);
 }
 
 export function buyerPremiumSummary(sale: Sale): string {
