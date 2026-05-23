@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
@@ -18,6 +19,9 @@ export function createOrganisationHubGateway(
   return {
     async listMemberships() {
       const res = await fetcher("/legal-entities/me", { cache: "no-store" });
+      if (res.status === 503) {
+        await throwIfNotOk(res, "legalEntities");
+      }
       if (!res.ok) return [];
       const body = (await res.json()) as { data: OrganisationHubMembership[] };
       return body.data ?? [];

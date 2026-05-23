@@ -1,8 +1,9 @@
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { describeMemberFetchFailure } from "@/lib/legal-entity/member-fetch-error-messages";
+import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
@@ -45,17 +46,14 @@ export default async function OrganisationMembersPage({
   const memberListGateway: ILegalEntityMemberListGateway = createLegalEntityMemberListGateway();
   const fetched = await memberListGateway.fetchMemberListForActing(acting);
   if (!fetched.ok) {
-    const description = describeMemberFetchFailure(fetched.status, fetched.errorCode);
+    const failure = buildDashboardSliceFailure("orgMembers", fetched.status, fetched.errorCode);
     return (
       <div className="space-y-6">
         <SectionHeader
           kicker={<LabelCaps>Team</LabelCaps>}
           heading={<DisplayHeading as="h2">Members</DisplayHeading>}
         />
-        <Alert variant="destructive">
-          <AlertTitle>Could not load members</AlertTitle>
-          <AlertDescription>{description}</AlertDescription>
-        </Alert>
+        <DashboardSliceErrorAlert failure={failure} />
       </div>
     );
   }

@@ -18,6 +18,7 @@ const files = [
 const allowed = new Set([
   "userSuspensionChecker",
   "legalEntityRepository",
+  "personalLegalEntityResolver",
   "legalEntityAccessService",
   "pendingInvitationsReader",
   "invitationLifecycleService",

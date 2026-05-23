@@ -1,5 +1,9 @@
 import { parseBidTab } from "@/components/dashboard/bid-board-rows";
 import { BidsBoard } from "@/components/dashboard/bids-board";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildDashboardBidsBoardVm } from "@/lib/data/view-models/dashboard-bids.vm";
@@ -16,7 +20,8 @@ export async function BidsPageContent({ searchParams }: PageProps) {
   const now = Date.now();
   const container = await getServerDataContainer();
   let rows: Awaited<ReturnType<typeof container.bids.listMine>> = [];
-  let fetchError: string | null = null;
+  let loadFailure: DashboardSliceFailure | null = null;
+  let sessionFailure: DashboardSliceFailure | null = null;
   let user: Awaited<ReturnType<typeof container.session.getCurrent>> = null;
 
   const settled = await Promise.allSettled([
@@ -26,13 +31,18 @@ export async function BidsPageContent({ searchParams }: PageProps) {
   const [userResult, bidsResult] = settled;
   if (userResult.status === "fulfilled") {
     user = userResult.value;
+  } else {
+    sessionFailure = describeDashboardSliceFailure(
+      userResult.reason,
+      "session",
+      "Could not load your session.",
+    );
   }
   if (bidsResult.status === "fulfilled") {
     rows = bidsResult.value;
   } else {
     rows = [];
-    fetchError =
-      bidsResult.reason instanceof Error ? bidsResult.reason.message : "Could not load bids.";
+    loadFailure = describeDashboardSliceFailure(bidsResult.reason, "bids", "Could not load bids.");
   }
 
   const { active, won, lost } = buildDashboardBidsBoardVm(rows, user?.id, now);
@@ -42,7 +52,8 @@ export async function BidsPageContent({ searchParams }: PageProps) {
 
   return (
     <BidsBoard
-      fetchError={fetchError}
+      loadFailure={loadFailure}
+      sessionFailure={sessionFailure}
       active={active}
       won={won}
       lost={lost}

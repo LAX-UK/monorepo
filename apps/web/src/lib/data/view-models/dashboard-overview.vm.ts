@@ -17,6 +17,7 @@ export type DashboardOverviewErrors = {
   artistFollow: string | null;
   bids: string | null;
   submissions: string | null;
+  notifications: string | null;
 };
 
 export type DashboardOverviewVm = {
