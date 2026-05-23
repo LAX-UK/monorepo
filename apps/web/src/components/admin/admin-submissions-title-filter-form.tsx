@@ -2,7 +2,6 @@
 
 import type { SubmissionDecisionQueue } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
@@ -20,11 +19,9 @@ type AdminSubmissionsTitleFilterValues = z.infer<typeof adminSubmissionsTitleFil
 export function AdminSubmissionsTitleFilterForm({
   initialQ,
   queue,
-  status,
 }: {
   initialQ: string;
-  queue?: SubmissionDecisionQueue | undefined;
-  status?: ItemSubmissionStatus | undefined;
+  queue: SubmissionDecisionQueue;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,11 +40,7 @@ export function AdminSubmissionsTitleFilterForm({
             sp[k] = v;
           });
           const href = buildListHref("/admin/submissions", sp, {
-            ...(queue !== undefined
-              ? { queue, status: "" }
-              : status !== undefined
-                ? { status }
-                : { status: "" }),
+            queue,
             q: values.q.trim() || "",
             offset: 0,
           });

@@ -1,5 +1,5 @@
-import { AdminDetailSkeleton } from "@/components/admin/admin-detail-skeleton";
+import { AdminLotDetailSkeleton } from "@/components/admin/admin-lot-detail-skeleton";
 
 export default function AdminLotDetailLoading() {
-  return <AdminDetailSkeleton />;
+  return <AdminLotDetailSkeleton />;
 }

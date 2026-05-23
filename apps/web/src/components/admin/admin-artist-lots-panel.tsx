@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
 import Link from "next/link";
 
@@ -62,7 +63,10 @@ export function AdminArtistLotsPanel({ artistId, lots }: Props) {
                 </span>
               </td>
               <td className="px-4 py-3 font-mono text-xs">
-                {lot.status === "ended" ? lot.currentPrice : lot.startingPrice}
+                {formatMoney(
+                  lot.status === "ended" ? lot.currentPrice : lot.startingPrice,
+                  lot.marketingDetails?.estimate?.currency ?? "GBP",
+                )}
               </td>
               <td className="px-4 py-3 text-right">
                 <Link

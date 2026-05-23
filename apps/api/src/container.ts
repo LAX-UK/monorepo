@@ -52,6 +52,7 @@ import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
+import { resolveUserIndividualEntity } from "./lib/legal-entity-resolution.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
@@ -679,6 +680,7 @@ export function createContainer(env: Env): Container {
 
   const lotService = new LotService({
     lotRepo,
+    saleRepo,
     bids: repoFactory.root.bid,
     watchlist: watchlistRepo,
     jobScheduler: lotJobScheduler,
@@ -706,6 +708,7 @@ export function createContainer(env: Env): Container {
     saleRepo,
     lotRepo,
     jobScheduler: lotJobScheduler,
+    resolveCreatorLegalEntityId: (userId) => resolveUserIndividualEntity(db, userId),
     imageCleanup: imageCleanupService,
     saleFollowReader: saleFollowService,
     mediaUrlResolver,

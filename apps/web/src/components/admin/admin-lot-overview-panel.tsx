@@ -1,18 +1,28 @@
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogInfoCard } from "@/components/admin/catalog";
+import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
 import { MediaImage } from "@/components/ui/media-image";
-import { formatDateTime } from "@/lib/ui/format";
+import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
+import { formatDateTime, formatMoney, formatPercent } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
+import { Badge } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 type Props = {
+  lotId: string;
   auction: Lot;
   imageAlts: string[];
+  context: LotDetailContext;
 };
 
-export function AdminLotOverviewPanel({ auction, imageAlts }: Props) {
+export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context }: Props) {
+  const premiumPct = Number.parseFloat(auction.buyerPremiumRate);
+  const premiumLabel = Number.isNaN(premiumPct)
+    ? auction.buyerPremiumRate
+    : formatPercent(premiumPct * 100);
+
   return (
     <SplitDetailLayout
       mediaSlot={
@@ -27,133 +37,189 @@ export function AdminLotOverviewPanel({ auction, imageAlts }: Props) {
                 sizes="(max-width: 1024px) 100vw, 45vw"
               />
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
+              <span className="font-body text-sm text-on-surface-variant">
+                {auction.images.length} image{auction.images.length === 1 ? "" : "s"}
+              </span>
+              <Link
+                href={lotDetailTabHref(lotId, "images")}
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              >
+                Manage images →
+              </Link>
+            </div>
           </Surface>
         ) : (
-          <Surface variant="quiet" padding="md" className="text-sm text-on-surface-variant">
-            No images yet. Add images in the Images tab.
+          <Surface
+            variant="quiet"
+            padding="md"
+            className="space-y-2 text-sm text-on-surface-variant"
+          >
+            <p>No images yet.</p>
+            <Link
+              href={lotDetailTabHref(lotId, "images")}
+              className="font-medium text-primary hover:underline"
+            >
+              Add images in the Images tab →
+            </Link>
           </Surface>
         )
       }
       metaSlot={
-        <div className="space-y-3">
-          <InfoCard title="Status">
-            <AdminStatusBadge domain="lot" status={auction.status} />
-          </InfoCard>
-          {auction.saleId ? (
-            <InfoCard title="Sale">
-              <Link
-                href={`/admin/sales/${auction.saleId}`}
-                className="font-medium text-primary hover:underline"
-              >
-                View sale ↗
-              </Link>
-              {auction.lotNumber ? (
-                <span className="ml-2 font-body text-xs text-on-surface-variant">
-                  Lot #{auction.lotNumber}
-                </span>
+        <div className="space-y-4">
+          <CatalogInfoCard title="Commercial">
+            <dl className="space-y-3 font-body text-sm">
+              <DetailRow label="Starting price" value={formatMoney(auction.startingPrice)} />
+              <DetailRow
+                label="Reserve"
+                value={auction.reservePrice ? formatMoney(auction.reservePrice) : "No reserve"}
+              />
+              <DetailRow label="Current hammer" value={formatMoney(auction.currentPrice)} strong />
+              <DetailRow label="Buyer premium" value={premiumLabel} />
+              {auction.checkoutPricing ? (
+                <DetailRow
+                  label="Checkout total"
+                  value={formatMoney(auction.checkoutPricing.totalMajor)}
+                  hint={`Hammer ${formatMoney(auction.checkoutPricing.hammerMajor)} + premium ${formatMoney(auction.checkoutPricing.premiumMajor)}`}
+                />
               ) : null}
-            </InfoCard>
-          ) : (
-            <InfoCard title="Sale">
-              <span className="text-on-surface-variant">Not assigned to a sale</span>
-            </InfoCard>
-          )}
-          <InfoCard title="Starting price">
-            <span className="tabular-nums">{auction.startingPrice}</span>
-            {auction.reservePrice ? (
-              <span className="ml-2 text-xs text-on-surface-variant">
-                Reserve: {auction.reservePrice}
-              </span>
-            ) : null}
-          </InfoCard>
-          <InfoCard title="Current hammer">
-            <span key={auction.currentPrice} className="tick-value tabular-nums font-semibold">
-              {auction.currentPrice}
-            </span>
-          </InfoCard>
-          <InfoCard title="Schedule">
-            <div className="space-y-0.5 font-body text-sm">
-              <p>
-                <span className="text-on-surface-variant">Start:</span>{" "}
-                {formatDateTime(auction.startTime)}
-              </p>
-              <p>
-                <span className="text-on-surface-variant">End:</span>{" "}
-                {formatDateTime(auction.endTime)}
-              </p>
-            </div>
-          </InfoCard>
-          <InfoCard title="Artist">
-            {auction.artistId ? (
-              <Link
-                href={`/admin/artists/${auction.artistId}`}
-                className="font-medium text-primary hover:underline"
-              >
-                View artist ↗
-              </Link>
-            ) : (
-              <span className="text-on-surface-variant">Not assigned</span>
-            )}
-            {auction.artistReviewRequired ? (
-              <span className="ml-2 rounded bg-warning/10 px-1.5 py-0.5 font-label text-[10px] uppercase tracking-wider text-warning">
-                Review required
-              </span>
-            ) : null}
-          </InfoCard>
+              <DetailRow
+                label="Auction type"
+                value={<span className="capitalize">{auction.auctionType}</span>}
+              />
+            </dl>
+          </CatalogInfoCard>
+          <CatalogInfoCard title="Schedule">
+            <dl className="space-y-3 font-body text-sm">
+              <DetailRow label="Start" value={formatDateTime(auction.startTime)} tabular />
+              <DetailRow label="End" value={formatDateTime(auction.endTime)} tabular />
+            </dl>
+            <p className="mt-3 text-xs text-on-surface-variant">
+              Displayed in your browser locale. Cross-check published catalog copy for the canonical
+              timezone.
+            </p>
+          </CatalogInfoCard>
         </div>
       }
       secondarySlot={
-        <div className="grid gap-4 sm:grid-cols-2">
-          <InfoCard title="Seller legal entity">
-            {auction.sellerLegalEntityId ? (
-              <Link
-                href={`/admin/legal-entities/${auction.sellerLegalEntityId}`}
-                className="font-mono text-sm text-primary hover:underline"
-              >
-                {auction.sellerLegalEntityId.slice(0, 8)}…
-              </Link>
+        <div className="space-y-4">
+          <CatalogInfoCard title="Catalogue">
+            {auction.description ? (
+              <p className="whitespace-pre-wrap font-body text-sm leading-relaxed text-on-surface">
+                {auction.description}
+              </p>
             ) : (
-              <span className="text-on-surface-variant">Not set</span>
+              <p className="text-sm text-on-surface-variant">No description.</p>
             )}
-          </InfoCard>
-          <InfoCard title="Auction type">
-            <span className="capitalize">{auction.auctionType}</span>
-          </InfoCard>
-          {(auction.categoryIds?.length ?? 0) > 0 ? (
-            <InfoCard title="Categories">
-              <div className="flex flex-wrap gap-1">
-                {(auction.categoryIds ?? []).map((cid) => (
-                  <span
-                    key={cid}
-                    className="rounded bg-surface-container-high px-2 py-0.5 font-mono text-xs text-on-surface-variant"
-                  >
-                    {cid.slice(0, 8)}…
-                  </span>
+            {(auction.medium || auction.dimensions) && (
+              <dl className="mt-4 space-y-2 border-t border-border-hairline pt-4 font-body text-sm">
+                {auction.medium ? <DetailRow label="Medium" value={auction.medium} /> : null}
+                {auction.dimensions ? (
+                  <DetailRow label="Dimensions" value={auction.dimensions} />
+                ) : null}
+              </dl>
+            )}
+            {context.categories.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border-hairline pt-4">
+                {context.categories.map((cat) => (
+                  <Link key={cat.id} href={`/admin/categories/${cat.id}`}>
+                    <Badge variant="secondary">{cat.name}</Badge>
+                  </Link>
                 ))}
               </div>
-            </InfoCard>
-          ) : null}
-          {auction.medium || auction.dimensions ? (
-            <InfoCard title="Physical details">
-              {auction.medium ? <p className="text-sm">{auction.medium}</p> : null}
-              {auction.dimensions ? (
-                <p className="text-xs text-on-surface-variant">{auction.dimensions}</p>
-              ) : null}
-            </InfoCard>
-          ) : null}
+            ) : null}
+          </CatalogInfoCard>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <CatalogInfoCard title="Sale">
+              {context.sale ? (
+                <div className="space-y-1">
+                  <Link
+                    href={`/admin/sales/${context.sale.id}/lots`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {context.sale.title}
+                  </Link>
+                  {auction.lotNumber != null ? (
+                    <p className="text-xs text-on-surface-variant">Lot #{auction.lotNumber}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="text-sm text-on-surface-variant">Not assigned to a sale</span>
+              )}
+            </CatalogInfoCard>
+            <CatalogInfoCard title="Artist">
+              {context.artist ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/artists/${context.artist.id}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {context.artist.displayName}
+                  </Link>
+                  {auction.artistReviewRequired ? (
+                    <Badge variant="outline" className="border-warning/40 text-warning">
+                      Review required
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="text-sm text-on-surface-variant">Not assigned</span>
+              )}
+            </CatalogInfoCard>
+            <CatalogInfoCard title="Seller">
+              {context.seller ? (
+                <div className="space-y-1">
+                  <Link
+                    href={`/admin/legal-entities/${context.seller.id}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {context.seller.displayName}
+                  </Link>
+                  {auction.archivedSeller ? (
+                    <p className="text-xs text-warning">Seller entity archived</p>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="text-sm text-on-surface-variant">Not set</span>
+              )}
+            </CatalogInfoCard>
+          </div>
         </div>
       }
     />
   );
 }
 
-function InfoCard({ title, children }: { title: string; children: ReactNode }) {
+function DetailRow({
+  label,
+  value,
+  hint,
+  strong,
+  tabular,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  strong?: boolean;
+  tabular?: boolean;
+}) {
   return (
-    <Surface variant="card" className="border-border-hairline bg-surface-container-low/30">
-      <h3 className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        {title}
-      </h3>
-      <div className="pb-4">{children}</div>
-    </Surface>
+    <div>
+      <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+        {label}
+      </dt>
+      <dd
+        className={
+          strong
+            ? "mt-0.5 text-base font-semibold tabular-nums text-on-surface"
+            : tabular
+              ? "mt-0.5 tabular-nums text-on-surface"
+              : "mt-0.5 text-on-surface"
+        }
+      >
+        {value}
+      </dd>
+      {hint ? <p className="mt-0.5 text-xs text-on-surface-variant">{hint}</p> : null}
+    </div>
   );
 }

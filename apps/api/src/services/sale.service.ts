@@ -19,6 +19,7 @@ import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
+import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import {
   presentLotsImages,
   presentSaleAdminImages,
@@ -39,10 +40,13 @@ type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
 
 const SALE_CANCELLABLE: ReadonlySet<Sale["status"]> = new Set(["draft", "scheduled", "active"]);
 
+export type CreatorLegalEntityResolver = (userId: string) => Promise<string | null>;
+
 export type SaleServiceOptions = {
   saleRepo: ISaleRepository;
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
+  resolveCreatorLegalEntityId: CreatorLegalEntityResolver;
   imageCleanup?: ImageCleanupService;
   saleFollowReader?: SaleFollowReader | null;
   mediaUrlResolver?: MediaUrlResolver;
@@ -53,6 +57,7 @@ export class SaleService {
   private readonly saleRepo: ISaleRepository;
   private readonly lotRepo: ILotRepository;
   private readonly jobScheduler: ILotJobScheduler | null;
+  private readonly resolveCreatorLegalEntityId: CreatorLegalEntityResolver;
   private readonly imageCleanup: ImageCleanupService | undefined;
   private readonly saleFollowReader: SaleFollowReader | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
@@ -62,6 +67,7 @@ export class SaleService {
     this.saleRepo = opts.saleRepo;
     this.lotRepo = opts.lotRepo;
     this.jobScheduler = opts.jobScheduler;
+    this.resolveCreatorLegalEntityId = opts.resolveCreatorLegalEntityId;
     this.imageCleanup = opts.imageCleanup;
     this.saleFollowReader = opts.saleFollowReader ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
@@ -72,9 +78,14 @@ export class SaleService {
     if (input.endTime <= input.startTime) {
       throw new LotError("endTime must be after startTime");
     }
-    const mode = input.deliveryMode ?? "onsite";
-    const caps = getSaleModeCapabilities(mode);
-    const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId: adminId });
+    const createdByLegalEntityId = await this.resolveCreatorLegalEntityId(adminId);
+    if (!createdByLegalEntityId) {
+      throw new LotError(
+        "Could not resolve your legal entity for this sale. Complete account setup and try again.",
+        400,
+      );
+    }
+    const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
     if (input.lots?.length) {
       for (const row of input.lots) {
         const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
@@ -85,13 +96,15 @@ export class SaleService {
           throw new LotError(lockMsg);
         }
         const { sellerId, ...lotFields } = row;
-        const inherited = caps.inheritsLotTiming
-          ? { startTime: input.startTime, endTime: input.endTime }
-          : {};
+        const resolved = resolveLotTimingForSale(sale, lotFields.startTime, lotFields.endTime);
+        if (!resolved.ok) {
+          throw new LotError(resolved.message, 400);
+        }
         await this.lotRepo.create({
           ...lotFields,
           sellerLegalEntityId: sellerId,
-          ...inherited,
+          startTime: resolved.startTime,
+          endTime: resolved.endTime,
           saleId: sale.id,
         });
       }
@@ -247,17 +260,23 @@ export class SaleService {
       if (!caps.inheritsLotTiming && l.startTime.getTime() <= Date.now()) {
         return err(new LotError("Each lot startTime must be in the future to publish"));
       }
+      const violation = lotTimingViolationForSale(sale, l.startTime, l.endTime);
+      if (violation) {
+        return err(new LotError(`${violation} (lot "${l.title}")`, 400));
+      }
     }
 
     if (caps.inheritsLotTiming) {
       for (const l of lots) {
+        const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
         if (
-          l.startTime.getTime() !== sale.startTime.getTime() ||
-          l.endTime.getTime() !== sale.endTime.getTime()
+          resolved.ok &&
+          (resolved.startTime.getTime() !== l.startTime.getTime() ||
+            resolved.endTime.getTime() !== l.endTime.getTime())
         ) {
           await this.lotRepo.update(l.id, {
-            startTime: sale.startTime,
-            endTime: sale.endTime,
+            startTime: resolved.startTime,
+            endTime: resolved.endTime,
           });
         }
       }
@@ -374,10 +393,11 @@ export class SaleService {
       return err(new LotError("Lots can only be added while the sale is draft"));
     }
     const { sellerId, ...lotFields } = row;
-    const caps = getSaleModeCapabilities(sale.deliveryMode);
-    const startTime = caps.inheritsLotTiming ? sale.startTime : lotFields.startTime;
-    const endTime = caps.inheritsLotTiming ? sale.endTime : lotFields.endTime;
-    if (endTime <= startTime) {
+    const resolved = resolveLotTimingForSale(sale, lotFields.startTime, lotFields.endTime);
+    if (!resolved.ok) {
+      return err(new LotError(resolved.message, 400));
+    }
+    if (resolved.endTime <= resolved.startTime) {
       return err(new LotError("endTime must be after startTime"));
     }
     const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
@@ -390,8 +410,8 @@ export class SaleService {
     const created = await this.lotRepo.create({
       ...lotFields,
       sellerLegalEntityId: sellerId,
-      startTime,
-      endTime,
+      startTime: resolved.startTime,
+      endTime: resolved.endTime,
       saleId,
     });
     return ok(created);
@@ -428,11 +448,16 @@ export class SaleService {
     const inSale = await this.lotRepo.findBySaleId(saleId);
     const maxNum = inSale.reduce((m, l) => Math.max(m, l.lotNumber ?? 0), 0);
     const lotNumber = maxNum + 1;
-    const caps = getSaleModeCapabilities(sale.deliveryMode);
-    const timingPatch = caps.inheritsLotTiming
-      ? { startTime: sale.startTime, endTime: sale.endTime }
-      : {};
-    const updated = await this.lotRepo.update(lotId, { saleId, lotNumber, ...timingPatch });
+    const resolved = resolveLotTimingForSale(sale, existingLot.startTime, existingLot.endTime);
+    if (!resolved.ok) {
+      return err(new LotError(resolved.message, 400));
+    }
+    const updated = await this.lotRepo.update(lotId, {
+      saleId,
+      lotNumber,
+      startTime: resolved.startTime,
+      endTime: resolved.endTime,
+    });
     return ok(updated);
   }
 
@@ -525,6 +550,20 @@ export class SaleService {
       for (const l of lots) {
         if (l.status === "draft") {
           await this.lotRepo.update(l.id, { startTime: nextStart, endTime: nextEnd });
+        }
+      }
+    } else if (patch.startTime !== undefined || patch.endTime !== undefined) {
+      const lots = await this.lotRepo.findBySaleId(saleId);
+      const nextSale = {
+        ...sale,
+        deliveryMode: nextDelivery,
+        startTime: nextStart,
+        endTime: nextEnd,
+      };
+      for (const l of lots) {
+        const violation = lotTimingViolationForSale(nextSale, l.startTime, l.endTime);
+        if (violation) {
+          return err(new LotError(`${violation} (lot "${l.title}")`, 400));
         }
       }
     }

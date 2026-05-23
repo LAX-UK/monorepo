@@ -1,25 +1,35 @@
 "use client";
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
+import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
 import {
   clearWizardDraft,
+  mergeWizardDraftValues,
   wizardDraftCookieKey,
 } from "@/components/admin/admin-form-wizard/wizard-draft";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import {
+  type LotEditSectionId,
+  useLotEditSectionDirty,
+} from "@/components/admin/lot-form/lot-edit-form-context";
+import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import {
   adminCreateLotResultAction,
   adminUpdateLotMarketingDetailsResultAction,
   adminUpdateLotResultAction,
 } from "@/lib/actions/admin";
+import { applyLotTypeFieldReset, getCatalogueStepFieldKeys } from "@/lib/admin/lot-catalogue";
 import { applyZodErrorsToForm, zodIssuePathForForm } from "@/lib/admin/zod-form-errors";
 import {
+  type AdminLotFormSaleTiming,
   type AdminLotFormValues,
-  adminLotFormValuesSchema,
+  buildAdminLotFormSchema,
   formValuesToImageAltsPatch,
   safeParseCreateLotFromForm,
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
+import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -34,8 +44,8 @@ import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useMemo, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useMemo, useRef, useTransition } from "react";
+import { useForm, useFormState } from "react-hook-form";
 import { z as zod } from "zod";
 import { LotCatalogueStep } from "./steps/catalogue-step";
 import { LotIdentityStep } from "./steps/identity-step";
@@ -47,22 +57,28 @@ const LOT_FORM_STEPS = [
   { id: "catalogue", label: "Catalogue" },
 ] as const;
 
-const LOT_STEP_FIELDS: (keyof AdminLotFormValues)[][] = [
-  ["title", "auctionType", "description"],
-  ["sellerLegalEntityId"],
-  [
-    "artistId",
-    "categoryIds",
-    "reservePrice",
-    "startingPrice",
-    "endTime",
-    "startTime",
-    "dutchDecrementAmount",
-    "dutchDecrementIntervalMs",
-  ],
-];
+const LOT_IDENTITY_STEP_FIELDS = [
+  "title",
+  "auctionType",
+  "description",
+] as const satisfies readonly (keyof AdminLotFormValues)[];
+const LOT_SALE_SELLER_STEP_FIELDS = [
+  "sellerLegalEntityId",
+  "saleId",
+] as const satisfies readonly (keyof AdminLotFormValues)[];
 
-type SaleOption = Pick<Sale, "id" | "title" | "status">;
+function buildLotStepFields(
+  auctionType: LotAuctionType,
+  opts?: { includeArtist?: boolean },
+): (keyof AdminLotFormValues)[][] {
+  return [
+    [...LOT_IDENTITY_STEP_FIELDS],
+    [...LOT_SALE_SELLER_STEP_FIELDS],
+    getCatalogueStepFieldKeys(auctionType, opts),
+  ];
+}
+
+type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
 type Props = {
   mode: "create" | "edit";
@@ -78,6 +94,10 @@ type Props = {
   englishOnlyAuctionsLocked?: boolean;
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
+  /** Hide catalogue-step artist picker when attribution is handled elsewhere (e.g. lot edit). */
+  showArtistField?: boolean;
+  /** When set, dirty state is reported to {@link LotEditFormProvider} instead of a local guard. */
+  lotEditSection?: LotEditSectionId;
 };
 
 export function AdminLotForm({
@@ -89,12 +109,32 @@ export function AdminLotForm({
   artists,
   englishOnlyAuctionsLocked = false,
   htmlFormId,
+  showArtistField = true,
+  lotEditSection,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const { guardedPush } = useGuardedNavigation();
+  const initialValuesRef = useRef(defaultValues);
+  const baselineRef = useRef(defaultValues);
+  baselineRef.current = defaultValues;
+  const wizardGoToRef = useRef<(index: number) => void>(() => {});
+  const salesById = useMemo(() => {
+    const map = new Map<string, AdminLotFormSaleTiming>();
+    for (const s of sales) {
+      map.set(s.id, {
+        id: s.id,
+        deliveryMode: s.deliveryMode,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      });
+    }
+    return map;
+  }, [sales]);
   const formSchema = useMemo(() => {
-    if (!englishOnlyAuctionsLocked) return adminLotFormValuesSchema;
-    return adminLotFormValuesSchema.superRefine((data, ctx) => {
+    const schema = buildAdminLotFormSchema(salesById);
+    if (!englishOnlyAuctionsLocked) return schema;
+    return schema.superRefine((data, ctx) => {
       if (mode === "create" && data.auctionType !== "english") {
         ctx.addIssue({
           code: zod.ZodIssueCode.custom,
@@ -114,12 +154,50 @@ export function AdminLotForm({
         });
       }
     });
-  }, [englishOnlyAuctionsLocked, mode, defaultValues.auctionType]);
+  }, [englishOnlyAuctionsLocked, mode, defaultValues.auctionType, salesById]);
+
+  const resolver = useMemo(() => zodResolver(formSchema), [formSchema]);
 
   const form = useForm<AdminLotFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
+    resolver,
+    defaultValues: initialValuesRef.current,
+    shouldUnregister: false,
   });
+  const { isDirty } = useFormState({ control: form.control });
+  useLotEditSectionDirty("auction", Boolean(lotEditSection === "auction" && isDirty));
+  const auctionType = form.watch("auctionType");
+  const lotStepFields = useMemo(
+    () => buildLotStepFields(auctionType, { includeArtist: showArtistField }),
+    [auctionType, showArtistField],
+  );
+
+  const handleAuctionTypeChange = useCallback(
+    (previous: LotAuctionType, next: LotAuctionType) => {
+      if (previous !== next) {
+        applyLotTypeFieldReset(form, previous, next);
+      }
+    },
+    [form],
+  );
+
+  const handleEditLotType = useCallback(() => {
+    wizardGoToRef.current(0);
+  }, []);
+
+  const getValuesRef = useRef(form.getValues);
+  getValuesRef.current = form.getValues;
+  const createIdempotencyKeyRef = useRef(`lot-create-${crypto.randomUUID()}`);
+
+  const validateAllWizardSteps = useCallback(async () => {
+    for (let i = 0; i < lotStepFields.length; i++) {
+      const fields = lotStepFields[i];
+      if (fields?.length && !(await validateWizardStep(form, formSchema, fields))) {
+        wizardGoToRef.current(i);
+        return false;
+      }
+    }
+    return true;
+  }, [form, formSchema, lotStepFields]);
 
   const auctionTypeOptions = useMemo((): readonly LotAuctionType[] => {
     if (!englishOnlyAuctionsLocked) return lotAuctionTypes;
@@ -130,16 +208,71 @@ export function AdminLotForm({
 
   return (
     <>
-      <FormDirtyGuard isDirty={form.formState.isDirty} />
+      {!lotEditSection ? <FormDirtyGuard isDirty={isDirty} /> : null}
       <Form {...form}>
         <form
           id={htmlFormId}
           className="space-y-8"
-          onSubmit={form.handleSubmit((values) => {
-            startTransition(async () => {
-              form.clearErrors("root");
-              if (mode === "create") {
-                const api = safeParseCreateLotFromForm(values);
+          onSubmit={form.handleSubmit(
+            async (values) => {
+              if (mode === "create" && !(await validateAllWizardSteps())) {
+                notify.error("Check the form for errors");
+                return;
+              }
+              startTransition(async () => {
+                form.clearErrors("root");
+                if (mode === "create") {
+                  const api = safeParseCreateLotFromForm(values);
+                  if (!api.success) {
+                    for (const iss of api.error.issues) {
+                      applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
+                    }
+                    notify.error("Check the form for errors");
+                    return;
+                  }
+                  const r = await adminCreateLotResultAction(
+                    api.data,
+                    createIdempotencyKeyRef.current,
+                  );
+                  if (r.ok) {
+                    clearWizardDraft(wizardDraftCookieKey("lot", "new"));
+                    const newId = r.data?.id;
+                    if (newId) {
+                      const alts = await adminUpdateLotMarketingDetailsResultAction(
+                        newId,
+                        formValuesToImageAltsPatch(values),
+                      );
+                      if (!alts.ok) {
+                        notify.warning("Draft created, but image alt text could not be saved", {
+                          description: alts.error,
+                        });
+                      }
+                    }
+                    notify.success("Draft created");
+                    if (newId) {
+                      router.push(`/admin/lots/${newId}`);
+                    } else {
+                      notify.warning(
+                        "Draft created but id was missing — open it from the lots list.",
+                      );
+                      router.push("/admin/lots");
+                    }
+                    return;
+                  }
+                  notify.error(
+                    actionFailureNotifyMessage(r.error, {
+                      status: r.status,
+                      errorCode: r.errorCode,
+                      meta: r.meta,
+                    }),
+                  );
+                  return;
+                }
+                if (!lotId) {
+                  notify.error("Missing lot");
+                  return;
+                }
+                const api = safeParseUpdateLotFromForm(values);
                 if (!api.success) {
                   for (const iss of api.error.issues) {
                     applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
@@ -147,30 +280,22 @@ export function AdminLotForm({
                   notify.error("Check the form for errors");
                   return;
                 }
-                const r = await adminCreateLotResultAction(api.data);
+                const r = await adminUpdateLotResultAction(lotId, api.data);
                 if (r.ok) {
-                  clearWizardDraft(wizardDraftCookieKey("lot", "new"));
-                  const newId = r.data?.id;
-                  if (newId) {
-                    const alts = await adminUpdateLotMarketingDetailsResultAction(
-                      newId,
-                      formValuesToImageAltsPatch(values),
-                    );
-                    if (!alts.ok) {
-                      notify.warning("Draft created, but image alt text could not be saved", {
-                        description: alts.error,
-                      });
-                    }
-                  }
-                  notify.success("Draft created");
-                  if (newId) {
-                    router.push(`/admin/lots/${newId}`);
+                  if (lotId) clearWizardDraft(wizardDraftCookieKey("lot", lotId));
+                  const alts = await adminUpdateLotMarketingDetailsResultAction(
+                    lotId,
+                    formValuesToImageAltsPatch(values),
+                  );
+                  if (!alts.ok) {
+                    notify.warning("Lot saved, but image alt text could not be saved", {
+                      description: alts.error,
+                    });
                   } else {
-                    notify.warning(
-                      "Draft created but id was missing — open it from the lots list.",
-                    );
-                    router.push("/admin/lots");
+                    notify.success("Saved");
                   }
+                  router.refresh();
+                  router.push(`/admin/lots/${lotId}`);
                   return;
                 }
                 notify.error(
@@ -180,46 +305,17 @@ export function AdminLotForm({
                     meta: r.meta,
                   }),
                 );
-                return;
+              });
+            },
+            async () => {
+              // Resolver rejected before the success handler — common when invalid fields
+              // live on an unmounted wizard step. Jump back and surface errors.
+              if (mode === "create") {
+                await validateAllWizardSteps();
               }
-              if (!lotId) {
-                notify.error("Missing lot");
-                return;
-              }
-              const api = safeParseUpdateLotFromForm(values);
-              if (!api.success) {
-                for (const iss of api.error.issues) {
-                  applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
-                }
-                notify.error("Check the form for errors");
-                return;
-              }
-              const r = await adminUpdateLotResultAction(lotId, api.data);
-              if (r.ok) {
-                if (lotId) clearWizardDraft(wizardDraftCookieKey("lot", lotId));
-                const alts = await adminUpdateLotMarketingDetailsResultAction(
-                  lotId,
-                  formValuesToImageAltsPatch(values),
-                );
-                if (!alts.ok) {
-                  notify.warning("Lot saved, but image alt text could not be saved", {
-                    description: alts.error,
-                  });
-                } else {
-                  notify.success("Saved");
-                }
-                router.push(`/admin/lots/${lotId}`);
-                return;
-              }
-              notify.error(
-                actionFailureNotifyMessage(r.error, {
-                  status: r.status,
-                  errorCode: r.errorCode,
-                  meta: r.meta,
-                }),
-              );
-            });
-          })}
+              notify.error("Check the form for errors");
+            },
+          )}
         >
           {mode === "edit" ? (
             <AdminDetailTabs
@@ -245,7 +341,12 @@ export function AdminLotForm({
                   value: "catalogue",
                   label: "Catalogue",
                   content: (
-                    <LotCatalogueStep form={form} categories={categories} artists={artists} />
+                    <LotCatalogueStep
+                      form={form}
+                      categories={categories}
+                      artists={artists}
+                      showArtistField={showArtistField}
+                    />
                   ),
                 },
               ]}
@@ -253,17 +354,26 @@ export function AdminLotForm({
           ) : (
             <AdminFormWizard
               steps={LOT_FORM_STEPS}
-              isDirty={form.formState.isDirty}
+              isDirty={isDirty}
               pending={pending}
+              hideStickyOnMobile={Boolean(htmlFormId)}
+              onStepControl={({ goTo }) => {
+                wizardGoToRef.current = goTo;
+              }}
               draft={{
                 entityKind: "lot",
                 entityId: "new",
-                values: form.getValues() as Record<string, unknown>,
+                getValues: () => getValuesRef.current() as Record<string, unknown>,
+              }}
+              onDraftResume={(payload: WizardDraftPayload) => {
+                form.reset(mergeWizardDraftValues(baselineRef.current, payload.values), {
+                  keepDefaultValues: false,
+                });
               }}
               onBeforeNext={async (stepIndex) => {
-                const fields = LOT_STEP_FIELDS[stepIndex];
+                const fields = lotStepFields[stepIndex];
                 if (!fields?.length) return true;
-                return form.trigger(fields);
+                return validateWizardStep(form, formSchema, fields);
               }}
               leadingSlot={
                 <Button
@@ -271,7 +381,7 @@ export function AdminLotForm({
                   variant="outline"
                   disabled={pending}
                   className="min-h-11 w-full sm:w-auto"
-                  onClick={() => router.push("/admin/lots")}
+                  onClick={() => guardedPush("/admin/lots")}
                 >
                   Cancel
                 </Button>
@@ -294,11 +404,18 @@ export function AdminLotForm({
                       form={form}
                       auctionTypeOptions={auctionTypeOptions}
                       englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+                      onAuctionTypeChange={handleAuctionTypeChange}
                     />
                   ) : null}
                   {stepIndex === 1 ? <LotSaleSellerStep form={form} sales={sales} /> : null}
                   {stepIndex === 2 ? (
-                    <LotCatalogueStep form={form} categories={categories} artists={artists} />
+                    <LotCatalogueStep
+                      form={form}
+                      categories={categories}
+                      artists={artists}
+                      showArtistField={showArtistField}
+                      onEditLotType={handleEditLotType}
+                    />
                   ) : null}
                 </>
               )}
@@ -312,7 +429,7 @@ export function AdminLotForm({
                   type="button"
                   variant="outline"
                   disabled={pending}
-                  onClick={() => router.push(lotId ? `/admin/lots/${lotId}` : "/admin/lots")}
+                  onClick={() => guardedPush(lotId ? `/admin/lots/${lotId}` : "/admin/lots")}
                 >
                   Cancel
                 </Button>

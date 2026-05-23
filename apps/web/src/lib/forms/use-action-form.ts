@@ -1,10 +1,11 @@
 "use client";
 
-import type { ActionResult, FieldErrorMap } from "@/lib/forms/form-result";
+import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
+import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState, useTransition } from "react";
-import type { DefaultValues, FieldPath, FieldValues, UseFormProps } from "react-hook-form";
+import type { DefaultValues, FieldValues, UseFormProps } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import type { ZodType } from "zod";
 
@@ -54,7 +55,7 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
             return;
           }
           if (r.fieldErrors) {
-            applyFieldErrorsToForm(form, r.fieldErrors);
+            applyActionFieldErrors(form, r.fieldErrors);
           }
           setRootError(r.error);
           notify.error(r.error);
@@ -74,17 +75,4 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
     isSubmitting: isPending || form.formState.isSubmitting,
     rootError,
   };
-}
-
-function applyFieldErrorsToForm<TFieldValues extends FieldValues>(
-  form: ReturnType<typeof useForm<TFieldValues>>,
-  fieldErrors: FieldErrorMap,
-): void {
-  for (const [key, messages] of Object.entries(fieldErrors)) {
-    if (!messages?.length) continue;
-    const msg = messages[0];
-    if (msg == null) continue;
-    const name = (key === "root" ? "root" : key) as FieldPath<TFieldValues>;
-    form.setError(name, { type: "server", message: msg });
-  }
 }

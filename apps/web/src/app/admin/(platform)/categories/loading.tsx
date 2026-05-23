@@ -1,17 +1,14 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { TableSkeleton } from "@auction/ui";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminCategoriesLoading() {
   return (
-    <AdminListPage
+    <AdminListPageSkeleton
       title="Categories"
       description="Loading categories…"
-      hasFilters={false}
-      resetHref="/admin/categories"
-      errorAlert={null}
-      filters={null}
-      view={<TableSkeleton rows={8} columns={4} />}
-      pagination={null}
+      kpiTiles={0}
+      tableRows={8}
+      tableColumns={4}
+      showToolbar
     />
   );
 }

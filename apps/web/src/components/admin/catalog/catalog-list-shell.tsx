@@ -48,7 +48,11 @@ export function CatalogListShell({
         actions={primaryAction}
       />
       {filterBar}
-      {mobileSummary ? <div className="md:hidden">{mobileSummary}</div> : null}
+      {mobileSummary ? (
+        <div className="md:hidden" aria-live="polite">
+          {mobileSummary}
+        </div>
+      ) : null}
       {kpiStrip ? <div className="hidden md:block">{kpiStrip}</div> : null}
       {toolbarEnd ? (
         <div className="flex flex-wrap items-center justify-end gap-2">{toolbarEnd}</div>

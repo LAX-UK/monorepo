@@ -14,35 +14,30 @@ export function saleListPresetHref(
         lifecycle: "upcoming",
         status: "",
         offset: 0,
-        q: "",
       });
     case "live":
       return buildListHref(BASE, current, {
         lifecycle: "live",
         status: "",
         offset: 0,
-        q: "",
       });
     case "closed":
       return buildListHref(BASE, current, {
         lifecycle: "closed",
         status: "",
         offset: 0,
-        q: "",
       });
     case "settled":
       return buildListHref(BASE, current, {
         lifecycle: "settled",
         status: "",
         offset: 0,
-        q: "",
       });
     default:
       return buildListHref(BASE, current, {
         lifecycle: "",
         status: "",
         offset: 0,
-        q: "",
       });
   }
 }

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import {
+  confirmGuardedNavigation,
+  registerDirtyConfirmOpener,
+  registerDirtyGuard,
+} from "@/components/admin/dirty-navigation-registry";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   isDirty: boolean;
@@ -12,15 +19,38 @@ export function FormDirtyGuard({
   isDirty,
   message = "You have unsaved changes. Leave this page?",
 }: Props) {
+  const router = useRouter();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState(message);
+  const resolveRef = useRef<((value: boolean) => void) | null>(null);
+
+  const openConfirmDialog = useCallback((prompt: string) => {
+    return new Promise<boolean>((resolve) => {
+      resolveRef.current = resolve;
+      setDialogMessage(prompt);
+      setDialogOpen(true);
+    });
+  }, []);
+
+  const settleDialog = useCallback((confirmed: boolean) => {
+    setDialogOpen(false);
+    resolveRef.current?.(confirmed);
+    resolveRef.current = null;
+  }, []);
+
   useEffect(() => {
     if (!isDirty) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = message;
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    return registerDirtyGuard({ message });
   }, [isDirty, message]);
+
+  useEffect(() => {
+    if (!isDirty) {
+      registerDirtyConfirmOpener(null);
+      return;
+    }
+    registerDirtyConfirmOpener(openConfirmDialog);
+    return () => registerDirtyConfirmOpener(null);
+  }, [isDirty, openConfirmDialog]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -40,14 +70,32 @@ export function FormDirtyGuard({
       } catch {
         return;
       }
-      if (!window.confirm(message)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      void (async () => {
+        if (!(await confirmGuardedNavigation())) return;
+        const url = new URL(href, window.location.href);
+        router.push(`${url.pathname}${url.search}${url.hash}`);
+      })();
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [isDirty, message]);
+  }, [isDirty, router]);
 
-  return null;
+  return (
+    <ConfirmDialog
+      open={dialogOpen}
+      onOpenChange={(open) => {
+        if (!open) settleDialog(false);
+      }}
+      title="Leave without saving?"
+      body={dialogMessage}
+      confirmLabel="Leave"
+      cancelLabel="Stay"
+      tone="warning"
+      onConfirm={() => settleDialog(true)}
+    />
+  );
 }

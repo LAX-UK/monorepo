@@ -18,10 +18,11 @@ export function CatalogCategoriesFilterToolbar({ lenses, activeLensId, activeFil
       lensAriaLabel="Category archive scope"
       sheetTitle="Category filters"
       activeFilterCount={activeFilterCount}
+      showFilterTrigger={false}
       searchSlot={<AdminListSearch placeholder="Search categories…" className="w-full" />}
       sheetFilters={
         <p className="font-body text-sm text-on-surface-variant">
-          Lens toggles archived categories — search matches names in the tree.
+          Search matches names and slugs server-side. Lens toggles archived categories.
         </p>
       }
     />

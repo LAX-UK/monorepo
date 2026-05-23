@@ -36,7 +36,7 @@ export function CatalogSegmentNav({ items, activeId, "aria-label": ariaLabel, cl
             {item.badge != null && item.badge > 0 ? (
               <span
                 className={cn(
-                  "ml-1.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full px-1 py-0.5 font-mono text-[10px] tabular-nums",
+                  "ms-1.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full px-1 py-0.5 font-mono text-[10px] tabular-nums",
                   selected
                     ? "bg-on-primary/20 text-on-primary"
                     : "bg-surface-container-high text-on-surface",
@@ -51,7 +51,8 @@ export function CatalogSegmentNav({ items, activeId, "aria-label": ariaLabel, cl
           return (
             <span
               key={item.id}
-              className="pointer-events-none min-h-8 rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant opacity-50"
+              aria-disabled="true"
+              className="pointer-events-none inline-flex min-h-11 items-center rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant opacity-50"
             >
               {content}
             </span>
@@ -64,7 +65,7 @@ export function CatalogSegmentNav({ items, activeId, "aria-label": ariaLabel, cl
             scroll={false}
             aria-current={selected ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-8 shrink-0 items-center rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
               selected
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

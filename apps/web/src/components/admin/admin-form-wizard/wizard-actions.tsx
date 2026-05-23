@@ -34,10 +34,10 @@ export function WizardActions({
       ) : (
         <span />
       )}
-      {isLast && submitSlot ? (
-        submitSlot
+      {isLast ? (
+        (submitSlot ?? null)
       ) : (
-        <Button type="button" disabled={pending || isLast} onClick={onNext}>
+        <Button type="button" disabled={pending} onClick={onNext}>
           {nextLabel}
         </Button>
       )}

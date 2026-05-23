@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { Badge } from "@auction/ui/components/badge";
 import type { ArtistPreviewData, ArtistScenario } from "./types";
 
@@ -14,6 +15,7 @@ export function ArtistPreview({ data, scenario, className = "" }: Props) {
   const { displayName, kindLabel, shortBio, portraitUrl } = data;
   const title = displayName.trim() || "Untitled profile";
   const bio = shortBio.trim();
+  const portraitSrc = resolveMediaSrc(portraitUrl);
 
   return (
     <aside
@@ -25,9 +27,9 @@ export function ArtistPreview({ data, scenario, className = "" }: Props) {
       </p>
       <div className="mt-3 flex gap-3">
         <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-outline-variant/30 bg-surface-container-high">
-          {portraitUrl.trim() ? (
-            // eslint-disable-next-line @next/next/no-img-element -- admin URL paste field
-            <img src={portraitUrl.trim()} alt="" className="size-full object-cover" />
+          {portraitSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview resolves storage keys
+            <img src={portraitSrc} alt="" className="size-full object-cover" />
           ) : (
             <div className="flex size-full items-center justify-center text-xs text-on-surface-variant">
               No image

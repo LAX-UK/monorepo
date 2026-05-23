@@ -8,7 +8,10 @@ import {
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
  */
 import {
+  CATEGORIES_ACCESS,
   CONDITION_REPORTS_ACCESS,
+  CONVEYOR_ACCESS,
+  LOTS_ACCESS,
   STAFF_OVERVIEW_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -159,7 +162,7 @@ function buildStaffNavGroupSpecs(
             pathname === "/admin/lots" ||
             (pathname.startsWith("/admin/lots/") &&
               !pathname.startsWith("/admin/lots/withdrawals")),
-          requirement: "catalogue.write",
+          requirement: LOTS_ACCESS,
           ...navBadge(navCounts.withdrawalsPending, "warning"),
         },
         {
@@ -167,7 +170,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/categories",
           label: "Categories",
           icon: ListTree,
-          requirement: "catalogue.write",
+          requirement: CATEGORIES_ACCESS,
         },
         {
           id: "artists",
@@ -199,7 +202,7 @@ function buildStaffNavGroupSpecs(
           label: "Conveyor",
           icon: Workflow,
           match: (pathname) => pathname.startsWith("/admin/conveyor"),
-          requirement: "operations.fulfilment",
+          requirement: CONVEYOR_ACCESS,
         },
         {
           id: "lot-fulfilment",

@@ -19,6 +19,7 @@ import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { CatalogFormSection as ArtistFormSection } from "@/components/admin/forms/catalog-form-section";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
+import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistKind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -125,6 +126,9 @@ export function AdminArtistForm({
                 }
                 router.refresh();
                 return;
+              }
+              if (result.fieldErrors) {
+                applyActionFieldErrors(form, result.fieldErrors);
               }
               notify.error(result.error);
             });

@@ -18,7 +18,7 @@ type Props = {
 /** Loads artist/sale/category options on demand (Suspense boundary). */
 export async function LotFilterOptionsLoader(props: Props) {
   const [artistListResult, salesRows, categoryReader] = await Promise.allSettled([
-    getAdminArtistList({ includeArchived: false, limit: 500 }),
+    getAdminArtistList({ includeArchived: false, limit: 200 }),
     getAdminSalesList({ limit: 200 }),
     getServerCategoryReader().then((r) => r.tree()),
   ]);
