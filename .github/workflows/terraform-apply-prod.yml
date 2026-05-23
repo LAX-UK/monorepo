@@ -79,7 +79,6 @@ jobs:
       # MUST be "false" (or unset) at public launch. See apps/web/src/lib/analytics/consent/disable-banner.ts.
       TF_VAR_next_public_disable_consent_banner: ${{ vars.NEXT_PUBLIC_DISABLE_CONSENT_BANNER || 'false' }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
-      TF_VAR_gtm_sst_container_config: ${{ secrets.GTM_SST_CONTAINER_CONFIG }}
       TF_VAR_meta_pixel_id: ${{ secrets.META_PIXEL_ID }}
       TF_VAR_meta_capi_access_token: ${{ secrets.META_CAPI_ACCESS_TOKEN }}
       TF_VAR_meta_capi_test_event_code: ${{ secrets.META_CAPI_TEST_EVENT_CODE }}
