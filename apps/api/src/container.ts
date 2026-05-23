@@ -52,9 +52,9 @@ import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
-import { resolveUserIndividualEntity } from "./lib/legal-entity-resolution.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
+import { createPlatformCatalogLegalEntityIdProvider } from "./lib/platform-catalog-legal-entity.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
@@ -708,7 +708,10 @@ export function createContainer(env: Env): Container {
     saleRepo,
     lotRepo,
     jobScheduler: lotJobScheduler,
-    resolveCreatorLegalEntityId: (userId) => resolveUserIndividualEntity(db, userId),
+    resolvePlatformCatalogLegalEntityId: createPlatformCatalogLegalEntityIdProvider({
+      db,
+      configuredId: env.PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    }),
     imageCleanup: imageCleanupService,
     saleFollowReader: saleFollowService,
     mediaUrlResolver,
