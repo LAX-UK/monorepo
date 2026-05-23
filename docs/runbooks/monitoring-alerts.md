@@ -12,7 +12,8 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 
 | `event` value | Meaning |
 |---------------|---------|
-| `stripe_webhook_identity_4xx` / `_5xx` | Identity webhook returned client/server error |
+| `veriff_webhook_decision_4xx` / `_5xx` | Veriff KYC decision webhook errors |
+| `veriff_webhook_event_4xx` / `_5xx` | Veriff KYC event webhook errors |
 | `stripe_webhook_connect_4xx` / `_5xx` | Connect webhook errors |
 | `stripe_webhook_payments_4xx` / `_5xx` | Payments (dispute/refund) webhook errors |
 | `stripe_connect_transfer_failed` | Stripe `transfer.failed` received |

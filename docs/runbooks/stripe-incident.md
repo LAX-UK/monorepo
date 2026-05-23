@@ -2,13 +2,14 @@
 
 ## Symptom
 
-- Checkout or Connect onboarding fails with Stripe errors; webhooks show delivery failures; Identity sessions stuck; transfers not appearing.
+- Checkout or Connect onboarding fails with Stripe errors; webhooks show delivery failures; Veriff KYC sessions stuck; transfers not appearing.
 
 ## Diagnosis
 
 1. **Stripe status page** — region/API outage?
 2. **Dashboard → Developers → Webhooks** — which endpoint fails?
-   - `/webhooks/stripe/identity` — KYC
+   - `/webhooks/veriff/decision` — buyer KYC (Veriff)
+   - `/webhooks/veriff/event` — KYC session progress (optional)
    - `/webhooks/stripe/connect` — seller account status (Connected accounts scope)
    - `/webhooks/stripe/transfers` — platform → seller transfers (Your account scope)
    - `/webhooks/stripe/payments` — disputes and refunds
@@ -23,7 +24,7 @@
 | **API down** | Scale App Platform instances; rollback deploy if regression; enable maintenance banner. |
 | **Webhooks** | Rotate secret in Stripe for the failing destination + update the matching `STRIPE_*_WEBHOOK_SECRET` in secrets/Terraform + apply; replay failed events from Stripe UI once handler fixed. |
 | **Connect** | Seller completes outstanding KYC in Connect Express link; refresh account in admin. |
-| **Identity** | Verify `STRIPE_IDENTITY_WEBHOOK_SECRET`; check session `last_error` in Stripe dashboard. |
+| **Veriff KYC** | Verify `VERIFF_API_KEY` and `VERIFF_SHARED_SECRET` in env; check Veriff Customer Portal webhook delivery and session status; confirm `x-auth-client` + HMAC headers reach `/webhooks/veriff/decision`. |
 | **Transfers** | Verify `STRIPE_TRANSFERS_WEBHOOK_SECRET` and that the destination uses **Your account** scope with `transfer.*` events. |
 
 ## Escalation

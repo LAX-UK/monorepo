@@ -43,7 +43,7 @@ curl -sS -o /dev/null -w "%{http_code}" https://gtm.lax.bid/healthy
 | `bid_placed` | Web dataLayer only (`apps/web/src/lib/analytics/events.ts`) |
 | `InitiateCheckout` | API on `POST /payments` |
 | `Purchase` | API on payment capture (legitimate interest) |
-| `CompleteRegistration` | Stripe Identity webhook when KYC approved |
+| `CompleteRegistration` | Veriff decision webhook when KYC approved |
 | `Lead` | `POST /users/register` |
 | `AddToWishlist` / `RemoveFromWishlist` | Watchlist API |
 | `_fbp` / `_fbc` sync | Authenticated `POST /marketing/click-ids` (marketing consent) |

@@ -26,13 +26,13 @@ export async function postServerKycSession(returnUrl: string): Promise<PostKycSe
     body: JSON.stringify({ returnUrl }),
   });
   const body = (await res.json().catch(() => ({}))) as {
-    data?: { hostedUrl?: string | null };
+    data?: { verificationUrl?: string | null; hostedUrl?: string | null };
     error?: string;
   };
   if (!res.ok) {
     return { ok: false, error: body.error ?? `Could not start verification (${res.status})` };
   }
-  const url = body.data?.hostedUrl;
+  const url = body.data?.verificationUrl ?? body.data?.hostedUrl;
   if (!url) {
     return { ok: false, error: "Verification link unavailable. Try again later." };
   }

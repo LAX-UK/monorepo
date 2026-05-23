@@ -7,13 +7,13 @@ This runbook describes **operator steps** for KYC / KYB on the platform. It is *
 | Role | Responsibility |
 |------|------------------|
 | **Compliance lead** | Sets thresholds, approves policy changes, SAR decisions |
-| **Ops reviewer** | Day-to-day queue (`requires_manual_review`, Stripe Identity fallback) |
+| **Ops reviewer** | Day-to-day queue (`requires_manual_review`, Veriff resubmission / review) |
 | **Engineering** | Maintains audit logs, access controls, data exports |
 
 ## Customer due diligence (CDD)
 
 1. **Registration** — collect legal name, address, contact; tie activity to `legal_entity` + `user`.
-2. **Identity (buyers)** — Stripe Identity when `KYC_THRESHOLD_AMOUNT` / currency exceeded (`apps/api` KYC services).
+2. **Identity (buyers)** — Veriff IDV when `KYC_THRESHOLD_AMOUNT` / currency exceeded (`apps/api` KYC services).
 3. **Organisation KYB** — document upload + admin review per organisation onboarding flow.
 
 ## Ongoing monitoring

@@ -171,7 +171,7 @@ import { InvitationLifecycleService } from "./services/invitation-lifecycle.serv
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
-import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
+import { VeriffKycService } from "./services/kyc/veriff-kyc.service.js";
 import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
@@ -299,7 +299,7 @@ export type Container = {
   legalEntityRepository: ILegalEntityRepository;
   /** role-aware notification recipient lookup for legal entities. */
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
-  /** KYC (Stripe Identity). */
+  /** KYC (Veriff identity verification). */
   kycRepository: IKycRepository;
   kycService: IKycService;
   /** organisation onboarding. */
@@ -620,12 +620,11 @@ export function createContainer(env: Env): Container {
     marketingEventQueue,
     marketingConsentGate,
   );
-  const kycService: IKycService = new StripeKycService(
+  const kycService: IKycService = new VeriffKycService(
     env,
     kycRepository,
     db,
     marketingEventService,
-    stripeClientFactory,
   );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
@@ -841,7 +840,7 @@ export function createContainer(env: Env): Container {
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
-  const bidEligibilityService = new BidEligibilityService(db);
+  const bidEligibilityService = new BidEligibilityService(db, kycService);
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const bidService = new BidService({

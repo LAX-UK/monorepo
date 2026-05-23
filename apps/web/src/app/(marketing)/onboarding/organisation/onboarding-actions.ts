@@ -135,20 +135,20 @@ export async function startKycForOrganisationOnboardingAction(
   entityId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const site = getSiteUrl();
-  const returnUrl = `${site}/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=1`;
+  const returnUrl = `${site}/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`;
   const res = await authedServerFetch("/kyc/session", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...entityHeaders(entityId) },
     body: JSON.stringify({ returnUrl }),
   });
   const body = (await res.json().catch(() => ({}))) as {
-    data?: { hostedUrl?: string | null };
+    data?: { verificationUrl?: string | null; hostedUrl?: string | null };
     error?: string;
   };
   if (!res.ok) {
     return { ok: false, error: body.error ?? `kyc_session_${res.status}` };
   }
-  const url = body.data?.hostedUrl;
+  const url = body.data?.verificationUrl ?? body.data?.hostedUrl;
   if (!url) return { ok: false, error: "Verification link unavailable." };
   return { ok: true, url };
 }

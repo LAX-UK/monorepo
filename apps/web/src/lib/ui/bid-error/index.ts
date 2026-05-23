@@ -7,7 +7,7 @@ import { notAcceptingBidErrorMatcher } from "./matchers/not-accepting.matcher";
 import { sealedClosedBidErrorMatcher } from "./matchers/sealed-closed.matcher";
 import { sellerOwnLotBidErrorMatcher } from "./matchers/seller.matcher";
 import { suspendedBidErrorMatcher } from "./matchers/suspended.matcher";
-import type { BidErrorMatcher, BidErrorPresentation } from "./types";
+import type { BidErrorMatcher, BidErrorPresentation, MapBidErrorOptions } from "./types";
 
 export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   sellerOwnLotBidErrorMatcher,
@@ -23,10 +23,11 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
 
 export function mapBidError(
   raw: string,
+  options?: MapBidErrorOptions,
   matchers: readonly BidErrorMatcher[] = defaultBidErrorMatchers,
 ): BidErrorPresentation {
   for (const m of matchers) {
-    const hit = m.match(raw);
+    const hit = m.match(raw, options);
     if (hit) return hit;
   }
   return { message: raw, severity: "error" };
@@ -36,4 +37,9 @@ export function clientBidError(message: string): BidErrorPresentation {
   return { message, severity: "error" };
 }
 
-export type { BidErrorMatcher, BidErrorPresentation, BidErrorSeverity } from "./types";
+export type {
+  BidErrorMatcher,
+  BidErrorPresentation,
+  BidErrorSeverity,
+  MapBidErrorOptions,
+} from "./types";

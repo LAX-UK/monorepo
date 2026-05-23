@@ -9,7 +9,7 @@ export type BidPolicyContext = {
   lotStatus: Lot["status"];
   /** Post-login return path for the sign-in CTA (e.g. `/lot/:slug/:id`). */
   loginNextPath: string;
-  /** When true, bidding is blocked until identity verification (Stripe Identity threshold). */
+  /** When true, bidding is blocked until identity verification threshold is met. */
   kycBidGate?: { requiresKyc: boolean } | null;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
   biddingLifecycle?: { kind: LotLifecycleKind } | null;
