@@ -11,12 +11,12 @@ locals {
   media_public_url     = "https://lax-media.lon1.cdn.digitaloceanspaces.com"
 
   domain = {
-    web         = "lax.bid"
-    api         = "api.lax.bid"
-    auth        = "auth.lax.bid"
-    ws          = "ws.lax.bid"
-    media       = "media.lax.bid"
-    gtm = "gtm.lax.bid"
+    web   = "lax.bid"
+    api   = "api.lax.bid"
+    auth  = "auth.lax.bid"
+    ws    = "ws.lax.bid"
+    media = "media.lax.bid"
+    gtm   = "gtm.lax.bid"
   }
 
   sgtm_endpoint_url = "https://${local.domain.gtm}"
@@ -349,10 +349,10 @@ module "monitoring" {
   postgres_cluster_id = module.postgres.id
   redis_cluster_id    = module.redis.id
   uptime_targets = {
-    web         = "https://${local.domain.web}/"
-    api         = "https://${local.domain.api}/health/live"
-    auth        = "https://${local.domain.auth}/health/live"
-    ws          = "https://${local.domain.ws}/health/live"
-    gtm = "https://${local.domain.gtm}/healthy"
+    web  = "https://${local.domain.web}/"
+    api  = "https://${local.domain.api}/health/live"
+    auth = "https://${local.domain.auth}/health/live"
+    ws   = "https://${local.domain.ws}/health/live"
+    gtm  = "https://${local.domain.gtm}/healthy"
   }
 }
