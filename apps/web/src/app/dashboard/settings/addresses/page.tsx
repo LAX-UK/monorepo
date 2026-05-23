@@ -1,9 +1,13 @@
 import { AddressesBoard } from "@/components/dashboard/addresses-board";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import {
+  describeDashboardSliceFailure,
+  describeSettingsActionError,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 
 export default async function AddressSettingsPage({
@@ -20,12 +24,24 @@ export default async function AddressSettingsPage({
   });
 
   const c = await getServerDataContainer();
-  const addresses = await c.addresses.listMine().catch(() => [] as ProfileAddressRow[]);
+  let addresses: ProfileAddressRow[] = [];
+  let loadFailure = null;
+  const addressRes = await Promise.allSettled([c.addresses.listMine()]);
+  if (addressRes[0].status === "fulfilled") {
+    addresses = addressRes[0].value;
+  } else {
+    loadFailure = describeDashboardSliceFailure(
+      addressRes[0].reason,
+      "addresses",
+      "Could not load your addresses.",
+    );
+  }
 
   return (
     <DashboardPage className="space-y-8">
       <SettingsFormHeader title="Addresses" />
-      {err ? <DashboardErrorAlert title="Could not update address" message={err} /> : null}
+      {err ? <DashboardSliceErrorAlert failure={describeSettingsActionError(err)} /> : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
       <AddressesBoard addresses={addresses} />
     </DashboardPage>
   );

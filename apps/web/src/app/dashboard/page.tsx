@@ -1,8 +1,13 @@
 import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview-view";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
+import {
+  dashboardSliceFailureMessage,
+  describeSessionsOverviewError,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type {
   ArtistFollowRow,
@@ -17,22 +22,25 @@ import { formatMoney } from "@/lib/format-currency";
 import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
 import { Suspense } from "react";
 
-function sliceError(e: unknown, fallback: string): string {
-  return e instanceof Error ? e.message : fallback;
-}
-
-function takeSettled<T>(
+function takeSettledSlice<T>(
   result: PromiseSettledResult<T>,
+  slice: Parameters<typeof dashboardSliceFailureMessage>[1],
   fallback: T,
   onReject: (message: string) => void,
   userMessage: string,
 ): T {
   if (result.status === "fulfilled") return result.value;
-  onReject(sliceError(result.reason, userMessage));
+  onReject(dashboardSliceFailureMessage(result.reason, slice, userMessage));
   return fallback;
 }
 
-async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean }) {
+async function DashboardHomeContent({
+  orgSubmitted,
+  sessionsFailure,
+}: {
+  orgSubmitted: boolean;
+  sessionsFailure: ReturnType<typeof describeSessionsOverviewError> | null;
+}) {
   const c = await getServerDataContainer();
 
   const [
@@ -58,26 +66,32 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     c.kyc.getSummary(),
     c.orgOnboarding.getResume(),
     c.addresses.listMine(),
-    c.notifications.listMine({ limit: 12 }),
+    c.notifications.listMineSafe({ limit: 12 }),
   ]);
 
   const errors = {
-    session: null as string | null,
+    session: sessionsFailure?.message ?? null,
     active: null as string | null,
     portfolio: null as string | null,
     watchlist: null as string | null,
     artistFollow: null as string | null,
     bids: null as string | null,
     submissions: null as string | null,
+    notifications: null as string | null,
   };
 
   const user = userR.status === "fulfilled" ? userR.value : null;
   if (userR.status === "rejected") {
-    errors.session = sliceError(userR.reason, "Could not load your session.");
+    errors.session = dashboardSliceFailureMessage(
+      userR.reason,
+      "session",
+      "Could not load your session.",
+    );
   }
 
-  const active: Lot[] = takeSettled(
+  const active: Lot[] = takeSettledSlice(
     activeR,
+    "activeLots",
     [],
     (msg) => {
       errors.active = msg;
@@ -85,8 +99,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     "Could not load live inventory.",
   );
 
-  const portfolio: PortfolioRow[] = takeSettled(
+  const portfolio: PortfolioRow[] = takeSettledSlice(
     portfolioR,
+    "portfolio",
     [],
     (msg) => {
       errors.portfolio = msg;
@@ -94,8 +109,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     "Could not load portfolio.",
   );
 
-  const watchlist: WatchlistWithLotRow[] = takeSettled(
+  const watchlist: WatchlistWithLotRow[] = takeSettledSlice(
     watchlistR,
+    "watchlist",
     [],
     (msg) => {
       errors.watchlist = msg;
@@ -103,8 +119,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     "Could not load watchlist.",
   );
 
-  const artistFollow: ArtistFollowRow[] = takeSettled(
+  const artistFollow: ArtistFollowRow[] = takeSettledSlice(
     artistFollowR,
+    "artistFollow",
     [],
     (msg) => {
       errors.artistFollow = msg;
@@ -112,8 +129,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     "Could not load followed artists.",
   );
 
-  const bidRows: BidWithLot[] = takeSettled(
+  const bidRows: BidWithLot[] = takeSettledSlice(
     bidsR,
+    "bids",
     [],
     (msg) => {
       errors.bids = msg;
@@ -121,8 +139,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
     "Could not load bids.",
   );
 
-  const submissions: ItemSubmission[] = takeSettled(
+  const submissions: ItemSubmission[] = takeSettledSlice(
     submissionsR,
+    "submissions",
     [],
     (msg) => {
       errors.submissions = msg;
@@ -134,8 +153,23 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   const orgOnboarding: OrgOnboardingResumeVm | null =
     orgR.status === "fulfilled" ? orgR.value : null;
   const addresses: ProfileAddressRow[] = addressesR.status === "fulfilled" ? addressesR.value : [];
-  const notifications: UserNotification[] =
-    notificationsR.status === "fulfilled" ? notificationsR.value : [];
+  let notifications: UserNotification[] = [];
+  if (notificationsR.status === "fulfilled") {
+    notifications = notificationsR.value.items;
+    if (notificationsR.value.failed) {
+      errors.notifications = dashboardSliceFailureMessage(
+        new Error("notifications_unavailable"),
+        "notifications",
+        "Could not load recent activity.",
+      );
+    }
+  } else {
+    errors.notifications = dashboardSliceFailureMessage(
+      notificationsR.reason,
+      "notifications",
+      "Could not load recent activity.",
+    );
+  }
 
   const vm = buildDashboardOverviewVm({
     user,
@@ -159,6 +193,9 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
   return (
     <DashboardPage>
       {orgSubmitted ? <OrgSubmittedAlert /> : null}
+      {sessionsFailure && userR.status !== "rejected" ? (
+        <DashboardSliceErrorAlert failure={sessionsFailure} />
+      ) : null}
       <DashboardOverviewView
         vm={vm}
         user={
@@ -181,13 +218,15 @@ async function DashboardHomeContent({ orgSubmitted }: { orgSubmitted: boolean })
 export default async function DashboardHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ org_submitted?: string }>;
+  searchParams: Promise<{ org_submitted?: string; error?: string; code?: string }>;
 }) {
   const sp = await searchParams;
   const orgSubmitted = sp.org_submitted === "1";
+  const sessionsFailure =
+    sp.error === "sessions" ? describeSessionsOverviewError(sp.code ?? null) : null;
   return (
     <Suspense fallback={<DashboardSkeleton variant="dashboard" />}>
-      <DashboardHomeContent orgSubmitted={orgSubmitted} />
+      <DashboardHomeContent orgSubmitted={orgSubmitted} sessionsFailure={sessionsFailure} />
     </Suspense>
   );
 }

@@ -1,11 +1,15 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import {
   type ProfileAddressRow,
   ProfileSettingsBoard,
 } from "@/components/dashboard/profile-settings-board";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import {
+  describeDashboardSliceFailure,
+  describeSettingsActionError,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 
 export default async function ProfileSettingsPage({
@@ -22,7 +26,18 @@ export default async function ProfileSettingsPage({
   });
 
   const c = await getServerDataContainer();
-  const addresses = await c.addresses.listMine().catch(() => [] as ProfileAddressRow[]);
+  let addresses: ProfileAddressRow[] = [];
+  let addressLoadFailure = null;
+  const addressRes = await Promise.allSettled([c.addresses.listMine()]);
+  if (addressRes[0].status === "fulfilled") {
+    addresses = addressRes[0].value;
+  } else {
+    addressLoadFailure = describeDashboardSliceFailure(
+      addressRes[0].reason,
+      "addresses",
+      "Could not load your addresses.",
+    );
+  }
 
   return (
     <DashboardPage className="mx-auto max-w-5xl space-y-8">
@@ -30,7 +45,8 @@ export default async function ProfileSettingsPage({
         title="Profile"
         description="Manage your personal details, addresses, and account preferences."
       />
-      {err ? <DashboardErrorAlert title="Could not update" message={err} /> : null}
+      {err ? <DashboardSliceErrorAlert failure={describeSettingsActionError(err)} /> : null}
+      {addressLoadFailure ? <DashboardSliceErrorAlert failure={addressLoadFailure} /> : null}
       <ProfileSettingsBoard
         initialName={me.name}
         initialImage={me.image ?? null}

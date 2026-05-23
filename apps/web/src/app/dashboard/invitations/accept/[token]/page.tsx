@@ -1,9 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { acceptInvitationAction } from "@/lib/legal-entity/member-management.actions";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { LogIn, UserPlus } from "lucide-react";
@@ -28,15 +30,16 @@ export default async function AcceptInvitationTokenPage({
     if (res.ok) {
       redirect(`/dashboard/organisations/${res.data.legalEntityId}?welcome=1`);
     }
+    const failure = {
+      ...describeSettingsActionError(res.error ?? "Could not accept invitation."),
+      title: "Could not accept invitation",
+    };
     return (
       <DashboardPage className="mx-auto max-w-lg space-y-4">
-        <DashboardPageHeader meta="Invitation" title="Could not accept invitation" />
-        <Alert variant="destructive">
-          <AlertTitle>Something went wrong</AlertTitle>
-          <AlertDescription>{res.error}</AlertDescription>
-        </Alert>
+        <DashboardPageHeader meta="Invitation" title={failure.title} />
+        <DashboardSliceErrorAlert failure={failure} />
         <Button asChild variant="outline">
-          <Link href="/dashboard/invitations">Back to invitations</Link>
+          <Link href={DASHBOARD_ROUTES.invitations}>Back to invitations</Link>
         </Button>
       </DashboardPage>
     );
@@ -75,7 +78,7 @@ export default async function AcceptInvitationTokenPage({
           </Button>
         </div>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/dashboard/invitations">Back to invitations</Link>
+          <Link href={DASHBOARD_ROUTES.invitations}>Back to invitations</Link>
         </Button>
       </Surface>
     </DashboardPage>
