@@ -1,4 +1,12 @@
+variable "enable_sentry_remote_state" {
+  type        = bool
+  default     = true
+  description = "Read DSN outputs from sentry/test remote state. Set false when the sentry layer has not been applied yet."
+}
+
 data "terraform_remote_state" "sentry" {
+  count = var.enable_sentry_remote_state ? 1 : 0
+
   backend = "s3"
   config = {
     bucket = "lax-tf-state"
@@ -19,9 +27,9 @@ data "terraform_remote_state" "sentry" {
 }
 
 locals {
-  sentry_dsns        = try(nonsensitive(data.terraform_remote_state.sentry.outputs.dsns), {})
-  sentry_app_config  = try(data.terraform_remote_state.sentry.outputs.app_config, {})
-  sentry_cron_slugs  = try(jsonencode(data.terraform_remote_state.sentry.outputs.cron_slugs), "{}")
+  sentry_dsns        = var.enable_sentry_remote_state ? try(nonsensitive(data.terraform_remote_state.sentry[0].outputs.dsns), {}) : {}
+  sentry_app_config  = var.enable_sentry_remote_state ? try(data.terraform_remote_state.sentry[0].outputs.app_config, {}) : {}
+  sentry_cron_slugs  = var.enable_sentry_remote_state ? try(jsonencode(data.terraform_remote_state.sentry[0].outputs.cron_slugs), "{}") : "{}"
   sentry_runtime_env = local.environment == "prod" ? "production" : "test"
   sentry_dsn_env_keys = {
     web    = "SENTRY_DSN_WEB"
@@ -40,7 +48,7 @@ locals {
     { key = "SENTRY_AUTH_TOKEN", value = var.sentry_auth_token, type = "SECRET", scope = "RUN_AND_BUILD_TIME" },
   ] : []
 
-  sentry_env_for = {
+  _sentry_env_configured = {
     for app, cfg in local.sentry_app_config : app => concat(
       local.sentry_common_env,
       local.sentry_build_env,
@@ -58,5 +66,9 @@ locals {
         { key = "SENTRY_MONITOR_SLUGS", value = local.sentry_cron_slugs, type = "GENERAL", scope = "RUN_TIME" },
       ] : [],
     )
+  }
+
+  sentry_env_for = {
+    for app in ["web", "api", "auth", "ws", "worker"] : app => lookup(local._sentry_env_configured, app, [])
   }
 }
