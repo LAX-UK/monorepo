@@ -22,6 +22,7 @@ function submissionsAdminListFilter(q: {
   queue?: "awaiting" | "accepted" | "rejected" | undefined;
   status?: ItemSubmissionStatus | undefined;
   sellerId?: string | undefined;
+  categoryId?: string | undefined;
   q?: string | undefined;
   limit: number;
   offset: number;
@@ -30,6 +31,7 @@ function submissionsAdminListFilter(q: {
     limit: q.limit,
     offset: q.offset,
     ...(q.sellerId ? { legalEntityId: q.sellerId } : {}),
+    ...(q.categoryId ? { categoryId: q.categoryId } : {}),
     ...(q.q ? { q: q.q.trim() || undefined } : {}),
   };
   const AWAITING: ItemSubmissionStatus[] = ["submitted", "under_review"];

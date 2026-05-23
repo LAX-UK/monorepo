@@ -109,7 +109,7 @@ export class ArtistProfileService {
   }
 
   async create(adminUserId: string, input: CreateArtistInput): Promise<ArtistProfile> {
-    const slug = await this.registry.resolveUniqueSlug(input.slug ?? input.displayName);
+    const slug = await this.registry.resolveUniqueSlug(input.displayName);
     // Schema validators leave kind/status optional so the admin form input
     // and output types stay aligned. The defaults are applied here so the
     // API contract remains "admin-created profiles default to artist /
@@ -124,11 +124,7 @@ export class ArtistProfileService {
   }
 
   async update(id: string, input: UpdateArtistInput): Promise<ArtistProfile> {
-    const slug =
-      input.slug !== undefined ? await this.registry.resolveUniqueSlug(input.slug, id) : undefined;
-    const patch: UpdateArtistInput & { slug?: string | undefined } = { ...input };
-    if (slug !== undefined) patch.slug = slug;
-    const updated = await this.artists.update(id, patch);
+    const updated = await this.artists.update(id, input);
     if (!updated) throw new CategoryError("Artist profile not found");
     return updated;
   }

@@ -1,9 +1,9 @@
 "use client";
 
-import { AdminErrorPage } from "@/components/admin/admin-error-page";
+import { CatalogDetailErrorShell } from "@/components/admin/catalog/catalog-detail-error-shell";
 import { useEffect } from "react";
 
-export default function AdminRouteError({
+export default function AdminSubmissionDetailError({
   error,
   reset,
 }: {
@@ -13,5 +13,15 @@ export default function AdminRouteError({
   useEffect(() => {
     console.error(error);
   }, [error]);
-  return <AdminErrorPage reset={reset} />;
+
+  return (
+    <CatalogDetailErrorShell
+      title="Submission"
+      listLabel="Submissions"
+      listHref="/admin/submissions"
+      breadcrumbs={[{ label: "Submissions", href: "/admin/submissions" }]}
+      reset={reset}
+      {...(error.message ? { message: error.message } : {})}
+    />
+  );
 }

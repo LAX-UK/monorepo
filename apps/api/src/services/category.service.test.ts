@@ -9,6 +9,8 @@ const childId = "00000000-0000-4000-8000-000000000002";
 const grandchildId = "00000000-0000-4000-8000-000000000003";
 const missingId = "00000000-0000-4000-8000-000000000099";
 
+const stamp = new Date("2024-01-01T00:00:00.000Z");
+
 function category(overrides: Partial<Category>): Category {
   return {
     id: rootId,
@@ -19,15 +21,33 @@ function category(overrides: Partial<Category>): Category {
     sortOrder: 0,
     parentId: null,
     heroImageKey: null,
+    createdAt: stamp,
+    updatedAt: stamp,
     ...overrides,
   };
 }
 
 function createSut(categories: Category[]) {
   const findAll = vi.fn().mockResolvedValue(categories);
-  const repo = { findAll } as unknown as ICategoryRepository;
+  const findById = vi.fn(async (id: string) => categories.find((c) => c.id === id) ?? null);
+  const findBySlug = vi.fn(async (slug: string) => categories.find((c) => c.slug === slug) ?? null);
+  const create = vi.fn(async (input: { name: string; slug: string }) =>
+    category({ id: "new-id", name: input.name, slug: input.slug }),
+  );
+  const update = vi.fn(async (id: string, input: Partial<Category>) => {
+    const existing = categories.find((c) => c.id === id);
+    if (!existing) return null;
+    return category({ ...existing, ...input });
+  });
+  const repo = {
+    findAll,
+    findById,
+    findBySlug,
+    create,
+    update,
+  } as unknown as ICategoryRepository;
   const service = new CategoryService(repo);
-  return { service, findAll };
+  return { service, findAll, findById, findBySlug, create, update };
 }
 
 describe("CategoryService.list", () => {
@@ -110,5 +130,24 @@ describe("CategoryService.validateParent", () => {
     await expect(service.validateParent(grandchildId, childId)).rejects.toBeInstanceOf(
       CategoryError,
     );
+  });
+});
+
+describe("CategoryService.create", () => {
+  it("generates slug from name", async () => {
+    const { service, create } = createSut([]);
+    await service.create({ name: "Contemporary Art" });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Contemporary Art", slug: "contemporary-art" }),
+    );
+  });
+});
+
+describe("CategoryService.update", () => {
+  it("does not change slug when name is updated", async () => {
+    const rows = [category({ id: childId, name: "Old Name", slug: "old-slug", parentId: null })];
+    const { service, update } = createSut(rows);
+    await service.update(childId, { name: "New Name" });
+    expect(update).toHaveBeenCalledWith(childId, { name: "New Name" });
   });
 });

@@ -210,6 +210,7 @@ export type ListSubmissionsFilter = {
   /** Multiple statuses (admin decision queues). Overrides `status` when set. */
   statuses?: ItemSubmissionStatus[] | undefined;
   legalEntityId?: string | undefined;
+  categoryId?: string | undefined;
   q?: string | undefined;
   limit: number;
   offset: number;

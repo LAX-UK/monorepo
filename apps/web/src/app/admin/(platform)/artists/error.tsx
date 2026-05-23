@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminErrorPage } from "@/components/admin/admin-error-page";
+import { CatalogListErrorShell } from "@/components/admin/catalog/catalog-list-states";
 import { useEffect } from "react";
 
 export default function AdminArtistsError({
@@ -14,5 +14,13 @@ export default function AdminArtistsError({
     console.error(error);
   }, [error]);
 
-  return <AdminErrorPage reset={reset} />;
+  return (
+    <CatalogListErrorShell
+      title="Artists"
+      listLabel="Artists"
+      listHref="/admin/artists"
+      reset={reset}
+      {...(error.message ? { message: error.message } : {})}
+    />
+  );
 }

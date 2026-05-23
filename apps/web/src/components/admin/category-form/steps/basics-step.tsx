@@ -31,11 +31,14 @@ type CategoryFormValues = z.infer<typeof adminCategoryFormSchema>;
 
 type Props = {
   form: UseFormReturn<CategoryFormValues>;
+  mode: "create" | "edit";
   categoryId?: string;
+  /** Read-only slug shown on edit (server-generated at create). */
+  slug?: string;
   categories: Category[];
 };
 
-export function CategoryBasicsStep({ form, categoryId, categories }: Props) {
+export function CategoryBasicsStep({ form, mode, categoryId, slug, categories }: Props) {
   const [parentPopoverOpen, setParentPopoverOpen] = useState(false);
   const eligibleParents = categories.filter((c) => c.id !== categoryId && !c.archived);
 
@@ -48,7 +51,11 @@ export function CategoryBasicsStep({ form, categoryId, categories }: Props) {
     <>
       <CatalogFormSection
         title="Identity"
-        description="Display name and URL slug."
+        description={
+          mode === "edit"
+            ? "Display name and public URL slug (slug is set at creation)."
+            : "Display name — a unique public slug is generated when you save."
+        }
         collapsible={false}
       >
         <FormField
@@ -67,28 +74,17 @@ export function CategoryBasicsStep({ form, categoryId, categories }: Props) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Slug</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  placeholder="Auto-generated from name"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <p className="text-xs text-on-surface-variant">
-                Leave blank to generate a unique public slug.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {mode === "edit" && slug ? (
+          <div>
+            <p className="mb-2 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+              Slug
+            </p>
+            <p className="font-mono text-sm text-on-surface">/{slug}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Generated at creation and cannot be changed.
+            </p>
+          </div>
+        ) : null}
       </CatalogFormSection>
 
       <CatalogFormSection

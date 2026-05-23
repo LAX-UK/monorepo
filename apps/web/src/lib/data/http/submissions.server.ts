@@ -38,6 +38,7 @@ export async function getAdminSubmissions(
     /** Grouped statuses for staff queues. Prefer over `status` when both passed. */
     queue?: AdminSubmissionDecisionQueue;
     sellerId?: string;
+    categoryId?: string;
     q?: string;
     limit?: number;
     offset?: number;
@@ -49,6 +50,7 @@ export async function getAdminSubmissions(
   if (params.queue) qs.set("queue", params.queue);
   else if (params.status) qs.set("status", params.status);
   if (params.sellerId) qs.set("sellerId", params.sellerId);
+  if (params.categoryId) qs.set("categoryId", params.categoryId);
   if (params.q?.trim()) qs.set("q", params.q.trim());
   const res = await authedServerFetch(`/submissions?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load admin submissions: ${res.status}`);

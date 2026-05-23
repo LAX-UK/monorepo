@@ -33,17 +33,6 @@ export async function adminUpdateCategoryNameFieldAction(
   return adminUpdateCategoryResultAction(categoryId, parsed.data);
 }
 
-export async function adminUpdateCategorySlugFieldAction(
-  categoryId: string,
-  slug: string,
-): Promise<ActionResult<void>> {
-  const parsed = adminUpdateCategoryBodySchema.safeParse({ slug });
-  if (!parsed.success) {
-    return actionFailure(firstZodErrorMessage(parsed.error));
-  }
-  return adminUpdateCategoryResultAction(categoryId, parsed.data);
-}
-
 export async function adminUpdateArtistNameFieldAction(
   artistId: string,
   displayName: string,

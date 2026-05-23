@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminListSearch } from "@/components/admin/admin-list-search";
 import { AdminSubmissionsTitleFilterForm } from "@/components/admin/admin-submissions-title-filter-form";
 import {
   CatalogFilterBar,
@@ -29,6 +30,7 @@ export function CatalogSubmissionsFilterToolbar({
       lensAriaLabel="Submission queue"
       sheetTitle="Submission filters"
       activeFilterCount={activeFilterCount}
+      searchSlot={<AdminListSearch placeholder="Search submissions…" className="w-full" />}
       sheetFilters={<AdminSubmissionsTitleFilterForm initialQ={initialQ} queue={queue} />}
     />
   );
