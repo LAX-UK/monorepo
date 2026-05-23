@@ -25,6 +25,7 @@ import {
 } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";
+import { assertHttpsReturnUrl, normalizeKycReturnUrl } from "./kyc-return-url.js";
 import {
   mapVeriffDecisionToApplyInput,
   mapVeriffEventToUserStatus,
@@ -58,6 +59,7 @@ export class VeriffKycService implements IKycService {
   private readonly thresholdAmount: number;
   private readonly thresholdCurrency: string;
   private readonly sharedSecret: string | undefined;
+  private readonly webOrigin: string;
 
   constructor(
     env: Env,
@@ -72,6 +74,7 @@ export class VeriffKycService implements IKycService {
     this.decisionProcessor = new KycDecisionProcessor(repo, marketingEvents);
     this.thresholdAmount = env.KYC_THRESHOLD_AMOUNT;
     this.thresholdCurrency = env.KYC_THRESHOLD_CURRENCY;
+    this.webOrigin = env.WEB_ORIGIN;
   }
 
   isConfigured(): boolean {
@@ -86,9 +89,12 @@ export class VeriffKycService implements IKycService {
       throw new KycAlreadyApprovedError();
     }
 
+    const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
+    assertHttpsReturnUrl(callbackUrl);
+
     const { sessionId, verificationUrl } = await this.veriffClient.createSession({
       userId,
-      callbackUrl: returnUrl,
+      callbackUrl,
     });
 
     const verification = await this.repo.createWithCurrentSession({
