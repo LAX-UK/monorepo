@@ -81,6 +81,8 @@ function parseAdminCategory(raw: unknown): AdminCategory {
     sortOrder: Number(o.sortOrder ?? 0),
     parentId: o.parentId == null ? null : String(o.parentId),
     heroImageKey: o.heroImageKey == null ? null : String(o.heroImageKey),
+    createdAt: o.createdAt ? new Date(String(o.createdAt)) : new Date(),
+    updatedAt: o.updatedAt ? new Date(String(o.updatedAt)) : new Date(),
     usage: {
       lots,
       sales,
@@ -395,6 +397,7 @@ export async function getAdminSalesList(
     q?: string;
     deliveryMode?: Sale["deliveryMode"];
     settlementStatus?: "settled" | "unsettled";
+    categoryId?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -407,6 +410,7 @@ export async function getAdminSalesList(
   if (params.q?.trim()) qs.set("q", params.q.trim());
   if (params.deliveryMode) qs.set("deliveryMode", params.deliveryMode);
   if (params.settlementStatus) qs.set("settlementStatus", params.settlementStatus);
+  if (params.categoryId) qs.set("categoryId", params.categoryId);
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };

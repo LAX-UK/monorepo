@@ -1,6 +1,8 @@
+import type { Database } from "@auction/db";
 import type { AdminCategory, Category } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   CreateCategoryInput,
   ICategoryRepository,
@@ -16,8 +18,16 @@ function slugify(value: string): string {
     .replace(/-{2,}/g, "-");
 }
 
+type CategoryMutationContext = {
+  actorUserId?: string | null;
+};
+
 export class CategoryService {
-  constructor(private readonly categories: ICategoryRepository) {}
+  constructor(
+    private readonly categories: ICategoryRepository,
+    private readonly db?: Database,
+    private readonly domainEvents?: DomainEventPublisher | null,
+  ) {}
 
   async list(): Promise<Category[]> {
     const categories = await this.categories.findAll();
@@ -51,43 +61,86 @@ export class CategoryService {
     return { ...category, usage };
   }
 
-  async create(input: CreateCategoryInput): Promise<Category> {
-    const slug = await this.uniqueSlug(input.slug ?? input.name);
+  async create(input: CreateCategoryInput, ctx: CategoryMutationContext = {}): Promise<Category> {
+    const slug = await this.uniqueSlug(input.name);
     const categories = await this.categories.findAll({ includeArchived: true });
     const issue = validateCategoryParent(categories, "new", input.parentId);
     if (issue) throw new CategoryError(issue.message);
-    return this.categories.create({ ...input, slug });
+    const created = await this.categories.create({ ...input, slug });
+    await this.publishEvent({
+      aggregateId: created.id,
+      eventType: "category.created",
+      payload: { name: created.name, slug: created.slug },
+      actorUserId: ctx.actorUserId ?? null,
+    });
+    return created;
   }
 
-  async update(id: string, input: UpdateCategoryInput): Promise<Category> {
+  async update(
+    id: string,
+    input: UpdateCategoryInput,
+    ctx: CategoryMutationContext = {},
+  ): Promise<Category> {
     const existing = await this.categories.findById(id);
     if (!existing) throw new CategoryError("Category not found");
     const categories = await this.categories.findAll({ includeArchived: true });
     const issue = validateCategoryParent(categories, id, input.parentId);
     if (issue) throw new CategoryError(issue.message);
-    const slug = input.slug !== undefined ? await this.uniqueSlug(input.slug, id) : undefined;
-    const next: UpdateCategoryInput & { slug?: string | undefined } = { ...input };
-    if (slug !== undefined) next.slug = slug;
-    const updated = await this.categories.update(id, next);
+    const updated = await this.categories.update(id, input);
     if (!updated) throw new CategoryError("Category not found");
+    await this.publishEvent({
+      aggregateId: id,
+      eventType: "category.updated",
+      payload: { name: updated.name, slug: updated.slug },
+      actorUserId: ctx.actorUserId ?? null,
+    });
     return updated;
   }
 
-  async archive(id: string): Promise<Category> {
+  async archive(id: string, ctx: CategoryMutationContext = {}): Promise<Category> {
     const archived = await this.categories.archive(id);
     if (!archived) throw new CategoryError("Category not found");
+    await this.publishEvent({
+      aggregateId: id,
+      eventType: "category.archived",
+      payload: { name: archived.name },
+      actorUserId: ctx.actorUserId ?? null,
+    });
     return archived;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, ctx: CategoryMutationContext = {}): Promise<void> {
     const usage = await this.categories.usageFor(id);
     if (usage.total > 0) {
       throw new CategoryError(
         "Archive categories that are already used by lots, sales, or submissions",
       );
     }
+    const existing = await this.categories.findById(id);
     const deleted = await this.categories.delete(id);
     if (!deleted) throw new CategoryError("Category not found");
+    await this.publishEvent({
+      aggregateId: id,
+      eventType: "category.deleted",
+      payload: { name: existing?.name ?? id },
+      actorUserId: ctx.actorUserId ?? null,
+    });
+  }
+
+  private async publishEvent(input: {
+    aggregateId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+    actorUserId?: string | null;
+  }): Promise<void> {
+    if (!this.domainEvents || !this.db) return;
+    await this.domainEvents.publish(this.db, {
+      aggregateType: "category",
+      aggregateId: input.aggregateId,
+      eventType: input.eventType,
+      payload: input.payload,
+      actorUserId: input.actorUserId ?? null,
+    });
   }
 
   private async uniqueSlug(value: string, ignoreId?: string): Promise<string> {

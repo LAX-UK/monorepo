@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminErrorPage } from "@/components/admin/admin-error-page";
+import { CatalogListErrorShell } from "@/components/admin/catalog/catalog-list-states";
 import { useEffect } from "react";
 
 export default function AdminSubmissionsError({
@@ -14,5 +14,13 @@ export default function AdminSubmissionsError({
     console.error(error);
   }, [error]);
 
-  return <AdminErrorPage reset={reset} />;
+  return (
+    <CatalogListErrorShell
+      title="Submissions"
+      listLabel="Submissions"
+      listHref="/admin/submissions"
+      reset={reset}
+      {...(error.message ? { message: error.message } : {})}
+    />
+  );
 }

@@ -5,6 +5,7 @@ import {
   integer,
   pgTable,
   text,
+  timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -21,6 +22,8 @@ export const category = pgTable(
       onDelete: "set null",
     }),
     heroImageKey: text("hero_image_key"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("category_archived_idx").on(table.archived),

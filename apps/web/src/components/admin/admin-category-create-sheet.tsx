@@ -69,7 +69,6 @@ export function AdminCategoryCreateSheet({ categories, sheetFromQuery }: Props) 
             cancelHref="/admin/categories"
             defaultValues={{
               name: "",
-              slug: "",
               description: "",
               parentId: null,
               sortOrder: 0,

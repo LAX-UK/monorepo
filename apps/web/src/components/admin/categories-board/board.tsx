@@ -6,10 +6,7 @@ import {
   adminArchiveCategoryResultAction,
   adminDeleteCategoryResultAction,
 } from "@/lib/actions/admin";
-import {
-  adminUpdateCategoryNameFieldAction,
-  adminUpdateCategorySlugFieldAction,
-} from "@/lib/actions/admin/field-updates";
+import { adminUpdateCategoryNameFieldAction } from "@/lib/actions/admin/field-updates";
 import { notify } from "@/lib/ui/notify";
 import type { AdminCategory } from "@auction/types";
 import { Badge } from "@auction/ui/components/badge";
@@ -167,12 +164,7 @@ function CategoryTreeRow({
             {node.heroImageKey ? <Badge variant="outline">Has hero</Badge> : null}
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-1 font-label text-[11px] uppercase tracking-wide text-on-surface-variant">
-            <span>/</span>
-            <EditableCell
-              value={node.slug}
-              onSave={(next) => adminUpdateCategorySlugFieldAction(node.id, next)}
-              className="font-mono text-[11px] normal-case"
-            />
+            <span className="font-mono normal-case">/{node.slug}</span>
             <span>· order {node.sortOrder}</span>
           </p>
           <p className="mt-2 text-xs text-on-surface-variant">

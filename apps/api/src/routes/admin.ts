@@ -786,7 +786,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminCreateCategoryBodySchema),
     async (c) => {
       const body = c.req.valid("json");
-      const data = await container.admin.catalog.createCategory(body);
+      const data = await container.admin.catalog.createCategory(body, c.get("userId") as string);
       return c.json({ data }, 201);
     },
   );
@@ -806,7 +806,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { categoryId } = c.req.valid("param");
       const body = c.req.valid("json");
-      const data = await container.admin.catalog.updateCategory(categoryId, body);
+      const data = await container.admin.catalog.updateCategory(
+        categoryId,
+        body,
+        c.get("userId") as string,
+      );
       return c.json({ data });
     },
   );
@@ -817,7 +821,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
-      const data = await container.admin.catalog.archiveCategory(categoryId);
+      const data = await container.admin.catalog.archiveCategory(
+        categoryId,
+        c.get("userId") as string,
+      );
       return c.json({ data });
     },
   );
@@ -828,7 +835,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");
-      await container.admin.catalog.deleteCategory(categoryId);
+      await container.admin.catalog.deleteCategory(categoryId, c.get("userId") as string);
       return c.json({ ok: true });
     },
   );

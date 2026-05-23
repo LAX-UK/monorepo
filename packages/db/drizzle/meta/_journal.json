@@ -463,6 +463,13 @@
       "when": 1782300000000,
       "tag": "0067_invitation_admin_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1782400000000,
+      "tag": "0068_category_timestamps",
+      "breakpoints": true
     }
   ]
 }

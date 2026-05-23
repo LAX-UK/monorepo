@@ -25,7 +25,6 @@ import { useEffect, useState, useTransition } from "react";
 export type CreatedArtist = {
   id: string;
   displayName: string;
-  slug: string;
   status: "pending" | "approved" | "rejected" | "merged_into";
 };
 
@@ -138,7 +137,6 @@ export function CreateArtistDialog({
       onCreated({
         id: createdId,
         displayName: displayName.trim(),
-        slug: displayName.trim().toLowerCase().replace(/\s+/g, "-"),
         status: approveOnCreate ? "approved" : "pending",
       });
     });

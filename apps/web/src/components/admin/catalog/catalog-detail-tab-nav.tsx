@@ -1,18 +1,24 @@
 "use client";
 
+import { parseArtistDetailTabFromPath } from "@/components/admin/artist-detail/artist-detail-types";
 import { parseCategoryDetailTabFromPath } from "@/components/admin/category-detail/category-detail-types";
 import { parseLotDetailTabFromPath } from "@/components/admin/lot-detail/lot-detail-types";
 import { parseSaleDetailTabFromPath } from "@/components/admin/sale-detail/sale-detail-types";
+import { parseSubmissionDetailTabFromPath } from "@/components/admin/submission-detail/submission-detail-types";
 import { cn } from "@auction/ui";
 import {
   Activity,
+  Building2,
   Calendar,
+  Copy,
   FileText,
   Gavel,
+  GitMerge,
   ImageIcon,
   LayoutGrid,
   type LucideIcon,
   Package,
+  Scale,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +27,7 @@ import type { ReactNode } from "react";
 
 export type CatalogDetailTabBadge = "pending" | "warning" | "default";
 
-export type CatalogDetailTabEntityKind = "lot" | "sale" | "category";
+export type CatalogDetailTabEntityKind = "lot" | "sale" | "category" | "artist" | "submission";
 
 export type CatalogDetailTabSpec = {
   id: string;
@@ -45,6 +51,24 @@ const TAB_ICONS: Partial<Record<CatalogDetailTabEntityKind, Record<string, Lucid
     documents: FileText,
     registrations: Users,
     activity: Activity,
+  },
+  category: {
+    overview: LayoutGrid,
+    children: Copy,
+    lots: Package,
+    sales: Building2,
+    activity: Activity,
+  },
+  artist: {
+    overview: LayoutGrid,
+    lots: Package,
+    duplicates: GitMerge,
+    review: Scale,
+  },
+  submission: {
+    overview: LayoutGrid,
+    documents: FileText,
+    decision: Scale,
   },
 };
 
@@ -71,6 +95,10 @@ function resolveActiveTab(
       return parseSaleDetailTabFromPath(pathname, entityId);
     case "category":
       return parseCategoryDetailTabFromPath(pathname, entityId);
+    case "artist":
+      return parseArtistDetailTabFromPath(pathname, entityId);
+    case "submission":
+      return parseSubmissionDetailTabFromPath(pathname, entityId);
   }
 }
 

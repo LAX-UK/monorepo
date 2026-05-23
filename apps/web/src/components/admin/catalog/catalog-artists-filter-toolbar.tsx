@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   CatalogFilterBar,
   type CatalogSegmentItem,
@@ -142,6 +143,11 @@ export function CatalogArtistsFilterToolbar({
       lensAriaLabel="Artist registry view"
       activeFilterCount={activeFilterCount}
       sheetTitle="Artist filters"
+      searchSlot={
+        queueModesActive ? undefined : (
+          <AdminListSearch placeholder="Search artists…" className="w-full" />
+        )
+      }
       sheetFilters={
         queueModesActive ? (
           <div className="space-y-4">

@@ -10,6 +10,7 @@ type SkeletonProps = {
   kpiTiles?: number;
   tableRows?: number;
   tableColumns?: number;
+  showFilterBar?: boolean;
 };
 
 const KPI_TILE_KEYS = ["kpi-0", "kpi-1", "kpi-2", "kpi-3", "kpi-4", "kpi-5"] as const;
@@ -45,12 +46,13 @@ export function CatalogListPageSkeleton({
   kpiTiles = 3,
   tableRows = 10,
   tableColumns = 6,
+  showFilterBar = true,
 }: SkeletonProps) {
   return (
     <CatalogListShell
       title={title}
       description={description}
-      filterBar={<FilterBarSkeleton />}
+      filterBar={showFilterBar ? <FilterBarSkeleton /> : null}
       kpiStrip={kpiTiles > 0 ? <KpiStripSkeleton tiles={kpiTiles} /> : null}
       pagination={<Skeleton className="h-10 w-full max-w-md" />}
     >

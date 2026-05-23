@@ -5,6 +5,7 @@ import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogSubmissionsFilterToolbar } from "@/components/admin/catalog/catalog-submissions-filter-toolbar";
@@ -15,6 +16,7 @@ import {
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminCategoryById } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -33,6 +35,7 @@ export default async function AdminSubmissionsPage({
     queue?: string;
     error?: string;
     q?: string;
+    categoryId?: string;
     limit?: string;
     offset?: string;
   }>;
@@ -101,7 +104,31 @@ export default async function AdminSubmissionsPage({
     href: submissionsDecisionQueueHref(tab.id, sp),
   }));
 
-  const activeFilterCount = initialQ.trim() !== "" ? 1 : 0;
+  const activeFilterCount = (initialQ.trim() !== "" ? 1 : 0) + (query.categoryId ? 1 : 0);
+  const categoryFilter = query.categoryId
+    ? await getAdminCategoryById(query.categoryId).catch(() => null)
+    : null;
+
+  const categoryBanner =
+    categoryFilter && query.categoryId ? (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/40 px-4 py-3 text-sm">
+        <p className="text-on-surface">
+          Showing submissions tagged with{" "}
+          <Link
+            href={`/admin/categories/${query.categoryId}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {categoryFilter.name}
+          </Link>
+        </p>
+        <Link
+          href={buildListHref("/admin/submissions", sp, { categoryId: undefined, offset: 0 })}
+          className="font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+        >
+          Clear category filter
+        </Link>
+      </div>
+    ) : null;
 
   const pagination =
     !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
@@ -160,16 +187,14 @@ export default async function AdminSubmissionsPage({
 
   const board =
     !loadError && submissionRows.length > 0 ? (
-      <>
-        {kpiTiles}
-        <AdminSubmissionsBoard rows={submissionRows} />
-      </>
+      <AdminSubmissionsBoard rows={submissionRows} />
     ) : null;
 
   return (
     <CatalogListShell
       title="Submissions"
       description="Staff decision queue: approve to create draft lots or reject with a clear reason."
+      kpiStrip={kpiTiles}
       filterBar={
         <Suspense
           fallback={
@@ -192,13 +217,13 @@ export default async function AdminSubmissionsPage({
       errorAlert={errorAlert}
       mobileSummary={
         !loadError && submissionRows.length > 0 ? (
-          <p className="font-body text-sm text-on-surface-variant">
-            {submissionRows.length} on page
-            {total > 0 ? ` · ${total} total` : ""}
-          </p>
+          <CatalogListMobileSummary
+            segments={[`${submissionRows.length} on page`, total > 0 ? `${total} total` : null]}
+          />
         ) : null
       }
     >
+      {categoryBanner}
       {board}
       {emptyNoQuery}
       {emptyTitleOnly}
