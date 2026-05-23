@@ -1,5 +1,7 @@
 "use client";
 
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { LotImageManager } from "@/components/admin/lot-image-manager";
 import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-lot-images-save";
 import { Button } from "@auction/ui/components/button";
@@ -34,13 +36,25 @@ export function LotImageTab({ lotId, initialImages, initialAlts }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <LotImageManager value={entries} onChange={handleChange} disabled={pending} />
+    <CatalogDetailTabPanel
+      title="Images"
+      description="Upload, reorder, and caption lot images. The first image is used as the catalogue hero."
+      framed={false}
+    >
+      {entries.length === 0 ? (
+        <AdminEmptyState
+          title="No images yet"
+          description="Add at least one image before publishing this lot."
+        />
+      ) : null}
+      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
+        <LotImageManager value={entries} onChange={handleChange} disabled={pending} />
+      </div>
       {dirty ? (
-        <Button type="button" onClick={handleSave} disabled={pending} className="w-full">
+        <Button type="button" onClick={handleSave} disabled={pending} className="w-full sm:w-auto">
           {pending ? "Saving…" : "Save image changes"}
         </Button>
       ) : null}
-    </div>
+    </CatalogDetailTabPanel>
   );
 }

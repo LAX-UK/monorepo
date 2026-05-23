@@ -11,5 +11,5 @@ export default async function AdminLotBidsPage({ params }: Props) {
   await loadAdminLotDetail(id);
   const bids = await getServerLotBids(id, 100).catch(() => []);
 
-  return <AdminLotBidsTable bids={bids} />;
+  return <AdminLotBidsTable lotId={id} bids={bids} capped={bids.length >= 100} />;
 }

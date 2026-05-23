@@ -6,9 +6,17 @@ type Props = {
   lotId: string;
   auction: Lot;
   context: LotDetailContext;
+  bidCount: number | null;
+  connectRequired?: boolean;
 };
 
-export function LotOverviewTab({ lotId, auction, context }: Props) {
+export function LotOverviewTab({
+  lotId,
+  auction,
+  context,
+  bidCount,
+  connectRequired = false,
+}: Props) {
   const imageAlts = auction.marketingDetails.imageAlts ?? [];
 
   return (
@@ -17,6 +25,8 @@ export function LotOverviewTab({ lotId, auction, context }: Props) {
       auction={auction}
       imageAlts={imageAlts.filter(Boolean) as string[]}
       context={context}
+      bidCount={bidCount}
+      connectRequired={connectRequired}
     />
   );
 }

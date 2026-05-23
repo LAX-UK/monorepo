@@ -4,9 +4,10 @@ import Link from "next/link";
 
 type Props = {
   context: LotDetailContext;
+  compact?: boolean;
 };
 
-export function LotDetailAsideLinks({ context }: Props) {
+export function LotDetailAsideLinks({ context, compact = false }: Props) {
   return (
     <>
       {context.sale ? (
@@ -48,7 +49,7 @@ export function LotDetailAsideLinks({ context }: Props) {
           </Link>
         </div>
       ) : null}
-      {context.categories.length > 0 ? (
+      {context.categories.length > 0 && !compact ? (
         <div>
           <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Categories

@@ -6,9 +6,16 @@ type Props = {
   lotCount: number;
   liveish: boolean;
   venueLine: string | null;
+  compact?: boolean;
 };
 
-export function SaleDetailAsideLinks({ saleId, lotCount, liveish, venueLine }: Props) {
+export function SaleDetailAsideLinks({
+  saleId,
+  lotCount,
+  liveish,
+  venueLine,
+  compact = false,
+}: Props) {
   return (
     <>
       <div>
@@ -35,7 +42,7 @@ export function SaleDetailAsideLinks({ saleId, lotCount, liveish, venueLine }: P
           </Link>
         </div>
       ) : null}
-      {venueLine ? (
+      {venueLine && !compact ? (
         <div>
           <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Venue
