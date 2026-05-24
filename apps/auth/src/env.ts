@@ -22,6 +22,7 @@ function validateAuthDekKey(raw: string): string | null {
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    APP_ENV: z.enum(["production", "test", "development"]).default("development"),
     PORT: z.coerce.number().default(3003),
     DATABASE_URL: z.string().min(1),
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),

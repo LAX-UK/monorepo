@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { verification } from "@auction/db/schema";
+import { probeSentryConnectivity } from "@auction/observability";
 import { inArray, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
@@ -181,6 +182,22 @@ export function createInternalCronRoutes(container: Container, env: Env) {
       )
       .returning({ id: verification.id });
     return c.json({ data: { deleted: deleted.length, capped: deleted.length === batchSize } });
+  });
+
+  /** Verify Sentry connectivity from worker/cron callers (guarded by X-Cron-Secret). */
+  r.post("/sentry-test", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (!env.SENTRY_DSN_API) {
+      return c.json({ error: "sentry_not_configured" }, 503);
+    }
+    const eventId = await probeSentryConnectivity();
+    return c.json({ ok: true, eventId });
   });
 
   return r;

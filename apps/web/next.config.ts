@@ -1,5 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveSentryOrg } from "@auction/observability";
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -46,13 +48,11 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
-      // DigitalOcean Spaces: direct endpoint
       {
         protocol: "https",
         hostname: "*.digitaloceanspaces.com",
         pathname: "/**",
       },
-      // DigitalOcean Spaces CDN (bucket.region.cdn.digitaloceanspaces.com)
       {
         protocol: "https",
         hostname: "lax-media.lon1.cdn.digitaloceanspaces.com",
@@ -75,4 +75,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Skip Sentry webpack plugin locally when no DSN is configured.
+const hasSentry = Boolean(process.env.SENTRY_DSN_WEB || process.env.NEXT_PUBLIC_SENTRY_DSN_WEB);
+
+const sentryBuildOptions = {
+  org: resolveSentryOrg(),
+  project: process.env.SENTRY_PROJECT ?? "lax-dev-web",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: "/sentry-tunnel",
+  disableLogger: true,
+  automaticVercelMonitors: false,
+  ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
+};
+
+export default hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;

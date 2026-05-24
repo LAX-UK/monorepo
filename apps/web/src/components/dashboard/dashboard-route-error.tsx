@@ -3,9 +3,8 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import * as Sentry from "@sentry/nextjs";
+import { useReportRouteError } from "@/lib/observability/use-report-route-error";
 import Link from "next/link";
-import { useEffect } from "react";
 
 type DashboardRouteErrorProps = {
   error: Error & { digest?: string };
@@ -19,10 +18,7 @@ export default function DashboardRouteError({
   reset,
   title = "Something went wrong",
 }: DashboardRouteErrorProps) {
-  useEffect(() => {
-    console.error(error);
-    Sentry.captureException(error);
-  }, [error]);
+  useReportRouteError(error);
 
   const message =
     process.env.NODE_ENV === "development"

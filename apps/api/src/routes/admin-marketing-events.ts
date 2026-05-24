@@ -111,7 +111,7 @@ export function attachAdminMarketingEventsRoutes(
 
       for (const row of failedLastHour) {
         if (row.count >= FAILED_ALERT_THRESHOLD && container.env.SENTRY_DSN_API) {
-          const Sentry = await import("@sentry/node");
+          const { Sentry } = await import("@auction/observability");
           Sentry.captureMessage(`marketing_events_failed_spike:${row.name}`, {
             level: "warning",
             extra: { name: row.name, count: row.count, windowMs: FAILED_ALERT_WINDOW_MS },
