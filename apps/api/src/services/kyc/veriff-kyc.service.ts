@@ -161,10 +161,14 @@ export class VeriffKycService implements IKycService {
     const exposure = await this.repo.getPendingExposure(userId);
     const status: KycStatusSummary["status"] = userState?.kycStatus ?? "unverified";
     const verifiedAt = status === "approved" ? (userState?.kycVerifiedAt ?? null) : null;
-    const requiresKyc = exposure.total >= this.thresholdAmount && status !== "approved";
+    const latestSessionStatus = latest?.verification.status ?? null;
+    const effectiveUserStatus: KycStatusSummary["status"] =
+      status === "pending" && latestSessionStatus === "created" ? "unverified" : status;
+    const requiresKyc =
+      exposure.total >= this.thresholdAmount && effectiveUserStatus !== "approved";
     const feedback = buildKycUserFeedback({
-      userStatus: status,
-      latestSessionStatus: latest?.verification.status ?? null,
+      userStatus: effectiveUserStatus,
+      latestSessionStatus,
       requiresKyc,
       decisionPayload: latest?.decisionPayload ?? null,
     });
@@ -172,7 +176,7 @@ export class VeriffKycService implements IKycService {
       status,
       verifiedAt,
       latestSessionId: latest?.verification.providerSessionId ?? null,
-      latestSessionStatus: latest?.verification.status ?? null,
+      latestSessionStatus,
       feedback,
       pendingExposure: exposure,
       thresholdAmount: this.thresholdAmount,

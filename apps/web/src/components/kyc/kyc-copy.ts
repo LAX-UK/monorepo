@@ -30,6 +30,7 @@ export function kycStatusLabel(
   phase: KycUiPhase = "idle",
 ): string {
   const feedback = resolveKycFeedback(summary);
+  if (summary?.latestSessionStatus === "created") return "Verification started";
   if (phase === "submitted" || phase === "processing") return "In review";
   if (phase === "in_flow") return "Verification in progress";
   if (phase === "needs_resubmit") return feedback.headline;
@@ -39,6 +40,9 @@ export function kycStatusLabel(
 export function kycStatusHint(summary: KycStatusSummaryDto | null, phase: KycUiPhase): string {
   const feedback = resolveKycFeedback(summary);
 
+  if (summary?.latestSessionStatus === "created") {
+    return "Complete the document and selfie checks in the secure window.";
+  }
   if (phase === "in_flow") {
     return "Complete document and selfie checks in the secure window.";
   }
@@ -52,6 +56,7 @@ export function kycStatusHint(summary: KycStatusSummaryDto | null, phase: KycUiP
 export function kycInitialPhase(summary: KycStatusSummaryDto | null): KycUiPhase {
   if (summary?.status === "approved") return "approved";
   if (summary?.feedback?.needsResubmit) return "needs_resubmit";
+  if (summary?.latestSessionStatus === "created") return "idle";
   if (summary?.status === "pending") return "processing";
   if (summary?.status === "rejected") return "rejected";
   return "idle";
@@ -66,7 +71,11 @@ export function canStartKycVerification(
 ): boolean {
   if (summary?.status === "approved") return false;
   const feedback = resolveKycFeedback(summary);
-  if (feedback.action === "none" || feedback.action === "wait") return false;
+  if (feedback.action === "none") return false;
+  if (feedback.action === "continue") return true;
+  if (summary?.latestSessionStatus === "created") return true;
+  if (feedback.action === "wait") return false;
+  if (summary?.status === "pending" && summary.latestSessionStatus === "processing") return false;
   if (summary?.status === "pending" && !ACTIVE_CLIENT_PHASES.has(phase)) return false;
   if (phase === "submitted" || phase === "processing") return false;
   return true;
