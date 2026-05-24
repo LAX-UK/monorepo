@@ -80,8 +80,10 @@ export function KycVerificationLauncher({
             router.refresh();
           }
           if (msg === MESSAGES.CANCELED) {
+            sessionStorage.removeItem(VERIFF_SESSION_STORAGE_KEY);
             setPhaseAndNotify(kycInitialPhase(kycSummary));
             setError(KYC_FLOW_CANCELED_MESSAGE);
+            router.refresh();
           }
         },
         onReload: () => {
