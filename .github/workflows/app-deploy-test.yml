@@ -16,7 +16,6 @@ jobs:
       environment: test
       git_sha: ${{ github.sha }}
     secrets: inherit
-    continue-on-error: true
   deploy:
     runs-on: ubuntu-latest
     needs: [sentry-release]
