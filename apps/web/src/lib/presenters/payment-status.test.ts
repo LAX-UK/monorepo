@@ -54,6 +54,7 @@ describe("getPaymentStatusView", () => {
 
   it("maps authorized and requires_manual_review to info tone", () => {
     expect(getPaymentStatusView("authorized").tone).toBe("info");
+    expect(getPaymentStatusView("authorized").label).toBe("Awaiting bank transfer confirmation");
     expect(getPaymentStatusView("requires_manual_review").tone).toBe("info");
   });
 });

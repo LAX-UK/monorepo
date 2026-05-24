@@ -21,6 +21,8 @@ export type MyPaymentRow = {
   createdAt: string;
   invoiceUrl: string | null;
   invoiceNumber: string | null;
+  checkoutRail: "card" | "gb_bank_transfer" | null;
+  manualReviewReason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null;
 };
 
 export type MyPaymentsListParams = {

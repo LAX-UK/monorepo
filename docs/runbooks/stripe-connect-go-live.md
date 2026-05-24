@@ -12,7 +12,7 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 | Veriff event (optional) | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/event` | Session progress (`started`, `submitted`) |
 | Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated` |
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
-| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `charge.dispute.created`, `.funds_withdrawn`, `.closed`, `charge.refunded` |
+| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded` |
 
 Optional (subscribe only if you add handlers later): `account.application.deauthorized` (Connect), `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
 
@@ -31,7 +31,9 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Connect (Connected accounts) destination |
 | `STRIPE_TRANSFERS_WEBHOOK_SECRET` | Transfers (Your account) destination |
 | `STRIPE_PAYMENTS_WEBHOOK_SECRET` | Payments destination |
-| `STRIPE_CHECKOUT_ENABLED` | `true` in production after QA — buyer Stripe Checkout on platform account |
+| `STRIPE_CARD_CHECKOUT_MAX` | Card tier ceiling (major GBP, default `100000`) |
+| `STRIPE_MANUAL_REVIEW_MIN` | Manual review floor (major GBP, default `500000`) |
+| `STRIPE_ABSOLUTE_MAX` | Online payment cap (major GBP, default `999999.99`) |
 | `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Xero chart account for Stripe capture payments (default `090`) |
 
 - [ ] Platform Stripe account is **self-created (Account B)**, not Xero Payment services OAuth — see [xero-stripe-payment-setup](./xero-stripe-payment-setup.md).
@@ -59,9 +61,9 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 
 ### Buyer payment + refund
 
-- [ ] Buyer pays via **Stripe Checkout** (when `STRIPE_CHECKOUT_ENABLED`) → `payment_external_ref.xero_invoice_id` exists **before** pay → `payments` row has `stripeChargeId`, status captured.
+- [ ] Buyer pays via **Stripe Checkout** (card ≤ tier A, bank transfer tier B) → `payment_external_ref.xero_invoice_id` exists **before** pay → `payments` row has `stripeChargeId`, status captured.
 - [ ] Xero invoice marked paid after Stripe capture (`XeroPaymentRecorder`).
-- [ ] Buyer pays via Xero bank transfer → Xero webhook → captured with charge backfill when available.
+- [ ] High-value lot (≥ manual review min) → `requires_manual_review` → finance release → buyer `POST /payments` again → bank transfer URL.
 - [ ] Partial refund before settlement → seller net debited once (gross sale line + aggregated refund clawback line).
 - [ ] Second partial refund on same open payout succeeds (no unique-index 500 loop).
 - [ ] Admin refund → `charge.refunded` webhook → `payments.status=refunded`, payout line if open payout exists.

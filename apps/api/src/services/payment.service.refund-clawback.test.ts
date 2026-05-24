@@ -2,6 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import { PaymentService } from "./payment.service.js";
+import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
+
+const defaultTierPolicy = new PaymentTierPolicy(
+  parsePaymentTierLimits({
+    STRIPE_CARD_CHECKOUT_MAX: 100_000,
+    STRIPE_MANUAL_REVIEW_MIN: 500_000,
+    STRIPE_ABSOLUTE_MAX: 999_999.99,
+  }),
+);
 
 describe("PaymentService.refundPayment admin clawback", () => {
   it("creates a seller payout clawback line after a successful Stripe refund", async () => {
@@ -33,13 +42,11 @@ describe("PaymentService.refundPayment admin clawback", () => {
       {} as never,
       {
         isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
         ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
-      null,
+      defaultTierPolicy,
       undefined,
       db as never,
       { publish: vi.fn().mockResolvedValue(undefined) } as never,
@@ -47,8 +54,10 @@ describe("PaymentService.refundPayment admin clawback", () => {
         isConfigured: () => true,
         capturePaymentIntent: vi.fn(),
         createRefund: vi.fn().mockResolvedValue({ kind: "created", refundId: "re_1" }),
-        createCheckoutSession: vi.fn(),
+        createCardCheckoutSession: vi.fn(),
+        createBankTransferCheckoutSession: vi.fn(),
         retrievePaymentIntent: vi.fn(),
+        retrieveCheckoutSession: vi.fn(),
         findChargeIdForPayment: vi.fn(),
       },
       undefined,
@@ -111,13 +120,11 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
       {} as never,
       {
         isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
         ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
-      null,
+      defaultTierPolicy,
       undefined,
       db as never,
       { publish: vi.fn().mockResolvedValue(undefined) } as never,
@@ -125,8 +132,10 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
         isConfigured: () => true,
         capturePaymentIntent: vi.fn(),
         createRefund: vi.fn().mockResolvedValue({ kind: "created", refundId: "re_mr" }),
-        createCheckoutSession: vi.fn(),
+        createCardCheckoutSession: vi.fn(),
+        createBankTransferCheckoutSession: vi.fn(),
         retrievePaymentIntent: vi.fn(),
+        retrieveCheckoutSession: vi.fn(),
         findChargeIdForPayment: vi.fn(),
       },
       undefined,

@@ -23,6 +23,12 @@ export type CreateCheckoutSessionInput = {
   buyerEmail: string;
   successUrl: string;
   cancelUrl: string;
+  /** Override Stripe idempotency key (defaults to rail + payment id). */
+  idempotencyKey?: string;
+};
+
+export type CreateBankTransferCheckoutSessionInput = CreateCheckoutSessionInput & {
+  stripeCustomerId: string;
 };
 
 export type CreateCheckoutSessionResult = {
@@ -35,9 +41,14 @@ export interface IStripePaymentGateway {
   isConfigured(): boolean;
   capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
   createRefund(input: StripeRefundInput): Promise<StripeRefundGatewayResult>;
-  createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CreateCheckoutSessionResult>;
+  createCardCheckoutSession(
+    input: CreateCheckoutSessionInput,
+  ): Promise<CreateCheckoutSessionResult>;
+  createBankTransferCheckoutSession(
+    input: CreateBankTransferCheckoutSessionInput,
+  ): Promise<CreateCheckoutSessionResult>;
   retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
-  /** Best-effort lookup of a platform charge id for a local payment row. */
+  retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session>;
   findChargeIdForPayment(paymentId: string): Promise<string | null>;
 }
 
@@ -109,12 +120,12 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     });
   }
 
-  async createCheckoutSession(
+  async createCardCheckoutSession(
     input: CreateCheckoutSessionInput,
   ): Promise<CreateCheckoutSessionResult> {
     const stripe = this.stripe;
     if (!stripe) {
-      throw new Error("StripePaymentGateway: checkout called while not configured");
+      throw new Error("StripePaymentGateway: card checkout called while not configured");
     }
     return executeWithStripeRetries(async () => {
       const session = await stripe.checkout.sessions.create(
@@ -137,27 +148,92 @@ export class StripePaymentGateway implements IStripePaymentGateway {
           metadata: {
             paymentId: input.paymentId,
             lotId: input.lotId,
+            checkoutRail: "card",
           },
           payment_intent_data: {
             metadata: {
               paymentId: input.paymentId,
               lotId: input.lotId,
+              checkoutRail: "card",
             },
           },
           success_url: input.successUrl,
           cancel_url: input.cancelUrl,
         },
-        { idempotencyKey: `checkout:payment:${input.paymentId}` },
+        {
+          idempotencyKey: input.idempotencyKey ?? `checkout:card:payment:${input.paymentId}`,
+        },
       );
-      if (!session.url) {
-        throw new Error("Stripe Checkout session missing url");
-      }
-      const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : (session.payment_intent?.id ?? null);
-      return { sessionId: session.id, url: session.url, paymentIntentId };
+      return this.toCheckoutResult(session);
     });
+  }
+
+  async createBankTransferCheckoutSession(
+    input: CreateBankTransferCheckoutSessionInput,
+  ): Promise<CreateCheckoutSessionResult> {
+    const stripe = this.stripe;
+    if (!stripe) {
+      throw new Error("StripePaymentGateway: bank checkout called while not configured");
+    }
+    return executeWithStripeRetries(async () => {
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: "payment",
+          customer: input.stripeCustomerId,
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: input.currency.toLowerCase(),
+                unit_amount: input.amountCents,
+                product_data: {
+                  name: "Auction lot payment",
+                  metadata: { lotId: input.lotId },
+                },
+              },
+            },
+          ],
+          payment_method_types: ["customer_balance"],
+          payment_method_options: {
+            customer_balance: {
+              funding_type: "bank_transfer",
+              bank_transfer: {
+                type: "gb_bank_transfer",
+              },
+            },
+          },
+          metadata: {
+            paymentId: input.paymentId,
+            lotId: input.lotId,
+            checkoutRail: "gb_bank_transfer",
+          },
+          payment_intent_data: {
+            metadata: {
+              paymentId: input.paymentId,
+              lotId: input.lotId,
+              checkoutRail: "gb_bank_transfer",
+            },
+          },
+          success_url: input.successUrl,
+          cancel_url: input.cancelUrl,
+        },
+        {
+          idempotencyKey: input.idempotencyKey ?? `checkout:bank:payment:${input.paymentId}`,
+        },
+      );
+      return this.toCheckoutResult(session);
+    });
+  }
+
+  private toCheckoutResult(session: Stripe.Checkout.Session): CreateCheckoutSessionResult {
+    if (!session.url) {
+      throw new Error("Stripe Checkout session missing url");
+    }
+    const paymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : (session.payment_intent?.id ?? null);
+    return { sessionId: session.id, url: session.url, paymentIntentId };
   }
 
   async retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
@@ -166,6 +242,16 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       throw new Error("StripePaymentGateway: retrieve PI called while not configured");
     }
     return executeWithStripeRetries(() => stripe.paymentIntents.retrieve(paymentIntentId));
+  }
+
+  async retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+    const stripe = this.stripe;
+    if (!stripe) {
+      throw new Error(
+        "StripePaymentGateway: retrieve checkout session called while not configured",
+      );
+    }
+    return executeWithStripeRetries(() => stripe.checkout.sessions.retrieve(sessionId));
   }
 
   async findChargeIdForPayment(paymentId: string): Promise<string | null> {

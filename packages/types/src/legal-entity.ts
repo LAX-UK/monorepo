@@ -61,6 +61,7 @@ export type LegalEntity = {
   statusChangedAt: Date | null;
   statusChangedByUserId: string | null;
   stripeConnectAccountId: string | null;
+  stripeCustomerId: string | null;
   stripeConnectChargesEnabled: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue: string[];

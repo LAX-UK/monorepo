@@ -15,6 +15,8 @@ function row(overrides: Partial<MyPaymentRow> = {}): MyPaymentRow {
     createdAt: "2026-04-01T10:00:00.000Z",
     invoiceUrl: "https://invoice.xero.example/abc",
     invoiceNumber: "INV-001",
+    checkoutRail: null,
+    manualReviewReason: null,
     ...overrides,
   };
 }

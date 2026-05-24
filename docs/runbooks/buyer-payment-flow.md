@@ -1,6 +1,17 @@
-# Buyer payment flow (Stripe Checkout + Xero invoice)
+# Buyer payment flow (Stripe Checkout tiers + Xero ledger)
 
-Buyers pay on the **LAX Stripe platform account (Account B)** via hosted **Stripe Checkout** when `STRIPE_CHECKOUT_ENABLED=true`, or via **Xero online invoice** (bank transfer / legacy Pay Now on invoice) when Xero is configured.
+Buyers pay on the **LAX Stripe platform account (Account B)** via hosted **Stripe Checkout**. Xero is **ledger-only** (ACCREC invoice + payment sync) — not a buyer checkout rail.
+
+## Tiered checkout
+
+| Tier | Amount (default thresholds) | Rail |
+|------|------------------------------|------|
+| Card | ≤ £100,000 | Stripe card Checkout |
+| Bank transfer | > £100,000 and < £500,000 | Stripe `gb_bank_transfer` |
+| Manual review | ≥ £500,000 or archived seller | No URL until finance **Release for checkout** |
+| Blocked | > £999,999.99 | `400 payment_amount_exceeds_limit` |
+
+Env: `STRIPE_CARD_CHECKOUT_MAX`, `STRIPE_MANUAL_REVIEW_MIN`, `STRIPE_ABSOLUTE_MAX` (major GBP units).
 
 ## Journey (mermaid)
 
@@ -14,24 +25,20 @@ sequenceDiagram
 
   Buyer->>Web: Wins lot, opens Collection
   Web->>API: POST /payments { lotId }
-  alt STRIPE_CHECKOUT_ENABLED
+  API->>API: PaymentTierPolicy.resolve
+  alt manual review
+    API-->>Web: paymentId, checkoutUrl null, manualReviewReason
+  else pending
     API->>Xero: ensureInvoiceForPayment (ACCREC if missing)
-    API->>Stripe: Checkout Session (metadata paymentId, lotId)
+    API->>Stripe: Checkout Session (card or gb_bank_transfer)
     Stripe-->>API: checkoutUrl + paymentIntentId
-    API-->>Web: checkoutUrl
+    API-->>Web: checkoutUrl, checkoutRail
     Web->>Buyer: Redirect to Stripe Checkout
-    Buyer->>Stripe: Card payment
+    Buyer->>Stripe: Card or UK bank transfer
+    Stripe->>API: webhook payment_intent.processing (no capture)
     Stripe->>API: webhook payment_intent.succeeded
     API->>API: validate amount before claim → PaymentCaptureService → captured + stripeChargeId
     API->>Xero: XeroPaymentRecorder (invoice linked at initiation)
-  else Xero fallback
-    API->>Xero: createInvoices ACCREC + online URL
-    Xero-->>API: invoiceId + OnlineInvoiceUrl
-    API-->>Web: checkoutUrl
-    Web->>Buyer: Redirect to Xero invoice
-    Buyer->>Xero: Bank transfer (or Pay Now on invoice if configured)
-    Xero->>API: Webhook INVOICE PAID
-    API->>API: syncInvoice → PaymentCaptureService (xero_sync)
   end
 ```
 
@@ -39,41 +46,30 @@ sequenceDiagram
 
 1. **Win:** Lot closes; buyer is `winnerId` on the lot.
 2. **Checkout:** Buyer opens `/dashboard/checkout/[lotId]`. UI calls `POST /payments`.
-3. **Xero invoice (eager):** When Xero is configured, `ensureInvoiceForPayment` creates an ACCREC invoice **before** redirect — required for Stripe-primary checkout so `XeroPaymentRecorder` can sync capture.
-4. **Checkout URL:** `PaymentCheckoutOrchestrator` prefers Stripe Checkout when enabled; otherwise Xero invoice URL; otherwise error (no misleading “settlements team” default when Stripe is enabled).
-5. **Redirect:** Browser `window.location.assign(checkoutUrl)` (`checkout-purchase-panel.tsx`).
-6. **Stripe path:** Buyer pays on Stripe Checkout → `payment_intent.succeeded` → amount validated **before** event claim → capture + Xero invoice paid sync.
-7. **Xero path:** Buyer pays invoice → Xero webhook → `markCapturedFromProviderSync` via `PaymentCaptureService`.
+3. **Tier policy:** Integer pence comparison — no float tier bugs.
+4. **Xero invoice (when issuing checkout):** `ensureInvoiceForPayment` runs **only** when returning a checkout URL (not while `requires_manual_review`). Fails hard with `503 accounting_unavailable` when Xero is configured but invoice creation fails.
+5. **Redirect:** Browser `window.location.assign(checkoutUrl)` when URL present.
+6. **Stripe path:** `payment_intent.succeeded` → amount validated **before** event claim → capture + Xero invoice paid sync.
 
 ## Timing (record per environment)
 
 | Hop | Typical observation | Notes |
 |-----|---------------------|-------|
-| POST /payments → checkout URL | 1–5 s | Stripe or Xero API latency |
-| Stripe Checkout completion | user-dependent | Usually seconds |
-| DB `captured` after Stripe | seconds after webhook | Requires `STRIPE_PAYMENTS_WEBHOOK_SECRET` + `payment_intent.succeeded` on payments destination |
-| Xero bank transfer → `captured` | hours–days | Xero webhook when invoice PAID |
-
-## Disputes and refunds
-
-- Stripe emits `charge.dispute.*` and `charge.refunded` on `POST /webhooks/stripe/payments`.
-- Refund/dispute lines update open payout totals via `PayoutAdjustmentService`. Multiple partial refunds on the same open payout **aggregate** into one line per `(payout, payment, kind)` instead of inserting duplicates.
-- Settlement sale lines use the **gross** captured amount; prior refund/dispute clawback lines are the ledger of record (no double-debit at settlement).
-- Dispute clawback runs only when `dispute.status === "lost"` (`warning_closed` / `charge_refunded` do not claw back).
-- Post-payout refunds create clawback payouts (parity with dispute-lost).
-- Admin refunds that succeed in Stripe but fail DB persist enqueue `payment_refund_reconcile` for cron replay (`POST /internal/jobs/retry-refund-reconciles`).
-- See [Dispute clawback](./dispute-clawback.md).
+| POST /payments → checkout URL | 1–5 s | Stripe API latency |
+| Stripe Checkout completion | user-dependent | Card: seconds; bank transfer: hours |
+| DB `captured` after Stripe | seconds after webhook | Requires `STRIPE_PAYMENTS_WEBHOOK_SECRET` + `payment_intent.succeeded` |
+| Bank transfer processing | hours | `payment_intent.processing` → status `authorized`; no capture until succeeded |
+| Bank transfer underpaid | varies | `payment_intent.partially_funded` — stays uncaptured; domain event `payment.bank_transfer_partially_funded` |
 
 ## Troubleshooting
 
 | Symptom | Check | Action |
 |---------|-------|--------|
-| No `checkoutUrl` | `STRIPE_CHECKOUT_ENABLED`, Xero OAuth | Enable Stripe checkout or fix Xero trio |
-| Payment pending after Stripe pay | Payments webhook delivery | Verify `payment_intent.succeeded` subscribed; check API logs |
-| Payment pending after Stripe pay (amount drift) | `payment_intent_amount_mismatch` metric | Fix payment row amount vs Stripe PI; webhook is **not** claimed so Stripe retries |
-| Xero capture sync missing after Stripe pay | `xero_payment_record_failed` metric | Confirm ACCREC invoice exists (`payment_external_ref.xero_invoice_id`); run `POST /internal/jobs/retry-xero-stripe-capture-sync` |
-| No `stripeChargeId` after Xero capture | Charge lookup metadata | Ensure invoice reference `payment:{id}`; capture service backfills from Stripe search |
-| Connect onboarding fails | Stripe account type | Platform must be Account B — not Xero-OAuth account |
+| No `checkoutUrl` | Amount tier / manual review | High value → finance release; archived seller → review queue |
+| `503 accounting_unavailable` | Xero OAuth + invoice API | Fix Xero; no Stripe URL until invoice succeeds |
+| Payment pending after Stripe pay | Payments webhook delivery | Verify `payment_intent.succeeded` subscribed |
+| Amount mismatch | `payment_intent_amount_mismatch` metric | Fix payment row amount vs Stripe PI; webhook not claimed |
+| Expired checkout link on retry | Same Stripe idempotency key returns stale session | API auto-renews with `:renewed:` key when session is expired |
 
 ## Related
 

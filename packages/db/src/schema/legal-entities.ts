@@ -62,6 +62,8 @@ export const legalEntity = pgTable(
       onDelete: "set null",
     }),
     stripeConnectAccountId: text("stripe_connect_account_id").unique(),
+    /** Stripe Customer id (`cus_…`) for buyer bank-transfer Checkout on the platform account. */
+    stripeCustomerId: text("stripe_customer_id"),
     stripeConnectChargesEnabled: boolean("stripe_connect_charges_enabled").notNull().default(false),
     stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
     stripeConnectRequirementsCurrentlyDue: jsonb("stripe_connect_requirements_currently_due")
@@ -82,6 +84,9 @@ export const legalEntity = pgTable(
     index("legal_entity_kind_subkind_idx").on(table.kind, table.subkind),
     index("legal_entity_created_by_user_id_idx").on(table.createdByUserId),
     index("legal_entity_stripe_connect_account_id_idx").on(table.stripeConnectAccountId),
+    uniqueIndex("legal_entity_stripe_customer_id_uidx")
+      .on(table.stripeCustomerId)
+      .where(sql`${table.stripeCustomerId} IS NOT NULL`),
     uniqueIndex("legal_entity_slug_uidx").on(table.slug).where(sql`${table.slug} IS NOT NULL`),
     index("legal_entity_is_lax_managed_idx")
       .on(table.isLaxManaged)

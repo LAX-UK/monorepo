@@ -1,26 +1,15 @@
 import type {
-  AccountingCheckoutContext,
-  AccountingCheckoutResult,
-  IPaymentAccountingProvider,
-} from "../interfaces/payment-accounting-provider.js";
+  IInvoiceAccountingProvider,
+  InvoiceAccountingContext,
+} from "../interfaces/invoice-accounting.js";
 
-export class NoOpAccountingProvider implements IPaymentAccountingProvider {
+export class NoOpAccountingProvider implements IInvoiceAccountingProvider {
   isConfigured(): boolean {
     return false;
   }
 
-  async getCheckoutUrlIfAny(_paymentId: string): Promise<string | null> {
-    return null;
-  }
-
-  async createCheckoutForWinner(
-    _ctx: AccountingCheckoutContext,
-  ): Promise<AccountingCheckoutResult> {
-    return { checkoutUrl: null };
-  }
-
   async ensureInvoiceForPayment(
-    _ctx: AccountingCheckoutContext,
+    _ctx: InvoiceAccountingContext,
   ): Promise<{ ok: boolean; error?: string }> {
     return { ok: false, error: "Accounting provider not configured" };
   }

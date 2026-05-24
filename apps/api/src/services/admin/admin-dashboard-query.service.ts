@@ -247,7 +247,26 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
         )
         .orderBy(desc(domainEvent.id))
         .limit(1);
-      const payload = archiveEvent?.payload as { reason?: unknown } | undefined;
+      const [reviewEvent] = await this.db
+        .select({ payload: domainEvent.payload })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.aggregateType, "payment"),
+            eq(domainEvent.aggregateId, row.paymentId),
+            eq(domainEvent.eventType, "payment.requires_manual_review"),
+          ),
+        )
+        .orderBy(desc(domainEvent.id))
+        .limit(1);
+      const archivePayload = archiveEvent?.payload as { reason?: unknown } | undefined;
+      const reviewPayload = reviewEvent?.payload as { reason?: unknown } | undefined;
+      const manualReviewReason =
+        reviewPayload?.reason === "seller_archived" ||
+        reviewPayload?.reason === "high_value" ||
+        reviewPayload?.reason === "seller_archived_and_high_value"
+          ? reviewPayload.reason
+          : null;
       data.push({
         paymentId: row.paymentId,
         lotId: row.lotId,
@@ -261,8 +280,9 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
         sellerArchivedAt: row.sellerArchivedAt,
         amount: String(row.amount),
         currency: "GBP",
-        archiveReason: typeof payload?.reason === "string" ? payload.reason : null,
+        archiveReason: typeof archivePayload?.reason === "string" ? archivePayload.reason : null,
         archiveTimestamp: row.sellerArchivedAt ?? archiveEvent?.occurredAt ?? null,
+        manualReviewReason,
         createdAt: row.createdAt,
       });
     }
