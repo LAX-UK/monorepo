@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import {
   CLIENT_WORKSPACE_COOKIE,
   parseClientWorkspaceMode,
@@ -11,15 +13,17 @@ export async function setClientWorkspaceModeAction(
   mode: string,
   redirectTo?: string,
 ): Promise<void> {
-  const next = parseClientWorkspaceMode(mode);
-  const jar = await cookies();
-  jar.set(CLIENT_WORKSPACE_COOKIE, next, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-    httpOnly: false,
+  return instrumentServerAction("setClientWorkspaceModeAction", async () => {
+    const next = parseClientWorkspaceMode(mode);
+    const jar = await cookies();
+    jar.set(CLIENT_WORKSPACE_COOKIE, next, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    if (redirectTo?.startsWith("/")) {
+      redirect(redirectTo);
+    }
   });
-  if (redirectTo?.startsWith("/")) {
-    redirect(redirectTo);
-  }
 }

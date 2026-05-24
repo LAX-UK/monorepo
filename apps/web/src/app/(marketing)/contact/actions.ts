@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import { consoleContactDispatcher } from "@/lib/contact/contact-dispatcher";
 import {
   contactFormValuesSchema,
@@ -31,48 +33,56 @@ export async function submitContactForm(
   _prev: ContactActionState | undefined,
   formData: FormData,
 ): Promise<ContactActionState> {
-  if (isContactHoneypotFilled(formData)) {
-    return { ok: true };
-  }
+  return instrumentServerAction(
+    "submitContactForm",
+    async () => {
+      if (isContactHoneypotFilled(formData)) {
+        return { ok: true };
+      }
 
-  const parsed = parseContactFormData(formData);
-  if (!parsed.ok) {
-    return { ok: false, error: "Please check the form and try again." };
-  }
+      const parsed = parseContactFormData(formData);
+      if (!parsed.ok) {
+        return { ok: false, error: "Please check the form and try again." };
+      }
 
-  const key = await rateLimitKey();
-  if (!rateLimiter.consume(key)) {
-    return { ok: false, error: "Too many submissions. Please wait a minute and try again." };
-  }
+      const key = await rateLimitKey();
+      if (!rateLimiter.consume(key)) {
+        return { ok: false, error: "Too many submissions. Please wait a minute and try again." };
+      }
 
-  await consoleContactDispatcher.dispatch(parsed.data);
+      await consoleContactDispatcher.dispatch(parsed.data);
 
-  return { ok: true };
+      return { ok: true };
+    },
+    { formData },
+  );
 }
 
 export async function submitContactFormResult(
   values: z.infer<typeof contactFormValuesSchema>,
 ): Promise<ActionResult<void>> {
-  const pre = contactFormValuesSchema.safeParse(values);
-  if (!pre.success) {
-    return actionFailure("Please check the form and try again.");
-  }
-  const { website, firstName, lastName, ...rest } = pre.data;
-  if (String(website ?? "").trim()) {
+  return instrumentServerAction("submitContactFormResult", async () => {
+    const pre = contactFormValuesSchema.safeParse(values);
+    if (!pre.success) {
+      return actionFailure("Please check the form and try again.");
+    }
+    const { website, firstName, lastName, ...rest } = pre.data;
+    if (String(website ?? "").trim()) {
+      return actionSuccess();
+    }
+    const merged = {
+      ...rest,
+      name: resolveContactName({ name: rest.name, firstName, lastName }),
+    };
+    const parsed = contactSchema.safeParse(merged);
+    if (!parsed.success) {
+      return actionFailure("Please check the form and try again.");
+    }
+    const key = await rateLimitKey();
+    if (!rateLimiter.consume(key)) {
+      return actionFailure("Too many submissions. Please wait a minute and try again.");
+    }
+    await consoleContactDispatcher.dispatch(parsed.data);
     return actionSuccess();
-  }
-  const merged = {
-    ...rest,
-    name: resolveContactName({ name: rest.name, firstName, lastName }),
-  };
-  const parsed = contactSchema.safeParse(merged);
-  if (!parsed.success) {
-    return actionFailure("Please check the form and try again.");
-  }
-  const key = await rateLimitKey();
-  if (!rateLimiter.consume(key)) {
-    return actionFailure("Too many submissions. Please wait a minute and try again.");
-  }
-  await consoleContactDispatcher.dispatch(parsed.data);
-  return actionSuccess();
+  });
 }

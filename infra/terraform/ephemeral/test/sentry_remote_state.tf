@@ -40,8 +40,14 @@ locals {
   }
 
   sentry_common_env = [
-    { key = "SENTRY_ENVIRONMENT", value = local.sentry_runtime_env, type = "GENERAL", scope = "RUN_TIME" },
-    { key = "SENTRY_RELEASE", value = var.sentry_release, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+    { key = "SENTRY_ENVIRONMENT", value = local.sentry_runtime_env, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+    { key = "SENTRY_ORG", value = var.sentry_organization_slug, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+    {
+      key   = "SENTRY_RELEASE"
+      value = var.sentry_release != "" ? var.sentry_release : "$${_self.COMMIT_HASH}"
+      type  = "GENERAL"
+      scope = "RUN_AND_BUILD_TIME"
+    },
   ]
 
   sentry_build_env = var.sentry_auth_token != "" ? [
@@ -57,6 +63,7 @@ locals {
       ] : [],
       app == "web" && lookup(local.sentry_dsns, "web", "") != "" ? [
         { key = "NEXT_PUBLIC_SENTRY_DSN_WEB", value = local.sentry_dsns["web"], type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "SENTRY_PROJECT", value = "lax-${local.environment}-web", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
       ] : [],
       [
         { key = "SENTRY_TRACES_SAMPLE_RATE", value = tostring(cfg.traces_sample_rate), type = "GENERAL", scope = "RUN_TIME" },

@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import {
   CONSENT_COOKIE_MAX_AGE_SEC,
   CONSENT_COOKIE_NAME,
@@ -25,13 +27,15 @@ export async function setConsentAction(prefs: {
   analytics: boolean;
   marketing: boolean;
 }): Promise<{ ok: true; snapshot: ConsentSnapshot } | { ok: false; error: string }> {
-  try {
-    const snapshot = buildConsentSnapshot(prefs);
-    const jar = await cookies();
-    jar.set(CONSENT_COOKIE_NAME, serializeConsent(snapshot), cookieOptions());
-    revalidatePath("/", "layout");
-    return { ok: true, snapshot };
-  } catch {
-    return { ok: false, error: "Could not save cookie preferences." };
-  }
+  return instrumentServerAction("setConsentAction", async () => {
+    try {
+      const snapshot = buildConsentSnapshot(prefs);
+      const jar = await cookies();
+      jar.set(CONSENT_COOKIE_NAME, serializeConsent(snapshot), cookieOptions());
+      revalidatePath("/", "layout");
+      return { ok: true, snapshot };
+    } catch {
+      return { ok: false, error: "Could not save cookie preferences." };
+    }
+  });
 }

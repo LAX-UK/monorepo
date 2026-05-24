@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import { acceptInvitationAction } from "@/lib/legal-entity/member-management.actions";
 import {
   clearPendingEntityInviteCookie,
@@ -10,13 +12,15 @@ import {
 export async function tryConsumePendingInviteAfterVerify(
   explicitToken?: string | null,
 ): Promise<{ redirectTo: string } | null> {
-  const trimmed = explicitToken?.trim();
-  const token = trimmed && trimmed.length >= 10 ? trimmed : await getPendingEntityInviteCookie();
-  if (!token) return null;
-  const res = await acceptInvitationAction(token);
-  if (!res.ok) {
-    return null;
-  }
-  await clearPendingEntityInviteCookie();
-  return { redirectTo: `/dashboard/organisations/${res.data.legalEntityId}?welcome=1` };
+  return instrumentServerAction("tryConsumePendingInviteAfterVerify", async () => {
+    const trimmed = explicitToken?.trim();
+    const token = trimmed && trimmed.length >= 10 ? trimmed : await getPendingEntityInviteCookie();
+    if (!token) return null;
+    const res = await acceptInvitationAction(token);
+    if (!res.ok) {
+      return null;
+    }
+    await clearPendingEntityInviteCookie();
+    return { redirectTo: `/dashboard/organisations/${res.data.legalEntityId}?welcome=1` };
+  });
 }

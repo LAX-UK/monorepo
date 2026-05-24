@@ -86,6 +86,7 @@ jobs:
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      TF_VAR_sentry_release: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)

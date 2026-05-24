@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import {
   ADMIN_DASHBOARD_WIDGETS_COOKIE,
   type DashboardWidgetState,
@@ -11,12 +13,14 @@ import { cookies } from "next/headers";
 export async function persistAdminDashboardWidgetsAction(
   widgets: readonly DashboardWidgetState[],
 ): Promise<void> {
-  const jar = await cookies();
-  jar.set(ADMIN_DASHBOARD_WIDGETS_COOKIE, serializeDashboardWidgetsCookie(widgets), {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-    httpOnly: false,
+  return instrumentServerAction("persistAdminDashboardWidgetsAction", async () => {
+    const jar = await cookies();
+    jar.set(ADMIN_DASHBOARD_WIDGETS_COOKIE, serializeDashboardWidgetsCookie(widgets), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    revalidatePath("/admin");
   });
-  revalidatePath("/admin");
 }
