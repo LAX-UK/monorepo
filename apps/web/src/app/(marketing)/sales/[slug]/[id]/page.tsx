@@ -1,7 +1,7 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner";
 import { MarketingLoadMore } from "@/components/marketing/marketing-load-more";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
-import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
@@ -338,13 +338,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           emptyMessage={catalogEmptyMessage}
           clearFiltersHref={catalogClearFiltersHref}
           renderCorner={(lot) => (
-            <MarketingWatchlistHeart
-              lotId={lot.id}
-              lotTitle={lot.title}
-              initialWatching={lot.viewerIsWatching}
-              isAuthenticated={isAuthenticated}
-              loginNextPath={lot.href}
-            />
+            <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
           )}
           renderActions={(lot) => <SaleroomLotActions lotHref={lot.href} />}
         />

@@ -1,4 +1,5 @@
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
+import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
@@ -88,7 +89,7 @@ export function CatalogLotGridView({
               href={lotPath(a)}
               topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
               topRight={
-                <LotWatchlistHeart
+                <CatalogLotQuickLookCorner
                   lot={a}
                   isAuthenticated={isAuthenticated}
                   watchedLotIds={watchedLotIds}

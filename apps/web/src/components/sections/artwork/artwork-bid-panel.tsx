@@ -14,6 +14,7 @@ import { LotHighestBidderBanner } from "@/components/sections/artwork/redesign/l
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { LotMobilePricingStrip } from "@/components/sections/artwork/redesign/lot-mobile-pricing-strip";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
+import { useNow } from "@/hooks/use-now";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
@@ -79,7 +80,7 @@ export function ArtworkBidPanel({
   const [step, setStep] = useState<1 | 2>(1);
   const [error, setError] = useState<BidErrorPresentation | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow();
   const [bidSuccess, setBidSuccess] = useState(false);
   const [history, setHistory] = useState<BidHistoryEntry[]>(initialHistory);
   const [lotStatus, setLotStatus] = useState<Lot["status"]>(auction.status);
@@ -165,11 +166,6 @@ export function ArtworkBidPanel({
   });
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
     const el = document.getElementById("bid-interactive-anchor");
     if (!el || !onlineLifecycle || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
@@ -203,7 +199,7 @@ export function ArtworkBidPanel({
     setAmount(minNumeric.toFixed(2));
   }, [useOnlineBidStepper, minNumeric, amount]);
 
-  const remainingLabel = formatCountdownForDisplay(endTime - now);
+  const remainingLabel = now != null ? formatCountdownForDisplay(endTime - now) : "";
 
   /** Fixed locale so SSR and client match (undefined follows Node vs browser locale and hydrates badly). */
   const saleEndLocalLabel = useMemo(() => {
@@ -253,7 +249,7 @@ export function ArtworkBidPanel({
 
   const lifecycle = useMemo(
     () =>
-      classifyLotLifecycle(lifecycleLot, saleForLifecycle, now, {
+      classifyLotLifecycle(lifecycleLot, saleForLifecycle, now ?? 0, {
         recentlyExtended: Boolean(
           onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
         ),
@@ -262,6 +258,7 @@ export function ArtworkBidPanel({
   );
 
   const countdownClock = useMemo(() => {
+    if (now == null) return "";
     if (
       lifecycle.msLeft != null &&
       (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
@@ -269,7 +266,7 @@ export function ArtworkBidPanel({
       return formatCountdownForDisplay(lifecycle.msLeft);
     }
     return remainingLabel;
-  }, [lifecycle, remainingLabel]);
+  }, [lifecycle, remainingLabel, now]);
 
   const ownLot = Boolean(sessionUser?.id && sessionUser.id === auction.sellerId);
 
@@ -622,7 +619,7 @@ export function ArtworkBidPanel({
               priceFlash={priceFlash}
               onScrollToBid={scrollToBid}
               remainingLabel={remainingLabel}
-              msRemaining={endTime - now}
+              msRemaining={now != null ? endTime - now : 0}
               timerState={timerState}
               countdownClock={countdownClock}
               compact={bidCardInView}

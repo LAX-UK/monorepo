@@ -111,6 +111,7 @@ export function OnlineBidsView({
   }, [onlineCtx, lotId, lotSnap, now]);
 
   const countdownClock = useMemo(() => {
+    if (now == null) return "";
     if (
       lifecycle.msLeft != null &&
       (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
@@ -118,7 +119,7 @@ export function OnlineBidsView({
       return formatCountdownForDisplay(lifecycle.msLeft);
     }
     return "";
-  }, [lifecycle]);
+  }, [lifecycle, now]);
 
   return (
     <div className={cn("flex w-full min-w-0 flex-col gap-6", className)}>
