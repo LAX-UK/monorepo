@@ -5,8 +5,8 @@ import {
   lotQuickLookFromRailCard,
   lotQuickLookRailDeck,
 } from "@/components/marketing/lot-quick-look/mappers";
+import { MarketingLotOverlayActions } from "@/components/marketing/lot-quick-look/marketing-lot-overlay-actions";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
-import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
@@ -95,32 +95,14 @@ export function LotMoreFromRail({
                       sizes="(max-width: 1023px) 100vw, 42vw"
                     />
                     {isCompact ? (
-                      <div className="pointer-events-none absolute right-2 top-2 z-10 flex flex-col items-end gap-2">
-                        <OwnerBadge
-                          owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                          className="pointer-events-auto"
-                        />
-                        <MarketingWatchlistHeart
-                          lotId={c.id}
-                          lotTitle={c.title}
-                          initialWatching={watchedLotIds.includes(c.id)}
-                          isAuthenticated={isAuthenticated}
-                          loginNextPath={c.href}
-                          layout="inline"
-                          className="pointer-events-auto"
-                        />
-                      </div>
-                    ) : (
-                      <OwnerBadge
-                        owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                        className="absolute right-2 top-2"
-                      />
-                    )}
-                    <div className="absolute bottom-2 left-2 z-10">
-                      <LotQuickLookTrigger
+                      <MarketingLotOverlayActions
+                        lotId={c.id}
+                        lotTitle={c.title}
+                        initialWatching={watchedLotIds.includes(c.id)}
+                        isAuthenticated={isAuthenticated}
+                        loginNextPath={c.href}
                         vm={lotQuickLookFromRailCard(c)}
-                        layout="overlay"
-                        options={{
+                        quickLookOptions={{
                           deck: quickLookDeck,
                           deckIndex: cardIndex,
                           deckSourceLabel: rail.heading,
@@ -128,8 +110,37 @@ export function LotMoreFromRail({
                           watchedLotIds,
                           loginNextPath: c.href,
                         }}
+                        inset="compact"
+                        topRightAddon={
+                          <OwnerBadge
+                            owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                            className="pointer-events-auto"
+                          />
+                        }
                       />
-                    </div>
+                    ) : null}
+                    {!isCompact ? (
+                      <>
+                        <OwnerBadge
+                          owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                          className="absolute right-2 top-2"
+                        />
+                        <div className="pointer-events-auto absolute bottom-2 left-2 z-10">
+                          <LotQuickLookTrigger
+                            vm={lotQuickLookFromRailCard(c)}
+                            layout="overlay"
+                            options={{
+                              deck: quickLookDeck,
+                              deckIndex: cardIndex,
+                              deckSourceLabel: rail.heading,
+                              isAuthenticated,
+                              watchedLotIds,
+                              loginNextPath: c.href,
+                            }}
+                          />
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 </Link>
                 {isCompact ? (

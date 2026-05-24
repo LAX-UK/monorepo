@@ -92,7 +92,7 @@ export function ArtworkOnlineLayout({
           Catalogue preview — bidding opens when the sale is published.
         </div>
       ) : null}
-      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-20 pt-6 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[var(--page-bottom-padding)] pt-6 sm:px-6 md:px-8">
         <div className="mt-0 lg:mt-2">
           <AuctionSessionHeader
             vm={sessionHeader}

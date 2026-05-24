@@ -13,6 +13,12 @@ vi.mock("@/hooks/use-is-md", () => ({
   useIsMd: () => false,
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({ data: null, isPending: false }),
+  },
+}));
+
 vi.mock("@/lib/analytics/events", () => ({
   trackSearch: vi.fn(),
 }));
@@ -33,11 +39,11 @@ describe("SearchFilterSheet", () => {
       </SearchCatalogPendingProvider>,
     );
 
-    expect(screen.getByRole("button", { name: /Filters/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
+    expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: /Filters/i })[0]!);
 
     expect(screen.getByLabelText("Keywords")).toHaveValue("picasso");
-    expect(screen.getByRole("button", { name: "Show 5 results" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Show 5 results" }).length).toBeGreaterThan(0);
     expect(screen.getByText("Sort by")).toBeInTheDocument();
   });
 });

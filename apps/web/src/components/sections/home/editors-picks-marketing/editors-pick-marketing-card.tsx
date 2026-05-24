@@ -1,8 +1,7 @@
-import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
 import { lotQuickLookFromEditorsPick } from "@/components/marketing/lot-quick-look/mappers";
+import { MarketingLotOverlayActions } from "@/components/marketing/lot-quick-look/marketing-lot-overlay-actions";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
-import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { Button } from "@auction/ui/components/button";
 
@@ -35,24 +34,19 @@ export function EditorsPickMarketingCard({
       sizes="280px"
       articleClassName="h-full"
       cornerAction={
-        <div className="pointer-events-auto flex flex-col items-end gap-2">
-          <MarketingWatchlistHeart
-            lotId={lot.id}
-            lotTitle={lot.title}
-            initialWatching={initialWatching}
-            isAuthenticated={isAuthenticated}
-            loginNextPath={loginNextPath}
-          />
-          <LotQuickLookTrigger
-            vm={lotQuickLookFromEditorsPick(lot)}
-            layout="overlay"
-            options={{
-              isAuthenticated,
-              watchedLotIds,
-              loginNextPath,
-            }}
-          />
-        </div>
+        <MarketingLotOverlayActions
+          lotId={lot.id}
+          lotTitle={lot.title}
+          initialWatching={initialWatching}
+          isAuthenticated={isAuthenticated}
+          loginNextPath={loginNextPath}
+          vm={lotQuickLookFromEditorsPick(lot)}
+          quickLookOptions={{
+            isAuthenticated,
+            watchedLotIds,
+            loginNextPath,
+          }}
+        />
       }
       belowImage={
         <div className="flex min-w-0 flex-1 flex-col gap-3">

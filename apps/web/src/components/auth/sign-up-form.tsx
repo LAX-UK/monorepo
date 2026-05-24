@@ -8,6 +8,7 @@ import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
@@ -23,6 +24,9 @@ export function SignUpForm({ inviteToken }: Props) {
   const rawNext = searchParams.get("next");
   const safeNext = rawNext && isSafeNextPath(rawNext) ? rawNext : undefined;
   const next = safeNext ?? "/dashboard";
+  const loginHref = buildAuthHref("/login", {
+    ...(safeNext !== undefined ? { next: safeNext } : {}),
+  });
   const controllerOpts =
     inviteToken || safeNext
       ? { ...(inviteToken ? { inviteToken } : {}), ...(safeNext ? { next: safeNext } : {}) }
@@ -97,7 +101,7 @@ export function SignUpForm({ inviteToken }: Props) {
         <AuthSubmitButton loading={loading} loadingLabel="Signing up…">
           Sign Up
         </AuthSubmitButton>
-        <AuthFooterLink prefix="Already have an account?" linkText="Log in" href="/login" />
+        <AuthFooterLink prefix="Already have an account?" linkText="Log in" href={loginHref} />
       </div>
     </form>
   );

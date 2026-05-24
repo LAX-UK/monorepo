@@ -5,11 +5,12 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MobileAuthSection } from "./header-auth-chip";
@@ -27,7 +28,7 @@ type MobileNavDrawerProps = {
 };
 
 const drawerContentClass =
-  "fixed inset-y-0 top-0 right-0 left-auto z-50 !flex h-full max-h-[100dvh] w-full max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-surface p-0 shadow-xl sm:max-w-sm sm:rounded-none";
+  "fixed inset-y-0 top-0 right-0 left-auto z-[var(--z-overlay,60)] !flex h-full max-h-[100dvh] w-[min(100vw-3rem,24rem)] max-w-sm translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-nav-border bg-surface p-0 shadow-xl sm:max-w-sm sm:rounded-none";
 
 export function MobileNavDrawer({
   open,
@@ -53,7 +54,11 @@ export function MobileNavDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("border-border-hairline p-0 sm:p-0", drawerContentClass)}>
+      <DialogContent
+        overlayClassName="z-[var(--z-overlay,60)]"
+        closeClassName="hidden"
+        className={cn("border-border-hairline p-0 sm:p-0", drawerContentClass)}
+      >
         <DialogTitle className="sr-only">Site navigation</DialogTitle>
         <DialogDescription className="sr-only">
           Main menu, search, account links, and theme
@@ -68,6 +73,12 @@ export function MobileNavDrawer({
             >
               <LaxLogo variant="header" />
             </Link>
+            <DialogClose
+              className="inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+              aria-label="Close menu"
+            >
+              <X className="size-5" aria-hidden />
+            </DialogClose>
           </div>
 
           <HeaderSearchForm inputId="mobile-nav-search" />

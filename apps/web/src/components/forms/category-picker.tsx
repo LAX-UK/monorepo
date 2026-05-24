@@ -1,8 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useIsMd } from "@/hooks/use-is-md";
+import { useSplitOverlayOpen } from "@/hooks/use-split-overlay-open";
 import type { CategoryNode } from "@auction/types";
+import {
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
 import {
   Command,
   CommandEmpty,
@@ -12,13 +19,6 @@ import {
   CommandList,
 } from "@auction/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@auction/ui/components/sheet";
 import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -85,7 +85,6 @@ export function CategoryPicker({
   multiple = true,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const isMd = useIsMd();
   const flat = useMemo(() => flattenCategories(categories), [categories]);
   const selected = flat.filter((category) => value.includes(category.id));
   const selectedNames =
@@ -115,30 +114,37 @@ export function CategoryPicker({
   );
 
   const list = <CategoryCommandList flat={flat} value={value} onToggle={toggle} />;
+  const { mobile, desktop } = useSplitOverlayOpen(open, setOpen);
 
   return (
     <div className="space-y-3">
-      {isMd ? (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-          <PopoverContent align="start" className="w-[min(28rem,calc(100vw-2rem))] p-0">
-            {list}
-          </PopoverContent>
-        </Popover>
-      ) : (
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>{trigger}</SheetTrigger>
-          <SheetContent
-            side="bottom"
-            className="max-h-[min(85dvh,36rem)] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
-          >
-            <SheetHeader>
-              <SheetTitle className="font-headline text-left text-lg">Categories</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4">{list}</div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <Popover {...desktop}>
+        <PopoverTrigger asChild className="hidden md:inline-flex">
+          {trigger}
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="hidden w-[min(28rem,calc(100vw-2rem))] p-0 md:block"
+        >
+          {list}
+        </PopoverContent>
+      </Popover>
+
+      <BottomSheet {...mobile}>
+        <BottomSheetTrigger asChild className="md:hidden">
+          {trigger}
+        </BottomSheetTrigger>
+        <BottomSheetContent
+          overlayClassName="md:hidden"
+          className="md:hidden max-h-[min(85dvh,36rem)]"
+        >
+          <BottomSheetHeader className="px-6 pt-2 text-left">
+            <BottomSheetTitle className="font-headline text-lg">Categories</BottomSheetTitle>
+          </BottomSheetHeader>
+          <div className="px-6 pb-6">{list}</div>
+        </BottomSheetContent>
+      </BottomSheet>
+
       {selected.length ? (
         <div className="flex flex-wrap gap-2">
           {selected.map((category, index) => (

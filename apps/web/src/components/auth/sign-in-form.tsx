@@ -9,6 +9,7 @@ import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { authClient } from "@/lib/auth-client";
+import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { normalizeUserRoleOrClient } from "@auction/types";
@@ -61,6 +62,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   }, []);
 
   const session = authClient.useSession();
+  const emailValue = form.watch("email");
+  const safeNext = isSafeNextPath(next) ? next : undefined;
+  const registerHref = buildAuthHref("/register", {
+    ...(safeNext !== undefined ? { next: safeNext } : {}),
+  });
+  const forgotPasswordHref = buildAuthHref("/forgot-password", {
+    ...(safeNext !== undefined ? { next: safeNext } : {}),
+    ...(emailValue ? { email: emailValue } : {}),
+  });
   const rawUser = session.data?.user as
     | { email?: string; role?: string; emailVerified?: boolean; suspended?: boolean }
     | undefined;
@@ -220,7 +230,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           ) : null}
           <div className="flex justify-end">
             <Link
-              href="/forgot-password"
+              href={forgotPasswordHref}
               className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
             >
               Forgot password?
@@ -233,7 +243,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
           Sign In
         </AuthSubmitButton>
-        <AuthFooterLink prefix="Don't have an account?" linkText="Sign up" href="/register" />
+        <AuthFooterLink prefix="Don't have an account?" linkText="Sign up" href={registerHref} />
       </div>
     </form>
   );

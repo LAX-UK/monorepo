@@ -72,9 +72,7 @@ export function SaleroomLotCard({
               imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
             />
           </Link>
-          {cornerAction ? (
-            <div className="pointer-events-auto absolute right-1 top-1 z-10">{cornerAction}</div>
-          ) : null}
+          {cornerAction ? cornerAction : null}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -152,9 +150,7 @@ export function SaleroomLotCard({
             endTime={lot.endTime}
           />
         </Link>
-        {cornerAction ? (
-          <div className="pointer-events-auto absolute right-3 top-3 z-10">{cornerAction}</div>
-        ) : null}
+        {cornerAction ? cornerAction : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">

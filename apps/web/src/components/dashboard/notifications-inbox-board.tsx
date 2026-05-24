@@ -246,7 +246,10 @@ export function NotificationsInboxBoard({
 
   return (
     <div
-      className={cn("mx-auto max-w-5xl py-10", selected.size > 0 ? "pb-28 md:pb-10" : undefined)}
+      className={cn(
+        "mx-auto max-w-5xl py-10 pb-[var(--page-bottom-padding)] md:pb-10",
+        selected.size > 0 && "pb-[calc(var(--page-bottom-padding)+3.5rem)]",
+      )}
     >
       <DashboardPageHeader
         meta="Buying"

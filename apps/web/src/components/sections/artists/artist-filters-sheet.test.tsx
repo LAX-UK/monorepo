@@ -62,7 +62,7 @@ describe("ArtistFiltersSheet", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Filters/i })[0]!);
 
     expect(screen.getByRole("heading", { name: "Scenario" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Kind" })).toBeInTheDocument();

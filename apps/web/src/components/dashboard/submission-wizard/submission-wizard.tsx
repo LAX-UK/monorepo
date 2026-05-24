@@ -132,7 +132,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
       <HideBottomTabBarWhileMounted />
       <Form {...form}>
         <form
-          className="space-y-6 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:pb-24"
+          className="space-y-6 pb-[var(--page-bottom-padding)] sm:pb-24"
           onSubmit={(e) => {
             e.preventDefault();
           }}
