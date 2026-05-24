@@ -86,7 +86,7 @@ export function ComplianceStatusStrip({
         href:
           kyc.status === "approved" ? "/dashboard/settings/profile" : "/dashboard/verify-identity",
         tone: identityPill.tone,
-        hint: identityPill.hint,
+        ...(identityPill.hint !== undefined ? { hint: identityPill.hint } : {}),
       });
     } else if (user.kycStatus === "approved") {
       pills.push({
