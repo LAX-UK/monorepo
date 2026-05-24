@@ -1,14 +1,18 @@
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getSiteUrl } from "@/lib/site-url";
+import { normalizeXeroCallbackUrl } from "@auction/validators";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+function adminXeroUrl(path: string): URL {
+  return new URL(path, getSiteUrl());
+}
+
 export async function GET(req: NextRequest) {
-  const callbackUrl = req.nextUrl.toString();
+  const callbackUrl = normalizeXeroCallbackUrl(req.nextUrl.toString(), getSiteUrl());
   const state = req.nextUrl.searchParams.get("state");
   if (!state) {
-    return NextResponse.redirect(
-      new URL("/admin/integrations/xero?error=missing_state", req.nextUrl.origin),
-    );
+    return NextResponse.redirect(adminXeroUrl("/admin/integrations/xero?error=missing_state"));
   }
 
   const res = await authedServerFetch("/admin/integrations/xero/oauth/complete", {
@@ -27,9 +31,9 @@ export async function GET(req: NextRequest) {
       /* ignore */
     }
     return NextResponse.redirect(
-      new URL(`/admin/integrations/xero?error=${encodeURIComponent(msg)}`, req.nextUrl.origin),
+      adminXeroUrl(`/admin/integrations/xero?error=${encodeURIComponent(msg)}`),
     );
   }
 
-  return NextResponse.redirect(new URL("/admin/integrations/xero?connected=1", req.nextUrl.origin));
+  return NextResponse.redirect(adminXeroUrl("/admin/integrations/xero?connected=1"));
 }
