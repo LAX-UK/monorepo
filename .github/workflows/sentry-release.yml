@@ -67,7 +67,7 @@ jobs:
           project="lax-${ENV_SUFFIX}-${{ matrix.sentry_app }}"
           sentry-cli releases new "$RELEASE" -p "$project"
           sentry-cli releases set-commits "$RELEASE" --auto
-          pnpm --filter "@auction/${{ matrix.package }}" build
+          pnpm turbo run build --filter="@auction/${{ matrix.package }}..."
           sentry-cli sourcemaps inject "apps/${{ matrix.app_dir }}/dist"
           sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app_dir }}/dist"
           sentry-cli releases finalize "$RELEASE"
