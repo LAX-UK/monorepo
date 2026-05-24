@@ -498,6 +498,13 @@
       "when": 1783000000000,
       "tag": "0074_payment_refund_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1783100000000,
+      "tag": "0075_stripe_customer_id",
+      "breakpoints": true
     }
   ]
 }

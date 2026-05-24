@@ -164,7 +164,40 @@ paths:
     get:
       summary: List all payments (admin)
     post:
-      summary: Create or reuse a pending payment for the winning bidder; returns Xero checkoutUrl when configured
+      summary: Create or reuse a pending payment for the winning bidder; returns tiered Stripe Checkout URL
+      description: |
+        Tier A (≤ STRIPE_CARD_CHECKOUT_MAX): card Checkout.
+        Tier B: UK bank transfer (`gb_bank_transfer`) via Stripe Customer Balance.
+        High value or archived seller: `requires_manual_review` with `checkoutUrl` null until finance release.
+      responses:
+        "201":
+          description: Payment row created or reused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: string
+                        format: uuid
+                      checkoutUrl:
+                        type: string
+                        nullable: true
+                      checkoutRail:
+                        type: string
+                        enum: [card, gb_bank_transfer]
+                        nullable: true
+                      manualReviewReason:
+                        type: string
+                        enum: [seller_archived, high_value, seller_archived_and_high_value]
+                        nullable: true
+        "400":
+          description: Amount exceeds online limit (`payment_amount_exceeds_limit`)
+        "503":
+          description: Xero invoice unavailable when accounting is configured (`accounting_unavailable`)
   /payments/{id}/capture:
     parameters:
       - $ref: "#/components/parameters/PaymentId"

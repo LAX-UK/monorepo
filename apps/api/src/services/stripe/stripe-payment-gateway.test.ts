@@ -39,7 +39,7 @@ describe("StripePaymentGateway", () => {
     expect(mockStripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_1");
   });
 
-  it("createCheckoutSession uses idempotency key and payment metadata", async () => {
+  it("createCardCheckoutSession uses idempotency key and payment metadata", async () => {
     const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
     const sessionsCreate = vi.fn().mockResolvedValue({
       id: "cs_1",
@@ -49,12 +49,12 @@ describe("StripePaymentGateway", () => {
     const mockStripe = {
       paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
       refunds: { create: vi.fn() },
-      checkout: { sessions: { create: sessionsCreate } },
+      checkout: { sessions: { create: sessionsCreate, retrieve: vi.fn() } },
       charges: { search: vi.fn() },
     };
     injectStripeClient(gateway, mockStripe as unknown as Stripe);
 
-    const result = await gateway.createCheckoutSession({
+    const result = await gateway.createCardCheckoutSession({
       paymentId: "pay_1",
       lotId: "lot_1",
       amountCents: 12500,
@@ -68,9 +68,50 @@ describe("StripePaymentGateway", () => {
     expect(result.paymentIntentId).toBe("pi_checkout");
     expect(sessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { paymentId: "pay_1", lotId: "lot_1" },
+        metadata: expect.objectContaining({ paymentId: "pay_1", lotId: "lot_1" }),
       }),
-      { idempotencyKey: "checkout:payment:pay_1" },
+      { idempotencyKey: "checkout:card:payment:pay_1" },
+    );
+  });
+
+  it("createBankTransferCheckoutSession uses gb_bank_transfer and separate idempotency key", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const sessionsCreate = vi.fn().mockResolvedValue({
+      id: "cs_bank",
+      url: "https://checkout.stripe.com/pay/cs_bank",
+      payment_intent: "pi_bank",
+    });
+    const mockStripe = {
+      paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
+      refunds: { create: vi.fn() },
+      checkout: { sessions: { create: sessionsCreate, retrieve: vi.fn() } },
+      charges: { search: vi.fn() },
+    };
+    injectStripeClient(gateway, mockStripe as unknown as Stripe);
+
+    await gateway.createBankTransferCheckoutSession({
+      paymentId: "pay_2",
+      lotId: "lot_2",
+      amountCents: 25000000,
+      currency: "gbp",
+      buyerEmail: "buyer@test.com",
+      successUrl: "https://app/success",
+      cancelUrl: "https://app/cancel",
+      stripeCustomerId: "cus_1",
+    });
+
+    expect(sessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: "cus_1",
+        payment_method_types: ["customer_balance"],
+        payment_method_options: {
+          customer_balance: {
+            funding_type: "bank_transfer",
+            bank_transfer: { type: "gb_bank_transfer" },
+          },
+        },
+      }),
+      { idempotencyKey: "checkout:bank:payment:pay_2" },
     );
   });
 

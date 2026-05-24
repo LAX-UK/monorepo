@@ -35,6 +35,8 @@ export interface ILegalEntityRepository {
   /** persist canonical Xero Contact id after find/create. */
   setXeroContactId(legalEntityId: string, xeroContactId: string): Promise<void>;
 
+  setStripeCustomerId(legalEntityId: string, stripeCustomerId: string): Promise<void>;
+
   /** primary-ish address row for Xero contact sync (default first, else any).
    */
   findPrimaryAddressForXero(legalEntityId: string): Promise<{

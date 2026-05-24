@@ -15,11 +15,11 @@ import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
+import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
+import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
-import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -34,10 +34,20 @@ import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
-import { dispatchPaymentReceived } from "./payment/dispatch-payment-received.js";
-import type { PaymentCheckoutOrchestrator } from "./payment/payment-checkout.orchestrator.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
+import type {
+  CheckoutRailKind,
+  ManualReviewReason,
+  PaymentTierPolicy,
+} from "./payment/payment-tier.policy.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
+
+export type CreatePendingPaymentResult = {
+  paymentId: string;
+  checkoutUrl: string | null;
+  checkoutRail: CheckoutRailKind | null;
+  manualReviewReason: ManualReviewReason | null;
+};
 
 /** Seller entity must not be in these states for refund. */
 const REFUND_BLOCKED_STATUSES = ["archived", "rejected"];
@@ -61,8 +71,8 @@ export class PaymentService {
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly notificationFactory: NotificationFactory,
     private readonly users: IUserRepository,
-    private readonly accounting: IPaymentAccountingProvider,
-    private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
+    private readonly accounting: IInvoiceAccountingProvider,
+    private readonly paymentTierPolicy: PaymentTierPolicy,
     private readonly legalEntityRepository?: ILegalEntityRepository,
     private readonly db?: Database,
     private readonly domainEventPublisher?: DomainEventPublisher,
@@ -78,19 +88,17 @@ export class PaymentService {
     _marketingEvents: IMarketingEventService | null = null,
     private readonly platformFeePolicy: IPlatformFeePolicy | null = null,
     private readonly paymentCapture: IPaymentCaptureService | null = null,
-    private readonly checkoutOrchestrator: PaymentCheckoutOrchestrator | null = null,
+    private readonly stripeCheckout: IStripeCheckoutService | null = null,
     private readonly payoutAdjustments: IPayoutAdjustmentService | null = null,
     private readonly paymentRefundReconcile: PaymentRefundReconcileService | null = null,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
   ) {}
 
-  /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
-   * and returns `checkoutUrl` for redirect to Xero.
-   */
+  /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
   async createPendingForWinner(
     buyerId: string,
     lotId: string,
-  ): Promise<Result<{ paymentId: string; checkoutUrl: string | null }, AuthzError | LotError>> {
+  ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
       return err(new LotError("Lot not found", 404));
@@ -111,12 +119,51 @@ export class PaymentService {
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
       await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, existing.id);
-      if (existing.status === "requires_manual_review") {
-        return ok({ paymentId: existing.id, checkoutUrl: null });
+      if (existing.status === "captured") {
+        return ok({
+          paymentId: existing.id,
+          checkoutUrl: null,
+          checkoutRail: null,
+          manualReviewReason: null,
+        });
       }
-      await this.ensureXeroInvoiceForPayment(existing.id, lot, buyerId, existing.amount);
-      const checkoutUrl = await this.resolveCheckoutUrl(existing.id, lot, buyerId, existing.amount);
-      return ok({ paymentId: existing.id, checkoutUrl });
+      if (existing.status === "refunded") {
+        return err(new LotError("Payment for this lot has already been refunded", 409));
+      }
+      if (existing.status === "requires_manual_review") {
+        const amountPence = gbpAmountToPence(existing.amount);
+        const sellerEntity =
+          this.legalEntityRepository && existing.sellerLegalEntityId
+            ? await this.legalEntityRepository.findById(existing.sellerLegalEntityId)
+            : null;
+        return ok({
+          paymentId: existing.id,
+          checkoutUrl: null,
+          checkoutRail: null,
+          manualReviewReason: this.paymentTierPolicy.resolveManualReviewReason(
+            amountPence,
+            sellerEntity?.status === "archived",
+          ),
+        });
+      }
+      const checkout = await this.issueCheckoutForPendingPayment(
+        existing.id,
+        lot,
+        buyerId,
+        existing.amount,
+      );
+      if (checkout.isErr()) return err(checkout.error);
+      return ok({
+        paymentId: existing.id,
+        checkoutUrl: checkout.value.checkoutUrl,
+        checkoutRail: checkout.value.checkoutRail,
+        manualReviewReason: null,
+      });
+    }
+
+    const priorRefund = await this.payments.findRefundedByLotAndBuyer(lotId, buyerId);
+    if (priorRefund) {
+      return err(new LotError("Payment for this lot has already been refunded", 409));
     }
 
     const total = await this.totalDue(lot);
@@ -124,10 +171,32 @@ export class PaymentService {
       ? await this.platformFeePolicy.computePlatformFee(lot.sellerLegalEntityId, total)
       : (total * 0.05).toFixed(2);
     const amount = total.toFixed(2);
+    const amountPence = gbpAmountToPence(amount);
+    const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
+    if (amountValidation === "blocked") {
+      return err(
+        new LotError(
+          "Payment amount exceeds the maximum online payment limit. Contact settlements.",
+          400,
+          "payment_amount_exceeds_limit",
+        ),
+      );
+    }
+    if (amountValidation === "invalid_amount") {
+      return err(new LotError("Invalid payment amount", 400, "invalid_payment_amount"));
+    }
+
     const sellerEntity = this.legalEntityRepository
       ? await this.legalEntityRepository.findById(lot.sellerLegalEntityId)
       : null;
-    const requiresManualReview = sellerEntity?.status === "archived";
+    const sellerArchived = sellerEntity?.status === "archived";
+    const requiresManualReview = this.paymentTierPolicy.needsManualReviewGate(
+      amountPence,
+      sellerArchived,
+    );
+    const manualReviewReason = requiresManualReview
+      ? this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived)
+      : null;
 
     const created = await this.payments.create({
       lotId,
@@ -140,7 +209,7 @@ export class PaymentService {
       status: requiresManualReview ? "requires_manual_review" : "pending",
     });
 
-    if (requiresManualReview && this.db && this.domainEventPublisher) {
+    if (requiresManualReview && this.db && this.domainEventPublisher && manualReviewReason) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "payment",
         aggregateId: created.id,
@@ -153,7 +222,7 @@ export class PaymentService {
           sellerLegalEntityId: lot.sellerLegalEntityId,
           amount,
           currency: "GBP",
-          reason: "seller_archived",
+          reason: manualReviewReason,
         },
         actorUserId: buyerId,
         actingLegalEntityId: lot.buyerLegalEntityId,
@@ -161,9 +230,17 @@ export class PaymentService {
     }
 
     let checkoutUrl: string | null = null;
+    let checkoutRail: CheckoutRailKind | null = null;
     if (!requiresManualReview) {
-      await this.ensureXeroInvoiceForPayment(created.id, lot, buyerId, created.amount);
-      checkoutUrl = await this.resolveCheckoutUrl(created.id, lot, buyerId, created.amount);
+      const checkout = await this.issueCheckoutForPendingPayment(
+        created.id,
+        lot,
+        buyerId,
+        created.amount,
+      );
+      if (checkout.isErr()) return err(checkout.error);
+      checkoutUrl = checkout.value.checkoutUrl;
+      checkoutRail = checkout.value.checkoutRail;
     }
 
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id);
@@ -181,7 +258,12 @@ export class PaymentService {
       );
     }
 
-    return ok({ paymentId: created.id, checkoutUrl });
+    return ok({
+      paymentId: created.id,
+      checkoutUrl,
+      checkoutRail,
+      manualReviewReason,
+    });
   }
 
   async listAllForAdmin(
@@ -218,7 +300,27 @@ export class PaymentService {
     for (const lot of lots) {
       if (lot) lotById.set(lot.id, lot);
     }
-    const data = await presentMyPayments(filtered, lotById, this.mediaUrlResolver);
+    const sellerArchivedByEntityId = new Map<string, boolean>();
+    if (this.legalEntityRepository) {
+      const legalEntityRepository = this.legalEntityRepository;
+      const sellerIds = Array.from(
+        new Set(
+          filtered
+            .map((p) => p.sellerLegalEntityId)
+            .filter((id): id is string => typeof id === "string" && id.length > 0),
+        ),
+      );
+      await Promise.all(
+        sellerIds.map(async (id) => {
+          const entity = await legalEntityRepository.findById(id);
+          if (entity) sellerArchivedByEntityId.set(id, entity.status === "archived");
+        }),
+      );
+    }
+    const data = await presentMyPayments(filtered, lotById, this.mediaUrlResolver, {
+      paymentTierPolicy: this.paymentTierPolicy,
+      sellerArchivedByEntityId,
+    });
     return { data };
   }
 
@@ -366,16 +468,110 @@ export class PaymentService {
     return ok(undefined);
   }
 
+  private async issueCheckoutForPendingPayment(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+  ): Promise<
+    Result<
+      { checkoutUrl: string | null; checkoutRail: CheckoutRailKind | null },
+      PaymentProviderError
+    >
+  > {
+    const amountPence = gbpAmountToPence(amount);
+    const validation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
+    if (validation === "blocked") {
+      return err(
+        new PaymentProviderError(
+          "Payment amount exceeds the maximum online payment limit",
+          400,
+          "payment_amount_exceeds_limit",
+        ),
+      );
+    }
+    if (validation === "invalid_amount") {
+      return err(new PaymentProviderError("Invalid payment amount", 400, "invalid_payment_amount"));
+    }
+
+    const invoiceResult = await this.ensureXeroInvoiceForPayment(paymentId, lot, buyerId, amount);
+    if (!invoiceResult.ok) {
+      return err(
+        new PaymentProviderError(
+          invoiceResult.error ?? "Accounting invoice unavailable",
+          503,
+          "accounting_unavailable",
+        ),
+      );
+    }
+
+    if (!this.stripeCheckout?.isAvailable()) {
+      return err(
+        new PaymentProviderError(
+          "Stripe checkout is not configured",
+          503,
+          "stripe_checkout_unavailable",
+        ),
+      );
+    }
+
+    const rail = this.paymentTierPolicy.resolveCheckoutRail(amountPence);
+    if (!rail) {
+      return err(
+        new PaymentProviderError(
+          "Checkout is not available for this amount",
+          400,
+          "invalid_payment_amount",
+        ),
+      );
+    }
+
+    const buyer = await this.users.findById(buyerId);
+    if (!buyer?.email) {
+      return err(new PaymentProviderError("Buyer email is required for checkout", 400));
+    }
+    if (!lot.buyerLegalEntityId) {
+      return err(new PaymentProviderError("Buyer legal entity is required for checkout", 400));
+    }
+
+    const checkout = await this.stripeCheckout.createCheckout(rail, {
+      paymentId,
+      lot,
+      buyerEmail: buyer.email,
+      buyerName: buyer.name,
+      amount,
+      buyerLegalEntityId: lot.buyerLegalEntityId,
+      amountPence,
+    });
+
+    if (!checkout.checkoutUrl) {
+      return err(
+        new PaymentProviderError(
+          checkout.error ?? "Failed to create Stripe checkout session",
+          502,
+          checkout.errorCode ?? "stripe_checkout_unavailable",
+        ),
+      );
+    }
+
+    return ok({
+      checkoutUrl: checkout.checkoutUrl,
+      checkoutRail: checkout.checkoutRail,
+    });
+  }
+
   private async ensureXeroInvoiceForPayment(
     paymentId: string,
     lot: Lot,
     buyerId: string,
     amount: string,
-  ): Promise<void> {
-    if (!this.accounting.isConfigured()) return;
+  ): Promise<{ ok: boolean; error?: string }> {
+    if (!this.accounting.isConfigured()) return { ok: true };
     const buyer = await this.users.findById(buyerId);
-    if (!buyer?.email) return;
-    await this.accounting.ensureInvoiceForPayment({
+    if (!buyer?.email) {
+      return { ok: false, error: "Buyer email is required for accounting invoice" };
+    }
+    return this.accounting.ensureInvoiceForPayment({
       paymentId,
       lot,
       buyerEmail: buyer.email,
@@ -635,22 +831,6 @@ export class PaymentService {
     return ok(undefined);
   }
 
-  /** Marks a payment captured when Xero reports the linked invoice as paid (webhook / sync).
-   * Does not perform admin authorization — only call from trusted integration code.
-   */
-  async markCapturedFromProviderSync(paymentId: string): Promise<void> {
-    if (!this.paymentCapture) {
-      const p = await this.payments.findById(paymentId);
-      if (!p || p.status === "captured" || p.status === "refunded" || p.status === "cancelled") {
-        return;
-      }
-      await this.payments.updateStatus(paymentId, "captured");
-      await this.dispatchPaymentReceived(p);
-      return;
-    }
-    await this.paymentCapture.capture({ paymentId, via: "xero_sync" });
-  }
-
   /** Buyer abandons an unpaid pending invoice (e.g. relinquishes the win). */
   async cancelPendingAsBuyer(
     buyerId: string,
@@ -727,17 +907,6 @@ export class PaymentService {
     return ok({ ok: true });
   }
 
-  private async dispatchPaymentReceived(p: PaymentRecord): Promise<void> {
-    await dispatchPaymentReceived({
-      payment: p,
-      lots: this.lots,
-      lotFulfilmentHooks: this.lotFulfilmentHooks,
-      notificationDispatcher: this.notificationDispatcher,
-      notificationFactory: this.notificationFactory,
-      legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
-    });
-  }
-
   /**
    * Hammer + buyer's premium, in major-currency units (e.g. £125.00 → 125).
    *
@@ -762,40 +931,5 @@ export class PaymentService {
     const premiumMajor = Number.parseFloat(policy.computePremiumMajor(lot.currentPrice));
     const safePremium = Number.isFinite(premiumMajor) ? premiumMajor : 0;
     return safeHammer + safePremium;
-  }
-
-  private async resolveCheckoutUrl(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-  ): Promise<string | null> {
-    if (this.checkoutOrchestrator) {
-      const buyer = await this.users.findById(buyerId);
-      if (!buyer?.email) return null;
-      const r = await this.checkoutOrchestrator.createCheckout({
-        paymentId,
-        lot,
-        buyerEmail: buyer.email,
-        buyerName: buyer.name,
-        amount,
-        ...(lot.buyerLegalEntityId ? { buyerLegalEntityId: lot.buyerLegalEntityId } : {}),
-      });
-      return r.checkoutUrl;
-    }
-    if (!this.accounting.isConfigured()) return null;
-    const existing = await this.accounting.getCheckoutUrlIfAny(paymentId);
-    if (existing) return existing;
-    const buyer = await this.users.findById(buyerId);
-    if (!buyer?.email) return null;
-    const r = await this.accounting.createCheckoutForWinner({
-      paymentId,
-      lot,
-      buyerEmail: buyer.email,
-      buyerName: buyer.name,
-      amount,
-      buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
-    });
-    return r.checkoutUrl ?? null;
   }
 }

@@ -11,12 +11,11 @@ import {
 import type { Env } from "../../env.js";
 import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
-  AccountingCheckoutContext,
-  AccountingCheckoutResult,
-  IPaymentAccountingProvider,
-} from "../interfaces/payment-accounting-provider.js";
+  IInvoiceAccountingProvider,
+  InvoiceAccountingContext,
+} from "../interfaces/invoice-accounting.js";
+import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
@@ -46,7 +45,7 @@ function dueDate(from: Date, days: number): string {
   return isoDate(t);
 }
 
-export class XeroAccountingProvider implements IPaymentAccountingProvider {
+export class XeroAccountingProvider implements IInvoiceAccountingProvider {
   constructor(
     private readonly env: Pick<
       Env,
@@ -60,7 +59,6 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     >,
     private readonly connections: IXeroConnectionRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
-    private readonly onInvoicePaid: (paymentId: string) => Promise<void>,
     private readonly legalEntities: ILegalEntityRepository | null,
     /** when `XERO_USE_LEGAL_ENTITY_CONTACT`, sets Xero `invoiceAddresses` to match email/PDF bill-to. */
     private readonly invoiceAddressing: InvoiceAddressingService | null,
@@ -104,56 +102,8 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     return new XeroClient(cfg);
   }
 
-  async getCheckoutUrlIfAny(paymentId: string): Promise<string | null> {
-    const row = await this.externalRefs.findByPaymentId(paymentId);
-    return row?.onlineInvoiceUrl ?? null;
-  }
-
-  async createCheckoutForWinner(ctx: AccountingCheckoutContext): Promise<AccountingCheckoutResult> {
-    const ensured = await this.ensureInvoiceForPayment(ctx);
-    if (!ensured.ok) {
-      return { checkoutUrl: null, error: ensured.error ?? "Failed to create Xero invoice" };
-    }
-
-    const existingRef = await this.externalRefs.findByPaymentId(ctx.paymentId);
-    if (existingRef?.onlineInvoiceUrl) {
-      return { checkoutUrl: existingRef.onlineInvoiceUrl };
-    }
-
-    if (!existingRef?.xeroInvoiceId) {
-      return { checkoutUrl: null, error: "Xero invoice missing after ensure" };
-    }
-
-    const conn = await this.connections.findLatest();
-    if (!conn) {
-      return { checkoutUrl: null, error: "Xero is not connected" };
-    }
-
-    const xero = this.baseClient();
-    await xero.initialize();
-    await applyStoredTokens(xero, conn);
-    const liveConn = await this.refreshXeroTokensReporting(xero, conn);
-
-    try {
-      const online = await xero.accountingApi.getOnlineInvoice(
-        liveConn.tenantId,
-        existingRef.xeroInvoiceId,
-      );
-      const url = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
-      if (url) {
-        await this.externalRefs.patchOnlineInvoiceUrl(ctx.paymentId, url);
-        return { checkoutUrl: url };
-      }
-      return { checkoutUrl: null, error: "Missing online invoice URL" };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      await this.externalRefs.updateError(ctx.paymentId, msg);
-      return { checkoutUrl: null, error: msg };
-    }
-  }
-
   async ensureInvoiceForPayment(
-    ctx: AccountingCheckoutContext,
+    ctx: InvoiceAccountingContext,
   ): Promise<{ ok: boolean; error?: string }> {
     const conn = await this.connections.findLatest();
     if (!conn) {
@@ -263,19 +213,11 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
         return { ok: false, error: msg };
       }
 
-      let onlineUrl: string | null = null;
-      try {
-        const online = await xero.accountingApi.getOnlineInvoice(tenantId, createdInv.invoiceID);
-        onlineUrl = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
-      } catch {
-        // Stripe-primary checkout does not require an online invoice URL.
-      }
-
       await this.externalRefs.updateInvoiceCreated(ctx.paymentId, {
         xeroInvoiceId: createdInv.invoiceID,
         xeroInvoiceNumber: createdInv.invoiceNumber ?? null,
         xeroContactId: contactId,
-        onlineInvoiceUrl: onlineUrl,
+        onlineInvoiceUrl: null,
         syncStatus: "synced",
       });
 
@@ -325,17 +267,6 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
       const res = await xero.accountingApi.getInvoice(conn.tenantId, invoiceId);
       const inv = res.body.invoices?.[0];
       if (!inv) return { ok: false, error: "Invoice not found in Xero" };
-
-      const amountDue = inv.amountDue ?? 0;
-      const status = inv.status;
-      const paid =
-        status === Invoice.StatusEnum.PAID ||
-        amountDue <= 0.000_001 ||
-        Boolean(inv.fullyPaidOnDate);
-
-      if (paid) {
-        await this.onInvoicePaid(paymentId);
-      }
 
       const firstPaymentId = inv.payments?.[0]?.paymentID ?? null;
       if (firstPaymentId) {
