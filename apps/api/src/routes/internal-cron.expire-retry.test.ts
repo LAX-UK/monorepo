@@ -119,3 +119,33 @@ describe("POST /internal/jobs/retry-xero-webhook-failures", () => {
     expect(markFailed).toHaveBeenCalledWith("b", "xero_down");
   });
 });
+
+describe("POST /internal/jobs/sentry-test", () => {
+  it("returns 503 when SENTRY_DSN_API is unset", async () => {
+    const app = cronApp({} as unknown as Container, {
+      CRON_INTERNAL_SECRET: "secret",
+    });
+    const res = await app.request("/internal/jobs/sentry-test", {
+      method: "POST",
+      headers: { "x-cron-secret": "secret" },
+    });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "sentry_not_configured" });
+  });
+
+  it("returns ok with an event id when Sentry is configured", async () => {
+    const app = cronApp({} as unknown as Container, {
+      CRON_INTERNAL_SECRET: "secret",
+      SENTRY_DSN_API: "https://example@sentry.io/1",
+    });
+    const res = await app.request("/internal/jobs/sentry-test", {
+      method: "POST",
+      headers: { "x-cron-secret": "secret" },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; eventId: string };
+    expect(body.ok).toBe(true);
+    expect(typeof body.eventId).toBe("string");
+    expect(body.eventId.length).toBeGreaterThan(0);
+  });
+});

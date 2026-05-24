@@ -1,14 +1,45 @@
-import type { ErrorEvent, EventHint, SamplingContext } from "@sentry/core";
+import type { ErrorEvent, EventHint, SamplingContext, TransactionEvent } from "@sentry/core";
 
-/** Strip auth headers and webhook bodies before events leave the process. */
-export function scrubSentryEvent<T extends ErrorEvent>(event: T, _hint?: EventHint): T {
-  if (event.request?.headers && "authorization" in event.request.headers) {
-    const { authorization: _auth, ...headers } = event.request.headers;
-    event.request.headers = headers;
+const SENSITIVE_HEADERS = new Set([
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "x-api-key",
+  "x-cron-secret",
+]);
+
+const BODY_SCRUB_PATHS = ["/webhooks/", "/internal/jobs"];
+
+function scrubRequestHeaders(headers: Record<string, string>): Record<string, string> {
+  const scrubbed: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (SENSITIVE_HEADERS.has(key.toLowerCase())) continue;
+    scrubbed[key] = value;
   }
-  if (event.request?.url?.includes("/webhooks/") && event.request.data !== undefined) {
+  return scrubbed;
+}
+
+function shouldScrubBody(url: string | undefined): boolean {
+  if (!url) return false;
+  return BODY_SCRUB_PATHS.some((segment) => url.includes(segment));
+}
+
+/** Strip sensitive headers and webhook/cron bodies before events leave the process. */
+export function scrubSentryEvent<T extends ErrorEvent>(event: T, _hint?: EventHint): T {
+  if (event.request?.headers) {
+    event.request.headers = scrubRequestHeaders(event.request.headers as Record<string, string>);
+  }
+  if (shouldScrubBody(event.request?.url) && event.request?.data !== undefined) {
     const { data: _body, ...requestWithoutBody } = event.request;
     event.request = requestWithoutBody;
+  }
+  return event;
+}
+
+/** Mirror header scrubbing on performance transactions. */
+export function scrubSentryTransaction(event: TransactionEvent): TransactionEvent {
+  if (event.request?.headers) {
+    event.request.headers = scrubRequestHeaders(event.request.headers as Record<string, string>);
   }
   return event;
 }

@@ -7,7 +7,7 @@ import {
   SgtmMarketingEventPublisher,
   Sha256PiiHasher,
 } from "@auction/marketing-events";
-import { initNodeSentry } from "@auction/observability";
+import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
 import { Queue, Worker } from "bullmq";
@@ -89,6 +89,11 @@ const publicUploadBase =
 const bootedAt = Date.now();
 const sentryMonitorSlugs = loadSentryMonitorSlugs();
 
+function reportWorkerJobFailure(queue: string, job: { id?: string } | undefined, err: Error): void {
+  log.warn({ jobId: job?.id, err, queue }, "worker job failed");
+  captureBackgroundError(`worker-${queue}`, err, { extra: { jobId: job?.id } });
+}
+
 /** BullMQ `repeat.pattern` uses cron-parser; Monday 09:00 UTC. */
 const BULK_PAYOUT_SETTLEMENT_CRON_PATTERN = "0 9 * * 1";
 
@@ -134,6 +139,9 @@ const webhookWorker = new Worker(
   { connection: redis },
 );
 webhookWorker.on("completed", () => void heartbeat("webhook-events"));
+webhookWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure("webhook-events", job, err);
+});
 
 const validateUploadWorker = new Worker(
   "validate-upload",
@@ -148,6 +156,9 @@ const validateUploadWorker = new Worker(
   { connection: redis },
 );
 validateUploadWorker.on("completed", () => void heartbeat("validate-upload"));
+validateUploadWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure("validate-upload", job, err);
+});
 
 const imageCleanupWorker = new Worker(
   "image-cleanup",
@@ -173,8 +184,10 @@ const gcUploadQueue = new Queue("gc-pending-uploads", { connection: redis });
 const gcPendingUploadsWorker = new Worker(
   "gc-pending-uploads",
   async () => {
-    await gcPendingUploads({ db, storage: uploadStorage, log });
-    await heartbeat("gc-pending-uploads");
+    await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
+      await gcPendingUploads({ db, storage: uploadStorage, log });
+      await heartbeat("gc-pending-uploads");
+    });
   },
   { connection: redis },
 );
@@ -224,6 +237,9 @@ const emailWorker = new Worker<EmailQueueJobData>(
   },
 );
 emailWorker.on("completed", () => void heartbeat("email"));
+emailWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure("email", job, err);
+});
 void emailQueue.add(
   "outbox-drain",
   {},
@@ -361,7 +377,7 @@ if (marketingConfig) {
     { jobId: "marketing-outbox-poller-30s", repeat: { every: 30_000 }, removeOnComplete: 10 },
   );
   marketingOutboxPollerWorker.on("failed", (job, err) => {
-    log.warn({ jobId: job?.id, err }, "marketing outbox poller failed");
+    reportWorkerJobFailure("marketing-outbox-poller", job, err);
   });
 
   purgeMarketingClickIdsQueue = new Queue("purge-marketing-click-ids", {
@@ -370,8 +386,10 @@ if (marketingConfig) {
   purgeMarketingClickIdsWorker = new Worker(
     "purge-marketing-click-ids",
     async () => {
-      await purgeStaleMarketingClickIds({ db, log });
-      await purgeStaleMarketingOutbox({ db, log });
+      await withSentryCronMonitor("purge-marketing-click-ids", sentryMonitorSlugs, async () => {
+        await purgeStaleMarketingClickIds({ db, log });
+        await purgeStaleMarketingOutbox({ db, log });
+      });
     },
     { connection: redis },
   );
@@ -385,7 +403,7 @@ if (marketingConfig) {
     },
   );
   purgeMarketingClickIdsWorker.on("failed", (job, err) => {
-    log.warn({ jobId: job?.id, err }, "purge marketing click ids failed");
+    reportWorkerJobFailure("purge-marketing-click-ids", job, err);
   });
 }
 
@@ -436,8 +454,10 @@ const impersonationSweeperQueue = new Queue("impersonation-sweeper", { connectio
 const impersonationSweeperWorker = new Worker(
   "impersonation-sweeper",
   async () => {
-    await runImpersonationSweeperJob({ db, log });
-    await heartbeat("impersonation-sweeper");
+    await withSentryCronMonitor("impersonation-sweeper", sentryMonitorSlugs, async () => {
+      await runImpersonationSweeperJob({ db, log });
+      await heartbeat("impersonation-sweeper");
+    });
   },
   { connection: redis },
 );
@@ -456,9 +476,11 @@ const purgeVerificationsQueue = new Queue("purge-expired-verifications", { conne
 const purgeVerificationsWorker = new Worker(
   "purge-expired-verifications",
   async () => {
-    const { deleted } = await purgeExpiredVerifications(db, { log });
-    log.info({ deleted }, "purge-expired-verifications: done");
-    await heartbeat("purge-expired-verifications");
+    await withSentryCronMonitor("purge-expired-verifications", sentryMonitorSlugs, async () => {
+      const { deleted } = await purgeExpiredVerifications(db, { log });
+      log.info({ deleted }, "purge-expired-verifications: done");
+      await heartbeat("purge-expired-verifications");
+    });
   },
   { connection: redis },
 );
@@ -477,13 +499,15 @@ const purgeSoftDeletedUsersQueue = new Queue("purge-soft-deleted-users", { conne
 const purgeSoftDeletedUsersWorker = new Worker(
   "purge-soft-deleted-users",
   async () => {
-    const { processed } = await purgeSoftDeletedUsers(db, { log });
-    log.info({ processed }, "purge-soft-deleted-users: done");
+    await withSentryCronMonitor("purge-soft-deleted-users", sentryMonitorSlugs, async () => {
+      const { processed } = await purgeSoftDeletedUsers(db, { log });
+      log.info({ processed }, "purge-soft-deleted-users: done");
+    });
   },
   { connection: redis },
 );
 purgeSoftDeletedUsersWorker.on("failed", (job, err) => {
-  log.error({ jobId: job?.id, err }, "purge-soft-deleted-users: job failed");
+  reportWorkerJobFailure("purge-soft-deleted-users", job, err);
 });
 // Run weekly; deletions take 30 days to become eligible anyway.
 void purgeSoftDeletedUsersQueue.add(
