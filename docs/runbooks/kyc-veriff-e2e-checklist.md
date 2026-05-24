@@ -22,6 +22,8 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] After decision webhook: status moves to **In review** then **Verified**
 - [ ] User in **pending / in review** (session `processing`) cannot start a new session — launcher hidden/disabled while panel shows **In review**
 - [ ] Start Veriff → close modal (X) or leave site without submitting → return → panel shows **Verification started**, **Continue verification** button works and reopens the same session URL
+- [ ] Dashboard **Account readiness** strip Identity pill shows **Started** (not In review), matching verify page
+- [ ] After true submit: strip shows **In review**; launcher hidden/disabled
 
 ## 2. Decision webhook and progression
 

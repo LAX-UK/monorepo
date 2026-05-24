@@ -91,7 +91,7 @@ export function effectiveKycPhase(
 }
 
 export function kycLinkActionLabel(
-  feedback: KycUserFeedbackDto | null | undefined,
+  feedback: KycLinkActionFeedback | null | undefined,
   variant: "short" | "long" = "long",
 ): string {
   if (feedback?.needsResubmit || feedback?.action === "continue") {
@@ -152,6 +152,91 @@ export function mapKycSessionStartError(error: string | undefined, status: numbe
       }
       return error ?? `Could not start verification (${status}). Please try again.`;
   }
+}
+
+export type KycCompliancePillTone = "ok" | "warn" | "danger" | "info";
+
+export type KycComplianceIdentityPill = {
+  value: string;
+  tone: KycCompliancePillTone;
+  hint?: string;
+};
+
+/** Subset of KYC feedback used for CTA label copy (bid errors, callouts). */
+export type KycLinkActionFeedback = Partial<Pick<KycUserFeedbackDto, "needsResubmit" | "action">>;
+
+/**
+ * User-facing KYC UX must not branch on raw `summary.status` alone — use these helpers
+ * with `feedback` and `latestSessionStatus`. Raw DB status may lag session lifecycle.
+ */
+
+/** True when Veriff is reviewing a submitted session (not a created/in-flow session). */
+export function isKycInReview(summary: KycStatusSummaryDto | null): boolean {
+  if (!summary) return false;
+  if (summary.latestSessionStatus === "created") return false;
+  const feedback = resolveKycFeedback(summary);
+  if (feedback.action === "wait") return true;
+  return summary.status === "pending" && summary.latestSessionStatus === "processing";
+}
+
+/** True when the user may resume an open Veriff session without starting over. */
+export function isKycSessionContinuable(summary: KycStatusSummaryDto | null): boolean {
+  if (!summary) return false;
+  const feedback = resolveKycFeedback(summary);
+  if (feedback.action === "continue") return true;
+  return summary.latestSessionStatus === "created";
+}
+
+/** True when ?kyc=complete should advance the client to submitted/processing UX. */
+export function isKycAwaitingDecision(summary: KycStatusSummaryDto | null): boolean {
+  if (!summary) return false;
+  return (
+    summary.latestSessionStatus === "processing" ||
+    (summary.status === "pending" && summary.latestSessionStatus !== "created")
+  );
+}
+
+/** Dashboard compliance strip Identity pill label, tone, and optional hint. */
+export function kycComplianceIdentityPill(
+  summary: KycStatusSummaryDto | null,
+): KycComplianceIdentityPill {
+  if (!summary) {
+    return { value: "Not verified", tone: "info" };
+  }
+
+  const feedback = resolveKycFeedback(summary);
+
+  if (summary.status === "approved") {
+    return { value: "Verified", tone: "ok" };
+  }
+  if (feedback.needsResubmit) {
+    return {
+      value: "Action needed",
+      tone: "warn",
+      hint: feedback.detail ?? "Complete the missing verification checks",
+    };
+  }
+  if (isKycInReview(summary)) {
+    return { value: "In review", tone: "info" };
+  }
+  if (isKycSessionContinuable(summary)) {
+    return {
+      value: "Started",
+      tone: "warn",
+      hint: feedback.detail ?? "Complete the document and selfie checks in the secure window.",
+    };
+  }
+  if (summary.status === "rejected") {
+    return {
+      value: "Rejected",
+      tone: "danger",
+      hint: feedback.detail ?? "Please resubmit your identity documents",
+    };
+  }
+  if (summary.requiresKyc) {
+    return { value: "Required", tone: "warn" };
+  }
+  return { value: "Not verified", tone: "info" };
 }
 
 /**

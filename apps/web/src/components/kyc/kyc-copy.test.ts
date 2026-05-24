@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   canStartKycVerification,
   effectiveKycPhase,
+  isKycAwaitingDecision,
+  isKycInReview,
+  isKycSessionContinuable,
+  kycComplianceIdentityPill,
   kycInitialPhase,
   kycLinkActionLabel,
   kycVerifyButtonLabel,
@@ -125,5 +129,149 @@ describe("kycLinkActionLabel", () => {
     );
     expect(kycLinkActionLabel({ action: "retry" } as never, "long")).toBe("Try again");
     expect(kycLinkActionLabel({ action: "wait" } as never, "short")).toBe("In review");
+  });
+});
+
+describe("isKycInReview", () => {
+  it("returns false for created session even when user status is pending", () => {
+    const s = summary({
+      status: "pending",
+      latestSessionStatus: "created",
+      feedback: {
+        headline: "Verification started",
+        detail: null,
+        action: "continue",
+        reasonCode: null,
+        decisionStatus: null,
+        needsResubmit: false,
+      },
+    });
+    expect(isKycInReview(s)).toBe(false);
+  });
+
+  it("returns true when session is processing and feedback is wait", () => {
+    const s = summary({
+      status: "pending",
+      latestSessionStatus: "processing",
+      feedback: {
+        headline: "In review",
+        detail: null,
+        action: "wait",
+        reasonCode: null,
+        decisionStatus: "review",
+        needsResubmit: false,
+      },
+    });
+    expect(isKycInReview(s)).toBe(true);
+  });
+});
+
+describe("isKycSessionContinuable", () => {
+  it("returns true for created session or continue feedback", () => {
+    expect(
+      isKycSessionContinuable(
+        summary({
+          latestSessionStatus: "created",
+          feedback: {
+            headline: "Verification started",
+            detail: null,
+            action: "continue",
+            reasonCode: null,
+            decisionStatus: null,
+            needsResubmit: false,
+          },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isKycSessionContinuable(
+        summary({
+          feedback: {
+            headline: "More information needed",
+            detail: null,
+            action: "continue",
+            reasonCode: 201,
+            decisionStatus: "resubmission_requested",
+            needsResubmit: true,
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false when awaiting decision", () => {
+    expect(
+      isKycSessionContinuable(
+        summary({
+          status: "pending",
+          latestSessionStatus: "processing",
+          feedback: {
+            headline: "In review",
+            detail: null,
+            action: "wait",
+            reasonCode: null,
+            decisionStatus: "review",
+            needsResubmit: false,
+          },
+        }),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isKycAwaitingDecision", () => {
+  it("returns true for processing session or pending without created session", () => {
+    expect(isKycAwaitingDecision(summary({ latestSessionStatus: "processing" }))).toBe(true);
+    expect(
+      isKycAwaitingDecision(
+        summary({ status: "pending", latestSessionStatus: "requires_input" as never }),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for created session with pending user status", () => {
+    expect(
+      isKycAwaitingDecision(summary({ status: "pending", latestSessionStatus: "created" })),
+    ).toBe(false);
+  });
+});
+
+describe("kycComplianceIdentityPill", () => {
+  it("shows Started for continuable session", () => {
+    const pill = kycComplianceIdentityPill(
+      summary({
+        status: "pending",
+        latestSessionStatus: "created",
+        feedback: {
+          headline: "Verification started",
+          detail: "Complete checks",
+          action: "continue",
+          reasonCode: null,
+          decisionStatus: null,
+          needsResubmit: false,
+        },
+      }),
+    );
+    expect(pill.value).toBe("Started");
+    expect(pill.tone).toBe("warn");
+  });
+
+  it("shows In review for submitted session", () => {
+    const pill = kycComplianceIdentityPill(
+      summary({
+        status: "pending",
+        latestSessionStatus: "processing",
+        feedback: {
+          headline: "In review",
+          detail: null,
+          action: "wait",
+          reasonCode: null,
+          decisionStatus: "review",
+          needsResubmit: false,
+        },
+      }),
+    );
+    expect(pill.value).toBe("In review");
+    expect(pill.tone).toBe("info");
   });
 });

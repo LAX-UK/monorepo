@@ -10,6 +10,7 @@ import {
 import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
+import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type MarketingLotTileProps = {
@@ -24,6 +25,7 @@ export type MarketingLotTileProps = {
   cornerAction?: ReactNode;
   topOverlay?: ReactNode;
   belowImage: ReactNode;
+  articleClassName?: string;
 };
 
 /** Shared 340px marketing hero shell for home lot tiles (Editor's Picks + Urgency). */
@@ -39,6 +41,7 @@ export function MarketingLotTile({
   cornerAction,
   topOverlay,
   belowImage,
+  articleClassName,
 }: MarketingLotTileProps) {
   const revealDelay = `${Math.min(index * 80, 320)}ms`;
 
@@ -64,7 +67,7 @@ export function MarketingLotTile({
 
   const tile = (
     <article
-      className="fade-up flex min-w-0 w-full flex-col gap-4"
+      className={cn("fade-up flex min-w-0 w-full flex-col gap-4", articleClassName)}
       style={{ ["--reveal-delay" as string]: revealDelay }}
       {...{ [LOT_TRANSITION_ROOT_ATTR]: lotId }}
     >
