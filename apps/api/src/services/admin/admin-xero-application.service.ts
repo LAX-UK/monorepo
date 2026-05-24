@@ -1,4 +1,4 @@
-import { isXeroCallbackUrlAllowed } from "@auction/validators";
+import { canonicalizeXeroCallbackUrl } from "@auction/validators";
 import type {
   IXeroAdminApplicationService,
   XeroStatusPayload,
@@ -44,13 +44,15 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
       return { ok: false, message: "Xero not configured" };
     }
     const allowed = this.xeroRedirectUri;
-    if (!allowed || !isXeroCallbackUrlAllowed(input.callbackFullUrl, allowed)) {
+    const callbackFullUrl =
+      allowed != null ? canonicalizeXeroCallbackUrl(input.callbackFullUrl, allowed) : null;
+    if (!callbackFullUrl) {
       return { ok: false, message: "Invalid callback URL" };
     }
     const result = await this.xeroOAuth.completeOAuth({
       userId: input.userId,
       state: input.state,
-      callbackFullUrl: input.callbackFullUrl,
+      callbackFullUrl,
     });
     if (!result.ok) {
       return { ok: false, message: result.message };

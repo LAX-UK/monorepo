@@ -288,7 +288,7 @@ variable "xero_client_secret" {
 variable "xero_redirect_uri" {
   type        = string
   default     = ""
-  description = "OAuth redirect URI registered in Xero (e.g. https://test-api.lax.bid/admin/integrations/xero/callback)."
+  description = "OAuth redirect URI registered in Xero — must be the **web** app callback (e.g. https://test.lax.bid/admin/integrations/xero/callback), not the API host."
 }
 variable "xero_webhook_key" {
   type      = string
