@@ -71,6 +71,7 @@ describe("LaxUrgencySection", () => {
     const { container } = render(<LaxUrgencySection {...baseProps} layoutView="grid" />);
     const grid = container.querySelector(".grid.grid-cols-2");
     expect(grid?.className).toMatch(/grid-cols-2/);
+    expect(grid?.className).toMatch(/auto-rows-fr/);
   });
 
   it("renders a list when layoutView is list", () => {
