@@ -6,6 +6,7 @@ import Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
+import { assertConnectUrlAllowed } from "../../lib/stripe-connect-return-url.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -64,6 +65,7 @@ const TRANSFER_EVENT_TYPES = new Set(["transfer.created", "transfer.updated", "t
 
 export class StripeConnectService implements IStripeConnectService {
   private readonly stripeFactory: IStripeClientFactory;
+  private readonly webOrigin: string;
 
   constructor(
     env: Env,
@@ -73,6 +75,7 @@ export class StripeConnectService implements IStripeConnectService {
     private readonly domainEventPublisher?: DomainEventPublisher,
     stripeFactory?: IStripeClientFactory,
   ) {
+    this.webOrigin = env.WEB_ORIGIN.replace(/\/$/, "");
     this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
   }
 
@@ -255,6 +258,8 @@ export class StripeConnectService implements IStripeConnectService {
     returnUrl: string,
     refreshUrl: string,
   ): Promise<AccountLink> {
+    assertConnectUrlAllowed(returnUrl, this.webOrigin);
+    assertConnectUrlAllowed(refreshUrl, this.webOrigin);
     const stripe = this.requireStripe();
     const row = await this.loadEntity(legalEntityId);
     if (!row.stripeConnectAccountId) {

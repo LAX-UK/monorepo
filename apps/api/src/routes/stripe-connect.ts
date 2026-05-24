@@ -2,7 +2,6 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
-import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -84,8 +83,6 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       }
       const body = c.req.valid("json");
       try {
-        assertConnectUrlAllowed(body.returnUrl, container.env.WEB_ORIGIN);
-        assertConnectUrlAllowed(body.refreshUrl, container.env.WEB_ORIGIN);
         const link = await container.stripeConnectService.createOnboardingLink(
           ctx.legalEntityId,
           body.returnUrl,
