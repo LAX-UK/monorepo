@@ -46,6 +46,8 @@ function lotRow(
     createdAt: now,
     updatedAt: now,
     marketingDetails: {},
+    deletedAt: null,
+    deletedByUserId: null,
     ...overrides,
   };
 }
@@ -132,6 +134,8 @@ function saleRow(
     createdByLegalEntityId: "00000000-0000-4000-8000-000000000012",
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
+    deletedByUserId: null,
     ...overrides,
   };
 }

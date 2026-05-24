@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { lotDocument, uploadObject } from "@auction/db/schema";
 import type { LotDocumentKind } from "@auction/types";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type { EntityDocumentPersistedRow } from "../lib/entity-document-presenter.js";
 import type { ILotDocumentRepository } from "../services/interfaces/repositories.js";
 
@@ -91,7 +91,13 @@ export class DrizzleLotDocumentRepository implements ILotDocumentRepository {
       })
       .from(lotDocument)
       .innerJoin(uploadObject, eq(lotDocument.uploadObjectId, uploadObject.id))
-      .where(and(eq(lotDocument.lotId, entityId), eq(uploadObject.status, "active")))
+      .where(
+        and(
+          eq(lotDocument.lotId, entityId),
+          eq(uploadObject.status, "active"),
+          isNull(lotDocument.deletedAt),
+        ),
+      )
       .orderBy(asc(lotDocument.createdAt));
     return rows.map((r) => mapRow(entityId, r));
   }
@@ -117,7 +123,13 @@ export class DrizzleLotDocumentRepository implements ILotDocumentRepository {
       })
       .from(lotDocument)
       .innerJoin(uploadObject, eq(lotDocument.uploadObjectId, uploadObject.id))
-      .where(and(inArray(lotDocument.lotId, entityIds), eq(uploadObject.status, "active")))
+      .where(
+        and(
+          inArray(lotDocument.lotId, entityIds),
+          eq(uploadObject.status, "active"),
+          isNull(lotDocument.deletedAt),
+        ),
+      )
       .orderBy(asc(lotDocument.createdAt));
 
     for (const r of rows) {

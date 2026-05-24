@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { lot, sale } from "@auction/db/schema";
 import type { SaleDeliveryMode } from "@auction/types";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { ISaleModeLookup } from "../services/interfaces/sale-mode-lookup.js";
 
 /** Single-purpose Drizzle implementation of {@link ISaleModeLookup}.
@@ -16,7 +17,7 @@ export class DrizzleSaleModeLookup implements ISaleModeLookup {
       .select({ deliveryMode: sale.deliveryMode })
       .from(lot)
       .leftJoin(sale, eq(sale.id, lot.saleId))
-      .where(eq(lot.id, lotId))
+      .where(and(eq(lot.id, lotId), lotNotDeleted()))
       .limit(1);
     const row = rows[0];
     if (!row) return null;

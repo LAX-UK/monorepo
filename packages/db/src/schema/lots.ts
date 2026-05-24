@@ -90,6 +90,8 @@ export const lot = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
+    deletedByUserId: text("deleted_by_user_id").references(() => user.id, { onDelete: "set null" }),
   },
   (table) => [
     index("lot_seller_legal_entity_id_idx").on(table.sellerLegalEntityId),
@@ -99,6 +101,8 @@ export const lot = pgTable(
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
     index("lot_sale_id_status_idx").on(table.saleId, table.status),
+    index("lot_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
+    index("lot_sale_id_not_deleted_idx").on(table.saleId).where(sql`${table.deletedAt} IS NULL`),
     uniqueIndex("lot_sale_id_lot_number_uid")
       .on(table.saleId, table.lotNumber)
       .where(sql`${table.saleId} IS NOT NULL AND ${table.lotNumber} IS NOT NULL`),

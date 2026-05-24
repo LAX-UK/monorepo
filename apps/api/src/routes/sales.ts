@@ -3,6 +3,7 @@ import {
   cancelSaleBodySchema,
   createNestedLotForSaleSchema,
   createSaleSchema,
+  deleteSaleBodySchema,
   listSaleBiddersQuerySchema,
   listSaleLotsQuerySchema,
   listSalesQuerySchema,
@@ -122,7 +123,15 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const { id } = c.req.valid("param");
     const detail = await container.saleService.getSaleDetailForCatalogAdmin(id);
     if (!detail) return c.json({ error: "Not found" }, 404);
-    return c.json(detail);
+    const deleteEligibility = roleHasCapability(role, "auction.manage", staff)
+      ? await container.saleSoftDeleteService.getDeleteEligibility(id)
+      : null;
+    return c.json({
+      data: {
+        ...detail.data,
+        ...(deleteEligibility ? { deleteEligibility } : {}),
+      },
+    });
   });
 
   r.get(
@@ -267,6 +276,31 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
+    },
+  );
+
+  r.post(
+    "/:id/delete",
+    requireAuth,
+    zValidator("param", saleIdParamSchema),
+    zValidator("json", deleteSaleBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staffRole = c.get("userStaffRole") ?? null;
+      const { id } = c.req.valid("param");
+      const { confirmationPhrase } = c.req.valid("json");
+      const result = await container.saleSoftDeleteService.softDelete(
+        userId,
+        role,
+        id,
+        confirmationPhrase,
+        staffRole,
+      );
+      if (result.isErr()) {
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
+      }
+      return c.body(null, 204);
     },
   );
 

@@ -70,6 +70,8 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     marketingDetails: parseMarketingDetails(row.marketingDetails),
+    deletedAt: row.deletedAt ?? null,
+    deletedByUserId: row.deletedByUserId ?? null,
   } as Lot;
 }
 
@@ -157,6 +159,8 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     ),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt ?? null,
+    deletedByUserId: row.deletedByUserId ?? null,
   };
 }
 
