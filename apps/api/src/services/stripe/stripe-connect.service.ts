@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, user } from "@auction/db/schema";
+import { legalEntity, payment, user } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
@@ -63,7 +63,6 @@ const TRANSFER_EVENT_TYPES = new Set(["transfer.created", "transfer.updated", "t
 
 export class StripeConnectService implements IStripeConnectService {
   private readonly stripeFactory: IStripeClientFactory;
-  private readonly webhookSecret: string | undefined;
 
   constructor(
     env: Env,
@@ -73,7 +72,6 @@ export class StripeConnectService implements IStripeConnectService {
     private readonly domainEventPublisher?: DomainEventPublisher,
     stripeFactory?: IStripeClientFactory,
   ) {
-    this.webhookSecret = env.STRIPE_CONNECT_WEBHOOK_SECRET;
     this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
   }
 
@@ -106,6 +104,7 @@ export class StripeConnectService implements IStripeConnectService {
         ownerFirstName: user.firstName,
         ownerLastName: user.lastName,
         ownerDisplayName: user.name,
+        ownerKycStatus: user.kycStatus,
       })
       .from(legalEntity)
       .innerJoin(user, eq(user.id, legalEntity.createdByUserId))
@@ -124,9 +123,13 @@ export class StripeConnectService implements IStripeConnectService {
       ownerFirstName,
       ownerLastName,
       ownerDisplayName,
+      ownerKycStatus,
     } = await this.loadLegalEntityWithOwner(legalEntityId);
     if (row.stripeConnectAccountId) {
       return { stripeAccountId: row.stripeConnectAccountId, legalEntity: rowToEntity(row) };
+    }
+    if (row.kind === "individual" && ownerKycStatus !== "approved") {
+      throw new Error("kyc_not_approved");
     }
 
     const accountCreateParams: Stripe.AccountCreateParams =
@@ -180,8 +183,9 @@ export class StripeConnectService implements IStripeConnectService {
       .update(legalEntity)
       .set({
         stripeConnectAccountId: account.id,
-        status: row.status === "lead" ? "connect_pending" : row.status,
-        statusChangedAt: new Date(),
+        ...(row.kind === "individual" && row.status === "lead"
+          ? { status: "connect_pending" as const, statusChangedAt: new Date() }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(legalEntity.id, legalEntityId))
@@ -203,6 +207,36 @@ export class StripeConnectService implements IStripeConnectService {
         ready: false,
       };
     }
+    if (this.stripe) {
+      try {
+        return await this.syncAccountFromStripe(legalEntityId);
+      } catch {
+        // Fall back to cached flags when Stripe is temporarily unavailable.
+      }
+    }
+    return this.statusFromEntityRow(row);
+  }
+
+  async syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus> {
+    const stripe = this.requireStripe();
+    const row = await this.loadEntity(legalEntityId);
+    if (!row.stripeConnectAccountId) {
+      return {
+        stripeAccountId: null,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        requirementsCurrentlyDue: [],
+        disabledReason: null,
+        ready: false,
+      };
+    }
+    const account = await stripe.accounts.retrieve(row.stripeConnectAccountId);
+    await this.applyAccountUpdate(account);
+    const refreshed = await this.loadEntity(legalEntityId);
+    return this.statusFromEntityRow(refreshed);
+  }
+
+  private statusFromEntityRow(row: typeof legalEntity.$inferSelect): ConnectAccountStatus {
     return {
       stripeAccountId: row.stripeConnectAccountId,
       chargesEnabled: row.stripeConnectChargesEnabled,
@@ -210,7 +244,6 @@ export class StripeConnectService implements IStripeConnectService {
       requirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
       disabledReason: row.stripeConnectDisabledReason ?? null,
       ready:
-        row.stripeConnectChargesEnabled &&
         row.stripeConnectPayoutsEnabled &&
         (row.stripeConnectRequirementsCurrentlyDue ?? []).length === 0,
     };
@@ -242,22 +275,6 @@ export class StripeConnectService implements IStripeConnectService {
     const link = await stripe.accounts.createLoginLink(row.stripeConnectAccountId);
     // Login links expire in ~5 minutes; conservatively report 5 minutes.
     return { url: link.url, expiresAt: new Date(Date.now() + 5 * 60 * 1000) };
-  }
-
-  async handleWebhook(
-    rawBody: string,
-    signature: string | undefined,
-  ): Promise<{ processed: boolean }> {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
-    if (!this.webhookSecret) throw new StripeConnectNotConfiguredError();
-    if (!signature) throw new Error("missing_stripe_signature");
-
-    const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
-
-    if (TRANSFER_EVENT_TYPES.has(event.type as string)) {
-      return this.handleTransferEvent(event);
-    }
-    return this.handleConnectedAccountEvent(event);
   }
 
   async handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
@@ -352,10 +369,18 @@ export class StripeConnectService implements IStripeConnectService {
       .where(eq(legalEntity.stripeConnectAccountId, account.id))
       .limit(1);
     const row = rows[0];
-    if (!row) return;
+    if (!row) {
+      recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
+      return;
+    }
 
-    const isReady = chargesEnabled && payoutsEnabled && requirementsCurrentlyDue.length === 0;
-    const nextStatus = isReady && row.status === "connect_pending" ? "approved" : row.status;
+    const isReady = payoutsEnabled && requirementsCurrentlyDue.length === 0;
+    let nextStatus = row.status as typeof row.status;
+    if (isReady && row.status === "connect_pending") {
+      nextStatus = "approved";
+    } else if (!isReady && row.status === "approved" && row.stripeConnectAccountId) {
+      nextStatus = "connect_pending";
+    }
 
     await db
       .update(legalEntity)
@@ -457,7 +482,24 @@ export class StripeConnectService implements IStripeConnectService {
     if (!entity.stripeConnectAccountId) {
       return { ok: false, reason: "no_connect_account" };
     }
-    if (!entity.stripeConnectPayoutsEnabled) {
+
+    let connectReady = false;
+    if (this.stripe) {
+      try {
+        const live = await this.syncAccountFromStripe(payout.legalEntityId);
+        connectReady = live.ready;
+      } catch {
+        connectReady =
+          entity.stripeConnectPayoutsEnabled &&
+          (entity.stripeConnectRequirementsCurrentlyDue ?? []).length === 0;
+      }
+    } else {
+      connectReady =
+        entity.stripeConnectPayoutsEnabled &&
+        (entity.stripeConnectRequirementsCurrentlyDue ?? []).length === 0;
+    }
+
+    if (!connectReady) {
       if (this.domainEventPublisher) {
         await this.domainEventPublisher.publish(this.db, {
           aggregateType: "payout",
@@ -490,11 +532,14 @@ export class StripeConnectService implements IStripeConnectService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        const sourceChargeId = await this.findSourceChargeForPayout(payoutId);
         const transfer = await stripe.transfers.create(
           {
             amount: amountCents,
             currency: payout.currency.toLowerCase(),
             destination: entity.stripeConnectAccountId,
+            transfer_group: `payout:${payoutId}`,
+            ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
             metadata: {
               payoutId: payout.id,
               legalEntityId: payout.legalEntityId,
@@ -580,5 +625,24 @@ export class StripeConnectService implements IStripeConnectService {
       stripeErrorCode: errorCode,
       stripeErrorMessage: errorMessage,
     };
+  }
+
+  /** First sale-line charge on the payout — see `findSourceChargeForPayout` invariant. */
+  private async findSourceChargeForPayout(payoutId: string): Promise<string | null> {
+    if (!this.payoutRepository) return null;
+    // Invariant: each settlement payout should contain payments from a single buyer charge
+    // when possible, so `source_transaction` links transfer funds to one platform charge.
+    // Multi-payment payouts use the first sale line's charge; additional charges rely on
+    // platform balance (documented operational constraint — prefer one charge per payout).
+    const lines = await this.payoutRepository.listLines(payoutId);
+    const saleLine = lines.find((line) => line.kind === "sale" && line.paymentId);
+    if (!saleLine?.paymentId) return null;
+    const rows = await this.db
+      .select({ stripeChargeId: payment.stripeChargeId })
+      .from(payment)
+      .where(eq(payment.id, saleLine.paymentId))
+      .limit(1);
+    const chargeId = rows[0]?.stripeChargeId;
+    return chargeId && chargeId.length > 0 ? chargeId : null;
   }
 }

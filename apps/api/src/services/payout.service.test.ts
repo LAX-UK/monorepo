@@ -16,9 +16,16 @@ const OTHER_ENTITY_ID = "00000000-0000-4000-8000-000000000099";
 const ACTOR_ID = "user-actor";
 
 function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository {
+  const insertLine = overrides.insertLine ?? vi.fn();
   return {
     create: vi.fn(),
-    insertLine: vi.fn(),
+    insertLine,
+    tryInsertSaleLine:
+      overrides.tryInsertSaleLine ??
+      vi.fn(async (input) => {
+        const fn = insertLine as (input: unknown) => Promise<PayoutLine>;
+        return fn(input);
+      }),
     list: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue(null),
     findByStripeTransferId: vi.fn().mockResolvedValue(null),
@@ -36,6 +43,8 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
     listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
     sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
+    findLineForPaymentAndKind: vi.fn().mockResolvedValue(null),
+    updateLineAmount: vi.fn(),
     ...overrides,
   };
 }
@@ -46,6 +55,7 @@ function pending(rows: Partial<PendingPaymentRow>[]): PendingPaymentRow[] {
     amount: r.amount ?? "100.00",
     platformFee: r.platformFee ?? "5.00",
     capturedAt: r.capturedAt ?? new Date(`2026-01-0${i + 1}T00:00:00Z`),
+    ...(r.settlementAmount !== undefined ? { settlementAmount: r.settlementAmount } : {}),
   }));
 }
 
@@ -150,6 +160,7 @@ describe("PayoutService.createSettlement", () => {
       ),
       create: vi.fn().mockResolvedValue(created),
       insertLine,
+      tryInsertSaleLine: insertLine,
     });
     const svc = new PayoutService(repo);
     const result = await svc.createSettlement(ACTOR_ID, {
@@ -178,6 +189,57 @@ describe("PayoutService.createSettlement", () => {
     expect(insertLine).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ paymentId: "pay-a", amount: "100.00", kind: "sale" }),
+    );
+  });
+
+  it("settles at gross sale line when a partial refund clawback exists (Option A)", async () => {
+    const created = payout({
+      id: "po-partial",
+      grossAmount: "100.00",
+      platformFee: "5.00",
+      netAmount: "95.00",
+    });
+    const insertLine = vi.fn(async (input) => ({
+      id: "line-1",
+      payoutId: input.payoutId,
+      paymentId: input.paymentId ?? null,
+      amount: input.amount,
+      kind: input.kind,
+      createdByUserId: input.createdByUserId ?? null,
+      note: input.note ?? null,
+      createdAt: new Date(),
+    }));
+    const repo = makeRepo({
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
+        pending([
+          {
+            id: "pay-partial",
+            amount: "100.00",
+            platformFee: "5.00",
+            settlementAmount: "100.00",
+          },
+        ]),
+      ),
+      create: vi.fn().mockResolvedValue(created),
+      tryInsertSaleLine: insertLine,
+    });
+    const svc = new PayoutService(repo);
+    const result = await svc.createSettlement(ACTOR_ID, {
+      legalEntityId: ENTITY_ID,
+      periodStart: new Date("2026-01-01"),
+      periodEnd: new Date("2026-01-31"),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        grossAmount: "100.00",
+        platformFee: "5.00",
+        netAmount: "95.00",
+      }),
+    );
+    expect(insertLine).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: "pay-partial", amount: "100.00", kind: "sale" }),
     );
   });
 });
@@ -226,7 +288,7 @@ describe("PayoutService.addAdjustment", () => {
       netAmount: "1050.00",
     });
     const repo = makeRepo({
-      findById: vi.fn().mockResolvedValue(before),
+      findById: vi.fn().mockResolvedValueOnce(before).mockResolvedValueOnce(after),
       insertLine: vi.fn().mockResolvedValue(newLine),
       updateTotals: vi.fn().mockResolvedValue(after),
       listLines: vi.fn().mockResolvedValue([newLine]),

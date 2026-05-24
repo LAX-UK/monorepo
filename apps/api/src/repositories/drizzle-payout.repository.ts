@@ -108,6 +108,26 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     return rowToLine(row);
   }
 
+  async tryInsertSaleLine(input: InsertPayoutLineInput): Promise<PayoutLine | null> {
+    try {
+      return await this.insertLine(input);
+    } catch {
+      if (!input.paymentId || input.kind !== "sale") {
+        throw new Error("payout_line_insert_failed");
+      }
+      const [linked] = await this.db
+        .select()
+        .from(payoutLine)
+        .where(and(eq(payoutLine.paymentId, input.paymentId), eq(payoutLine.kind, "sale")))
+        .limit(1);
+      if (linked) {
+        if (linked.payoutId === input.payoutId) return rowToLine(linked);
+        return null;
+      }
+      throw new Error("payout_line_insert_failed");
+    }
+  }
+
   async list(filter: ListPayoutsFilter): Promise<Payout[]> {
     const conditions = [
       filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
@@ -157,34 +177,6 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
   }
 
   async findUnlinkedCapturedPayments(legalEntityId: string): Promise<PendingPaymentRow[]> {
-    // Subquery: payment IDs already on a payout line.
-    const linkedRows = await this.db
-      .select({ id: payoutLine.paymentId })
-      .from(payoutLine)
-      .innerJoin(payout, eq(payout.id, payoutLine.payoutId))
-      .where(
-        and(
-          eq(payout.legalEntityId, legalEntityId),
-          // Adjustment lines have null paymentId; ignore.
-          sql`${payoutLine.paymentId} IS NOT NULL`,
-        ),
-      );
-    const linkedIds = linkedRows.map((r) => r.id).filter((id): id is string => Boolean(id));
-
-    const conditions = [
-      eq(payment.sellerLegalEntityId, legalEntityId),
-      eq(payment.status, "captured"),
-    ];
-    if (linkedIds.length > 0) {
-      // Drizzle doesn't have a direct `notInArray`, so use SQL `not in`.
-      conditions.push(
-        sql`${payment.id} NOT IN (${sql.join(
-          linkedIds.map((id) => sql`${id}`),
-          sql`, `,
-        )})`,
-      );
-    }
-
     const rows = await this.db
       .select({
         id: payment.id,
@@ -193,7 +185,17 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
         capturedAt: payment.createdAt,
       })
       .from(payment)
-      .where(and(...conditions))
+      .where(
+        and(
+          eq(payment.sellerLegalEntityId, legalEntityId),
+          eq(payment.status, "captured"),
+          sql`(${payment.amount})::numeric > 0`,
+          sql`NOT EXISTS (
+            SELECT 1 FROM payout_line pl
+            WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale'
+          )`,
+        ),
+      )
       .orderBy(payment.createdAt);
 
     return rows.map((r) => ({
@@ -201,6 +203,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       amount: String(r.amount),
       platformFee: String(r.platformFee),
       capturedAt: r.capturedAt,
+      settlementAmount: String(r.amount),
     }));
   }
 
@@ -213,8 +216,10 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
           eq(payment.status, "captured"),
           isNotNull(payment.sellerLegalEntityId),
           sql`NOT EXISTS (
-            SELECT 1 FROM payout_line pl WHERE pl.payment_id = ${payment.id}
+            SELECT 1 FROM payout_line pl
+            WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale'
           )`,
+          sql`(${payment.amount})::numeric > 0`,
         ),
       );
     return rows
@@ -376,5 +381,41 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "refund")));
     const totalMajor = Number.parseFloat(rows[0]?.total ?? "0");
     return Math.round(Math.abs(totalMajor) * 100);
+  }
+
+  async findLineForPaymentAndKind(
+    payoutId: string,
+    paymentId: string,
+    kind: PayoutLineKind,
+  ): Promise<PayoutLine | null> {
+    const rows = await this.db
+      .select()
+      .from(payoutLine)
+      .where(
+        and(
+          eq(payoutLine.payoutId, payoutId),
+          eq(payoutLine.paymentId, paymentId),
+          eq(payoutLine.kind, kind),
+        ),
+      )
+      .limit(1);
+    return rows[0] ? rowToLine(rows[0]) : null;
+  }
+
+  async updateLineAmount(
+    lineId: string,
+    amount: string,
+    sourceEventId?: string | null,
+  ): Promise<PayoutLine> {
+    const [row] = await this.db
+      .update(payoutLine)
+      .set({
+        amount,
+        ...(sourceEventId !== undefined ? { sourceEventId } : {}),
+      })
+      .where(eq(payoutLine.id, lineId))
+      .returning();
+    if (!row) throw new Error("payout_line_update_failed");
+    return rowToLine(row);
   }
 }

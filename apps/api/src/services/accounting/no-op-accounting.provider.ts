@@ -19,14 +19,20 @@ export class NoOpAccountingProvider implements IPaymentAccountingProvider {
     return { checkoutUrl: null };
   }
 
+  async ensureInvoiceForPayment(
+    _ctx: AccountingCheckoutContext,
+  ): Promise<{ ok: boolean; error?: string }> {
+    return { ok: false, error: "Accounting provider not configured" };
+  }
+
   async syncPaymentFromProvider(_paymentId: string): Promise<{ ok: boolean; error?: string }> {
-    return { ok: true };
+    return { ok: false, error: "Accounting provider not configured" };
   }
 
   async syncInvoiceFromProvider(
     _tenantId: string,
     _invoiceId: string,
   ): Promise<{ ok: boolean; error?: string }> {
-    return { ok: true };
+    return { ok: false, error: "Accounting provider not configured" };
   }
 }

@@ -1,0 +1,138 @@
+import type { Database } from "@auction/db";
+import { payment, paymentExternalRef, paymentRefundReconcile } from "@auction/db/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
+
+export type PaymentRefundReconcilePayload = {
+  sellerLegalEntityId: string | null;
+  amount: string;
+  stripeRefundId: string | null;
+  via: "admin_manual" | "admin_manual_review";
+};
+
+export type PaymentRefundReconcileRow = {
+  id: string;
+  paymentId: string;
+  stripeRefundId: string | null;
+  adminUserId: string | null;
+  payload: PaymentRefundReconcilePayload;
+  attempts: number;
+  lastError: string | null;
+  reconciledAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export interface IPaymentRefundReconcileRepository {
+  enqueue(input: {
+    paymentId: string;
+    stripeRefundId: string | null;
+    adminUserId: string | null;
+    payload: PaymentRefundReconcilePayload;
+  }): Promise<void>;
+
+  listPending(limit: number): Promise<PaymentRefundReconcileRow[]>;
+
+  markReconciled(paymentId: string): Promise<void>;
+
+  markFailed(paymentId: string, error: string, attempts: number): Promise<void>;
+}
+
+export class DrizzlePaymentRefundReconcileRepository implements IPaymentRefundReconcileRepository {
+  constructor(private readonly db: Database) {}
+
+  async enqueue(input: {
+    paymentId: string;
+    stripeRefundId: string | null;
+    adminUserId: string | null;
+    payload: PaymentRefundReconcilePayload;
+  }): Promise<void> {
+    const now = new Date();
+    await this.db
+      .insert(paymentRefundReconcile)
+      .values({
+        paymentId: input.paymentId,
+        stripeRefundId: input.stripeRefundId,
+        adminUserId: input.adminUserId,
+        payload: input.payload,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: paymentRefundReconcile.paymentId,
+        set: {
+          stripeRefundId: input.stripeRefundId,
+          adminUserId: input.adminUserId,
+          payload: input.payload,
+          lastError: null,
+          updatedAt: now,
+        },
+      });
+  }
+
+  async listPending(limit: number): Promise<PaymentRefundReconcileRow[]> {
+    const rows = await this.db
+      .select()
+      .from(paymentRefundReconcile)
+      .where(isNull(paymentRefundReconcile.reconciledAt))
+      .orderBy(paymentRefundReconcile.createdAt)
+      .limit(limit);
+    return rows.map((row) => ({
+      id: row.id,
+      paymentId: row.paymentId,
+      stripeRefundId: row.stripeRefundId,
+      adminUserId: row.adminUserId,
+      payload: row.payload as PaymentRefundReconcilePayload,
+      attempts: row.attempts,
+      lastError: row.lastError,
+      reconciledAt: row.reconciledAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  }
+
+  async markReconciled(paymentId: string): Promise<void> {
+    await this.db
+      .update(paymentRefundReconcile)
+      .set({ reconciledAt: new Date(), updatedAt: new Date(), lastError: null })
+      .where(eq(paymentRefundReconcile.paymentId, paymentId));
+  }
+
+  async markFailed(paymentId: string, error: string, attempts: number): Promise<void> {
+    await this.db
+      .update(paymentRefundReconcile)
+      .set({
+        attempts,
+        lastError: error,
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentRefundReconcile.paymentId, paymentId));
+  }
+}
+
+export type PendingStripeCaptureSyncRow = {
+  paymentId: string;
+  amount: string;
+};
+
+export async function listPendingStripeCaptureSync(
+  db: Database,
+  limit: number,
+): Promise<PendingStripeCaptureSyncRow[]> {
+  const rows = await db
+    .select({
+      paymentId: paymentExternalRef.paymentId,
+      amount: payment.amount,
+    })
+    .from(paymentExternalRef)
+    .innerJoin(payment, eq(payment.id, paymentExternalRef.paymentId))
+    .where(
+      and(
+        sql`${paymentExternalRef.xeroInvoiceId} IS NOT NULL`,
+        isNull(paymentExternalRef.xeroPaymentId),
+        eq(payment.status, "captured"),
+      ),
+    )
+    .orderBy(paymentExternalRef.updatedAt)
+    .limit(limit);
+  return rows.map((r) => ({ paymentId: r.paymentId, amount: String(r.amount) }));
+}

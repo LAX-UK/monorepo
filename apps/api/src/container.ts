@@ -89,6 +89,7 @@ import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notifi
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
+import { DrizzlePaymentRefundReconcileRepository } from "./repositories/drizzle-payment-refund-reconcile.repository.js";
 import { DrizzlePaymentRepository } from "./repositories/drizzle-payment.repository.js";
 import { DrizzlePayoutRepository } from "./repositories/drizzle-payout.repository.js";
 import { DrizzlePendingInvitationsReader } from "./repositories/drizzle-pending-invitations.reader.js";
@@ -113,6 +114,10 @@ import { AbsenteeBidService } from "./services/absentee-bid.service.js";
 import { AccountLinkingService } from "./services/account-linking.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
+import {
+  type IXeroPaymentRecorder,
+  XeroPaymentRecorder,
+} from "./services/accounting/xero-payment-recorder.js";
 import { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.writer.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
@@ -193,7 +198,14 @@ import { NotificationService } from "./services/notification.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
 import { PaymentService } from "./services/payment.service.js";
+import { PaymentCaptureService } from "./services/payment/payment-capture.service.js";
+import { PaymentCheckoutOrchestrator } from "./services/payment/payment-checkout.orchestrator.js";
+import { PaymentRefundReconcileService } from "./services/payment/payment-refund-reconcile.service.js";
+import { PlatformFeePolicy } from "./services/payment/platform-fee.policy.js";
+import { StripePlatformCheckoutProvider } from "./services/payment/stripe-platform-checkout.provider.js";
+import { XeroInvoiceCheckoutProvider } from "./services/payment/xero-invoice-checkout.provider.js";
 import { PayoutService } from "./services/payout.service.js";
+import { PayoutAdjustmentService } from "./services/payout/payout-adjustment.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
@@ -257,11 +269,14 @@ export type Container = {
   dashboardQueryService: DashboardQueryService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
+  paymentRefundReconcileService: PaymentRefundReconcileService;
   accountingProvider: IPaymentAccountingProvider;
   /** bill-to resolver for Xero + payment-invoice email. */
   invoiceAddressingService: InvoiceAddressingService;
   /** Xero ACCPAY bill creation for paid payouts (null when Xero OAuth env not set). */
   xeroPayoutBillWriter: XeroPayoutBillWriter | null;
+  /** Records Stripe capture against Xero ACCREC invoices (null when Xero env not set). */
+  xeroPaymentRecorder: IXeroPaymentRecorder | null;
   xeroOAuthService: XeroOAuthService | null;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   userService: UserService;
@@ -421,28 +436,9 @@ export function createContainer(env: Env): Container {
   const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
-  const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
-    db,
-    legalEntityRepository,
-    organizationOnboardingService,
-    domainEventPublisher,
-  );
   const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>("legal-entity-archive", {
     connection: bullConnection,
   });
-  const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
-    db,
-    domainEventPublisher,
-    {
-      enqueueArchiveCascade: async (legalEntityId: string) => {
-        await legalEntityArchiveQueue.add(
-          "cascade",
-          { legalEntityId },
-          { removeOnComplete: 200, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
-        );
-      },
-    },
-  );
   const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
   const impersonationSessionService = new ImpersonationSessionService(db);
   const legalEntityAccessService = new LegalEntityAccessService(
@@ -474,10 +470,12 @@ export function createContainer(env: Env): Container {
     env.WEB_ORIGIN,
   );
   const payoutRepository: IPayoutRepository = new DrizzlePayoutRepository(db);
+  const payoutAdjustmentService = new PayoutAdjustmentService(db, payoutRepository);
   const payoutService: IPayoutService = new PayoutService(
     payoutRepository,
     db,
     domainEventPublisher,
+    payoutAdjustmentService,
   );
   const stripeClientFactory = new StripeClientFactory(env);
   const stripeWebhookVerifier = new StripeWebhookVerifier(stripeClientFactory, env);
@@ -490,10 +488,31 @@ export function createContainer(env: Env): Container {
     stripeClientFactory,
   );
 
-  const stripePaymentWebhookService: StripePaymentWebhookService | null =
-    env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
-      ? new StripePaymentWebhookService(db, payoutRepository, domainEventPublisher)
-      : null;
+  const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
+    db,
+    legalEntityRepository,
+    organizationOnboardingService,
+    domainEventPublisher,
+    stripeConnectService,
+  );
+  const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
+    db,
+    domainEventPublisher,
+    {
+      enqueueArchiveCascade: async (legalEntityId: string) => {
+        await legalEntityArchiveQueue.add(
+          "cascade",
+          { legalEntityId },
+          { removeOnComplete: 200, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
+        );
+      },
+      onApproveToConnectPending: async (legalEntityId: string) => {
+        if (stripeConnectService.isConfigured()) {
+          await stripeConnectService.syncAccountFromStripe(legalEntityId);
+        }
+      },
+    },
+  );
 
   const categoryRepo = new DrizzleCategoryRepository(db);
   const watchlistRepo = new DrizzleWatchlistRepository(db);
@@ -501,6 +520,14 @@ export function createContainer(env: Env): Container {
   const notificationReadRepo = new DrizzleNotificationReadRepository(db);
   const notificationWriteRepo = new DrizzleNotificationWriteRepository(db);
   const paymentRepo = new DrizzlePaymentRepository(db);
+  const paymentRefundReconcileRepository = new DrizzlePaymentRefundReconcileRepository(db);
+  const paymentRefundReconcileService = new PaymentRefundReconcileService(
+    db,
+    paymentRepo,
+    payoutAdjustmentService,
+    domainEventPublisher,
+    paymentRefundReconcileRepository,
+  );
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
   const uiPreferenceRepository = new DrizzleUiPreferenceRepository(db);
   const uiPreferenceService = new UiPreferenceService(uiPreferenceRepository);
@@ -775,6 +802,9 @@ export function createContainer(env: Env): Container {
   );
 
   const paymentServiceRef: { current?: PaymentService } = {};
+  const paymentCaptureServiceRef: { current?: PaymentCaptureService } = {};
+
+  const platformFeePolicy = new PlatformFeePolicy(legalEntityRepository);
 
   const accountingProvider: IPaymentAccountingProvider = xeroEnvEnabled
     ? new XeroAccountingProvider(
@@ -790,6 +820,11 @@ export function createContainer(env: Env): Container {
         xeroConnRepo,
         paymentExtRepo,
         async (paymentId) => {
+          const capture = paymentCaptureServiceRef.current;
+          if (capture) {
+            await capture.capture({ paymentId, via: "xero_sync" });
+            return;
+          }
           const svc = paymentServiceRef.current;
           if (svc) {
             await svc.markCapturedFromProviderSync(paymentId);
@@ -819,7 +854,51 @@ export function createContainer(env: Env): Container {
 
   const stripePaymentGateway = new StripePaymentGateway(env, stripeClientFactory);
 
+  const xeroPaymentRecorder = xeroEnvEnabled
+    ? new XeroPaymentRecorder(
+        {
+          XERO_CLIENT_ID: env.XERO_CLIENT_ID,
+          XERO_CLIENT_SECRET: env.XERO_CLIENT_SECRET,
+          XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
+          XERO_PAYMENT_BANK_ACCOUNT_CODE: env.XERO_PAYMENT_BANK_ACCOUNT_CODE,
+        },
+        xeroConnRepo,
+        paymentExtRepo,
+        errorReporter,
+      )
+    : null;
+
   const lotFulfilmentService = new LotFulfilmentService(db);
+
+  const paymentCaptureService = new PaymentCaptureService(
+    db,
+    paymentRepo,
+    lotRepo,
+    userRepo,
+    domainEventPublisher,
+    notificationDispatcher,
+    notificationFactory,
+    legalEntityNotificationRecipients,
+    {
+      ensureAwaitingPayment: (lotId, paymentId) =>
+        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId),
+      onPaymentCaptured: (lotId, paymentId) =>
+        lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
+    },
+    marketingEventService,
+    stripePaymentGateway,
+    xeroPaymentRecorder,
+  );
+  paymentCaptureServiceRef.current = paymentCaptureService;
+
+  const checkoutOrchestrator = new PaymentCheckoutOrchestrator(
+    [
+      new StripePlatformCheckoutProvider(env, stripePaymentGateway, paymentRepo),
+      new XeroInvoiceCheckoutProvider(accountingProvider),
+    ],
+    Boolean(env.STRIPE_CHECKOUT_ENABLED),
+  );
+
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -841,8 +920,26 @@ export function createContainer(env: Env): Container {
     },
     saleRepo,
     marketingEventService,
+    platformFeePolicy,
+    paymentCaptureService,
+    checkoutOrchestrator,
+    payoutAdjustmentService,
+    paymentRefundReconcileService,
+    xeroPaymentRecorder,
   );
   paymentServiceRef.current = paymentService;
+
+  const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =
+    env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
+      ? new StripePaymentWebhookService(
+          db,
+          paymentRepo,
+          payoutRepository,
+          payoutAdjustmentService,
+          paymentCaptureService,
+          domainEventPublisher,
+        )
+      : null;
 
   const xeroOAuthService = xeroEnvEnabled ? new XeroOAuthService(redis, env, xeroConnRepo) : null;
 
@@ -1021,9 +1118,11 @@ export function createContainer(env: Env): Container {
     dashboardQueryService,
     notificationQueryService,
     paymentService,
+    paymentRefundReconcileService,
     accountingProvider,
     invoiceAddressingService,
     xeroPayoutBillWriter,
+    xeroPaymentRecorder,
     xeroOAuthService,
     xeroWebhookEventRepository,
     userService,
@@ -1086,7 +1185,7 @@ export function createContainer(env: Env): Container {
     marketingSyncQueue,
     payoutStatementQueue,
     legalEntityArchiveQueue,
-    stripePaymentWebhookService,
+    stripePaymentWebhookService: stripePaymentWebhookServiceResolved,
     stripeClientFactory,
     stripeWebhookVerifier,
     marketingEventService,

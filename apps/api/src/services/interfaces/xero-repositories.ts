@@ -41,6 +41,17 @@ export interface IPaymentExternalRefRepository {
   updateXeroPaymentId(paymentId: string, xeroPaymentId: string | null): Promise<void>;
 
   patchOnlineInvoiceUrl(paymentId: string, url: string): Promise<void>;
+
+  updateInvoiceCreated(
+    paymentId: string,
+    patch: {
+      xeroInvoiceId: string;
+      xeroInvoiceNumber: string | null;
+      xeroContactId: string;
+      onlineInvoiceUrl?: string | null;
+      syncStatus: PaymentExternalSyncStatus;
+    },
+  ): Promise<void>;
 }
 
 export interface IXeroWebhookEventRepository {

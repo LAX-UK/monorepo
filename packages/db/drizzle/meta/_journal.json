@@ -479,10 +479,24 @@
       "breakpoints": true
     },
     {
-      "idx": 70,
+      "idx": 71,
       "version": "7",
-      "when": 1782700000000,
-      "tag": "0071_sale_lot_soft_delete",
+      "when": 1782800000000,
+      "tag": "0072_payout_sale_payment_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1782900000000,
+      "tag": "0073_legacy_individual_connect_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1783000000000,
+      "tag": "0074_payment_refund_reconcile",
       "breakpoints": true
     }
   ]

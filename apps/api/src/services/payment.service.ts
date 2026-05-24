@@ -10,34 +10,37 @@ import {
 import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
+import { gbpAmountToPence } from "../lib/decimal-money.js";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
-import { buildMarketingEventConsent, nowUnixSeconds } from "../lib/marketing-event-factory.js";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
+import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
+import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
+import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
+import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
 import type {
   ILotRepository,
   ISaleRepository,
   IUserRepository,
 } from "./interfaces/repositories.js";
-import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
+import { dispatchPaymentReceived } from "./payment/dispatch-payment-received.js";
+import type { PaymentCheckoutOrchestrator } from "./payment/payment-checkout.orchestrator.js";
+import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 /** Seller entity must not be in these states for refund. */
 const REFUND_BLOCKED_STATUSES = ["archived", "rejected"];
-
-function gbpAmountToPence(amount: string): number {
-  return Math.round(Number.parseFloat(amount) * 100);
-}
 
 function paymentProviderErrorFromUnknown(e: unknown): PaymentProviderError {
   if (e instanceof Stripe.errors.StripeError) {
@@ -72,7 +75,13 @@ export class PaymentService {
      * existing per-lot `buyerPremiumRate` — preserving the previous behaviour exactly.
      */
     private readonly sales: ISaleRepository | null = null,
-    private readonly marketingEvents: IMarketingEventService | null = null,
+    _marketingEvents: IMarketingEventService | null = null,
+    private readonly platformFeePolicy: IPlatformFeePolicy | null = null,
+    private readonly paymentCapture: IPaymentCaptureService | null = null,
+    private readonly checkoutOrchestrator: PaymentCheckoutOrchestrator | null = null,
+    private readonly payoutAdjustments: IPayoutAdjustmentService | null = null,
+    private readonly paymentRefundReconcile: PaymentRefundReconcileService | null = null,
+    private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
   ) {}
 
   /** Record a pending settlement for a won lot. When Xero is connected, creates an online invoice
@@ -105,29 +114,15 @@ export class PaymentService {
       if (existing.status === "requires_manual_review") {
         return ok({ paymentId: existing.id, checkoutUrl: null });
       }
-      let checkoutUrl: string | null = null;
-      if (this.accounting.isConfigured()) {
-        checkoutUrl = await this.accounting.getCheckoutUrlIfAny(existing.id);
-        if (!checkoutUrl) {
-          const buyer = await this.users.findById(buyerId);
-          if (buyer?.email) {
-            const r = await this.accounting.createCheckoutForWinner({
-              paymentId: existing.id,
-              lot,
-              buyerEmail: buyer.email,
-              buyerName: buyer.name,
-              amount: existing.amount,
-              buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
-            });
-            checkoutUrl = r.checkoutUrl ?? null;
-          }
-        }
-      }
+      await this.ensureXeroInvoiceForPayment(existing.id, lot, buyerId, existing.amount);
+      const checkoutUrl = await this.resolveCheckoutUrl(existing.id, lot, buyerId, existing.amount);
       return ok({ paymentId: existing.id, checkoutUrl });
     }
 
     const total = await this.totalDue(lot);
-    const platformFee = (total * 0.05).toFixed(2);
+    const platformFee = this.platformFeePolicy
+      ? await this.platformFeePolicy.computePlatformFee(lot.sellerLegalEntityId, total)
+      : (total * 0.05).toFixed(2);
     const amount = total.toFixed(2);
     const sellerEntity = this.legalEntityRepository
       ? await this.legalEntityRepository.findById(lot.sellerLegalEntityId)
@@ -166,19 +161,9 @@ export class PaymentService {
     }
 
     let checkoutUrl: string | null = null;
-    if (!requiresManualReview && this.accounting.isConfigured()) {
-      const buyer = await this.users.findById(buyerId);
-      if (buyer?.email) {
-        const r = await this.accounting.createCheckoutForWinner({
-          paymentId: created.id,
-          lot,
-          buyerEmail: buyer.email,
-          buyerName: buyer.name,
-          amount: created.amount,
-          buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
-        });
-        checkoutUrl = r.checkoutUrl ?? null;
-      }
+    if (!requiresManualReview) {
+      await this.ensureXeroInvoiceForPayment(created.id, lot, buyerId, created.amount);
+      checkoutUrl = await this.resolveCheckoutUrl(created.id, lot, buyerId, created.amount);
     }
 
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id);
@@ -309,25 +294,111 @@ export class PaymentService {
 
     const stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
 
-    await db.transaction(async (tx) => {
-      await this.payments.applyRefundedInTransaction(tx, paymentId, stripeRefundId);
-      await publisher.publish(tx, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.refunded",
-        payload: {
-          amount: p.amount,
-          currency: "GBP",
-          sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-          via: "admin_manual",
+    try {
+      await db.transaction(async (tx) => {
+        const refunded = await this.payments.applyRefundedInTransaction(
+          tx,
+          paymentId,
           stripeRefundId,
-        },
-        actorUserId: adminUserId,
-        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+        );
+        if (!refunded) {
+          return;
+        }
+        if (this.payoutAdjustments && p.sellerLegalEntityId) {
+          const negativeAmount = (-gbpAmountToPence(p.amount) / 100).toFixed(2);
+          await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+            legalEntityId: p.sellerLegalEntityId,
+            paymentId,
+            amount: negativeAmount,
+            kind: "refund",
+            sourceEventId: `admin_refund:${paymentId}`,
+            note: `Admin refund: ${paymentId}`,
+            tx,
+          });
+        }
+        await publisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.refunded",
+          payload: {
+            amount: p.amount,
+            currency: "GBP",
+            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+            via: "admin_manual",
+            stripeRefundId,
+          },
+          actorUserId: adminUserId,
+          actingLegalEntityId: p.sellerLegalEntityId ?? null,
+        });
       });
-    });
+    } catch (persistErr) {
+      recordMoneyPathEvent("refund_db_persist_failed");
+      if (this.paymentRefundReconcile) {
+        await this.paymentRefundReconcile.enqueue({
+          paymentId,
+          stripeRefundId,
+          adminUserId,
+          payload: {
+            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+            amount: p.amount,
+            stripeRefundId,
+            via: "admin_manual",
+          },
+        });
+      }
+      console.error(
+        JSON.stringify({
+          msg: "refund_db_persist_failed",
+          paymentId,
+          stripeRefundId,
+          error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+        }),
+      );
+      return err(
+        new PaymentProviderError(
+          "Stripe refund succeeded but local ledger update failed — manual reconciliation required",
+          500,
+        ),
+      );
+    }
 
+    await this.recordXeroRefundCreditNote(paymentId, p.amount, `admin_refund:${paymentId}`);
     return ok(undefined);
+  }
+
+  private async ensureXeroInvoiceForPayment(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+  ): Promise<void> {
+    if (!this.accounting.isConfigured()) return;
+    const buyer = await this.users.findById(buyerId);
+    if (!buyer?.email) return;
+    await this.accounting.ensureInvoiceForPayment({
+      paymentId,
+      lot,
+      buyerEmail: buyer.email,
+      buyerName: buyer.name,
+      amount,
+      buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
+    });
+  }
+
+  private async recordXeroRefundCreditNote(
+    paymentId: string,
+    amount: string,
+    reference: string,
+  ): Promise<void> {
+    if (!this.xeroPaymentRecorder) return;
+    const result = await this.xeroPaymentRecorder.recordRefundCreditNote(
+      paymentId,
+      amount,
+      reference,
+    );
+    if (!result.ok) {
+      recordMoneyPathEvent("xero_refund_credit_note_failed");
+    }
   }
 
   async markCapturedByAdmin(
@@ -388,69 +459,17 @@ export class PaymentService {
       }
     }
 
-    if (!this.db || !this.domainEventPublisher) {
+    if (!this.paymentCapture) {
       return err(new PaymentProviderError("Payment capture persistence is not configured", 500));
     }
 
-    const db = this.db;
-    const publisher = this.domainEventPublisher;
-
-    const buyerId = p.paidByUserId ?? p.buyerId ?? null;
-    const buyer = buyerId ? await this.users.findById(buyerId) : null;
-
-    const purchaseEvent =
-      buyerId && this.marketingEvents
-        ? {
-            name: "Purchase" as const,
-            eventId: `payment_captured_${paymentId}`,
-            eventTime: nowUnixSeconds(),
-            actionSource: "system_generated" as const,
-            userIdOrAnon: { kind: "user" as const, userId: buyerId },
-            consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
-            customData: {
-              lotId: p.lotId,
-              paymentId: p.id,
-              valueMinor: gbpAmountToPence(p.amount),
-              currencyCode: "GBP",
-            },
-          }
-        : null;
-
-    await db.transaction(async (tx) => {
-      const captureOpts: { stripeChargeId?: string | null } = {};
-      if (resolvedChargeId) {
-        captureOpts.stripeChargeId = resolvedChargeId;
-      }
-      await this.payments.applyCapturedInTransaction(tx, paymentId, captureOpts);
-      await publisher.publish(tx, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.captured",
-        payload: {
-          paymentId: p.id,
-          lotId: p.lotId,
-          userId: buyerId,
-          amountCents: gbpAmountToPence(p.amount),
-          capturedAt: new Date().toISOString(),
-          stripeIntentId: p.stripePaymentIntentId,
-          stripeChargeId: resolvedChargeId,
-          buyerName: buyer?.name ?? null,
-          buyerEmail: buyer?.email ?? null,
-        },
-        actorUserId: adminUserId ?? null,
-        actingLegalEntityId: p.sellerLegalEntityId ?? null,
-      });
-      if (purchaseEvent && this.marketingEvents) {
-        await this.marketingEvents.stage(purchaseEvent, tx);
-      }
+    await this.paymentCapture.capture({
+      paymentId,
+      via: p.stripePaymentIntentId ? "stripe_payment_intent" : "admin_manual",
+      stripeChargeId: resolvedChargeId,
+      stripePaymentIntentId: p.stripePaymentIntentId,
+      actorUserId: adminUserId ?? null,
     });
-
-    const after = (await this.payments.findById(paymentId)) ?? p;
-    await this.dispatchPaymentReceived(after);
-
-    if (purchaseEvent && this.marketingEvents) {
-      await this.marketingEvents.enqueue(purchaseEvent);
-    }
 
     return ok(undefined);
   }
@@ -501,7 +520,7 @@ export class PaymentService {
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
-  ): Promise<Result<void, AuthzError>> {
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     if (
       !roleHasCapability(
         userRole as UserRole,
@@ -518,23 +537,101 @@ export class PaymentService {
     if (p.status !== "requires_manual_review") {
       return err(new AuthzError("Payment is not in manual review", 409));
     }
-    await this.payments.updateStatus(paymentId, "refunded");
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.refunded",
-        payload: {
-          amount: p.amount,
-          currency: "GBP",
-          sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-          via: "admin_manual_review",
-          reason: "seller_archived",
-        },
-        actorUserId: adminUserId,
-        actingLegalEntityId: p.sellerLegalEntityId ?? null,
-      });
+    if (!this.db || !this.domainEventPublisher) {
+      return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
     }
+
+    const db = this.db;
+    const publisher = this.domainEventPublisher;
+
+    let stripeRefundId: string | null = null;
+    if (p.stripeChargeId && this.stripePayments?.isConfigured()) {
+      try {
+        const refundOutcome = await this.stripePayments.createRefund({
+          chargeId: p.stripeChargeId,
+          amount: gbpAmountToPence(p.amount),
+          reason: "requested_by_customer",
+        });
+        stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
+      } catch (e) {
+        return err(paymentProviderErrorFromUnknown(e));
+      }
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        const refunded = await this.payments.applyRefundedInTransaction(
+          tx,
+          paymentId,
+          stripeRefundId,
+        );
+        if (!refunded) {
+          return;
+        }
+        if (this.payoutAdjustments && p.sellerLegalEntityId) {
+          const negativeAmount = (-gbpAmountToPence(p.amount) / 100).toFixed(2);
+          await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+            legalEntityId: p.sellerLegalEntityId,
+            paymentId,
+            amount: negativeAmount,
+            kind: "refund",
+            sourceEventId: `admin_manual_review_refund:${paymentId}`,
+            note: `Manual review refund: ${paymentId}`,
+            tx,
+          });
+        }
+        await publisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.refunded",
+          payload: {
+            amount: p.amount,
+            currency: "GBP",
+            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+            via: "admin_manual_review",
+            reason: "seller_archived",
+            stripeRefundId,
+          },
+          actorUserId: adminUserId,
+          actingLegalEntityId: p.sellerLegalEntityId ?? null,
+        });
+      });
+    } catch (persistErr) {
+      recordMoneyPathEvent("refund_db_persist_failed");
+      if (this.paymentRefundReconcile) {
+        await this.paymentRefundReconcile.enqueue({
+          paymentId,
+          stripeRefundId,
+          adminUserId,
+          payload: {
+            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+            amount: p.amount,
+            stripeRefundId,
+            via: "admin_manual_review",
+          },
+        });
+      }
+      console.error(
+        JSON.stringify({
+          msg: "refund_db_persist_failed",
+          paymentId,
+          stripeRefundId,
+          via: "admin_manual_review",
+          error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+        }),
+      );
+      return err(
+        new PaymentProviderError(
+          "Stripe refund succeeded but local ledger update failed — manual reconciliation required",
+          500,
+        ),
+      );
+    }
+    await this.recordXeroRefundCreditNote(
+      paymentId,
+      p.amount,
+      `admin_manual_review_refund:${paymentId}`,
+    );
     return ok(undefined);
   }
 
@@ -542,12 +639,16 @@ export class PaymentService {
    * Does not perform admin authorization — only call from trusted integration code.
    */
   async markCapturedFromProviderSync(paymentId: string): Promise<void> {
-    const p = await this.payments.findById(paymentId);
-    if (!p || p.status === "captured" || p.status === "refunded" || p.status === "cancelled") {
+    if (!this.paymentCapture) {
+      const p = await this.payments.findById(paymentId);
+      if (!p || p.status === "captured" || p.status === "refunded" || p.status === "cancelled") {
+        return;
+      }
+      await this.payments.updateStatus(paymentId, "captured");
+      await this.dispatchPaymentReceived(p);
       return;
     }
-    await this.payments.updateStatus(paymentId, "captured");
-    await this.dispatchPaymentReceived(p);
+    await this.paymentCapture.capture({ paymentId, via: "xero_sync" });
   }
 
   /** Buyer abandons an unpaid pending invoice (e.g. relinquishes the win). */
@@ -627,32 +728,14 @@ export class PaymentService {
   }
 
   private async dispatchPaymentReceived(p: PaymentRecord): Promise<void> {
-    await this.lotFulfilmentHooks?.onPaymentCaptured(p.lotId, p.id);
-    const lot = await this.lots.findById(p.lotId);
-    if (lot && this.notificationDispatcher) {
-      const paidByUserId = p.paidByUserId ?? p.buyerId;
-      if (!paidByUserId) return;
-      await this.notificationDispatcher.dispatch(
-        paidByUserId,
-        notificationRowToPayload(this.notificationFactory.createPaymentReceived(lot, paidByUserId)),
-      );
-      const financeRecipients = await resolveLegalEntityNotificationRecipients(
-        this.legalEntityNotificationRecipients,
-        {
-          legalEntityId: lot.sellerLegalEntityId,
-          fallbackUserId: paidByUserId,
-          audience: "finance",
-        },
-      );
-      for (const recipientId of financeRecipients) {
-        await this.notificationDispatcher.dispatch(
-          recipientId,
-          notificationRowToPayload(
-            this.notificationFactory.createSellerPaymentReceived(lot, recipientId, p.amount),
-          ),
-        );
-      }
-    }
+    await dispatchPaymentReceived({
+      payment: p,
+      lots: this.lots,
+      lotFulfilmentHooks: this.lotFulfilmentHooks,
+      notificationDispatcher: this.notificationDispatcher,
+      notificationFactory: this.notificationFactory,
+      legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
+    });
   }
 
   /**
@@ -679,5 +762,40 @@ export class PaymentService {
     const premiumMajor = Number.parseFloat(policy.computePremiumMajor(lot.currentPrice));
     const safePremium = Number.isFinite(premiumMajor) ? premiumMajor : 0;
     return safeHammer + safePremium;
+  }
+
+  private async resolveCheckoutUrl(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+  ): Promise<string | null> {
+    if (this.checkoutOrchestrator) {
+      const buyer = await this.users.findById(buyerId);
+      if (!buyer?.email) return null;
+      const r = await this.checkoutOrchestrator.createCheckout({
+        paymentId,
+        lot,
+        buyerEmail: buyer.email,
+        buyerName: buyer.name,
+        amount,
+        ...(lot.buyerLegalEntityId ? { buyerLegalEntityId: lot.buyerLegalEntityId } : {}),
+      });
+      return r.checkoutUrl;
+    }
+    if (!this.accounting.isConfigured()) return null;
+    const existing = await this.accounting.getCheckoutUrlIfAny(paymentId);
+    if (existing) return existing;
+    const buyer = await this.users.findById(buyerId);
+    if (!buyer?.email) return null;
+    const r = await this.accounting.createCheckoutForWinner({
+      paymentId,
+      lot,
+      buyerEmail: buyer.email,
+      buyerName: buyer.name,
+      amount,
+      buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
+    });
+    return r.checkoutUrl ?? null;
   }
 }

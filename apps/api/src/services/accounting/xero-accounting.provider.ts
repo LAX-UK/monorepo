@@ -110,9 +110,9 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
   }
 
   async createCheckoutForWinner(ctx: AccountingCheckoutContext): Promise<AccountingCheckoutResult> {
-    const conn = await this.connections.findLatest();
-    if (!conn) {
-      return { checkoutUrl: null, error: "Xero is not connected" };
+    const ensured = await this.ensureInvoiceForPayment(ctx);
+    if (!ensured.ok) {
+      return { checkoutUrl: null, error: ensured.error ?? "Failed to create Xero invoice" };
     }
 
     const existingRef = await this.externalRefs.findByPaymentId(ctx.paymentId);
@@ -120,11 +120,55 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
       return { checkoutUrl: existingRef.onlineInvoiceUrl };
     }
 
+    if (!existingRef?.xeroInvoiceId) {
+      return { checkoutUrl: null, error: "Xero invoice missing after ensure" };
+    }
+
+    const conn = await this.connections.findLatest();
+    if (!conn) {
+      return { checkoutUrl: null, error: "Xero is not connected" };
+    }
+
     const xero = this.baseClient();
     await xero.initialize();
     await applyStoredTokens(xero, conn);
     const liveConn = await this.refreshXeroTokensReporting(xero, conn);
 
+    try {
+      const online = await xero.accountingApi.getOnlineInvoice(
+        liveConn.tenantId,
+        existingRef.xeroInvoiceId,
+      );
+      const url = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
+      if (url) {
+        await this.externalRefs.patchOnlineInvoiceUrl(ctx.paymentId, url);
+        return { checkoutUrl: url };
+      }
+      return { checkoutUrl: null, error: "Missing online invoice URL" };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await this.externalRefs.updateError(ctx.paymentId, msg);
+      return { checkoutUrl: null, error: msg };
+    }
+  }
+
+  async ensureInvoiceForPayment(
+    ctx: AccountingCheckoutContext,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const conn = await this.connections.findLatest();
+    if (!conn) {
+      return { ok: false, error: "Xero is not connected" };
+    }
+
+    const existingRef = await this.externalRefs.findByPaymentId(ctx.paymentId);
+    if (existingRef?.xeroInvoiceId) {
+      return { ok: true };
+    }
+
+    const xero = this.baseClient();
+    await xero.initialize();
+    await applyStoredTokens(xero, conn);
+    const liveConn = await this.refreshXeroTokensReporting(xero, conn);
     const tenantId = liveConn.tenantId;
     const lot = ctx.lot as Lot;
 
@@ -142,7 +186,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
         const ent = await this.legalEntities.findById(ctx.buyerLegalEntityId);
         if (!ent) {
           await this.externalRefs.updateError(ctx.paymentId, "Buyer legal entity not found");
-          return { checkoutUrl: null, error: "Buyer legal entity not found" };
+          return { ok: false, error: "Buyer legal entity not found" };
         }
         const billingAddress = await this.legalEntities.findPrimaryAddressForXero(ent.id);
         contactId = await ensureXeroContactForLegalEntity({
@@ -159,23 +203,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await this.externalRefs.updateError(ctx.paymentId, msg);
-      return { checkoutUrl: null, error: msg };
-    }
-
-    if (existingRef?.xeroInvoiceId && !existingRef.onlineInvoiceUrl) {
-      try {
-        const online = await xero.accountingApi.getOnlineInvoice(
-          tenantId,
-          existingRef.xeroInvoiceId,
-        );
-        const url = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
-        if (url) {
-          await this.externalRefs.patchOnlineInvoiceUrl(ctx.paymentId, url);
-          return { checkoutUrl: url };
-        }
-      } catch {
-        // fall through to create a new invoice path if URL recovery fails
-      }
+      return { ok: false, error: msg };
     }
 
     try {
@@ -185,7 +213,7 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
           ctx.paymentId,
           "Invalid payment amount for Xero invoice",
         );
-        return { checkoutUrl: null, error: "Invalid amount" };
+        return { ok: false, error: "Invalid amount" };
       }
 
       const line = new LineItem();
@@ -232,32 +260,30 @@ export class XeroAccountingProvider implements IPaymentAccountingProvider {
           createdInv?.validationErrors?.map((v) => v.message).join("; ") ||
           "Xero did not return an invoice id";
         await this.externalRefs.updateError(ctx.paymentId, msg);
-        return { checkoutUrl: null, error: msg };
+        return { ok: false, error: msg };
       }
 
-      const online = await xero.accountingApi.getOnlineInvoice(tenantId, createdInv.invoiceID);
-      const url = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
-      if (!url) {
-        await this.externalRefs.updateError(
-          ctx.paymentId,
-          "Xero did not return an online invoice URL",
-        );
-        return { checkoutUrl: null, error: "Missing online invoice URL" };
+      let onlineUrl: string | null = null;
+      try {
+        const online = await xero.accountingApi.getOnlineInvoice(tenantId, createdInv.invoiceID);
+        onlineUrl = online.body.onlineInvoices?.[0]?.onlineInvoiceUrl ?? null;
+      } catch {
+        // Stripe-primary checkout does not require an online invoice URL.
       }
 
-      await this.externalRefs.updateSuccess(ctx.paymentId, {
+      await this.externalRefs.updateInvoiceCreated(ctx.paymentId, {
         xeroInvoiceId: createdInv.invoiceID,
         xeroInvoiceNumber: createdInv.invoiceNumber ?? null,
         xeroContactId: contactId,
-        onlineInvoiceUrl: url,
+        onlineInvoiceUrl: onlineUrl,
         syncStatus: "synced",
       });
 
-      return { checkoutUrl: url };
+      return { ok: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await this.externalRefs.updateError(ctx.paymentId, msg);
-      return { checkoutUrl: null, error: msg };
+      return { ok: false, error: msg };
     }
   }
 
