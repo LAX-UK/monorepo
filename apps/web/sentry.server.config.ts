@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { createWebSentryOptions } from "./sentry.shared.config.js";
+import { createWebSentryOptions } from "./sentry.shared.config";
 
 const serverDsn = process.env.SENTRY_DSN_WEB;
 if (serverDsn) {
