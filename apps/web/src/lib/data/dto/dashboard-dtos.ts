@@ -29,10 +29,21 @@ export type ArtistFollowRow = {
 };
 
 /** Mirrors API `KycStatusSummary` (dates as ISO strings over the wire). */
+export type KycUserFeedbackDto = {
+  headline: string;
+  detail: string | null;
+  action: "start" | "continue" | "retry" | "wait" | "none";
+  reasonCode: number | null;
+  decisionStatus: string | null;
+  needsResubmit: boolean;
+};
+
 export type KycStatusSummaryDto = {
   status: "unverified" | "pending" | "approved" | "rejected";
   verifiedAt: string | null;
   latestSessionId: string | null;
+  latestSessionStatus: "created" | "requires_input" | "processing" | "verified" | "canceled" | null;
+  feedback: KycUserFeedbackDto;
   pendingExposure: { total: number; currency: string };
   thresholdAmount: number;
   thresholdCurrency: string;
