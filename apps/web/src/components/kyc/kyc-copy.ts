@@ -91,7 +91,7 @@ export function effectiveKycPhase(
 }
 
 export function kycLinkActionLabel(
-  feedback: KycUserFeedbackDto | null | undefined,
+  feedback: KycLinkActionFeedback | null | undefined,
   variant: "short" | "long" = "long",
 ): string {
   if (feedback?.needsResubmit || feedback?.action === "continue") {
@@ -161,6 +161,9 @@ export type KycComplianceIdentityPill = {
   tone: KycCompliancePillTone;
   hint?: string;
 };
+
+/** Subset of KYC feedback used for CTA label copy (bid errors, callouts). */
+export type KycLinkActionFeedback = Partial<Pick<KycUserFeedbackDto, "needsResubmit" | "action">>;
 
 /**
  * User-facing KYC UX must not branch on raw `summary.status` alone — use these helpers

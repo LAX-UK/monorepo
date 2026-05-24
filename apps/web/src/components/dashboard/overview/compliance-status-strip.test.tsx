@@ -27,7 +27,7 @@ function kycSummary(overrides: Partial<KycStatusSummaryDto> = {}): KycStatusSumm
 
 const baseUser = {
   emailVerified: true as const,
-  emailStatus: "active" as const,
+  emailStatus: "ok" as const,
   kycStatus: "unverified" as const,
   twoFactorEnabled: false,
 };
