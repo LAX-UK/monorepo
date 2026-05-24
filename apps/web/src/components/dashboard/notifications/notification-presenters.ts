@@ -6,6 +6,7 @@ import {
   Eye,
   Gavel,
   type LucideIcon,
+  ShieldAlert,
   Trophy,
   XCircle,
 } from "lucide-react";
@@ -41,6 +42,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "ending_soon" || type === "lot_ending_soon") {
     return { label: "Ending soon", Icon: Clock, tone: "warn" };
+  }
+  if (type === "kyc_resubmission_required") {
+    return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };

@@ -17,6 +17,7 @@ import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
 import {
   type SaleLotsPage,
@@ -147,11 +148,12 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const lotsPage = await loadCatalogLotsPage(id, pageRaw).catch(() => null);
   if (!lotsPage) notFound();
 
-  const [follow, relatedSales] = await Promise.all([
+  const [follow, relatedSales, kycSummary] = await Promise.all([
     session
       ? getServerSaleFollowState(id).catch(() => ({ isFollowing: false }))
       : Promise.resolve({ isFollowing: false }),
     getServerRelatedSales({ id, categoryId, limit: 4 }).catch(() => []),
+    session ? getServerKycStatusSummary().catch(() => null) : Promise.resolve(null),
   ]);
 
   const actingCtx = session
@@ -255,6 +257,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   }));
 
   const kycApproved = session?.kycStatus === "approved";
+  const kycFeedback = kycApproved ? null : (kycSummary?.feedback ?? null);
 
   const catalogEmptyMessage =
     statusFilter && lotVMs.length === 0
@@ -304,6 +307,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
               buyerEntities,
               myRegistrations,
               kycApproved,
+              kycFeedback,
             }}
           />
         }

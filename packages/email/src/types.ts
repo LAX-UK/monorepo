@@ -32,6 +32,7 @@ export const templateNames = [
   "payout-clawback-required-notice",
   "legal-entity-archived-notice",
   "lot-voided-anti-shilling-admin",
+  "kyc-resubmission-required",
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -238,6 +239,11 @@ export type TemplateVarsByName = {
     adminLotUrl: string;
     supportContactEmail: string;
   };
+  "kyc-resubmission-required": {
+    userName?: string | null;
+    issueDetail?: string | null;
+    verifyUrl: string;
+  };
 };
 
 export type RecipientResolution = "live" | "snapshot";
@@ -274,6 +280,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "payout-clawback-required-notice": "live",
   "legal-entity-archived-notice": "live",
   "lot-voided-anti-shilling-admin": "live",
+  "kyc-resubmission-required": "live",
 };
 
 export type RenderedEmail = {
