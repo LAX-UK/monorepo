@@ -28,13 +28,26 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: lax-bid
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
       SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     strategy:
       fail-fast: false
       matrix:
-        app: [api, auth, ws, worker]
+        include:
+          - sentry_app: api
+            package: api
+            app_dir: api
+          - sentry_app: auth
+            package: auth-app
+            app_dir: auth
+          - sentry_app: ws
+            package: ws
+            app_dir: ws
+          - sentry_app: worker
+            package: worker
+            app_dir: worker
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,12 +64,12 @@ jobs:
         run: npm i -g @sentry/cli
       - name: Create release and upload Node source maps
         run: |
-          project="lax-${ENV_SUFFIX}-${{ matrix.app }}"
+          project="lax-${ENV_SUFFIX}-${{ matrix.sentry_app }}"
           sentry-cli releases new "$RELEASE" -p "$project"
           sentry-cli releases set-commits "$RELEASE" --auto
-          pnpm --filter "@auction/${{ matrix.app }}" build
-          sentry-cli sourcemaps inject "apps/${{ matrix.app }}/dist"
-          sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app }}/dist"
+          pnpm --filter "@auction/${{ matrix.package }}" build
+          sentry-cli sourcemaps inject "apps/${{ matrix.app_dir }}/dist"
+          sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app_dir }}/dist"
           sentry-cli releases finalize "$RELEASE"
           sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"
   web-release:
@@ -64,6 +77,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: lax-bid
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
       SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
