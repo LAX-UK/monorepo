@@ -5,6 +5,7 @@ import {
   type SgtmMarketingEventPublisher,
   mergeClientContextIntoUserData,
 } from "@auction/marketing-events";
+import { Sentry } from "@auction/observability";
 import type { MarketingEvent, PublishOutcome, ResolvedMarketingEvent } from "@auction/types";
 import { eq } from "drizzle-orm";
 import type { Logger } from "pino";
@@ -104,7 +105,6 @@ export async function applyMarketingPublishOutcome(input: {
   }
 
   if (attemptsExceeded && env.SENTRY_DSN_WORKER) {
-    const Sentry = await import("@sentry/node");
     Sentry.captureMessage(`marketing_event_attempts_exceeded:${event.name}`, {
       level: "warning",
       extra: { eventId: event.eventId, attempts: nextAttempts, error: outcome.error },
@@ -112,7 +112,6 @@ export async function applyMarketingPublishOutcome(input: {
   }
 
   if (!retryable && env.SENTRY_DSN_WORKER) {
-    const Sentry = await import("@sentry/node");
     Sentry.captureMessage(`marketing_event_failed_permanent:${event.name}`, {
       level: "error",
       extra: { eventId: event.eventId, error: outcome.error },

@@ -1,10 +1,8 @@
 import * as Sentry from "@sentry/node";
 import {
-  readSampleRate,
-  resolveSentryEnvironment,
-  scrubSentryEvent,
-  sentryTracesSampler,
-} from "./sentry-shared.js";
+  type SharedSentryInitDefaults,
+  createSharedSentryInitOptions,
+} from "./sentry-init-options.js";
 
 export type NodeSentryInitOptions = {
   dsn: string;
@@ -17,30 +15,23 @@ export type NodeSentryInitOptions = {
 };
 
 export function initNodeSentry(options: NodeSentryInitOptions): void {
-  const tracesSampleRate = readSampleRate(
-    process.env.SENTRY_TRACES_SAMPLE_RATE,
-    options.tracesSampleRate ?? 0.1,
-  );
-  const profilesSampleRate = readSampleRate(
-    process.env.SENTRY_PROFILES_SAMPLE_RATE,
-    options.profilesSampleRate ?? 0,
-  );
+  const defaults: SharedSentryInitDefaults = {};
+  if (options.tracesSampleRate !== undefined) {
+    defaults.tracesSampleRate = options.tracesSampleRate;
+  }
+  if (options.profilesSampleRate !== undefined) {
+    defaults.profilesSampleRate = options.profilesSampleRate;
+  }
+  const shared = createSharedSentryInitOptions(options.dsn, defaults);
 
   Sentry.init({
-    dsn: options.dsn,
-    release: options.release ?? process.env.SENTRY_RELEASE,
-    environment:
-      options.environment ??
-      process.env.SENTRY_ENVIRONMENT ??
-      resolveSentryEnvironment(options.appEnv, options.nodeEnv),
-    tracesSampleRate,
-    profilesSampleRate,
+    ...shared,
+    release: options.release ?? shared.release,
+    environment: options.environment ?? shared.environment,
     integrations: [
       Sentry.captureConsoleIntegration({ levels: ["error", "warn"] }),
       Sentry.httpIntegration(),
     ],
-    tracesSampler: (ctx) => sentryTracesSampler(ctx, tracesSampleRate),
-    beforeSend: scrubSentryEvent,
   });
 }
 

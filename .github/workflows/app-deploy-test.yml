@@ -7,9 +7,20 @@ on:
       - packages/**
       - package.json
       - pnpm-lock.yaml
+permissions:
+  contents: read
 jobs:
+  sentry-release:
+    uses: ./.github/workflows/sentry-release.yml
+    with:
+      environment: test
+      git_sha: ${{ github.sha }}
+    secrets: inherit
+    continue-on-error: true
   deploy:
     runs-on: ubuntu-latest
+    needs: [sentry-release]
+    if: always()
     environment: test
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
