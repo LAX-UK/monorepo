@@ -51,7 +51,19 @@ export type PlaceBidInput = {
   maxAutoBidAmount?: number;
 };
 
-export type PlaceBidResult = { ok: true; bid: Bid } | { ok: false; error: string; status: number };
+export type PlaceBidResult =
+  | { ok: true; bid: Bid }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      kycFeedback?: {
+        headline: string;
+        detail: string | null;
+        needsResubmit: boolean;
+        action: "start" | "continue" | "retry" | "wait" | "none";
+      } | null;
+    };
 
 /** Mutations for bids only — segregated from reads (ISP). */
 export interface BidWriter {

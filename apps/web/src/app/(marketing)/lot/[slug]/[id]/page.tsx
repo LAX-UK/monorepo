@@ -166,6 +166,7 @@ export default async function ArtworkPage({ params }: PageProps) {
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
   const kycApprovedForCr = session?.kycStatus === "approved";
+  const kycFeedbackForCr = kycApprovedForCr ? null : (kycSummary?.feedback ?? null);
 
   const queueVMs = mapSaleLotsToQueueVMs(auction, saleLots, (l) =>
     l.sellerId === auction.sellerId ? sellerName : "Seller",
@@ -290,6 +291,7 @@ export default async function ArtworkPage({ params }: PageProps) {
                   isAuthenticated={Boolean(session)}
                   show={conditionReportCtaShow}
                   kycApproved={kycApprovedForCr}
+                  kycFeedback={kycFeedbackForCr}
                 />
               }
               hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}

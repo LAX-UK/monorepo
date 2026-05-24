@@ -27,6 +27,13 @@ import type { IMarketingEventService } from "../interfaces/marketing-event-servi
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";
 import { assertHttpsReturnUrl, normalizeKycReturnUrl } from "./kyc-return-url.js";
 import {
+  buildKycUserFeedback,
+  mergeKycDecisionPayload,
+  readKycSessionUrl,
+  readVeriffReasonCode,
+  shouldReuseKycSessionUrl,
+} from "./kyc-user-feedback.js";
+import {
   mapVeriffDecisionToApplyInput,
   mapVeriffEventToUserStatus,
   mapVeriffEventToVerificationStatus,
@@ -89,6 +96,39 @@ export class VeriffKycService implements IKycService {
       throw new KycAlreadyApprovedError();
     }
 
+    const latest = await this.repo.findLatestByUserIdWithPayload(userId);
+    if (
+      latest &&
+      shouldReuseKycSessionUrl({
+        latestSessionStatus: latest.verification.status,
+        decisionPayload: latest.decisionPayload,
+      })
+    ) {
+      const sessionUrl = readKycSessionUrl(latest.decisionPayload);
+      if (sessionUrl) {
+        return {
+          sessionId: latest.verification.providerSessionId,
+          verificationUrl: sessionUrl,
+          verification: latest.verification,
+        };
+      }
+    } else if (
+      latest?.verification.status === "requires_input" &&
+      !shouldReuseKycSessionUrl({
+        latestSessionStatus: latest.verification.status,
+        decisionPayload: latest.decisionPayload,
+      })
+    ) {
+      console.warn(
+        JSON.stringify({
+          msg: "kyc_session_reuse_skipped",
+          userId,
+          sessionId: latest.verification.providerSessionId,
+          reasonCode: readVeriffReasonCode(latest.decisionPayload),
+        }),
+      );
+    }
+
     const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
     assertHttpsReturnUrl(callbackUrl);
 
@@ -104,6 +144,10 @@ export class VeriffKycService implements IKycService {
       status: "created",
     });
 
+    await this.repo.update(verification.id, {
+      decisionPayload: { sessionUrl: verificationUrl },
+    });
+
     return { sessionId, verificationUrl, verification };
   }
 
@@ -113,15 +157,23 @@ export class VeriffKycService implements IKycService {
 
   async getStatus(userId: string): Promise<KycStatusSummary> {
     const userState = await this.repo.getUserKycState(userId);
-    const latest = await this.repo.findLatestByUserId(userId);
+    const latest = await this.repo.findLatestByUserIdWithPayload(userId);
     const exposure = await this.repo.getPendingExposure(userId);
     const status: KycStatusSummary["status"] = userState?.kycStatus ?? "unverified";
     const verifiedAt = status === "approved" ? (userState?.kycVerifiedAt ?? null) : null;
     const requiresKyc = exposure.total >= this.thresholdAmount && status !== "approved";
+    const feedback = buildKycUserFeedback({
+      userStatus: status,
+      latestSessionStatus: latest?.verification.status ?? null,
+      requiresKyc,
+      decisionPayload: latest?.decisionPayload ?? null,
+    });
     return {
       status,
       verifiedAt,
-      latestSessionId: latest?.providerSessionId ?? null,
+      latestSessionId: latest?.verification.providerSessionId ?? null,
+      latestSessionStatus: latest?.verification.status ?? null,
+      feedback,
       pendingExposure: exposure,
       thresholdAmount: this.thresholdAmount,
       thresholdCurrency: this.thresholdCurrency,
@@ -203,11 +255,15 @@ export class VeriffKycService implements IKycService {
       const verificationTerminal = TERMINAL_VERIFICATION_STATUSES.has(existing.status);
 
       if (verificationStatus && !verificationTerminal) {
+        const existingPayload = await this.repo.getDecisionPayload(existing.id, conn ?? undefined);
         await this.repo.update(
           existing.id,
           {
             status: verificationStatus,
-            decisionPayload: parsed as Record<string, unknown>,
+            decisionPayload: mergeKycDecisionPayload(
+              existingPayload,
+              parsed as Record<string, unknown>,
+            ),
           },
           conn ?? undefined,
         );

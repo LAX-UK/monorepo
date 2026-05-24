@@ -6,7 +6,12 @@ import {
   startKycForOrganisationOnboardingAction,
 } from "@/app/(marketing)/onboarding/organisation/onboarding-actions";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
-import { KycStatusPanel, type KycUiPhase, KycVerificationLauncher } from "@/components/kyc";
+import {
+  KycStatusPanel,
+  type KycUiPhase,
+  KycVerificationLauncher,
+  kycInitialPhase,
+} from "@/components/kyc";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { getSiteUrl } from "@/lib/site-url";
 import { Button } from "@auction/ui/components/button";
@@ -23,21 +28,19 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const [phase, setPhase] = useState<KycUiPhase>(
-    kycSummary?.status === "approved"
-      ? "approved"
-      : kycSummary?.status === "pending"
-        ? "processing"
-        : "idle",
-  );
+  const [phase, setPhase] = useState<KycUiPhase>(kycInitialPhase(kycSummary));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("kyc") === "complete") {
-      setPhase("submitted");
+      setPhase(kycSummary?.feedback?.needsResubmit ? "needs_resubmit" : "submitted");
       router.refresh();
     }
-  }, [router, searchParams]);
+  }, [kycSummary?.feedback?.needsResubmit, router, searchParams]);
+
+  useEffect(() => {
+    setPhase(kycInitialPhase(kycSummary));
+  }, [kycSummary]);
 
   const kycApproved = kycSummary?.status === "approved";
   const returnUrl = `${getSiteUrl()}/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`;
@@ -77,6 +80,7 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
           ) : null}
           <KycVerificationLauncher
             returnUrl={returnUrl}
+            kycSummary={kycSummary}
             onStartSession={async () => startKycForOrganisationOnboardingAction(entityId)}
             onPhaseChange={setPhase}
             onComplete={() => router.refresh()}

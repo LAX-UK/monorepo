@@ -3,7 +3,13 @@
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { cn } from "@auction/ui";
 import { Hourglass, ShieldAlert, ShieldCheck } from "lucide-react";
-import { KYC_VERIFY_DESCRIPTION, type KycUiPhase, kycStatusHint, kycStatusLabel } from "./kyc-copy";
+import {
+  KYC_VERIFY_DESCRIPTION,
+  type KycUiPhase,
+  kycStatusHint,
+  kycStatusLabel,
+  resolveKycFeedback,
+} from "./kyc-copy";
 
 type Props = {
   summary: KycStatusSummaryDto | null;
@@ -12,26 +18,29 @@ type Props = {
 };
 
 export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
+  const feedback = resolveKycFeedback(summary);
+  const label = kycStatusLabel(summary, phase);
+  const hint = kycStatusHint(summary, phase);
   const status = summary?.status ?? "unverified";
   const requiresKyc = summary?.requiresKyc ?? false;
-  const label = kycStatusLabel(status, requiresKyc);
-  const hint = kycStatusHint(status, phase);
 
   const Icon =
     status === "approved"
       ? ShieldCheck
-      : status === "rejected"
+      : status === "rejected" || feedback.action === "retry"
         ? ShieldAlert
-        : phase === "submitted" || status === "pending"
+        : phase === "submitted" || status === "pending" || feedback.action === "wait"
           ? Hourglass
-          : ShieldAlert;
+          : feedback.needsResubmit
+            ? ShieldAlert
+            : ShieldAlert;
 
   const tone =
     status === "approved"
       ? "border-emerald-500/30 bg-emerald-500/5 text-on-surface"
-      : status === "rejected"
+      : status === "rejected" || feedback.action === "retry"
         ? "border-live-red/30 bg-live-red/5 text-on-surface"
-        : requiresKyc || phase === "submitted"
+        : feedback.needsResubmit || requiresKyc || phase === "submitted"
           ? "border-lot-orange/30 bg-lot-orange/5 text-on-surface"
           : "border-outline-variant/30 bg-surface-container-low text-on-surface";
 
@@ -46,7 +55,7 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
         <div className="space-y-1">
           <p className="font-headline text-sm font-semibold">{label}</p>
           <p className="text-sm text-on-surface-variant">{hint}</p>
-          {status === "unverified" && phase === "idle" ? (
+          {status === "unverified" && phase === "idle" && feedback.action === "start" ? (
             <p className="text-sm text-on-surface-variant">{KYC_VERIFY_DESCRIPTION}</p>
           ) : null}
         </div>

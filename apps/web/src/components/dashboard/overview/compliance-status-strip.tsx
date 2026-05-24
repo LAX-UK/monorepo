@@ -77,6 +77,16 @@ export function ComplianceStatusStrip({
           href: "/dashboard/settings/profile",
           tone: "ok",
         });
+      } else if (kyc.feedback?.needsResubmit) {
+        pills.push({
+          id: "kyc",
+          icon: ShieldAlert,
+          label: "Identity",
+          value: "Action needed",
+          href: "/dashboard/verify-identity",
+          tone: "warn",
+          hint: kyc.feedback.detail ?? "Complete the missing verification checks",
+        });
       } else if (kyc.status === "pending") {
         pills.push({
           id: "kyc",
