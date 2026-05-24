@@ -131,6 +131,7 @@ export type CreateBidRow = {
   isWinning: boolean;
   isAutoBid: boolean;
   maxAutoBidAmount: string | null;
+  autoBidStepAmount?: string | null;
   placedVia?: string | null;
   telephoneBookingId?: string | null;
 };
@@ -162,13 +163,29 @@ export interface IBidRepository {
   /** One row per bidder on the lot: ceiling (max of amount vs max auto) and the
    * buyer legal entity from the bid row that defines that ceiling (for anti-shilling).
    */
-  listBidderCeilingStates(
-    lotId: string,
-  ): Promise<Array<{ bidderId: string; buyerLegalEntityId: string; ceiling: number }>>;
+  listBidderCeilingStates(lotId: string): Promise<
+    Array<{
+      bidderId: string;
+      buyerLegalEntityId: string;
+      ceiling: number;
+      autoBidStepAmount: number | null;
+    }>
+  >;
   /** True when the bidder has at least one bid on the lot with a proxy ceiling set. */
   bidderHasProxyMaxOnLot(lotId: string, bidderId: string): Promise<boolean>;
   /** Clears proxy auto-bid fields for all bids by this bidder on the lot. */
   clearProxyAutoBidForBidderOnLot(lotId: string, bidderId: string): Promise<number>;
+  /** Updates proxy ceiling/step on all proxy rows for bidder without placing a new bid. */
+  updateProxySettingsForBidderOnLot(
+    lotId: string,
+    bidderId: string,
+    settings: { maxAutoBidAmount: string; autoBidStepAmount: string },
+  ): Promise<number>;
+  /** Latest proxy settings for a bidder on a lot, if any. */
+  findProxySettingsForBidderOnLot(
+    lotId: string,
+    bidderId: string,
+  ): Promise<{ maxAutoBidAmount: string; autoBidStepAmount: string | null } | null>;
   /** distinct (lotId, bidderId) with active proxy ceiling for buyer entity on active lots. */
   listActiveProxyBidPairsForBuyerEntity(
     buyerLegalEntityId: string,

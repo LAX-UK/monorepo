@@ -20,7 +20,7 @@ describe("BidStepper", () => {
     render(<ControlledStepper initial="130.00" min={100} step={10} />);
     fireEvent.click(screen.getByRole("button", { name: /decrease bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /decrease bid/i }));
-    expect(screen.getByText(/\$110\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/£110\.00/)).toBeInTheDocument();
   });
 
   it("disables decrease at min", () => {

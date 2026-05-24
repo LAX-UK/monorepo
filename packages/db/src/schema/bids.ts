@@ -33,6 +33,8 @@ export const bid = pgTable(
     isWinning: boolean("is_winning").notNull().default(false),
     isAutoBid: boolean("is_auto_bid").notNull().default(false),
     maxAutoBidAmount: numeric("max_auto_bid_amount", { precision: 18, scale: 2 }),
+    /** Buyer-chosen raise size for proxy auto-bid on this lot. */
+    autoBidStepAmount: numeric("auto_bid_step_amount", { precision: 18, scale: 2 }),
     /** e.g. web, absentee, telephone, saleroom */
     placedVia: text("placed_via"),
     telephoneBookingId: uuid("telephone_booking_id").references(() => telephoneBidBooking.id, {
