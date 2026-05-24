@@ -149,7 +149,7 @@ export function LaxUrgencySection({
             ))}
           </ul>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-4 lg:gap-8">
+          <div className="grid auto-rows-fr grid-cols-2 items-stretch gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-4 lg:gap-8">
             {items.map((item, index) => (
               <UrgencyLotCard
                 key={item.id}

@@ -76,7 +76,7 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
               <span className="font-medium text-on-surface">{tile.auctionKindLabel}</span>
               <span className="font-normal"> | {tile.dateLabel}</span>
             </p>
-            <SaleCardTitle mode="embedded" title={tile.title} />
+            <SaleCardTitle mode="embedded" title={tile.title} className="line-clamp-2" />
             <SaleCardMeta itemsLabel={itemsLabel} />
           </div>
         </Link>
