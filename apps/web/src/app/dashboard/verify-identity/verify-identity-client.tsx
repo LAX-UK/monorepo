@@ -6,6 +6,7 @@ import {
   KycStatusPanel,
   type KycUiPhase,
   KycVerificationLauncher,
+  isKycAwaitingDecision,
   kycInitialPhase,
 } from "@/components/kyc";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
@@ -31,16 +32,8 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
       setPhase("needs_resubmit");
       return;
     }
-    const trulySubmitted =
-      initialStatus?.latestSessionStatus === "processing" ||
-      (initialStatus?.status === "pending" && initialStatus.latestSessionStatus !== "created");
-    if (trulySubmitted) setPhase("submitted");
-  }, [
-    initialStatus?.feedback?.needsResubmit,
-    initialStatus?.latestSessionStatus,
-    initialStatus?.status,
-    searchParams,
-  ]);
+    if (isKycAwaitingDecision(initialStatus)) setPhase("submitted");
+  }, [initialStatus, searchParams]);
 
   useEffect(() => {
     setPhase(kycInitialPhase(initialStatus));

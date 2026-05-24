@@ -10,6 +10,7 @@ import {
   KycStatusPanel,
   type KycUiPhase,
   KycVerificationLauncher,
+  isKycAwaitingDecision,
   kycInitialPhase,
 } from "@/components/kyc";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
@@ -38,20 +39,11 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
       router.refresh();
       return;
     }
-    const trulySubmitted =
-      kycSummary?.latestSessionStatus === "processing" ||
-      (kycSummary?.status === "pending" && kycSummary.latestSessionStatus !== "created");
-    if (trulySubmitted) {
+    if (isKycAwaitingDecision(kycSummary)) {
       setPhase("submitted");
       router.refresh();
     }
-  }, [
-    kycSummary?.feedback?.needsResubmit,
-    kycSummary?.latestSessionStatus,
-    kycSummary?.status,
-    router,
-    searchParams,
-  ]);
+  }, [kycSummary, router, searchParams]);
 
   useEffect(() => {
     setPhase(kycInitialPhase(kycSummary));
