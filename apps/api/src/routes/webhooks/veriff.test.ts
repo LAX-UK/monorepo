@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
 import type { Env } from "../../env.js";
+import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";
 import type { IKycRepository } from "../../services/interfaces/kyc-repository.js";
 import { VeriffWebhookPayloadError } from "../../services/interfaces/kyc-service.js";
@@ -41,6 +42,8 @@ function makeRepo(overrides: Partial<IKycRepository> = {}): IKycRepository {
     findById: vi.fn(),
     findByProviderSessionId: vi.fn(),
     findLatestByUserId: vi.fn(),
+    findLatestByUserIdWithPayload: vi.fn().mockResolvedValue(null),
+    getDecisionPayload: vi.fn().mockResolvedValue(null),
     update: vi.fn(),
     getPendingExposure: vi.fn().mockResolvedValue({ total: 0, currency: "GBP" }),
     setUserKycStatus: vi.fn(),
@@ -68,6 +71,7 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
     db: { transaction: vi.fn(async (fn) => fn({})) },
     domainEventPublisher: {},
     marketingEventService: { enqueue: vi.fn() },
+    kycResubmissionNotifier: { notify: vi.fn().mockResolvedValue(undefined) },
     ...overrides,
   } as unknown as Container;
 }
@@ -172,6 +176,88 @@ describe("POST /webhooks/veriff/decision", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, processed: true });
+  });
+
+  it("calls resubmission notifier once per session attempt", async () => {
+    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: true });
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const container = makeContainer({
+      kycResubmissionNotifier: { notify } as never,
+      db: {} as never,
+    });
+    vi.mocked(container.kycService.handleDecisionWebhook).mockResolvedValue({
+      verification: null,
+      appliedUserKycUpdate: true,
+      shouldProgressIndividuals: false,
+      resubmissionNotify: {
+        userId: "u1",
+        providerSessionId: "session-1",
+        providerAttemptId: "attempt-1",
+        feedback: {
+          headline: "More information needed",
+          detail: "Retake selfie",
+          action: "continue",
+          reasonCode: 202,
+          decisionStatus: "resubmission_requested",
+          needsResubmit: true,
+        },
+      },
+    });
+    const app = createVeriffWebhookRoutes(container);
+
+    const res = await app.request("/decision", {
+      method: "POST",
+      body: JSON.stringify({ status: "success" }),
+      headers: { "x-hmac-signature": "sig" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(tryClaimProcessedWebhookEvent).toHaveBeenCalledWith(
+      container.db,
+      "kyc_resubmit_notify:session-1:attempt-1",
+      "kyc_resubmit_notify",
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({ headline: "More information needed" }),
+    );
+  });
+
+  it("skips resubmission notifier when notify dedupe claim fails", async () => {
+    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: false });
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const container = makeContainer({
+      kycResubmissionNotifier: { notify } as never,
+      db: {} as never,
+    });
+    vi.mocked(container.kycService.handleDecisionWebhook).mockResolvedValue({
+      verification: null,
+      appliedUserKycUpdate: true,
+      shouldProgressIndividuals: false,
+      resubmissionNotify: {
+        userId: "u1",
+        providerSessionId: "session-1",
+        providerAttemptId: "attempt-1",
+        feedback: {
+          headline: "More information needed",
+          detail: null,
+          action: "continue",
+          reasonCode: null,
+          decisionStatus: null,
+          needsResubmit: true,
+        },
+      },
+    });
+    const app = createVeriffWebhookRoutes(container);
+
+    const res = await app.request("/decision", {
+      method: "POST",
+      body: JSON.stringify({ status: "success" }),
+      headers: { "x-hmac-signature": "sig" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
   });
 });
 

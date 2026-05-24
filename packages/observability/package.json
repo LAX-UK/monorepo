@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./sentry-init-options": {
+      "types": "./dist/sentry-init-options.d.ts",
+      "default": "./dist/sentry-init-options.js"
     }
   },
   "scripts": {

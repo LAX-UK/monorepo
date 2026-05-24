@@ -23,7 +23,15 @@ export function buildAttentionItems({
   const items: AttentionListItem[] = [];
 
   if (kyc) {
-    if (kyc.status === "pending") {
+    if (kyc.feedback?.needsResubmit) {
+      items.push({
+        id: "kyc-resubmit",
+        title: kyc.feedback.headline,
+        hint: kyc.feedback.detail ?? "Complete the missing checks and resubmit.",
+        href: "/dashboard/verify-identity",
+        ctaLabel: "Continue",
+      });
+    } else if (kyc.status === "pending") {
       items.push({
         id: "kyc-pending",
         title: "Identity verification in review",
@@ -34,8 +42,8 @@ export function buildAttentionItems({
     } else if (kyc.status === "rejected") {
       items.push({
         id: "kyc-rejected",
-        title: "Identity verification was rejected",
-        hint: "Resubmit to keep bidding above the threshold",
+        title: kyc.feedback?.headline ?? "Identity verification was rejected",
+        hint: kyc.feedback?.detail ?? "Resubmit to keep bidding above the threshold",
         href: "/dashboard/verify-identity",
         ctaLabel: "Resubmit",
       });

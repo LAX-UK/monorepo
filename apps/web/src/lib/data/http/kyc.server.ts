@@ -1,5 +1,6 @@
 import "server-only";
 
+import { mapKycSessionStartError } from "@/components/kyc/kyc-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { cache } from "react";
@@ -30,7 +31,7 @@ export async function postServerKycSession(returnUrl: string): Promise<PostKycSe
     error?: string;
   };
   if (!res.ok) {
-    return { ok: false, error: body.error ?? `Could not start verification (${res.status})` };
+    return { ok: false, error: mapKycSessionStartError(body.error, res.status) };
   }
   const url = body.data?.verificationUrl ?? body.data?.hostedUrl;
   if (!url) {

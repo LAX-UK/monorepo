@@ -1,5 +1,7 @@
 "use client";
 
+import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -16,6 +18,7 @@ type Props = {
   buyerEntities: Entity[];
   myRegistrations: { buyerLegalEntityId: string; status: string }[];
   kycApproved: boolean;
+  kycFeedback?: KycUserFeedbackDto | null;
 };
 
 function apiBase(): string {
@@ -30,6 +33,7 @@ export function SaleroomRegisterToBid({
   buyerEntities,
   myRegistrations,
   kycApproved,
+  kycFeedback = null,
 }: Props) {
   const router = useRouter();
   const [entityId, setEntityId] = useState("");
@@ -63,11 +67,16 @@ export function SaleroomRegisterToBid({
 
   if (!kycApproved) {
     return (
-      <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
-        <Link href={`/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`}>
-          Verify identity to bid
-        </Link>
-      </Button>
+      <div className="flex min-w-0 max-w-md flex-col gap-2 sm:max-w-sm">
+        {kycFeedback?.detail ? (
+          <p className="font-body text-xs text-secondary">{kycFeedback.detail}</p>
+        ) : null}
+        <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
+          <Link href={`/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`}>
+            {kycFeedback ? kycLinkActionLabel(kycFeedback, "long") : "Verify identity to bid"}
+          </Link>
+        </Button>
+      </div>
     );
   }
 
