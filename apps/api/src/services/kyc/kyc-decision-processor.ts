@@ -4,6 +4,7 @@ import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
+import { buildKycUserFeedback, mergeKycDecisionPayload } from "./kyc-user-feedback.js";
 
 export type KycVerifiedFields = {
   verifiedFirstName: string | null;
@@ -59,13 +60,14 @@ export class KycDecisionProcessor {
 
     let updated = existing;
     if (!skipVerificationDowngrade) {
+      const existingPayload = await this.repo.getDecisionPayload(existing.id, conn ?? undefined);
       updated = await this.repo.update(
         existing.id,
         {
           status: input.verificationStatus,
           providerAttemptId: input.providerAttemptId,
           decisionAt: input.decisionAt,
-          decisionPayload: input.decisionPayload,
+          decisionPayload: mergeKycDecisionPayload(existingPayload, input.decisionPayload),
           verifiedFirstName: input.verifiedFields.verifiedFirstName,
           verifiedLastName: input.verifiedFields.verifiedLastName,
           verifiedDateOfBirth: input.verifiedFields.verifiedDateOfBirth,
@@ -87,6 +89,7 @@ export class KycDecisionProcessor {
     let appliedUserKycUpdate = false;
     let shouldProgressIndividuals = false;
     let marketingEventToEnqueue: MarketingEvent | undefined;
+    let resubmissionNotify: KycWebhookHandleResult["resubmissionNotify"];
 
     if (isCurrentSession) {
       if (setStatus !== null && !skipUserDowngrade) {
@@ -117,6 +120,27 @@ export class KycDecisionProcessor {
         appliedUserKycUpdate = true;
       }
       shouldProgressIndividuals = input.isApproved && !userAlreadyApproved;
+      if (
+        input.verificationStatus === "requires_input" &&
+        appliedUserKycUpdate &&
+        !userAlreadyApproved
+      ) {
+        const mergedPayload = mergeKycDecisionPayload(
+          await this.repo.getDecisionPayload(existing.id, conn ?? undefined),
+          input.decisionPayload,
+        );
+        resubmissionNotify = {
+          userId: existing.userId,
+          providerSessionId: input.providerSessionId,
+          providerAttemptId: input.providerAttemptId,
+          feedback: buildKycUserFeedback({
+            userStatus: setStatus ?? userState?.kycStatus ?? "pending",
+            latestSessionStatus: input.verificationStatus,
+            requiresKyc: false,
+            decisionPayload: mergedPayload,
+          }),
+        };
+      }
     } else {
       console.warn(
         JSON.stringify({
@@ -146,6 +170,7 @@ export class KycDecisionProcessor {
       appliedUserKycUpdate,
       shouldProgressIndividuals,
       ...(marketingEventToEnqueue ? { marketingEventToEnqueue } : {}),
+      ...(resubmissionNotify ? { resubmissionNotify } : {}),
     };
   }
 }

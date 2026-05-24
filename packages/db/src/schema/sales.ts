@@ -10,6 +10,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 
 /**
@@ -74,11 +75,14 @@ export const sale = pgTable(
       .references(() => legalEntity.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
+    deletedByUserId: text("deleted_by_user_id").references(() => user.id, { onDelete: "set null" }),
   },
   (table) => [
     index("sale_status_end_time_idx").on(table.status, table.endTime),
     index("sale_created_by_legal_entity_id_idx").on(table.createdByLegalEntityId),
     index("sale_start_time_idx").on(table.startTime),
+    index("sale_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
     check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
   ],
 );

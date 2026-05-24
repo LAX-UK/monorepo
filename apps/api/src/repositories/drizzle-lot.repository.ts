@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { artistProfile, bid, legalEntity, lot, lotCategories } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
@@ -22,7 +23,7 @@ function endYearBoundsUtc(year: number): { start: Date; end: Date } {
 }
 
 function listWhere(input: ListWhereInput) {
-  const conditions = [];
+  const conditions = [lotNotDeleted()];
   if (input.status) conditions.push(eq(lot.status, input.status));
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds
@@ -102,7 +103,11 @@ export class DrizzleLotRepository implements ILotRepository {
   }
 
   async findById(id: string) {
-    const rows = await this.db.select().from(lot).where(eq(lot.id, id)).limit(1);
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(and(eq(lot.id, id), lotNotDeleted()))
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     const categories = await this.categoryIdsByLotIds([row.id]);
@@ -110,7 +115,12 @@ export class DrizzleLotRepository implements ILotRepository {
   }
 
   async findByIdForUpdate(id: string) {
-    const rows = await this.db.select().from(lot).where(eq(lot.id, id)).for("update").limit(1);
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(and(eq(lot.id, id), lotNotDeleted()))
+      .for("update")
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     const categories = await this.categoryIdsByLotIds([row.id]);
@@ -234,7 +244,7 @@ export class DrizzleLotRepository implements ILotRepository {
   async sumEndedHammer(
     filter: ArchiveEndedAggregateFilter,
   ): Promise<{ total: string; count: number }> {
-    const conditions = [eq(lot.status, "ended")];
+    const conditions = [eq(lot.status, "ended"), lotNotDeleted()];
     if (filter.endYear !== undefined) {
       const { start, end } = endYearBoundsUtc(filter.endYear);
       conditions.push(gte(lot.endTime, start));
@@ -258,7 +268,7 @@ export class DrizzleLotRepository implements ILotRepository {
     const rows = await this.db
       .select()
       .from(lot)
-      .where(and(eq(lot.status, "scheduled"), lte(lot.startTime, asOf)));
+      .where(and(eq(lot.status, "scheduled"), lte(lot.startTime, asOf), lotNotDeleted()));
     return this.withCategoryIds(rows);
   }
 
@@ -266,7 +276,7 @@ export class DrizzleLotRepository implements ILotRepository {
     const rows = await this.db
       .select()
       .from(lot)
-      .where(and(eq(lot.status, "active"), lte(lot.endTime, asOf)));
+      .where(and(eq(lot.status, "active"), lte(lot.endTime, asOf), lotNotDeleted()));
     return this.withCategoryIds(rows);
   }
 
@@ -279,6 +289,7 @@ export class DrizzleLotRepository implements ILotRepository {
           eq(lot.status, "active"),
           gt(lot.endTime, endAfter),
           lte(lot.endTime, endBeforeInclusive),
+          lotNotDeleted(),
         ),
       );
     return this.withCategoryIds(rows);
@@ -288,7 +299,7 @@ export class DrizzleLotRepository implements ILotRepository {
     const rows = await this.db
       .select()
       .from(lot)
-      .where(and(eq(lot.status, "active"), eq(lot.auctionType, "dutch")));
+      .where(and(eq(lot.status, "active"), eq(lot.auctionType, "dutch"), lotNotDeleted()));
     return this.withCategoryIds(rows);
   }
 
@@ -366,6 +377,7 @@ export class DrizzleLotRepository implements ILotRepository {
         and(
           eq(lot.sellerLegalEntityId, sellerLegalEntityId),
           inArray(lot.status, ["draft", "scheduled"]),
+          lotNotDeleted(),
         ),
       )
       .returning({ id: lot.id });
@@ -478,13 +490,19 @@ export class DrizzleLotRepository implements ILotRepository {
   }
 
   async findBySaleId(saleId: string): Promise<Lot[]> {
-    const rows = await this.db.select().from(lot).where(eq(lot.saleId, saleId));
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(and(eq(lot.saleId, saleId), lotNotDeleted()));
     return this.withCategoryIds(rows);
   }
 
   async findBySaleIds(saleIds: string[]): Promise<Lot[]> {
     if (saleIds.length === 0) return [];
-    const rows = await this.db.select().from(lot).where(inArray(lot.saleId, saleIds));
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(and(inArray(lot.saleId, saleIds), lotNotDeleted()));
     return this.withCategoryIds(rows);
   }
 }

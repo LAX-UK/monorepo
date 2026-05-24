@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
+import { saleDeleteConfirmationPhrase } from "@auction/validators";
 import { ExternalLink, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -28,6 +29,7 @@ type Props = {
   canPublish: boolean;
   canUnpublish: boolean;
   canCancel: boolean;
+  canDelete: boolean;
   canMarkOnsiteEnded: boolean;
   showSaleroomLink?: boolean | undefined;
 };
@@ -62,14 +64,17 @@ export function AdminSaleHeaderActions({
   canPublish,
   canUnpublish,
   canCancel,
+  canDelete,
   canMarkOnsiteEnded,
   showSaleroomLink = false,
 }: Props) {
-  const { pending, publish, unpublish, markOnsiteEnded, cancel } = useSaleLifecycleActions(saleId);
+  const { pending, publish, unpublish, markOnsiteEnded, cancel, softDelete } =
+    useSaleLifecycleActions(saleId);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
 
-  const hasMoreActions = canPublish || canUnpublish || canMarkOnsiteEnded || canCancel;
+  const hasMoreActions = canPublish || canUnpublish || canMarkOnsiteEnded || canCancel || canDelete;
   const copy = confirmKind ? confirmCopy(confirmKind) : null;
 
   return (
@@ -135,6 +140,18 @@ export function AdminSaleHeaderActions({
                 Cancel sale
               </DropdownMenuItem>
             ) : null}
+            {canDelete ? (
+              <DropdownMenuItem
+                disabled={pending}
+                className="text-destructive focus:text-destructive"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setDeleteOpen(true);
+                }}
+              >
+                Delete sale
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link
@@ -166,6 +183,20 @@ export function AdminSaleHeaderActions({
           severity="warning"
           onConfirm={async () => {
             publish();
+          }}
+        />
+      ) : null}
+      {canDelete ? (
+        <TypedConfirmationDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Delete this sale?"
+          description="The sale and all lots will be removed from the catalogue. Data is retained for audit."
+          actionLabel="Delete sale"
+          confirmationPhrase={saleDeleteConfirmationPhrase(saleTitle)}
+          severity="danger"
+          onConfirm={async () => {
+            softDelete(saleDeleteConfirmationPhrase(saleTitle));
           }}
         />
       ) : null}

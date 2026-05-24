@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { saleDocument, uploadObject } from "@auction/db/schema";
 import type { SaleDocumentKind } from "@auction/types";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type { EntityDocumentPersistedRow } from "../lib/entity-document-presenter.js";
 import type { ISaleDocumentRepository } from "../services/interfaces/repositories.js";
 
@@ -95,7 +95,13 @@ export class DrizzleSaleDocumentRepository implements ISaleDocumentRepository {
       })
       .from(saleDocument)
       .innerJoin(uploadObject, eq(saleDocument.uploadObjectId, uploadObject.id))
-      .where(and(eq(saleDocument.saleId, entityId), eq(uploadObject.status, "active")))
+      .where(
+        and(
+          eq(saleDocument.saleId, entityId),
+          eq(uploadObject.status, "active"),
+          isNull(saleDocument.deletedAt),
+        ),
+      )
       .orderBy(asc(saleDocument.createdAt));
     return rows.map((r) => mapRow(entityId, r));
   }
@@ -122,7 +128,13 @@ export class DrizzleSaleDocumentRepository implements ISaleDocumentRepository {
       })
       .from(saleDocument)
       .innerJoin(uploadObject, eq(saleDocument.uploadObjectId, uploadObject.id))
-      .where(and(inArray(saleDocument.saleId, entityIds), eq(uploadObject.status, "active")))
+      .where(
+        and(
+          inArray(saleDocument.saleId, entityIds),
+          eq(uploadObject.status, "active"),
+          isNull(saleDocument.deletedAt),
+        ),
+      )
       .orderBy(asc(saleDocument.createdAt));
 
     for (const r of rows) {

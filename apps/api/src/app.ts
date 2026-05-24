@@ -2,8 +2,9 @@ import {
   runSignInTurnstileGate,
   stampLastPasswordAuthFromSignInResponse,
 } from "@auction/auth/server";
+import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Container } from "./container.js";
@@ -162,7 +163,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     const [activeRow] = await container.db
       .select({ n: sql<number>`count(*)::int` })
       .from(lot)
-      .where(eq(lot.status, "active"));
+      .where(and(eq(lot.status, "active"), lotNotDeleted()));
     const activeLots = activeRow?.n ?? 0;
     return c.text(`${await renderMetrics()}auction_api_active_lots ${activeLots}\n`, 200, {
       "Content-Type": "text/plain; version=0.0.4; charset=utf-8",

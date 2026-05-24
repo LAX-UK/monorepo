@@ -155,6 +155,7 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
   "sale.cancelled": new Set(["from_status", "to_status", "lotCount"]),
+  "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),
   "sale.ended": new Set(["from_status", "to_status", "reason"]),
   /** member removed from entity. */
   "legal_entity.member_removed": new Set([

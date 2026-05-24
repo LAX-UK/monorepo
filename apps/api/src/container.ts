@@ -99,6 +99,7 @@ import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.re
 import { DrizzleSaleDocumentRepository } from "./repositories/drizzle-sale-document.repository.js";
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
+import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
 import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
@@ -171,6 +172,7 @@ import { InvitationLifecycleService } from "./services/invitation-lifecycle.serv
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
+import { KycResubmissionNotifier } from "./services/kyc/kyc-resubmission-notifier.js";
 import { VeriffKycService } from "./services/kyc/veriff-kyc.service.js";
 import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
@@ -199,6 +201,7 @@ import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleRegistrationService } from "./services/sale-registration.service.js";
+import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
@@ -237,6 +240,7 @@ export type Container = {
   lotService: LotService;
   conditionReportService: IConditionReportService;
   saleService: SaleService;
+  saleSoftDeleteService: SaleSoftDeleteService;
   saleFollowService: SaleFollowService;
   saleBiddersService: SaleBiddersService;
   saleRegistrationService: SaleRegistrationService;
@@ -305,6 +309,7 @@ export type Container = {
   /** KYC (Veriff identity verification). */
   kycRepository: IKycRepository;
   kycService: IKycService;
+  kycResubmissionNotifier: KycResubmissionNotifier;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
   /** organisation multi-step onboarding (Phase D). */
@@ -622,6 +627,12 @@ export function createContainer(env: Env): Container {
     db,
     marketingEventService,
   );
+  const kycResubmissionNotifier = new KycResubmissionNotifier(
+    userRepo,
+    emailService,
+    notificationWriteRepo,
+    env.WEB_ORIGIN,
+  );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
   });
@@ -714,6 +725,15 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
   });
+  const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db);
+  const saleSoftDeleteService = new SaleSoftDeleteService(
+    saleRepo,
+    lotRepo,
+    saleSoftDeleteSideEffects,
+    lotJobScheduler,
+    db,
+    domainEventPublisher,
+  );
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
@@ -984,6 +1004,7 @@ export function createContainer(env: Env): Container {
     lotService,
     conditionReportService,
     saleService,
+    saleSoftDeleteService,
     saleFollowService,
     saleBiddersService,
     saleRegistrationService,
@@ -1043,6 +1064,7 @@ export function createContainer(env: Env): Container {
     legalEntityNotificationRecipients,
     kycRepository,
     kycService,
+    kycResubmissionNotifier,
     organizationOnboardingService,
     organizationOnboardingFlowService,
     artistRegistryService,

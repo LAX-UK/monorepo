@@ -21,6 +21,7 @@ export interface IAdminSaleService {
   publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
+  softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>>;
   attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
   detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
   markEnded(id: string, body: MarkSaleEndedBody): Promise<ServiceResult<Record<string, unknown>>>;

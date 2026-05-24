@@ -10,7 +10,12 @@ export const kycThresholdPolicy: BidPolicy = {
     return {
       kind: "block",
       viewId: "kyc-threshold",
-      render: () => <KycThresholdCallout returnPath={ctx.loginNextPath} />,
+      render: () => (
+        <KycThresholdCallout
+          returnPath={ctx.loginNextPath}
+          feedback={ctx.kycBidGate?.feedback ?? null}
+        />
+      ),
     };
   },
 };
