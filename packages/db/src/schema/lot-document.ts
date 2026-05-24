@@ -16,6 +16,7 @@ export const lotDocument = pgTable(
       .notNull()
       .references(() => uploadObject.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
   },
   (table) => [index("lot_document_lot_id_idx").on(table.lotId)],
 );

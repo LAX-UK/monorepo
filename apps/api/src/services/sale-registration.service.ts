@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { saleNotDeleted } from "@auction/db";
 import { legalEntity, legalEntityMember, sale, saleRegistration, user } from "@auction/db/schema";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { and, desc, eq, isNull } from "drizzle-orm";
@@ -65,7 +66,7 @@ export class SaleRegistrationService {
     const [saleRow] = await this.db
       .select({ id: sale.id, status: sale.status })
       .from(sale)
-      .where(eq(sale.id, input.saleId))
+      .where(and(eq(sale.id, input.saleId), saleNotDeleted()))
       .limit(1);
     if (!saleRow) {
       return err({ message: "Sale not found", status: 404 });

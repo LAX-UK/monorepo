@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
 import { and, count, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import type {
@@ -11,7 +12,10 @@ export class DrizzleLotMetricsReader implements ILotMetricsReader {
   constructor(private readonly db: Database) {}
 
   async getActiveCount(): Promise<number> {
-    const [row] = await this.db.select({ n: count() }).from(lot).where(eq(lot.status, "active"));
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(lot)
+      .where(and(eq(lot.status, "active"), lotNotDeleted()));
     return Number(row?.n ?? 0);
   }
 
@@ -23,7 +27,12 @@ export class DrizzleLotMetricsReader implements ILotMetricsReader {
       })
       .from(lot)
       .where(
-        and(eq(lot.status, "ended"), gte(lot.endTime, range.start), lte(lot.endTime, range.end)),
+        and(
+          eq(lot.status, "ended"),
+          gte(lot.endTime, range.start),
+          lte(lot.endTime, range.end),
+          lotNotDeleted(),
+        ),
       )
       .groupBy(sql`date_trunc('day', ${lot.endTime})`)
       .orderBy(sql`date_trunc('day', ${lot.endTime})`);
@@ -36,7 +45,12 @@ export class DrizzleLotMetricsReader implements ILotMetricsReader {
       .select({ n: count() })
       .from(lot)
       .where(
-        and(eq(lot.status, "ended"), gte(lot.endTime, range.start), lte(lot.endTime, range.end)),
+        and(
+          eq(lot.status, "ended"),
+          gte(lot.endTime, range.start),
+          lte(lot.endTime, range.end),
+          lotNotDeleted(),
+        ),
       );
 
     const [winRow] = await this.db
@@ -48,6 +62,7 @@ export class DrizzleLotMetricsReader implements ILotMetricsReader {
           isNotNull(lot.winnerId),
           gte(lot.endTime, range.start),
           lte(lot.endTime, range.end),
+          lotNotDeleted(),
         ),
       );
 
