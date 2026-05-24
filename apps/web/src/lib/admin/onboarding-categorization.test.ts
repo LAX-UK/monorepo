@@ -4,7 +4,7 @@ import { categorizeOnboardingIssues } from "./onboarding-categorization";
 const emptyPayload = {
   entitiesPendingReview: [],
   artistsPendingApproval: [],
-  staleIdentitySessions: [],
+  staleKycSessions: [],
   documentsAwaitingReview: [],
   staleLeadOrganisations: [],
 };
@@ -16,7 +16,7 @@ describe("categorizeOnboardingIssues", () => {
     expect(buckets.map((b) => b.id)).toEqual([
       "entities-pending-review",
       "artists-pending",
-      "stale-identity",
+      "stale-kyc",
       "documents-awaiting",
       "stale-lead-orgs",
     ]);
@@ -33,7 +33,9 @@ describe("categorizeOnboardingIssues", () => {
         { id: "a1", displayName: "B", status: "pending" },
         { id: "a2", displayName: "C", status: "pending" },
       ],
-      staleIdentitySessions: [{ id: "s1", userId: "u1", status: "pending", createdAt: "" }],
+      staleKycSessions: [
+        { id: "s1", userId: "u1", provider: "veriff", status: "pending", createdAt: "" },
+      ],
       documentsAwaitingReview: [],
       staleLeadOrganisations: [
         { id: "o1", displayName: "Org", createdAt: "" },
@@ -43,7 +45,7 @@ describe("categorizeOnboardingIssues", () => {
     });
     expect(buckets.find((b) => b.id === "entities-pending-review")?.count).toBe(1);
     expect(buckets.find((b) => b.id === "artists-pending")?.count).toBe(2);
-    expect(buckets.find((b) => b.id === "stale-identity")?.count).toBe(1);
+    expect(buckets.find((b) => b.id === "stale-kyc")?.count).toBe(1);
     expect(buckets.find((b) => b.id === "documents-awaiting")?.count).toBe(0);
     expect(buckets.find((b) => b.id === "stale-lead-orgs")?.count).toBe(3);
   });

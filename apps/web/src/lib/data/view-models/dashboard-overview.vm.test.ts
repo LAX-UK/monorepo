@@ -11,6 +11,7 @@ const emptyErrors = {
   artistFollow: null,
   bids: null,
   submissions: null,
+  notifications: null,
 };
 
 describe("buildDashboardOverviewVm", () => {

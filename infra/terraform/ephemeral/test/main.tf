@@ -148,6 +148,7 @@ locals {
       primary_domain    = true
       env = concat(local.common_secret_env, local.sentry_env_for["web"], [
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_MEDIA_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -196,7 +197,9 @@ locals {
         { key = "ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_TIME" },
         { key = "STRIPE_SECRET_KEY", value = var.stripe_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_PUBLISHABLE_KEY", value = var.stripe_publishable_key, type = "SECRET", scope = "RUN_TIME" },
-        { key = "STRIPE_IDENTITY_WEBHOOK_SECRET", value = var.stripe_identity_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "VERIFF_API_KEY", value = var.veriff_api_key, type = "SECRET", scope = "RUN_TIME" },
+        { key = "VERIFF_SHARED_SECRET", value = var.veriff_shared_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "VERIFF_API_BASE_URL", value = var.veriff_api_base_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "STRIPE_CONNECT_WEBHOOK_SECRET", value = var.stripe_connect_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_TRANSFERS_WEBHOOK_SECRET", value = var.stripe_transfers_webhook_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_PAYMENTS_WEBHOOK_SECRET", value = var.stripe_payments_webhook_secret, type = "SECRET", scope = "RUN_TIME" },

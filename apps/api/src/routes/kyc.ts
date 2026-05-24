@@ -4,7 +4,10 @@ import { z } from "zod";
 import type { Container } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import { KycNotConfiguredError } from "../services/interfaces/kyc-service.js";
+import {
+  KycAlreadyApprovedError,
+  KycNotConfiguredError,
+} from "../services/interfaces/kyc-service.js";
 
 const createSessionSchema = z.object({
   returnUrl: z.string().url(),
@@ -30,9 +33,9 @@ export function createKycRoutes(container: Container, authenticator: IAuthentica
     return c.json({ data: latest });
   });
 
-  /** POST /kyc/session — create a new Stripe Identity verification session.
-   * Returns the client_secret for the Stripe.js verifier and the hosted URL
-   * fallback. Requires KYC to be configured (STRIPE_SECRET_KEY).
+  /** POST /kyc/session — create a new Veriff verification session.
+   * Returns the verification URL for InContext SDK or redirect fallback.
+   * Requires KYC to be configured (VERIFF_API_KEY and VERIFF_SHARED_SECRET).
    */
   r.post("/session", requireAuth, zValidator("json", createSessionSchema), async (c) => {
     const userId = c.get("userId") as string;
@@ -43,6 +46,13 @@ export function createKycRoutes(container: Container, authenticator: IAuthentica
     } catch (err) {
       if (err instanceof KycNotConfiguredError) {
         return c.json({ error: "kyc_not_configured" }, 503);
+      }
+      if (err instanceof KycAlreadyApprovedError) {
+        return c.json({ error: err.code }, 409);
+      }
+      const message = err instanceof Error ? err.message : "";
+      if (message === "kyc_return_url_must_be_https" || message === "kyc_return_url_invalid") {
+        return c.json({ error: message }, 400);
       }
       throw err;
     }

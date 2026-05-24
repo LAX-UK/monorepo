@@ -171,10 +171,11 @@ import { InvitationLifecycleService } from "./services/invitation-lifecycle.serv
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
-import { StripeKycService } from "./services/kyc/stripe-kyc.service.js";
+import { VeriffKycService } from "./services/kyc/veriff-kyc.service.js";
 import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
+import { PersonalLegalEntityResolver } from "./services/legal-entity/personal-legal-entity-resolver.service.js";
 import { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
@@ -297,9 +298,11 @@ export type Container = {
   itemSubmissionService: IItemSubmissionService;
   /** legal entity repository (membership + acting context). */
   legalEntityRepository: ILegalEntityRepository;
+  /** Lazily provisions personal legal entities for client flows. */
+  personalLegalEntityResolver: PersonalLegalEntityResolver;
   /** role-aware notification recipient lookup for legal entities. */
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
-  /** KYC (Stripe Identity). */
+  /** KYC (Veriff identity verification). */
   kycRepository: IKycRepository;
   kycService: IKycService;
   /** organisation onboarding. */
@@ -446,13 +449,6 @@ export function createContainer(env: Env): Container {
     impersonationSessions: impersonationSessionService,
     onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
   });
-  const requireSubmissionsLegalEntityContext = createSubmissionsLegalEntityContext(
-    legalEntityRepository,
-    {
-      impersonationSessions: impersonationSessionService,
-      onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
-    },
-  );
   const artistRegistryService: IArtistRegistryService = new ArtistRegistryService(
     db,
     domainEventPublisher,
@@ -620,12 +616,11 @@ export function createContainer(env: Env): Container {
     marketingEventQueue,
     marketingConsentGate,
   );
-  const kycService: IKycService = new StripeKycService(
+  const kycService: IKycService = new VeriffKycService(
     env,
     kycRepository,
     db,
     marketingEventService,
-    stripeClientFactory,
   );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
@@ -841,7 +836,7 @@ export function createContainer(env: Env): Container {
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
-  const bidEligibilityService = new BidEligibilityService(db);
+  const bidEligibilityService = new BidEligibilityService(db, kycService);
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const bidService = new BidService({
@@ -873,6 +868,19 @@ export function createContainer(env: Env): Container {
     notifications: notificationService,
   });
   const userService = new UserService(userRepo);
+  const personalLegalEntityResolver = new PersonalLegalEntityResolver(
+    legalEntityRepository,
+    ensurePersonalLegalEntityService,
+    userService,
+  );
+  const requireSubmissionsLegalEntityContext = createSubmissionsLegalEntityContext(
+    legalEntityRepository,
+    {
+      impersonationSessions: impersonationSessionService,
+      onImpersonationExpired: (input) => impersonationAuditService.recordSessionTimedOut(input),
+      resolvePersonalEntity: (userId) => personalLegalEntityResolver.resolveForUser(userId),
+    },
+  );
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
   // Watchlist now references `artist_profile.id` (post-0046 migration), so the
   // existence check delegates to the artist registry instead of the user table.
@@ -1031,6 +1039,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionRepository,
     itemSubmissionService,
     legalEntityRepository,
+    personalLegalEntityResolver,
     legalEntityNotificationRecipients,
     kycRepository,
     kycService,

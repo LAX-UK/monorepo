@@ -18,7 +18,7 @@ import { ArrowRight, Gavel, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-type Props = { searchParams: Promise<{ lots?: string }> };
+type Props = { searchParams: Promise<{ lots?: string; notice?: string }> };
 
 type BasketRow = {
   lot: Lot;
@@ -52,11 +52,16 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
   const rows: BasketRow[] = [];
   let unauthorisedCount = 0;
   let skippedPricingCount = 0;
+  let fetchFailureCount = 0;
   if (requestedIds.length > 0) {
     const c = await getServerDataContainer();
     const results = await Promise.allSettled(requestedIds.map((id) => c.buyerLots.getById(id)));
     for (const result of results) {
-      if (result.status !== "fulfilled" || !result.value) continue;
+      if (result.status === "rejected") {
+        fetchFailureCount += 1;
+        continue;
+      }
+      if (!result.value) continue;
       const lot = result.value;
       if (lot.winnerId !== user.id) {
         unauthorisedCount += 1;
@@ -87,10 +92,15 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
     redirect(`/dashboard/checkout?lots=${canonicalSorted.join(",")}`);
   }
   const shouldRedirectToCleanCheckout =
-    requestedIds.length > 0 && rows.length === 0 && skippedPricingCount === 0;
+    requestedIds.length > 0 &&
+    rows.length === 0 &&
+    skippedPricingCount === 0 &&
+    fetchFailureCount === 0;
   if (shouldRedirectToCleanCheckout) {
-    redirect("/dashboard/checkout");
+    redirect("/dashboard/checkout?notice=not-winner");
   }
+
+  const notice = (sp.notice ?? "").trim();
 
   const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
 
@@ -126,6 +136,28 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
               Open your collection
             </Link>
           </p>
+        </DashboardErrorAlert>
+      ) : null}
+
+      {notice === "not-winner" ? (
+        <DashboardErrorAlert
+          title="Some lots were not in your basket"
+          message="Lots in the URL are not assigned to you as the winning bidder. Open your collection to start checkout from a won lot."
+        >
+          <Button variant="secondary" asChild>
+            <Link href="/dashboard/portfolio">Open collection</Link>
+          </Button>
+        </DashboardErrorAlert>
+      ) : null}
+
+      {fetchFailureCount > 0 ? (
+        <DashboardErrorAlert
+          title="Some lots could not load"
+          message={`${fetchFailureCount} lot${fetchFailureCount === 1 ? "" : "s"} could not be loaded. Try again or open your collection.`}
+        >
+          <Button variant="secondary" asChild>
+            <Link href="/dashboard/portfolio">Open collection</Link>
+          </Button>
         </DashboardErrorAlert>
       ) : null}
 

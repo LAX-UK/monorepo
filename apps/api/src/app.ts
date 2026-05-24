@@ -49,6 +49,7 @@ import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
 import { createWebhookRoutes } from "./routes/webhooks/index.js";
 import { createStripeWebhookRoutes } from "./routes/webhooks/stripe.js";
+import { createVeriffWebhookRoutes } from "./routes/webhooks/veriff.js";
 import { createWellKnownRoutes } from "./routes/well-known.js";
 import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
@@ -200,6 +201,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/payouts", createPayoutRoutes(container, authenticator))
     .route("/admin/payouts", createAdminPayoutRoutes(container, authenticator))
     .route("/webhooks/stripe", createStripeWebhookRoutes(container))
+    .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
     .route("/auth", createAuthRoutes(container))

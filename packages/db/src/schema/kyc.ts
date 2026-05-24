@@ -17,8 +17,9 @@ export const kycVerification = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull().default("stripe_identity"),
-    stripeVerificationSessionId: text("stripe_verification_session_id").notNull().unique(),
+    provider: text("provider").notNull().default("veriff"),
+    providerSessionId: text("provider_session_id").notNull().unique(),
+    providerAttemptId: text("provider_attempt_id"),
     status: kycVerificationStatusEnum("status").notNull(),
     verifiedFirstName: text("verified_first_name"),
     verifiedLastName: text("verified_last_name"),

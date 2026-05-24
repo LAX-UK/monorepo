@@ -1,14 +1,16 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import {
-  DashboardEmptyState,
-  DashboardErrorAlert,
-  DashboardSkeleton,
-} from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardEmptyState, DashboardSkeleton } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
 import { WatchlistFilterToolbar } from "@/components/dashboard/watchlist-filter-toolbar";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
@@ -85,15 +87,27 @@ export default async function DashboardWatchlistPage({
   const c = await getServerDataContainer();
   let rows: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
   let categories: Category[] = [];
-  let err: string | null = null;
+  let loadFailure: DashboardSliceFailure | null = null;
+  let categoriesFailure: DashboardSliceFailure | null = null;
 
   try {
-    [rows, categories] = await Promise.all([c.watchlist.listMine(filters), c.categories.list()]);
+    rows = await c.watchlist.listMine(filters);
   } catch (e) {
-    err = e instanceof Error ? e.message : "Could not load watchlist.";
+    loadFailure = describeDashboardSliceFailure(e, "watchlist", "Could not load watchlist.");
+  }
+
+  try {
+    categories = await c.categories.list();
+  } catch (e) {
+    categoriesFailure = describeDashboardSliceFailure(
+      e,
+      "categories",
+      "Could not load categories.",
+    );
   }
 
   const tableRows = toWatchlistRows(rows);
+  const hasActiveFilters = Boolean(filters.status || filters.categoryIds.length > 0);
   const artistIds = rows.map((r) => r.lot?.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
 
@@ -116,25 +130,36 @@ export default async function DashboardWatchlistPage({
         />
       </Surface>
 
-      <WatchlistFilterToolbar filters={filters} categories={categories} />
+      {!loadFailure ? <WatchlistFilterToolbar filters={filters} categories={categories} /> : null}
 
-      {err ? <DashboardErrorAlert title="Could not load watchlist" message={err} /> : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+      {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
 
-      {!err && tableRows.length === 0 ? (
+      {!loadFailure && tableRows.length === 0 ? (
         <DashboardEmptyState
           variant="hero"
           icon={<Heart aria-hidden />}
-          title="No watched lots yet"
-          description="Save lots from artwork pages to monitor their status and closing time here."
+          title={hasActiveFilters ? "No lots match your filters" : DASHBOARD_EMPTY.watchlist.title}
+          description={
+            hasActiveFilters
+              ? "Try clearing status or category filters to see more saved lots."
+              : DASHBOARD_EMPTY.watchlist.description
+          }
           action={
-            <Button variant="default" asChild>
-              <Link href="/search">Browse auctions</Link>
-            </Button>
+            hasActiveFilters ? (
+              <Button variant="default" asChild>
+                <Link href="/dashboard/watchlist">Clear filters</Link>
+              </Button>
+            ) : (
+              <Button variant="default" asChild>
+                <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
+              </Button>
+            )
           }
         />
       ) : null}
 
-      {!err && tableRows.length > 0 ? (
+      {!loadFailure && tableRows.length > 0 ? (
         <Suspense fallback={<DashboardSkeleton variant="list" />}>
           <WatchlistBoard rows={tableRows} artistNameById={artistNameById} />
         </Suspense>

@@ -2034,7 +2034,7 @@ export async function runLegacyDemoSeed() {
     // Robert — verified
     {
       userId: USER1_ID,
-      stripeVerificationSessionId: "vs_seed_robert_verified",
+      providerSessionId: "vs_seed_robert_verified",
       status: "verified",
       verifiedFirstName: "Robert",
       verifiedLastName: "Thorne",
@@ -2050,7 +2050,7 @@ export async function runLegacyDemoSeed() {
     // Carolina — verified
     {
       userId: USER2_ID,
-      stripeVerificationSessionId: "vs_seed_carolina_verified",
+      providerSessionId: "vs_seed_carolina_verified",
       status: "verified",
       verifiedFirstName: "Carolina",
       verifiedLastName: "Price",
@@ -2066,7 +2066,7 @@ export async function runLegacyDemoSeed() {
     // Maya — requires_input (pending on user)
     {
       userId: GALLERY_ADMIN_ID,
-      stripeVerificationSessionId: "vs_seed_maya_requires_input",
+      providerSessionId: "vs_seed_maya_requires_input",
       status: "requires_input",
       decisionPayload: { seeded: true, missing: ["document.front"] },
       createdAt: new Date(now - 8 * day),
@@ -2075,7 +2075,7 @@ export async function runLegacyDemoSeed() {
     // Isabelle (suspended) — verified before account suspension
     {
       userId: SUSPENDED_ID,
-      stripeVerificationSessionId: "vs_seed_isabelle_verified",
+      providerSessionId: "vs_seed_isabelle_verified",
       status: "verified",
       verifiedFirstName: "Isabelle",
       verifiedLastName: "Laurent",
@@ -2091,7 +2091,7 @@ export async function runLegacyDemoSeed() {
     // Marcus — processing (KYC pending)
     {
       userId: KYC_PENDING_ID,
-      stripeVerificationSessionId: "vs_seed_marcus_processing",
+      providerSessionId: "vs_seed_marcus_processing",
       status: "processing",
       decisionPayload: { seeded: true, phase: "document_check" },
       createdAt: new Date(now - 2 * day),
@@ -2100,7 +2100,7 @@ export async function runLegacyDemoSeed() {
     // Priya — canceled (KYC rejected)
     {
       userId: KYC_REJECTED_ID,
-      stripeVerificationSessionId: "vs_seed_priya_canceled",
+      providerSessionId: "vs_seed_priya_canceled",
       status: "canceled",
       decisionPayload: {
         seeded: true,
@@ -2113,7 +2113,7 @@ export async function runLegacyDemoSeed() {
     // Victoria — verified
     {
       userId: ESTATE_OWNER_ID,
-      stripeVerificationSessionId: "vs_seed_victoria_verified",
+      providerSessionId: "vs_seed_victoria_verified",
       status: "verified",
       verifiedFirstName: "Victoria",
       verifiedLastName: "Harrington",
@@ -2129,7 +2129,7 @@ export async function runLegacyDemoSeed() {
     // James — verified
     {
       userId: COMPANY_OWNER_ID,
-      stripeVerificationSessionId: "vs_seed_james_verified",
+      providerSessionId: "vs_seed_james_verified",
       status: "verified",
       verifiedFirstName: "James",
       verifiedLastName: "Crowley",
@@ -2145,7 +2145,7 @@ export async function runLegacyDemoSeed() {
     // Lena (consignor) — verified
     {
       userId: CONSIGNOR_ID,
-      stripeVerificationSessionId: "vs_seed_lena_verified",
+      providerSessionId: "vs_seed_lena_verified",
       status: "verified",
       verifiedFirstName: "Lena",
       verifiedLastName: "Fischer",
@@ -2161,7 +2161,7 @@ export async function runLegacyDemoSeed() {
     // Hassan (buyer_agent) — verified
     {
       userId: BUYER_AGENT_ID,
-      stripeVerificationSessionId: "vs_seed_hassan_verified",
+      providerSessionId: "vs_seed_hassan_verified",
       status: "verified",
       verifiedFirstName: "Hassan",
       verifiedLastName: "Al-Rashid",
@@ -2177,7 +2177,7 @@ export async function runLegacyDemoSeed() {
     // Dominic (specialist) — verified
     {
       userId: SPECIALIST_ID,
-      stripeVerificationSessionId: "vs_seed_dominic_verified",
+      providerSessionId: "vs_seed_dominic_verified",
       status: "verified",
       verifiedFirstName: "Dominic",
       verifiedLastName: "Ward",

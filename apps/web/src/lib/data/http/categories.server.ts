@@ -1,4 +1,5 @@
 import "server-only";
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { CategoryReader } from "@/lib/data/contracts";
 import { getServerHc } from "@/lib/data/http/hc-server";
 import type { Category, CategoryNode } from "@auction/types";
@@ -23,9 +24,7 @@ export async function getServerCategoryReader(): Promise<CategoryReader> {
   const client = await getServerHc();
   const list = async (): Promise<Category[]> => {
     const res = await client.categories.$get();
-    if (!res.ok) {
-      throw new Error(`Failed to list categories: ${res.status}`);
-    }
+    await throwIfNotOk(res, "categories");
     const body = (await res.json()) as { data: unknown[] };
     return body.data.map(parseCategory);
   };

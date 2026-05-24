@@ -3,16 +3,18 @@ import {
   DashboardComplianceStripSkeleton,
 } from "@/components/dashboard/dashboard-compliance-strip";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { PaymentsPageToolbar } from "@/components/dashboard/payments-page-toolbar";
-import {
-  DashboardEmptyState,
-  DashboardErrorAlert,
-  DashboardSection,
-} from "@/components/dashboard/primitives";
+import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
   type PaymentDisplayRow,
@@ -130,7 +132,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
   const container = await getServerDataContainer();
   let allRows: PaymentDisplayRow[] = [];
   let displayRows: PaymentDisplayRow[] = [];
-  let fetchError: string | null = null;
+  let loadFailure: DashboardSliceFailure | null = null;
   try {
     const apiRows = await container.payments.listMine(
       filter === "all" ? undefined : { status: filter },
@@ -138,7 +140,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
     allRows = toPaymentDisplayRows(apiRows);
     displayRows = sortPaymentDisplayRows(filterPaymentRows(allRows, { qLower, year }), sort);
   } catch (e) {
-    fetchError = e instanceof Error ? e.message : "Could not load your payments.";
+    loadFailure = describeDashboardSliceFailure(e, "payments", "Could not load your payments.");
   }
 
   const years = paymentYears(allRows);
@@ -155,7 +157,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
         <DashboardComplianceStrip user={user} loginNext={PAGE_PATH} />
       </Suspense>
 
-      {!fetchError ? (
+      {!loadFailure ? (
         <PaymentsPageToolbar
           filter={filter}
           initialQ={sp.q ?? ""}
@@ -165,24 +167,19 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
         />
       ) : null}
 
-      {fetchError ? (
-        <DashboardErrorAlert
-          title="Could not load payments"
-          message={`${fetchError} Refresh the page or try again in a few minutes.`}
-        />
-      ) : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
       <section aria-live="polite" aria-busy="false">
-        {!fetchError && displayRows.length === 0 ? (
+        {!loadFailure && displayRows.length === 0 ? (
           filter === "all" && !qLower && year == null ? (
             <DashboardEmptyState
               variant="hero"
               icon={<CreditCard aria-hidden />}
-              title="No payments yet"
-              description="Your purchases will appear here once you win a lot and an invoice is issued."
+              title={DASHBOARD_EMPTY.payments.title}
+              description={DASHBOARD_EMPTY.payments.description}
               action={
                 <Button variant="primary" asChild>
-                  <Link href="/search">Browse auctions</Link>
+                  <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
                 </Button>
               }
             />

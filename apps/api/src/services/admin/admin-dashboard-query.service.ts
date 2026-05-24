@@ -34,7 +34,7 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
   }
 
   async getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot> {
-    const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
+    const staleKycCutoff = new Date(Date.now() - 48 * 3600 * 1000);
     const staleBlockedPayoutCutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
     const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
     const [
@@ -83,7 +83,7 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
         .where(
           and(
             inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-            lt(kycVerification.createdAt, staleIdentityCutoff),
+            lt(kycVerification.createdAt, staleKycCutoff),
           ),
         ),
       this.db
@@ -107,14 +107,14 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
       staleBlockedScheduledPayoutCount: Number(staleBlockedPayoutRow?.n ?? 0),
       entitiesPendingReviewCount: Number(entitiesPendingRow?.n ?? 0),
       artistsPendingApprovalCount: Number(artistsPendingRow?.n ?? 0),
-      staleIdentitySessionsCount: Number(staleKycRow?.n ?? 0),
+      staleKycSessionsCount: Number(staleKycRow?.n ?? 0),
       documentsAwaitingReviewCount: Number(docsPendingRow?.n ?? 0),
       staleLeadOrganisationsCount: Number(staleLeadRow?.n ?? 0),
     };
   }
 
   async getOnboardingIssues(): Promise<AdminOnboardingIssues> {
-    const staleIdentityCutoff = new Date(Date.now() - 48 * 3600 * 1000);
+    const staleKycCutoff = new Date(Date.now() - 48 * 3600 * 1000);
     const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
     const [entities, artists, staleKycSessions, pendingDocuments, staleLeadOrganisations] =
       await Promise.all([
@@ -142,6 +142,7 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
           .select({
             id: kycVerification.id,
             userId: kycVerification.userId,
+            provider: kycVerification.provider,
             status: kycVerification.status,
             createdAt: kycVerification.createdAt,
           })
@@ -149,7 +150,7 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
           .where(
             and(
               inArray(kycVerification.status, ["created", "requires_input", "processing"]),
-              lt(kycVerification.createdAt, staleIdentityCutoff),
+              lt(kycVerification.createdAt, staleKycCutoff),
             ),
           )
           .orderBy(desc(kycVerification.createdAt))
@@ -187,7 +188,7 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
     return {
       entitiesPendingReview: entities as AdminOnboardingIssues["entitiesPendingReview"],
       artistsPendingApproval: artists,
-      staleIdentitySessions: staleKycSessions,
+      staleKycSessions: staleKycSessions,
       documentsAwaitingReview: pendingDocuments,
       staleLeadOrganisations,
     };

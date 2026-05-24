@@ -8,7 +8,8 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 
 | Destination | Scope | URL | Events |
 |-------------|-------|-----|--------|
-| Identity | **Your account** | `/webhooks/stripe/identity` | `identity.verification_session.created`, `.processing`, `.requires_input`, `.verified`, `.canceled` |
+| Veriff decision | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/decision` | Session decision (required for IDV) |
+| Veriff event (optional) | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/event` | Session progress (`started`, `submitted`) |
 | Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated` |
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
 | Payments | **Your account** | `/webhooks/stripe/payments` | `charge.dispute.created`, `.funds_withdrawn`, `.closed`, `charge.refunded` |
@@ -25,7 +26,8 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 |----------|---------|
 | `STRIPE_SECRET_KEY` | Live secret (`sk_live_…`) |
 | `STRIPE_PUBLISHABLE_KEY` | Live publishable (`pk_live_…`) |
-| `STRIPE_IDENTITY_WEBHOOK_SECRET` | Identity destination signing secret |
+| `VERIFF_API_KEY` | Veriff Live integration API key |
+| `VERIFF_SHARED_SECRET` | Veriff Live integration shared secret (webhook HMAC) |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Connect (Connected accounts) destination |
 | `STRIPE_TRANSFERS_WEBHOOK_SECRET` | Transfers (Your account) destination |
 | `STRIPE_PAYMENTS_WEBHOOK_SECRET` | Payments destination |
@@ -36,11 +38,11 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 
 ## 3. Smoke tests (staging, then live-mode test accounts)
 
-### KYC (Identity)
+### KYC (Veriff)
 
-- [ ] `POST /kyc/session` → complete hosted verification.
-- [ ] `identity.verification_session.verified` → `user.kyc_status=approved`, `processed_stripe_events` row `source=stripe_identity`.
-- [ ] Replay event from Dashboard → no duplicate marketing outbox / retry increment.
+- [ ] `POST /kyc/session` → complete InContext or redirect verification on staging.
+- [ ] Veriff decision webhook → `user.kyc_status=approved`, `processed_webhook_events` row `source=veriff_decision`.
+- [ ] Replay decision from Veriff portal → idempotent (no duplicate marketing outbox / retry increment).
 
 ### Connect onboarding
 

@@ -127,7 +127,7 @@ These fire from our backend, regardless of the browser. They are essential for e
 | Event | When it fires | Source | Consent basis |
 |----|----|----|----|
 | `Lead` | New user registers (email signup) | API `POST /users/register` | Visitor's marketing consent at signup |
-| `CompleteRegistration` | KYC approval | Stripe Identity webhook | Legitimate interest (no browser at event time) |
+| `CompleteRegistration` | KYC approval | Veriff decision webhook | Legitimate interest (no browser at event time) |
 | `InitiateCheckout` | Visitor starts payment | API `POST /payments` | Visitor's marketing consent |
 | `Purchase` | Payment captured | Stripe webhook | **Legitimate interest** — fires even if no consent was given because the visitor has already entered a contractual relationship and we need to reconcile ad spend |
 | `AddToWishlist` / `RemoveFromWishlist` | Watchlist API | API | Visitor's marketing consent |
@@ -144,7 +144,7 @@ A few hooks exist in the codebase but are **not wired up** in production. If you
 
 - Around **30-40% of browser events** are lost to ad blockers, iOS Safari ITP, brave/firefox tracking protection, slow networks, page closes before the pixel fires, etc. Server-side recovers all of those.
 - `Purchase` is the most important to recover — Stripe captures payment **asynchronously** via webhook, often seconds or minutes after the visitor leaves. Without server-side, the browser pixel might fire on the "thank you" page but a meaningful share of buyers never get there.
-- KYC happens **out-of-band** — Stripe Identity tells us asynchronously, sometimes hours later, when there is no browser session at all.
+- KYC happens **out-of-band** — Veriff tells us asynchronously, sometimes hours later, when there is no browser session at all.
 
 ---
 

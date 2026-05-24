@@ -1,10 +1,12 @@
 "use client";
 
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { Button } from "@/components/ui/button";
 import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
+import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle, BulkActionBar, cn } from "@auction/ui";
@@ -47,8 +49,10 @@ function tabHref(pathname: string, params: URLSearchParams, tab: InboxTab): stri
 }
 
 export function NotificationsInboxBoard({
+  loadFailure = null,
   initialPage,
 }: {
+  loadFailure?: DashboardSliceFailure | null;
   initialPage?: {
     tab: InboxTab;
     type: string;
@@ -259,178 +263,186 @@ export function NotificationsInboxBoard({
         {liveMessage}
       </output>
 
-      <div className="mt-8">
-        <UnderlineTabs<InboxTab> ariaLabel="Notification filters" active={tab} tabs={tabs} />
-      </div>
+      {loadFailure ? (
+        <div className="mt-6">
+          <DashboardSliceErrorAlert failure={loadFailure} />
+        </div>
+      ) : (
+        <>
+          <div className="mt-8">
+            <UnderlineTabs<InboxTab> ariaLabel="Notification filters" active={tab} tabs={tabs} />
+          </div>
 
-      <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-        {TYPE_CHIPS.map((chip) => {
-          const isActive = typeFilter === chip.key;
-          const count = chip.key ? (typeCounts[chip.key] ?? 0) : items.length;
-          return (
+          <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+            {TYPE_CHIPS.map((chip) => {
+              const isActive = typeFilter === chip.key;
+              const count = chip.key ? (typeCounts[chip.key] ?? 0) : items.length;
+              return (
+                <ShadButton
+                  key={chip.label}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTypeFilter(chip.key)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
+                    isActive
+                      ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
+                      : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
+                  )}
+                >
+                  <span>{chip.label}</span>
+                  {!loading && count > 0 ? (
+                    <span
+                      className={cn(
+                        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] tabular-nums",
+                        isActive
+                          ? "bg-on-primary/15 text-on-primary"
+                          : "bg-on-surface/10 text-on-surface",
+                      )}
+                    >
+                      {count}
+                    </span>
+                  ) : null}
+                </ShadButton>
+              );
+            })}
+          </div>
+
+          {error ? (
+            <Alert
+              role="alert"
+              variant="destructive"
+              className="mt-6 rounded-xl border-error/40 shadow-sm"
+            >
+              <AlertTitle>Could not load notifications</AlertTitle>
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>{error}</span>
+                <ShadButton
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void retry()}
+                  className="gap-2"
+                >
+                  <RefreshCcw className="size-3.5" aria-hidden />
+                  Try again
+                </ShadButton>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="font-body text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              {counterLine}
+            </p>
             <ShadButton
-              key={chip.label}
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setTypeFilter(chip.key)}
-              aria-pressed={isActive}
-              className={cn(
-                "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
-                isActive
-                  ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
-                  : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
-              )}
+              disabled={loading || unreadCount === 0}
+              onClick={() => void handleMarkAllRead()}
+              className="gap-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-primary/10"
             >
-              <span>{chip.label}</span>
-              {!loading && count > 0 ? (
-                <span
-                  className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] tabular-nums",
-                    isActive
-                      ? "bg-on-primary/15 text-on-primary"
-                      : "bg-on-surface/10 text-on-surface",
-                  )}
-                >
-                  {count}
-                </span>
-              ) : null}
+              <CheckCheck className="size-3.5" aria-hidden />
+              Mark all read
             </ShadButton>
-          );
-        })}
-      </div>
-
-      {error ? (
-        <Alert
-          role="alert"
-          variant="destructive"
-          className="mt-6 rounded-xl border-error/40 shadow-sm"
-        >
-          <AlertTitle>Could not load notifications</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>{error}</span>
-            <ShadButton
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void retry()}
-              className="gap-2"
-            >
-              <RefreshCcw className="size-3.5" aria-hidden />
-              Try again
-            </ShadButton>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-body text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          {counterLine}
-        </p>
-        <ShadButton
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={loading || unreadCount === 0}
-          onClick={() => void handleMarkAllRead()}
-          className="gap-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-primary/10"
-        >
-          <CheckCheck className="size-3.5" aria-hidden />
-          Mark all read
-        </ShadButton>
-      </div>
-
-      <div className="mt-3">
-        <BulkActionBar count={selected.size}>
-          <Button
-            type="button"
-            variant="primary"
-            className="min-h-11"
-            onClick={() => void handleBulkMarkRead()}
-          >
-            Mark read
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-11"
-            onClick={() => void handleBulkArchive()}
-          >
-            Archive
-          </Button>
-          <Button
-            type="button"
-            variant="tertiary"
-            className="min-h-11"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </Button>
-        </BulkActionBar>
-      </div>
-
-      <div className="mt-4">
-        {loading ? (
-          <NotificationsSkeleton rows={6} />
-        ) : items.length === 0 ? (
-          <InboxEmptyState
-            tab={tab}
-            typeFilter={typeFilter}
-            onClearType={() => setTypeFilter("")}
-          />
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
-            {groups.map((group) => (
-              <section key={group.band} aria-labelledby={`band-${group.band}`}>
-                <h2
-                  id={`band-${group.band}`}
-                  className="sticky top-[var(--header-height-shell,52px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
-                >
-                  {group.band}
-                </h2>
-                <ul className="divide-y divide-outline-variant/10">
-                  {group.items.map((item) => (
-                    <NotificationRow
-                      key={item.id}
-                      item={item}
-                      presentation={notificationTypePresenter(item.type)}
-                      selected={selected.has(item.id)}
-                      selectionActive={selected.size > 0}
-                      onToggleSelect={toggleSelect}
-                      onMarkRead={handleMarkRead}
-                      onArchive={(id) => void handleArchive(id)}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))}
           </div>
-        )}
-      </div>
 
-      {!loading && !error && hasMore ? (
-        <div className="mt-8 flex justify-center">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={loadingMore}
-            onClick={() => void loadMore()}
-          >
-            {loadingMore ? "Loading…" : "Load more"}
-          </Button>
-        </div>
-      ) : null}
+          <div className="mt-3">
+            <BulkActionBar count={selected.size}>
+              <Button
+                type="button"
+                variant="primary"
+                className="min-h-11"
+                onClick={() => void handleBulkMarkRead()}
+              >
+                Mark read
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-11"
+                onClick={() => void handleBulkArchive()}
+              >
+                Archive
+              </Button>
+              <Button
+                type="button"
+                variant="tertiary"
+                className="min-h-11"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear
+              </Button>
+            </BulkActionBar>
+          </div>
 
-      <p className="mt-10 font-body text-sm text-on-surface-variant">
-        Tip: enable browser push in{" "}
-        <Link
-          href="/dashboard/settings/notifications"
-          className="text-primary underline-offset-2 hover:underline"
-        >
-          alert settings
-        </Link>
-        .
-      </p>
+          <div className="mt-4">
+            {loading ? (
+              <NotificationsSkeleton rows={6} />
+            ) : items.length === 0 ? (
+              <InboxEmptyState
+                tab={tab}
+                typeFilter={typeFilter}
+                onClearType={() => setTypeFilter("")}
+              />
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
+                {groups.map((group) => (
+                  <section key={group.band} aria-labelledby={`band-${group.band}`}>
+                    <h2
+                      id={`band-${group.band}`}
+                      className="sticky top-[var(--header-height-shell,52px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
+                    >
+                      {group.band}
+                    </h2>
+                    <ul className="divide-y divide-outline-variant/10">
+                      {group.items.map((item) => (
+                        <NotificationRow
+                          key={item.id}
+                          item={item}
+                          presentation={notificationTypePresenter(item.type)}
+                          selected={selected.has(item.id)}
+                          selectionActive={selected.size > 0}
+                          onToggleSelect={toggleSelect}
+                          onMarkRead={handleMarkRead}
+                          onArchive={(id) => void handleArchive(id)}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!loading && !error && hasMore ? (
+            <div className="mt-8 flex justify-center">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          ) : null}
+
+          <p className="mt-10 font-body text-sm text-on-surface-variant">
+            Tip: enable browser push in{" "}
+            <Link
+              href="/dashboard/settings/notifications"
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              alert settings
+            </Link>
+            .
+          </p>
+        </>
+      )}
     </div>
   );
 }

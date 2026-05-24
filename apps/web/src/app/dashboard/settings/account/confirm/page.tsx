@@ -1,8 +1,9 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { confirmEmailChangeAction } from "@/lib/actions/request-email-change";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
+import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { actionFailure } from "@/lib/forms/form-result";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -44,9 +45,8 @@ export default async function ConfirmEmailChangePage({
           </AlertDescription>
         </Alert>
       ) : (
-        <DashboardErrorAlert
-          title="Could not confirm"
-          message={!result.ok ? result.error : "Something went wrong."}
+        <DashboardSliceErrorAlert
+          failure={describeSettingsActionError(!result.ok ? result.error : "Something went wrong.")}
         />
       )}
       <Button asChild className="min-h-11">

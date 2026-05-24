@@ -1,4 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { EntityStatusBanner } from "@/components/dashboard/entity-status-banner";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import {
@@ -28,12 +29,28 @@ export default async function OrganisationLayout({
     loginNext: `/dashboard/organisations/${id}`,
   });
   const perOrgGw = createPerOrgGateway();
-  const ctx = await perOrgGw.getContext(id);
-  if (!ctx) {
+  const access = await perOrgGw.resolveAccess(id);
+  if (access.kind === "not_found") {
     notFound();
   }
+  if (access.kind === "forbidden") {
+    return (
+      <DashboardPage>
+        <div className="mx-auto max-w-5xl space-y-6">
+          <DashboardDetailHeader
+            sticky
+            backHref="/dashboard/organisations"
+            backLabel="Organisations"
+            eyebrow="Organisation"
+            title="Organisation"
+          />
+          <DashboardSliceErrorAlert failure={access.failure} />
+        </div>
+      </DashboardPage>
+    );
+  }
 
-  const { member, entity } = ctx;
+  const { member, entity } = access.context;
   const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
   const isActing = acting?.id === id;
 

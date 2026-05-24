@@ -1,19 +1,28 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { FilterRowNav } from "@/components/dashboard/filter-row-nav";
-import { DashboardEmptyState, DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import {
+  SellerOrgContextBanner,
+  SellerProfileUnavailableAlert,
+} from "@/components/dashboard/seller-org-context-banner";
 import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import {
+  type DashboardSliceFailure,
+  describeDashboardSliceFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import type { Lot } from "@auction/types";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { buildInSaleKpiTiles } from "./in-sale-metrics";
 import {
   type InSaleDisplayRow,
@@ -147,8 +156,8 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
     shell: "client",
     loginNext: PAGE_PATH,
   });
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
-  if (!acting) redirect("/dashboard");
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const sp = await searchParams;
   const filter = parseSellerLotStatusFilter(sp.status);
@@ -157,11 +166,15 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
 
   const c = await getServerDataContainer();
   let lots: Lot[] = [];
-  let fetchError: string | null = null;
-  try {
-    lots = await c.sellerLots.list({ sellerId: acting.id, limit: 100 });
-  } catch (e) {
-    fetchError = e instanceof Error ? e.message : "Could not load your lots.";
+  let loadFailure: DashboardSliceFailure | null = null;
+  if (!sellerEntityId) {
+    loadFailure = null;
+  } else {
+    try {
+      lots = await c.sellerLots.list({ sellerId: sellerEntityId, limit: 100 });
+    } catch (e) {
+      loadFailure = describeDashboardSliceFailure(e, "sellerLots", "Could not load your lots.");
+    }
   }
 
   const saleIds = Array.from(
@@ -187,7 +200,10 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
       />
 
-      {!fetchError && allDisplay.length > 0 ? (
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
+      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {!loadFailure && allDisplay.length > 0 ? (
         <KpiRow track="selling" columns={4} tiles={buildInSaleKpiTiles(allDisplay)} />
       ) : null}
 
@@ -216,27 +232,22 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         }
       />
 
-      {fetchError ? (
-        <DashboardErrorAlert
-          title="Could not load your lots"
-          message={`${fetchError} Refresh the page or try again in a few minutes.`}
-        />
-      ) : null}
+      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
       <section aria-live="polite" aria-busy="false">
-        {!fetchError && allDisplay.length === 0 ? (
+        {!loadFailure && allDisplay.length === 0 ? (
           <DashboardEmptyState
-            title="No lots yet"
-            description="Once your submissions are approved and added to a sale, they will appear here. Start by submitting your first work."
+            title={DASHBOARD_EMPTY.sellerInSale.title}
+            description={DASHBOARD_EMPTY.sellerInSale.description}
             action={
               <Button variant="primary" asChild>
-                <Link href="/dashboard/submissions/new">Submit your first work</Link>
+                <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
               </Button>
             }
           />
         ) : null}
 
-        {!fetchError && allDisplay.length > 0 && filtered.length === 0 ? (
+        {!loadFailure && allDisplay.length > 0 && filtered.length === 0 ? (
           <DashboardEmptyState
             title={rawQ ? "No lots match this search" : "No lots match this filter"}
             description={
