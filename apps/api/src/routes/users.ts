@@ -1,3 +1,4 @@
+import { lotNotDeleted } from "@auction/db";
 import {
   legalEntityMember,
   lot,
@@ -717,6 +718,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
           and(
             isNotNull(lot.sellerLegalEntityId),
             inArray(lot.status, ["draft", "scheduled", "active"]),
+            lotNotDeleted(),
           ),
         )
         .limit(1);

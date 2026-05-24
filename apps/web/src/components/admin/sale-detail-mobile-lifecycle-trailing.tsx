@@ -11,13 +11,16 @@ import {
 } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { saleDeleteConfirmationPhrase } from "@auction/validators";
 import { useCallback, useState } from "react";
 
 type Props = {
   saleId: string;
+  saleTitle: string;
   canPublish: boolean;
   canUnpublish: boolean;
   canCancel: boolean;
+  canDelete: boolean;
   canMarkOnsiteEnded: boolean;
 };
 
@@ -49,13 +52,17 @@ function lifecycleConfirmCopy(kind: SaleLifecycleActionKind) {
 /** Lifecycle publish/cancel actions for sale detail mobile bar trailing slot. */
 export function SaleDetailMobileLifecycleTrailing({
   saleId,
+  saleTitle,
   canPublish,
   canUnpublish,
   canCancel,
+  canDelete,
   canMarkOnsiteEnded,
 }: Props) {
-  const { pending, publish, unpublish, markOnsiteEnded, cancel } = useSaleLifecycleActions(saleId);
+  const { pending, publish, unpublish, markOnsiteEnded, cancel, softDelete } =
+    useSaleLifecycleActions(saleId);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmKind, setConfirmKind] = useState<SaleLifecycleActionKind | null>(null);
 
   const lifecycleItems = buildSaleLifecycleActionItems({
@@ -63,6 +70,7 @@ export function SaleDetailMobileLifecycleTrailing({
     canUnpublish,
     canMarkOnsiteEnded,
     canCancel,
+    canDelete,
   });
 
   const runLifecycle = useCallback(
@@ -71,6 +79,7 @@ export function SaleDetailMobileLifecycleTrailing({
       if (kind === "unpublish") unpublish();
       if (kind === "markEnded") markOnsiteEnded();
       if (kind === "cancel") cancel();
+      if (kind === "delete") setDeleteOpen(true);
     },
     [cancel, markOnsiteEnded, publish, unpublish],
   );
@@ -92,6 +101,7 @@ export function SaleDetailMobileLifecycleTrailing({
             className="min-h-11"
             onClick={() => {
               if (item.kind === "publish") setPublishOpen(true);
+              else if (item.kind === "delete") setDeleteOpen(true);
               else setConfirmKind(item.kind);
             }}
           >
@@ -110,6 +120,20 @@ export function SaleDetailMobileLifecycleTrailing({
           severity="warning"
           onConfirm={async () => {
             publish();
+          }}
+        />
+      ) : null}
+      {canDelete ? (
+        <TypedConfirmationDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Delete this sale?"
+          description="The sale and all lots will be removed from the catalogue. Data is retained for audit."
+          actionLabel="Delete sale"
+          confirmationPhrase={saleDeleteConfirmationPhrase(saleTitle)}
+          severity="danger"
+          onConfirm={async () => {
+            softDelete(saleDeleteConfirmationPhrase(saleTitle));
           }}
         />
       ) : null}

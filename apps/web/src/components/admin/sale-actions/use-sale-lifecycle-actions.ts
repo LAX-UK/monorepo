@@ -4,6 +4,7 @@ import {
   adminCancelSaleResultAction,
   adminMarkSaleEndedResultAction,
   adminPublishSaleResultAction,
+  adminSoftDeleteSaleResultAction,
   adminUnpublishSaleResultAction,
 } from "@/lib/actions/admin-sales";
 import type { ActionResult } from "@/lib/forms/form-result";
@@ -37,5 +38,17 @@ export function useSaleLifecycleActions(saleId: string) {
     unpublish: () => run(() => adminUnpublishSaleResultAction(saleId)),
     markOnsiteEnded: () => run(() => adminMarkSaleEndedResultAction(saleId)),
     cancel: () => run(() => adminCancelSaleResultAction(saleId)),
+    softDelete: (confirmationPhrase: string) =>
+      startTransition(() => {
+        void (async () => {
+          const r = await adminSoftDeleteSaleResultAction(saleId, confirmationPhrase);
+          if (r.ok) {
+            notify.success("Sale deleted");
+            router.push("/admin/sales");
+            return;
+          }
+          notify.error(r.error);
+        })();
+      }),
   };
 }
