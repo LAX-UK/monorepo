@@ -1,3 +1,4 @@
+import { captureBackgroundError } from "@auction/observability";
 import type { Redis } from "ioredis";
 import type { Server } from "socket.io";
 
@@ -14,6 +15,7 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
     .psubscribe(LOT_EVENTS_PATTERN, USER_NOTIFICATIONS_PATTERN, SALEROOM_PATTERN)
     .catch((err: unknown) => {
       console.error("Redis psubscribe error", err);
+      captureBackgroundError("ws-redis-bridge", err, { tags: { phase: "psubscribe" } });
     });
 
   sub.on("pmessage", (_pattern, channel, message) => {
@@ -67,6 +69,9 @@ export function bridgeRedisToSockets(io: Server, sub: Redis): void {
           })
           .catch((err: unknown) => {
             console.error("sealed bid fan-out", err);
+            captureBackgroundError("ws-redis-bridge", err, {
+              tags: { phase: "sealed-bid-fanout" },
+            });
           });
         return;
       }

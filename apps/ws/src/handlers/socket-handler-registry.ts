@@ -1,3 +1,4 @@
+import { captureBackgroundError } from "@auction/observability";
 import {
   type UserRole,
   normalizeUserRoleOrClient,
@@ -184,6 +185,7 @@ export function registerSocketHandlers(socket: Socket, ctx: HandlerContext): voi
     socket.on(event, (payload: unknown, ack: AckFn) => {
       void Promise.resolve(fn(socket, ctx, payload, ack)).catch((err: unknown) => {
         console.error(`socket handler ${event}`, err);
+        captureBackgroundError(`ws-socket-${event}`, err);
         ack?.({ ok: false, error: "internal" });
       });
     });

@@ -31,6 +31,7 @@ const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
   initNodeSentry({
     dsn: env.SENTRY_DSN_AUTH,
+    appEnv: env.APP_ENV,
     nodeEnv: env.NODE_ENV,
     tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1,
   });

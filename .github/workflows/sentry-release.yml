@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [web, api, auth, ws, worker]
+        app: [api, auth, ws, worker]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,21 +42,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Install Sentry CLI
         run: npm i -g @sentry/cli
-      - name: Create release and upload source maps
+      - name: Create release and upload Node source maps
         run: |
           project="lax-${ENV_SUFFIX}-${{ matrix.app }}"
           sentry-cli releases new "$RELEASE" -p "$project"
           sentry-cli releases set-commits "$RELEASE" --auto
-          if [ "${{ matrix.app }}" = "web" ]; then
-            pnpm --filter @auction/web build
-            sentry-cli sourcemaps inject apps/web/.next
-            sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" apps/web/.next
-          else
-            pnpm --filter "@auction/${{ matrix.app }}" build
-            sentry-cli sourcemaps inject "apps/${{ matrix.app }}/dist"
-            sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app }}/dist"
-          fi
+          pnpm --filter "@auction/${{ matrix.app }}" build
+          sentry-cli sourcemaps inject "apps/${{ matrix.app }}/dist"
+          sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app }}/dist"
+          sentry-cli releases finalize "$RELEASE"
+          sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"
+  web-release:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      RELEASE: ${{ inputs.git_sha || github.sha }}
+      ENV_SUFFIX: ${{ inputs.environment }}
+      SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Sentry CLI
+        run: npm i -g @sentry/cli
+      - name: Register web release (source maps uploaded at DO build)
+        run: |
+          project="lax-${ENV_SUFFIX}-web"
+          sentry-cli releases new "$RELEASE" -p "$project"
+          sentry-cli releases set-commits "$RELEASE" --auto
           sentry-cli releases finalize "$RELEASE"
           sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"

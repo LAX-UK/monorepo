@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -26,31 +28,43 @@ async function jsonOrError(res: Response, fallback: string): Promise<string | nu
 }
 
 export async function captureManualReviewPaymentAction(formData: FormData): Promise<void> {
-  const paymentId = value(formData, "paymentId");
-  if (!paymentId) redirectWith("error", "payment_id_required");
+  return instrumentServerAction(
+    "captureManualReviewPaymentAction",
+    async () => {
+      const paymentId = value(formData, "paymentId");
+      if (!paymentId) redirectWith("error", "payment_id_required");
 
-  const res = await authedServerFetch(
-    `/admin/payments/${encodeURIComponent(paymentId)}/capture-and-process`,
-    { method: "POST" },
+      const res = await authedServerFetch(
+        `/admin/payments/${encodeURIComponent(paymentId)}/capture-and-process`,
+        { method: "POST" },
+      );
+      const error = await jsonOrError(res, "capture_manual_review_failed");
+      if (error) redirectWith("error", error);
+
+      revalidatePath("/admin/payments");
+      redirectWith("success", "payment_released_for_capture");
+    },
+    { formData },
   );
-  const error = await jsonOrError(res, "capture_manual_review_failed");
-  if (error) redirectWith("error", error);
-
-  revalidatePath("/admin/payments");
-  redirectWith("success", "payment_released_for_capture");
 }
 
 export async function refundManualReviewPaymentAction(formData: FormData): Promise<void> {
-  const paymentId = value(formData, "paymentId");
-  if (!paymentId) redirectWith("error", "payment_id_required");
+  return instrumentServerAction(
+    "refundManualReviewPaymentAction",
+    async () => {
+      const paymentId = value(formData, "paymentId");
+      if (!paymentId) redirectWith("error", "payment_id_required");
 
-  const res = await authedServerFetch(
-    `/admin/payments/${encodeURIComponent(paymentId)}/refund-buyer`,
-    { method: "POST" },
+      const res = await authedServerFetch(
+        `/admin/payments/${encodeURIComponent(paymentId)}/refund-buyer`,
+        { method: "POST" },
+      );
+      const error = await jsonOrError(res, "refund_manual_review_failed");
+      if (error) redirectWith("error", error);
+
+      revalidatePath("/admin/payments");
+      redirectWith("success", "buyer_refunded");
+    },
+    { formData },
   );
-  const error = await jsonOrError(res, "refund_manual_review_failed");
-  if (error) redirectWith("error", error);
-
-  revalidatePath("/admin/payments");
-  redirectWith("success", "buyer_refunded");
 }
