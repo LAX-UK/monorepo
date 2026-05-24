@@ -129,6 +129,7 @@ import { ArtistRegistryService } from "./services/artist-registry.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
 import { AuthAuditPublisher } from "./services/auth-audit.publisher.js";
+import { AutoBidService } from "./services/auto-bid.service.js";
 import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { CategoryService } from "./services/category.service.js";
@@ -269,6 +270,7 @@ export type Container = {
   lotJobScheduler: ILotJobScheduler;
   saleStatusTransitionService: SaleStatusTransitionService;
   bidService: BidService;
+  autoBidService: AutoBidService;
   categoryService: CategoryService;
   artistProfileService: ArtistProfileService;
   dashboardQueryService: DashboardQueryService;
@@ -968,6 +970,14 @@ export function createContainer(env: Env): Container {
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
+  const autoBidService = new AutoBidService({
+    repos: repoFactory,
+    bidPlacer: bidService,
+    bidPlacerWithIdempotency: bidService,
+    bidEligibility: bidEligibilityService,
+    legalEntityRepository,
+    notifications: notificationService,
+  });
   lotLifecycleHooks.onLotActivated = (lotId) => absenteeBidService.replayScheduledForLot(lotId);
   const saleroomService = new SaleroomService({
     db,
@@ -1108,6 +1118,7 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     saleStatusTransitionService,
     bidService,
+    autoBidService,
     categoryService,
     artistProfileService,
     dashboardQueryService,

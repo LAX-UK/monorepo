@@ -1,6 +1,10 @@
 import { marketingConsentHeaderValues } from "@/lib/analytics/consent-headers";
 import { sanitizePageUrlForMarketing } from "@/lib/analytics/sanitize-page-url";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
+import {
+  X_LEGAL_ENTITY_ID_HEADER,
+  getClientActingLegalEntityId,
+} from "@/lib/legal-entity/client-acting-context";
 
 const MARKETING_PAGE_URL_HEADER = "x-lax-page-url";
 
@@ -20,6 +24,10 @@ export function getBrowserHc(): RpcApp {
         if (typeof window !== "undefined" && window.location?.href) {
           const pageUrl = sanitizePageUrlForMarketing(window.location.href);
           if (pageUrl) headers.set(MARKETING_PAGE_URL_HEADER, pageUrl);
+        }
+        const actingEntityId = getClientActingLegalEntityId();
+        if (actingEntityId && !headers.has(X_LEGAL_ENTITY_ID_HEADER)) {
+          headers.set(X_LEGAL_ENTITY_ID_HEADER, actingEntityId);
         }
         return fetch(input, {
           ...init,

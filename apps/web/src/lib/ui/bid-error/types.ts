@@ -11,6 +11,10 @@ export type BidErrorPresentation = {
 export type MapBidErrorOptions = {
   /** Safe same-origin path to return to after verify-identity (e.g. lot page). */
   verifyReturnPath?: string;
+  /** API error code when present (preferred over message matching). */
+  code?: string | null;
+  /** Link to sale page for registration CTAs. */
+  saleRegistrationPath?: string;
   kycFeedback?: {
     headline?: string;
     detail?: string | null;

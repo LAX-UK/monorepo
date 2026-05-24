@@ -15,6 +15,7 @@ type Props = {
   decision: BidPolicyDecision;
   loginNextPath: string;
   kycFeedback?: import("@/lib/data/dto/dashboard-dtos").KycUserFeedbackDto | null;
+  saleRegistrationPath?: string | null;
   step: 1 | 2;
   currentPriceLabel: string;
   priceFlash: boolean;
@@ -27,15 +28,62 @@ type Props = {
   timerState: LotTimerState;
   /** Pre-formatted clock for the countdown (HH:MM:SS or `Nd HH:MM:SS`). */
   countdownClock: string;
-  /** Slim bar (countdown only) when bid card is in view. */
+  /** When true, slim bar (countdown only) when bid card is in view. */
   compact?: boolean;
+  /** Compact auto-bid badge label, e.g. "Auto £100". */
+  autoBidLabel?: string | null;
+  /** Show outbid CTA on sticky bar. */
+  outbid?: boolean;
+  onUpdateAutoBid?: () => void;
 };
+
+function saleRegistrationStickyAction(
+  viewId: string,
+  saleRegistrationPath: string | null,
+  onScrollToBid: () => void,
+): ReactNode {
+  const ctaClass =
+    "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+  const outlineClass =
+    "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary";
+
+  switch (viewId) {
+    case "sale-registration-required":
+      if (saleRegistrationPath) {
+        return (
+          <Link href={saleRegistrationPath} className={ctaClass}>
+            Register
+          </Link>
+        );
+      }
+      return (
+        <Button type="button" onClick={onScrollToBid} className={`h-auto ${ctaClass}`}>
+          Register
+        </Button>
+      );
+    case "sale-registration-pending":
+      return (
+        <Button type="button" onClick={onScrollToBid} className={`h-auto ${outlineClass}`}>
+          View status
+        </Button>
+      );
+    case "sale-registration-rejected":
+      return (
+        <Button type="button" onClick={onScrollToBid} className={`h-auto ${outlineClass}`}>
+          View registration
+        </Button>
+      );
+    default:
+      return null;
+  }
+}
 
 export function BidStickyMobileBar({
   live,
   decision,
   loginNextPath,
   kycFeedback = null,
+  saleRegistrationPath = null,
   step,
   currentPriceLabel,
   priceFlash,
@@ -45,6 +93,9 @@ export function BidStickyMobileBar({
   timerState,
   countdownClock,
   compact = false,
+  autoBidLabel = null,
+  outbid = false,
+  onUpdateAutoBid,
 }: Props) {
   if (timerState.kind === "opensSoon") {
     return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
@@ -62,6 +113,14 @@ export function BidStickyMobileBar({
         : "Closing soon";
     const next = encodeURIComponent(loginNextPath);
     const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
+    const regBlocked =
+      decision.kind === "block" &&
+      (decision.viewId === "sale-registration-required" ||
+        decision.viewId === "sale-registration-pending" ||
+        decision.viewId === "sale-registration-rejected");
+    const regAction = regBlocked
+      ? saleRegistrationStickyAction(decision.viewId, saleRegistrationPath, onScrollToBid)
+      : null;
     return (
       <MarketingStickyBidBar>
         <p
@@ -79,6 +138,21 @@ export function BidStickyMobileBar({
           >
             {kycLinkActionLabel(kycFeedback, "short")}
           </Link>
+        ) : null}
+        {!kycBlocked && regAction}
+        {!kycBlocked && !regAction && outbid && onUpdateAutoBid ? (
+          <Button
+            type="button"
+            onClick={onUpdateAutoBid}
+            className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          >
+            Update auto-bid
+          </Button>
+        ) : null}
+        {!kycBlocked && !regAction && autoBidLabel ? (
+          <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
+            {autoBidLabel}
+          </span>
         ) : null}
       </MarketingStickyBidBar>
     );
@@ -128,19 +202,33 @@ export function BidStickyMobileBar({
           </Link>
         );
         break;
+      case "sale-registration-required":
+      case "sale-registration-pending":
+      case "sale-registration-rejected":
+        right = saleRegistrationStickyAction(decision.viewId, saleRegistrationPath, onScrollToBid);
+        break;
       default:
         right = null;
     }
   } else if (step === 1) {
-    right = (
-      <Button
-        type="button"
-        onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
-      >
-        Place bid
-      </Button>
-    );
+    right =
+      outbid && onUpdateAutoBid ? (
+        <Button
+          type="button"
+          onClick={onUpdateAutoBid}
+          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
+        >
+          Update auto-bid
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          onClick={onScrollToBid}
+          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
+        >
+          Review bid
+        </Button>
+      );
   } else {
     right = (
       <Button
@@ -165,6 +253,11 @@ export function BidStickyMobileBar({
         >
           {currentPriceLabel}
         </p>
+        {autoBidLabel ? (
+          <p className="mt-0.5 truncate font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
+            {autoBidLabel}
+          </p>
+        ) : null}
         <p
           className={cn(
             "mt-0.5 truncate font-label text-[0.7rem] tabular-nums font-semibold uppercase tracking-wider",

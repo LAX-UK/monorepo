@@ -2,7 +2,6 @@ import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import {
-  findUserLatestBidMeta,
   mapAuctionSessionHeaderVM,
   mapLotToSummarySeed,
   mapSaleLotsToQueueVMs,
@@ -15,9 +14,11 @@ import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwo
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
+import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
   getServerLotBids,
@@ -25,9 +26,10 @@ import {
   getServerLotDocuments,
   getServerLotReader,
 } from "@/lib/data/http/lots.server";
-import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
@@ -76,6 +78,10 @@ export default async function ArtworkPage({ params }: PageProps) {
     ? getServerKycStatusSummary().catch(() => null)
     : Promise.resolve(null);
 
+  const initialAutoBidPromise = session
+    ? getServerAutoBid(id).catch(() => null)
+    : Promise.resolve(null);
+
   const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
   const [
     initialBids,
@@ -86,6 +92,7 @@ export default async function ArtworkPage({ params }: PageProps) {
     artistForAccordion,
     kycSummary,
     lotDocuments,
+    initialAutoBidSettings,
   ] = await Promise.all([
     getServerLotBids(id, 30).catch(() => []),
     sellerLookupId ? publicReader.getById(sellerLookupId).catch(() => null) : Promise.resolve(null),
@@ -107,6 +114,7 @@ export default async function ArtworkPage({ params }: PageProps) {
       .catch(() => null),
     kycSummaryPromise,
     getServerLotDocuments(id).catch(() => []),
+    initialAutoBidPromise,
   ]);
 
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
@@ -138,7 +146,6 @@ export default async function ArtworkPage({ params }: PageProps) {
   const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
     l.sellerId === auction.sellerId ? sellerName : "Seller",
   );
-  const userMaxMeta = findUserLatestBidMeta(session?.id, initialBids);
 
   const crumbs = breadcrumbJsonLd(
     parentSale
@@ -197,6 +204,41 @@ export default async function ArtworkPage({ params }: PageProps) {
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
 
+  const [actingCtx, mySaleRegs] = await Promise.all([
+    session
+      ? resolveActingContext(session.role, session.staffRole ?? null).catch(() => ({
+          acting: null,
+          memberships: [],
+          impersonation: null,
+          bootstrapFailed: false,
+        }))
+      : Promise.resolve({
+          acting: null,
+          memberships: [],
+          impersonation: null,
+          bootstrapFailed: false,
+        }),
+    session && auction.saleId && saleBundle?.sale?.deliveryMode === "online"
+      ? getServerSaleMyRegistrations(auction.saleId).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+
+  const kycApprovedForBid = session?.kycStatus === "approved";
+  const saleRegistrationBidGate = buildSaleRegistrationBidGate({
+    saleId: auction.saleId,
+    saleDeliveryMode: saleBundle?.sale?.deliveryMode,
+    saleStatus: saleBundle?.sale?.status,
+    acting: actingCtx.acting,
+    memberships: actingCtx.memberships,
+    myRegistrations: mySaleRegs.map((r) => ({
+      buyerLegalEntityId: r.buyerLegalEntityId,
+      status: r.status,
+      bidLimit: r.bidLimit,
+    })),
+    kycApproved: kycApprovedForBid,
+    kycFeedback: kycApprovedForBid ? null : (kycSummary?.feedback ?? null),
+  });
+
   const onlineBidPanel = (
     <OnlineBidsView
       lotId={auction.id}
@@ -211,12 +253,14 @@ export default async function ArtworkPage({ params }: PageProps) {
         initialLeadingBidderId={initialLeadingBidderId}
         sessionUser={session}
         summarySeed={summarySeed}
-        initialUserMaxAuto={userMaxMeta?.maxAutoBidAmount ?? null}
+        initialAutoBidSettings={initialAutoBidSettings}
         initialWatching={watching}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
         mobilePricingStrip
         kycSummary={kycSummary}
+        saleRegistrationBidGate={saleRegistrationBidGate}
+        saleRegistrationPath={parentSale ? salePath(parentSale) : null}
         saleForLifecycle={saleLifecyclePick}
       />
     </OnlineBidsView>

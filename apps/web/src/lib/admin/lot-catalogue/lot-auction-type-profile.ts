@@ -25,6 +25,10 @@ export type LotCatalogueFieldKey = Extract<
   | "buyNowPrice"
   | "buyerPremiumRate"
   | "minBidIncrement"
+  | "autoBidEnabled"
+  | "autoBidStepMin"
+  | "autoBidStepMax"
+  | "autoBidStepPresetsCsv"
   | "dutchDecrementAmount"
   | "dutchDecrementIntervalMs"
   | "categoryIds"
@@ -58,6 +62,10 @@ const EMPTY_CLEARED: Partial<AdminLotFormValues> = {
   buyNowPrice: "",
   buyerPremiumRate: "",
   minBidIncrement: "",
+  autoBidEnabled: true,
+  autoBidStepMin: "",
+  autoBidStepMax: "",
+  autoBidStepPresetsCsv: "",
   dutchDecrementAmount: "",
   dutchDecrementIntervalMs: "60000",
 };
@@ -123,6 +131,10 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
     reservePrice: hiddenField("reservePrice", "pricing"),
     buyNowPrice: hiddenField("buyNowPrice", "pricing"),
     minBidIncrement: hiddenField("minBidIncrement", "bidding"),
+    autoBidEnabled: hiddenField("autoBidEnabled", "bidding"),
+    autoBidStepMin: hiddenField("autoBidStepMin", "bidding"),
+    autoBidStepMax: hiddenField("autoBidStepMax", "bidding"),
+    autoBidStepPresetsCsv: hiddenField("autoBidStepPresetsCsv", "bidding"),
     dutchDecrementAmount: hiddenField("dutchDecrementAmount", "bidding"),
     dutchDecrementIntervalMs: hiddenField("dutchDecrementIntervalMs", "bidding"),
   } satisfies Record<LotCatalogueFieldKey, FieldSpec>;
@@ -153,6 +165,34 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
             label: "Min bid increment",
             helpText: "Minimum raise per bid. Defaults to 0.01 if left blank.",
             placeholder: "1.00",
+            section: "bidding",
+          },
+          autoBidEnabled: {
+            visible: true,
+            label: "Auto-bid enabled",
+            helpText: "When off, buyers cannot set proxy auto-bid on this lot.",
+            section: "bidding",
+          },
+          autoBidStepMin: {
+            visible: true,
+            label: "Auto-bid step min",
+            helpText: "Smallest raise buyers may choose for auto-bid. Defaults to min increment.",
+            placeholder: "10.00",
+            section: "bidding",
+          },
+          autoBidStepMax: {
+            visible: true,
+            label: "Auto-bid step max",
+            helpText: "Largest raise buyers may choose. Leave blank to match min.",
+            placeholder: "50.00",
+            section: "bidding",
+          },
+          autoBidStepPresetsCsv: {
+            visible: true,
+            label: "Auto-bid step presets",
+            helpText:
+              "Optional comma-separated list (e.g. 10, 25, 50). When set, buyers pick from these only.",
+            placeholder: "10, 25, 50",
             section: "bidding",
           },
         },
@@ -240,6 +280,33 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
             label: "Min bid increment (optional)",
             helpText: "Minimum raise when bidding below buy-now.",
             placeholder: "1.00",
+            section: "bidding",
+          },
+          autoBidEnabled: {
+            visible: true,
+            label: "Auto-bid enabled",
+            helpText: "When off, buyers cannot set proxy auto-bid on this lot.",
+            section: "bidding",
+          },
+          autoBidStepMin: {
+            visible: true,
+            label: "Auto-bid step min",
+            helpText: "Smallest raise buyers may choose for auto-bid.",
+            placeholder: "10.00",
+            section: "bidding",
+          },
+          autoBidStepMax: {
+            visible: true,
+            label: "Auto-bid step max",
+            helpText: "Largest raise buyers may choose.",
+            placeholder: "50.00",
+            section: "bidding",
+          },
+          autoBidStepPresetsCsv: {
+            visible: true,
+            label: "Auto-bid step presets",
+            helpText: "Optional comma-separated list (e.g. 10, 25, 50).",
+            placeholder: "10, 25, 50",
             section: "bidding",
           },
         },

@@ -7,6 +7,7 @@ import Link from "next/link";
 type Props = {
   amount: string;
   maxAuto: string | null;
+  autoBidStep?: string | null;
   error: BidErrorPresentation | null;
   submitting: boolean;
   onCancel: () => void;
@@ -16,6 +17,7 @@ type Props = {
 export function BidConfirmation({
   amount,
   maxAuto,
+  autoBidStep = null,
   error,
   submitting,
   onCancel,
@@ -29,10 +31,22 @@ export function BidConfirmation({
         </p>
         <p className="font-headline text-3xl text-primary">{formatMoney(amount)}</p>
         {maxAuto ? (
-          <p className="mt-4 font-body text-sm text-on-surface-variant">
-            Max auto-bid cap:{" "}
-            <span className="font-headline text-on-surface">{formatMoney(maxAuto)}</span>
-          </p>
+          <div className="mt-4 space-y-1 font-body text-sm text-on-surface-variant">
+            <p>
+              Max auto-bid cap:{" "}
+              <span className="font-headline text-on-surface">{formatMoney(maxAuto)}</span>
+            </p>
+            {autoBidStep ? (
+              <p>
+                Raise by{" "}
+                <span className="font-headline text-on-surface">{formatMoney(autoBidStep)}</span>{" "}
+                each time you&apos;re outbid.
+              </p>
+            ) : null}
+            <p className="text-on-surface-variant">
+              Auto-bid will continue defending after this bid until your max is reached.
+            </p>
+          </div>
         ) : null}
         <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}

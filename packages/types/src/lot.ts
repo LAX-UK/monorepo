@@ -72,6 +72,14 @@ export type Lot = {
   };
   /** Minimum raise over current price (English / buy-it-now paths). */
   minBidIncrement: string;
+  /** Staff toggle: buyers may set proxy auto-bid on this lot. */
+  autoBidEnabled?: boolean;
+  /** Floor for buyer-chosen auto-bid step (defaults to minBidIncrement). */
+  autoBidStepMin?: string | null;
+  /** Ceiling for buyer-chosen auto-bid step. */
+  autoBidStepMax?: string | null;
+  /** Allowed step values when staff restrict choices (e.g. [10, 25, 50]). */
+  autoBidStepPresets?: number[] | null;
   /** Amount subtracted from current price each Dutch interval (optional; derived if null). */
   dutchDecrementAmount: string | null;
   dutchDecrementIntervalMs: number;
@@ -113,6 +121,10 @@ export type CreateLotInput = {
   /** Optional; defaults per DB (e.g. 0.25). */
   buyerPremiumRate?: string | undefined;
   minBidIncrement?: string | undefined;
+  autoBidEnabled?: boolean | undefined;
+  autoBidStepMin?: string | undefined;
+  autoBidStepMax?: string | undefined;
+  autoBidStepPresets?: number[] | null | undefined;
   dutchDecrementAmount?: string | undefined;
   dutchDecrementIntervalMs?: number | undefined;
   startTime: Date;
