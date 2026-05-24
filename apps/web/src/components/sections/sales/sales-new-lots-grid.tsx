@@ -20,10 +20,10 @@ export function SalesNewLotsGrid({ lots }: Props) {
   }
 
   return (
-    <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
+    <ul className="m-0 grid auto-rows-fr list-none grid-cols-1 items-stretch gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
       {lots.map((lot, index) => (
-        <li key={lot.id}>
-          <article className="group flex flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
+        <li key={lot.id} className="flex min-w-0 flex-col">
+          <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
             <Link
               href={lotPath(lot)}
               className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container dark:bg-surface-container-low"
@@ -38,7 +38,7 @@ export function SalesNewLotsGrid({ lots }: Props) {
                 priority={index < 3}
               />
             </Link>
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
               <div className="flex items-center justify-between gap-2">
                 <LotStatusBadge
                   status={lot.status}
@@ -51,7 +51,7 @@ export function SalesNewLotsGrid({ lots }: Props) {
               </div>
               <Link
                 href={lotPath(lot)}
-                className="font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface"
+                className="line-clamp-2 min-h-[2.5rem] font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface"
               >
                 {lot.title}
               </Link>

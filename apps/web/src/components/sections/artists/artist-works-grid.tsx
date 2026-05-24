@@ -102,10 +102,10 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   const yearMedium = lotYearMedium(lot);
 
   return (
-    <li key={lot.id} className="group min-w-0">
+    <li className="group flex h-full min-w-0 flex-col">
       <Link
         href={lotPath(lot)}
-        className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="flex h-full min-w-0 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
           <MediaImage
@@ -120,7 +120,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
             className="absolute right-3 top-3"
           />
         </div>
-        <div className="pt-3">
+        <div className="flex min-w-0 flex-1 flex-col pt-3">
           <p
             className={cn(
               "font-label text-[10px] font-bold uppercase tracking-[0.1em]",
@@ -129,16 +129,20 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
           >
             {status.label}
           </p>
-          <h3 className="mt-1 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
+          <h3 className="mt-1 line-clamp-2 min-h-10 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
             {lot.title}
           </h3>
           {yearMedium ? (
-            <p className="mt-0.5 font-body text-xs italic text-on-surface-variant">{yearMedium}</p>
+            <p className="mt-0.5 line-clamp-1 font-body text-xs italic text-on-surface-variant">
+              {yearMedium}
+            </p>
           ) : null}
           {est ? (
-            <p className="mt-1 font-body text-xs text-on-surface-variant">Est. {est}</p>
+            <p className="mt-1 line-clamp-1 font-body text-xs text-on-surface-variant">
+              Est. {est}
+            </p>
           ) : null}
-          <p className="mt-1 font-body text-xs font-medium text-on-surface-variant">
+          <p className="mt-1 line-clamp-1 font-body text-xs font-medium text-on-surface-variant">
             {price.label} {price.value}
           </p>
         </div>
@@ -169,7 +173,7 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
       {visibleLots.length === 0 ? (
         <WorksEmptyState />
       ) : (
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid auto-rows-fr grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
           {visibleLots.map((lot) => (
             <LotCatalogCard key={lot.id} lot={lot} currentUserId={currentUserId} />
           ))}
