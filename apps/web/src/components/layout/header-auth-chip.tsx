@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { authClient } from "@/lib/auth-client";
@@ -92,6 +93,7 @@ export function HeaderAuthChip({ variant = "full" }: HeaderAuthChipProps) {
 
   return (
     <div className="flex items-center gap-2">
+      <HeaderBidUrgencyChip />
       <NotificationBell />
       <HeaderUserMenu user={user} />
     </div>

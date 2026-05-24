@@ -14,6 +14,8 @@ type LaxLogoProps = {
   imageAlt?: string;
   imageWidth?: number;
   imageHeight?: number;
+  /** Hide the tagline subline when using the typeset wordmark. */
+  hideTagline?: boolean;
   children?: ReactNode;
 };
 
@@ -24,6 +26,7 @@ export function LaxLogo({
   imageAlt = `${SITE_SHORT_NAME} London Auction House`,
   imageWidth = 660,
   imageHeight = 200,
+  hideTagline = false,
   children,
 }: LaxLogoProps) {
   const titleSize =
@@ -72,11 +75,13 @@ export function LaxLogo({
       >
         {SITE_SHORT_NAME}
       </span>
-      <span
-        className={`font-label font-semibold uppercase tracking-[0.28em] text-accent-brand ${subSize} mt-1`}
-      >
-        London Auction House Ltd
-      </span>
+      {!hideTagline ? (
+        <span
+          className={`font-label font-semibold uppercase tracking-[0.28em] text-accent-brand ${subSize} mt-1`}
+        >
+          London Auction House Ltd
+        </span>
+      ) : null}
       {children}
     </div>
   );

@@ -6,7 +6,12 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection } from "@/components/layout/tweaks-popover";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
+import {
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+} from "@auction/ui/components/bottom-sheet";
 import Link from "next/link";
 
 type Props = {
@@ -18,18 +23,15 @@ type Props = {
 
 export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode, items }: Props) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)]"
-      >
-        <SheetHeader className="px-6 pt-2 pb-1 text-left">
-          <SheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+    <BottomSheet open={open} onOpenChange={onOpenChange}>
+      <BottomSheetContent className="border-outline-variant bg-surface-container-lowest">
+        <BottomSheetHeader className="px-6 pt-2 pb-1 text-left">
+          <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             More
-          </SheetTitle>
-        </SheetHeader>
+          </BottomSheetTitle>
+        </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
-          <WorkspaceModeSwitcher mode={clientWorkspaceMode} />
+          <WorkspaceModeSwitcher mode={clientWorkspaceMode} variant="inline" />
           {items.length > 0 ? (
             <nav aria-label="More dashboard destinations" className="grid gap-2">
               {items.map((item) => {
@@ -62,7 +64,7 @@ export function ClientMobileMoreSheet({ open, onOpenChange, clientWorkspaceMode,
           </div>
           <LogoutButton className="min-h-11 w-full justify-center rounded-md border border-border-hairline px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
         </div>
-      </SheetContent>
-    </Sheet>
+      </BottomSheetContent>
+    </BottomSheet>
   );
 }

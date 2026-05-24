@@ -151,7 +151,7 @@ export default async function ArtistPage({ params }: PageProps) {
     return (
       <main
         id="main-content"
-        className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
+        className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 xl:px-20"
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
@@ -365,7 +365,7 @@ export default async function ArtistPage({ params }: PageProps) {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-20 pt-[var(--section-pt)] md:px-10 xl:px-20"
+      className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 xl:px-20"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}

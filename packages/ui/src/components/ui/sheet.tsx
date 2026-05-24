@@ -15,7 +15,7 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
-    className={cn("fixed inset-0 z-50 bg-black/40", className)}
+    className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
     {...props}
     ref={ref}
   />
@@ -48,7 +48,7 @@ const SheetContent = React.forwardRef<
       <SheetPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed z-50 border-outline-variant/20 bg-surface-container-lowest shadow-lg transition-transform duration-300 ease-out",
+          "fixed z-[var(--z-overlay,60)] border-outline-variant/20 bg-surface-container-lowest shadow-lg transition-transform duration-300 ease-out",
           isBottom ? "gap-0 p-0" : "gap-4 p-6",
           sheetSideClasses[side],
           className,
@@ -58,10 +58,6 @@ const SheetContent = React.forwardRef<
         {isBottom ? (
           <>
             <div className="sticky top-0 z-10 flex items-center justify-end gap-2 bg-surface-container-lowest/95 px-3 pt-[max(env(safe-area-inset-top,0px),0.5rem)] pb-2 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80">
-              <div
-                className="pointer-events-none absolute left-1/2 top-2 h-1 w-9 -translate-x-1/2 rounded-full bg-outline-variant/60"
-                aria-hidden
-              />
               <SheetPrimitive.Close
                 className="relative inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
                 aria-label="Close"

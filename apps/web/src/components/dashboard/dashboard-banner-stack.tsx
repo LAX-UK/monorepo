@@ -3,6 +3,7 @@ import "server-only";
 import {
   DASHBOARD_BANNER_PRIORITIES,
   type DashboardBannerCandidate,
+  selectTopDashboardBannerCandidates,
 } from "@/components/dashboard/dashboard-banner-priority";
 import {
   EntityStatusBanner,
@@ -75,9 +76,9 @@ export function DashboardBannerStack({
     });
   }
 
-  const maxVisible = 6;
+  const maxVisible = 2;
   const sorted = [...candidates].sort((a, b) => b.priority - a.priority);
-  const chosen = sorted.slice(0, maxVisible);
+  const chosen = selectTopDashboardBannerCandidates(sorted, maxVisible);
   const overflow = sorted.length - chosen.length;
 
   return (

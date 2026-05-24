@@ -61,4 +61,31 @@ describe("LotCard", () => {
     );
     expect(container.querySelector("article")).toHaveClass("h-full");
   });
+
+  it("MarketingLotTile renders cornerAction overlays without an extra corner wrapper", () => {
+    const { container } = render(
+      <MarketingLotTile
+        lotId="1"
+        index={0}
+        href="/lot/a"
+        linkAriaLabel="Lot A — view artwork"
+        imageUrl={null}
+        imageAlt=""
+        sizes="100px"
+        cornerAction={
+          <>
+            <div className="absolute right-3 top-3 z-10">
+              <button type="button">Heart</button>
+            </div>
+            <div className="absolute bottom-3 left-3 z-10">
+              <button type="button">Eye</button>
+            </div>
+          </>
+        }
+        belowImage={<p>Lot A</p>}
+      />,
+    );
+    expect(container.querySelector(".absolute.right-3.top-3")).toBeInTheDocument();
+    expect(container.querySelector(".absolute.bottom-3.left-3")).toBeInTheDocument();
+  });
 });

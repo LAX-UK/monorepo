@@ -5,10 +5,18 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useForgotPasswordController } from "@/lib/auth/hooks/use-forgot-password-controller";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { Button } from "@auction/ui/components/button";
+import { useSearchParams } from "next/navigation";
 
 export function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get("next");
+  const loginHref = buildAuthHref("/login", {
+    ...(isSafeNextPath(rawNext) ? { next: rawNext } : {}),
+  });
   const {
     form,
     onSubmit,
@@ -54,7 +62,7 @@ export function ForgotPasswordForm() {
         >
           {cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend email"}
         </Button>
-        <AuthFooterLink prefix="Remembered it?" linkText="Log in" href="/login" />
+        <AuthFooterLink prefix="Remembered it?" linkText="Log in" href={loginHref} />
       </div>
     );
   }
@@ -80,7 +88,7 @@ export function ForgotPasswordForm() {
         <AuthSubmitButton loading={loading} loadingLabel="Sending…">
           Send reset link
         </AuthSubmitButton>
-        <AuthFooterLink prefix="Remembered it?" linkText="Log in" href="/login" />
+        <AuthFooterLink prefix="Remembered it?" linkText="Log in" href={loginHref} />
       </div>
     </form>
   );

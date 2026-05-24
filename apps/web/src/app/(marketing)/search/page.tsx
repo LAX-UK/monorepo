@@ -2,6 +2,7 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { CatalogLotView } from "@/components/marketing/catalog-lot-view";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
+import { RecentlyViewedRail } from "@/components/marketing/recently-viewed-rail";
 import { SearchActiveFilters } from "@/components/marketing/search-active-filters";
 import {
   SearchCatalogPendingProvider,
@@ -171,7 +172,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   return (
     <SearchCatalogPendingProvider>
-      <main id="main-content" className="bg-surface pb-24">
+      <main id="main-content" className="bg-surface pb-[var(--page-bottom-padding)]">
         <script type="application/ld+json" suppressHydrationWarning>
           {listLdText}
         </script>
@@ -188,6 +189,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
             ) : null
           }
         />
+
+        <RecentlyViewedRail />
 
         <div className="mx-auto max-w-[var(--container-max,1440px)] px-6 md:px-16">
           <div className="mb-6 md:hidden">

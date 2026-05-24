@@ -1,15 +1,19 @@
 "use client";
 
+import { parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
 import { type ForgotPasswordFormValues, forgotPasswordFormSchema } from "@/lib/auth/schemas";
 import { forgotPasswordService } from "@/lib/auth/services/forgot-password.service";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useForgotPasswordController() {
+  const searchParams = useSearchParams();
+  const prefillEmail = parseAuthEmailParam(searchParams.get("email"));
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const { remaining: cooldown, start: startCooldown } = useResendCooldown(45);
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(forgotPasswordService);
@@ -19,7 +23,7 @@ export function useForgotPasswordController() {
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordFormSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: prefillEmail ?? "" },
   });
 
   const onTurnstileToken = useCallback(

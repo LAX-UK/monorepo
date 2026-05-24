@@ -12,7 +12,7 @@ export function ConsentBar() {
 
   return (
     <section
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-site-chrome,50)] flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       aria-label="Cookie consent"
     >
       <Card className="pointer-events-auto w-full max-w-3xl border border-outline-variant/60 shadow-lg">

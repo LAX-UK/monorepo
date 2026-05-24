@@ -14,7 +14,8 @@ export function StickyBidBar({ children, className, innerClassName }: StickyBidB
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/25 bg-surface-container-lowest/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-outline-variant/20 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
+        "fixed inset-x-0 border-t border-outline-variant/25 bg-surface-container-lowest/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-outline-variant/20 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
+        "bottom-[var(--sticky-bid-bar-bottom,0px)] z-[var(--z-site-chrome,50)]",
         className,
       )}
     >

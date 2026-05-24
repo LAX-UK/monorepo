@@ -3,6 +3,7 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { SITE_LOGO_TEXT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
@@ -103,11 +104,18 @@ function SiteHeaderShell({
               href="/"
               className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
             >
-              <LaxLogo variant="header" />
+              <LaxLogo
+                variant="header"
+                imageSrc={SITE_LOGO_TEXT_PATH}
+                imageWidth={430}
+                imageHeight={202}
+                className="lg:hidden"
+              />
+              <LaxLogo variant="header" className="hidden lg:block" />
             </Link>
           }
           trailing={
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:max-w-[420px] lg:flex-none">
+            <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:max-w-[420px] lg:flex-none">
               <HeaderSearchTrigger />
               <ThemeToggle />
               <HeaderAuthChip variant="notifications" />

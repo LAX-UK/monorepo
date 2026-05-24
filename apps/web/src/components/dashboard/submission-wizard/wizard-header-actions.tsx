@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@auction/ui/components/sheet";
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -54,8 +54,8 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
         </Button>
       </div>
 
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetTrigger asChild>
+      <BottomSheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <BottomSheetTrigger asChild>
           <Button
             type="button"
             variant="ghost"
@@ -66,15 +66,14 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
           >
             <MoreVertical className="size-5" aria-hidden />
           </Button>
-        </SheetTrigger>
-        <SheetContent
-          side="bottom"
-          className="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
-        >
-          <SheetHeader>
-            <SheetTitle className="font-headline text-left text-lg">Submission</SheetTitle>
-          </SheetHeader>
-          <ul className="mt-4 flex flex-col gap-1">
+        </BottomSheetTrigger>
+        <BottomSheetContent className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <BottomSheetHeader>
+            <BottomSheetTitle className="font-headline text-left text-lg">
+              Submission
+            </BottomSheetTitle>
+          </BottomSheetHeader>
+          <ul className="mt-4 flex flex-col gap-1 px-6 pb-6">
             <li>
               <Button
                 type="button"
@@ -118,8 +117,8 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
               </Button>
             </li>
           </ul>
-        </SheetContent>
-      </Sheet>
+        </BottomSheetContent>
+      </BottomSheet>
     </>
   );
 }

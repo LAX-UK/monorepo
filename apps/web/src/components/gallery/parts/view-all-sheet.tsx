@@ -5,12 +5,12 @@ import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gall
 import { MediaImage } from "@/components/ui/media-image";
 import { Button, cn } from "@auction/ui";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@auction/ui/components/sheet";
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetDescription,
+  BottomSheetHeader,
+  BottomSheetTitle,
+} from "@auction/ui/components/bottom-sheet";
 import { useCallback, useRef } from "react";
 
 const LONG_PRESS_MS = 500;
@@ -41,15 +41,17 @@ export function ViewAllSheet() {
   if (images.length <= 1) return null;
 
   return (
-    <Sheet open={viewAllOpen} onOpenChange={setViewAllOpen}>
-      <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="font-label text-sm uppercase tracking-wide">All images</SheetTitle>
-          <SheetDescription>
+    <BottomSheet open={viewAllOpen} onOpenChange={setViewAllOpen}>
+      <BottomSheetContent className="max-h-[85dvh]">
+        <BottomSheetHeader className="px-6 pt-2 text-left">
+          <BottomSheetTitle className="font-label text-sm uppercase tracking-wide">
+            All images
+          </BottomSheetTitle>
+          <BottomSheetDescription>
             {images.length} images for {title}
-          </SheetDescription>
-        </SheetHeader>
-        <div className="mt-4 grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5">
+          </BottomSheetDescription>
+        </BottomSheetHeader>
+        <div className="grid grid-cols-3 gap-2 px-6 pb-6 md:grid-cols-4 lg:grid-cols-5">
           {images.map((img, i) => (
             <GridThumb
               key={`grid-${img.src}__${i}`}
@@ -62,8 +64,8 @@ export function ViewAllSheet() {
             />
           ))}
         </div>
-      </SheetContent>
-    </Sheet>
+      </BottomSheetContent>
+    </BottomSheet>
   );
 }
 

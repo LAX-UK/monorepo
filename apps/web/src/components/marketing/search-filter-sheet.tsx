@@ -2,6 +2,7 @@
 
 import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sheet";
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
+import { SaveSearchButton } from "@/components/marketing/save-search-button";
 import { useSearchCatalogPending } from "@/components/marketing/search-catalog-client";
 import { SearchCategoryChips } from "@/components/marketing/search-category-chips";
 import { SearchFilterForm } from "@/components/marketing/search-filter-form";
@@ -84,6 +85,15 @@ export function SearchFilterSheet({
           </div>
         ) : null}
         <SearchSortSheetGroup value={sort} onSelect={close} />
+        <SaveSearchButton
+          label={trimmed ? `Search: ${trimmed}` : "Catalogue search"}
+          query={{
+            ...(trimmed ? { q: trimmed } : {}),
+            sort,
+            view,
+            ...(categoryId ? { categoryId } : {}),
+          }}
+        />
       </div>
     </MarketingFilterSheet>
   );

@@ -17,7 +17,7 @@ export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFil
         ref={ref}
         type="button"
         className={cn(
-          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface transition-colors hover:border-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+          "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface transition-colors hover:border-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
           className,
         )}
         {...props}

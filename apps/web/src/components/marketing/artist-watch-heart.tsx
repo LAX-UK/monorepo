@@ -71,7 +71,7 @@ export function ArtistWatchHeart({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-full backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+        "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] items-center justify-center rounded-full backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
         watching
           ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface"
           : "bg-surface/80 text-on-surface hover:bg-surface",

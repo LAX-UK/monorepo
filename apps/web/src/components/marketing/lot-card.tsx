@@ -45,6 +45,8 @@ export type LotCardGridProps = {
   topLeft?: ReactNode;
   topRight?: ReactNode;
   bottomLeft?: ReactNode;
+  /** Full-bleed overlay controls (e.g. watchlist + quick look) positioned on the image. */
+  imageOverlays?: ReactNode;
   className?: string;
 };
 
@@ -73,6 +75,7 @@ export function LotCardGrid({
   topLeft,
   topRight,
   bottomLeft,
+  imageOverlays,
   className,
 }: LotCardGridProps) {
   const article = (
@@ -110,6 +113,7 @@ export function LotCardGrid({
               {bottomLeft}
             </div>
           ) : null}
+          {imageOverlays}
         </AdaptiveMediaFrameContainer>
         <div className="p-3 md:p-5">
           {title}
