@@ -18,6 +18,7 @@ function baseEnv(overrides: Partial<Env> = {}): Env {
   return {
     STRIPE_SECRET_KEY: "sk_test_dummy",
     STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_dummy",
+    WEB_ORIGIN: "https://app.test",
     ...overrides,
   } as Env;
 }
