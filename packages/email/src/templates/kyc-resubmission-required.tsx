@@ -29,7 +29,8 @@ export default function KycResubmissionRequiredEmail({
         </TextBlock>
       ) : null}
       <TextBlock>
-        Use good lighting, keep your document flat, and make sure your face and ID are fully visible.
+        Use good lighting, keep your document flat, and make sure your face and ID are fully
+        visible.
       </TextBlock>
       <Button href={verifyUrl}>Continue verification</Button>
     </Layout>
