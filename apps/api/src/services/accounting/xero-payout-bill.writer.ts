@@ -15,8 +15,8 @@ import type {
   IXeroConnectionRepository,
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
-import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { getXeroScopes } from "./xero-accounting.provider.js";
+import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
 function isoDate(d: Date): string {
