@@ -33,3 +33,7 @@ export const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonPr
   },
 );
 LoadingButton.displayName = "LoadingButton";
+
+/** Alias for submit/async actions across auth and dashboard surfaces. */
+export const AsyncButton = LoadingButton;
+export type AsyncButtonProps = LoadingButtonProps;

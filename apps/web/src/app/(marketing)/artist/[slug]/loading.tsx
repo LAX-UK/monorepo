@@ -2,7 +2,7 @@ export default function ArtistLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-24 pt-[var(--section-pt)] md:px-16"
+      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-16"
       aria-busy="true"
       aria-label="Loading artist"
     >

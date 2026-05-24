@@ -32,6 +32,21 @@ class MockResizeObserver implements ResizeObserver {
 vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
 vi.stubGlobal("ResizeObserver", MockResizeObserver);
 
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  configurable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 if (typeof globalThis.requestIdleCallback === "undefined") {
   vi.stubGlobal("requestIdleCallback", (cb: IdleRequestCallback) => {
     const id = setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0);

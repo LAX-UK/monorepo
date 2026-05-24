@@ -4,6 +4,7 @@ import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
 import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
+import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
@@ -94,6 +95,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
           <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
+          <BottomChromeSync />
           <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
             {rootJsonLd}
           </script>

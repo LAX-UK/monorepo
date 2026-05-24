@@ -1,7 +1,7 @@
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { Lot } from "@auction/types";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mergeLotQuickLookEnrichment } from "./fetch-lot-quick-look-enrichment.client";
 import { LotQuickLookProvider } from "./lot-quick-look-context";
@@ -98,6 +98,13 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
     marketingDetails: {},
     ...overrides,
   };
+}
+
+function visibleQuickLookHeading(name: string) {
+  const dialog = screen.getByRole("dialog");
+  return within(dialog)
+    .getAllByRole("heading", { name })
+    .find((node) => !node.classList.contains("sr-only"));
 }
 
 function QuickLookHarness({
@@ -245,7 +252,7 @@ describe("LotQuickLookTrigger", () => {
     fireEvent.click(screen.getByRole("button", { name: /quick look at blue horizon/i }));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Blue Horizon")).toBeInTheDocument();
+    expect(visibleQuickLookHeading("Blue Horizon")).toBeTruthy();
     expect(screen.getByRole("link", { name: /view lot/i })).toHaveAttribute(
       "href",
       "/lot/test-lot",
@@ -320,9 +327,11 @@ describe("LotQuickLookTrigger", () => {
     }
     render(<QuickLookHarness vm={firstCard} deck={deck} deckIndex={0} />);
     fireEvent.click(screen.getByRole("button", { name: /quick look at lot alpha/i }));
-    expect(await screen.findByText("Lot Alpha")).toBeInTheDocument();
+    await screen.findByRole("dialog");
+    expect(visibleQuickLookHeading("Lot Alpha")).toBeTruthy();
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(await screen.findByText("Lot Beta")).toBeInTheDocument();
+    await screen.findByRole("dialog");
+    expect(visibleQuickLookHeading("Lot Beta")).toBeTruthy();
   });
 
   it("navigates deck with Shift+Arrow when lot has multiple images", async () => {
@@ -350,11 +359,13 @@ describe("LotQuickLookTrigger", () => {
     ];
     render(<QuickLookHarness vm={vm} deck={deck} deckIndex={0} />);
     fireEvent.click(screen.getByRole("button", { name: /quick look at multi image lot/i }));
-    expect(await screen.findByText("Multi Image Lot")).toBeInTheDocument();
+    await screen.findByRole("dialog");
+    expect(visibleQuickLookHeading("Multi Image Lot")).toBeTruthy();
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(screen.getByText("Multi Image Lot")).toBeInTheDocument();
+    expect(visibleQuickLookHeading("Multi Image Lot")).toBeTruthy();
     fireEvent.keyDown(window, { key: "ArrowRight", shiftKey: true });
-    expect(await screen.findByText("Second Lot")).toBeInTheDocument();
+    await screen.findByRole("dialog");
+    expect(visibleQuickLookHeading("Second Lot")).toBeTruthy();
   });
 });
 

@@ -2,16 +2,17 @@
 
 import { WIZARD_STEPS } from "@/lib/forms/submission/step-validation";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@auction/ui/components/sheet";
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import { ChevronLeft, ChevronRight, List } from "lucide-react";
+import { useState } from "react";
 
 type Props = {
   activeIndex: number;
@@ -87,6 +88,7 @@ export function WizardStepper({
   canGoPrev = false,
   canGoNext = false,
 }: Props) {
+  const [stepsOpen, setStepsOpen] = useState(false);
   const currentLabel = WIZARD_STEPS[activeIndex]?.label ?? "";
   const nextLabel = WIZARD_STEPS[activeIndex + 1]?.label;
   const progressPercent = ((activeIndex + 1) / WIZARD_STEPS.length) * 100;
@@ -119,8 +121,8 @@ export function WizardStepper({
               </p>
             ) : null}
           </div>
-          <Sheet>
-            <SheetTrigger asChild>
+          <BottomSheet open={stepsOpen} onOpenChange={setStepsOpen}>
+            <BottomSheetTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
@@ -131,23 +133,23 @@ export function WizardStepper({
               >
                 <List className="size-5" aria-hidden />
               </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              className="max-h-[min(70dvh,32rem)] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
-            >
-              <SheetHeader>
-                <SheetTitle className="font-headline text-left text-lg">Steps</SheetTitle>
-              </SheetHeader>
-              <ol className="mt-4 flex max-h-[50dvh] flex-col gap-2 overflow-y-auto">
+            </BottomSheetTrigger>
+            <BottomSheetContent className="max-h-[min(70dvh,32rem)] pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <BottomSheetHeader>
+                <BottomSheetTitle className="font-headline text-left text-lg">
+                  Steps
+                </BottomSheetTitle>
+              </BottomSheetHeader>
+              <ol className="mt-4 flex flex-col gap-2 px-6 pb-6">
                 <WizardStepList
                   activeIndex={activeIndex}
                   maxReachableIndex={maxReachableIndex}
                   onStepClick={onStepClick}
+                  onSelectStep={() => setStepsOpen(false)}
                 />
               </ol>
-            </SheetContent>
-          </Sheet>
+            </BottomSheetContent>
+          </BottomSheet>
           <Button
             type="button"
             variant="ghost"

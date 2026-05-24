@@ -88,15 +88,15 @@ export function CatalogLotGridView({
               lotId={a.id}
               href={lotPath(a)}
               topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
-              topRight={
+              imageOverlays={
                 <CatalogLotQuickLookCorner
                   lot={a}
                   isAuthenticated={isAuthenticated}
                   watchedLotIds={watchedLotIds}
                   loginNextPath={loginNextPath}
+                  bottomLeftAddon={<LotStatusOverlay lot={a} />}
                 />
               }
-              bottomLeft={<LotStatusOverlay lot={a} />}
               adaptiveMedia={{
                 src: img,
                 objectFit: "contain",

@@ -222,6 +222,20 @@
   --shell-gutter-md: 2rem;
   --shell-gutter-lg: 3.5rem;
 
+  /* Stacking — site chrome vs overlays vs toasts */
+  --z-site-chrome: 50;
+  --z-overlay: 60;
+  --z-toast: 70;
+
+  /* Fixed bottom chrome heights */
+  --bottom-chrome-bid: 4.5rem;
+  --bottom-chrome-tab: var(--bottom-nav-height, 4rem);
+  --bottom-chrome-consent: 5.5rem;
+  --bottom-chrome-consent-offset: 0px;
+  --sticky-bid-bar-bottom: var(--bottom-chrome-consent-offset);
+  --bottom-tab-bar-bottom: var(--bottom-chrome-consent-offset);
+  --page-bottom-padding: calc(1.5rem + var(--bottom-chrome-consent-offset));
+
   /* Overlay tone fallbacks — used outside AdaptiveMediaFrame */
   --overlay-fg: var(--color-foreground);
   --overlay-bg: var(--color-surface);

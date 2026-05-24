@@ -240,7 +240,7 @@ export default async function SalesListPage({
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-24 pt-[var(--header-height)] dark:bg-background"
+      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-[var(--header-height)] dark:bg-background"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {crumbText}

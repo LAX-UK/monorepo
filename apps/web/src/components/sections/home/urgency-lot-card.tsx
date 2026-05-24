@@ -44,13 +44,16 @@ export function UrgencyLotCard({
         />
       }
       cornerAction={
-        <MarketingWatchlistHeart
-          lotId={item.id}
-          lotTitle={item.title}
-          initialWatching={initialWatching}
-          isAuthenticated={isAuthenticated}
-          loginNextPath={loginNextPath}
-        />
+        <div className="pointer-events-auto absolute right-3 top-3 z-10">
+          <MarketingWatchlistHeart
+            lotId={item.id}
+            lotTitle={item.title}
+            initialWatching={initialWatching}
+            isAuthenticated={isAuthenticated}
+            loginNextPath={loginNextPath}
+            layout="inline"
+          />
+        </div>
       }
       belowImage={
         <div className="flex min-w-0 flex-1 flex-col gap-3">

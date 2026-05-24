@@ -6,10 +6,11 @@ import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-ton
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
 import { Heart } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 
 const inlineHeartShellClass =
-  "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface backdrop-blur-none transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none";
+  "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface backdrop-blur-none transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none";
 
 type LayoutMode = "overlay" | "inline";
 
@@ -33,6 +34,7 @@ export function MarketingWatchlistHeart({
   className,
   layout = "overlay",
 }: Props) {
+  const router = useRouter();
   const { watching, busy, error, announce, toggle, loginHref } = useWatchlistToggle({
     lotId,
     initialWatching,
@@ -46,13 +48,26 @@ export function MarketingWatchlistHeart({
     layout === "inline" ? "relative shrink-0" : "pointer-events-auto absolute right-3 top-3 z-10";
 
   const overlayTone = useOverlayTone("topRight");
-  const overlayShell = overlayIconButtonClasses(overlayTone, "size-9");
+  const overlayShell = overlayIconButtonClasses(
+    overlayTone,
+    "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)]",
+  );
   const overlayProps = overlayToneProps(overlayTone);
+
+  const onLoginClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      router.push(loginHref);
+    },
+    [loginHref, router],
+  );
 
   if (!isAuthenticated) {
     return (
-      <Link
-        href={loginHref}
+      <button
+        type="button"
+        onClick={onLoginClick}
         className={cn(
           layout === "inline" ? inlineHeartShellClass : overlayShell,
           positionClass,
@@ -62,7 +77,7 @@ export function MarketingWatchlistHeart({
         aria-label={`Sign in to add ${lotTitle} to your watchlist`}
       >
         <Heart className="size-5 fill-transparent stroke-current" aria-hidden />
-      </Link>
+      </button>
     );
   }
 
