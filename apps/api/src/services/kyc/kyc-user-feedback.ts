@@ -103,10 +103,15 @@ export function shouldReuseKycSessionUrl(input: {
   latestSessionStatus: KycVerification["status"] | null;
   decisionPayload: Record<string, unknown> | null;
 }): boolean {
+  const sessionUrl = readKycSessionUrl(input.decisionPayload);
+  if (!sessionUrl) return false;
+
+  if (input.latestSessionStatus === "created") return true;
+
   if (input.latestSessionStatus !== "requires_input") return false;
   const reasonCode = readVeriffReasonCode(input.decisionPayload);
   if (reasonCode === VERIFF_RESUBMISSION_LIMIT_REASON_CODE) return false;
-  return Boolean(readKycSessionUrl(input.decisionPayload));
+  return true;
 }
 
 export function readKycSessionUrl(decisionPayload: Record<string, unknown> | null): string | null {
@@ -156,31 +161,6 @@ export function buildKycUserFeedback(input: {
     };
   }
 
-  if (userStatus === "pending" || latestSessionStatus === "processing") {
-    return {
-      headline: "In review",
-      detail: "We are processing your verification. This usually takes a few minutes.",
-      action: "wait",
-      reasonCode,
-      decisionStatus,
-      needsResubmit: false,
-    };
-  }
-
-  if (userStatus === "rejected" || decisionStatus === "declined") {
-    const issue = guidanceForReason(decision.reason ?? null, reasonCode);
-    return {
-      headline: "Verification unsuccessful",
-      detail:
-        issue ??
-        "We could not verify your identity. Try again with clearer photos and a valid document.",
-      action: "retry",
-      reasonCode,
-      decisionStatus: decisionStatus ?? "declined",
-      needsResubmit: false,
-    };
-  }
-
   if (decisionStatus === "expired") {
     return {
       headline: "Verification expired",
@@ -211,6 +191,31 @@ export function buildKycUserFeedback(input: {
       action: "continue",
       reasonCode,
       decisionStatus,
+      needsResubmit: false,
+    };
+  }
+
+  if (userStatus === "pending" || latestSessionStatus === "processing") {
+    return {
+      headline: "In review",
+      detail: "We are processing your verification. This usually takes a few minutes.",
+      action: "wait",
+      reasonCode,
+      decisionStatus,
+      needsResubmit: false,
+    };
+  }
+
+  if (userStatus === "rejected" || decisionStatus === "declined") {
+    const issue = guidanceForReason(decision.reason ?? null, reasonCode);
+    return {
+      headline: "Verification unsuccessful",
+      detail:
+        issue ??
+        "We could not verify your identity. Try again with clearer photos and a valid document.",
+      action: "retry",
+      reasonCode,
+      decisionStatus: decisionStatus ?? "declined",
       needsResubmit: false,
     };
   }

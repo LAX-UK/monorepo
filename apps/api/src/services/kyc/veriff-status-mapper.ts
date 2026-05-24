@@ -107,6 +107,6 @@ export function mapVeriffEventToVerificationStatus(
 }
 
 export function mapVeriffEventToUserStatus(action: string): UserKycStatus | null {
-  if (action === "submitted" || action === "started") return "pending";
+  if (action === "submitted") return "pending";
   return null;
 }
