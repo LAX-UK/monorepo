@@ -214,6 +214,15 @@ export const cancelSaleBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+/** Exact phrase staff must type to confirm sale soft-delete (case-sensitive). */
+export function saleDeleteConfirmationPhrase(title: string): string {
+  return `DELETE ${title}`;
+}
+
+export const deleteSaleBodySchema = z.object({
+  confirmationPhrase: z.string().min(1).max(500),
+});
+
 export const markSaleEndedBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });

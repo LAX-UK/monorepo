@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { saleNotDeleted } from "@auction/db";
 import { lot, payment, sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
@@ -10,6 +11,7 @@ function soldLotMissingSettledPayment() {
   return sql`exists (
     select 1 from ${lot} l
     where l.sale_id = ${sale.id}
+      and l.deleted_at is null
       and l.status = 'ended'
       and l.winner_id is not null
       and not exists (
@@ -21,7 +23,7 @@ function soldLotMissingSettledPayment() {
 }
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
-  const conditions = [];
+  const conditions = [saleNotDeleted()];
   if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
   else if (input.status) conditions.push(eq(sale.status, input.status));
   const categoryIds = input.categoryIds?.length
@@ -80,7 +82,11 @@ export class DrizzleSaleRepository implements ISaleRepository {
   }
 
   async findById(id: string): Promise<Sale | null> {
-    const rows = await this.db.select().from(sale).where(eq(sale.id, id)).limit(1);
+    const rows = await this.db
+      .select()
+      .from(sale)
+      .where(and(eq(sale.id, id), saleNotDeleted()))
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     const categories = await this.categoryIdsBySaleIds([row.id]);
@@ -89,7 +95,10 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async findByIds(ids: string[]): Promise<Sale[]> {
     if (ids.length === 0) return [];
-    const rows = await this.db.select().from(sale).where(inArray(sale.id, ids));
+    const rows = await this.db
+      .select()
+      .from(sale)
+      .where(and(inArray(sale.id, ids), saleNotDeleted()));
     const categories = await this.categoryIdsBySaleIds(rows.map((r) => r.id));
     return rows.map((r) => mapSaleRow(r, categories.get(r.id) ?? []));
   }
@@ -162,7 +171,10 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async findWithStatuses(statuses: SaleStatus[]): Promise<Sale[]> {
     if (statuses.length === 0) return [];
-    const rows = await this.db.select().from(sale).where(inArray(sale.status, statuses));
+    const rows = await this.db
+      .select()
+      .from(sale)
+      .where(and(inArray(sale.status, statuses), saleNotDeleted()));
     return this.withCategoryIds(rows);
   }
 
@@ -203,7 +215,11 @@ export class DrizzleSaleRepository implements ISaleRepository {
       rowPatch.locationCountry = patch.locationCountry ?? null;
 
     const row = await this.db.transaction(async (tx) => {
-      const [updated] = await tx.update(sale).set(rowPatch).where(eq(sale.id, id)).returning();
+      const [updated] = await tx
+        .update(sale)
+        .set(rowPatch)
+        .where(and(eq(sale.id, id), saleNotDeleted()))
+        .returning();
       if (!updated) throw new Error("Sale update failed");
       if (categoryIds !== undefined) {
         await tx.delete(saleCategories).where(eq(saleCategories.saleId, id));

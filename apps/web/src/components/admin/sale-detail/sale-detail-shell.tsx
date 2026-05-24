@@ -46,6 +46,11 @@ export function SaleDetailShell({
   const canUnpublish = sale.status === "scheduled";
   const canCancel =
     sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
+  const canDelete = bundle.deleteEligibility?.canDelete === true;
+  const deleteBlockers =
+    sale.status === "draft" || sale.status === "scheduled"
+      ? (bundle.deleteEligibility?.blockers ?? [])
+      : [];
   const isOnsite = sale.deliveryMode === "onsite";
   const canMarkOnsiteEnded = isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
@@ -122,6 +127,7 @@ export function SaleDetailShell({
             canPublish={canPublish}
             canUnpublish={canUnpublish}
             canCancel={canCancel}
+            canDelete={canDelete}
             canMarkOnsiteEnded={canMarkOnsiteEnded}
             showSaleroomLink={liveish}
           />
@@ -131,9 +137,11 @@ export function SaleDetailShell({
       mobileActionBarTrailing={
         <SaleDetailMobileLifecycleTrailing
           saleId={saleId}
+          saleTitle={sale.title}
           canPublish={canPublish}
           canUnpublish={canUnpublish}
           canCancel={canCancel}
+          canDelete={canDelete}
           canMarkOnsiteEnded={canMarkOnsiteEnded}
         />
       }
@@ -174,6 +182,7 @@ export function SaleDetailShell({
           liveish={liveish}
           registrationCount={registrationCount}
           activityEvents={activityEvents}
+          deleteBlockers={deleteBlockers}
           status={<AdminStatusBadge domain="sale" status={sale.status} />}
           publicHref={publicHref}
         />

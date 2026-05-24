@@ -89,6 +89,8 @@ export type Lot = {
   createdAt: Date;
   updatedAt: Date;
   marketingDetails: LotMarketingDetails;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
 };
 
 export type CreateLotInput = {

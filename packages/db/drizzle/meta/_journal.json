@@ -477,6 +477,13 @@
       "when": 1782600000000,
       "tag": "0070_notification_kyc_type",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1782700000000,
+      "tag": "0071_sale_lot_soft_delete",
+      "breakpoints": true
     }
   ]
 }
