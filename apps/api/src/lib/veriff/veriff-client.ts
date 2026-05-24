@@ -1,4 +1,5 @@
 import type { Env } from "../../env.js";
+import { buildVeriffCreateSessionVerification } from "./veriff-session-payload.js";
 import type { VeriffCreateSessionResponse } from "./veriff-types.js";
 
 export class VeriffNotConfiguredError extends Error {
@@ -45,11 +46,10 @@ export class VeriffClient implements IVeriffClient {
         "X-AUTH-CLIENT": this.apiKey,
       },
       body: JSON.stringify({
-        verification: {
-          callback: input.callbackUrl,
-          endUserId: input.userId,
-          vendorData: input.userId,
-        },
+        verification: buildVeriffCreateSessionVerification({
+          userId: input.userId,
+          callbackUrl: input.callbackUrl,
+        }),
       }),
     });
 
