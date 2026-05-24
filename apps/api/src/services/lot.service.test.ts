@@ -89,6 +89,7 @@ function mkIndividualEntity(overrides: Partial<LegalEntity> = {}): LegalEntity {
     statusChangedAt: null,
     statusChangedByUserId: null,
     stripeConnectAccountId: "acct_1",
+    stripeCustomerId: null,
     stripeConnectChargesEnabled: true,
     stripeConnectPayoutsEnabled: true,
     stripeConnectRequirementsCurrentlyDue: [],

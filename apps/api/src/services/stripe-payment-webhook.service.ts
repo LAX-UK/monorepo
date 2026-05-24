@@ -11,6 +11,7 @@ import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
+import { chargeIdFromPaymentIntent } from "./stripe/stripe-charge-id.js";
 
 type PaymentWebhookResult = {
   processed: boolean;
@@ -20,6 +21,10 @@ type PaymentWebhookResult = {
     | "dispute_closed"
     | "refund_received"
     | "payment_intent_succeeded"
+    | "payment_intent_processing"
+    | "payment_intent_partially_funded"
+    | "payment_intent_failed"
+    | "payment_intent_canceled"
     | "skipped";
   reason?: string;
 };
@@ -57,9 +62,7 @@ export class StripePaymentWebhookService {
       return { processed: false, action: "skipped", reason: "amount_mismatch" };
     }
 
-    const lc = paymentIntent.latest_charge;
-    const chargeId =
-      typeof lc === "string" ? lc : lc && typeof lc === "object" && "id" in lc ? lc.id : null;
+    const chargeId = chargeIdFromPaymentIntent(paymentIntent);
 
     return this.db.transaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
@@ -81,6 +84,161 @@ export class StripePaymentWebhookService {
       });
 
       return { processed: true, action: "payment_intent_succeeded" };
+    });
+  }
+
+  async handlePaymentIntentProcessing(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    const expectedPence = gbpAmountToPence(paymentRow.amount);
+    if (paymentIntent.amount !== expectedPence) {
+      recordMoneyPathEvent("payment_intent_amount_mismatch");
+      return { processed: false, action: "skipped", reason: "amount_mismatch" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "pending") {
+        await this.payments.updateStatus(paymentId, "authorized");
+      }
+      recordMoneyPathEvent("payment_intent_processing");
+      return { processed: true, action: "payment_intent_processing" };
+    });
+  }
+
+  async handlePaymentIntentPartiallyFunded(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    const expectedPence = gbpAmountToPence(paymentRow.amount);
+    if (paymentIntent.amount !== expectedPence) {
+      recordMoneyPathEvent("payment_intent_amount_mismatch");
+      return { processed: false, action: "skipped", reason: "amount_mismatch" };
+    }
+
+    const amountRemainingCents =
+      paymentIntent.next_action?.display_bank_transfer_instructions?.amount_remaining ??
+      Math.max(0, paymentIntent.amount - (paymentIntent.amount_received ?? 0));
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "pending") {
+        await this.payments.updateStatus(paymentId, "authorized");
+      }
+
+      await this.domainEventPublisher.publish(tx, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.bank_transfer_partially_funded",
+        payload: {
+          paymentId,
+          lotId: paymentRow.lotId,
+          buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+          amountCents: expectedPence,
+          amountRemainingCents,
+          currency: paymentIntent.currency?.toUpperCase() ?? "GBP",
+        },
+        actorUserId: null,
+        actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+      });
+
+      recordMoneyPathEvent("payment_intent_partially_funded");
+      return { processed: true, action: "payment_intent_partially_funded" };
+    });
+  }
+
+  async handlePaymentIntentFailed(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      recordMoneyPathEvent("payment_intent_failed");
+      return { processed: true, action: "payment_intent_failed" };
+    });
+  }
+
+  async handlePaymentIntentCanceled(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      recordMoneyPathEvent("payment_intent_canceled");
+      return { processed: true, action: "payment_intent_canceled" };
     });
   }
 

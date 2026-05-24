@@ -19,12 +19,12 @@ export function ManualReviewPaymentActions({ paymentId }: Props) {
         <ConfirmFormSubmit
           formId={captureFormId}
           className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary"
-          confirmTitle="Capture and process payment?"
-          confirmBody="Funds will be captured despite the archived seller status."
-          confirmLabel="Capture"
+          confirmTitle="Release for checkout?"
+          confirmBody="The buyer can retry checkout (typically UK bank transfer for high-value lots). No funds are captured until Stripe confirms payment."
+          confirmLabel="Release"
           tone="warning"
         >
-          Capture and process
+          Release for checkout
         </ConfirmFormSubmit>
       </form>
       <form id={refundFormId} action={refundManualReviewPaymentAction}>

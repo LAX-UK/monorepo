@@ -44,6 +44,7 @@ export interface IPaymentWriteRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   findById(id: string): Promise<PaymentRecord | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
+  findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
   updateStripeChargeId(id: string, stripeChargeId: string): Promise<void>;
   updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void>;

@@ -43,6 +43,8 @@ function dtoFromPaymentRecord(row: PaymentRecord): MyPaymentRowDTO {
     createdAt: row.createdAt.toISOString(),
     invoiceUrl: row.xeroOnlineInvoiceUrl ?? null,
     invoiceNumber: row.xeroInvoiceNumber ?? null,
+    checkoutRail: null,
+    manualReviewReason: null,
   };
 }
 
@@ -287,6 +289,7 @@ describe("GET /payments/me", () => {
     expect(keys).toEqual(
       [
         "amount",
+        "checkoutRail",
         "createdAt",
         "currency",
         "id",
@@ -295,6 +298,7 @@ describe("GET /payments/me", () => {
         "lotId",
         "lotImageUrl",
         "lotTitle",
+        "manualReviewReason",
         "platformFee",
         "status",
       ].sort(),

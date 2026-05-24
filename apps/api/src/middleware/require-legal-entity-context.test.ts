@@ -27,6 +27,7 @@ function repo(
     findActiveMembership,
     listImpersonationNoticeRecipientEmails: vi.fn().mockResolvedValue([]),
     setXeroContactId: vi.fn(),
+    setStripeCustomerId: vi.fn(),
     findPrimaryAddressForXero: vi.fn().mockResolvedValue(null),
     findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue(null),
     ensurePersonalEntity: ensurePersonalEntity ?? vi.fn(),

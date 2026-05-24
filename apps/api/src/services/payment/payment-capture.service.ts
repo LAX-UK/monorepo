@@ -13,12 +13,19 @@ import type {
   CapturePaymentResult,
   IPaymentCaptureService,
 } from "../interfaces/payment-capture.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
+import type { IPaymentWriteRepository, PaymentRecord } from "../interfaces/payment-write.js";
 import type { ILotRepository, IUserRepository } from "../interfaces/repositories.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
+import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { dispatchPaymentReceived } from "./dispatch-payment-received.js";
+
+const XERO_CAPTURE_VIAS: CapturePaymentInput["via"][] = [
+  "stripe_checkout_webhook",
+  "stripe_payment_intent",
+  "admin_manual",
+];
 
 export class PaymentCaptureService implements IPaymentCaptureService {
   constructor(
@@ -32,8 +39,8 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null,
     private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null,
     private readonly marketingEvents: IMarketingEventService | null,
-    private readonly stripeGateway: IStripePaymentGateway | null = null,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
+    private readonly stripePayments: IStripePaymentGateway | null = null,
   ) {}
 
   async capture(input: CapturePaymentInput): Promise<CapturePaymentResult> {
@@ -45,10 +52,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     const buyerId = p.paidByUserId ?? p.buyerId ?? null;
     const buyer = buyerId ? await this.users.findById(buyerId) : null;
 
-    let resolvedChargeId = input.stripeChargeId ?? p.stripeChargeId ?? null;
-    if (!resolvedChargeId && input.via === "xero_sync" && this.stripeGateway?.isConfigured()) {
-      resolvedChargeId = await this.stripeGateway.findChargeIdForPayment(input.paymentId);
-    }
+    const resolvedChargeId = await this.resolveStripeChargeId(p, input);
 
     const purchaseEvent =
       buyerId && this.marketingEvents
@@ -109,6 +113,9 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     if (!captured) {
       if (input.requireApply) {
         const current = await this.payments.findById(input.paymentId);
+        if (current?.status === "captured") {
+          return { captured: false };
+        }
         throw new PaymentCaptureNotAppliedError(input.paymentId, current?.status ?? "unknown");
       }
       return { captured: false };
@@ -130,10 +137,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
 
     recordMoneyPathEvent(`payment_capture_via_${input.via}`);
 
-    if (
-      (input.via === "stripe_checkout_webhook" || input.via === "stripe_payment_intent") &&
-      this.xeroPaymentRecorder
-    ) {
+    if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
       const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(
         input.paymentId,
         after.amount,
@@ -144,5 +148,28 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     }
 
     return { captured: true };
+  }
+
+  private async resolveStripeChargeId(
+    payment: PaymentRecord,
+    input: CapturePaymentInput,
+  ): Promise<string | null> {
+    const fromInput = input.stripeChargeId ?? payment.stripeChargeId ?? null;
+    if (fromInput) return fromInput;
+
+    const piId = input.stripePaymentIntentId ?? payment.stripePaymentIntentId;
+    if (!piId || !this.stripePayments?.isConfigured()) {
+      return null;
+    }
+
+    try {
+      const pi = await this.stripePayments.retrievePaymentIntent(piId);
+      const fromPi = chargeIdFromPaymentIntent(pi);
+      if (fromPi) return fromPi;
+    } catch {
+      // Fall through to charge search.
+    }
+
+    return this.stripePayments.findChargeIdForPayment(payment.id);
   }
 }

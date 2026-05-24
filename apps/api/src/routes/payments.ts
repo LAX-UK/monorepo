@@ -7,6 +7,7 @@ import {
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
+import { PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
@@ -106,7 +107,11 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
       if (result.isErr()) {
         const error = result.error;
-        return c.json({ error: error.message }, asHttpStatus(error.status));
+        const body: Record<string, string> = { error: error.message };
+        if (error instanceof PaymentProviderError && error.stripeCode) {
+          body.code = error.stripeCode;
+        }
+        return c.json(body, asHttpStatus(error.status));
       }
       const data = result.value;
       const marketingEventId = crypto.randomUUID();
@@ -123,6 +128,8 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
           data: {
             paymentId: data.paymentId,
             checkoutUrl: data.checkoutUrl,
+            checkoutRail: data.checkoutRail,
+            manualReviewReason: data.manualReviewReason,
             marketingEventId,
           },
         },

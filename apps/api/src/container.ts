@@ -149,6 +149,7 @@ import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IConditionReportService } from "./services/interfaces/condition-report.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
 import type { IInvitationLifecycleService } from "./services/interfaces/invitation-lifecycle.js";
+import type { IInvoiceAccountingProvider } from "./services/interfaces/invoice-accounting.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
 import type { ILotJobScheduler } from "./services/interfaces/job-scheduler.js";
 import type { IKycRepository } from "./services/interfaces/kyc-repository.js";
@@ -160,7 +161,6 @@ import type { IMemberManagementService } from "./services/interfaces/member-mana
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
 import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
-import type { IPaymentAccountingProvider } from "./services/interfaces/payment-accounting-provider.js";
 import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
 import type { IPayoutService } from "./services/interfaces/payout.js";
 import type { IPendingInvitationsReader } from "./services/interfaces/pending-invitations-reader.js";
@@ -198,12 +198,16 @@ import { NotificationService } from "./services/notification.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
 import { PaymentService } from "./services/payment.service.js";
+import { BankTransferCheckoutRail } from "./services/payment/bank-transfer-checkout.rail.js";
+import { CardCheckoutRail } from "./services/payment/card-checkout.rail.js";
 import { PaymentCaptureService } from "./services/payment/payment-capture.service.js";
-import { PaymentCheckoutOrchestrator } from "./services/payment/payment-checkout.orchestrator.js";
 import { PaymentRefundReconcileService } from "./services/payment/payment-refund-reconcile.service.js";
+import {
+  PaymentTierPolicy,
+  parsePaymentTierLimits,
+} from "./services/payment/payment-tier.policy.js";
 import { PlatformFeePolicy } from "./services/payment/platform-fee.policy.js";
-import { StripePlatformCheckoutProvider } from "./services/payment/stripe-platform-checkout.provider.js";
-import { XeroInvoiceCheckoutProvider } from "./services/payment/xero-invoice-checkout.provider.js";
+import { StripeCheckoutService } from "./services/payment/stripe-checkout.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { PayoutAdjustmentService } from "./services/payout/payout-adjustment.service.js";
 import { ProfileService } from "./services/profile.service.js";
@@ -220,6 +224,7 @@ import { SaleroomService } from "./services/saleroom.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
+import { StripeCustomerGateway } from "./services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
 import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { UploadService } from "./services/upload.service.js";
@@ -270,7 +275,7 @@ export type Container = {
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
   paymentRefundReconcileService: PaymentRefundReconcileService;
-  accountingProvider: IPaymentAccountingProvider;
+  accountingProvider: IInvoiceAccountingProvider;
   /** bill-to resolver for Xero + payment-invoice email. */
   invoiceAddressingService: InvoiceAddressingService;
   /** Xero ACCPAY bill creation for paid payouts (null when Xero OAuth env not set). */
@@ -801,12 +806,11 @@ export function createContainer(env: Env): Container {
     env.XERO_CLIENT_ID && env.XERO_CLIENT_SECRET && env.XERO_REDIRECT_URI,
   );
 
-  const paymentServiceRef: { current?: PaymentService } = {};
-  const paymentCaptureServiceRef: { current?: PaymentCaptureService } = {};
-
   const platformFeePolicy = new PlatformFeePolicy(legalEntityRepository);
 
-  const accountingProvider: IPaymentAccountingProvider = xeroEnvEnabled
+  const paymentTierPolicy = new PaymentTierPolicy(parsePaymentTierLimits(env));
+
+  const accountingProvider: IInvoiceAccountingProvider = xeroEnvEnabled
     ? new XeroAccountingProvider(
         {
           XERO_CLIENT_ID: env.XERO_CLIENT_ID,
@@ -819,17 +823,6 @@ export function createContainer(env: Env): Container {
         },
         xeroConnRepo,
         paymentExtRepo,
-        async (paymentId) => {
-          const capture = paymentCaptureServiceRef.current;
-          if (capture) {
-            await capture.capture({ paymentId, via: "xero_sync" });
-            return;
-          }
-          const svc = paymentServiceRef.current;
-          if (svc) {
-            await svc.markCapturedFromProviderSync(paymentId);
-          }
-        },
         legalEntityRepository,
         invoiceAddressingService,
         errorReporter,
@@ -886,18 +879,21 @@ export function createContainer(env: Env): Container {
         lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
     },
     marketingEventService,
-    stripePaymentGateway,
     xeroPaymentRecorder,
+    stripePaymentGateway,
   );
-  paymentCaptureServiceRef.current = paymentCaptureService;
+  const stripeCustomerGateway = new StripeCustomerGateway(
+    env,
+    legalEntityRepository,
+    stripeClientFactory,
+  );
 
-  const checkoutOrchestrator = new PaymentCheckoutOrchestrator(
-    [
-      new StripePlatformCheckoutProvider(env, stripePaymentGateway, paymentRepo),
-      new XeroInvoiceCheckoutProvider(accountingProvider),
-    ],
-    Boolean(env.STRIPE_CHECKOUT_ENABLED),
-  );
+  const stripeCheckoutService = stripePaymentGateway.isConfigured()
+    ? new StripeCheckoutService([
+        new CardCheckoutRail(env, stripePaymentGateway, paymentRepo),
+        new BankTransferCheckoutRail(env, stripePaymentGateway, stripeCustomerGateway, paymentRepo),
+      ])
+    : null;
 
   const paymentService = new PaymentService(
     lotRepo,
@@ -906,7 +902,7 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     userRepo,
     accountingProvider,
-    legalEntityNotificationRecipients,
+    paymentTierPolicy,
     legalEntityRepository,
     db,
     domainEventPublisher,
@@ -922,12 +918,11 @@ export function createContainer(env: Env): Container {
     marketingEventService,
     platformFeePolicy,
     paymentCaptureService,
-    checkoutOrchestrator,
+    stripeCheckoutService,
     payoutAdjustmentService,
     paymentRefundReconcileService,
     xeroPaymentRecorder,
   );
-  paymentServiceRef.current = paymentService;
 
   const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET

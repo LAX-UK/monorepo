@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 
 export type PaymentCaptureVia =
   | "admin_manual"
-  | "xero_sync"
   | "stripe_checkout_webhook"
   | "stripe_payment_intent";
 

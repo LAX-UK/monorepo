@@ -102,6 +102,30 @@ export function createStripeWebhookRoutes(container: Container) {
           event,
           paymentIntent,
         );
+      } else if (event.type === "payment_intent.processing") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        result = await container.stripePaymentWebhookService.handlePaymentIntentProcessing(
+          event,
+          paymentIntent,
+        );
+      } else if (event.type === "payment_intent.partially_funded") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        result = await container.stripePaymentWebhookService.handlePaymentIntentPartiallyFunded(
+          event,
+          paymentIntent,
+        );
+      } else if (event.type === "payment_intent.payment_failed") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        result = await container.stripePaymentWebhookService.handlePaymentIntentFailed(
+          event,
+          paymentIntent,
+        );
+      } else if (event.type === "payment_intent.canceled") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        result = await container.stripePaymentWebhookService.handlePaymentIntentCanceled(
+          event,
+          paymentIntent,
+        );
       } else if (event.type === "charge.dispute.created") {
         const dispute = event.data.object as Stripe.Dispute;
         result = await container.stripePaymentWebhookService.handleDisputeCreated(event, dispute);

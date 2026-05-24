@@ -15,14 +15,15 @@ Buyer payments use the **self-created Stripe platform account (Account B)** for 
 | **Account A** (Xero onboarding) | Ignore for LAX keys | Do not use for app secrets; disconnect in Xero Payment services if linked |
 | **Xero org** | Accounting | ACCREC invoices (bank transfer URL), OAuth admin, payout bills, invoice-paid webhooks |
 
-## Buyer pay-in paths
+## Buyer pay-in (Stripe-only checkout)
 
-When `STRIPE_CHECKOUT_ENABLED=true` (production default after QA):
+All buyer checkout URLs come from **Stripe Checkout** on Account B (tiered card / UK bank transfer). Xero provides ACCREC invoices and payment ledger sync only.
 
-1. **Stripe Checkout** on Account B — primary card path; webhook `payment_intent.succeeded` captures payment and sets `stripeChargeId`.
-2. **Xero online invoice** — bank transfer / fallback when Stripe checkout unavailable; invoice reference `payment:{paymentId}` links accounting.
+1. **Card** (≤ `STRIPE_CARD_CHECKOUT_MAX`, default £100k) — Stripe card Checkout.
+2. **UK bank transfer** (above card max, below `STRIPE_MANUAL_REVIEW_MIN`) — Stripe `gb_bank_transfer` via Customer Balance.
+3. **Manual review** (≥ manual review min or archived seller) — finance **Release for checkout** before buyer gets a URL.
 
-**Stripe-primary checkout:** `POST /payments` calls `ensureInvoiceForPayment` before redirect so every card payment has an ACCREC invoice row (`payment_external_ref.xero_invoice_id`) even when the buyer never visits the Xero online URL.
+**Invoice gate:** `POST /payments` calls `ensureInvoiceForPayment` when issuing a checkout URL so every payment has an ACCREC invoice row (`payment_external_ref.xero_invoice_id`) for `XeroPaymentRecorder` after capture.
 
 After Stripe capture, `XeroPaymentRecorder` marks the linked Xero invoice paid via Accounting API (no Xero Pay Now OAuth on the platform account). Failed capture sync persists `syncStatus=error` on the external ref; replay via `POST /internal/jobs/retry-xero-stripe-capture-sync`.
 
@@ -32,14 +33,16 @@ Admin refunds optionally emit Xero ACCREC credit notes via `recordRefundCreditNo
 
 | Variable | Purpose |
 |----------|---------|
-| `STRIPE_CHECKOUT_ENABLED` | `true` → Stripe Checkout URL from `POST /payments` |
+| `STRIPE_CARD_CHECKOUT_MAX` | Card Checkout ceiling (major GBP, default `100000`) |
+| `STRIPE_MANUAL_REVIEW_MIN` | Finance review floor (major GBP, default `500000`) |
+| `STRIPE_ABSOLUTE_MAX` | Hard online cap (major GBP, default `999999.99`) |
 | `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Chart account for recording Stripe captures in Xero (default `090`) |
 | `XERO_WEBHOOK_KEY` | Required in production when Xero OAuth is configured |
 
 ## Verification
 
 1. Staging: `POST /stripe-connect/account` creates Express account on Account B test keys.
-2. Staging: `POST /payments` returns Stripe Checkout URL when checkout flag enabled; confirm `payment_external_ref` row has `xero_invoice_id` **before** buyer pays.
+2. Staging: `POST /payments` returns Stripe Checkout URL; confirm `payment_external_ref` row has `xero_invoice_id` **before** buyer pays.
 3. Pay test card → `payment_intent.succeeded` → `payments.status=captured`, `stripeChargeId` set.
 4. Xero invoice shows paid (Accounting API sync via `XeroPaymentRecorder`).
 5. If step 4 fails, check `xero_payment_record_failed` and run `POST /internal/jobs/retry-xero-stripe-capture-sync` (requires `X-Cron-Secret`).

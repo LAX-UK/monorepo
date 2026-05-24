@@ -4,7 +4,23 @@ import { ManualReviewPaymentActions } from "@/components/admin/manual-review-pay
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Badge } from "@auction/ui/components/badge";
 import Link from "next/link";
+
+function manualReviewReasonLabel(
+  reason: AdminManualReviewPaymentRow["manualReviewReason"],
+): string {
+  switch (reason) {
+    case "high_value":
+      return "High value";
+    case "seller_archived":
+      return "Archived seller";
+    case "seller_archived_and_high_value":
+      return "Archived seller + high value";
+    default:
+      return "Manual review";
+  }
+}
 
 export function ManualReviewDrawerContent({ payment }: { payment: AdminManualReviewPaymentRow }) {
   const lotReference = payment.lotNumber == null ? payment.lotId : `Lot ${payment.lotNumber}`;
@@ -19,6 +35,11 @@ export function ManualReviewDrawerContent({ payment }: { payment: AdminManualRev
           {payment.lotTitle}
         </Link>
         <p className="text-sm text-on-surface-variant">{lotReference}</p>
+        {payment.manualReviewReason ? (
+          <Badge variant="secondary" className="mt-2">
+            {manualReviewReasonLabel(payment.manualReviewReason)}
+          </Badge>
+        ) : null}
       </div>
       <dl className="grid gap-3 text-sm">
         <div>

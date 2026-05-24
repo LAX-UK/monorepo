@@ -76,6 +76,7 @@ function createWebhookService(deps: {
       amount: "100.00",
       status: "pending",
     }),
+    updateStatus: vi.fn().mockResolvedValue(undefined),
     ...(deps.payments ?? {}),
   } as IPaymentWriteRepository;
   const svc = new StripePaymentWebhookService(
@@ -520,5 +521,142 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     });
     expect(db.transaction).not.toHaveBeenCalled();
     expect(tryClaimProcessedStripeEvent).not.toHaveBeenCalled();
+  });
+
+  it("records processing without capturing", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+    const capture = vi.fn();
+    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          amount: "100.00",
+          status: "pending",
+        }),
+        updateStatus,
+      },
+    });
+    const event = { id: "evt_processing", type: "payment_intent.processing" } as Stripe.Event;
+    const pi = {
+      id: "pi_proc",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentProcessing(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_processing" });
+    expect(capture).not.toHaveBeenCalled();
+    expect(updateStatus).toHaveBeenCalledWith("pay_1", "authorized");
+  });
+
+  it("records partially funded bank transfer without capturing", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+    const capture = vi.fn();
+    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc, publisher } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      publisher: { publish } as DomainEventPublisher,
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          buyerLegalEntityId: "le_buyer",
+          amount: "100.00",
+          status: "pending",
+        }),
+        updateStatus,
+      },
+    });
+    const event = {
+      id: "evt_partial",
+      type: "payment_intent.partially_funded",
+    } as Stripe.Event;
+    const pi = {
+      id: "pi_partial",
+      amount: 10000,
+      amount_received: 5000,
+      currency: "gbp",
+      metadata: { paymentId: "pay_1" },
+      next_action: {
+        display_bank_transfer_instructions: { amount_remaining: 5000 },
+      },
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentPartiallyFunded(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
+    expect(capture).not.toHaveBeenCalled();
+    expect(updateStatus).toHaveBeenCalledWith("pay_1", "authorized");
+    expect(publisher.publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
+    );
+  });
+
+  it("records failed payment intent without capturing", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+    const capture = vi.fn();
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({ db, paymentCapture: { capture } });
+    const event = { id: "evt_failed", type: "payment_intent.payment_failed" } as Stripe.Event;
+    const pi = {
+      id: "pi_fail",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentFailed(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_failed" });
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("records canceled payment intent without capturing", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+    const capture = vi.fn();
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({ db, paymentCapture: { capture } });
+    const event = { id: "evt_canceled", type: "payment_intent.canceled" } as Stripe.Event;
+    const pi = {
+      id: "pi_cancel",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentCanceled(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_canceled" });
+    expect(capture).not.toHaveBeenCalled();
   });
 });

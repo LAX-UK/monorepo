@@ -47,7 +47,7 @@ export function getPaymentStatusView(status: PaymentStatus): StatusBadgeView {
     case "pending":
       return view("Awaiting payment", "neutral");
     case "authorized":
-      return view("Authorised", "info");
+      return view("Awaiting bank transfer confirmation", "info");
     case "captured":
       return view("Paid", "success");
     case "refunded":
