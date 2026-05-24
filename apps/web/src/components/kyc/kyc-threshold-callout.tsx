@@ -1,6 +1,6 @@
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import Link from "next/link";
-import { KYC_BID_BLOCKED_DESCRIPTION } from "./kyc-copy";
+import { KYC_BID_BLOCKED_DESCRIPTION, kycLinkActionLabel } from "./kyc-copy";
 
 type Props = {
   /** Post-verification return path (e.g. lot page). Passed as verify-identity `?next=`. */
@@ -15,12 +15,7 @@ export function KycThresholdCallout({ returnPath, feedback }: Props) {
 
   const headline = feedback?.headline ?? "Identity verification required";
   const detail = feedback?.detail ?? KYC_BID_BLOCKED_DESCRIPTION;
-  const ctaLabel =
-    feedback?.needsResubmit || feedback?.action === "continue"
-      ? "Continue verification"
-      : feedback?.action === "retry"
-        ? "Try again"
-        : "Verify identity";
+  const ctaLabel = kycLinkActionLabel(feedback, "long");
 
   return (
     <div

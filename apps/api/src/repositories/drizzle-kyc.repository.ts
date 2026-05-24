@@ -73,7 +73,6 @@ export class DrizzleKycRepository implements IKycRepository {
         .update(user)
         .set({
           currentKycSessionId: input.providerSessionId,
-          kycStatus: "pending",
           updatedAt: new Date(),
         })
         .where(eq(user.id, input.userId));
