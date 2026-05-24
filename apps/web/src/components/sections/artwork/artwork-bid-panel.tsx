@@ -286,6 +286,8 @@ export function ArtworkBidPanel({
       ? { kind: "winning" }
       : null;
 
+  const loginNext = loginNextPath ?? lotPath(auction);
+
   const onReview = useCallback(() => {
     setError(null);
     const n = Number.parseFloat(amount);
@@ -319,7 +321,12 @@ export function ArtworkBidPanel({
     });
     setSubmitting(false);
     if (!result.ok) {
-      setError(mapBidError(result.error, { verifyReturnPath: loginNext }));
+      setError(
+        mapBidError(result.error, {
+          verifyReturnPath: loginNext,
+          kycFeedback: result.kycFeedback ?? kycSummary?.feedback ?? null,
+        }),
+      );
       setStep(1);
       return;
     }
@@ -354,14 +361,21 @@ export function ArtworkBidPanel({
           : "Buy now — this lot has sold at the buy-now price.",
       );
     }
-  }, [amount, auction, bidWriter, maxAuto, pushHistory, triggerPriceFlash]);
+  }, [
+    amount,
+    auction,
+    bidWriter,
+    kycSummary?.feedback,
+    loginNext,
+    maxAuto,
+    pushHistory,
+    triggerPriceFlash,
+  ]);
 
   const onUseMinimum = useCallback(() => {
     setAmount(minNumeric.toFixed(2));
     setError(null);
   }, [minNumeric]);
-
-  const loginNext = loginNextPath ?? lotPath(auction);
 
   const scrollToBid = useCallback(() => {
     document.getElementById("bid-interactive-anchor")?.scrollIntoView({
@@ -397,7 +411,11 @@ export function ArtworkBidPanel({
       lot={auction}
       lotStatus={lotStatus}
       loginNextPath={loginNext}
-      kycBidGate={kycSummary?.requiresKyc ? { requiresKyc: true } : null}
+      kycBidGate={
+        kycSummary?.requiresKyc
+          ? { requiresKyc: true, feedback: kycSummary.feedback ?? null }
+          : null
+      }
       biddingLifecycle={{ kind: lifecycle.kind }}
     >
       {({ decision }) => (
@@ -598,6 +616,7 @@ export function ArtworkBidPanel({
               live={biddingLive}
               decision={decision}
               loginNextPath={loginNext}
+              kycFeedback={kycSummary?.feedback ?? null}
               step={step}
               currentPriceLabel={formatMoney(currentPrice)}
               priceFlash={priceFlash}

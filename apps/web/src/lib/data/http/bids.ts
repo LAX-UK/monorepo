@@ -16,11 +16,27 @@ export function createHttpBidWriter(): BidWriter {
             : {}),
         },
       });
-      const json = (await res.json().catch(() => ({}))) as { data?: unknown; error?: string };
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: unknown;
+        error?: string;
+        summary?: {
+          feedback?: {
+            headline: string;
+            detail: string | null;
+            needsResubmit: boolean;
+            action: "start" | "continue" | "retry" | "wait" | "none";
+          };
+        };
+      };
       if (!res.ok) {
         const errMsg = json.error ?? "Could not place bid";
         notifyAdminCannotBuyIfNeeded(json.error, res.status);
-        return { ok: false, error: errMsg, status: res.status };
+        return {
+          ok: false,
+          error: errMsg,
+          status: res.status,
+          kycFeedback: json.summary?.feedback ?? null,
+        };
       }
       if (!json.data) {
         return { ok: false, error: "Invalid response", status: res.status };

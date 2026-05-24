@@ -32,6 +32,8 @@ function makeRepo(overrides: Partial<IKycRepository> = {}): IKycRepository {
     findById: vi.fn(),
     findByProviderSessionId: vi.fn(),
     findLatestByUserId: vi.fn(),
+    findLatestByUserIdWithPayload: vi.fn().mockResolvedValue(null),
+    getDecisionPayload: vi.fn().mockResolvedValue(null),
     update: vi.fn(),
     getPendingExposure: vi.fn().mockResolvedValue({ total: 0, currency: "GBP" }),
     setUserKycStatus: vi.fn(),
@@ -289,6 +291,26 @@ describe("VeriffKycService.handleEventWebhook", () => {
 });
 
 describe("VeriffKycService.createSession", () => {
+  const webOrigin = "https://test.lax.bid";
+
+  function makeVeriffClient() {
+    return {
+      isConfigured: () => true,
+      createSession: vi.fn().mockResolvedValue({
+        sessionId: "new-session",
+        verificationUrl: "https://magic.veriff.me/v/new",
+      }),
+    };
+  }
+
+  function envWithOrigin() {
+    return baseEnv({
+      VERIFF_API_KEY: API_KEY,
+      VERIFF_SHARED_SECRET: "secret",
+      WEB_ORIGIN: webOrigin,
+    });
+  }
+
   it("throws when user is already approved", async () => {
     const repo = makeRepo({
       getUserKycState: vi.fn().mockResolvedValue({
@@ -296,13 +318,59 @@ describe("VeriffKycService.createSession", () => {
         kycVerifiedAt: new Date(),
       }),
     });
-    const svc = new VeriffKycService(
-      baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: "secret" }),
-      repo,
-    );
+    const svc = new VeriffKycService(envWithOrigin(), repo);
     await expect(svc.createSession("user-1", "https://example.com/cb")).rejects.toBeInstanceOf(
       KycAlreadyApprovedError,
     );
+  });
+
+  it("reuses stored session URL for requires_input resubmission", async () => {
+    const veriffClient = makeVeriffClient();
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: {
+          ...sampleVerification,
+          status: "requires_input",
+          providerSessionId: "session-reuse",
+        },
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/reuse",
+          verification: { status: "resubmission_requested", reasonCode: 201 },
+        },
+      }),
+    });
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
+    expect(result.sessionId).toBe("session-reuse");
+    expect(veriffClient.createSession).not.toHaveBeenCalled();
+  });
+
+  it("creates a new session when resubmission limit reason code is 539", async () => {
+    const veriffClient = makeVeriffClient();
+    const created = { ...sampleVerification, providerSessionId: "new-session" };
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: {
+          ...sampleVerification,
+          status: "requires_input",
+          providerSessionId: "session-old",
+        },
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/old",
+          verification: { status: "resubmission_requested", reasonCode: 539 },
+        },
+      }),
+      createWithCurrentSession: vi.fn().mockResolvedValue(created),
+      update: vi.fn().mockResolvedValue(created),
+    });
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    expect(veriffClient.createSession).toHaveBeenCalled();
+    expect(result.sessionId).toBe("new-session");
+    expect(result.verificationUrl).toBe("https://magic.veriff.me/v/new");
   });
 });
 
@@ -324,6 +392,42 @@ describe("KycDecisionProcessor", () => {
     );
     expect(result.appliedUserKycUpdate).toBe(false);
     expect(repo.setUserKycStatus).not.toHaveBeenCalled();
+  });
+
+  it("sets resubmissionNotify on requires_input apply", async () => {
+    const repo = makeRepo({
+      findByProviderSessionId: vi.fn().mockResolvedValue({
+        ...sampleVerification,
+        status: "processing",
+      }),
+      getUserKycWebhookState: vi.fn().mockResolvedValue({
+        currentKycSessionId: "session-1",
+        kycRetryCount: 0,
+      }),
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      update: vi.fn().mockResolvedValue({ ...sampleVerification, status: "requires_input" }),
+      setUserKycStatus: vi.fn(),
+    });
+    const processor = new KycDecisionProcessor(repo);
+    const result = await processor.apply(
+      mapVeriffDecisionToApplyInput(
+        {
+          id: "session-1",
+          attemptId: "attempt-2",
+          status: "resubmission_requested",
+          reasonCode: 201,
+        },
+        {},
+      ),
+      null,
+    );
+    expect(result.appliedUserKycUpdate).toBe(true);
+    expect(result.resubmissionNotify).toMatchObject({
+      userId: "user-1",
+      providerSessionId: "session-1",
+      providerAttemptId: "attempt-2",
+      feedback: expect.objectContaining({ needsResubmit: true }),
+    });
   });
 
   it("does not downgrade approved user on late declined decision", async () => {

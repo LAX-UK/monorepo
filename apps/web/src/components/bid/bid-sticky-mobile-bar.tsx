@@ -1,5 +1,6 @@
 "use client";
 
+import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { LotTimerState } from "@/components/lot-timer";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
@@ -13,6 +14,7 @@ type Props = {
   live: boolean;
   decision: BidPolicyDecision;
   loginNextPath: string;
+  kycFeedback?: import("@/lib/data/dto/dashboard-dtos").KycUserFeedbackDto | null;
   step: 1 | 2;
   currentPriceLabel: string;
   priceFlash: boolean;
@@ -33,6 +35,7 @@ export function BidStickyMobileBar({
   live,
   decision,
   loginNextPath,
+  kycFeedback = null,
   step,
   currentPriceLabel,
   priceFlash,
@@ -53,16 +56,26 @@ export function BidStickyMobileBar({
 
   if (compact) {
     const closeUrgent = countdownTier(msRemaining) !== "normal";
+    const next = encodeURIComponent(loginNextPath);
+    const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
     return (
       <MarketingStickyBidBar>
         <p
           className={cn(
-            "w-full text-center font-label text-xs font-semibold uppercase tracking-wider tabular-nums",
+            "min-w-0 flex-1 text-center font-label text-xs font-semibold uppercase tracking-wider tabular-nums",
             closeUrgent ? "text-error" : "text-on-surface-variant",
           )}
         >
           Closes {countdownClock || remainingLabel}
         </p>
+        {kycBlocked ? (
+          <Link
+            href={`/dashboard/verify-identity?next=${next}`}
+            className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          >
+            {kycLinkActionLabel(kycFeedback, "short")}
+          </Link>
+        ) : null}
       </MarketingStickyBidBar>
     );
   }
@@ -107,7 +120,7 @@ export function BidStickyMobileBar({
             href={`/dashboard/verify-identity?next=${next}`}
             className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
           >
-            Verify
+            {kycLinkActionLabel(kycFeedback, "short")}
           </Link>
         );
         break;

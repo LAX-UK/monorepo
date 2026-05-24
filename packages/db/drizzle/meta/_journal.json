@@ -472,10 +472,10 @@
       "breakpoints": true
     },
     {
-      "idx": 68,
+      "idx": 69,
       "version": "7",
-      "when": 1782500000000,
-      "tag": "0069_kyc_veriff",
+      "when": 1782600000000,
+      "tag": "0070_notification_kyc_type",
       "breakpoints": true
     }
   ]

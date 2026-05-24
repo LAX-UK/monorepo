@@ -1,5 +1,7 @@
 "use client";
 
+import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +13,7 @@ type Props = {
   isAuthenticated: boolean;
   show: boolean;
   kycApproved: boolean;
+  kycFeedback?: KycUserFeedbackDto | null;
 };
 
 function apiBase(): string {
@@ -23,6 +26,7 @@ export function ArtworkConditionReportCta({
   isAuthenticated,
   show,
   kycApproved,
+  kycFeedback = null,
 }: Props) {
   const router = useRouter();
   const [note, setNote] = useState("");
@@ -48,12 +52,17 @@ export function ArtworkConditionReportCta({
   if (!kycApproved) {
     return (
       <div className="rounded-md border border-outline-variant/30 bg-surface-container-low/50 p-3">
-        <p className="font-body text-xs text-secondary">
-          Verify your identity to request a condition report.
+        <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Condition report
+        </p>
+        <p className="mt-1 font-body text-xs text-secondary">
+          {kycFeedback?.detail ??
+            kycFeedback?.headline ??
+            "Verify your identity to request a condition report."}
         </p>
         <Button asChild variant="outline" size="sm" className="mt-2 min-h-9 w-full">
           <Link href={`/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`}>
-            Verify identity
+            {kycLinkActionLabel(kycFeedback, "long")}
           </Link>
         </Button>
       </div>

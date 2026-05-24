@@ -171,6 +171,7 @@ import { InvitationLifecycleService } from "./services/invitation-lifecycle.serv
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
 import { ItemSubmissionService } from "./services/item-submission.service.js";
+import { KycResubmissionNotifier } from "./services/kyc/kyc-resubmission-notifier.js";
 import { VeriffKycService } from "./services/kyc/veriff-kyc.service.js";
 import { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
@@ -305,6 +306,7 @@ export type Container = {
   /** KYC (Veriff identity verification). */
   kycRepository: IKycRepository;
   kycService: IKycService;
+  kycResubmissionNotifier: KycResubmissionNotifier;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
   /** organisation multi-step onboarding (Phase D). */
@@ -621,6 +623,12 @@ export function createContainer(env: Env): Container {
     kycRepository,
     db,
     marketingEventService,
+  );
+  const kycResubmissionNotifier = new KycResubmissionNotifier(
+    userRepo,
+    emailService,
+    notificationWriteRepo,
+    env.WEB_ORIGIN,
   );
   const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
     connection: bullConnection,
@@ -1043,6 +1051,7 @@ export function createContainer(env: Env): Container {
     legalEntityNotificationRecipients,
     kycRepository,
     kycService,
+    kycResubmissionNotifier,
     organizationOnboardingService,
     organizationOnboardingFlowService,
     artistRegistryService,

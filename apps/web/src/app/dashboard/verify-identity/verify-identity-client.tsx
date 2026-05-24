@@ -2,7 +2,12 @@
 
 import { startKycVerification } from "@/app/dashboard/verify-identity/actions";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
-import { KycStatusPanel, type KycUiPhase, KycVerificationLauncher } from "@/components/kyc";
+import {
+  KycStatusPanel,
+  type KycUiPhase,
+  KycVerificationLauncher,
+  kycInitialPhase,
+} from "@/components/kyc";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { getSiteUrl } from "@/lib/site-url";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,22 +20,20 @@ type Props = {
 export function VerifyIdentityClient({ initialStatus }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [phase, setPhase] = useState<KycUiPhase>(
-    initialStatus?.status === "approved"
-      ? "approved"
-      : initialStatus?.status === "pending"
-        ? "processing"
-        : "idle",
-  );
+  const [phase, setPhase] = useState<KycUiPhase>(kycInitialPhase(initialStatus));
 
   const nextPath = searchParams.get("next");
   const safeNext = nextPath && isSafeNextPath(nextPath) ? nextPath : null;
 
   useEffect(() => {
     if (searchParams.get("kyc") === "complete") {
-      setPhase("submitted");
+      setPhase(initialStatus?.feedback?.needsResubmit ? "needs_resubmit" : "submitted");
     }
-  }, [searchParams]);
+  }, [initialStatus?.feedback?.needsResubmit, searchParams]);
+
+  useEffect(() => {
+    setPhase(kycInitialPhase(initialStatus));
+  }, [initialStatus]);
 
   useEffect(() => {
     if (initialStatus?.status !== "approved" || !safeNext) return;
@@ -59,6 +62,7 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
       ) : null}
       <KycVerificationLauncher
         returnUrl={returnUrl}
+        kycSummary={initialStatus}
         onStartSession={onStartSession}
         onPhaseChange={setPhase}
         onComplete={onComplete}

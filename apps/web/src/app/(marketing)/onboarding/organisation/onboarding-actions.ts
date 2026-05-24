@@ -1,5 +1,6 @@
 "use server";
 
+import { mapKycSessionStartError } from "@/components/kyc/kyc-copy";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
@@ -161,7 +162,7 @@ export async function startKycForOrganisationOnboardingAction(
       error?: string;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? `kyc_session_${res.status}` };
+      return { ok: false, error: mapKycSessionStartError(body.error, res.status) };
     }
     const url = body.data?.verificationUrl ?? body.data?.hostedUrl;
     if (!url) return { ok: false, error: "Verification link unavailable." };

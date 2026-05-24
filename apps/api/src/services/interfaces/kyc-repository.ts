@@ -27,6 +27,14 @@ export interface IKycRepository {
   findById(id: string, conn?: Database): Promise<KycVerification | null>;
   findByProviderSessionId(sessionId: string, conn?: Database): Promise<KycVerification | null>;
   findLatestByUserId(userId: string, conn?: Database): Promise<KycVerification | null>;
+  findLatestByUserIdWithPayload(
+    userId: string,
+    conn?: Database,
+  ): Promise<{
+    verification: KycVerification;
+    decisionPayload: Record<string, unknown> | null;
+  } | null>;
+  getDecisionPayload(id: string, conn?: Database): Promise<Record<string, unknown> | null>;
   update(id: string, patch: UpdateKycVerificationPatch, conn?: Database): Promise<KycVerification>;
 
   /** Sum of pending exposure for a user across bids, payments, and submissions. */
