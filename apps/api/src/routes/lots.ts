@@ -14,6 +14,7 @@ import {
   listLotsQuerySchema,
   lotIdParamSchema,
   scheduleAbsenteeBidBodySchema,
+  setAutoBidBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
@@ -35,8 +36,16 @@ import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createBidUserRateLimitMiddleware } from "./bids.js";
 
 export function createLotRoutes(container: Container, authenticator: IAuthenticator) {
+  const biddingKillSwitch = createMiddleware(async (c, next) => {
+    if (container.env?.DISABLE_BIDDING) {
+      return c.json({ error: "Bidding temporarily disabled", code: "bidding_disabled" }, 503);
+    }
+    await next();
+  });
+  const bidUserRateLimit = createBidUserRateLimitMiddleware(container.redis);
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -48,8 +57,14 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       : createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
           await next();
         });
+  const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: { legalEntityId: string };
+    };
   }>();
 
   function jsonLotOrAuthzError(c: Context, e: LotError | AuthzError) {
@@ -315,6 +330,87 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
     return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) }, 201);
   });
+
+  r.get(
+    "/:id/auto-bid",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", lotIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.autoBidService.getAutoBid({
+        lotId: id,
+        placedByUserId: userId,
+      });
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      return c.json({ data: result.value });
+    },
+  );
+
+  r.put(
+    "/:id/auto-bid",
+    requireAuth,
+    biddingKillSwitch,
+    requireBuyerRole,
+    kycGate,
+    requireLegalEntity,
+    bidUserRateLimit,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", setAutoBidBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const legalEntityContext = c.get("legalEntityContext");
+      const body = c.req.valid("json");
+      const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
+      const result = await container.autoBidService.setAutoBid({
+        lotId: id,
+        placedByUserId: userId,
+        buyerLegalEntityId: legalEntityContext?.legalEntityId ?? "",
+        maxAutoBidAmount: body.maxAutoBidAmount,
+        autoBidStepAmount: body.autoBidStepAmount,
+        ...(idem ? { idempotencyKey: idem } : {}),
+      });
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      return c.json({ data: result.value }, 200);
+    },
+  );
+
+  r.delete(
+    "/:id/auto-bid",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", lotIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.autoBidService.clearAutoBid({
+        lotId: id,
+        placedByUserId: userId,
+      });
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      return c.json({ data: result.value });
+    },
+  );
 
   return r;
 }

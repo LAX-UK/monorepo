@@ -17,16 +17,7 @@ import type {
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
-
-const XERO_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
-  "accounting.settings",
-  "accounting.contacts",
-  "accounting.transactions",
-];
+import { getXeroScopes } from "./xero-accounting.provider.js";
 
 export interface IXeroPaymentRecorder {
   recordStripeCapture(
@@ -199,7 +190,7 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
       clientId: this.env.XERO_CLIENT_ID as string,
       clientSecret: this.env.XERO_CLIENT_SECRET as string,
       redirectUris: [this.env.XERO_REDIRECT_URI as string],
-      scopes: XERO_SCOPES,
+      scopes: getXeroScopes(),
     });
   }
 

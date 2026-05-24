@@ -1,5 +1,15 @@
 import { adminBidErrorMatcher } from "./matchers/admin.matcher";
 import { dutchPriceBidErrorMatcher } from "./matchers/dutch-price.matcher";
+import {
+  bidInFlightBidErrorMatcher,
+  bidLimitExceededBidErrorMatcher,
+  bidRateLimitedBidErrorMatcher,
+  biddingDisabledBidErrorMatcher,
+  buyerAgentAuthorisationBidErrorMatcher,
+  entityNotAuthorisedBidErrorMatcher,
+  membershipRequiredBidErrorMatcher,
+  saleRegistrationRequiredBidErrorMatcher,
+} from "./matchers/eligibility-api.matcher";
 import { endedBidErrorMatcher } from "./matchers/ended.matcher";
 import { kycRequiredBidErrorMatcher } from "./matchers/kyc-required.matcher";
 import { minBidBidErrorMatcher } from "./matchers/min-bid.matcher";
@@ -14,6 +24,14 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   adminBidErrorMatcher,
   kycRequiredBidErrorMatcher,
   suspendedBidErrorMatcher,
+  saleRegistrationRequiredBidErrorMatcher,
+  bidLimitExceededBidErrorMatcher,
+  membershipRequiredBidErrorMatcher,
+  buyerAgentAuthorisationBidErrorMatcher,
+  entityNotAuthorisedBidErrorMatcher,
+  bidRateLimitedBidErrorMatcher,
+  biddingDisabledBidErrorMatcher,
+  bidInFlightBidErrorMatcher,
   notAcceptingBidErrorMatcher,
   endedBidErrorMatcher,
   minBidBidErrorMatcher,
@@ -26,9 +44,14 @@ export function mapBidError(
   options?: MapBidErrorOptions,
   matchers: readonly BidErrorMatcher[] = defaultBidErrorMatchers,
 ): BidErrorPresentation {
-  for (const m of matchers) {
-    const hit = m.match(raw, options);
-    if (hit) return hit;
+  const lookupKeys = [options?.code, raw].filter(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  );
+  for (const key of lookupKeys) {
+    for (const m of matchers) {
+      const hit = m.match(key, options);
+      if (hit) return hit;
+    }
   }
   return { message: raw, severity: "error" };
 }

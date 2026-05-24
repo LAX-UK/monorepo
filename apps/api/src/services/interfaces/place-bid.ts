@@ -14,6 +14,7 @@ export type PlaceBidInput = {
   lotId: string;
   amount: number;
   maxAutoBidAmount?: number;
+  autoBidStepAmount?: number;
   placement?: PlaceBidPlacement;
 };
 

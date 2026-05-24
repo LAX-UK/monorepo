@@ -519,6 +519,13 @@
       "when": 1783100000000,
       "tag": "0075_stripe_customer_id",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1783200000000,
+      "tag": "0076_auto_bid_policy",
+      "breakpoints": true
     }
   ]
 }

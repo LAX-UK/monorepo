@@ -9,6 +9,7 @@ export * from "./lot-sale-timing.js";
 export * from "./sale-settlement.js";
 export * from "./stream-embed.js";
 export * from "./bid.js";
+export * from "./auto-bid.js";
 export * from "./buyer-premium.js";
 export * from "./category.js";
 export * from "./notification.js";

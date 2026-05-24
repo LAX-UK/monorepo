@@ -6,11 +6,12 @@ import {
 type Props = {
   status: BidDisplayStatus;
   endedBanner: string | null;
+  autoBidActive?: { max: string; step: string | null } | null;
 };
 
 /** Promotes winning / owner messaging above the primary CTA; keeps copy in `BidDisplayStatusBanner`.
  */
-export function LotHighestBidderBanner({ status, endedBanner }: Props) {
+export function LotHighestBidderBanner({ status, endedBanner, autoBidActive = null }: Props) {
   return (
     <div className="w-full max-w-[550px] space-y-3">
       {endedBanner ? (
@@ -21,7 +22,7 @@ export function LotHighestBidderBanner({ status, endedBanner }: Props) {
           {endedBanner}
         </output>
       ) : null}
-      <BidDisplayStatusBanner status={status} />
+      <BidDisplayStatusBanner status={status} autoBidActive={autoBidActive} />
     </div>
   );
 }

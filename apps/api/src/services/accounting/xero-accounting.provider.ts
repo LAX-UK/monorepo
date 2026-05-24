@@ -25,6 +25,7 @@ import type { InvoiceAddressingService } from "../invoice-addressing.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
+/** Granular Accounting scopes (required for Xero apps created on/after 2026-03-02). */
 const XERO_SCOPES = [
   "openid",
   "profile",
@@ -32,7 +33,9 @@ const XERO_SCOPES = [
   "offline_access",
   "accounting.settings",
   "accounting.contacts",
-  "accounting.transactions",
+  "accounting.invoices",
+  "accounting.invoices.read",
+  "accounting.payments",
 ];
 
 function isoDate(d: Date): string {

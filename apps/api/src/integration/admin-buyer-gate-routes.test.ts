@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { createBidRoutes } from "../routes/bids.js";
@@ -34,6 +35,15 @@ describe("admin session on buyer-gated POST routes", () => {
       createBidRoutes(
         minimalContainer({
           bidService,
+          requireSubmissionsLegalEntityContext: createMiddleware(async (c, next) => {
+            c.set("legalEntityContext", {
+              legalEntityId: "le-1",
+              userId: "admin-user",
+              role: "owner",
+              isPrimaryAdmin: true,
+            });
+            await next();
+          }),
         }),
         adminAuth,
       ),

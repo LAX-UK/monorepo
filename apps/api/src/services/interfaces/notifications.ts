@@ -15,4 +15,5 @@ export interface ILotNotificationSender {
   notifyLotExtended(lot: Lot, newEndTime: Date): Promise<void>;
   /** Pass `null` when the lot ends with no winning bid (e.g. clerk no-sale). */
   notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void>;
+  notifyProxyCancelled(lotId: string, bidderUserId: string, reason?: string): Promise<void>;
 }

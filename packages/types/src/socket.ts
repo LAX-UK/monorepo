@@ -18,6 +18,12 @@ export type BidUpdateEvent = {
   outbidUserId?: string | undefined;
   /** Server wall-clock ms when the API published the bid event (propagation diagnostics). */
   emittedAt?: number | undefined;
+  /** When true, bid was placed by the proxy engine (not a manual confirm). */
+  isAutoBid?: boolean | undefined;
+  /** User who placed the bid (for “your auto-bid placed £X” toasts). */
+  placedByUserId?: string | undefined;
+  /** Step used for this auto bid row, when applicable. */
+  autoBidStepAmount?: string | undefined;
 };
 
 export type LotEndedEvent = {
