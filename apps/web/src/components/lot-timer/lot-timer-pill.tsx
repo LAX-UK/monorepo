@@ -10,8 +10,12 @@ function assertNever(x: never): never {
   throw new Error(`Unexpected lot timer state: ${String(x)}`);
 }
 
-const PILL_BASE =
-  "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
+const PILL_OVERLAY_POS =
+  "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)]";
+const PILL_INLINE_POS = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
+
+const PILL_BASE_SHARED =
+  "items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
 
 const SHELL_LIVE =
   "border-transparent bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";
@@ -20,14 +24,18 @@ const SHELL_MUTED =
   "border-transparent bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 
 /** Ending-soon tag: glass chip; live shows red dot + countdown only (no “Live” copy). */
-const ENDING_SOON_TAG_GLASS =
-  "pointer-events-none absolute bottom-4 left-4 z-10 inline-flex h-8 max-w-[calc(100%-2rem)] items-center gap-2 rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px]";
+const ENDING_SOON_TAG_GLASS_SHARED =
+  "inline-flex h-8 items-center gap-2 rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px]";
+
+const ENDING_SOON_OVERLAY_POS =
+  "pointer-events-none absolute bottom-4 left-4 z-10 max-w-[calc(100%-2rem)]";
+const ENDING_SOON_INLINE_POS = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
 
 const ENDING_SOON_COUNTDOWN =
   "min-w-0 tabular-nums text-base font-semibold leading-4 tracking-normal text-[#D1D1D1]";
 
-const ENDING_SOON_MUTED_SHELL =
-  "pointer-events-none absolute bottom-4 left-4 z-10 inline-flex h-8 max-w-[calc(100%-2rem)] items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-[family-name:var(--font-poppins)] text-xs font-semibold uppercase leading-4 tracking-wide text-[#D1D1D1]/85";
+const ENDING_SOON_MUTED_SHELL_SHARED =
+  "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-[family-name:var(--font-poppins)] text-xs font-semibold uppercase leading-4 tracking-wide text-[#D1D1D1]/85";
 
 function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   switch (state.kind) {
@@ -47,12 +55,14 @@ function ariaLabelFor(state: LotTimerState, clockText?: string): string {
 }
 
 export type LotTimerPillVariant = "default" | "endingSoon";
+export type LotTimerPillLayout = "overlay" | "inline";
 
 export function LotTimerPill({
   state,
   clockText,
   surfaceClassName,
   variant = "default",
+  layout = "overlay",
   useOverlayChrome = false,
 }: {
   state: LotTimerState;
@@ -60,6 +70,8 @@ export function LotTimerPill({
   /** Merged last so marketing surfaces can override shell (e.g. glass pill). */
   surfaceClassName?: string;
   variant?: LotTimerPillVariant;
+  /** `overlay` positions on image cards; `inline` participates in document flow. */
+  layout?: LotTimerPillLayout;
   /** Read `--overlay-*` vars from AdaptiveMediaFrame instead of theme glass. */
   useOverlayChrome?: boolean;
 }) {
@@ -68,13 +80,22 @@ export function LotTimerPill({
   const overlayProps = useOverlayChrome ? overlayToneProps(overlayTone) : {};
   const aria = ariaLabelFor(state, clockText);
   const figma = variant === "endingSoon";
+  const inline = layout === "inline";
 
-  const shellClass = (figmaShell: string, themeShell: string) =>
-    useOverlayChrome && !figma
-      ? cn(PILL_BASE, overlayShell, surfaceClassName)
-      : figma
-        ? cn(figmaShell, surfaceClassName)
-        : cn(PILL_BASE, themeShell, surfaceClassName);
+  const shellClass = (
+    figmaShell: string,
+    figmaPos: string,
+    themeShell: string,
+    themePos: string,
+  ) => {
+    if (useOverlayChrome && !figma) {
+      return cn(themePos, PILL_BASE_SHARED, overlayShell, themeShell, surfaceClassName);
+    }
+    if (figma) {
+      return cn(inline ? ENDING_SOON_INLINE_POS : figmaPos, figmaShell, surfaceClassName);
+    }
+    return cn(inline ? PILL_INLINE_POS : themePos, PILL_BASE_SHARED, themeShell, surfaceClassName);
+  };
 
   const toneProps = useOverlayChrome && !figma ? overlayProps : {};
 
@@ -84,7 +105,12 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={shellClass(ENDING_SOON_TAG_GLASS, SHELL_LIVE)}
+          className={shellClass(
+            ENDING_SOON_TAG_GLASS_SHARED,
+            ENDING_SOON_OVERLAY_POS,
+            SHELL_LIVE,
+            PILL_OVERLAY_POS,
+          )}
           {...toneProps}
         >
           <LiveDot size="sm" className={figma ? "live-dot-pulse" : ""} />
@@ -107,7 +133,12 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={shellClass(ENDING_SOON_TAG_GLASS, SHELL_LIVE)}
+          className={shellClass(
+            ENDING_SOON_TAG_GLASS_SHARED,
+            ENDING_SOON_OVERLAY_POS,
+            SHELL_LIVE,
+            PILL_OVERLAY_POS,
+          )}
           {...toneProps}
         >
           <Clock
@@ -136,7 +167,12 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          className={shellClass(
+            ENDING_SOON_MUTED_SHELL_SHARED,
+            ENDING_SOON_OVERLAY_POS,
+            SHELL_MUTED,
+            PILL_OVERLAY_POS,
+          )}
           {...toneProps}
         >
           Closed
@@ -147,7 +183,12 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          className={shellClass(
+            ENDING_SOON_MUTED_SHELL_SHARED,
+            ENDING_SOON_OVERLAY_POS,
+            SHELL_MUTED,
+            PILL_OVERLAY_POS,
+          )}
           {...toneProps}
         >
           Cancelled
@@ -158,7 +199,12 @@ export function LotTimerPill({
         <output
           aria-live="off"
           aria-label={aria}
-          className={shellClass(ENDING_SOON_MUTED_SHELL, SHELL_MUTED)}
+          className={shellClass(
+            ENDING_SOON_MUTED_SHELL_SHARED,
+            ENDING_SOON_OVERLAY_POS,
+            SHELL_MUTED,
+            PILL_OVERLAY_POS,
+          )}
           {...toneProps}
         >
           Soon
