@@ -422,7 +422,10 @@
   }
   .lift-row,
   .tick-value,
-  .section-enter {
+  .section-enter,
+  .quick-look-stagger > *,
+  .quick-look-deck-enter-from-right,
+  .quick-look-deck-enter-from-left {
     animation: none !important;
     transition: none !important;
   }
@@ -448,6 +451,57 @@
 
 .section-enter {
   animation: section-enter var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate) both;
+}
+
+/* Lot quick look — staggered meta reveal after panel open */
+.quick-look-stagger > * {
+  animation: section-enter var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate) both;
+}
+.quick-look-stagger > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.quick-look-stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.quick-look-stagger > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.quick-look-stagger > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.quick-look-stagger > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+.quick-look-deck-enter-from-right {
+  animation: quick-look-deck-slide var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate)
+    both;
+}
+.quick-look-deck-enter-from-left {
+  animation: quick-look-deck-slide-left var(--motion-duration-sm, 220ms)
+    var(--motion-ease-decelerate) both;
+}
+
+@keyframes quick-look-deck-slide {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes quick-look-deck-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes section-enter {
