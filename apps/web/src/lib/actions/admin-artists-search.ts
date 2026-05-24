@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import type { ArtistSearchHit } from "@/components/artists/artist-search";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
@@ -25,31 +27,33 @@ function listRowToSearchHit(row: AdminArtistListRow): ArtistSearchHit {
 export async function searchAdminArtistsAction(
   query: string,
 ): Promise<ActionResult<ArtistSearchHit[]>> {
-  const denied = await denyUnlessAdminCapability(ARTISTS_ACCESS);
-  if (denied) return denied;
+  return instrumentServerAction("searchAdminArtistsAction", async () => {
+    const denied = await denyUnlessAdminCapability(ARTISTS_ACCESS);
+    if (denied) return denied;
 
-  const trimmed = query.trim();
-  if (trimmed.length < 2) return actionSuccess([]);
+    const trimmed = query.trim();
+    if (trimmed.length < 2) return actionSuccess([]);
 
-  try {
-    const { rows } = await getAdminArtistList({ q: trimmed, limit: 20, offset: 0 });
-    const listHits = rows.filter((row) => row.status !== "merged_into").map(listRowToSearchHit);
-    if (listHits.length > 0) {
-      return actionSuccess(listHits);
+    try {
+      const { rows } = await getAdminArtistList({ q: trimmed, limit: 20, offset: 0 });
+      const listHits = rows.filter((row) => row.status !== "merged_into").map(listRowToSearchHit);
+      if (listHits.length > 0) {
+        return actionSuccess(listHits);
+      }
+
+      // Registry search (aliases/fuzzy) when list ILIKE finds nothing — requires API restart
+      // after `/admin/artists/search` route + UUID param constraint ship.
+      const qs = new URLSearchParams({ q: trimmed, limit: "20" });
+      const registryRes = await authedServerFetch(`/admin/artists/search?${qs.toString()}`);
+      if (registryRes.ok) {
+        const body = (await registryRes.json()) as { data: ArtistSearchHit[] };
+        return actionSuccess(body.data.filter((hit) => hit.status !== "merged_into"));
+      }
+
+      return actionSuccess([]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Artist search failed";
+      return actionFailure(message);
     }
-
-    // Registry search (aliases/fuzzy) when list ILIKE finds nothing — requires API restart
-    // after `/admin/artists/search` route + UUID param constraint ship.
-    const qs = new URLSearchParams({ q: trimmed, limit: "20" });
-    const registryRes = await authedServerFetch(`/admin/artists/search?${qs.toString()}`);
-    if (registryRes.ok) {
-      const body = (await registryRes.json()) as { data: ArtistSearchHit[] };
-      return actionSuccess(body.data.filter((hit) => hit.status !== "merged_into"));
-    }
-
-    return actionSuccess([]);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Artist search failed";
-    return actionFailure(message);
-  }
+  });
 }

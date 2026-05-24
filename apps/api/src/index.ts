@@ -1,4 +1,4 @@
-import { initNodeSentry } from "@auction/observability";
+import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
@@ -17,20 +17,25 @@ if (env.SENTRY_DSN_API) {
 const container = createContainer(env);
 const app = createApp(container, env, container.authenticator);
 
+function reportBackground(component: string, err: unknown, extra?: Record<string, unknown>): void {
+  console.error(`[${component}]`, err);
+  captureBackgroundError(component, err, extra ? { extra } : undefined);
+}
+
 // BullMQ / ioredis emit `error`; without a listener Node exits the process.
 container.redis.on("error", (err: Error) => {
-  console.error("[redis]", err);
+  reportBackground("redis", err);
 });
 const lotJobs = container.lotJobScheduler as LotJobScheduler;
 lotJobs.queue.on("error", (err: Error) => {
-  console.error("[lot-queue]", err);
+  reportBackground("lot-queue", err);
 });
 const lotWorker = lotJobs.createWorker();
 lotWorker.on("error", (err: Error) => {
-  console.error("[lot-worker]", err);
+  reportBackground("lot-worker", err);
 });
 lotWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
-  console.error("[lot-worker] job failed", job?.id, err);
+  reportBackground("lot-worker", err, { jobId: job?.id });
 });
 
 const LIFECYCLE_MS = 10_000;
@@ -39,14 +44,14 @@ setInterval(() => {
     .runTransitions()
     .then(() => container.saleLifecycleService.reconcileSaleStatuses())
     .catch((err) => {
-      console.error("[lot-lifecycle]", err);
+      reportBackground("lot-lifecycle", err);
     });
 }, LIFECYCLE_MS);
 void container.lotLifecycleService
   .runTransitions()
   .then(() => container.saleLifecycleService.reconcileSaleStatuses())
   .catch((err) => {
-    console.error("[lot-lifecycle:initial]", err);
+    reportBackground("lot-lifecycle:initial", err);
   });
 
 const server = serve(

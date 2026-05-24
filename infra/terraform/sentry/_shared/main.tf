@@ -68,6 +68,36 @@ locals {
       max_runtime    = 5
       timezone       = "UTC"
     }
+    gc-pending-uploads = {
+      schedule       = "0 * * * *"
+      checkin_margin = 5
+      max_runtime    = 30
+      timezone       = "UTC"
+    }
+    impersonation-sweeper = {
+      schedule       = "0 */6 * * *"
+      checkin_margin = 10
+      max_runtime    = 30
+      timezone       = "UTC"
+    }
+    purge-expired-verifications = {
+      schedule       = "0 */6 * * *"
+      checkin_margin = 10
+      max_runtime    = 30
+      timezone       = "UTC"
+    }
+    purge-soft-deleted-users = {
+      schedule       = "0 3 * * 0"
+      checkin_margin = 15
+      max_runtime    = 60
+      timezone       = "UTC"
+    }
+    purge-marketing-click-ids = {
+      schedule       = "0 4 * * *"
+      checkin_margin = 10
+      max_runtime    = 30
+      timezone       = "UTC"
+    }
   }
 
   inbound_filters = toset([
