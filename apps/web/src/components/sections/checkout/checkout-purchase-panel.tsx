@@ -109,9 +109,9 @@ export function CheckoutPurchasePanel({
           </p>
           <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
           <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-            Your payment record has been created. When online checkout is enabled, you&apos;ll
-            complete payment here; until then our settlements team will follow up with wire or other
-            instructions.
+            Your payment record has been created. If checkout is available, you&apos;ll be
+            redirected to Stripe (card or UK bank transfer). High-value lots may require finance
+            review before checkout is issued.
           </p>
         </output>
       </div>
@@ -158,8 +158,9 @@ export function CheckoutPurchasePanel({
             Payment
           </h2>
           <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
-            High-value lots are settled by bank transfer. Card payments may be available for
-            qualifying invoices—your specialist will confirm options and any processing fees.
+            Pay by card (up to £100,000) or UK bank transfer via secure Stripe Checkout. High-value
+            purchases may require finance review before checkout is issued. Contact concierge below
+            if you need help.
           </p>
           <p className="font-body text-sm text-on-surface">
             <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
@@ -216,7 +217,8 @@ export function CheckoutPurchasePanel({
               }
               setSubmitted(true);
               notify.success("Payment record created", {
-                description: "Our settlements team will follow up with next steps.",
+                description:
+                  "Complete payment on Stripe when checkout opens, or wait for finance review if your lot requires manual approval.",
               });
             })}
           >

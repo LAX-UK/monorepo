@@ -20,7 +20,8 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] Complete Veriff test flow — return URL includes `?kyc=complete`
 - [ ] Page shows **submitted** phase without manual refresh
 - [ ] After decision webhook: status moves to **In review** then **Verified**
-- [ ] User in **pending / in review** cannot start a new session — launcher hidden/disabled while panel shows **In review**
+- [ ] User in **pending / in review** (session `processing`) cannot start a new session — launcher hidden/disabled while panel shows **In review**
+- [ ] Start Veriff → close modal (X) or leave site without submitting → return → panel shows **Verification started**, **Continue verification** button works and reopens the same session URL
 
 ## 2. Decision webhook and progression
 

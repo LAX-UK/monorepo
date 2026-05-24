@@ -26,10 +26,21 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
   const safeNext = nextPath && isSafeNextPath(nextPath) ? nextPath : null;
 
   useEffect(() => {
-    if (searchParams.get("kyc") === "complete") {
-      setPhase(initialStatus?.feedback?.needsResubmit ? "needs_resubmit" : "submitted");
+    if (searchParams.get("kyc") !== "complete") return;
+    if (initialStatus?.feedback?.needsResubmit) {
+      setPhase("needs_resubmit");
+      return;
     }
-  }, [initialStatus?.feedback?.needsResubmit, searchParams]);
+    const trulySubmitted =
+      initialStatus?.latestSessionStatus === "processing" ||
+      (initialStatus?.status === "pending" && initialStatus.latestSessionStatus !== "created");
+    if (trulySubmitted) setPhase("submitted");
+  }, [
+    initialStatus?.feedback?.needsResubmit,
+    initialStatus?.latestSessionStatus,
+    initialStatus?.status,
+    searchParams,
+  ]);
 
   useEffect(() => {
     setPhase(kycInitialPhase(initialStatus));

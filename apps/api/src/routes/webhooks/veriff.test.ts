@@ -158,7 +158,7 @@ describe("POST /webhooks/veriff/decision", () => {
     );
   });
 
-  it("returns 200 when progression throws", async () => {
+  it("returns 500 when progression throws so Veriff retries", async () => {
     mocks.progressIndividualsAfterKycApproval.mockRejectedValue(new Error("db down"));
     const container = makeContainer();
     vi.mocked(container.kycService.handleDecisionWebhook).mockResolvedValue({
@@ -174,8 +174,7 @@ describe("POST /webhooks/veriff/decision", () => {
       headers: { "x-hmac-signature": "sig" },
     });
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, processed: true });
+    expect(res.status).toBe(500);
   });
 
   it("calls resubmission notifier once per session attempt", async () => {

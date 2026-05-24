@@ -26,6 +26,7 @@ function makeRepo(ensurePersonalEntity: ILegalEntityRepository["ensurePersonalEn
     findActiveMembership: vi.fn(),
     listImpersonationNoticeRecipientEmails: vi.fn().mockResolvedValue([]),
     setXeroContactId: vi.fn(),
+    setStripeCustomerId: vi.fn(),
     findPrimaryAddressForXero: vi.fn().mockResolvedValue(null),
     findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue(null),
     ensurePersonalEntity,

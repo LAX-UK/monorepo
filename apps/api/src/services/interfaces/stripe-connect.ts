@@ -58,8 +58,11 @@ export interface IStripeConnectService {
    */
   ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult>;
 
-  /** Current Connect status for the legal entity (cached on the entity row). */
+  /** Current Connect status for the legal entity (live-synced when Stripe is configured). */
   getStatus(legalEntityId: string): Promise<ConnectAccountStatus>;
+
+  /** Refresh Connect flags from Stripe and apply lifecycle promotion when ready. */
+  syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus>;
 
   /** Onboarding link the user needs to complete identity / banking. Caller
    * must pass return / refresh URLs; Stripe enforces a short TTL.
@@ -72,9 +75,6 @@ export interface IStripeConnectService {
 
   /** One-time login link to the Stripe Express dashboard (admin / member). */
   createDashboardLink(legalEntityId: string): Promise<AccountLink>;
-
-  /** Verify signature and process Connect account webhooks (`account.updated`, `capability.updated`). */
-  handleWebhook(rawBody: string, signature: string | undefined): Promise<{ processed: boolean }>;
 
   /** Process a verified Connect account event (Connected accounts scope). */
   handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }>;

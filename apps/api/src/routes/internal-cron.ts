@@ -152,6 +152,46 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     return c.json({ data: { attempted: rows.length, recovered } });
   });
 
+  /** Replay admin refunds where Stripe succeeded but DB persist failed. */
+  r.post("/retry-refund-reconciles", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const data = await container.paymentRefundReconcileService.replayPending(25);
+    return c.json({ data });
+  });
+
+  /** Retry Xero bank payment recording for captured Stripe payments missing xeroPaymentId. */
+  r.post("/retry-xero-stripe-capture-sync", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (!container.xeroPaymentRecorder) {
+      return c.json({ error: "xero_payment_recorder_disabled" }, 503);
+    }
+    const { listPendingStripeCaptureSync } = await import(
+      "../repositories/drizzle-payment-refund-reconcile.repository.js"
+    );
+    const rows = await listPendingStripeCaptureSync(container.db, 25);
+    let synced = 0;
+    for (const row of rows) {
+      const result = await container.xeroPaymentRecorder.recordStripeCapture(
+        row.paymentId,
+        row.amount,
+      );
+      if (result.ok) synced += 1;
+    }
+    return c.json({ data: { attempted: rows.length, synced } });
+  });
+
   /**
    * Purge expired Better Auth `verification` rows (email links, OTP artifacts).
    *

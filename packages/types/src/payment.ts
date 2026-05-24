@@ -30,9 +30,18 @@ export type Payment = {
 };
 
 /** Response from `POST /payments` (checkout). */
+export type CheckoutRailKind = "card" | "gb_bank_transfer";
+
+export type ManualReviewReason =
+  | "seller_archived"
+  | "high_value"
+  | "seller_archived_and_high_value";
+
 export type CreatePaymentResponse = {
   paymentId: string;
   checkoutUrl: string | null;
+  checkoutRail?: CheckoutRailKind | null;
+  manualReviewReason?: ManualReviewReason | null;
   marketingEventId?: string;
 };
 

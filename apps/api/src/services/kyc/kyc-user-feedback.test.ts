@@ -93,6 +93,17 @@ describe("buildKycUserFeedback", () => {
     expect(feedback.action).toBe("start");
     expect(feedback.needsResubmit).toBe(false);
   });
+
+  it("prefers continue over in review when session is created but user is pending", () => {
+    const feedback = buildKycUserFeedback({
+      userStatus: "pending",
+      latestSessionStatus: "created",
+      requiresKyc: false,
+      decisionPayload: { sessionUrl: "https://magic.veriff.me/v/abc" },
+    });
+    expect(feedback.headline).toBe("Verification started");
+    expect(feedback.action).toBe("continue");
+  });
 });
 
 describe("shouldReuseKycSessionUrl", () => {
@@ -106,6 +117,24 @@ describe("shouldReuseKycSessionUrl", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("reuses created sessions with stored URL", () => {
+    expect(
+      shouldReuseKycSessionUrl({
+        latestSessionStatus: "created",
+        decisionPayload: { sessionUrl: "https://magic.veriff.me/v/abc" },
+      }),
+    ).toBe(true);
+  });
+
+  it("does not reuse created sessions without stored URL", () => {
+    expect(
+      shouldReuseKycSessionUrl({
+        latestSessionStatus: "created",
+        decisionPayload: {},
+      }),
+    ).toBe(false);
   });
 
   it("skips reuse when resubmission limit reason code is 539", () => {

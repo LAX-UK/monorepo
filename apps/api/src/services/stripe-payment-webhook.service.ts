@@ -2,9 +2,16 @@ import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
+import { gbpAmountToPence } from "../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
+import { DrizzlePayoutRepository } from "../repositories/drizzle-payout.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
+import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
+import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
+import { chargeIdFromPaymentIntent } from "./stripe/stripe-charge-id.js";
 
 type PaymentWebhookResult = {
   processed: boolean;
@@ -13,22 +20,227 @@ type PaymentWebhookResult = {
     | "dispute_funds_withdrawn"
     | "dispute_closed"
     | "refund_received"
+    | "payment_intent_succeeded"
+    | "payment_intent_processing"
+    | "payment_intent_partially_funded"
+    | "payment_intent_failed"
+    | "payment_intent_canceled"
     | "skipped";
   reason?: string;
 };
 
 const PAYMENT_WEBHOOK_EVENT_SOURCE = "stripe_payment_webhook";
 
-/** Service for handling Stripe payment-related webhooks.
- * Processes: charge.dispute.created, charge.dispute.funds_withdrawn,
- * charge.dispute.closed, charge.refunded.
- */
+/** Service for handling Stripe payment-related webhooks. */
 export class StripePaymentWebhookService {
   constructor(
     private readonly db: Database,
+    private readonly payments: IPaymentWriteRepository,
     private readonly payoutRepository: IPayoutRepository,
+    private readonly payoutAdjustments: IPayoutAdjustmentService,
+    private readonly paymentCapture: IPaymentCaptureService,
     private readonly domainEventPublisher: DomainEventPublisher,
   ) {}
+
+  async handlePaymentIntentSucceeded(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    const expectedPence = gbpAmountToPence(paymentRow.amount);
+    if (paymentIntent.amount !== expectedPence) {
+      recordMoneyPathEvent("payment_intent_amount_mismatch");
+      return { processed: false, action: "skipped", reason: "amount_mismatch" };
+    }
+
+    const chargeId = chargeIdFromPaymentIntent(paymentIntent);
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      await this.paymentCapture.capture({
+        paymentId,
+        via: "stripe_checkout_webhook",
+        stripeChargeId: chargeId,
+        stripePaymentIntentId: paymentIntent.id,
+        requireApply: true,
+        tx,
+      });
+
+      return { processed: true, action: "payment_intent_succeeded" };
+    });
+  }
+
+  async handlePaymentIntentProcessing(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    const expectedPence = gbpAmountToPence(paymentRow.amount);
+    if (paymentIntent.amount !== expectedPence) {
+      recordMoneyPathEvent("payment_intent_amount_mismatch");
+      return { processed: false, action: "skipped", reason: "amount_mismatch" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "pending") {
+        await this.payments.updateStatus(paymentId, "authorized");
+      }
+      recordMoneyPathEvent("payment_intent_processing");
+      return { processed: true, action: "payment_intent_processing" };
+    });
+  }
+
+  async handlePaymentIntentPartiallyFunded(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    const expectedPence = gbpAmountToPence(paymentRow.amount);
+    if (paymentIntent.amount !== expectedPence) {
+      recordMoneyPathEvent("payment_intent_amount_mismatch");
+      return { processed: false, action: "skipped", reason: "amount_mismatch" };
+    }
+
+    const amountRemainingCents =
+      paymentIntent.next_action?.display_bank_transfer_instructions?.amount_remaining ??
+      Math.max(0, paymentIntent.amount - (paymentIntent.amount_received ?? 0));
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "pending") {
+        await this.payments.updateStatus(paymentId, "authorized");
+      }
+
+      await this.domainEventPublisher.publish(tx, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.bank_transfer_partially_funded",
+        payload: {
+          paymentId,
+          lotId: paymentRow.lotId,
+          buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+          amountCents: expectedPence,
+          amountRemainingCents,
+          currency: paymentIntent.currency?.toUpperCase() ?? "GBP",
+        },
+        actorUserId: null,
+        actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+      });
+
+      recordMoneyPathEvent("payment_intent_partially_funded");
+      return { processed: true, action: "payment_intent_partially_funded" };
+    });
+  }
+
+  async handlePaymentIntentFailed(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      recordMoneyPathEvent("payment_intent_failed");
+      return { processed: true, action: "payment_intent_failed" };
+    });
+  }
+
+  async handlePaymentIntentCanceled(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = paymentIntent.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      recordMoneyPathEvent("payment_intent_canceled");
+      return { processed: true, action: "payment_intent_canceled" };
+    });
+  }
 
   async handleDisputeCreated(
     event: Stripe.Event,
@@ -49,7 +261,7 @@ export class StripePaymentWebhookService {
         return { processed: false, reason: "missing_charge_id" };
       }
 
-      const paymentRow = await this.findPaymentByStripeChargeId(chargeId, tx);
+      const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
@@ -74,7 +286,6 @@ export class StripePaymentWebhookService {
     });
   }
 
-  /** Funds removed from your Stripe balance when a dispute is opened (before final outcome). */
   async handleDisputeFundsWithdrawn(
     event: Stripe.Event,
     dispute: Stripe.Dispute,
@@ -94,7 +305,7 @@ export class StripePaymentWebhookService {
         return { processed: false, reason: "missing_charge_id" };
       }
 
-      const paymentRow = await this.findPaymentByStripeChargeId(chargeId, tx);
+      const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
@@ -137,51 +348,25 @@ export class StripePaymentWebhookService {
         return { processed: false, reason: "missing_charge_id" };
       }
 
-      const paymentRow = await this.findPaymentByStripeChargeId(chargeId, tx);
+      const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
-      const outcome = dispute.status === "won" ? "won" : "lost";
+      const outcome =
+        dispute.status === "won" ? "won" : dispute.status === "lost" ? "lost" : "closed";
 
-      if (outcome === "lost") {
-        const openPayout = await this.payoutRepository.findOpenPayoutForEntity(
-          paymentRow.sellerLegalEntityId,
-        );
+      if (dispute.status === "lost") {
         const negativeAmount = (-dispute.amount / 100).toFixed(2);
-
-        if (openPayout) {
-          await this.payoutRepository.insertLine({
-            payoutId: openPayout.id,
-            paymentId: paymentRow.id,
-            amount: negativeAmount,
-            kind: "dispute",
-            createdByUserId: null,
-            note: `Dispute lost: ${dispute.id}`,
-            sourceEventId: event.id,
-          });
-        } else {
-          const now = new Date();
-          const created = await this.payoutRepository.create({
-            legalEntityId: paymentRow.sellerLegalEntityId,
-            periodStart: new Date(now.getTime() - 1),
-            periodEnd: now,
-            grossAmount: negativeAmount,
-            platformFee: "0.00",
-            stripeFee: "0.00",
-            netAmount: negativeAmount,
-            currency: "GBP",
-          });
-          await this.payoutRepository.insertLine({
-            payoutId: created.id,
-            paymentId: paymentRow.id,
-            amount: negativeAmount,
-            kind: "dispute",
-            createdByUserId: null,
-            note: `Dispute lost after paid payout: ${dispute.id}`,
-            sourceEventId: event.id,
-          });
-        }
+        await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: paymentRow.sellerLegalEntityId,
+          paymentId: paymentRow.id,
+          amount: negativeAmount,
+          kind: "dispute",
+          sourceEventId: event.id,
+          note: `Dispute lost: ${dispute.id}`,
+          tx,
+        });
       }
 
       await this.domainEventPublisher.publish(tx, {
@@ -218,18 +403,21 @@ export class StripePaymentWebhookService {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
-      const paymentRow = await this.findPaymentByStripeChargeId(charge.id, tx);
+      const paymentRow = await this.findPaymentRow(tx, {
+        chargeId: charge.id,
+        paymentIntentId:
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : (charge.payment_intent?.id ?? null),
+        paymentId: charge.metadata?.paymentId ?? null,
+      });
       if (!paymentRow) {
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
-      // Stripe's `amount_refunded` is the CUMULATIVE total across all refunds on
-      // the charge. To support multiple partial refunds we record only the delta
-      // since the last refund line we wrote for this payment.
+      const payoutRepo = tx === this.db ? this.payoutRepository : new DrizzlePayoutRepository(tx);
       const cumulativeRefundedCents = charge.amount_refunded ?? charge.amount ?? 0;
-      const priorRefundedCents = await this.payoutRepository.sumRefundLineCentsForPayment(
-        paymentRow.id,
-      );
+      const priorRefundedCents = await payoutRepo.sumRefundLineCentsForPayment(paymentRow.id);
       const deltaCents = cumulativeRefundedCents - priorRefundedCents;
 
       if (deltaCents <= 0) {
@@ -238,25 +426,19 @@ export class StripePaymentWebhookService {
 
       const isFullRefund = cumulativeRefundedCents >= (charge.amount ?? cumulativeRefundedCents);
       if (isFullRefund) {
-        await tx.update(payment).set({ status: "refunded" }).where(eq(payment.id, paymentRow.id));
+        await this.payments.applyRefundedInTransaction(tx, paymentRow.id, null);
       }
 
-      const openPayout = await this.payoutRepository.findOpenPayoutForEntity(
-        paymentRow.sellerLegalEntityId,
-      );
-
-      if (openPayout) {
-        const negativeAmount = (-deltaCents / 100).toFixed(2);
-        await this.payoutRepository.insertLine({
-          payoutId: openPayout.id,
-          paymentId: paymentRow.id,
-          amount: negativeAmount,
-          kind: "refund",
-          createdByUserId: null,
-          note: `Refund: ${charge.id}`,
-          sourceEventId: event.id,
-        });
-      }
+      const negativeAmount = (-deltaCents / 100).toFixed(2);
+      await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: paymentRow.sellerLegalEntityId,
+        paymentId: paymentRow.id,
+        amount: negativeAmount,
+        kind: "refund",
+        sourceEventId: event.id,
+        note: `Refund: ${charge.id}`,
+        tx,
+      });
 
       await this.domainEventPublisher.publish(tx, {
         aggregateType: "payment",
@@ -278,7 +460,33 @@ export class StripePaymentWebhookService {
     });
   }
 
-  private async findPaymentByStripeChargeId(chargeId: string, db: Database = this.db) {
+  private async findPaymentRow(
+    db: Database,
+    opts: {
+      chargeId?: string | null;
+      paymentIntentId?: string | null;
+      paymentId?: string | null;
+    },
+  ) {
+    if (opts.paymentId) {
+      const byId = await this.selectPaymentRow(db, eq(payment.id, opts.paymentId));
+      if (byId) return byId;
+    }
+    if (opts.chargeId) {
+      const byCharge = await this.selectPaymentRow(db, eq(payment.stripeChargeId, opts.chargeId));
+      if (byCharge) return byCharge;
+    }
+    if (opts.paymentIntentId) {
+      const byPi = await this.selectPaymentRow(
+        db,
+        eq(payment.stripePaymentIntentId, opts.paymentIntentId),
+      );
+      if (byPi) return byPi;
+    }
+    return null;
+  }
+
+  private async selectPaymentRow(db: Database, where: ReturnType<typeof eq>) {
     const [row] = await db
       .select({
         id: payment.id,
@@ -287,8 +495,14 @@ export class StripePaymentWebhookService {
         amount: payment.amount,
       })
       .from(payment)
-      .where(eq(payment.stripeChargeId, chargeId))
+      .where(where)
       .limit(1);
-    return row ?? null;
+    if (!row || !row.sellerLegalEntityId) return null;
+    return {
+      id: row.id,
+      sellerLegalEntityId: row.sellerLegalEntityId,
+      status: row.status,
+      amount: String(row.amount),
+    };
   }
 }

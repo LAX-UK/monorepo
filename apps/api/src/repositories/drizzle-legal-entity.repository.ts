@@ -20,6 +20,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
+    stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
@@ -80,6 +81,13 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
     await this.db
       .update(legalEntity)
       .set({ xeroContactId, updatedAt: new Date() })
+      .where(eq(legalEntity.id, legalEntityId));
+  }
+
+  async setStripeCustomerId(legalEntityId: string, stripeCustomerId: string): Promise<void> {
+    await this.db
+      .update(legalEntity)
+      .set({ stripeCustomerId, updatedAt: new Date() })
       .where(eq(legalEntity.id, legalEntityId));
   }
 

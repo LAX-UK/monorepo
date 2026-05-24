@@ -967,6 +967,7 @@ export type AdminManualReviewPaymentRow = {
   currency: string;
   archiveReason: string | null;
   archiveTimestamp: string | null;
+  manualReviewReason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null;
   createdAt: string;
 };
 
@@ -1126,6 +1127,7 @@ function parseLegalEntityFromAdminApi(raw: Record<string, unknown>): LegalEntity
     stripeConnectDisabledReason:
       raw.stripeConnectDisabledReason == null ? null : String(raw.stripeConnectDisabledReason),
     xeroContactId: raw.xeroContactId == null ? null : String(raw.xeroContactId),
+    stripeCustomerId: raw.stripeCustomerId == null ? null : String(raw.stripeCustomerId),
     vatNumber: raw.vatNumber == null ? null : String(raw.vatNumber),
     marginSchemeEligible: Boolean(raw.marginSchemeEligible ?? false),
     isLaxManaged: Boolean(raw.isLaxManaged ?? false),
