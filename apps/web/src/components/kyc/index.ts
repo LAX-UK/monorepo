@@ -3,6 +3,10 @@ export {
   KYC_PROVIDER_NAME,
   KYC_VERIFY_DESCRIPTION,
   type KycUiPhase,
+  canStartKycVerification,
+  effectiveKycPhase,
+  kycInitialPhase,
+  kycLinkActionLabel,
   kycStatusLabel,
 } from "./kyc-copy";
 export { KycStatusPanel } from "./kyc-status-panel";

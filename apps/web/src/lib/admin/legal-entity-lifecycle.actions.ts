@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { revalidatePath } from "next/cache";
@@ -27,12 +29,18 @@ function redirectToList(query?: { error?: string }): never {
 }
 
 export async function openAdminLegalEntityAction(formData: FormData): Promise<void> {
-  const raw = val(formData, "legalEntityId");
-  const parsed = z.string().uuid().safeParse(raw);
-  if (!parsed.success) {
-    redirectToList({ error: "Enter a valid legal entity UUID." });
-  }
-  redirect(`/admin/legal-entities/${parsed.data}`);
+  return instrumentServerAction(
+    "openAdminLegalEntityAction",
+    async () => {
+      const raw = val(formData, "legalEntityId");
+      const parsed = z.string().uuid().safeParse(raw);
+      if (!parsed.success) {
+        redirectToList({ error: "Enter a valid legal entity UUID." });
+      }
+      redirect(`/admin/legal-entities/${parsed.data}`);
+    },
+    { formData },
+  );
 }
 
 const pathSegment: Record<string, string> = {
@@ -54,71 +62,98 @@ async function readFailureMessage(res: Response): Promise<string> {
 }
 
 export async function legalEntityLifecycleSimpleAction(formData: FormData): Promise<void> {
-  const id = val(formData, "legalEntityId");
-  const op = val(formData, "op");
-  const seg = pathSegment[op];
-  if (!id || !seg) {
-    redirectToList({ error: "Invalid request." });
-  }
-  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/${seg}`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    redirectToDetail(id, { error: await readFailureMessage(res) });
-  }
-  revalidatePath(`/admin/legal-entities/${id}`);
-  redirectToDetail(id, { success: "Transition applied." });
+  return instrumentServerAction(
+    "legalEntityLifecycleSimpleAction",
+    async () => {
+      const id = val(formData, "legalEntityId");
+      const op = val(formData, "op");
+      const seg = pathSegment[op];
+      if (!id || !seg) {
+        redirectToList({ error: "Invalid request." });
+      }
+      const res = await authedServerFetch(
+        `/admin/legal-entities/${encodeURIComponent(id)}/${seg}`,
+        {
+          method: "POST",
+        },
+      );
+      if (!res.ok) {
+        redirectToDetail(id, { error: await readFailureMessage(res) });
+      }
+      revalidatePath(`/admin/legal-entities/${id}`);
+      redirectToDetail(id, { success: "Transition applied." });
+    },
+    { formData },
+  );
 }
 
 export async function legalEntityRejectAction(formData: FormData): Promise<void> {
-  const id = val(formData, "legalEntityId");
-  const reason = val(formData, "reason");
-  const confirmationPhrase = val(formData, "confirmationPhrase");
-  if (!id) redirectToList({ error: "Missing entity." });
-  if (confirmationPhrase !== "REJECT") {
-    redirectToDetail(id, { error: "Type REJECT exactly to confirm rejection." });
-  }
-  if (reason.length < 3) {
-    redirectToDetail(id, { error: "Reason must be at least 3 characters." });
-  }
-  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/reject`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason, confirmationPhrase }),
-  });
-  if (!res.ok) {
-    redirectToDetail(id, { error: await readFailureMessage(res) });
-  }
-  revalidatePath(`/admin/legal-entities/${id}`);
-  redirectToDetail(id, { success: "Entity rejected." });
+  return instrumentServerAction(
+    "legalEntityRejectAction",
+    async () => {
+      const id = val(formData, "legalEntityId");
+      const reason = val(formData, "reason");
+      const confirmationPhrase = val(formData, "confirmationPhrase");
+      if (!id) redirectToList({ error: "Missing entity." });
+      if (confirmationPhrase !== "REJECT") {
+        redirectToDetail(id, { error: "Type REJECT exactly to confirm rejection." });
+      }
+      if (reason.length < 3) {
+        redirectToDetail(id, { error: "Reason must be at least 3 characters." });
+      }
+      const res = await authedServerFetch(
+        `/admin/legal-entities/${encodeURIComponent(id)}/reject`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason, confirmationPhrase }),
+        },
+      );
+      if (!res.ok) {
+        redirectToDetail(id, { error: await readFailureMessage(res) });
+      }
+      revalidatePath(`/admin/legal-entities/${id}`);
+      redirectToDetail(id, { success: "Entity rejected." });
+    },
+    { formData },
+  );
 }
 
 export async function legalEntityArchiveAction(formData: FormData): Promise<void> {
-  const id = val(formData, "legalEntityId");
-  const reason = val(formData, "reason");
-  const confirmationPhrase = val(formData, "confirmationPhrase");
-  if (!id) redirectToList({ error: "Missing entity." });
-  const entity = await getAdminLegalEntityById(id);
-  if (!entity) {
-    redirectToDetail(id, { error: "Entity not found." });
-  }
-  const expected = `ARCHIVE ${entity.displayName}`;
-  if (confirmationPhrase !== expected) {
-    redirectToDetail(id, {
-      error: `Type exactly: ${expected}`,
-    });
-  }
-  if (reason.length < 3) {
-    redirectToDetail(id, { error: "Reason must be at least 3 characters." });
-  }
-  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/archive`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason, confirmationPhrase }),
-  });
-  if (!res.ok) {
-    redirectToDetail(id, { error: await readFailureMessage(res) });
-  }
-  revalidatePath(`/admin/legal-entities/${id}`);
-  redirectToDetail(id, { success: "Entity archived." });
+  return instrumentServerAction(
+    "legalEntityArchiveAction",
+    async () => {
+      const id = val(formData, "legalEntityId");
+      const reason = val(formData, "reason");
+      const confirmationPhrase = val(formData, "confirmationPhrase");
+      if (!id) redirectToList({ error: "Missing entity." });
+      const entity = await getAdminLegalEntityById(id);
+      if (!entity) {
+        redirectToDetail(id, { error: "Entity not found." });
+      }
+      const expected = `ARCHIVE ${entity.displayName}`;
+      if (confirmationPhrase !== expected) {
+        redirectToDetail(id, {
+          error: `Type exactly: ${expected}`,
+        });
+      }
+      if (reason.length < 3) {
+        redirectToDetail(id, { error: "Reason must be at least 3 characters." });
+      }
+      const res = await authedServerFetch(
+        `/admin/legal-entities/${encodeURIComponent(id)}/archive`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason, confirmationPhrase }),
+        },
+      );
+      if (!res.ok) {
+        redirectToDetail(id, { error: await readFailureMessage(res) });
+      }
+      revalidatePath(`/admin/legal-entities/${id}`);
+      redirectToDetail(id, { success: "Entity archived." });
+    },
+    { formData },
+  );
 }

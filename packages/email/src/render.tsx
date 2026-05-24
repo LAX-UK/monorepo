@@ -21,6 +21,9 @@ import DisputeOpenedNoticeEmail, {
   subject as disputeOpenedNoticeSubject,
 } from "./templates/dispute-opened-notice.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
+import KycResubmissionRequiredEmail, {
+  subject as kycResubmissionRequiredSubject,
+} from "./templates/kyc-resubmission-required.js";
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
@@ -195,6 +198,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "lot-voided-anti-shilling-admin": {
     subject: lotVoidedAntiShillingAdminSubject,
     component: (vars) => <LotVoidedAntiShillingAdminEmail {...vars} />,
+  },
+  "kyc-resubmission-required": {
+    subject: kycResubmissionRequiredSubject,
+    component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
   },
 };
 

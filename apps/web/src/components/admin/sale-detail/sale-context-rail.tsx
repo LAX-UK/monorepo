@@ -23,6 +23,7 @@ type Props = {
   liveish: boolean;
   registrationCount: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
+  deleteBlockers?: readonly string[];
   status?: ReactNode;
   publicHref?: string;
 };
@@ -34,6 +35,7 @@ export function SaleContextRail({
   liveish,
   registrationCount,
   activityEvents = [],
+  deleteBlockers = [],
   status,
   publicHref,
 }: Props) {
@@ -137,6 +139,18 @@ export function SaleContextRail({
             dismissKey={`sale:${saleId}`}
             compact
           />
+        ) : null}
+        {deleteBlockers.length > 0 ? (
+          <div className="rounded-lg border border-border-hairline bg-surface-container-low px-4 py-3">
+            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Cannot delete
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4 font-body text-sm text-on-surface-variant">
+              {deleteBlockers.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         <ActivitySnapshotRail
           events={activityEvents.map((e) => ({

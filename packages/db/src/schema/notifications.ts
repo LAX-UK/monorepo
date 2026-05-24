@@ -35,7 +35,8 @@ export const notification = pgTable(
         'watchlist_ending_soon',
         'payment_received',
         'payment_due',
-        'lot_ended_seller'
+        'lot_ended_seller',
+        'kyc_resubmission_required'
       )`,
     ),
   ],

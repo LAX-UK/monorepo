@@ -1,5 +1,7 @@
 "use server";
 
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+
 import { mapServiceToActionVoid } from "@/lib/actions/map-service-result";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -94,192 +96,224 @@ function parseFormDataToUpdateInput(formData: FormData) {
 export async function createSubmissionFromValuesAction(
   values: ItemSubmissionFormValues,
 ): Promise<ActionResult<{ redirectTo: string; id: string }>> {
-  const formParsed = itemSubmissionFormSchema.safeParse(values);
-  if (!formParsed.success) {
-    return actionFailure(
-      firstZodErrorMessage(formParsed.error),
-      zodErrorToFieldErrors(formParsed.error),
-    );
-  }
-  const input = formValuesToCreateItemSubmissionInput(formParsed.data);
-  const apiParsed = createItemSubmissionSchema.safeParse(input);
-  if (!apiParsed.success) {
-    return actionFailure(
-      firstZodErrorMessage(apiParsed.error),
-      zodErrorToFieldErrors(apiParsed.error),
-    );
-  }
-  const payload = apiParsed.data;
-  if (payload == null) {
-    return actionFailure("Invalid create payload");
-  }
-  const { submissions } = getWriteContainer();
-  const r = await submissions.create(payload);
-  if (!r.ok) {
-    return actionFailure(r.message, undefined, r.status);
-  }
-  revalidatePath("/dashboard/submissions");
-  return actionSuccess({
-    id: r.data.id,
-    redirectTo: `/dashboard/submissions/${r.data.id}`,
+  return instrumentServerAction("createSubmissionFromValuesAction", async () => {
+    const formParsed = itemSubmissionFormSchema.safeParse(values);
+    if (!formParsed.success) {
+      return actionFailure(
+        firstZodErrorMessage(formParsed.error),
+        zodErrorToFieldErrors(formParsed.error),
+      );
+    }
+    const input = formValuesToCreateItemSubmissionInput(formParsed.data);
+    const apiParsed = createItemSubmissionSchema.safeParse(input);
+    if (!apiParsed.success) {
+      return actionFailure(
+        firstZodErrorMessage(apiParsed.error),
+        zodErrorToFieldErrors(apiParsed.error),
+      );
+    }
+    const payload = apiParsed.data;
+    if (payload == null) {
+      return actionFailure("Invalid create payload");
+    }
+    const { submissions } = getWriteContainer();
+    const r = await submissions.create(payload);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/dashboard/submissions");
+    return actionSuccess({
+      id: r.data.id,
+      redirectTo: `/dashboard/submissions/${r.data.id}`,
+    });
   });
 }
 
 /** Back-compat: `FormData` (e.g. native forms, tests).
  */
 export async function createSubmissionAction(formData: FormData): Promise<void> {
-  const input = parseFormDataToCreateInput(formData);
-  const parsed = createItemSubmissionSchema.safeParse(input);
-  if (!parsed.success) {
-    const { redirect } = await import("next/navigation");
-    redirect(
-      `/dashboard/submissions/new?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
-    );
-    return;
-  }
-  const { submissions } = getWriteContainer();
-  const toCreate = parsed.data;
-  if (toCreate == null) {
-    return;
-  }
-  const r = await submissions.create(toCreate);
-  if (!r.ok) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions/new?error=${encodeURIComponent(r.message)}`);
-  }
-  revalidatePath("/dashboard/submissions");
-  const { redirect } = await import("next/navigation");
-  redirect("/dashboard/submissions");
+  return instrumentServerAction(
+    "createSubmissionAction",
+    async () => {
+      const input = parseFormDataToCreateInput(formData);
+      const parsed = createItemSubmissionSchema.safeParse(input);
+      if (!parsed.success) {
+        const { redirect } = await import("next/navigation");
+        redirect(
+          `/dashboard/submissions/new?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
+        );
+        return;
+      }
+      const { submissions } = getWriteContainer();
+      const toCreate = parsed.data;
+      if (toCreate == null) {
+        return;
+      }
+      const r = await submissions.create(toCreate);
+      if (!r.ok) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions/new?error=${encodeURIComponent(r.message)}`);
+      }
+      revalidatePath("/dashboard/submissions");
+      const { redirect } = await import("next/navigation");
+      redirect("/dashboard/submissions");
+    },
+    { formData },
+  );
 }
 
 export async function updateSubmissionFromValuesAction(
   submissionId: string,
   values: ItemSubmissionFormValues,
 ): Promise<ActionResult<{ redirectTo: string }>> {
-  const id = submissionId.trim();
-  if (!id) return actionFailure("Missing submission");
-  const formParsed = itemSubmissionFormSchema.safeParse(values);
-  if (!formParsed.success) {
-    return actionFailure(
-      firstZodErrorMessage(formParsed.error),
-      zodErrorToFieldErrors(formParsed.error),
-    );
-  }
-  const input = formValuesToUpdateItemSubmissionInput(formParsed.data);
-  const apiParsed = updateItemSubmissionSchema.safeParse(input);
-  if (!apiParsed.success) {
-    return actionFailure(
-      firstZodErrorMessage(apiParsed.error),
-      zodErrorToFieldErrors(apiParsed.error),
-    );
-  }
-  const patch = apiParsed.data;
-  if (patch == null) {
-    return actionFailure("Invalid update payload");
-  }
-  const { submissions } = getWriteContainer();
-  const r = await submissions.update(id, patch);
-  if (!r.ok) {
-    return actionFailure(r.message, undefined, r.status);
-  }
-  revalidatePath("/dashboard/submissions");
-  revalidatePath(`/dashboard/submissions/${id}`);
-  return actionSuccess({ redirectTo: `/dashboard/submissions/${id}` });
+  return instrumentServerAction("updateSubmissionFromValuesAction", async () => {
+    const id = submissionId.trim();
+    if (!id) return actionFailure("Missing submission");
+    const formParsed = itemSubmissionFormSchema.safeParse(values);
+    if (!formParsed.success) {
+      return actionFailure(
+        firstZodErrorMessage(formParsed.error),
+        zodErrorToFieldErrors(formParsed.error),
+      );
+    }
+    const input = formValuesToUpdateItemSubmissionInput(formParsed.data);
+    const apiParsed = updateItemSubmissionSchema.safeParse(input);
+    if (!apiParsed.success) {
+      return actionFailure(
+        firstZodErrorMessage(apiParsed.error),
+        zodErrorToFieldErrors(apiParsed.error),
+      );
+    }
+    const patch = apiParsed.data;
+    if (patch == null) {
+      return actionFailure("Invalid update payload");
+    }
+    const { submissions } = getWriteContainer();
+    const r = await submissions.update(id, patch);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/dashboard/submissions");
+    revalidatePath(`/dashboard/submissions/${id}`);
+    return actionSuccess({ redirectTo: `/dashboard/submissions/${id}` });
+  });
 }
 
 export async function updateSubmissionAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("submissionId") ?? "").trim();
-  if (!id) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
-  }
-  const input = parseFormDataToUpdateInput(formData);
-  const parsed = updateItemSubmissionSchema.safeParse(input);
-  if (!parsed.success) {
-    const { redirect } = await import("next/navigation");
-    redirect(
-      `/dashboard/submissions/${id}?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
-    );
-    return;
-  }
-  const { submissions } = getWriteContainer();
-  const patch = parsed.data;
-  if (patch == null) {
-    return;
-  }
-  const r = await submissions.update(id, patch);
-  if (!r.ok) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
-  }
-  revalidatePath("/dashboard/submissions");
-  revalidatePath(`/dashboard/submissions/${id}`);
-  const { redirect } = await import("next/navigation");
-  redirect(`/dashboard/submissions/${id}`);
+  return instrumentServerAction(
+    "updateSubmissionAction",
+    async () => {
+      const id = String(formData.get("submissionId") ?? "").trim();
+      if (!id) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
+      }
+      const input = parseFormDataToUpdateInput(formData);
+      const parsed = updateItemSubmissionSchema.safeParse(input);
+      if (!parsed.success) {
+        const { redirect } = await import("next/navigation");
+        redirect(
+          `/dashboard/submissions/${id}?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
+        );
+        return;
+      }
+      const { submissions } = getWriteContainer();
+      const patch = parsed.data;
+      if (patch == null) {
+        return;
+      }
+      const r = await submissions.update(id, patch);
+      if (!r.ok) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+      }
+      revalidatePath("/dashboard/submissions");
+      revalidatePath(`/dashboard/submissions/${id}`);
+      const { redirect } = await import("next/navigation");
+      redirect(`/dashboard/submissions/${id}`);
+    },
+    { formData },
+  );
 }
 
 export async function submitForReviewFromValuesAction(
   submissionId: string,
 ): Promise<ActionResult<void>> {
-  const id = submissionId.trim();
-  if (!id) return actionFailure("Missing submission");
-  const { submissions } = getWriteContainer();
-  const r = await submissions.submitForReview(id);
-  const mapped = mapServiceToActionVoid(r);
-  if (mapped.ok) {
-    revalidatePath("/dashboard/submissions");
-    revalidatePath(`/dashboard/submissions/${id}`);
-  }
-  return mapped;
+  return instrumentServerAction("submitForReviewFromValuesAction", async () => {
+    const id = submissionId.trim();
+    if (!id) return actionFailure("Missing submission");
+    const { submissions } = getWriteContainer();
+    const r = await submissions.submitForReview(id);
+    const mapped = mapServiceToActionVoid(r);
+    if (mapped.ok) {
+      revalidatePath("/dashboard/submissions");
+      revalidatePath(`/dashboard/submissions/${id}`);
+    }
+    return mapped;
+  });
 }
 
 export async function withdrawSubmissionFromValuesAction(
   submissionId: string,
 ): Promise<ActionResult<void>> {
-  const id = submissionId.trim();
-  if (!id) return actionFailure("Missing submission");
-  const { submissions } = getWriteContainer();
-  const r = await submissions.withdraw(id);
-  const mapped = mapServiceToActionVoid(r);
-  if (mapped.ok) {
-    revalidatePath("/dashboard/submissions");
-    revalidatePath(`/dashboard/submissions/${id}`);
-  }
-  return mapped;
+  return instrumentServerAction("withdrawSubmissionFromValuesAction", async () => {
+    const id = submissionId.trim();
+    if (!id) return actionFailure("Missing submission");
+    const { submissions } = getWriteContainer();
+    const r = await submissions.withdraw(id);
+    const mapped = mapServiceToActionVoid(r);
+    if (mapped.ok) {
+      revalidatePath("/dashboard/submissions");
+      revalidatePath(`/dashboard/submissions/${id}`);
+    }
+    return mapped;
+  });
 }
 
 export async function submitForReviewAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("submissionId") ?? "").trim();
-  if (!id) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
-  }
-  const { submissions } = getWriteContainer();
-  const r = await submissions.submitForReview(id);
-  if (!r.ok) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
-  }
-  revalidatePath("/dashboard/submissions");
-  revalidatePath(`/dashboard/submissions/${id}`);
-  const { redirect } = await import("next/navigation");
-  redirect(`/dashboard/submissions/${id}`);
+  return instrumentServerAction(
+    "submitForReviewAction",
+    async () => {
+      const id = String(formData.get("submissionId") ?? "").trim();
+      if (!id) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
+      }
+      const { submissions } = getWriteContainer();
+      const r = await submissions.submitForReview(id);
+      if (!r.ok) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+      }
+      revalidatePath("/dashboard/submissions");
+      revalidatePath(`/dashboard/submissions/${id}`);
+      const { redirect } = await import("next/navigation");
+      redirect(`/dashboard/submissions/${id}`);
+    },
+    { formData },
+  );
 }
 
 export async function withdrawSubmissionAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("submissionId") ?? "").trim();
-  if (!id) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
-  }
-  const { submissions } = getWriteContainer();
-  const r = await submissions.withdraw(id);
-  if (!r.ok) {
-    const { redirect } = await import("next/navigation");
-    redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
-  }
-  revalidatePath("/dashboard/submissions");
-  revalidatePath(`/dashboard/submissions/${id}`);
-  const { redirect } = await import("next/navigation");
-  redirect(`/dashboard/submissions/${id}`);
+  return instrumentServerAction(
+    "withdrawSubmissionAction",
+    async () => {
+      const id = String(formData.get("submissionId") ?? "").trim();
+      if (!id) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions?error=${encodeURIComponent("Missing submission")}`);
+      }
+      const { submissions } = getWriteContainer();
+      const r = await submissions.withdraw(id);
+      if (!r.ok) {
+        const { redirect } = await import("next/navigation");
+        redirect(`/dashboard/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+      }
+      revalidatePath("/dashboard/submissions");
+      revalidatePath(`/dashboard/submissions/${id}`);
+      const { redirect } = await import("next/navigation");
+      redirect(`/dashboard/submissions/${id}`);
+    },
+    { formData },
+  );
 }

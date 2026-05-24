@@ -1,5 +1,6 @@
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
 import { SaleroomRegisterToBid } from "@/components/sections/saleroom/saleroom-register-to-bid";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LegalEntityMemberRole } from "@auction/types";
 
 type BuyerEntity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
@@ -14,6 +15,7 @@ type Props = {
     buyerEntities: BuyerEntity[];
     myRegistrations: { buyerLegalEntityId: string; status: string }[];
     kycApproved: boolean;
+    kycFeedback?: KycUserFeedbackDto | null;
   };
 };
 
@@ -36,6 +38,7 @@ export function SaleroomHeroActions({
           buyerEntities={registerToBid.buyerEntities}
           myRegistrations={registerToBid.myRegistrations}
           kycApproved={registerToBid.kycApproved}
+          kycFeedback={registerToBid.kycFeedback ?? null}
         />
       ) : null}
       <SaleroomFollowToggle

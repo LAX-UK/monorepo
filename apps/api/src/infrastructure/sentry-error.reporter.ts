@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/node";
+import { Sentry } from "@auction/observability";
 import type { ClassifiedError, IErrorReporter } from "../services/interfaces/error-handling.js";
 
 /** Sends classified API errors to Sentry when DSN is configured (see `index.ts` Sentry.init). */

@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { conditionReportRequest, lot, user } from "@auction/db/schema";
 import type { Lot } from "@auction/types";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
@@ -47,7 +48,11 @@ export class ConditionReportService implements IConditionReportService {
     requestingLegalEntityId?: string | undefined;
     requestNote?: string | undefined;
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>> {
-    const [lotRow] = await this.db.select().from(lot).where(eq(lot.id, input.lotId)).limit(1);
+    const [lotRow] = await this.db
+      .select()
+      .from(lot)
+      .where(and(eq(lot.id, input.lotId), lotNotDeleted()))
+      .limit(1);
     if (!lotRow) {
       return err({ message: "Lot not found", status: 404 });
     }
@@ -179,7 +184,11 @@ export class ConditionReportService implements IConditionReportService {
 
     try {
       await this.db.transaction(async (tx) => {
-        const [current] = await tx.select().from(lot).where(eq(lot.id, lotId)).limit(1);
+        const [current] = await tx
+          .select()
+          .from(lot)
+          .where(and(eq(lot.id, lotId), lotNotDeleted()))
+          .limit(1);
         if (!current) {
           throw new Error("Lot not found");
         }

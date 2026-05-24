@@ -1,7 +1,13 @@
 import type { SessionUser } from "@/lib/data/contracts";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import type { Lot } from "@auction/types";
 import type { ReactNode } from "react";
+
+export type KycBidGateContext = {
+  requiresKyc: boolean;
+  feedback?: KycUserFeedbackDto | null;
+};
 
 export type BidPolicyContext = {
   user: SessionUser | null;
@@ -9,8 +15,8 @@ export type BidPolicyContext = {
   lotStatus: Lot["status"];
   /** Post-login return path for the sign-in CTA (e.g. `/lot/:slug/:id`). */
   loginNextPath: string;
-  /** When true, bidding is blocked until identity verification threshold is met. */
-  kycBidGate?: { requiresKyc: boolean } | null;
+  /** When set, bidding is blocked until identity verification threshold is met. */
+  kycBidGate?: KycBidGateContext | null;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
   biddingLifecycle?: { kind: LotLifecycleKind } | null;
 };

@@ -389,7 +389,48 @@ export async function getAdminArtistById(id: string): Promise<ArtistProfile | nu
   return parseArtistProfile(body.data);
 }
 
-export type AdminSaleListRow = { sale: Sale; lots: Lot[] };
+export type AdminSaleListRow = {
+  sale: Sale;
+  lots: Lot[];
+  deleteEligibility?: SaleDeleteEligibility | null;
+};
+
+export type SaleDeleteEligibility = {
+  canDelete: boolean;
+  confirmationPhrase: string | null;
+  guards: {
+    bidCount: number;
+    paymentCount: number;
+    approvedRegistrationCount: number;
+  };
+  blockers: string[];
+};
+
+function parseSaleDeleteEligibility(raw: unknown): SaleDeleteEligibility | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const guardsRaw = o.guards;
+  const guards =
+    guardsRaw && typeof guardsRaw === "object"
+      ? {
+          bidCount: Number((guardsRaw as Record<string, unknown>).bidCount ?? 0),
+          paymentCount: Number((guardsRaw as Record<string, unknown>).paymentCount ?? 0),
+          approvedRegistrationCount: Number(
+            (guardsRaw as Record<string, unknown>).approvedRegistrationCount ?? 0,
+          ),
+        }
+      : { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 };
+  const blockers = Array.isArray(o.blockers) ? o.blockers.map(String) : [];
+  return {
+    canDelete: o.canDelete === true,
+    confirmationPhrase:
+      o.confirmationPhrase == null || o.confirmationPhrase === ""
+        ? null
+        : String(o.confirmationPhrase),
+    guards,
+    blockers,
+  };
+}
 
 export async function getAdminSalesList(
   params: {
@@ -430,15 +471,19 @@ export async function getAdminSaleById(id: string): Promise<AdminSaleDetailRow |
   const res = await authedServerFetch(`/sales/${encodeURIComponent(id)}/catalog-admin`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] } };
+  const body = (await res.json()) as {
+    data: { sale: unknown; lots: unknown[]; deleteEligibility?: unknown };
+  };
   const saleRaw = body.data.sale as Record<string, unknown>;
   const coverImagePresentedUrls = Array.isArray(saleRaw.coverImagePresentedUrls)
     ? (saleRaw.coverImagePresentedUrls as unknown[]).map(String)
     : undefined;
   const sale = parseSale(saleRaw);
+  const deleteEligibility = parseSaleDeleteEligibility(body.data.deleteEligibility);
   return {
     sale: coverImagePresentedUrls !== undefined ? { ...sale, coverImagePresentedUrls } : sale,
     lots: body.data.lots.map(parseLot),
+    ...(deleteEligibility ? { deleteEligibility } : {}),
   };
 }
 
