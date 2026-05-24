@@ -1,10 +1,18 @@
 "use client";
 
+import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { Button } from "@auction/ui/components/button";
 import { MESSAGES, createVeriffFrame } from "@veriff/incontext-sdk";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type KycUiPhase, kycVerifyButtonLabel } from "./kyc-copy";
+import {
+  KYC_FLOW_CANCELED_MESSAGE,
+  type KycUiPhase,
+  canStartKycVerification,
+  effectiveKycPhase,
+  kycInitialPhase,
+  kycVerifyButtonLabel,
+} from "./kyc-copy";
 
 const VERIFF_SESSION_STORAGE_KEY = "@veriff-session-url";
 
@@ -15,6 +23,7 @@ export type StartKycSessionFn = (
 type Props = {
   returnUrl: string;
   onStartSession: StartKycSessionFn;
+  kycSummary?: KycStatusSummaryDto | null;
   onPhaseChange?: (phase: KycUiPhase) => void;
   onComplete?: () => void;
   buttonLabel?: string;
@@ -26,6 +35,7 @@ type Props = {
 export function KycVerificationLauncher({
   returnUrl,
   onStartSession,
+  kycSummary = null,
   onPhaseChange,
   onComplete,
   buttonLabel,
@@ -34,13 +44,23 @@ export function KycVerificationLauncher({
   className,
 }: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState<KycUiPhase>("idle");
+  const [clientPhase, setClientPhase] = useState<KycUiPhase>(() => kycInitialPhase(kycSummary));
   const [error, setError] = useState<string | null>(null);
   const reopenAttempted = useRef(false);
 
+  const phase = effectiveKycPhase(kycSummary, clientPhase);
+  const canStart = canStartKycVerification(kycSummary, clientPhase);
+
+  useEffect(() => {
+    setClientPhase((prev) => {
+      if (prev === "starting" || prev === "in_flow" || prev === "submitted") return prev;
+      return kycInitialPhase(kycSummary);
+    });
+  }, [kycSummary]);
+
   const setPhaseAndNotify = useCallback(
     (next: KycUiPhase) => {
-      setPhase(next);
+      setClientPhase(next);
       onPhaseChange?.(next);
     },
     [onPhaseChange],
@@ -60,7 +80,8 @@ export function KycVerificationLauncher({
             router.refresh();
           }
           if (msg === MESSAGES.CANCELED) {
-            setPhaseAndNotify("idle");
+            setPhaseAndNotify(kycInitialPhase(kycSummary));
+            setError(KYC_FLOW_CANCELED_MESSAGE);
           }
         },
         onReload: () => {
@@ -69,7 +90,7 @@ export function KycVerificationLauncher({
         },
       });
     },
-    [onComplete, router, setPhaseAndNotify],
+    [kycSummary, onComplete, router, setPhaseAndNotify],
   );
 
   const onStart = useCallback(async () => {
@@ -77,7 +98,7 @@ export function KycVerificationLauncher({
     setPhaseAndNotify("starting");
     const result = await onStartSession(returnUrl);
     if (!result.ok) {
-      setPhaseAndNotify("idle");
+      setPhaseAndNotify(kycInitialPhase(kycSummary));
       setError(result.error);
       return;
     }
@@ -87,7 +108,7 @@ export function KycVerificationLauncher({
     } catch {
       window.location.assign(result.url);
     }
-  }, [onStartSession, openVeriffFrame, returnUrl, setPhaseAndNotify]);
+  }, [kycSummary, onStartSession, openVeriffFrame, returnUrl, setPhaseAndNotify]);
 
   useEffect(() => {
     if (reopenAttempted.current || disabled) return;
@@ -101,7 +122,12 @@ export function KycVerificationLauncher({
     }
   }, [disabled, openVeriffFrame]);
 
-  const busy = phase === "starting" || phase === "in_flow" || phase === "submitted";
+  const busy =
+    clientPhase === "starting" || clientPhase === "in_flow" || clientPhase === "submitted";
+
+  if (!canStart && !busy) {
+    return null;
+  }
 
   return (
     <div className={className}>
@@ -113,10 +139,10 @@ export function KycVerificationLauncher({
       <Button
         type="button"
         variant={variant}
-        disabled={disabled || busy}
+        disabled={disabled || busy || !canStart}
         onClick={() => void onStart()}
       >
-        {buttonLabel ?? kycVerifyButtonLabel(phase, phase === "starting")}
+        {buttonLabel ?? kycVerifyButtonLabel(kycSummary, phase, clientPhase === "starting")}
       </Button>
     </div>
   );

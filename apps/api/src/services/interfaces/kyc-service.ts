@@ -1,5 +1,8 @@
 import type { MarketingEvent } from "@auction/types";
 import type { KycVerification, UserKycStatus } from "@auction/types";
+import type { KycUserFeedback } from "../kyc/kyc-user-feedback.js";
+
+export type { KycFeedbackAction, KycUserFeedback } from "../kyc/kyc-user-feedback.js";
 
 export type CreateKycSessionResult = {
   /** Provider session id (Veriff UUID). */
@@ -17,12 +20,21 @@ export type KycWebhookHandleResult = {
   shouldProgressIndividuals: boolean;
   /** Staged in the same transaction as KYC approval; enqueue after handleWebhook returns. */
   marketingEventToEnqueue?: MarketingEvent;
+  /** Notify the user to resubmit after Veriff requested more input. */
+  resubmissionNotify?: {
+    userId: string;
+    providerSessionId: string;
+    providerAttemptId: string | null;
+    feedback: KycUserFeedback;
+  };
 };
 
 export type KycStatusSummary = {
   status: UserKycStatus;
   verifiedAt: Date | null;
   latestSessionId: string | null;
+  latestSessionStatus: KycVerification["status"] | null;
+  feedback: KycUserFeedback;
   pendingExposure: { total: number; currency: string };
   thresholdAmount: number;
   thresholdCurrency: string;

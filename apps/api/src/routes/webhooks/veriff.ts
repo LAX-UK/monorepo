@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Container } from "../../container.js";
+import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import {
   VeriffWebhookNotConfiguredError,
   VeriffWebhookSignatureError,
@@ -89,6 +90,30 @@ export function createVeriffWebhookRoutes(container: Container) {
       }
       if (result.marketingEventToEnqueue) {
         await container.marketingEventService.enqueue(result.marketingEventToEnqueue);
+      }
+      if (result.resubmissionNotify) {
+        const { userId, feedback, providerSessionId, providerAttemptId } =
+          result.resubmissionNotify;
+        const attemptKey = providerAttemptId ?? "none";
+        const notifyEventId = `kyc_resubmit_notify:${providerSessionId}:${attemptKey}`;
+        const { claimed } = await tryClaimProcessedWebhookEvent(
+          container.db,
+          notifyEventId,
+          "kyc_resubmit_notify",
+        );
+        if (claimed) {
+          try {
+            await container.kycResubmissionNotifier.notify(userId, feedback);
+          } catch (err) {
+            console.error(
+              JSON.stringify({
+                msg: "kyc_resubmission_notify_failed",
+                userId,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }
+        }
       }
       return c.json({ ok: true, processed: Boolean(updated) });
     } catch (err) {

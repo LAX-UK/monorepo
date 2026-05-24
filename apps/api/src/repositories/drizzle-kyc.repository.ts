@@ -160,6 +160,17 @@ export class DrizzleKycRepository implements IKycRepository {
   }
 
   async findLatestByUserId(userId: string, conn?: Database): Promise<KycVerification | null> {
+    const latest = await this.findLatestByUserIdWithPayload(userId, conn);
+    return latest?.verification ?? null;
+  }
+
+  async findLatestByUserIdWithPayload(
+    userId: string,
+    conn?: Database,
+  ): Promise<{
+    verification: KycVerification;
+    decisionPayload: Record<string, unknown> | null;
+  } | null> {
     const db = this.resolveConn(conn);
     const rows = await db
       .select()
@@ -167,7 +178,22 @@ export class DrizzleKycRepository implements IKycRepository {
       .where(eq(kycVerification.userId, userId))
       .orderBy(desc(kycVerification.createdAt))
       .limit(1);
-    return rows[0] ? rowToKyc(rows[0]) : null;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      verification: rowToKyc(row),
+      decisionPayload: row.decisionPayload ?? null,
+    };
+  }
+
+  async getDecisionPayload(id: string, conn?: Database): Promise<Record<string, unknown> | null> {
+    const db = this.resolveConn(conn);
+    const rows = await db
+      .select({ decisionPayload: kycVerification.decisionPayload })
+      .from(kycVerification)
+      .where(eq(kycVerification.id, id))
+      .limit(1);
+    return rows[0]?.decisionPayload ?? null;
   }
 
   async update(

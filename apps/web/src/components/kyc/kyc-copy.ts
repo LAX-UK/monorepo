@@ -1,4 +1,4 @@
-import type { UserKycStatus } from "@auction/types";
+import type { KycStatusSummaryDto, KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 
 export const KYC_PROVIDER_NAME = "Veriff";
 
@@ -12,40 +12,100 @@ export type KycUiPhase =
   | "rejected"
   | "needs_resubmit";
 
-export function kycStatusLabel(status: UserKycStatus, requiresKyc: boolean): string {
-  switch (status) {
-    case "approved":
-      return "Verified";
-    case "pending":
-      return "In review";
-    case "rejected":
-      return "Rejected";
-    default:
-      return requiresKyc ? "Required" : "Not verified";
-  }
+const DEFAULT_FEEDBACK: KycUserFeedbackDto = {
+  headline: "Not verified",
+  detail: "Required when your bidding exposure reaches our verification threshold.",
+  action: "start",
+  reasonCode: null,
+  decisionStatus: null,
+  needsResubmit: false,
+};
+
+export function resolveKycFeedback(summary: KycStatusSummaryDto | null): KycUserFeedbackDto {
+  return summary?.feedback ?? DEFAULT_FEEDBACK;
 }
 
-export function kycStatusHint(status: UserKycStatus, phase: KycUiPhase): string {
+export function kycStatusLabel(
+  summary: KycStatusSummaryDto | null,
+  phase: KycUiPhase = "idle",
+): string {
+  const feedback = resolveKycFeedback(summary);
+  if (phase === "submitted" || phase === "processing") return "In review";
+  if (phase === "in_flow") return "Verification in progress";
+  if (phase === "needs_resubmit") return feedback.headline;
+  return feedback.headline;
+}
+
+export function kycStatusHint(summary: KycStatusSummaryDto | null, phase: KycUiPhase): string {
+  const feedback = resolveKycFeedback(summary);
+
   if (phase === "in_flow") {
     return "Complete document and selfie checks in the secure window.";
   }
   if (phase === "submitted" || phase === "processing") {
     return "We are processing your verification. This usually takes a few minutes.";
   }
-  if (status === "rejected") {
-    return "Verification was not successful. You can try again with clearer documents.";
-  }
-  if (status === "approved") {
-    return "Your identity has been verified. You can bid and register for sales.";
-  }
+  if (feedback.detail) return feedback.detail;
   return "Required when your bidding exposure reaches our verification threshold.";
 }
 
-export function kycVerifyButtonLabel(phase: KycUiPhase, busy: boolean): string {
+export function kycInitialPhase(summary: KycStatusSummaryDto | null): KycUiPhase {
+  if (summary?.status === "approved") return "approved";
+  if (summary?.feedback?.needsResubmit) return "needs_resubmit";
+  if (summary?.status === "pending") return "processing";
+  if (summary?.status === "rejected") return "rejected";
+  return "idle";
+}
+
+const ACTIVE_CLIENT_PHASES = new Set<KycUiPhase>(["starting", "in_flow", "submitted"]);
+
+/** Whether the user may start or continue a Veriff session from the launcher. */
+export function canStartKycVerification(
+  summary: KycStatusSummaryDto | null,
+  phase: KycUiPhase,
+): boolean {
+  if (summary?.status === "approved") return false;
+  const feedback = resolveKycFeedback(summary);
+  if (feedback.action === "none" || feedback.action === "wait") return false;
+  if (summary?.status === "pending" && !ACTIVE_CLIENT_PHASES.has(phase)) return false;
+  if (phase === "submitted" || phase === "processing") return false;
+  return true;
+}
+
+/** Merge server-derived phase with in-flow client phases for labels and busy state. */
+export function effectiveKycPhase(
+  summary: KycStatusSummaryDto | null,
+  clientPhase: KycUiPhase,
+): KycUiPhase {
+  if (ACTIVE_CLIENT_PHASES.has(clientPhase)) return clientPhase;
+  return kycInitialPhase(summary);
+}
+
+export function kycLinkActionLabel(
+  feedback: KycUserFeedbackDto | null | undefined,
+  variant: "short" | "long" = "long",
+): string {
+  if (feedback?.needsResubmit || feedback?.action === "continue") {
+    return variant === "short" ? "Continue" : "Continue verification";
+  }
+  if (feedback?.action === "retry") return variant === "short" ? "Retry" : "Try again";
+  if (feedback?.action === "wait") {
+    return variant === "short" ? "In review" : "Verification in review";
+  }
+  return variant === "short" ? "Verify" : "Verify identity";
+}
+
+export function kycVerifyButtonLabel(
+  summary: KycStatusSummaryDto | null,
+  phase: KycUiPhase,
+  busy: boolean,
+): string {
+  const action = resolveKycFeedback(summary).action;
   if (busy || phase === "starting") return "Starting…";
   if (phase === "in_flow") return "Verification in progress…";
   if (phase === "submitted" || phase === "processing") return "Processing…";
-  if (phase === "needs_resubmit" || phase === "rejected") return "Try again";
+  if (phase === "needs_resubmit" || action === "continue") return "Continue verification";
+  if (phase === "rejected" || action === "retry") return "Try again";
   return "Start verification";
 }
 
@@ -61,6 +121,29 @@ export const KYC_BID_BLOCKED_DESCRIPTION =
 /** Dashboard attention list hint when threshold KYC is required. */
 export const KYC_ATTENTION_REQUIRED_HINT =
   "Required when your bidding exposure reaches our verification threshold.";
+
+export const KYC_FLOW_CANCELED_MESSAGE =
+  "Verification was canceled. You can continue when you are ready.";
+
+export function mapKycSessionStartError(error: string | undefined, status: number): string {
+  switch (error) {
+    case "kyc_not_configured":
+      return "Identity verification is temporarily unavailable. Please try again later.";
+    case "kyc_already_approved":
+      return "Your identity is already verified.";
+    case "kyc_return_url_must_be_https":
+    case "kyc_return_url_invalid":
+      return "Could not start verification from this page. Open verify identity from the dashboard and try again.";
+    default:
+      if (status === 503) {
+        return "Identity verification is temporarily unavailable. Please try again later.";
+      }
+      if (status === 409) {
+        return "Your identity is already verified.";
+      }
+      return error ?? `Could not start verification (${status}). Please try again.`;
+  }
+}
 
 /**
  * KYC gating models:
