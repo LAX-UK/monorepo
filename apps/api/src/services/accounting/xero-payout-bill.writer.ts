@@ -16,21 +16,12 @@ import type {
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
+import { getXeroScopes } from "./xero-accounting.provider.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
-
-const XERO_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
-  "accounting.settings",
-  "accounting.contacts",
-  "accounting.transactions",
-];
 
 /** after a payout is paid, create a Xero supplier bill (ACCPAY) against the
  * seller legal entity contact and persist `payout.xero_bill_id`. Idempotent.
@@ -74,7 +65,7 @@ export class XeroPayoutBillWriter {
       clientId: this.env.XERO_CLIENT_ID as string,
       clientSecret: this.env.XERO_CLIENT_SECRET as string,
       redirectUris: [this.env.XERO_REDIRECT_URI as string],
-      scopes: XERO_SCOPES,
+      scopes: getXeroScopes(),
     });
   }
 
