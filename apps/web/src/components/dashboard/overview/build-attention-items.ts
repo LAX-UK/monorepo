@@ -1,6 +1,12 @@
 import type { AttentionListItem } from "@/components/dashboard/attention-list";
 import { formatSettlementTotal } from "@/components/dashboard/overview/overview-presenters";
-import { KYC_ATTENTION_REQUIRED_HINT } from "@/components/kyc/kyc-copy";
+import {
+  KYC_ATTENTION_REQUIRED_HINT,
+  isKycInReview,
+  isKycSessionContinuable,
+  kycLinkActionLabel,
+  resolveKycFeedback,
+} from "@/components/kyc/kyc-copy";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotPath } from "@/lib/seo/url";
@@ -23,21 +29,30 @@ export function buildAttentionItems({
   const items: AttentionListItem[] = [];
 
   if (kyc) {
+    const feedback = resolveKycFeedback(kyc);
     if (kyc.feedback?.needsResubmit) {
       items.push({
         id: "kyc-resubmit",
         title: kyc.feedback.headline,
         hint: kyc.feedback.detail ?? "Complete the missing checks and resubmit.",
         href: "/dashboard/verify-identity",
-        ctaLabel: "Continue",
+        ctaLabel: kycLinkActionLabel(feedback, "short"),
       });
-    } else if (kyc.status === "pending") {
+    } else if (isKycInReview(kyc)) {
       items.push({
         id: "kyc-pending",
         title: "Identity verification in review",
-        hint: "We will notify you once the check completes",
+        hint: feedback.detail ?? "We will notify you once the check completes",
         href: "/dashboard/verify-identity",
-        ctaLabel: "View",
+        ctaLabel: kycLinkActionLabel(feedback, "short"),
+      });
+    } else if (isKycSessionContinuable(kyc)) {
+      items.push({
+        id: "kyc-continuable",
+        title: feedback.headline,
+        hint: feedback.detail ?? "Complete the document and selfie checks in the secure window.",
+        href: "/dashboard/verify-identity",
+        ctaLabel: kycLinkActionLabel(feedback, "short"),
       });
     } else if (kyc.status === "rejected") {
       items.push({

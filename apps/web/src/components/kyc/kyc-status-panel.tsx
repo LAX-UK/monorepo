@@ -6,6 +6,8 @@ import { Hourglass, ShieldAlert, ShieldCheck } from "lucide-react";
 import {
   KYC_VERIFY_DESCRIPTION,
   type KycUiPhase,
+  isKycInReview,
+  isKycSessionContinuable,
   kycStatusHint,
   kycStatusLabel,
   resolveKycFeedback,
@@ -29,9 +31,9 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
       ? ShieldCheck
       : status === "rejected" || feedback.action === "retry"
         ? ShieldAlert
-        : phase === "submitted" || status === "pending" || feedback.action === "wait"
+        : isKycInReview(summary) || phase === "submitted"
           ? Hourglass
-          : feedback.needsResubmit
+          : feedback.needsResubmit || isKycSessionContinuable(summary)
             ? ShieldAlert
             : ShieldAlert;
 
@@ -40,7 +42,10 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
       ? "border-emerald-500/30 bg-emerald-500/5 text-on-surface"
       : status === "rejected" || feedback.action === "retry"
         ? "border-live-red/30 bg-live-red/5 text-on-surface"
-        : feedback.needsResubmit || requiresKyc || phase === "submitted"
+        : feedback.needsResubmit ||
+            requiresKyc ||
+            phase === "submitted" ||
+            isKycSessionContinuable(summary)
           ? "border-lot-orange/30 bg-lot-orange/5 text-on-surface"
           : "border-outline-variant/30 bg-surface-container-low text-on-surface";
 
@@ -55,7 +60,7 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
         <div className="space-y-1">
           <p className="font-headline text-sm font-semibold">{label}</p>
           <p className="text-sm text-on-surface-variant">{hint}</p>
-          {status === "unverified" && phase === "idle" && feedback.action === "start" ? (
+          {phase === "idle" && (feedback.action === "start" || isKycSessionContinuable(summary)) ? (
             <p className="text-sm text-on-surface-variant">{KYC_VERIFY_DESCRIPTION}</p>
           ) : null}
         </div>

@@ -312,6 +312,52 @@ describe("VeriffKycService.handleEventWebhook", () => {
   });
 });
 
+describe("VeriffKycService.getStatus", () => {
+  it("returns continue feedback for legacy pending user with created session", async () => {
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: { ...sampleVerification, status: "created" },
+        decisionPayload: { sessionUrl: "https://magic.veriff.me/v/continue" },
+      }),
+    });
+    const svc = new VeriffKycService(baseEnv(), repo);
+    const summary = await svc.getStatus("user-1");
+    expect(summary.status).toBe("pending");
+    expect(summary.latestSessionStatus).toBe("created");
+    expect(summary.feedback.action).toBe("continue");
+    expect(summary.feedback.headline).toBe("Verification started");
+  });
+
+  it("returns continue feedback for unverified user with created session", async () => {
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "unverified", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: { ...sampleVerification, status: "created" },
+        decisionPayload: null,
+      }),
+    });
+    const svc = new VeriffKycService(baseEnv(), repo);
+    const summary = await svc.getStatus("user-1");
+    expect(summary.status).toBe("unverified");
+    expect(summary.feedback.action).toBe("continue");
+  });
+
+  it("returns wait feedback when session is processing", async () => {
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: { ...sampleVerification, status: "processing" },
+        decisionPayload: null,
+      }),
+    });
+    const svc = new VeriffKycService(baseEnv(), repo);
+    const summary = await svc.getStatus("user-1");
+    expect(summary.feedback.action).toBe("wait");
+    expect(summary.feedback.headline).toBe("In review");
+  });
+});
+
 describe("VeriffKycService.createSession", () => {
   const webOrigin = "https://test.lax.bid";
 
@@ -391,6 +437,13 @@ describe("VeriffKycService.createSession", () => {
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
     const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
     expect(veriffClient.createSession).toHaveBeenCalled();
+    expect(repo.createWithCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        status: "created",
+      }),
+    );
+    expect(repo.setUserKycStatus).not.toHaveBeenCalled();
     expect(result.sessionId).toBe("new-session");
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/new");
   });

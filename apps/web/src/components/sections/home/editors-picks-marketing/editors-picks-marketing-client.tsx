@@ -72,7 +72,10 @@ function EditorsPicksCarousel({
         className="m-0 flex list-none snap-x snap-mandatory gap-6 overflow-x-auto p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {lots.map((lot, index) => (
-          <li key={lot.id} className="w-[min(100vw-4rem,280px)] shrink-0 snap-start sm:w-[280px]">
+          <li
+            key={lot.id}
+            className="flex w-[min(100vw-4rem,280px)] shrink-0 snap-start flex-col sm:w-[280px]"
+          >
             <EditorsPickMarketingCard
               lot={lot}
               index={index}
