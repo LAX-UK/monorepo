@@ -1,55 +1,61 @@
-# Xero + Stripe “Pay Now” (hosted invoice) setup
+# Xero accounting + Stripe platform (Account B)
 
-Buyer card collection uses **Stripe connected inside Xero**, not first-party Stripe Elements in `apps/web`. Our API creates a Xero **ACCREC** invoice and returns the **online invoice URL**; the buyer pays on Xero’s page where **Pay Now** appears when the payment service and branding are configured.
+Buyer payments use the **self-created Stripe platform account (Account B)** for card checkout and seller Connect payouts. Xero is used for **Accounting API** only (invoices, contacts, payout bills) — **not** for OAuth-enrolling the platform Stripe account via Xero Payment services.
 
-## Symptom
+## Do not
 
-- Buyers reach the Xero invoice but there is **no Pay Now** button, or only bank transfer is offered.
-- UK operations accidentally enabled **Stripe ACH (US bank transfer)** instead of **Stripe (cards)**.
+- OAuth the Connect **platform** account through **Xero → Payment services**. That enrolls Stripe under Xero’s Connected Account Agreement and **blocks Connect sub-account creation** (`this kind of account cannot create connect accounts`).
+- Point `STRIPE_SECRET_KEY` / webhooks at the Xero-created Stripe account (Account A).
 
-## Diagnosis
+## Account mapping (finance)
 
-1. In **Xero** (production org): **Settings** → **Payment services**.
-2. Confirm **Stripe** is listed and **Connected** (OAuth to the correct Stripe account used for live charges).
-3. If you see **Stripe ACH Bank Transfers** as the only Stripe option, that is the **US ACH** product — for UK card payments, add **Stripe** (card payments) per Xero’s regional offering, not ACH.
-4. **Branding themes:** **Settings** → **Invoice settings** → **Branding themes** → open the theme applied to sales invoices (or the default). Under **Payment services**, ensure the **Stripe** service is **enabled** for online invoices.
+| Account | Role | Used for |
+|---------|------|----------|
+| **Account B** (self-created) | Connect **platform** | `STRIPE_*` env vars, seller Express onboarding, buyer Stripe Checkout, disputes/refunds webhooks, seller transfers |
+| **Account A** (Xero onboarding) | Ignore for LAX keys | Do not use for app secrets; disconnect in Xero Payment services if linked |
+| **Xero org** | Accounting | ACCREC invoices (bank transfer URL), OAuth admin, payout bills, invoice-paid webhooks |
 
-## Resolution — connect Stripe to Xero (procedure)
+## Buyer pay-in (Stripe-only checkout)
 
-1. Xero **Settings** → **Payment services** → **Add payment service** → choose **Stripe** (cards).
-2. Complete Xero’s OAuth flow into Stripe; use the **live** Stripe account that matches production `STRIPE_SECRET_KEY` / Connect configuration.
-3. **Do not** enable Stripe ACH for UK buyer card flow unless product explicitly requires US-style ACH.
-4. Attach the Stripe payment service to the **branding theme** used for ACCREC invoices created by our integration (`XeroAccountingProvider.createCheckoutForWinner` in `apps/api/src/services/accounting/xero-accounting.provider.ts` uses standard invoice creation; ensure org default theme has Pay Now enabled).
-5. Create a **£1.00 test invoice** in Xero (or sandbox org), open **Online invoice**, and verify **Pay Now** is visible.
+All buyer checkout URLs come from **Stripe Checkout** on Account B (tiered card / UK bank transfer). Xero provides ACCREC invoices and payment ledger sync only.
 
-### Screenshot (evidence)
+1. **Card** (≤ `STRIPE_CARD_CHECKOUT_MAX`, default £100k) — Stripe card Checkout.
+2. **UK bank transfer** (above card max, below `STRIPE_MANUAL_REVIEW_MIN`) — Stripe `gb_bank_transfer` via Customer Balance.
+3. **Manual review** (≥ manual review min or archived seller) — finance **Release for checkout** before buyer gets a URL.
 
-Store under `docs/runbooks/_assets/` (git-tracked) or internal drive:
+**Invoice gate:** `POST /payments` calls `ensureInvoiceForPayment` when issuing a checkout URL so every payment has an ACCREC invoice row (`payment_external_ref.xero_invoice_id`) for `XeroPaymentRecorder` after capture.
 
-- Filename: `xero-online-invoice-pay-now.png`
-- Must show: invoice header, line items, **Pay Now** button, Xero URL bar (redact unrelated PII if sharing externally).
+After Stripe capture, `XeroPaymentRecorder` marks the linked Xero invoice paid via Accounting API (no Xero Pay Now OAuth on the platform account). Failed capture sync persists `syncStatus=error` on the external ref; replay via `POST /internal/jobs/retry-xero-stripe-capture-sync`.
 
-_If this file is not yet in the repo, attach during the first verification drill and commit the image._
+Admin refunds optionally emit Xero ACCREC credit notes via `recordRefundCreditNote`.
 
-## Verification — disputes still hit our Stripe webhooks
+## Env vars
 
-Card charges initiated through Xero still settle in **Stripe**; dispute lifecycle events are standard Stripe objects.
+| Variable | Purpose |
+|----------|---------|
+| `STRIPE_CARD_CHECKOUT_MAX` | Card Checkout ceiling (major GBP, default `100000`) |
+| `STRIPE_MANUAL_REVIEW_MIN` | Finance review floor (major GBP, default `500000`) |
+| `STRIPE_ABSOLUTE_MAX` | Hard online cap (major GBP, default `999999.99`) |
+| `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Chart account for recording Stripe captures in Xero (default `090`) |
+| `XERO_WEBHOOK_KEY` | Required in production when Xero OAuth is configured |
 
-1. Pay a **sandbox** Xero invoice with a Stripe [test card](https://docs.stripe.com/testing).
-2. From a shell with `stripe` CLI logged into the same Stripe account:
+## Verification
 
-```bash
-stripe trigger charge.dispute.created
-```
+1. Staging: `POST /stripe-connect/account` creates Express account on Account B test keys.
+2. Staging: `POST /payments` returns Stripe Checkout URL; confirm `payment_external_ref` row has `xero_invoice_id` **before** buyer pays.
+3. Pay test card → `payment_intent.succeeded` → `payments.status=captured`, `stripeChargeId` set.
+4. Xero invoice shows paid (Accounting API sync via `XeroPaymentRecorder`).
+5. If step 4 fails, check `xero_payment_record_failed` and run `POST /internal/jobs/retry-xero-stripe-capture-sync` (requires `X-Cron-Secret`).
 
-3. Confirm `POST /webhooks/stripe/payments` on **api** returns `200` and `StripePaymentWebhookService` logs show processing (`apps/api/src/routes/webhooks/stripe.ts`).
+## Internal cron replay (money path)
 
-## Escalation
-
-- Xero support: payment service stuck “Pending” or OAuth errors.
-- Stripe support: charges visible but Xero not marking paid (sync delay &gt; 1 hour — check Xero invoice status first).
+| Route | Purpose |
+|-------|---------|
+| `POST /internal/jobs/retry-xero-stripe-capture-sync` | Captured Stripe payments with Xero invoice but no `xero_payment_id` |
+| `POST /internal/jobs/retry-refund-reconciles` | Admin refunds where Stripe succeeded but DB persist failed |
+| `POST /internal/jobs/retry-xero-webhook-failures` | Xero invoice webhook rows that previously failed sync |
 
 ## Related
 
-- [Buyer payment flow](./buyer-payment-flow.md) — end-to-end journey and reconciliation timings.
-- [Xero token loss](./xero-token-loss.md) — OAuth disconnects.
+- [Buyer payment flow](./buyer-payment-flow.md)
+- [Stripe Connect go-live](./stripe-connect-go-live.md)

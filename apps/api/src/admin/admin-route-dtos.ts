@@ -63,6 +63,7 @@ export type AdminManualReviewPaymentRow = {
   currency: "GBP";
   archiveReason: string | null;
   archiveTimestamp: Date | null;
+  manualReviewReason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null;
   createdAt: Date;
 };
 

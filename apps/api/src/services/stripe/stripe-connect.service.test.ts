@@ -18,6 +18,7 @@ function baseEnv(overrides: Partial<Env> = {}): Env {
   return {
     STRIPE_SECRET_KEY: "sk_test_dummy",
     STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_dummy",
+    WEB_ORIGIN: "https://app.test",
     ...overrides,
   } as Env;
 }
@@ -406,7 +407,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       list: vi.fn(),
       create: vi.fn(),
       insertLine: vi.fn(),
-      listLines: vi.fn(),
+      listLines: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi.fn(),
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
@@ -500,6 +501,7 @@ describe("StripeConnectService.ensureAccount", () => {
                   ownerFirstName: "Ada",
                   ownerLastName: "Lovelace",
                   ownerDisplayName: "Ada Lovelace",
+                  ownerKycStatus: "approved",
                 },
               ]),
             }),
@@ -566,7 +568,7 @@ describe("StripeConnectService.ensureAccount", () => {
     const updatedRow = {
       ...entityRow,
       stripeConnectAccountId: "acct_org",
-      status: "connect_pending" as const,
+      status: "lead" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_org" });
     const db = {

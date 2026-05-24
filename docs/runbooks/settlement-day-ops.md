@@ -4,9 +4,16 @@ Bulk seller settlement is driven by the worker heartbeat calling `POST /internal
 
 ## Pre-flight (Friday before)
 
-- [ ] Stripe Connect accounts for active sellers show **payouts enabled**.
+- [ ] Stripe Connect accounts for active sellers show **payouts enabled** (refresh via Connect status endpoint — live-synced from Stripe when configured).
+- [ ] Migrations **0072**+ applied (unique sale line per payment; required before settlement scale-up).
 - [ ] No payout rows stuck in `failed` without owner.
 - [ ] Redis and API healthy; `CRON_INTERNAL_SECRET` set identically on API + worker.
+
+## Ledger model (settlement)
+
+- Sale lines at settlement use the **gross** captured payment amount.
+- Pre-settlement refunds/disputes appear as negative **adjustment** lines on the open payout (or clawback payout); they are not netted again into the sale line amount.
+- Multiple partial refunds on the same payout aggregate into one refund line per payment.
 
 ## Monday 09:05 UTC
 

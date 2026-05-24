@@ -65,6 +65,24 @@ describe("canStartKycVerification", () => {
     });
     expect(canStartKycVerification(s, "idle")).toBe(false);
   });
+
+  it("returns true when session is created even if user status is pending", () => {
+    const s = summary({
+      status: "pending",
+      latestSessionStatus: "created",
+      feedback: {
+        headline: "Verification started",
+        detail: "Complete the document and selfie checks in the secure window.",
+        action: "continue",
+        reasonCode: null,
+        decisionStatus: null,
+        needsResubmit: false,
+      },
+    });
+    expect(canStartKycVerification(s, "idle")).toBe(true);
+    expect(kycInitialPhase(s)).toBe("idle");
+    expect(effectiveKycPhase(s, "idle")).toBe("idle");
+  });
 });
 
 describe("kycVerifyButtonLabel", () => {

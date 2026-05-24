@@ -32,11 +32,26 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("kyc") === "complete") {
-      setPhase(kycSummary?.feedback?.needsResubmit ? "needs_resubmit" : "submitted");
+    if (searchParams.get("kyc") !== "complete") return;
+    if (kycSummary?.feedback?.needsResubmit) {
+      setPhase("needs_resubmit");
+      router.refresh();
+      return;
+    }
+    const trulySubmitted =
+      kycSummary?.latestSessionStatus === "processing" ||
+      (kycSummary?.status === "pending" && kycSummary.latestSessionStatus !== "created");
+    if (trulySubmitted) {
+      setPhase("submitted");
       router.refresh();
     }
-  }, [kycSummary?.feedback?.needsResubmit, router, searchParams]);
+  }, [
+    kycSummary?.feedback?.needsResubmit,
+    kycSummary?.latestSessionStatus,
+    kycSummary?.status,
+    router,
+    searchParams,
+  ]);
 
   useEffect(() => {
     setPhase(kycInitialPhase(kycSummary));

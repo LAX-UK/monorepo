@@ -91,6 +91,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
+    stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],

@@ -2,11 +2,12 @@ import type { Database } from "@auction/db";
 import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
-import { PaymentProviderError } from "../lib/errors.js";
+import { LotError, PaymentProviderError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
+import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
+import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
+import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type {
   ILotRepository,
@@ -16,7 +17,41 @@ import type {
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { PaymentService } from "./payment.service.js";
+import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
+
+const defaultTierPolicy = new PaymentTierPolicy(
+  parsePaymentTierLimits({
+    STRIPE_CARD_CHECKOUT_MAX: 100_000,
+    STRIPE_MANUAL_REVIEW_MIN: 500_000,
+    STRIPE_ABSOLUTE_MAX: 999_999.99,
+  }),
+);
+
+function mockAccounting(
+  overrides: Partial<IInvoiceAccountingProvider> = {},
+): IInvoiceAccountingProvider {
+  return {
+    isConfigured: vi.fn().mockReturnValue(false),
+    ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
+    syncPaymentFromProvider: vi.fn(),
+    syncInvoiceFromProvider: vi.fn(),
+    ...overrides,
+  };
+}
+
+function mockStripeCheckout(
+  overrides: Partial<IStripeCheckoutService> = {},
+): IStripeCheckoutService {
+  return {
+    isAvailable: () => true,
+    createCheckout: vi.fn().mockResolvedValue({
+      checkoutUrl: "https://checkout.stripe.com/test",
+      checkoutRail: "card",
+    }),
+    ...overrides,
+  };
+}
 
 const lot: Lot = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -65,6 +100,31 @@ const payment: PaymentRecord = {
   createdAt: new Date(),
 };
 
+function makeDelegatingPaymentCapture(
+  db: Database,
+  payments: IPaymentWriteRepository,
+  publisher: DomainEventPublisher,
+): IPaymentCaptureService {
+  return {
+    capture: vi.fn().mockImplementation(async (input) => {
+      const apply = async (tx: Database) => {
+        const opts: { stripeChargeId?: string } = {};
+        if (input.stripeChargeId) opts.stripeChargeId = input.stripeChargeId;
+        await payments.applyCapturedInTransaction?.(tx, input.paymentId, opts);
+        await publisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: input.paymentId,
+          eventType: "payment.captured",
+          payload: { paymentId: input.paymentId },
+          actorUserId: input.actorUserId ?? null,
+          actingLegalEntityId: null,
+        });
+      };
+      if (input.tx) await apply(input.tx);
+      else await db.transaction(apply);
+    }),
+  };
+}
 function makeTxAndDb() {
   const tx = { insert: vi.fn(), update: vi.fn() } as unknown as Database;
   const db = {
@@ -88,19 +148,11 @@ describe("PaymentService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const legalEntityRecipients: ILegalEntityNotificationRecipientReader = {
-      listUserIdsForAudience: vi.fn().mockResolvedValue(["owner-1", "finance-1"]),
-    };
-    const accounting: IPaymentAccountingProvider = {
-      isConfigured: vi.fn().mockReturnValue(false),
-      getCheckoutUrlIfAny: vi.fn(),
-      createCheckoutForWinner: vi.fn(),
-      syncPaymentFromProvider: vi.fn(),
-      syncInvoiceFromProvider: vi.fn(),
-    };
+    const accounting = mockAccounting();
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
     } as unknown as DomainEventPublisher;
+    const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       lots,
       payments,
@@ -110,11 +162,17 @@ describe("PaymentService", () => {
         findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@x" }),
       } as unknown as IUserRepository,
       accounting,
-      legalEntityRecipients,
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
       null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      paymentCapture,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -126,6 +184,13 @@ describe("PaymentService", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(paymentCapture.capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: payment.id,
+        via: "admin_manual",
+        actorUserId: "admin-1",
+      }),
+    );
     expect(payments.applyCapturedInTransaction).toHaveBeenCalledWith(
       tx,
       payment.id,
@@ -137,22 +202,6 @@ describe("PaymentService", () => {
         eventType: "payment.captured",
         aggregateId: payment.id,
       }),
-    );
-    expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
-      lot.sellerLegalEntityId,
-      "finance",
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "buyer-1",
-      expect.objectContaining({ type: "payment_received" }),
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "owner-1",
-      expect.objectContaining({ type: "payment_received" }),
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "finance-1",
-      expect.objectContaining({ type: "payment_received" }),
     );
   });
 
@@ -170,6 +219,11 @@ describe("PaymentService", () => {
         status: "succeeded",
       } as Stripe.PaymentIntent),
       createRefund: vi.fn(),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi
@@ -185,6 +239,7 @@ describe("PaymentService", () => {
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
     } as unknown as DomainEventPublisher;
+    const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
       payments,
@@ -193,18 +248,18 @@ describe("PaymentService", () => {
       {
         findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@x" }),
       } as unknown as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      paymentCapture,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -238,6 +293,11 @@ describe("PaymentService", () => {
       isConfigured: () => true,
       capturePaymentIntent: vi.fn().mockRejectedValue(stripeErr),
       createRefund: vi.fn(),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -250,14 +310,8 @@ describe("PaymentService", () => {
       null,
       new NotificationFactory(),
       {} as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
@@ -294,11 +348,17 @@ describe("PaymentService", () => {
         order.push("stripe_refund");
         return { kind: "created" as const, refundId: "re_abc" };
       }),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn().mockImplementation(async () => {
         order.push("db_refund");
+        return true;
       }),
     } as unknown as IPaymentWriteRepository;
     const publisher: DomainEventPublisher = {
@@ -313,14 +373,8 @@ describe("PaymentService", () => {
       null,
       new NotificationFactory(),
       {} as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
@@ -361,6 +415,11 @@ describe("PaymentService", () => {
           code: "resource_missing",
         } as never),
       ),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -374,14 +433,8 @@ describe("PaymentService", () => {
       null,
       new NotificationFactory(),
       {} as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
@@ -408,10 +461,15 @@ describe("PaymentService", () => {
       isConfigured: () => true,
       capturePaymentIntent: vi.fn(),
       createRefund: vi.fn().mockResolvedValue({ kind: "already_refunded" as const }),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
-      applyRefundedInTransaction: vi.fn().mockResolvedValue(undefined),
+      applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
@@ -423,14 +481,8 @@ describe("PaymentService", () => {
       null,
       new NotificationFactory(),
       {} as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
       db,
       publisher,
@@ -457,13 +509,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(payment),
       applyRefundedInTransaction: vi.fn(),
     } as unknown as IPaymentWriteRepository;
-    const accounting: IPaymentAccountingProvider = {
-      isConfigured: vi.fn().mockReturnValue(false),
-      getCheckoutUrlIfAny: vi.fn(),
-      createCheckoutForWinner: vi.fn(),
-      syncPaymentFromProvider: vi.fn(),
-      syncInvoiceFromProvider: vi.fn(),
-    };
+    const accounting = mockAccounting();
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
       payments,
@@ -471,6 +517,7 @@ describe("PaymentService", () => {
       new NotificationFactory(),
       {} as IUserRepository,
       accounting,
+      defaultTierPolicy,
     );
 
     const result = await service.refundPayment(
@@ -488,19 +535,14 @@ describe("PaymentService", () => {
   it("creates manual-review payment and skips checkout when seller entity is archived", async () => {
     const payments: IPaymentWriteRepository = {
       findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({
         ...payment,
         id: "pay-review",
         status: "requires_manual_review",
       }),
     } as unknown as IPaymentWriteRepository;
-    const accounting: IPaymentAccountingProvider = {
-      isConfigured: vi.fn().mockReturnValue(true),
-      getCheckoutUrlIfAny: vi.fn(),
-      createCheckoutForWinner: vi.fn(),
-      syncPaymentFromProvider: vi.fn(),
-      syncInvoiceFromProvider: vi.fn(),
-    };
+    const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const legalEntities: ILegalEntityRepository = {
       findById: vi.fn().mockResolvedValue({
@@ -515,7 +557,7 @@ describe("PaymentService", () => {
       new NotificationFactory(),
       { findById: vi.fn() } as unknown as IUserRepository,
       accounting,
-      null,
+      defaultTierPolicy,
       legalEntities,
       {} as never,
       publisher as never,
@@ -527,7 +569,7 @@ describe("PaymentService", () => {
     expect(payments.create).toHaveBeenCalledWith(
       expect.objectContaining({ status: "requires_manual_review" }),
     );
-    expect(accounting.createCheckoutForWinner).not.toHaveBeenCalled();
+    expect(accounting.ensureInvoiceForPayment).not.toHaveBeenCalled();
     expect(publisher.publish).toHaveBeenCalledWith(
       {},
       expect.objectContaining({
@@ -538,9 +580,13 @@ describe("PaymentService", () => {
   });
 
   it("refunds a manual-review payment even when seller is archived", async () => {
+    const tx = {} as never;
+    const db = {
+      transaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
+    };
     const payments: IPaymentWriteRepository = {
       findById: vi.fn().mockResolvedValue({ ...payment, status: "requires_manual_review" }),
-      updateStatus: vi.fn().mockResolvedValue(undefined),
+      applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const service = new PaymentService(
@@ -549,16 +595,10 @@ describe("PaymentService", () => {
       null,
       new NotificationFactory(),
       {} as IUserRepository,
-      {
-        isConfigured: vi.fn().mockReturnValue(false),
-        getCheckoutUrlIfAny: vi.fn(),
-        createCheckoutForWinner: vi.fn(),
-        syncPaymentFromProvider: vi.fn(),
-        syncInvoiceFromProvider: vi.fn(),
-      },
-      null,
+      mockAccounting(),
+      defaultTierPolicy,
       undefined,
-      {} as never,
+      db as never,
       publisher as never,
     );
 
@@ -570,9 +610,9 @@ describe("PaymentService", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(payments.updateStatus).toHaveBeenCalledWith(payment.id, "refunded");
+    expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, payment.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
-      {},
+      tx,
       expect.objectContaining({
         eventType: "payment.refunded",
         payload: expect.objectContaining({ reason: "seller_archived" }),
@@ -620,15 +660,10 @@ describe("PaymentService", () => {
     };
     const payments: IPaymentWriteRepository = {
       findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ ...payment, id: "pay-tier", status: "pending" }),
     } as unknown as IPaymentWriteRepository;
-    const accounting: IPaymentAccountingProvider = {
-      isConfigured: vi.fn().mockReturnValue(false),
-      getCheckoutUrlIfAny: vi.fn(),
-      createCheckoutForWinner: vi.fn(),
-      syncPaymentFromProvider: vi.fn(),
-      syncInvoiceFromProvider: vi.fn(),
-    };
+    const accounting = mockAccounting();
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const legalEntities: ILegalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: tieredLot.sellerLegalEntityId, status: "active" }),
@@ -637,21 +672,33 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(saleWithTiers),
     } as unknown as ISaleRepository;
 
+    const stripeCheckout = mockStripeCheckout({
+      createCheckout: vi.fn().mockResolvedValue({
+        checkoutUrl: "https://checkout.stripe.com/bank",
+        checkoutRail: "gb_bank_transfer",
+      }),
+    });
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(tieredLot) } as unknown as ILotRepository,
       payments,
       null,
       new NotificationFactory(),
-      { findById: vi.fn() } as unknown as IUserRepository,
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
       accounting,
-      null,
+      defaultTierPolicy,
       legalEntities,
       {} as never,
       publisher as never,
       null,
       undefined,
-      null,
+      undefined,
       sales,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
     );
 
     const result = await service.createPendingForWinner("buyer-1", tieredLot.id);
@@ -671,13 +718,7 @@ describe("PaymentService", () => {
     const lots: ILotRepository = {
       findById: vi.fn().mockImplementation((id: string) => (id === lot.id ? lot : null)),
     } as unknown as ILotRepository;
-    const accounting: IPaymentAccountingProvider = {
-      isConfigured: vi.fn().mockReturnValue(false),
-      getCheckoutUrlIfAny: vi.fn(),
-      createCheckoutForWinner: vi.fn(),
-      syncPaymentFromProvider: vi.fn(),
-      syncInvoiceFromProvider: vi.fn(),
-    };
+    const accounting = mockAccounting();
     const service = new PaymentService(
       lots,
       payments,
@@ -685,7 +726,7 @@ describe("PaymentService", () => {
       new NotificationFactory(),
       {} as IUserRepository,
       accounting,
-      null,
+      defaultTierPolicy,
       undefined,
       undefined,
       undefined,
@@ -696,6 +737,256 @@ describe("PaymentService", () => {
     expect(out.data).toHaveLength(1);
     expect(out.data[0]?.id).toBe("pay-p");
     expect(out.data[0]?.lotTitle).toBe("Blue Study");
+    expect(out.data[0]?.checkoutRail).toBe("card");
     expect(payments.listByBuyerId).toHaveBeenCalledWith("buyer-1");
+  });
+
+  it("returns 400 when amount exceeds absolute online limit", async () => {
+    const blockedLot: Lot = {
+      ...lot,
+      currentPrice: "800000.00",
+      buyerPremiumRate: "0.25",
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+    } as unknown as IPaymentWriteRepository;
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(blockedLot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      { findById: vi.fn() } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+    );
+    const result = await service.createPendingForWinner("buyer-1", blockedLot.id);
+    expect(result.isErr()).toBe(true);
+    expect(payments.create).not.toHaveBeenCalled();
+  });
+
+  it("creates high-value manual review without Xero or Stripe calls", async () => {
+    const highLot: Lot = { ...lot, currentPrice: "400000.00", buyerPremiumRate: "0.25" };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({
+        ...payment,
+        id: "pay-hv",
+        amount: "500000.00",
+        status: "requires_manual_review",
+      }),
+    } as unknown as IPaymentWriteRepository;
+    const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(highLot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      { findById: vi.fn() } as unknown as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+      {} as never,
+      { publish: vi.fn() } as never,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+    );
+    const result = await service.createPendingForWinner("buyer-1", highLot.id);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.checkoutUrl).toBeNull();
+      expect(result.value.manualReviewReason).toBe("high_value");
+    }
+    expect(accounting.ensureInvoiceForPayment).not.toHaveBeenCalled();
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when Xero invoice fails before Stripe checkout", async () => {
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ ...payment, id: "pay-xero", status: "pending" }),
+    } as unknown as IPaymentWriteRepository;
+    const accounting = mockAccounting({
+      isConfigured: vi.fn().mockReturnValue(true),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: false, error: "xero down" }),
+    });
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(PaymentProviderError);
+      expect((result.error as PaymentProviderError).stripeCode).toBe("accounting_unavailable");
+    }
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("issues bank transfer checkout for released manual-review pending payment", async () => {
+    const highAmount = "600000.00";
+    const pendingPayment: PaymentRecord = {
+      ...payment,
+      id: "pay-released",
+      amount: highAmount,
+      status: "pending",
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(pendingPayment),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout({
+      createCheckout: vi.fn().mockResolvedValue({
+        checkoutUrl: "https://checkout.stripe.com/bank",
+        checkoutRail: "gb_bank_transfer",
+      }),
+    });
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.checkoutRail).toBe("gb_bank_transfer");
+      expect(result.value.checkoutUrl).toContain("checkout.stripe.com");
+    }
+  });
+
+  it("does not re-issue Stripe checkout when an existing payment is already captured", async () => {
+    const capturedPayment: PaymentRecord = {
+      ...payment,
+      id: "pay-captured",
+      status: "captured",
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(capturedPayment),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.paymentId).toBe("pay-captured");
+      expect(result.value.checkoutUrl).toBeNull();
+      expect(result.value.checkoutRail).toBeNull();
+    }
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("blocks creating a new payment when a prior refund exists for the lot", async () => {
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue({
+        ...payment,
+        id: "pay-refunded",
+        status: "refunded",
+      }),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(LotError);
+      expect((result.error as LotError).status).toBe(409);
+    }
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
   });
 });

@@ -140,6 +140,15 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "sellerLegalEntityId",
     "action",
   ]),
+  /** UK bank transfer received but underpaid — buyer must send remainder. */
+  "payment.bank_transfer_partially_funded": new Set([
+    "paymentId",
+    "lotId",
+    "buyerUserId",
+    "amountCents",
+    "amountRemainingCents",
+    "currency",
+  ]),
   /** Stripe transfer reversal — negative payout_line inserted for balance correction. */
   "payout.transfer_reversed": new Set([
     "stripeTransferId",

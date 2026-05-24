@@ -43,6 +43,8 @@ export type LegalEntityLifecycleFailure = {
 export type LegalEntityLifecycleAdminOptions = {
   /** after successful archive transition (post-commit). */
   enqueueArchiveCascade?: (legalEntityId: string) => Promise<void>;
+  /** after approve when entity lands in `connect_pending`, refresh Stripe Connect state. */
+  onApproveToConnectPending?: (legalEntityId: string) => Promise<void>;
 };
 
 export class LegalEntityLifecycleAdminService {
@@ -146,6 +148,15 @@ export class LegalEntityLifecycleAdminService {
 
     if (result.isOk() && op === "archive" && this.options.enqueueArchiveCascade) {
       await this.options.enqueueArchiveCascade(entityId);
+    }
+
+    if (
+      result.isOk() &&
+      op === "approve" &&
+      result.value.status === "connect_pending" &&
+      this.options.onApproveToConnectPending
+    ) {
+      await this.options.onApproveToConnectPending(entityId);
     }
 
     return result;

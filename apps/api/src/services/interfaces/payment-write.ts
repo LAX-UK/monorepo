@@ -44,8 +44,11 @@ export interface IPaymentWriteRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   findById(id: string): Promise<PaymentRecord | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
+  findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
   updateStripeChargeId(id: string, stripeChargeId: string): Promise<void>;
+  updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void>;
+  findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;
   /** Payments where the user is the buyer (portfolio). */
@@ -61,10 +64,10 @@ export interface IPaymentWriteRepository {
     tx: Database,
     id: string,
     opts: { stripeChargeId?: string | null },
-  ): Promise<void>;
+  ): Promise<boolean>;
   applyRefundedInTransaction(
     tx: Database,
     id: string,
     stripeRefundId: string | null,
-  ): Promise<void>;
+  ): Promise<boolean>;
 }

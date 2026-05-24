@@ -288,6 +288,28 @@ describe("VeriffKycService.handleEventWebhook", () => {
     expect(repo.setUserKycStatus).not.toHaveBeenCalled();
     expect(repo.update).not.toHaveBeenCalled();
   });
+
+  it("does not set user pending on started event", async () => {
+    const repo = makeRepo({
+      findByProviderSessionId: vi.fn().mockResolvedValue(sampleVerification),
+      getUserKycWebhookState: vi.fn().mockResolvedValue({
+        currentKycSessionId: "session-1",
+        kycRetryCount: 0,
+      }),
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "unverified", kycVerifiedAt: null }),
+      update: vi.fn().mockResolvedValue({ ...sampleVerification, status: "created" }),
+      setUserKycStatus: vi.fn(),
+    });
+    const svc = new VeriffKycService(
+      baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
+      repo,
+      null,
+    );
+    const body = JSON.stringify({ id: "session-1", action: "started" });
+    await svc.handleEventWebhook(body, sign(body), API_KEY);
+    expect(repo.setUserKycStatus).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalled();
+  });
 });
 
 describe("VeriffKycService.createSession", () => {
@@ -371,6 +393,26 @@ describe("VeriffKycService.createSession", () => {
     expect(veriffClient.createSession).toHaveBeenCalled();
     expect(result.sessionId).toBe("new-session");
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/new");
+  });
+
+  it("reuses stored session URL for created in-progress session", async () => {
+    const veriffClient = makeVeriffClient();
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "unverified", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: {
+          ...sampleVerification,
+          status: "created",
+          providerSessionId: "session-created",
+        },
+        decisionPayload: { sessionUrl: "https://magic.veriff.me/v/continue" },
+      }),
+    });
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    expect(result.verificationUrl).toBe("https://magic.veriff.me/v/continue");
+    expect(result.sessionId).toBe("session-created");
+    expect(veriffClient.createSession).not.toHaveBeenCalled();
   });
 });
 

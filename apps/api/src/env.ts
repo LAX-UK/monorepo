@@ -179,6 +179,14 @@ const envSchema = z
     STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Transfers webhook signing secret (whsec_…) for platform transfer events. */
     STRIPE_TRANSFERS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Max amount (GBP major units) for card-only Stripe Checkout (default £100,000). */
+    STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(100_000),
+    /** Amounts at/above this (GBP major units) require finance manual review before checkout. */
+    STRIPE_MANUAL_REVIEW_MIN: z.coerce.number().positive().default(500_000),
+    /** Hard max online payment amount (GBP major units); Stripe card digit limit. */
+    STRIPE_ABSOLUTE_MAX: z.coerce.number().positive().default(999_999.99),
+    /** Xero bank account code for recording Stripe captures against ACCREC invoices. */
+    XERO_PAYMENT_BANK_ACCOUNT_CODE: z.string().min(1).default("090"),
     /** Threshold (in major currency units, e.g. 1000.00 for £1000) at which KYC is required for buyer exposure. */
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
@@ -244,6 +252,8 @@ const envSchema = z
         });
       }
     }
+    const appEnv = e.APP_ENV;
+
     const hasXeroId = Boolean(e.XERO_CLIENT_ID && e.XERO_CLIENT_ID.length > 0);
     const hasXeroSecret = Boolean(e.XERO_CLIENT_SECRET && e.XERO_CLIENT_SECRET.length > 0);
     const hasXeroRedirect = Boolean(e.XERO_REDIRECT_URI);
@@ -255,6 +265,27 @@ const envSchema = z
             "XERO_CLIENT_ID, XERO_CLIENT_SECRET, and XERO_REDIRECT_URI must all be set together when enabling Xero OAuth",
         });
       }
+      if (appEnv === "production" && !e.XERO_WEBHOOK_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "XERO_WEBHOOK_KEY is required in production when Xero OAuth is enabled",
+          path: ["XERO_WEBHOOK_KEY"],
+        });
+      }
+    }
+    if (e.STRIPE_CARD_CHECKOUT_MAX >= e.STRIPE_MANUAL_REVIEW_MIN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "STRIPE_CARD_CHECKOUT_MAX must be less than STRIPE_MANUAL_REVIEW_MIN",
+        path: ["STRIPE_CARD_CHECKOUT_MAX"],
+      });
+    }
+    if (e.STRIPE_MANUAL_REVIEW_MIN > e.STRIPE_ABSOLUTE_MAX) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "STRIPE_MANUAL_REVIEW_MIN must not exceed STRIPE_ABSOLUTE_MAX",
+        path: ["STRIPE_MANUAL_REVIEW_MIN"],
+      });
     }
     const hasGoogleId = Boolean(e.GOOGLE_CLIENT_ID);
     const hasGoogleSecret = Boolean(e.GOOGLE_CLIENT_SECRET);
@@ -273,8 +304,6 @@ const envSchema = z
           "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
       });
     }
-
-    const appEnv = e.APP_ENV;
 
     // Stripe key format — enforced per deployment environment.
     // production: live keys required. test: test keys required (prevents accidental live key use).

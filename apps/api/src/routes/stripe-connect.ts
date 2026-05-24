@@ -62,6 +62,9 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
         if (err instanceof StripeConnectNotConfiguredError) {
           return c.json({ error: "stripe_not_configured" }, 503);
         }
+        if (err instanceof Error && err.message === "kyc_not_approved") {
+          return c.json({ error: "kyc_not_approved" }, 403);
+        }
         throw err;
       }
     },
@@ -89,6 +92,9 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       } catch (err) {
         if (err instanceof StripeConnectNotConfiguredError) {
           return c.json({ error: "stripe_not_configured" }, 503);
+        }
+        if (err instanceof Error && err.message.startsWith("connect_url_")) {
+          return c.json({ error: err.message }, 400);
         }
         throw err;
       }

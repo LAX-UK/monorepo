@@ -25,6 +25,7 @@ const orgEntity = (overrides: Partial<LegalEntity> = {}): LegalEntity => ({
   statusChangedAt: null,
   statusChangedByUserId: null,
   stripeConnectAccountId: null,
+  stripeCustomerId: null,
   stripeConnectChargesEnabled: false,
   stripeConnectPayoutsEnabled: false,
   stripeConnectRequirementsCurrentlyDue: [],

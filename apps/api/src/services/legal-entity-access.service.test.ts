@@ -20,6 +20,7 @@ const baseEntity: LegalEntity = {
   statusChangedAt: null,
   statusChangedByUserId: null,
   stripeConnectAccountId: null,
+  stripeCustomerId: null,
   stripeConnectChargesEnabled: false,
   stripeConnectPayoutsEnabled: false,
   stripeConnectRequirementsCurrentlyDue: [],

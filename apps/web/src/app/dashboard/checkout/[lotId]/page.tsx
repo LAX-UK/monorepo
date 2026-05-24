@@ -88,8 +88,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               {auction.title}
             </h1>
             <p className="mb-8 font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10">
-              Lot settled in your favor. You will be redirected to Xero-hosted checkout when an
-              invoice is ready — this page updates the fulfilment status automatically.
+              Lot settled in your favor. Complete purchase below to open secure Stripe Checkout
+              (card or UK bank transfer). High-value lots may require finance review before checkout
+              is issued.
             </p>
 
             <DashboardSection id="checkout-flow" title="Invoice and payment">
