@@ -6,6 +6,7 @@ import {
   lot,
   saleRegistration,
 } from "@auction/db/schema";
+import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
@@ -33,7 +34,18 @@ export class BidEligibilityService implements IBidEligibility {
   ) {}
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
-    const { placedByUserId, buyerLegalEntityId, lotId, amount } = input;
+    const {
+      placedByUserId,
+      buyerLegalEntityId,
+      lotId,
+      amount,
+      maxAutoBidAmount,
+      autoBidStepAmount,
+    } = input;
+    const effectiveAmount =
+      maxAutoBidAmount != null && Number.isFinite(maxAutoBidAmount)
+        ? Math.max(amount, maxAutoBidAmount)
+        : amount;
 
     if (this.kycService?.isConfigured()) {
       try {
@@ -49,12 +61,39 @@ export class BidEligibilityService implements IBidEligibility {
     }
 
     const [lotRow] = await this.db
-      .select({ saleId: lot.saleId })
+      .select({
+        saleId: lot.saleId,
+        autoBidEnabled: lot.autoBidEnabled,
+        minBidIncrement: lot.minBidIncrement,
+        autoBidStepMin: lot.autoBidStepMin,
+        autoBidStepMax: lot.autoBidStepMax,
+        autoBidStepPresets: lot.autoBidStepPresets,
+      })
       .from(lot)
       .where(and(eq(lot.id, lotId), lotNotDeleted()))
       .limit(1);
     if (!lotRow) {
       return err(new BidError("Lot not found", 404));
+    }
+
+    const autoRules: AutoBidLotRules = {
+      autoBidEnabled: lotRow.autoBidEnabled ?? true,
+      minBidIncrement: String(lotRow.minBidIncrement),
+      autoBidStepMin: lotRow.autoBidStepMin != null ? String(lotRow.autoBidStepMin) : null,
+      autoBidStepMax: lotRow.autoBidStepMax != null ? String(lotRow.autoBidStepMax) : null,
+      autoBidStepPresets: lotRow.autoBidStepPresets ?? null,
+    };
+
+    if (maxAutoBidAmount != null || autoBidStepAmount != null) {
+      if (autoRules.autoBidEnabled === false) {
+        return err(new BidError("Auto-bid is not enabled for this lot", 403, "auto_bid_disabled"));
+      }
+      if (autoBidStepAmount != null) {
+        const stepErr = validateAutoBidStepAmount(autoRules, autoBidStepAmount);
+        if (stepErr) {
+          return err(new BidError(stepErr, 400, "auto_bid_step_invalid"));
+        }
+      }
     }
 
     const saleId = lotRow.saleId;
@@ -102,7 +141,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
 
       const regCap = parseMoneyCap(reg.bidLimit);
-      if (regCap != null && amount > regCap) {
+      if (regCap != null && effectiveAmount > regCap) {
         return err(
           new BidError("Bid exceeds your approved limit for this sale", 403, "bid_limit_exceeded"),
         );
@@ -154,7 +193,7 @@ export class BidEligibilityService implements IBidEligibility {
         cap = minPositiveCap(cap, parseMoneyCap(r.bidLimit));
       }
 
-      if (cap != null && amount > cap) {
+      if (cap != null && effectiveAmount > cap) {
         return err(
           new BidError("Bid exceeds buyer agent authorisation limit", 403, "bid_limit_exceeded"),
         );

@@ -47,6 +47,19 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
     );
   }
 
+  async notifyProxyCancelled(lotId: string, bidderUserId: string, reason?: string): Promise<void> {
+    const channel = `lot:${lotId}:events`;
+    await this.redis.publish(
+      channel,
+      JSON.stringify({
+        type: "proxy_cancelled",
+        lotId,
+        bidderUserId,
+        ...(reason ? { reason } : {}),
+      }),
+    );
+  }
+
   async notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
     const channel = `lot:${lot.id}:events`;
     const winnerId = winningBid?.placedByUserId ?? winningBid?.bidderId ?? null;

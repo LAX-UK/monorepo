@@ -17,6 +17,12 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
     typeof bid.bidderId === "string" &&
     typeof bid.amount === "string"
   ) {
+    const placedByUserId =
+      typeof bid.placedByUserId === "string"
+        ? bid.placedByUserId
+        : typeof bid.bidderId === "string"
+          ? bid.bidderId
+          : undefined;
     return {
       lotId,
       bidId: bid.id,
@@ -27,6 +33,10 @@ function asBidUpdate(raw: unknown): BidUpdateEvent | null {
       outbidUserId: typeof o.outbidUserId === "string" ? o.outbidUserId : undefined,
       emittedAt:
         typeof o.emittedAt === "number" && Number.isFinite(o.emittedAt) ? o.emittedAt : undefined,
+      isAutoBid: bid.isAutoBid === true,
+      placedByUserId,
+      autoBidStepAmount:
+        typeof bid.autoBidStepAmount === "string" ? bid.autoBidStepAmount : undefined,
     };
   }
   return null;

@@ -124,6 +124,11 @@ export const adminLotFormValuesSchema = zod
     buyNowPrice: optionalDecimal,
     buyerPremiumRate: optionalBuyerPremium,
     minBidIncrement: optionalDecimal,
+    autoBidEnabled: zod.boolean().optional(),
+    autoBidStepMin: optionalDecimal,
+    autoBidStepMax: optionalDecimal,
+    /** Comma-separated preset steps (e.g. "10,25,50") — parsed on submit. */
+    autoBidStepPresetsCsv: optionalStr,
     dutchDecrementAmount: optionalDecimal,
     dutchDecrementIntervalMs: optionalStr,
     images: zod.array(mediaReferenceSchema).max(50),
@@ -216,6 +221,19 @@ export function buildAdminLotFormSchema(salesById: ReadonlyMap<string, AdminLotF
 
 export type AdminLotFormValues = zod.infer<typeof adminLotFormValuesSchema>;
 
+function parseAutoBidPresetsCsv(raw: string | undefined): number[] | null | undefined {
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) return undefined;
+  const parts = trimmed
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  const nums = parts.map((p) => Number.parseFloat(p));
+  if (nums.some((n) => !Number.isFinite(n) || n <= 0)) return undefined;
+  return nums;
+}
+
 function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }) {
   const lotNumberRaw =
     v.lotNumber !== null && v.lotNumber !== undefined && v.lotNumber !== ""
@@ -234,6 +252,10 @@ function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }
     buyNowPrice: (v.buyNowPrice && String(v.buyNowPrice).trim()) || undefined,
     buyerPremiumRate: (v.buyerPremiumRate && String(v.buyerPremiumRate).trim()) || undefined,
     minBidIncrement: (v.minBidIncrement && String(v.minBidIncrement).trim()) || undefined,
+    autoBidEnabled: v.autoBidEnabled,
+    autoBidStepMin: (v.autoBidStepMin && String(v.autoBidStepMin).trim()) || undefined,
+    autoBidStepMax: (v.autoBidStepMax && String(v.autoBidStepMax).trim()) || undefined,
+    autoBidStepPresets: parseAutoBidPresetsCsv(v.autoBidStepPresetsCsv),
     dutchDecrementAmount:
       (v.dutchDecrementAmount && String(v.dutchDecrementAmount).trim()) || undefined,
     dutchDecrementIntervalMs:

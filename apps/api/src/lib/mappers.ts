@@ -56,6 +56,10 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     currentPrice: String(row.currentPrice),
     buyerPremiumRate: String(row.buyerPremiumRate),
     minBidIncrement: String(row.minBidIncrement),
+    autoBidEnabled: row.autoBidEnabled ?? true,
+    autoBidStepMin: row.autoBidStepMin !== null ? String(row.autoBidStepMin) : null,
+    autoBidStepMax: row.autoBidStepMax !== null ? String(row.autoBidStepMax) : null,
+    autoBidStepPresets: row.autoBidStepPresets ?? null,
     dutchDecrementAmount:
       row.dutchDecrementAmount !== null ? String(row.dutchDecrementAmount) : null,
     dutchDecrementIntervalMs: row.dutchDecrementIntervalMs,
@@ -85,6 +89,7 @@ export function mapBidRow(row: BidRow): Bid {
     isWinning: row.isWinning,
     isAutoBid: row.isAutoBid,
     maxAutoBidAmount: row.maxAutoBidAmount !== null ? String(row.maxAutoBidAmount) : null,
+    autoBidStepAmount: row.autoBidStepAmount !== null ? String(row.autoBidStepAmount) : null,
     placedVia: row.placedVia ?? null,
     telephoneBookingId: row.telephoneBookingId ?? null,
     createdAt: row.createdAt,

@@ -10,6 +10,7 @@ import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
+import { IDEMPOTENCY_PENDING_VALUE } from "./interfaces/idempotency-store.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
@@ -26,6 +27,21 @@ const MAX_PROXY_ROUNDS = 100;
 function minIncrementAmount(lot: Lot): number {
   const n = Number.parseFloat(lot.minBidIncrement);
   return Number.isFinite(n) && n > 0 ? n : 0.01;
+}
+
+function defaultAutoBidStepMin(lot: Lot): number {
+  const stepMin = lot.autoBidStepMin ? Number.parseFloat(lot.autoBidStepMin) : Number.NaN;
+  const lotMin = minIncrementAmount(lot);
+  return Number.isFinite(stepMin) && stepMin > 0 ? Math.max(lotMin, stepMin) : lotMin;
+}
+
+function effectiveBidderStep(lot: Lot, autoBidStepAmount: number | null | undefined): number {
+  const lotMin = minIncrementAmount(lot);
+  const step =
+    autoBidStepAmount != null && Number.isFinite(autoBidStepAmount) && autoBidStepAmount > 0
+      ? autoBidStepAmount
+      : defaultAutoBidStepMin(lot);
+  return Math.max(lotMin, step);
 }
 
 export type LotJobSchedulerPort = {
@@ -95,6 +111,7 @@ export class BidService implements IBidPlacer {
       lotId,
       amount,
       maxAutoBidAmount,
+      autoBidStepAmount,
       placement: bidPlacement,
     } = input;
     try {
@@ -128,6 +145,8 @@ export class BidService implements IBidPlacer {
           buyerLegalEntityId,
           lotId,
           amount,
+          ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
+          ...(autoBidStepAmount !== undefined ? { autoBidStepAmount } : {}),
         });
         if (elig.isErr()) {
           return err(elig.error);
@@ -189,6 +208,12 @@ export class BidService implements IBidPlacer {
             Number.isFinite(maxAutoBidAmount) &&
             maxAutoBidAmount >= amount;
           const maxStr = hasMax ? maxAutoBidAmount.toFixed(2) : null;
+          const hasStep =
+            hasMax &&
+            autoBidStepAmount !== undefined &&
+            Number.isFinite(autoBidStepAmount) &&
+            autoBidStepAmount > 0;
+          const stepStr = hasStep ? autoBidStepAmount.toFixed(2) : null;
 
           let lastBid = await bids.create({
             lotId,
@@ -198,6 +223,7 @@ export class BidService implements IBidPlacer {
             isWinning: false,
             isAutoBid: hasMax,
             maxAutoBidAmount: maxStr,
+            autoBidStepAmount: stepStr,
             ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
             ...(bidPlacement?.telephoneBookingId != null
               ? { telephoneBookingId: bidPlacement.telephoneBookingId }
@@ -349,6 +375,7 @@ export class BidService implements IBidPlacer {
         })
       ) {
         await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
+        void this.notifications.notifyProxyCancelled(lotId, s.bidderId, "anti_shilling_violation");
         if (this.domainEventPublisher) {
           await this.domainEventPublisher.publish(tx, {
             aggregateType: "lot",
@@ -372,7 +399,7 @@ export class BidService implements IBidPlacer {
     lotId: string,
     lot: Lot,
     initialBid: Bid,
-    minInc: number,
+    _minInc: number,
     tx: Database,
   ): Promise<Bid> {
     let lastBid = initialBid;
@@ -382,10 +409,16 @@ export class BidService implements IBidPlacer {
 
     for (let round = 0; round < MAX_PROXY_ROUNDS; round++) {
       const states = await bids.listBidderCeilingStates(lotId);
-      type Cand = { bidderId: string; ceiling: number; buyerLegalEntityId: string };
+      type Cand = {
+        bidderId: string;
+        ceiling: number;
+        buyerLegalEntityId: string;
+        autoBidStepAmount: number | null;
+      };
       const candidates: Cand[] = [];
       for (const s of states) {
         if (s.bidderId === winnerId) continue;
+        const bidderStep = effectiveBidderStep(lot, s.autoBidStepAmount);
         if (this.antiShillingGuard) {
           const shill = await this.antiShillingGuard.violatesAntiShilling({
             bidderUserId: s.bidderId,
@@ -395,6 +428,11 @@ export class BidService implements IBidPlacer {
           if (shill) {
             if (await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId)) {
               await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
+              void this.notifications.notifyProxyCancelled(
+                lotId,
+                s.bidderId,
+                "anti_shilling_violation",
+              );
               if (this.domainEventPublisher) {
                 await this.domainEventPublisher.publish(tx, {
                   aggregateType: "lot",
@@ -413,11 +451,12 @@ export class BidService implements IBidPlacer {
             continue;
           }
         }
-        if (s.ceiling >= currentPrice + minInc - 1e-9) {
+        if (s.ceiling >= currentPrice + bidderStep - 1e-9) {
           candidates.push({
             bidderId: s.bidderId,
             ceiling: s.ceiling,
             buyerLegalEntityId: s.buyerLegalEntityId,
+            autoBidStepAmount: s.autoBidStepAmount,
           });
         }
       }
@@ -428,7 +467,8 @@ export class BidService implements IBidPlacer {
       });
       const challenger = candidates[0];
       if (!challenger) break;
-      const nextAmt = Math.min(challenger.ceiling, currentPrice + minInc);
+      const raiseBy = effectiveBidderStep(lot, challenger.autoBidStepAmount);
+      const nextAmt = Math.min(challenger.ceiling, currentPrice + raiseBy);
       if (nextAmt <= currentPrice + 1e-9) break;
 
       const nextStr = nextAmt.toFixed(2);
@@ -440,6 +480,7 @@ export class BidService implements IBidPlacer {
         isWinning: false,
         isAutoBid: true,
         maxAutoBidAmount: challenger.ceiling.toFixed(2),
+        autoBidStepAmount: raiseBy.toFixed(2),
         placedVia: null,
         telephoneBookingId: null,
       });
@@ -456,30 +497,48 @@ export class BidService implements IBidPlacer {
   }
 
   /**
-   * Buyer bid placement with optional idempotency replay (Redis) and personal
-   * buyer entity resolution.
+   * Buyer bid placement with optional idempotency replay (Redis). Uses
+   * `buyerLegalEntityId` when provided (acting entity header); otherwise falls
+   * back to the user's personal entity.
    */
   async placeBidWithIdempotency(input: {
     placedByUserId: string;
-    idempotencyKey: string | undefined;
+    /** From `X-Legal-Entity-Id` / submissions legal-entity middleware. */
+    buyerLegalEntityId?: string;
+    idempotencyKey?: string;
     lotId: string;
     amount: number;
     maxAutoBidAmount?: number;
+    autoBidStepAmount?: number;
     placedVia?: string;
     telephoneBookingId?: string;
   }): Promise<PlaceBidWithIdempotencyOutcome> {
     const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
+    const idempotencyTtlSec = 86_400;
+    let idempotencyRedisKey: string | undefined;
+
     if (idempotencyKey && this.idempotencyStore) {
-      const key = `idempotency:bid:${placedByUserId}:${idempotencyKey}`;
-      const cached = await this.idempotencyStore.get(key);
-      if (cached) {
-        return { type: "replay", body: JSON.parse(cached) as { data: Bid } };
+      idempotencyRedisKey = `idempotency:bid:${placedByUserId}:${idempotencyKey}`;
+      const replay = await this.readIdempotencyReplay(idempotencyRedisKey);
+      if (replay) return replay;
+
+      const claimed = await this.idempotencyStore.tryClaim(idempotencyRedisKey, idempotencyTtlSec);
+      if (!claimed) {
+        const waited = await this.waitForIdempotencyReplay(idempotencyRedisKey);
+        if (waited) return waited;
       }
     }
     if (!this.legalEntityRepository) {
+      if (idempotencyRedisKey && this.idempotencyStore) {
+        await this.idempotencyStore.delete(idempotencyRedisKey);
+      }
       return { type: "err", error: new BidError("Bid placement is not configured", 503) };
     }
-    const buyerEntity = await this.legalEntityRepository.ensurePersonalEntity(placedByUserId);
+    let buyerLegalEntityId = input.buyerLegalEntityId?.trim();
+    if (!buyerLegalEntityId) {
+      const buyerEntity = await this.legalEntityRepository.ensurePersonalEntity(placedByUserId);
+      buyerLegalEntityId = buyerEntity.id;
+    }
     const placement =
       input.placedVia != null || input.telephoneBookingId != null
         ? {
@@ -491,24 +550,54 @@ export class BidService implements IBidPlacer {
         : undefined;
     const result = await this.placeBid({
       placedByUserId,
-      buyerLegalEntityId: buyerEntity.id,
+      buyerLegalEntityId,
       lotId,
       amount,
       ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
+      ...(input.autoBidStepAmount !== undefined
+        ? { autoBidStepAmount: input.autoBidStepAmount }
+        : {}),
       ...(placement !== undefined ? { placement } : {}),
     });
     if (result.isErr()) {
+      if (idempotencyRedisKey && this.idempotencyStore) {
+        await this.idempotencyStore.delete(idempotencyRedisKey);
+      }
       return { type: "err", error: result.error };
     }
     const bid = result.value;
     const body = { data: bid };
-    if (idempotencyKey && this.idempotencyStore) {
+    if (idempotencyRedisKey && this.idempotencyStore) {
       await this.idempotencyStore.setWithExpiry(
-        `idempotency:bid:${placedByUserId}:${idempotencyKey}`,
+        idempotencyRedisKey,
         JSON.stringify(body),
-        86_400,
+        idempotencyTtlSec,
       );
     }
     return { type: "ok", body };
+  }
+
+  private async readIdempotencyReplay(
+    key: string,
+  ): Promise<Extract<PlaceBidWithIdempotencyOutcome, { type: "replay" }> | null> {
+    if (!this.idempotencyStore) return null;
+    const cached = await this.idempotencyStore.get(key);
+    if (!cached || cached === IDEMPOTENCY_PENDING_VALUE) return null;
+    return { type: "replay", body: JSON.parse(cached) as { data: Bid } };
+  }
+
+  private async waitForIdempotencyReplay(
+    key: string,
+  ): Promise<PlaceBidWithIdempotencyOutcome | null> {
+    if (!this.idempotencyStore) return null;
+    for (let i = 0; i < 50; i++) {
+      const replay = await this.readIdempotencyReplay(key);
+      if (replay) return replay;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return {
+      type: "err",
+      error: new BidError("Bid still processing; retry shortly", 409, "bid_in_flight"),
+    };
   }
 }

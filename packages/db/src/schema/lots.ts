@@ -77,6 +77,14 @@ export const lot = pgTable(
     minBidIncrement: numeric("min_bid_increment", { precision: 18, scale: 2 })
       .notNull()
       .default("1.00"),
+    /** When false, buyers cannot set proxy auto-bid on this lot. */
+    autoBidEnabled: boolean("auto_bid_enabled").notNull().default(true),
+    /** Floor for buyer-chosen auto-bid step; defaults to minBidIncrement when null. */
+    autoBidStepMin: numeric("auto_bid_step_min", { precision: 18, scale: 2 }),
+    /** Ceiling for buyer-chosen auto-bid step. */
+    autoBidStepMax: numeric("auto_bid_step_max", { precision: 18, scale: 2 }),
+    /** Optional allowed step values (e.g. [10, 25, 50]); when set, buyers pick from list only. */
+    autoBidStepPresets: jsonb("auto_bid_step_presets").$type<number[] | null>(),
     dutchDecrementAmount: numeric("dutch_decrement_amount", { precision: 18, scale: 2 }),
     dutchDecrementIntervalMs: integer("dutch_decrement_interval_ms").notNull().default(60_000),
     dutchLastDecrementAt: timestamp("dutch_last_decrement_at", {

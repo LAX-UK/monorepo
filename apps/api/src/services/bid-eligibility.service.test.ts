@@ -256,3 +256,102 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     }
   });
 });
+
+describe("BidEligibilityService auto-bid", () => {
+  it("rejects proxy fields when auto-bid disabled on lot", async () => {
+    const db = createSequentialDb([
+      {
+        kind: "limit",
+        rows: [
+          {
+            saleId: null,
+            autoBidEnabled: false,
+            minBidIncrement: "10.00",
+            autoBidStepMin: null,
+            autoBidStepMax: null,
+            autoBidStepPresets: null,
+          },
+        ],
+      },
+      { kind: "limit", rows: [{ role: "owner" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+      maxAutoBidAmount: 500,
+      autoBidStepAmount: 10,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("auto_bid_disabled");
+    }
+  });
+
+  it("uses max auto-bid amount against sale registration cap", async () => {
+    const db = createSequentialDb([
+      {
+        kind: "limit",
+        rows: [
+          {
+            saleId,
+            autoBidEnabled: true,
+            minBidIncrement: "10.00",
+            autoBidStepMin: "10.00",
+            autoBidStepMax: "50.00",
+            autoBidStepPresets: [10, 20, 50],
+          },
+        ],
+      },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "limit", rows: [{ status: "approved", bidLimit: "200.00" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+      maxAutoBidAmount: 500,
+      autoBidStepAmount: 10,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("bid_limit_exceeded");
+    }
+  });
+
+  it("rejects invalid auto-bid step against lot presets", async () => {
+    const db = createSequentialDb([
+      {
+        kind: "limit",
+        rows: [
+          {
+            saleId: null,
+            autoBidEnabled: true,
+            minBidIncrement: "10.00",
+            autoBidStepMin: "10.00",
+            autoBidStepMax: "50.00",
+            autoBidStepPresets: [10, 20, 50],
+          },
+        ],
+      },
+      { kind: "limit", rows: [{ role: "owner" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+      maxAutoBidAmount: 500,
+      autoBidStepAmount: 15,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("auto_bid_step_invalid");
+    }
+  });
+});

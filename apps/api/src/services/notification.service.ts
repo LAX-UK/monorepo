@@ -24,4 +24,8 @@ export class NotificationService {
   notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
     return this.lotSender.notifyLotEnded(lot, winningBid);
   }
+
+  notifyProxyCancelled(lotId: string, bidderUserId: string, reason?: string): Promise<void> {
+    return this.lotSender.notifyProxyCancelled(lotId, bidderUserId, reason);
+  }
 }

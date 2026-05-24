@@ -27,6 +27,7 @@ export class DrizzleBidRepository implements IBidRepository {
         isWinning: row.isWinning,
         isAutoBid: row.isAutoBid,
         maxAutoBidAmount: row.maxAutoBidAmount,
+        autoBidStepAmount: row.autoBidStepAmount ?? null,
         placedVia: row.placedVia ?? null,
         telephoneBookingId: row.telephoneBookingId ?? null,
       })
@@ -172,14 +173,20 @@ export class DrizzleBidRepository implements IBidRepository {
     return m;
   }
 
-  async listBidderCeilingStates(
-    lotId: string,
-  ): Promise<Array<{ bidderId: string; buyerLegalEntityId: string; ceiling: number }>> {
+  async listBidderCeilingStates(lotId: string): Promise<
+    Array<{
+      bidderId: string;
+      buyerLegalEntityId: string;
+      ceiling: number;
+      autoBidStepAmount: number | null;
+    }>
+  > {
     const res = await this.db.execute(sql`
       SELECT DISTINCT ON (bidder_id)
         bidder_id AS "bidderId",
         buyer_legal_entity_id AS "buyerLegalEntityId",
-        (greatest(amount::numeric, coalesce(max_auto_bid_amount::numeric, amount::numeric)))::float8 AS ceiling
+        (greatest(amount::numeric, coalesce(max_auto_bid_amount::numeric, amount::numeric)))::float8 AS ceiling,
+        auto_bid_step_amount::float8 AS "autoBidStepAmount"
       FROM bid
       WHERE lot_id = ${lotId}::uuid
       ORDER BY bidder_id,
@@ -190,7 +197,53 @@ export class DrizzleBidRepository implements IBidRepository {
       bidderId: String(row.bidderId),
       buyerLegalEntityId: String(row.buyerLegalEntityId),
       ceiling: Number(row.ceiling),
+      autoBidStepAmount:
+        row.autoBidStepAmount == null || row.autoBidStepAmount === ""
+          ? null
+          : Number(row.autoBidStepAmount),
     }));
+  }
+
+  async updateProxySettingsForBidderOnLot(
+    lotId: string,
+    bidderId: string,
+    settings: { maxAutoBidAmount: string; autoBidStepAmount: string },
+  ): Promise<number> {
+    const updated = await this.db
+      .update(bid)
+      .set({
+        maxAutoBidAmount: settings.maxAutoBidAmount,
+        autoBidStepAmount: settings.autoBidStepAmount,
+        isAutoBid: true,
+      })
+      .where(and(eq(bid.lotId, lotId), eq(bid.bidderId, bidderId)))
+      .returning({ id: bid.id });
+    return updated.length;
+  }
+
+  async findProxySettingsForBidderOnLot(lotId: string, bidderId: string) {
+    const rows = await this.db
+      .select({
+        maxAutoBidAmount: bid.maxAutoBidAmount,
+        autoBidStepAmount: bid.autoBidStepAmount,
+        createdAt: bid.createdAt,
+      })
+      .from(bid)
+      .where(
+        and(
+          eq(bid.lotId, lotId),
+          eq(bid.bidderId, bidderId),
+          or(isNotNull(bid.maxAutoBidAmount), eq(bid.isAutoBid, true)),
+        ),
+      )
+      .orderBy(desc(bid.createdAt))
+      .limit(1);
+    const row = rows[0];
+    if (!row?.maxAutoBidAmount) return null;
+    return {
+      maxAutoBidAmount: String(row.maxAutoBidAmount),
+      autoBidStepAmount: row.autoBidStepAmount != null ? String(row.autoBidStepAmount) : null,
+    };
   }
 
   async bidderHasProxyMaxOnLot(lotId: string, bidderId: string): Promise<boolean> {
@@ -205,7 +258,7 @@ export class DrizzleBidRepository implements IBidRepository {
   async clearProxyAutoBidForBidderOnLot(lotId: string, bidderId: string): Promise<number> {
     const updated = await this.db
       .update(bid)
-      .set({ maxAutoBidAmount: null, isAutoBid: false })
+      .set({ maxAutoBidAmount: null, isAutoBid: false, autoBidStepAmount: null })
       .where(
         and(
           eq(bid.lotId, lotId),

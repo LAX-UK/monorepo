@@ -5,6 +5,7 @@ export const placeBidSchema = z
     lotId: z.string().uuid(),
     amount: z.number().positive().finite(),
     maxAutoBidAmount: z.number().positive().finite().optional(),
+    autoBidStepAmount: z.number().positive().finite().optional(),
     /** Client-generated id for Meta / GA4 deduplication (optional). */
     marketingEventId: z.string().max(128).optional(),
   })
