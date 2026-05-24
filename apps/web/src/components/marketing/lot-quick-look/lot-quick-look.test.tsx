@@ -315,7 +315,9 @@ describe("LotQuickLookTrigger", () => {
       },
     ]);
     const firstCard = deck[0];
-    expect(firstCard).toBeDefined();
+    if (firstCard === undefined) {
+      throw new Error("Expected deck to contain at least one card");
+    }
     render(<QuickLookHarness vm={firstCard} deck={deck} deckIndex={0} />);
     fireEvent.click(screen.getByRole("button", { name: /quick look at lot alpha/i }));
     expect(await screen.findByText("Lot Alpha")).toBeInTheDocument();
