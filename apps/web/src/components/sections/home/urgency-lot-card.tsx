@@ -1,9 +1,10 @@
+import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
+import { lotQuickLookFromLotCardVM } from "@/components/marketing/lot-quick-look/mappers";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
-import { Eye } from "lucide-react";
 
 type Props = {
   item: LotCardVM;
@@ -53,7 +54,7 @@ export function UrgencyLotCard({
       }
       belowImage={
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
+          <div key="heading" className="flex min-w-0 flex-col gap-1">
             <LotViewTransitionLink
               lotId={item.id}
               href={item.href}
@@ -68,7 +69,7 @@ export function UrgencyLotCard({
 
           {rows ? (
             <>
-              <div className="flex min-w-0 flex-col gap-1">
+              <div key="estimate" className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                   {rows.estimate.label}
                 </span>
@@ -76,7 +77,7 @@ export function UrgencyLotCard({
                   {rows.estimate.value}
                 </span>
               </div>
-              <div className="flex min-w-0 flex-col gap-1">
+              <div key="current" className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                   {rows.current.label}
                 </span>
@@ -86,7 +87,7 @@ export function UrgencyLotCard({
               </div>
             </>
           ) : (
-            <div className="flex min-w-0 flex-col gap-1">
+            <div key="price" className="flex min-w-0 flex-col gap-1">
               <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                 {item.priceLabel}
               </span>
@@ -96,22 +97,26 @@ export function UrgencyLotCard({
             </div>
           )}
 
-          <div className="mt-auto inline-flex w-full items-start gap-6">
+          <div key="actions" className="mt-auto inline-flex w-full items-start gap-6">
             <LotViewTransitionLink
+              key="bid"
               lotId={item.id}
               href={item.href}
               className="flex h-10 flex-1 items-center justify-center rounded border border-[#A3A3A3] bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-[#0A0A0A] outline-offset-2 hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:border-neutral-500 dark:text-on-surface dark:hover:bg-white/[0.06]"
             >
               Bid
             </LotViewTransitionLink>
-            <LotViewTransitionLink
-              lotId={item.id}
-              href={item.href}
-              aria-label={`View details for ${item.title}`}
-              className="flex h-10 items-center justify-center rounded px-2.5 text-[#0A0A0A] outline-offset-2 hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:text-on-surface dark:hover:bg-white/[0.06]"
-            >
-              <Eye className="size-5 shrink-0" aria-hidden />
-            </LotViewTransitionLink>
+            <LotQuickLookTrigger
+              key="quick-look"
+              vm={lotQuickLookFromLotCardVM(item)}
+              layout="inline"
+              className="h-10 w-10 rounded border-0 bg-transparent px-2.5 text-[#0A0A0A] hover:bg-black/[0.03] dark:text-on-surface dark:hover:bg-white/[0.06]"
+              options={{
+                isAuthenticated,
+                watchedLotIds,
+                loginNextPath,
+              }}
+            />
           </div>
         </div>
       }

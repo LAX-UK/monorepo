@@ -55,7 +55,11 @@ export function BidStickyMobileBar({
   if (!live) return null;
 
   if (compact) {
-    const closeUrgent = countdownTier(msRemaining) !== "normal";
+    const closeUrgent = msRemaining > 0 && countdownTier(msRemaining) !== "normal";
+    const closingLine =
+      countdownClock || remainingLabel
+        ? `Closes ${countdownClock || remainingLabel}`
+        : "Closing soon";
     const next = encodeURIComponent(loginNextPath);
     const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
     return (
@@ -66,7 +70,7 @@ export function BidStickyMobileBar({
             closeUrgent ? "text-error" : "text-on-surface-variant",
           )}
         >
-          Closes {countdownClock || remainingLabel}
+          {closingLine}
         </p>
         {kycBlocked ? (
           <Link
@@ -167,7 +171,7 @@ export function BidStickyMobileBar({
             closeUrgent ? "text-error" : "text-on-surface-variant",
           )}
         >
-          Closes {remainingLabel}
+          Closes {remainingLabel || "soon"}
         </p>
       </div>
       {right}
@@ -190,7 +194,7 @@ function UpcomingBar({
           Opens in
         </p>
         <p className="truncate font-headline text-lg tabular-nums text-on-surface">
-          {countdownClock}
+          {countdownClock || "Soon"}
         </p>
       </div>
       <Link
