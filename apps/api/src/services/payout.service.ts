@@ -1,8 +1,15 @@
 import type { Database } from "@auction/db";
-import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
+import type {
+  CreatePayoutAdjustmentInput,
+  Payout,
+  PayoutLine,
+  PayoutLineKind,
+} from "@auction/types";
+import { addDecimal, subtractDecimal, sumDecimal } from "../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import { DrizzlePayoutRepository } from "../repositories/drizzle-payout.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type {
   IPayoutRepository,
   ReconcileStripeTransferPatch,
@@ -31,19 +38,17 @@ import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 
 const DEFAULT_CURRENCY = "GBP";
 
-/** Sum a list of decimal strings using a 2dp accumulator. */
-function sumDecimal(values: string[]): string {
-  let total = 0;
-  for (const v of values) total += Number.parseFloat(v);
-  return total.toFixed(2);
-}
-
-function subtractDecimal(a: string, b: string): string {
-  return (Number.parseFloat(a) - Number.parseFloat(b)).toFixed(2);
-}
-
-function addDecimal(a: string, b: string): string {
-  return (Number.parseFloat(a) + Number.parseFloat(b)).toFixed(2);
+function settlementAmounts(p: { amount: string; platformFee: string; settlementAmount?: string }): {
+  saleAmount: string;
+  platformFee: string;
+} {
+  const saleAmount = p.settlementAmount ?? p.amount;
+  const full = Number.parseFloat(p.amount);
+  const ratio = full > 0 ? Number.parseFloat(saleAmount) / full : 1;
+  return {
+    saleAmount,
+    platformFee: (Number.parseFloat(p.platformFee) * ratio).toFixed(2),
+  };
 }
 
 function outcomeFromTransfer(
@@ -110,6 +115,7 @@ export class PayoutService implements IPayoutService {
     private readonly repo: IPayoutRepository,
     private readonly db?: Database,
     private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly payoutAdjustments?: IPayoutAdjustmentService,
   ) {}
 
   async listForLegalEntity(
@@ -136,8 +142,9 @@ export class PayoutService implements IPayoutService {
 
   async previewPending(legalEntityId: string): Promise<PendingPayoutPreview> {
     const rows = await this.repo.findUnlinkedCapturedPayments(legalEntityId);
-    const grossAmount = sumDecimal(rows.map((r) => r.amount));
-    const platformFee = sumDecimal(rows.map((r) => r.platformFee));
+    const settled = rows.map(settlementAmounts);
+    const grossAmount = sumDecimal(settled.map((r) => r.saleAmount));
+    const platformFee = sumDecimal(settled.map((r) => r.platformFee));
     return {
       pendingGross: grossAmount,
       pendingPlatformFee: platformFee,
@@ -165,8 +172,9 @@ export class PayoutService implements IPayoutService {
       return { ok: false, reason: "no_pending_payments" };
     }
 
-    const grossAmount = sumDecimal(pending.map((p) => p.amount));
-    const platformFee = sumDecimal(pending.map((p) => p.platformFee));
+    const settled = pending.map((p) => ({ ...p, ...settlementAmounts(p) }));
+    const grossAmount = sumDecimal(settled.map((p) => p.saleAmount));
+    const platformFee = sumDecimal(settled.map((p) => p.platformFee));
     const stripeFee = "0.00";
     const netAmount = subtractDecimal(subtractDecimal(grossAmount, platformFee), stripeFee);
 
@@ -181,20 +189,45 @@ export class PayoutService implements IPayoutService {
       currency: DEFAULT_CURRENCY,
     });
 
-    const lines = [];
-    for (const p of pending) {
-      const line = await r.insertLine({
+    const inserted: { line: PayoutLine; platformFee: string }[] = [];
+    for (const p of settled) {
+      const line = await r.tryInsertSaleLine({
         payoutId: created.id,
         paymentId: p.id,
-        amount: p.amount,
+        amount: p.saleAmount,
         kind: "sale",
         createdByUserId: null,
         note: null,
       });
-      lines.push(line);
+      if (line) {
+        inserted.push({ line, platformFee: p.platformFee });
+      }
     }
 
-    return { ok: true, payout: { ...created, lines } };
+    if (inserted.length === 0) {
+      throw new Error("no_settlement_lines_inserted");
+    }
+
+    if (inserted.length < pending.length) {
+      const adjustedGross = sumDecimal(inserted.map((x) => x.line.amount));
+      const adjustedPlatformFee = sumDecimal(inserted.map((x) => x.platformFee));
+      const adjustedNet = subtractDecimal(
+        subtractDecimal(adjustedGross, adjustedPlatformFee),
+        stripeFee,
+      );
+      await r.updateTotals(created.id, {
+        grossAmount: adjustedGross,
+        platformFee: adjustedPlatformFee,
+        netAmount: adjustedNet,
+      });
+      const refreshed = (await r.findById(created.id)) ?? created;
+      return {
+        ok: true,
+        payout: { ...refreshed, lines: inserted.map((x) => x.line) },
+      };
+    }
+
+    return { ok: true, payout: { ...created, lines: inserted.map((x) => x.line) } };
   }
 
   async createSettlement(
@@ -388,13 +421,19 @@ export class PayoutService implements IPayoutService {
       note: input.note,
     });
 
-    const newGross = addDecimal(found.grossAmount, input.amount);
-    const newNet = subtractDecimal(subtractDecimal(newGross, found.platformFee), found.stripeFee);
-    const updated = await this.repo.updateTotals(payoutId, {
-      grossAmount: newGross,
-      platformFee: found.platformFee,
-      netAmount: newNet,
-    });
+    if (this.payoutAdjustments) {
+      await this.payoutAdjustments.recalculateTotalsFromLines(this.repo, payoutId);
+    } else {
+      const newGross = addDecimal(found.grossAmount, input.amount);
+      const newNet = subtractDecimal(subtractDecimal(newGross, found.platformFee), found.stripeFee);
+      await this.repo.updateTotals(payoutId, {
+        grossAmount: newGross,
+        platformFee: found.platformFee,
+        netAmount: newNet,
+      });
+    }
+
+    const updated = (await this.repo.findById(payoutId)) ?? found;
     const lines = await this.repo.listLines(payoutId);
     return { ...updated, lines };
   }
@@ -524,6 +563,9 @@ export class PayoutService implements IPayoutService {
           note: `Transfer reversed: ${input.stripeTransferId}`,
           sourceEventId: input.stripeEventId,
         });
+        if (this.payoutAdjustments) {
+          await this.payoutAdjustments.recalculateTotalsFromLines(r, updated.id);
+        }
 
         await publisher.publish(tx, {
           aggregateType: "payout",
@@ -573,6 +615,19 @@ export class PayoutService implements IPayoutService {
       if (!found) throw new PayoutNotFoundError();
       if (found.status !== "paid" && found.status !== "in_transit") {
         throw new PayoutStatusTransitionError("cannot_reverse_payout_in_state");
+      }
+      const negativeAmount = (-Number.parseFloat(found.netAmount)).toFixed(2);
+      await r.insertLine({
+        payoutId: found.id,
+        paymentId: null,
+        amount: negativeAmount,
+        kind: "reversal",
+        createdByUserId: actorUserId,
+        note: `Admin reversal: ${input.reason}`,
+        sourceEventId: `admin_reverse:${payoutId}`,
+      });
+      if (this.payoutAdjustments) {
+        await this.payoutAdjustments.recalculateTotalsFromLines(r, found.id);
       }
       const updated = await r.updateStatus(payoutId, {
         status: "reversed",

@@ -27,6 +27,9 @@ export interface IPaymentAccountingProvider {
 
   createCheckoutForWinner(ctx: AccountingCheckoutContext): Promise<AccountingCheckoutResult>;
 
+  /** Create an ACCREC invoice for a payment when missing (e.g. Stripe-primary checkout). */
+  ensureInvoiceForPayment(ctx: AccountingCheckoutContext): Promise<{ ok: boolean; error?: string }>;
+
   /** Pull invoice state from the provider and align local payment status. */
   syncPaymentFromProvider(paymentId: string): Promise<{ ok: boolean; error?: string }>;
 

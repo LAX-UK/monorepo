@@ -39,6 +39,41 @@ describe("StripePaymentGateway", () => {
     expect(mockStripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_1");
   });
 
+  it("createCheckoutSession uses idempotency key and payment metadata", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const sessionsCreate = vi.fn().mockResolvedValue({
+      id: "cs_1",
+      url: "https://checkout.stripe.com/pay/cs_1",
+      payment_intent: "pi_checkout",
+    });
+    const mockStripe = {
+      paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
+      refunds: { create: vi.fn() },
+      checkout: { sessions: { create: sessionsCreate } },
+      charges: { search: vi.fn() },
+    };
+    injectStripeClient(gateway, mockStripe as unknown as Stripe);
+
+    const result = await gateway.createCheckoutSession({
+      paymentId: "pay_1",
+      lotId: "lot_1",
+      amountCents: 12500,
+      currency: "gbp",
+      buyerEmail: "buyer@test.com",
+      successUrl: "https://app/success",
+      cancelUrl: "https://app/cancel",
+    });
+
+    expect(result.url).toContain("checkout.stripe.com");
+    expect(result.paymentIntentId).toBe("pi_checkout");
+    expect(sessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { paymentId: "pay_1", lotId: "lot_1" },
+      }),
+      { idempotencyKey: "checkout:payment:pay_1" },
+    );
+  });
+
   it("createRefund maps charge_already_refunded to already_refunded result", async () => {
     const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
     const mockStripe = {

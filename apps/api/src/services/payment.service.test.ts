@@ -7,6 +7,7 @@ import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentAccountingProvider } from "./interfaces/payment-accounting-provider.js";
+import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type {
   ILotRepository,
@@ -65,6 +66,31 @@ const payment: PaymentRecord = {
   createdAt: new Date(),
 };
 
+function makeDelegatingPaymentCapture(
+  db: Database,
+  payments: IPaymentWriteRepository,
+  publisher: DomainEventPublisher,
+): IPaymentCaptureService {
+  return {
+    capture: vi.fn().mockImplementation(async (input) => {
+      const apply = async (tx: Database) => {
+        const opts: { stripeChargeId?: string } = {};
+        if (input.stripeChargeId) opts.stripeChargeId = input.stripeChargeId;
+        await payments.applyCapturedInTransaction?.(tx, input.paymentId, opts);
+        await publisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: input.paymentId,
+          eventType: "payment.captured",
+          payload: { paymentId: input.paymentId },
+          actorUserId: input.actorUserId ?? null,
+          actingLegalEntityId: null,
+        });
+      };
+      if (input.tx) await apply(input.tx);
+      else await db.transaction(apply);
+    }),
+  };
+}
 function makeTxAndDb() {
   const tx = { insert: vi.fn(), update: vi.fn() } as unknown as Database;
   const db = {
@@ -95,12 +121,14 @@ describe("PaymentService", () => {
       isConfigured: vi.fn().mockReturnValue(false),
       getCheckoutUrlIfAny: vi.fn(),
       createCheckoutForWinner: vi.fn(),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
       syncPaymentFromProvider: vi.fn(),
       syncInvoiceFromProvider: vi.fn(),
     };
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
     } as unknown as DomainEventPublisher;
+    const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       lots,
       payments,
@@ -115,6 +143,12 @@ describe("PaymentService", () => {
       db,
       publisher,
       null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      paymentCapture,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -126,6 +160,13 @@ describe("PaymentService", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(paymentCapture.capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: payment.id,
+        via: "admin_manual",
+        actorUserId: "admin-1",
+      }),
+    );
     expect(payments.applyCapturedInTransaction).toHaveBeenCalledWith(
       tx,
       payment.id,
@@ -137,22 +178,6 @@ describe("PaymentService", () => {
         eventType: "payment.captured",
         aggregateId: payment.id,
       }),
-    );
-    expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
-      lot.sellerLegalEntityId,
-      "finance",
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "buyer-1",
-      expect.objectContaining({ type: "payment_received" }),
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "owner-1",
-      expect.objectContaining({ type: "payment_received" }),
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "finance-1",
-      expect.objectContaining({ type: "payment_received" }),
     );
   });
 
@@ -170,6 +195,9 @@ describe("PaymentService", () => {
         status: "succeeded",
       } as Stripe.PaymentIntent),
       createRefund: vi.fn(),
+      createCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi
@@ -185,6 +213,7 @@ describe("PaymentService", () => {
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
     } as unknown as DomainEventPublisher;
+    const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
       payments,
@@ -197,6 +226,7 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
@@ -205,6 +235,12 @@ describe("PaymentService", () => {
       db,
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      paymentCapture,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -238,6 +274,9 @@ describe("PaymentService", () => {
       isConfigured: () => true,
       capturePaymentIntent: vi.fn().mockRejectedValue(stripeErr),
       createRefund: vi.fn(),
+      createCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -254,6 +293,7 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
@@ -294,11 +334,15 @@ describe("PaymentService", () => {
         order.push("stripe_refund");
         return { kind: "created" as const, refundId: "re_abc" };
       }),
+      createCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn().mockImplementation(async () => {
         order.push("db_refund");
+        return true;
       }),
     } as unknown as IPaymentWriteRepository;
     const publisher: DomainEventPublisher = {
@@ -317,6 +361,7 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
@@ -361,6 +406,9 @@ describe("PaymentService", () => {
           code: "resource_missing",
         } as never),
       ),
+      createCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -378,6 +426,7 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
@@ -408,10 +457,13 @@ describe("PaymentService", () => {
       isConfigured: () => true,
       capturePaymentIntent: vi.fn(),
       createRefund: vi.fn().mockResolvedValue({ kind: "already_refunded" as const }),
+      createCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
-      applyRefundedInTransaction: vi.fn().mockResolvedValue(undefined),
+      applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
     const publisher: DomainEventPublisher = {
       publish: vi.fn().mockResolvedValue(undefined),
@@ -427,6 +479,7 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
@@ -461,6 +514,7 @@ describe("PaymentService", () => {
       isConfigured: vi.fn().mockReturnValue(false),
       getCheckoutUrlIfAny: vi.fn(),
       createCheckoutForWinner: vi.fn(),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
       syncPaymentFromProvider: vi.fn(),
       syncInvoiceFromProvider: vi.fn(),
     };
@@ -498,6 +552,7 @@ describe("PaymentService", () => {
       isConfigured: vi.fn().mockReturnValue(true),
       getCheckoutUrlIfAny: vi.fn(),
       createCheckoutForWinner: vi.fn(),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
       syncPaymentFromProvider: vi.fn(),
       syncInvoiceFromProvider: vi.fn(),
     };
@@ -538,9 +593,13 @@ describe("PaymentService", () => {
   });
 
   it("refunds a manual-review payment even when seller is archived", async () => {
+    const tx = {} as never;
+    const db = {
+      transaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
+    };
     const payments: IPaymentWriteRepository = {
       findById: vi.fn().mockResolvedValue({ ...payment, status: "requires_manual_review" }),
-      updateStatus: vi.fn().mockResolvedValue(undefined),
+      applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const service = new PaymentService(
@@ -553,12 +612,13 @@ describe("PaymentService", () => {
         isConfigured: vi.fn().mockReturnValue(false),
         getCheckoutUrlIfAny: vi.fn(),
         createCheckoutForWinner: vi.fn(),
+        ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
         syncPaymentFromProvider: vi.fn(),
         syncInvoiceFromProvider: vi.fn(),
       },
       null,
       undefined,
-      {} as never,
+      db as never,
       publisher as never,
     );
 
@@ -570,9 +630,9 @@ describe("PaymentService", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(payments.updateStatus).toHaveBeenCalledWith(payment.id, "refunded");
+    expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, payment.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
-      {},
+      tx,
       expect.objectContaining({
         eventType: "payment.refunded",
         payload: expect.objectContaining({ reason: "seller_archived" }),
@@ -626,6 +686,7 @@ describe("PaymentService", () => {
       isConfigured: vi.fn().mockReturnValue(false),
       getCheckoutUrlIfAny: vi.fn(),
       createCheckoutForWinner: vi.fn(),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
       syncPaymentFromProvider: vi.fn(),
       syncInvoiceFromProvider: vi.fn(),
     };
@@ -675,6 +736,7 @@ describe("PaymentService", () => {
       isConfigured: vi.fn().mockReturnValue(false),
       getCheckoutUrlIfAny: vi.fn(),
       createCheckoutForWinner: vi.fn(),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
       syncPaymentFromProvider: vi.fn(),
       syncInvoiceFromProvider: vi.fn(),
     };

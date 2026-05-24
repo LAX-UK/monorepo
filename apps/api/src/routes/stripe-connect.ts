@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -62,6 +63,9 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
         if (err instanceof StripeConnectNotConfiguredError) {
           return c.json({ error: "stripe_not_configured" }, 503);
         }
+        if (err instanceof Error && err.message === "kyc_not_approved") {
+          return c.json({ error: "kyc_not_approved" }, 403);
+        }
         throw err;
       }
     },
@@ -80,6 +84,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       }
       const body = c.req.valid("json");
       try {
+        assertConnectUrlAllowed(body.returnUrl, container.env.WEB_ORIGIN);
+        assertConnectUrlAllowed(body.refreshUrl, container.env.WEB_ORIGIN);
         const link = await container.stripeConnectService.createOnboardingLink(
           ctx.legalEntityId,
           body.returnUrl,
@@ -89,6 +95,9 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       } catch (err) {
         if (err instanceof StripeConnectNotConfiguredError) {
           return c.json({ error: "stripe_not_configured" }, 503);
+        }
+        if (err instanceof Error && err.message.startsWith("connect_url_")) {
+          return c.json({ error: err.message }, 400);
         }
         throw err;
       }

@@ -5,6 +5,8 @@ export type PendingPaymentRow = {
   amount: string;
   platformFee: string;
   capturedAt: Date | null;
+  /** Sale line amount after prior refund/dispute payout lines (defaults to `amount`). */
+  settlementAmount?: string;
 };
 
 export type CreatePayoutInput = {
@@ -55,6 +57,9 @@ export interface IPayoutRepository {
   /** Insert one payout line and return the row. */
   insertLine(input: InsertPayoutLineInput): Promise<PayoutLine>;
 
+  /** Insert a sale line; returns null when the payment is already settled elsewhere. */
+  tryInsertSaleLine(input: InsertPayoutLineInput): Promise<PayoutLine | null>;
+
   /** List payouts (admin or per-entity), newest first. */
   list(filter: ListPayoutsFilter): Promise<Payout[]>;
 
@@ -71,7 +76,7 @@ export interface IPayoutRepository {
   listLines(payoutId: string): Promise<PayoutLine[]>;
 
   /** Find captured payments for a legal entity that are NOT already linked
-   * to a payout via a `payout_line` row. Used by both `previewPending`
+   * to a payout via a `kind=sale` payout line. Used by both `previewPending`
    * and the settlement engine.
    */
   findUnlinkedCapturedPayments(legalEntityId: string): Promise<PendingPaymentRow[]>;
@@ -137,4 +142,18 @@ export interface IPayoutRepository {
    * because Stripe's `amount_refunded` field is cumulative across all refunds.
    */
   sumRefundLineCentsForPayment(paymentId: string): Promise<number>;
+
+  /** Existing adjustment line for a payment on a specific payout (refund/dispute aggregation). */
+  findLineForPaymentAndKind(
+    payoutId: string,
+    paymentId: string,
+    kind: PayoutLineKind,
+  ): Promise<PayoutLine | null>;
+
+  /** Update an existing payout line amount (used when aggregating partial refunds). */
+  updateLineAmount(
+    lineId: string,
+    amount: string,
+    sourceEventId?: string | null,
+  ): Promise<PayoutLine>;
 }

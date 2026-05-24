@@ -96,4 +96,28 @@ export class DrizzlePaymentExternalRefRepository implements IPaymentExternalRefR
       })
       .where(eq(paymentExternalRef.paymentId, paymentId));
   }
+
+  async updateInvoiceCreated(
+    paymentId: string,
+    patch: {
+      xeroInvoiceId: string;
+      xeroInvoiceNumber: string | null;
+      xeroContactId: string;
+      onlineInvoiceUrl?: string | null;
+      syncStatus: PaymentExternalSyncStatus;
+    },
+  ): Promise<void> {
+    await this.db
+      .update(paymentExternalRef)
+      .set({
+        xeroInvoiceId: patch.xeroInvoiceId,
+        xeroInvoiceNumber: patch.xeroInvoiceNumber,
+        xeroContactId: patch.xeroContactId,
+        onlineInvoiceUrl: patch.onlineInvoiceUrl ?? null,
+        syncStatus: patch.syncStatus,
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentExternalRef.paymentId, paymentId));
+  }
 }

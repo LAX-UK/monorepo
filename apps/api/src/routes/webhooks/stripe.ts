@@ -96,7 +96,13 @@ export function createStripeWebhookRoutes(container: Container) {
       const event = container.stripeWebhookVerifier.verify("payments", raw, signature);
       let result = { processed: false };
 
-      if (event.type === "charge.dispute.created") {
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        result = await container.stripePaymentWebhookService.handlePaymentIntentSucceeded(
+          event,
+          paymentIntent,
+        );
+      } else if (event.type === "charge.dispute.created") {
         const dispute = event.data.object as Stripe.Dispute;
         result = await container.stripePaymentWebhookService.handleDisputeCreated(event, dispute);
       } else if (event.type === "charge.dispute.funds_withdrawn") {
