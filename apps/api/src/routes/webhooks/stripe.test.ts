@@ -20,7 +20,6 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
       verify: vi.fn(),
     },
     stripeConnectService,
-    kycService: { handleIdentityEvent: vi.fn().mockResolvedValue({ verification: null }) },
     stripePaymentWebhookService: null,
     db: {},
     domainEventPublisher: {},

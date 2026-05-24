@@ -14,7 +14,10 @@ import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http
 import { getServerMyLegalEntityMemberships } from "@/lib/data/http/legal-entities.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerMyNotificationPreferences } from "@/lib/data/http/notification-preferences.server";
-import { getServerMyNotifications } from "@/lib/data/http/notifications.server";
+import {
+  getServerMyNotifications,
+  getServerMyNotificationsSafe,
+} from "@/lib/data/http/notifications.server";
 import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
 import {
   getServerLotFulfilmentForWinner,
@@ -87,7 +90,10 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
   return {
     session: { getCurrent: getServerSessionUser },
     kyc: { getSummary: getServerKycStatusSummary, startSession: postServerKycSession },
-    notifications: { listMine: getServerMyNotifications },
+    notifications: {
+      listMine: getServerMyNotifications,
+      listMineSafe: getServerMyNotificationsSafe,
+    },
     notificationPreferences: { getMine: getServerMyNotificationPreferences },
     addresses: { listMine: getServerMyAddresses },
     legalEntities: { listMine: getServerMyLegalEntityMemberships },

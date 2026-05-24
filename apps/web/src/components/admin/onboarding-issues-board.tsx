@@ -75,13 +75,14 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
     [],
   );
 
-  const identityColumns = useMemo(
-    (): ColumnDef<AdminOnboardingIssuesPayload["staleIdentitySessions"][number]>[] => [
+  const kycColumns = useMemo(
+    (): ColumnDef<AdminOnboardingIssuesPayload["staleKycSessions"][number]>[] => [
       {
         accessorKey: "userId",
         header: "User",
         cell: ({ row }) => <span className="font-mono text-xs">{row.original.userId}</span>,
       },
+      { accessorKey: "provider", header: "Provider" },
       { accessorKey: "status", header: "Status" },
       {
         accessorKey: "createdAt",
@@ -158,15 +159,15 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       ),
     },
     {
-      value: "identity",
-      label: "Identity",
-      ...(data.staleIdentitySessions.length > 0
-        ? { badge: <Badge variant="secondary">{data.staleIdentitySessions.length}</Badge> }
+      value: "kyc",
+      label: "KYC sessions",
+      ...(data.staleKycSessions.length > 0
+        ? { badge: <Badge variant="secondary">{data.staleKycSessions.length}</Badge> }
         : {}),
       content: (
         <IssuesTable
-          rows={data.staleIdentitySessions}
-          columns={identityColumns}
+          rows={data.staleKycSessions}
+          columns={kycColumns}
           emptyTitle="No stale verification sessions."
         />
       ),

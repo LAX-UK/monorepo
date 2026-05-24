@@ -21,7 +21,8 @@ function rowToKyc(row: typeof kycVerification.$inferSelect): KycVerification {
     id: row.id,
     userId: row.userId,
     provider: row.provider,
-    stripeVerificationSessionId: row.stripeVerificationSessionId,
+    providerSessionId: row.providerSessionId,
+    providerAttemptId: row.providerAttemptId ?? null,
     status: row.status,
     verifiedFirstName: row.verifiedFirstName ?? null,
     verifiedLastName: row.verifiedLastName ?? null,
@@ -38,12 +39,17 @@ function rowToKyc(row: typeof kycVerification.$inferSelect): KycVerification {
 export class DrizzleKycRepository implements IKycRepository {
   constructor(private readonly db: Database) {}
 
+  private resolveConn(conn?: Database): Database {
+    return conn ?? this.db;
+  }
+
   async create(input: CreateKycVerificationInput): Promise<KycVerification> {
     const [row] = await this.db
       .insert(kycVerification)
       .values({
         userId: input.userId,
-        stripeVerificationSessionId: input.stripeVerificationSessionId,
+        provider: input.provider,
+        providerSessionId: input.providerSessionId,
         status: input.status,
       })
       .returning();
@@ -51,15 +57,14 @@ export class DrizzleKycRepository implements IKycRepository {
     return rowToKyc(row);
   }
 
-  async createWithCurrentStripeSession(
-    input: CreateKycVerificationInput,
-  ): Promise<KycVerification> {
+  async createWithCurrentSession(input: CreateKycVerificationInput): Promise<KycVerification> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(kycVerification)
         .values({
           userId: input.userId,
-          stripeVerificationSessionId: input.stripeVerificationSessionId,
+          provider: input.provider,
+          providerSessionId: input.providerSessionId,
           status: input.status,
         })
         .returning();
@@ -67,7 +72,7 @@ export class DrizzleKycRepository implements IKycRepository {
       await tx
         .update(user)
         .set({
-          currentKycSessionId: input.stripeVerificationSessionId,
+          currentKycSessionId: input.providerSessionId,
           kycStatus: "pending",
           updatedAt: new Date(),
         })
@@ -76,11 +81,15 @@ export class DrizzleKycRepository implements IKycRepository {
     });
   }
 
-  async getUserKycWebhookState(userId: string): Promise<{
+  async getUserKycWebhookState(
+    userId: string,
+    conn?: Database,
+  ): Promise<{
     currentKycSessionId: string | null;
     kycRetryCount: number;
   } | null> {
-    const rows = await this.db
+    const db = this.resolveConn(conn);
+    const rows = await db
       .select({
         currentKycSessionId: user.currentKycSessionId,
         kycRetryCount: user.kycRetryCount,
@@ -96,8 +105,9 @@ export class DrizzleKycRepository implements IKycRepository {
     };
   }
 
-  async incrementUserKycRetryCount(userId: string): Promise<void> {
-    await this.db
+  async incrementUserKycRetryCount(userId: string, conn?: Database): Promise<void> {
+    const db = this.resolveConn(conn);
+    await db
       .update(user)
       .set({
         kycRetryCount: sql`${user.kycRetryCount} + 1`,
@@ -106,11 +116,15 @@ export class DrizzleKycRepository implements IKycRepository {
       .where(eq(user.id, userId));
   }
 
-  async getUserKycState(userId: string): Promise<{
+  async getUserKycState(
+    userId: string,
+    conn?: Database,
+  ): Promise<{
     kycStatus: "unverified" | "pending" | "approved" | "rejected";
     kycVerifiedAt: Date | null;
   } | null> {
-    const rows = await this.db
+    const db = this.resolveConn(conn);
+    const rows = await db
       .select({
         kycStatus: user.kycStatus,
         kycVerifiedAt: user.kycVerifiedAt,
@@ -126,26 +140,28 @@ export class DrizzleKycRepository implements IKycRepository {
     };
   }
 
-  async findById(id: string): Promise<KycVerification | null> {
-    const rows = await this.db
+  async findById(id: string, conn?: Database): Promise<KycVerification | null> {
+    const db = this.resolveConn(conn);
+    const rows = await db.select().from(kycVerification).where(eq(kycVerification.id, id)).limit(1);
+    return rows[0] ? rowToKyc(rows[0]) : null;
+  }
+
+  async findByProviderSessionId(
+    sessionId: string,
+    conn?: Database,
+  ): Promise<KycVerification | null> {
+    const db = this.resolveConn(conn);
+    const rows = await db
       .select()
       .from(kycVerification)
-      .where(eq(kycVerification.id, id))
+      .where(eq(kycVerification.providerSessionId, sessionId))
       .limit(1);
     return rows[0] ? rowToKyc(rows[0]) : null;
   }
 
-  async findByStripeSessionId(stripeSessionId: string): Promise<KycVerification | null> {
-    const rows = await this.db
-      .select()
-      .from(kycVerification)
-      .where(eq(kycVerification.stripeVerificationSessionId, stripeSessionId))
-      .limit(1);
-    return rows[0] ? rowToKyc(rows[0]) : null;
-  }
-
-  async findLatestByUserId(userId: string): Promise<KycVerification | null> {
-    const rows = await this.db
+  async findLatestByUserId(userId: string, conn?: Database): Promise<KycVerification | null> {
+    const db = this.resolveConn(conn);
+    const rows = await db
       .select()
       .from(kycVerification)
       .where(eq(kycVerification.userId, userId))
@@ -154,9 +170,15 @@ export class DrizzleKycRepository implements IKycRepository {
     return rows[0] ? rowToKyc(rows[0]) : null;
   }
 
-  async update(id: string, patch: UpdateKycVerificationPatch): Promise<KycVerification> {
+  async update(
+    id: string,
+    patch: UpdateKycVerificationPatch,
+    conn?: Database,
+  ): Promise<KycVerification> {
+    const db = this.resolveConn(conn);
     const values: Record<string, unknown> = {};
     if (patch.status !== undefined) values.status = patch.status;
+    if (patch.providerAttemptId !== undefined) values.providerAttemptId = patch.providerAttemptId;
     if (patch.verifiedFirstName !== undefined) values.verifiedFirstName = patch.verifiedFirstName;
     if (patch.verifiedLastName !== undefined) values.verifiedLastName = patch.verifiedLastName;
     if (patch.verifiedDateOfBirth !== undefined) {
@@ -176,7 +198,7 @@ export class DrizzleKycRepository implements IKycRepository {
     if (patch.decisionPayload !== undefined) values.decisionPayload = patch.decisionPayload;
     if (patch.decisionAt !== undefined) values.decisionAt = patch.decisionAt;
 
-    const [row] = await this.db
+    const [row] = await db
       .update(kycVerification)
       .set(values)
       .where(eq(kycVerification.id, id))
@@ -185,13 +207,6 @@ export class DrizzleKycRepository implements IKycRepository {
     return rowToKyc(row);
   }
 
-  /** Pending exposure for a user. Conservative: counts winning/active bids,
-   * pending payments, and pending submission asking prices. Only the user's
-   * own bids/payments/submissions are summed — buyer/seller exposure are
-   * combined intentionally.
-   * * Currency assumption: a single-currency platform until multi-currency support introduces
-   * multi-currency reporting; we return the API env default currency.
-   */
   async getPendingExposure(userId: string): Promise<{ total: number; currency: string }> {
     const [bidsRow] = await this.db
       .select({
@@ -231,16 +246,17 @@ export class DrizzleKycRepository implements IKycRepository {
       Number(bidsRow?.total ?? 0) +
       Number(paymentsRow?.total ?? 0) +
       Number(submissionsRow?.total ?? 0);
-    return { total, currency: "GBP" };
+    return { total, currency: "GBP" }; // Platform is GBP-only; exposure sums are not filtered by currency.
   }
 
   async setUserKycStatus(
     userId: string,
     status: "unverified" | "pending" | "approved" | "rejected",
     verifiedAt: Date | null,
-    conn: Database = this.db,
+    conn?: Database,
   ): Promise<void> {
-    await conn
+    const db = this.resolveConn(conn);
+    await db
       .update(user)
       .set({
         kycStatus: status,

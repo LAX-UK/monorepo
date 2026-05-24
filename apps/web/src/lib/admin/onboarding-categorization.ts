@@ -3,7 +3,7 @@ import type { AdminOnboardingIssuesPayload } from "@/lib/data/http/admin.server"
 export type OnboardingIssueBucketId =
   | "entities-pending-review"
   | "artists-pending"
-  | "stale-identity"
+  | "stale-kyc"
   | "documents-awaiting"
   | "stale-lead-orgs";
 
@@ -32,10 +32,10 @@ export function categorizeOnboardingIssues(
       anchor: "#artists-pending",
     },
     {
-      id: "stale-identity",
-      title: "Stale identity sessions",
-      count: data.staleIdentitySessions.length,
-      anchor: "#stale-identity",
+      id: "stale-kyc",
+      title: "Stale KYC sessions",
+      count: data.staleKycSessions.length,
+      anchor: "#stale-kyc",
     },
     {
       id: "documents-awaiting",

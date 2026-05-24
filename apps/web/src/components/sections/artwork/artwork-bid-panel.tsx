@@ -319,7 +319,7 @@ export function ArtworkBidPanel({
     });
     setSubmitting(false);
     if (!result.ok) {
-      setError(mapBidError(result.error));
+      setError(mapBidError(result.error, { verifyReturnPath: loginNext }));
       setStep(1);
       return;
     }

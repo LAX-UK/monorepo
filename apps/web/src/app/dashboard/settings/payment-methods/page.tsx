@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ListRow } from "@auction/ui/components/list-row";
@@ -46,7 +47,7 @@ export default async function PaymentMethodsSettingsPage() {
             <Link href="/dashboard/portfolio">Go to outstanding invoices</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/payments">Payments history</Link>
+            <Link href={DASHBOARD_ROUTES.payments}>{DASHBOARD_CTA.myPayments}</Link>
           </Button>
         </div>
         <ListRow

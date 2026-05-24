@@ -1,9 +1,10 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 
 export default function SellerInSaleLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] py-6">
-      <PageSkeleton variant="table" />
-    </div>
+    <DashboardPage>
+      <DashboardSkeleton variant="list" />
+    </DashboardPage>
   );
 }

@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import { BidEligibilityService } from "./bid-eligibility.service.js";
+import { KycRequiredError } from "./interfaces/kyc-service.js";
+import type { IKycService } from "./interfaces/kyc-service.js";
 
 type WhereStep = { kind: "limit"; rows: unknown[] } | { kind: "all"; rows: unknown[] };
 
@@ -33,9 +35,37 @@ const lotId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 describe("BidEligibilityService.assertCanPlaceBid", () => {
+  it("returns kyc_required when threshold exceeded", async () => {
+    const db = createSequentialDb([]);
+    const kycService: IKycService = {
+      isConfigured: () => true,
+      enforceThreshold: vi.fn().mockRejectedValue(
+        new KycRequiredError({
+          status: "unverified",
+          verifiedAt: null,
+          latestSessionId: null,
+          pendingExposure: { total: 2000, currency: "GBP" },
+          thresholdAmount: 1000,
+          thresholdCurrency: "GBP",
+          requiresKyc: true,
+        }),
+      ),
+    } as unknown as IKycService;
+    const svc = new BidEligibilityService(db, kycService);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("kyc_required");
+    }
+  });
+
   it("allows owner without sale registration when sale exists", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "owner" }] },
     ]);
@@ -51,7 +81,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows admin role without sale registration", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "admin" }] },
     ]);
@@ -67,7 +96,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows staff membership role without sale registration", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "staff" }] },
     ]);
@@ -83,7 +111,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("returns membership_required when user is not a member", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [] },
     ]);
@@ -102,7 +129,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires sale registration for buyer_agent when none exists", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [] },
@@ -122,7 +148,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires sale registration for buyer_agent when status is pending", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "pending", bidLimit: null }] },
@@ -142,7 +167,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires buyer agent authorisation when registration approved", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
@@ -163,7 +187,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("enforces registration bid limit for buyer_agent", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
@@ -183,7 +206,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows buyer_agent with approved registration and blanket authorisation", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
@@ -204,7 +226,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("enforces buyer agent authorisation cap", async () => {
     const db = createSequentialDb([
-      { kind: "limit", rows: [{ kycStatus: "approved" }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },

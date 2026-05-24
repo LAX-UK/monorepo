@@ -38,7 +38,24 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
   /** GET /legal-entities/me — list every active membership for the user. */
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const memberships = await container.legalEntityRepository.listActiveMembershipsForUser(userId);
+    let memberships = await container.legalEntityRepository.listActiveMembershipsForUser(userId);
+    if (memberships.length === 0) {
+      try {
+        await container.personalLegalEntityResolver.resolveForUser(userId);
+        memberships = await container.legalEntityRepository.listActiveMembershipsForUser(userId);
+      } catch {
+        return c.json(
+          { error: "personal_entity_unavailable", code: "personal_entity_unavailable", data: [] },
+          503,
+        );
+      }
+      if (memberships.length === 0) {
+        return c.json(
+          { error: "personal_entity_unavailable", code: "personal_entity_unavailable", data: [] },
+          503,
+        );
+      }
+    }
     return c.json({ data: memberships });
   });
 

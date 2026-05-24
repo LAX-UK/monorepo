@@ -1,4 +1,5 @@
 import "server-only";
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type {
   ArtistFollowRow,
   BidWithLot,
@@ -14,9 +15,7 @@ export type { ArtistFollowRow, BidWithLot, WatchlistListParams, WatchlistWithLot
 
 export async function getServerMyBids(): Promise<BidWithLot[]> {
   const res = await authedServerFetch("/users/me/bids");
-  if (!res.ok) {
-    throw new Error(`Failed to load bids: ${res.status}`);
-  }
+  await throwIfNotOk(res, "bids");
   const body = (await res.json()) as {
     data: Array<{ bid: unknown; lot: unknown | null }>;
   };
@@ -38,9 +37,7 @@ function isPaymentStatus(s: string): s is PaymentStatus {
 
 export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   const res = await authedServerFetch("/users/me/portfolio");
-  if (!res.ok) {
-    throw new Error(`Failed to load portfolio: ${res.status}`);
-  }
+  await throwIfNotOk(res, "portfolio");
   const body = (await res.json()) as {
     data: Array<{ lot: unknown; payment: { id: string; status: string } | null }>;
   };
@@ -62,9 +59,7 @@ export async function getServerMyWatchlist(
   if (params.categoryIds?.length) qs.set("categoryIds", params.categoryIds.join(","));
   const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
   const res = await authedServerFetch(`/users/me/watchlist${suffix}`);
-  if (!res.ok) {
-    throw new Error(`Failed to load watchlist: ${res.status}`);
-  }
+  await throwIfNotOk(res, "watchlist");
   const body = (await res.json()) as {
     data: Array<{
       watchlistId: string;
@@ -83,9 +78,7 @@ export async function getServerMyWatchlist(
 
 export async function getServerMyArtistFollows(): Promise<ArtistFollowRow[]> {
   const res = await authedServerFetch("/users/me/artist-watchlist");
-  if (!res.ok) {
-    throw new Error(`Failed to load followed artists: ${res.status}`);
-  }
+  await throwIfNotOk(res, "artistFollow");
   const body = (await res.json()) as {
     data: Array<{ id: string; artistId: string; createdAt: string }>;
   };

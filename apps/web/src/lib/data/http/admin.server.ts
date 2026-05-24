@@ -805,7 +805,7 @@ export type AdminFinanceIssuesPayload = {
   staleBlockedScheduledPayoutCount: number;
   entitiesPendingReviewCount: number;
   artistsPendingApprovalCount: number;
-  staleIdentitySessionsCount: number;
+  staleKycSessionsCount: number;
   documentsAwaitingReviewCount: number;
   staleLeadOrganisationsCount: number;
 };
@@ -820,7 +820,13 @@ export async function getAdminFinanceIssues(): Promise<AdminFinanceIssuesPayload
 export type AdminOnboardingIssuesPayload = {
   entitiesPendingReview: { id: string; displayName: string; status: string }[];
   artistsPendingApproval: { id: string; displayName: string; status: string }[];
-  staleIdentitySessions: { id: string; userId: string; status: string; createdAt: string }[];
+  staleKycSessions: {
+    id: string;
+    userId: string;
+    provider: string;
+    status: string;
+    createdAt: string;
+  }[];
   documentsAwaitingReview: {
     id: string;
     legalEntityId: string;

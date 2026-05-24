@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import type { Env } from "../env.js";
 import type { IStripeClientFactory } from "./stripe-client.js";
 
-export type StripeWebhookSurface = "identity" | "connect" | "transfers" | "payments";
+export type StripeWebhookSurface = "connect" | "transfers" | "payments";
 
 export class StripeWebhookNotConfiguredError extends Error {
   constructor(surface: StripeWebhookSurface) {
@@ -25,14 +25,12 @@ export class StripeWebhookVerifier {
     private readonly stripeFactory: IStripeClientFactory,
     env: Pick<
       Env,
-      | "STRIPE_IDENTITY_WEBHOOK_SECRET"
       | "STRIPE_CONNECT_WEBHOOK_SECRET"
       | "STRIPE_TRANSFERS_WEBHOOK_SECRET"
       | "STRIPE_PAYMENTS_WEBHOOK_SECRET"
     >,
   ) {
     this.secrets = {
-      identity: env.STRIPE_IDENTITY_WEBHOOK_SECRET,
       connect: env.STRIPE_CONNECT_WEBHOOK_SECRET,
       transfers: env.STRIPE_TRANSFERS_WEBHOOK_SECRET,
       payments: env.STRIPE_PAYMENTS_WEBHOOK_SECRET,

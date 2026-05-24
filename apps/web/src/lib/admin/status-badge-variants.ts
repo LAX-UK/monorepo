@@ -448,11 +448,11 @@ export function kycStatusLabel(status: string | null | undefined): string {
     case "approved":
       return "Verified";
     case "pending":
-      return "Pending";
+      return "In review";
     case "rejected":
-      return "Failed";
+      return "Rejected";
     default:
-      return "Not started";
+      return "Not verified";
   }
 }
 

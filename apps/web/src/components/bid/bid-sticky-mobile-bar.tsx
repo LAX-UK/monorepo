@@ -101,6 +101,16 @@ export function BidStickyMobileBar({
           </span>
         );
         break;
+      case "kyc-threshold":
+        right = (
+          <Link
+            href={`/dashboard/verify-identity?next=${next}`}
+            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          >
+            Verify
+          </Link>
+        );
+        break;
       default:
         right = null;
     }

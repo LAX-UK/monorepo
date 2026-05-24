@@ -1,4 +1,5 @@
 import type { BidErrorPresentation, BidErrorSeverity } from "@/lib/ui/bid-error";
+import Link from "next/link";
 
 const severityClass: Record<BidErrorSeverity, string> = {
   error: "text-error",
@@ -25,6 +26,14 @@ export function BidErrorView({
         </p>
       ) : null}
       <p className={`text-sm ${tone} ${error.title ? "mt-1" : ""}`}>{error.message}</p>
+      {error.actionHref ? (
+        <Link
+          href={error.actionHref}
+          className={`mt-2 inline-block text-sm font-medium underline underline-offset-2 ${tone}`}
+        >
+          {error.actionLabel ?? "Continue"}
+        </Link>
+      ) : null}
     </div>
   );
 }

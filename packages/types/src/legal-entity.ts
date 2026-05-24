@@ -44,7 +44,7 @@ export const legalEntityMemberRoles = [
 ] as const;
 export type LegalEntityMemberRole = (typeof legalEntityMemberRoles)[number];
 
-/** KYC Status for users (Stripe Identity) */
+/** KYC Status for users (identity verification) */
 export const userKycStatuses = ["unverified", "pending", "approved", "rejected"] as const;
 export type UserKycStatus = (typeof userKycStatuses)[number];
 
@@ -144,12 +144,13 @@ export type InviteLegalEntityMemberInput = {
   role: LegalEntityMemberRole;
 };
 
-/** KYC Verification record (Stripe Identity) */
+/** KYC Verification record */
 export type KycVerification = {
   id: string;
   userId: string;
   provider: string;
-  stripeVerificationSessionId: string;
+  providerSessionId: string;
+  providerAttemptId: string | null;
   status: "created" | "requires_input" | "processing" | "verified" | "canceled";
   verifiedFirstName: string | null;
   verifiedLastName: string | null;

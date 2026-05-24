@@ -20,6 +20,7 @@ export type AdminOnboardingArtistRow = {
 export type AdminOnboardingKycSessionRow = {
   id: string;
   userId: string;
+  provider: string;
   status: string;
   createdAt: Date;
 };
@@ -41,7 +42,7 @@ export type AdminOnboardingStaleLeadRow = {
 export type AdminOnboardingIssues = {
   entitiesPendingReview: AdminOnboardingLegalEntityRow[];
   artistsPendingApproval: AdminOnboardingArtistRow[];
-  staleIdentitySessions: AdminOnboardingKycSessionRow[];
+  staleKycSessions: AdminOnboardingKycSessionRow[];
   documentsAwaitingReview: AdminOnboardingDocumentRow[];
   staleLeadOrganisations: AdminOnboardingStaleLeadRow[];
 };
