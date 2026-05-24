@@ -1,4 +1,4 @@
-export type SaleLifecycleActionKind = "publish" | "unpublish" | "markEnded" | "cancel";
+export type SaleLifecycleActionKind = "publish" | "unpublish" | "markEnded" | "cancel" | "delete";
 
 export type SaleLifecycleActionItem = {
   id: string;
@@ -11,6 +11,7 @@ type Flags = {
   canUnpublish: boolean;
   canMarkOnsiteEnded: boolean;
   canCancel: boolean;
+  canDelete: boolean;
 };
 
 /** Ordered lifecycle actions for mobile — first item is the primary inline action. */
@@ -27,6 +28,9 @@ export function buildSaleLifecycleActionItems(flags: Flags): SaleLifecycleAction
   }
   if (flags.canCancel) {
     items.push({ id: "cancel", label: "Cancel sale", kind: "cancel" });
+  }
+  if (flags.canDelete) {
+    items.push({ id: "delete", label: "Delete sale", kind: "delete" });
   }
   return items;
 }

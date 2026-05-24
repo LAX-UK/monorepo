@@ -3,6 +3,7 @@ const LABELS: Record<string, string> = {
   "sale.published": "Sale published",
   "sale.unpublished": "Sale reverted to draft",
   "sale.cancelled": "Sale cancelled",
+  "sale.soft_deleted": "Sale deleted",
   "sale.ended": "Sale marked ended",
   "lot.voided": "Lot voided",
   "lot.withdrawal_requested": "Withdrawal requested",

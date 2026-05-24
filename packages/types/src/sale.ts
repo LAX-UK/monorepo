@@ -54,6 +54,8 @@ export type Sale = {
   createdByLegalEntityId?: string | undefined;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
 };
 
 export type CreateSaleInput = {

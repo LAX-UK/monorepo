@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import {
   buyerAgentAuthorisation,
   legalEntityMember,
@@ -50,7 +51,7 @@ export class BidEligibilityService implements IBidEligibility {
     const [lotRow] = await this.db
       .select({ saleId: lot.saleId })
       .from(lot)
-      .where(eq(lot.id, lotId))
+      .where(and(eq(lot.id, lotId), lotNotDeleted()))
       .limit(1);
     if (!lotRow) {
       return err(new BidError("Lot not found", 404));
