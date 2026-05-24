@@ -1,3 +1,4 @@
+import { type KycCompliancePillTone, kycComplianceIdentityPill } from "@/components/kyc/kyc-copy";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { cn } from "@auction/ui";
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-type PillTone = "ok" | "warn" | "danger" | "info";
+type PillTone = KycCompliancePillTone;
 
 type StatusPill = {
   id: string;
@@ -68,54 +69,25 @@ export function ComplianceStatusStrip({
   // Identity verification
   if (!hideIdentityPill) {
     if (kyc) {
-      if (kyc.status === "approved") {
-        pills.push({
-          id: "kyc",
-          icon: ShieldCheck,
-          label: "Identity",
-          value: "Verified",
-          href: "/dashboard/settings/profile",
-          tone: "ok",
-        });
-      } else if (kyc.feedback?.needsResubmit) {
-        pills.push({
-          id: "kyc",
-          icon: ShieldAlert,
-          label: "Identity",
-          value: "Action needed",
-          href: "/dashboard/verify-identity",
-          tone: "warn",
-          hint: kyc.feedback.detail ?? "Complete the missing verification checks",
-        });
-      } else if (kyc.status === "pending") {
-        pills.push({
-          id: "kyc",
-          icon: Hourglass,
-          label: "Identity",
-          value: "In review",
-          href: "/dashboard/verify-identity",
-          tone: "info",
-        });
-      } else if (kyc.status === "rejected") {
-        pills.push({
-          id: "kyc",
-          icon: ShieldAlert,
-          label: "Identity",
-          value: "Rejected",
-          href: "/dashboard/verify-identity",
-          tone: "danger",
-          hint: "Please resubmit your identity documents",
-        });
-      } else {
-        pills.push({
-          id: "kyc",
-          icon: ShieldAlert,
-          label: "Identity",
-          value: kyc.requiresKyc ? "Required" : "Not verified",
-          href: "/dashboard/verify-identity",
-          tone: kyc.requiresKyc ? "warn" : "info",
-        });
-      }
+      const identityPill = kycComplianceIdentityPill(kyc);
+      const IdentityIcon =
+        kyc.status === "approved"
+          ? ShieldCheck
+          : kyc.feedback?.needsResubmit || kyc.status === "rejected"
+            ? ShieldAlert
+            : identityPill.value === "In review"
+              ? Hourglass
+              : ShieldAlert;
+      pills.push({
+        id: "kyc",
+        icon: IdentityIcon,
+        label: "Identity",
+        value: identityPill.value,
+        href:
+          kyc.status === "approved" ? "/dashboard/settings/profile" : "/dashboard/verify-identity",
+        tone: identityPill.tone,
+        hint: identityPill.hint,
+      });
     } else if (user.kycStatus === "approved") {
       pills.push({
         id: "kyc",
