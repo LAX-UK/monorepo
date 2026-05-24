@@ -49,6 +49,9 @@ export type PlaceBidInput = {
   amount: number;
   /** When set, stored as max auto-bid (English auction). */
   maxAutoBidAmount?: number;
+  autoBidStepAmount?: number;
+  /** Dedupe concurrent / retried submissions (24h server cache). */
+  idempotencyKey?: string;
 };
 
 export type PlaceBidResult =
@@ -57,6 +60,7 @@ export type PlaceBidResult =
       ok: false;
       error: string;
       status: number;
+      code?: string | null;
       kycFeedback?: {
         headline: string;
         detail: string | null;
@@ -68,6 +72,33 @@ export type PlaceBidResult =
 /** Mutations for bids only — segregated from reads (ISP). */
 export interface BidWriter {
   placeBid(input: PlaceBidInput): Promise<PlaceBidResult>;
+}
+
+export type AutoBidSettings = {
+  maxAutoBidAmount: string;
+  autoBidStepAmount: string | null;
+  isActive: boolean;
+};
+
+export type AutoBidMutationResult =
+  | { ok: true; settings: AutoBidSettings }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      code?: string | null;
+      kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
+    };
+
+export interface AutoBidWriter {
+  getAutoBid(lotId: string): Promise<AutoBidSettings | null>;
+  setAutoBid(input: {
+    lotId: string;
+    maxAutoBidAmount: number;
+    autoBidStepAmount: number;
+    idempotencyKey?: string;
+  }): Promise<AutoBidMutationResult>;
+  clearAutoBid(lotId: string): Promise<{ ok: true } | { ok: false; error: string; status: number }>;
 }
 
 export type SessionUser = {

@@ -70,4 +70,19 @@ describe("RedisNotificationSender", () => {
     const parsed = JSON.parse(payload) as { emittedAt?: number };
     expect(typeof parsed.emittedAt).toBe("number");
   });
+
+  it("publishes proxy_cancelled on lot channel", async () => {
+    const publish = vi.fn().mockResolvedValue(1);
+    const sender = new RedisNotificationSender({ publish } as never);
+    await sender.notifyProxyCancelled("lot-1", "user-1", "user_cleared");
+    expect(publish).toHaveBeenCalledWith(
+      "lot:lot-1:events",
+      JSON.stringify({
+        type: "proxy_cancelled",
+        lotId: "lot-1",
+        bidderUserId: "user-1",
+        reason: "user_cleared",
+      }),
+    );
+  });
 });

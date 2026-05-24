@@ -36,6 +36,14 @@ function columns(): ColumnDef<Bid>[] {
       cell: ({ row }) => (
         <span className="text-on-surface-variant">
           {row.original.isAutoBid ? "Auto" : "Manual"}
+          {row.original.maxAutoBidAmount ? (
+            <span className="mt-0.5 block text-[11px] text-on-surface-variant/80">
+              Max {formatMoney(row.original.maxAutoBidAmount)}
+              {row.original.autoBidStepAmount
+                ? ` · +${formatMoney(row.original.autoBidStepAmount)}`
+                : null}
+            </span>
+          ) : null}
         </span>
       ),
     },

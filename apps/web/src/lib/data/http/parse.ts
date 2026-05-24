@@ -272,14 +272,19 @@ export function parseItemSubmission(raw: unknown): ItemSubmission {
 
 export function parseBid(raw: unknown): Bid {
   const o = raw as Record<string, unknown>;
+  const placedByUserId =
+    o.placedByUserId == null || o.placedByUserId === "" ? undefined : String(o.placedByUserId);
+  const bidderId = o.bidderId == null || o.bidderId === "" ? placedByUserId : String(o.bidderId);
   return {
     id: String(o.id),
     lotId: String(o.lotId ?? o.auctionId),
-    bidderId: String(o.bidderId),
+    ...(bidderId ? { bidderId } : {}),
+    ...(placedByUserId ? { placedByUserId } : {}),
     amount: String(o.amount),
     isWinning: Boolean(o.isWinning),
     isAutoBid: Boolean(o.isAutoBid),
     maxAutoBidAmount: o.maxAutoBidAmount == null ? null : String(o.maxAutoBidAmount),
+    autoBidStepAmount: o.autoBidStepAmount == null ? null : String(o.autoBidStepAmount),
     createdAt: toDate(o.createdAt),
   };
 }

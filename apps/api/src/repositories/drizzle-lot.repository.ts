@@ -176,6 +176,12 @@ export class DrizzleLotRepository implements ILotRepository {
           ...(input.minBidIncrement !== undefined
             ? { minBidIncrement: input.minBidIncrement }
             : {}),
+          ...(input.autoBidEnabled !== undefined ? { autoBidEnabled: input.autoBidEnabled } : {}),
+          ...(input.autoBidStepMin !== undefined ? { autoBidStepMin: input.autoBidStepMin } : {}),
+          ...(input.autoBidStepMax !== undefined ? { autoBidStepMax: input.autoBidStepMax } : {}),
+          ...(input.autoBidStepPresets !== undefined
+            ? { autoBidStepPresets: input.autoBidStepPresets }
+            : {}),
           ...(input.dutchDecrementAmount !== undefined
             ? { dutchDecrementAmount: input.dutchDecrementAmount }
             : {}),
@@ -412,6 +418,11 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.buyNowPrice !== undefined) patch.buyNowPrice = input.buyNowPrice ?? null;
     if (input.buyerPremiumRate !== undefined) patch.buyerPremiumRate = input.buyerPremiumRate;
     if (input.minBidIncrement !== undefined) patch.minBidIncrement = input.minBidIncrement;
+    if (input.autoBidEnabled !== undefined) patch.autoBidEnabled = input.autoBidEnabled;
+    if (input.autoBidStepMin !== undefined) patch.autoBidStepMin = input.autoBidStepMin ?? null;
+    if (input.autoBidStepMax !== undefined) patch.autoBidStepMax = input.autoBidStepMax ?? null;
+    if (input.autoBidStepPresets !== undefined)
+      patch.autoBidStepPresets = input.autoBidStepPresets ?? null;
     if (input.dutchDecrementAmount !== undefined)
       patch.dutchDecrementAmount = input.dutchDecrementAmount ?? null;
     if (input.dutchDecrementIntervalMs !== undefined)

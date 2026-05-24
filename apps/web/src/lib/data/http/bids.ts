@@ -14,11 +14,16 @@ export function createHttpBidWriter(): BidWriter {
           ...(input.maxAutoBidAmount !== undefined
             ? { maxAutoBidAmount: input.maxAutoBidAmount }
             : {}),
+          ...(input.autoBidStepAmount !== undefined
+            ? { autoBidStepAmount: input.autoBidStepAmount }
+            : {}),
         },
+        ...(input.idempotencyKey ? { header: { "Idempotency-Key": input.idempotencyKey } } : {}),
       });
       const json = (await res.json().catch(() => ({}))) as {
         data?: unknown;
         error?: string;
+        code?: string;
         summary?: {
           feedback?: {
             headline: string;
@@ -35,6 +40,7 @@ export function createHttpBidWriter(): BidWriter {
           ok: false,
           error: errMsg,
           status: res.status,
+          code: json.code ?? null,
           kycFeedback: json.summary?.feedback ?? null,
         };
       }

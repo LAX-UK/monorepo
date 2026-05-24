@@ -6,6 +6,8 @@ export type BidEligibilityCheckInput = {
   buyerLegalEntityId: string;
   lotId: string;
   amount: number;
+  maxAutoBidAmount?: number | undefined;
+  autoBidStepAmount?: number | undefined;
 };
 
 /** Optional bidding gates (KYC, sale registration, buyer-agent caps) applied before bid tx. */

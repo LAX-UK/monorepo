@@ -68,7 +68,15 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
           await next();
         });
   const bidUserRateLimit = createBidUserRateLimitMiddleware(container.redis);
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
+  const r = new Hono<{
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: { legalEntityId: string };
+    };
+  }>();
 
   r.post(
     "/",
@@ -76,18 +84,26 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
     biddingKillSwitch,
     requireBuyerRole,
     kycGate,
+    requireLegalEntity,
     bidUserRateLimit,
     zValidator("json", placeBidSchema),
     async (c) => {
       const userId = c.get("userId") as string;
+      const legalEntityContext = c.get("legalEntityContext");
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
       const body = c.req.valid("json");
       const out = await container.bidService.placeBidWithIdempotency({
         placedByUserId: userId,
-        idempotencyKey: idem,
+        ...(legalEntityContext?.legalEntityId
+          ? { buyerLegalEntityId: legalEntityContext.legalEntityId }
+          : {}),
+        ...(idem ? { idempotencyKey: idem } : {}),
         lotId: body.lotId,
         amount: body.amount,
         ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+        ...(body.autoBidStepAmount !== undefined
+          ? { autoBidStepAmount: body.autoBidStepAmount }
+          : {}),
       });
       if (out.type === "replay") {
         return c.json(out.body, 201);
