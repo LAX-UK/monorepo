@@ -378,6 +378,32 @@ export async function adminCancelSaleResultAction(saleId: string): Promise<Actio
   });
 }
 
+export async function adminSoftDeleteSaleResultAction(
+  saleId: string,
+  confirmationPhrase: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSoftDeleteSaleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+    const id = saleId.trim();
+    const phrase = confirmationPhrase.trim();
+    if (!id) {
+      return actionFailure("Missing sale");
+    }
+    if (!phrase) {
+      return actionFailure("Confirmation phrase is required");
+    }
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.softDelete(id, phrase);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/sales");
+    revalidatePath("/");
+    return actionSuccess();
+  });
+}
+
 export async function adminAttachLotToSaleResultAction(
   saleId: string,
   lotId: string,

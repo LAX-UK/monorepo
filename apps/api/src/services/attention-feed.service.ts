@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { itemSubmission, lot, payment } from "@auction/db/schema";
 import type { ItemSubmissionStatus, PaymentStatus } from "@auction/types";
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
@@ -62,7 +63,7 @@ export class DrizzleAttentionFeedReader implements IAttentionFeedReader {
           createdAt: lot.updatedAt,
         })
         .from(lot)
-        .where(and(eq(lot.status, "draft"), lt(lot.startTime, now)))
+        .where(and(eq(lot.status, "draft"), lt(lot.startTime, now), lotNotDeleted()))
         .orderBy(desc(lot.updatedAt))
         .limit(limit),
     ]);

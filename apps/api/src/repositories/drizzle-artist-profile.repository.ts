@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { lotNotDeleted } from "@auction/db";
 import { artistAlias, artistProfile, lot, user } from "@auction/db/schema";
 import type {
   AdminArtistListResult,
@@ -538,7 +539,7 @@ export class DrizzleArtistProfileRepository {
     const [row] = await this.db
       .select({ value: count() })
       .from(lot)
-      .where(eq(lot.artistId, artistId));
+      .where(and(eq(lot.artistId, artistId), lotNotDeleted()));
     return Number(row?.value ?? 0);
   }
 }
