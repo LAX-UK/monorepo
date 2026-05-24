@@ -138,6 +138,63 @@ export function trackSearch(query: string): string | null {
   return eventId;
 }
 
+export function trackQuickLookOpen(input: { lotId: string; source?: string }): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: "quick_look_open",
+    event_id: eventId,
+    lot_id: input.lotId,
+    ...(input.source ? { source: input.source } : {}),
+  });
+  return eventId;
+}
+
+export function trackQuickLookDeckNav(input: {
+  lotId: string;
+  direction: "prev" | "next";
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: "quick_look_deck_nav",
+    event_id: eventId,
+    lot_id: input.lotId,
+    direction: input.direction,
+  });
+  return eventId;
+}
+
+export function trackQuickLookCtaClick(input: {
+  lotId: string;
+  cta: "bid" | "view_lot";
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: "quick_look_cta_click",
+    event_id: eventId,
+    lot_id: input.lotId,
+    cta: input.cta,
+  });
+  return eventId;
+}
+
+export function trackQuickLookEnrichmentMs(input: {
+  lotId: string;
+  ms: number;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: "quick_look_enrichment_ms",
+    event_id: eventId,
+    lot_id: input.lotId,
+    duration_ms: input.ms,
+  });
+  return eventId;
+}
+
 export function trackSignUp(): string | null {
   if (!guardConversion()) return null;
   const eventId = newEventId();

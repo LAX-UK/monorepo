@@ -1,6 +1,12 @@
 "use client";
 
+import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
+import {
+  lotQuickLookFromRailCard,
+  lotQuickLookRailDeck,
+} from "@/components/marketing/lot-quick-look/mappers";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
@@ -40,6 +46,7 @@ export function LotMoreFromRail({
     return null;
   }
   const isCompact = density === "compact";
+  const quickLookDeck = lotQuickLookRailDeck(rail.cards);
 
   return (
     <section className="mt-20 w-full border-t border-border-hairline pt-16">
@@ -69,7 +76,7 @@ export function LotMoreFromRail({
         ) : null}
       </div>
       <ul className="flex list-none gap-5 overflow-x-auto pb-3">
-        {rail.cards.map((c) => {
+        {rail.cards.map((c, cardIndex) => {
           const closing =
             nowMs == null ? null : formatCountdownForDisplay(new Date(c.endTime).getTime() - nowMs);
           return (
@@ -87,10 +94,42 @@ export function LotMoreFromRail({
                       imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105"
                       sizes="(max-width: 1023px) 100vw, 42vw"
                     />
-                    <OwnerBadge
-                      owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                      className="absolute right-2 top-2"
-                    />
+                    {isCompact ? (
+                      <div className="pointer-events-none absolute right-2 top-2 z-10 flex flex-col items-end gap-2">
+                        <OwnerBadge
+                          owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                          className="pointer-events-auto"
+                        />
+                        <MarketingWatchlistHeart
+                          lotId={c.id}
+                          lotTitle={c.title}
+                          initialWatching={watchedLotIds.includes(c.id)}
+                          isAuthenticated={isAuthenticated}
+                          loginNextPath={c.href}
+                          layout="inline"
+                          className="pointer-events-auto"
+                        />
+                      </div>
+                    ) : (
+                      <OwnerBadge
+                        owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                        className="absolute right-2 top-2"
+                      />
+                    )}
+                    <div className="absolute bottom-2 left-2 z-10">
+                      <LotQuickLookTrigger
+                        vm={lotQuickLookFromRailCard(c)}
+                        layout="overlay"
+                        options={{
+                          deck: quickLookDeck,
+                          deckIndex: cardIndex,
+                          deckSourceLabel: rail.heading,
+                          isAuthenticated,
+                          watchedLotIds,
+                          loginNextPath: c.href,
+                        }}
+                      />
+                    </div>
                   </div>
                 </Link>
                 {isCompact ? (
