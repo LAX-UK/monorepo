@@ -33,6 +33,7 @@ export function UrgencyLotCard({
       imageUrl={item.imageUrl}
       imageAlt={item.imageAlt}
       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+      articleClassName="h-full"
       topOverlay={
         <LotStatusTimer
           variant="endingSoon"
@@ -51,51 +52,51 @@ export function UrgencyLotCard({
         />
       }
       belowImage={
-        <div className="flex w-full flex-col gap-3">
-          <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
             <LotViewTransitionLink
               lotId={item.id}
               href={item.href}
-              className="group text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
+              className="line-clamp-2 min-h-12 text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
             >
               {item.title}
             </LotViewTransitionLink>
-            <p className="text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
+            <p className="line-clamp-1 min-h-4 text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
               {item.artistName}
             </p>
           </div>
 
           {rows ? (
             <>
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                   {rows.estimate.label}
                 </span>
-                <span className="text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
+                <span className="line-clamp-1 text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
                   {rows.estimate.value}
                 </span>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                   {rows.current.label}
                 </span>
-                <span className="text-sm font-medium leading-6 text-[#474747] dark:text-on-surface-variant">
+                <span className="line-clamp-1 text-sm font-medium leading-6 text-[#474747] dark:text-on-surface-variant">
                   {rows.current.value}
                 </span>
               </div>
             </>
           ) : (
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
                 {item.priceLabel}
               </span>
-              <span className="text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
+              <span className="line-clamp-1 text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
                 {item.priceFormatted}
               </span>
             </div>
           )}
 
-          <div className="inline-flex w-full items-start gap-6">
+          <div className="mt-auto inline-flex w-full items-start gap-6">
             <LotViewTransitionLink
               lotId={item.id}
               href={item.href}
