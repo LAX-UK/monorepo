@@ -101,6 +101,9 @@ export const payoutLine = pgTable(
     uniqueIndex("payout_line_payment_kind_uidx")
       .on(table.payoutId, table.paymentId, table.kind)
       .where(sql`${table.paymentId} IS NOT NULL`),
+    uniqueIndex("payout_line_sale_payment_uidx")
+      .on(table.paymentId)
+      .where(sql`${table.kind} = 'sale' AND ${table.paymentId} IS NOT NULL`),
     uniqueIndex("payout_line_source_event_uidx")
       .on(table.payoutId, table.paymentId, table.kind, table.sourceEventId)
       .where(sql`${table.sourceEventId} IS NOT NULL`),

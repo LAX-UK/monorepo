@@ -60,17 +60,7 @@ function webhookErrorResponse(
 }
 
 async function runKycProgression(container: Container, userId: string): Promise<void> {
-  try {
-    await progressIndividualsAfterKycApproval(container.db, container.domainEventPublisher, userId);
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        msg: "kyc_progression_failed",
-        userId,
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
-  }
+  await progressIndividualsAfterKycApproval(container.db, container.domainEventPublisher, userId);
 }
 
 /** Veriff webhook hub — decision (required) and event (optional UX progress). */
@@ -119,6 +109,7 @@ export function createVeriffWebhookRoutes(container: Container) {
     } catch (err) {
       const mapped = webhookErrorResponse("decision", err);
       if (mapped) return c.json(mapped.body, mapped.status);
+      recordVeriffWebhookHttpError("decision", 500);
       throw err;
     }
   });

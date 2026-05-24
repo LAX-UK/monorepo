@@ -3,8 +3,12 @@ import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PaymentCaptureNotAppliedError } from "../lib/errors.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
+import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
+import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { StripePaymentWebhookService } from "./stripe-payment-webhook.service.js";
 
@@ -23,7 +27,7 @@ function mockDbWithPayment(paymentRow: {
   status: string;
   amount: string;
 }): Database {
-  const tx = {
+  const db = {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -36,11 +40,53 @@ function mockDbWithPayment(paymentRow: {
         where: vi.fn().mockResolvedValue(undefined),
       }),
     }),
+    transaction: vi.fn(),
   } as unknown as Database;
-  return {
-    ...tx,
-    transaction: vi.fn(async (fn: (inner: Database) => Promise<unknown>) => fn(tx)),
-  } as unknown as Database;
+  vi.mocked(db.transaction).mockImplementation((async (fn) =>
+    fn(db as never)) as typeof db.transaction);
+  return db;
+}
+
+function createWebhookService(deps: {
+  db: Database;
+  payoutRepository?: Partial<IPayoutRepository>;
+  publisher?: DomainEventPublisher;
+  payoutAdjustments?: Partial<IPayoutAdjustmentService>;
+  paymentCapture?: Partial<IPaymentCaptureService>;
+  payments?: Partial<IPaymentWriteRepository>;
+}) {
+  const payoutAdjustments = {
+    addPaymentLineToOpenPayoutOrCreateClawback: vi.fn().mockResolvedValue(undefined),
+    ...deps.payoutAdjustments,
+  } as IPayoutAdjustmentService;
+  const paymentCapture = {
+    capture: vi.fn().mockResolvedValue({ captured: true }),
+    ...deps.paymentCapture,
+  } as IPaymentCaptureService;
+  const payoutRepository = {
+    sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
+    ...deps.payoutRepository,
+  } as IPayoutRepository;
+  const publisher =
+    deps.publisher ?? ({ publish: vi.fn().mockResolvedValue(undefined) } as DomainEventPublisher);
+  const payments = {
+    applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
+    findById: vi.fn().mockResolvedValue({
+      id: "pay_1",
+      amount: "100.00",
+      status: "pending",
+    }),
+    ...(deps.payments ?? {}),
+  } as IPaymentWriteRepository;
+  const svc = new StripePaymentWebhookService(
+    deps.db,
+    payments,
+    payoutRepository,
+    payoutAdjustments,
+    paymentCapture,
+    publisher,
+  );
+  return { svc, payoutAdjustments, paymentCapture, payoutRepository, publisher };
 }
 
 describe("StripePaymentWebhookService.handleDisputeClosed", () => {
@@ -49,27 +95,19 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
   });
 
-  it("creates an adjustment-only payout when a lost dispute has no open payout", async () => {
+  it("creates a clawback adjustment when a lost dispute has no open payout", async () => {
     vi.mocked(eq).mockClear();
-    const createdPayout = {
-      id: "po_adjustment",
-      legalEntityId: "00000000-0000-4000-8000-000000000001",
-    };
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockResolvedValue(createdPayout),
-      insertLine: vi.fn().mockResolvedValue({ id: "line_1" }),
-    } as unknown as IPayoutRepository;
-    const publisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const addLine = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc, payoutAdjustments, publisher } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
     const event = { id: "evt_dispute_closed", type: "charge.dispute.closed" } as Stripe.Event;
     const dispute = {
       id: "dp_1",
@@ -88,14 +126,12 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       "stripe_payment_webhook",
     );
     expect(vi.mocked(eq)).toHaveBeenCalledWith(payment.stripeChargeId, "ch_1");
-    expect(payoutRepository.create).toHaveBeenCalledWith(
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalledWith(
       expect.objectContaining({
         legalEntityId: "00000000-0000-4000-8000-000000000001",
-        grossAmount: "-5000.00",
-        platformFee: "0.00",
-        stripeFee: "0.00",
-        netAmount: "-5000.00",
-        currency: "GBP",
+        paymentId: "pay_1",
+        amount: "-5000.00",
+        kind: "dispute",
       }),
     );
     expect(publisher.publish).toHaveBeenCalledWith(
@@ -108,19 +144,13 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
 
   it("short-circuits duplicate deliveries via processed_stripe_events", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: false });
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn(),
-      create: vi.fn(),
-      insertLine: vi.fn(),
-    } as unknown as IPayoutRepository;
-    const publisher = { publish: vi.fn() } as unknown as DomainEventPublisher;
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc, publisher } = createWebhookService({ db });
     const event = { id: "evt_dup", type: "charge.dispute.closed" } as Stripe.Event;
     const dispute = {
       id: "dp_dup",
@@ -140,25 +170,42 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     expect(publisher.publish).not.toHaveBeenCalled();
   });
 
-  it("uses the charge id from a dispute fixture even when a payment_intent is present", async () => {
-    vi.mocked(eq).mockClear();
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn().mockResolvedValue({
-        id: "po_open",
-        legalEntityId: "00000000-0000-4000-8000-000000000001",
-      }),
-      insertLine: vi.fn().mockResolvedValue({ id: "line_1" }),
-    } as unknown as IPayoutRepository;
-    const publisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+  it("does not claw back when dispute closes with warning_closed", async () => {
+    const addLine = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc, payoutAdjustments } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const event = { id: "evt_dispute_warning", type: "charge.dispute.closed" } as Stripe.Event;
+    const dispute = {
+      id: "dp_warn",
+      status: "warning_closed",
+      amount: 500000,
+      currency: "gbp",
+      charge: "ch_1",
+    } as Stripe.Dispute;
+
+    const result = await svc.handleDisputeClosed(event, dispute);
+
+    expect(result).toEqual({ processed: true, action: "dispute_closed" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+  });
+
+  it("uses the charge id from a dispute fixture even when a payment_intent is present", async () => {
+    vi.mocked(eq).mockClear();
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "5000.00",
+    });
+    const { svc } = createWebhookService({ db });
     const event = { id: "evt_dispute_fixture", type: "charge.dispute.created" } as Stripe.Event;
     const dispute = {
       id: "dp_fixture",
@@ -178,24 +225,13 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
 
   it("uses the charge object id from a refund fixture instead of payment_intent", async () => {
     vi.mocked(eq).mockClear();
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn().mockResolvedValue({
-        id: "po_open",
-        legalEntityId: "00000000-0000-4000-8000-000000000001",
-      }),
-      insertLine: vi.fn().mockResolvedValue({ id: "line_1" }),
-      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
-    } as unknown as IPayoutRepository;
-    const publisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "5000.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc, payoutAdjustments } = createWebhookService({ db });
     const event = { id: "evt_refund_fixture", type: "charge.refunded" } as Stripe.Event;
     const charge = {
       id: "ch_refunded_fixture",
@@ -213,6 +249,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       payment.stripePaymentIntentId,
       "ch_refunded_fixture",
     );
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalled();
   });
 });
 
@@ -224,25 +261,18 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
 
   it("inserts a line for the delta when the second partial refund arrives", async () => {
     vi.mocked(eq).mockClear();
-    const insertLine = vi.fn().mockResolvedValue({ id: "line_2" });
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn().mockResolvedValue({
-        id: "po_open",
-        legalEntityId: "00000000-0000-4000-8000-000000000001",
-      }),
-      insertLine,
-      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(3000),
-    } as unknown as IPayoutRepository;
-    const publisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const addLine = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "100.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc, payoutAdjustments } = createWebhookService({
+      db,
+      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(3000) },
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
     const event = { id: "evt_refund_partial_2", type: "charge.refunded" } as Stripe.Event;
     const charge = {
       id: "ch_partial",
@@ -254,7 +284,7 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
     const result = await svc.handleChargeRefunded(event, charge);
 
     expect(result).toEqual({ processed: true, action: "refund_received" });
-    expect(insertLine).toHaveBeenCalledWith(
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: "-20.00",
         kind: "refund",
@@ -263,24 +293,53 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
     );
   });
 
-  it("skips when cumulative amount_refunded already accounted for (replay or stale event)", async () => {
+  it("creates clawback payout when refund has no open payout (C3 parity)", async () => {
     vi.mocked(eq).mockClear();
-    const insertLine = vi.fn().mockResolvedValue({ id: "line_dup" });
-    const payoutRepository = {
-      findOpenPayoutForEntity: vi.fn().mockResolvedValue({ id: "po_open" }),
-      insertLine,
-      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(5000),
-    } as unknown as IPayoutRepository;
-    const publisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const addLine = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "captured",
       amount: "100.00",
     });
-    const svc = new StripePaymentWebhookService(db, payoutRepository, publisher);
+    const { svc } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const event = { id: "evt_refund_clawback", type: "charge.refunded" } as Stripe.Event;
+    const charge = {
+      id: "ch_claw",
+      amount: 10000,
+      amount_refunded: 10000,
+      currency: "gbp",
+    } as Stripe.Charge;
+
+    const result = await svc.handleChargeRefunded(event, charge);
+
+    expect(result).toEqual({ processed: true, action: "refund_received" });
+    expect(addLine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        legalEntityId: "00000000-0000-4000-8000-000000000001",
+        amount: "-100.00",
+        kind: "refund",
+      }),
+    );
+  });
+
+  it("skips when cumulative amount_refunded already accounted for (replay or stale event)", async () => {
+    vi.mocked(eq).mockClear();
+    const addLine = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "100.00",
+    });
+    const { svc, payoutAdjustments } = createWebhookService({
+      db,
+      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(5000) },
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
     const event = { id: "evt_refund_stale", type: "charge.refunded" } as Stripe.Event;
     const charge = {
       id: "ch_stale",
@@ -292,6 +351,174 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
     const result = await svc.handleChargeRefunded(event, charge);
 
     expect(result.action).toBe("skipped");
-    expect(insertLine).not.toHaveBeenCalled();
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+  });
+});
+
+describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it("claims and captures inside one transaction", async () => {
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const capture = vi.fn().mockResolvedValue(undefined);
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+    });
+    const event = { id: "evt_pi_tx", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(db.transaction).toHaveBeenCalled();
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({ tx: expect.any(Object), paymentId: "pay_1" }),
+    );
+  });
+
+  it("captures payment via PaymentCaptureService", async () => {
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const capture = vi.fn().mockResolvedValue({ captured: true });
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+    });
+    const event = { id: "evt_pi", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_succeeded" });
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: "pay_1",
+        via: "stripe_checkout_webhook",
+        stripeChargeId: "ch_pi",
+        stripePaymentIntentId: "pi_1",
+        requireApply: true,
+      }),
+    );
+  });
+
+  it("propagates capture failure so the event claim rolls back", async () => {
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "requires_manual_review",
+      amount: "100.00",
+    });
+    const capture = vi
+      .fn()
+      .mockRejectedValue(new PaymentCaptureNotAppliedError("pay_1", "requires_manual_review"));
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          amount: "100.00",
+          status: "requires_manual_review",
+        }),
+      },
+    });
+    const event = { id: "evt_pi_fail", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    await expect(svc.handlePaymentIntentSucceeded(event, pi)).rejects.toBeInstanceOf(
+      PaymentCaptureNotAppliedError,
+    );
+  });
+
+  it("does not claim the event when PaymentIntent amount does not match payment row", async () => {
+    const capture = vi.fn().mockResolvedValue({ captured: true });
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      payments: {
+        findById: vi.fn().mockResolvedValue({ id: "pay_1", amount: "100.00", status: "pending" }),
+      },
+    });
+    const event = { id: "evt_pi_mismatch", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_bad",
+      amount: 9999,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(result).toEqual({
+      processed: false,
+      action: "skipped",
+      reason: "amount_mismatch",
+    });
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+    expect(tryClaimProcessedStripeEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not claim the event when payment row is missing", async () => {
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({
+      db,
+      payments: { findById: vi.fn().mockResolvedValue(null) },
+    });
+    const event = { id: "evt_pi_missing", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_missing",
+      amount: 10000,
+      metadata: { paymentId: "pay_missing" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(result).toEqual({
+      processed: false,
+      action: "skipped",
+      reason: "payment_not_found",
+    });
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(tryClaimProcessedStripeEvent).not.toHaveBeenCalled();
   });
 });

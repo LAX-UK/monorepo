@@ -89,6 +89,17 @@ export class SubmissionError extends Error {
 }
 
 /** Stripe or payment-gateway failure after retries, or non-retryable Stripe error. */
+/** Thrown when a webhook-required capture did not transition payment status (claim must roll back). */
+export class PaymentCaptureNotAppliedError extends Error {
+  constructor(
+    public readonly paymentId: string,
+    public readonly status: string,
+  ) {
+    super(`payment_capture_not_applied:${paymentId}:${status}`);
+    this.name = "PaymentCaptureNotAppliedError";
+  }
+}
+
 export class PaymentProviderError extends Error {
   constructor(
     message: string,

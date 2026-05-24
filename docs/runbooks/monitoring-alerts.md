@@ -19,6 +19,10 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 | `stripe_connect_transfer_failed` | Stripe `transfer.failed` received |
 | `payout_reconciled_failed` | Payout moved to `failed` during Stripe reconciliation |
 | `payout_clawback_required` | Negative-net payout path emitted `payout.clawback_required` |
+| `payment_intent_amount_mismatch` | Stripe PI amount ≠ local payment row; webhook not claimed (Stripe retries) |
+| `refund_db_persist_failed` | Stripe refund succeeded but local DB txn failed; row enqueued in `payment_refund_reconcile` |
+| `xero_payment_record_failed` | Stripe capture OK but Xero bank payment sync failed |
+| `xero_refund_credit_note_failed` | Admin refund OK locally but Xero credit note failed |
 
 ### Example PromQL (Grafana / Mimir)
 
@@ -34,6 +38,14 @@ sum(increase(auction_api_money_path_events_total{event="payout_reconciled_failed
 sum(increase(auction_api_money_path_events_total{event="payout_clawback_required"}[24h])) > 0
 ```
 
+```promql
+sum(increase(auction_api_money_path_events_total{event="refund_db_persist_failed"}[1h])) > 0
+```
+
+```promql
+sum(increase(auction_api_money_path_events_total{event="xero_payment_record_failed"}[1h])) > 0
+```
+
 Wire each to PagerDuty / email per your observability stack.
 
 ---
@@ -47,6 +59,9 @@ Wire each to PagerDuty / email per your observability stack.
 | **Settlement queue backup** | Redis `LLEN bull:payout-settlement:wait` + `active` > 10 for 30m | Worker not draining settlement | Inspect worker logs; check `CRON_INTERNAL_SECRET` match; see [redis-queue-replay](./redis-queue-replay.md). |
 | **Transfer failures** | `stripe_connect_transfer_failed` | Stripe reported transfer failure | Correlate `transfer.id` with payout; reconcile job. |
 | **Dispute clawback** | `payout_clawback_required` | Manual money movement needed | Finance war room; [dispute-clawback](./dispute-clawback.md). |
+| **Refund DB persist failed** | `refund_db_persist_failed` | Stripe refunded but ledger not updated | Check `payment_refund_reconcile` table; run `POST /internal/jobs/retry-refund-reconciles`. |
+| **Xero capture sync failed** | `xero_payment_record_failed` | Invoice exists but Xero payment not recorded | Run `POST /internal/jobs/retry-xero-stripe-capture-sync`; check `payment_external_ref.last_error`. |
+| **PI amount mismatch** | `payment_intent_amount_mismatch` | Metadata/amount drift on capture | Compare Stripe PI vs `payment.amount`; fix data; Stripe will retry unclaimed events. |
 
 ---
 

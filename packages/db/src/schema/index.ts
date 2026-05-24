@@ -48,6 +48,7 @@ export * from "./legal-entity-addresses.js";
 export * from "./legal-entity-documents.js";
 export * from "./legal-entity-onboarding-progress.js";
 export * from "./payouts.js";
+export * from "./payment-refund-reconcile.js";
 export * from "./kyc.js";
 export * from "./artist-aliases.js";
 export * from "./admin-review-tasks.js";

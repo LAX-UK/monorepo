@@ -1,0 +1,1 @@
+-- No automatic rollback: re-approve demoted entities manually after verifying Connect readiness.

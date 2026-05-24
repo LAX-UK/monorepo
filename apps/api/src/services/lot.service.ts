@@ -198,11 +198,11 @@ export class LotService {
       a.sellerLegalEntityId
     ) {
       const seller = await this.legalEntityRepository.findById(a.sellerLegalEntityId);
-      if (seller?.kind === "individual") {
+      if (seller) {
         const connectReady =
           seller.status === "approved" &&
-          seller.stripeConnectChargesEnabled &&
-          seller.stripeConnectPayoutsEnabled;
+          seller.stripeConnectPayoutsEnabled &&
+          (seller.stripeConnectRequirementsCurrentlyDue ?? []).length === 0;
         if (!connectReady) {
           return err(
             new LotError(

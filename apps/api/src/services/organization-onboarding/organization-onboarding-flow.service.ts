@@ -25,6 +25,7 @@ import {
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
+import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 
 const ESTATE_CANONICAL_LABELS = ["Probate document", "Executor ID", "Beneficiary list"] as const;
 
@@ -78,7 +79,8 @@ export type SubmitForReviewResult =
   | { ok: false; code: "user_identity_not_verified" }
   | { ok: false; code: "invalid_transition" }
   | { ok: false; code: "not_found" }
-  | { ok: false; code: "forbidden" };
+  | { ok: false; code: "forbidden" }
+  | { ok: false; code: "connect_sync_failed" };
 
 export type OrganizationOnboardingProfileInput = {
   displayName: string;
@@ -102,6 +104,7 @@ export class OrganizationOnboardingFlowService {
     private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly organizationOnboardingService: IOrganizationOnboardingService,
     private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly stripeConnect: IStripeConnectService | null = null,
   ) {}
 
   async getOnboarding(
@@ -291,12 +294,17 @@ export class OrganizationOnboardingFlowService {
           | "forbidden"
           | "documents_incomplete"
           | "connect_not_started"
+          | "connect_not_complete"
+          | "connect_requirements_pending"
           | "type_incomplete"
           | "address_required";
       }
   > {
     const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
     if (!membership) return { ok: false, code: "forbidden" };
+    if (membership.role !== "owner" && membership.role !== "admin") {
+      return { ok: false, code: "forbidden" };
+    }
 
     const rows = await this.db
       .select()
@@ -326,6 +334,12 @@ export class OrganizationOnboardingFlowService {
     if (step === "connect") {
       if (!row.stripeConnectAccountId) {
         return { ok: false, code: "connect_not_started" };
+      }
+      if (!row.stripeConnectPayoutsEnabled) {
+        return { ok: false, code: "connect_not_complete" };
+      }
+      if ((row.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
+        return { ok: false, code: "connect_requirements_pending" };
       }
     }
 
@@ -361,6 +375,8 @@ export class OrganizationOnboardingFlowService {
           | "documents_incomplete"
           | "type_incomplete"
           | "connect_not_started"
+          | "connect_not_complete"
+          | "connect_requirements_pending"
           | "address_required";
       }
   > {
@@ -403,6 +419,14 @@ export class OrganizationOnboardingFlowService {
       .limit(1);
     if (!u || u.kycStatus !== "approved") {
       return { ok: false, code: "user_identity_not_verified" };
+    }
+
+    if (done.has("connect") && this.stripeConnect?.isConfigured()) {
+      try {
+        await this.stripeConnect.syncAccountFromStripe(entityId);
+      } catch {
+        return { ok: false, code: "connect_sync_failed" };
+      }
     }
 
     const op: LifecycleSelfOp = "submit_for_review";

@@ -179,6 +179,12 @@ const envSchema = z
     STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Transfers webhook signing secret (whsec_…) for platform transfer events. */
     STRIPE_TRANSFERS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** When true, buyer checkout uses Stripe Checkout on the platform account (card pay). */
+    STRIPE_CHECKOUT_ENABLED: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
+    /** Xero bank account code for recording Stripe captures against ACCREC invoices. */
+    XERO_PAYMENT_BANK_ACCOUNT_CODE: z.string().min(1).default("090"),
     /** Threshold (in major currency units, e.g. 1000.00 for £1000) at which KYC is required for buyer exposure. */
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
@@ -244,6 +250,8 @@ const envSchema = z
         });
       }
     }
+    const appEnv = e.APP_ENV;
+
     const hasXeroId = Boolean(e.XERO_CLIENT_ID && e.XERO_CLIENT_ID.length > 0);
     const hasXeroSecret = Boolean(e.XERO_CLIENT_SECRET && e.XERO_CLIENT_SECRET.length > 0);
     const hasXeroRedirect = Boolean(e.XERO_REDIRECT_URI);
@@ -253,6 +261,13 @@ const envSchema = z
           code: z.ZodIssueCode.custom,
           message:
             "XERO_CLIENT_ID, XERO_CLIENT_SECRET, and XERO_REDIRECT_URI must all be set together when enabling Xero OAuth",
+        });
+      }
+      if (appEnv === "production" && !e.XERO_WEBHOOK_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "XERO_WEBHOOK_KEY is required in production when Xero OAuth is enabled",
+          path: ["XERO_WEBHOOK_KEY"],
         });
       }
     }
@@ -273,8 +288,6 @@ const envSchema = z
           "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
       });
     }
-
-    const appEnv = e.APP_ENV;
 
     // Stripe key format — enforced per deployment environment.
     // production: live keys required. test: test keys required (prevents accidental live key use).

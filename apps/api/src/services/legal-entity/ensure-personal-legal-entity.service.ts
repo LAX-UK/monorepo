@@ -50,7 +50,7 @@ export class EnsurePersonalLegalEntityService implements IEnsurePersonalLegalEnt
           kind: "individual",
           subkind: "private_collector",
           createdByUserId: input.userId,
-          status: "approved",
+          status: "lead",
           statusChangedAt: new Date(),
         })
         .returning({ id: legalEntity.id });
