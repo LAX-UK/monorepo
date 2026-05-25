@@ -20,6 +20,7 @@ export function SaleroomLotQuickLookCorner({ lot, isAuthenticated }: Props) {
       isAuthenticated={isAuthenticated}
       loginNextPath={lot.href}
       vm={vm}
+      quickLookCorner="bottomRight"
       quickLookOptions={{
         isAuthenticated,
         watchedLotIds: lot.viewerIsWatching ? [lot.id] : [],

@@ -3,6 +3,12 @@ import { SearchFilterSheet } from "@/components/marketing/search-filter-sheet";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+function clickFirstButton(name: string | RegExp) {
+  const button = screen.getAllByRole("button", { name })[0];
+  if (!button) throw new Error(`Expected button: ${String(name)}`);
+  fireEvent.click(button);
+}
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/search",
@@ -40,7 +46,7 @@ describe("SearchFilterSheet", () => {
     );
 
     expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole("button", { name: /Filters/i })[0]!);
+    clickFirstButton(/Filters/i);
 
     expect(screen.getByLabelText("Keywords")).toHaveValue("picasso");
     expect(screen.getAllByRole("button", { name: "Show 5 results" }).length).toBeGreaterThan(0);

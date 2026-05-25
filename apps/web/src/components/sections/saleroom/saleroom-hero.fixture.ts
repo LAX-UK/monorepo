@@ -1,0 +1,25 @@
+import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
+
+export const saleroomHeroFixture: SaleHeroVM = {
+  id: "sale-1",
+  title: "Modern British Art",
+  coverImage: "https://example.com/cover.jpg",
+  startEndLabel: "12–14 June 2026",
+  status: "active",
+  isLive: true,
+  registrationClosesLabel: null,
+  biddingStartsLabel: null,
+  description: null,
+  shareUrl: "https://example.com/sales/modern-british-art/sale-1",
+  itemsLabel: "120 lots",
+  tags: [],
+  dateLine: "12–14 June 2026",
+  registrationClosesShort: null,
+  biddingStartsShort: null,
+  leftColumnLabel: null,
+  rightColumnLabel: "Bidding",
+  overviewMetaLine: "Online only",
+  liveLabel: "Live",
+  statusBadge: { kind: "live", label: "Live" },
+  liveLotsCount: 8,
+};

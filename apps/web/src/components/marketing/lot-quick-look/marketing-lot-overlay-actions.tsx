@@ -25,6 +25,8 @@ type Props = {
   topRightAddon?: ReactNode;
   /** Optional content under quick-look (e.g. live status pill on catalog cards). */
   bottomLeftAddon?: ReactNode;
+  /** Where the quick-look eye sits — saleroom tiles use bottomRight so bottomLeft stays for the timer. */
+  quickLookCorner?: "bottomLeft" | "bottomRight";
   className?: string;
 };
 
@@ -38,7 +40,12 @@ const bottomLeftInset: Record<Inset, string> = {
   default: "bottom-3 left-3",
 };
 
-/** Heart top-right, quick-look bottom-left — same layout as lot detail “More from” rails. */
+const bottomRightInset: Record<Inset, string> = {
+  compact: "bottom-2 right-2",
+  default: "bottom-3 right-3",
+};
+
+/** Heart top-right; quick-look bottom-left (catalog) or bottom-right (saleroom). */
 export function MarketingLotOverlayActions({
   lotId,
   lotTitle,
@@ -50,16 +57,24 @@ export function MarketingLotOverlayActions({
   inset = "default",
   topRightAddon,
   bottomLeftAddon,
+  quickLookCorner = "bottomLeft",
   className,
 }: Props) {
+  const quickLookSlot = quickLookCorner === "bottomRight" ? "bottomRight" : "bottomLeft";
+  const quickLookTrigger = (
+    <LotQuickLookTrigger
+      vm={vm}
+      layout="overlay"
+      overlaySlot={quickLookSlot}
+      options={quickLookOptions}
+      className="pointer-events-auto"
+    />
+  );
+
   return (
-    <>
+    <div className="pointer-events-none absolute inset-0 z-10">
       <div
-        className={cn(
-          "pointer-events-none absolute z-10 flex flex-col items-end gap-2",
-          topRightInset[inset],
-          className,
-        )}
+        className={cn("absolute flex flex-col items-end gap-2", topRightInset[inset], className)}
       >
         {topRightAddon}
         <MarketingWatchlistHeart
@@ -72,21 +87,40 @@ export function MarketingLotOverlayActions({
           className="pointer-events-auto"
         />
       </div>
-      <div
-        className={cn(
-          "pointer-events-none absolute z-10 flex flex-col items-start gap-2",
-          bottomLeftInset[inset],
-          className,
-        )}
-      >
-        <LotQuickLookTrigger
-          vm={vm}
-          layout="overlay"
-          options={quickLookOptions}
-          className="pointer-events-auto"
-        />
-        {bottomLeftAddon}
-      </div>
-    </>
+      {quickLookCorner === "bottomLeft" ? (
+        <div
+          className={cn(
+            "absolute flex flex-col items-start gap-2",
+            bottomLeftInset[inset],
+            className,
+          )}
+        >
+          {quickLookTrigger}
+          {bottomLeftAddon}
+        </div>
+      ) : null}
+      {quickLookCorner === "bottomRight" && bottomLeftAddon ? (
+        <div
+          className={cn(
+            "absolute flex flex-col items-start gap-2",
+            bottomLeftInset[inset],
+            className,
+          )}
+        >
+          {bottomLeftAddon}
+        </div>
+      ) : null}
+      {quickLookCorner === "bottomRight" ? (
+        <div
+          className={cn(
+            "absolute flex flex-col items-end gap-2",
+            bottomRightInset[inset],
+            className,
+          )}
+        >
+          {quickLookTrigger}
+        </div>
+      ) : null}
+    </div>
   );
 }

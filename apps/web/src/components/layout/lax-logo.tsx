@@ -48,15 +48,17 @@ export function LaxLogo({
       : variant === "auth"
         ? "max-h-[98px] max-w-[min(100%,512px)]"
         : "max-h-9 max-w-[140px] sm:max-h-11 sm:max-w-[201px]";
+  const shellClassName = cn("flex flex-col", variant === "auth" && "items-center", className);
 
   if (src) {
     return (
-      <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
+      <div className={shellClassName}>
         <Image
           src={src}
           alt={imageAlt}
           width={imageWidth}
           height={imageHeight}
+          unoptimized={src.endsWith(".svg")}
           className={cn(
             "h-auto w-auto motion-reduce:transition-none dark:brightness-0 dark:invert",
             imgMax,
@@ -69,7 +71,7 @@ export function LaxLogo({
   }
 
   return (
-    <div className={`flex flex-col ${variant === "auth" ? "items-center" : ""} ${className}`}>
+    <div className={shellClassName}>
       <span
         className={`font-headline font-semibold uppercase leading-none tracking-tight text-brand-900 dark:text-inverse-on-surface ${titleSize}`}
       >

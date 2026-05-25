@@ -1,5 +1,7 @@
+"use client";
+
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -19,19 +21,22 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
       className="m-0 flex min-w-0 max-w-[684px] flex-col gap-8 border-0 p-0 md:gap-14"
     >
       <div className="flex flex-col gap-6">
-        <LabelCaps className="text-base font-medium leading-6 tracking-normal text-white">
+        <OverlayToneText className="font-label text-base font-medium leading-6 tracking-normal">
           {slide.modeBadge}
-        </LabelCaps>
-        <DisplayHeading
+        </OverlayToneText>
+        <OverlayToneText
           as="h1"
-          size="lg"
-          className="font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
+          variant="display"
+          className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
         >
           {slide.title}
-        </DisplayHeading>
-        <p className="font-body text-sm font-semibold uppercase tracking-wide text-white/90">
+        </OverlayToneText>
+        <OverlayToneText
+          variant="muted"
+          className="font-body text-sm font-semibold uppercase tracking-wide"
+        >
           {slide.dateLabel}
-        </p>
+        </OverlayToneText>
       </div>
       <Button variant="cta" size="xl" className="pointer-events-auto min-h-[44px] w-fit" asChild>
         <Link href={slide.href}>Open saleroom</Link>

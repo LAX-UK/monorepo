@@ -25,6 +25,17 @@ export function overlayIconButtonClasses(result: OverlayToneResult, extra?: stri
   );
 }
 
+/** Outlined secondary CTA on hero imagery (e.g. Follow). */
+export function overlayOutlineButtonClasses(result: OverlayToneResult, extra?: string): string {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-[4px] border bg-transparent transition-opacity motion-reduce:transition-none",
+    "border-[color:var(--overlay-border)] text-[color:var(--overlay-fg)]",
+    "hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
+    result.kind === "frosted" && "backdrop-blur-sm bg-[color:var(--overlay-bg)]",
+    extra,
+  );
+}
+
 /** Body / meta copy over imagery. */
 export function overlayTextClasses(_result: OverlayToneResult, extra?: string): string {
   return cn("text-[color:var(--overlay-fg)]", extra);

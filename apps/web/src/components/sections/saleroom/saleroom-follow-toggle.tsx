@@ -1,5 +1,8 @@
 "use client";
 
+import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import { overlayOutlineButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
@@ -24,8 +27,13 @@ function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-const outlinedClass =
-  "box-border inline-flex h-10 min-w-[117px] items-center justify-center gap-2.5 rounded-[4px] border border-brand-800 bg-transparent px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-on-surface/80 dark:text-on-surface";
+const outlinedBlockSizing =
+  "box-border h-10 min-w-[117px] px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px]";
+
+const outlinedOnSurfaceClass = cn(
+  outlinedBlockSizing,
+  "border border-brand-800 bg-transparent text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-on-surface/80 dark:text-on-surface",
+);
 
 export function SaleroomFollowToggle({
   saleId,
@@ -38,6 +46,14 @@ export function SaleroomFollowToggle({
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
+  const inFrame = useOverlayToneContext() != null;
+  const overlayTone = useOverlayTone("contentBlock");
+  const outlinedClass =
+    appearance === "outlined-block" && inFrame
+      ? overlayOutlineButtonClasses(overlayTone, cn(outlinedBlockSizing, "justify-center gap-2.5"))
+      : cn("inline-flex items-center justify-center gap-2.5", outlinedOnSurfaceClass);
+  const outlinedToneProps =
+    appearance === "outlined-block" && inFrame ? overlayToneProps(overlayTone) : {};
 
   const toggle = useCallback(async () => {
     if (!isAuthenticated || busy) return;
@@ -62,7 +78,11 @@ export function SaleroomFollowToggle({
       return (
         <Link
           href={`/login?next=${encodeURIComponent(loginNextPath)}`}
-          className={`${outlinedClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
+          className={cn(
+            outlinedClass,
+            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
+          )}
+          {...outlinedToneProps}
         >
           <BellRing className="size-4 shrink-0" aria-hidden />
           {label ?? "Follow"}
@@ -88,7 +108,8 @@ export function SaleroomFollowToggle({
         disabled={busy}
         aria-pressed={following}
         onClick={() => void toggle()}
-        className={`${outlinedClass} ${following ? "bg-primary-container/20" : ""}`}
+        className={cn(outlinedClass, following ? "bg-primary-container/20" : "")}
+        {...outlinedToneProps}
       >
         {following ? (
           <BellRing className="size-4 shrink-0" aria-hidden />
