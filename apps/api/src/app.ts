@@ -4,6 +4,7 @@ import {
 } from "@auction/auth/server";
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
+import { BROWSER_API_CUSTOM_HEADERS } from "@auction/http-headers";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -20,7 +21,6 @@ import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformAdmin } from "./middleware/require-capability.js";
-import { X_LEGAL_ENTITY_ID_HEADER } from "./middleware/require-legal-entity-context.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
@@ -56,16 +56,8 @@ import { createWellKnownRoutes } from "./routes/well-known.js";
 import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
-/** Browser CORS allowlist — keep in sync with `hc-browser` custom headers. */
-export const BROWSER_CORS_ALLOW_HEADERS = [
-  "Content-Type",
-  "Authorization",
-  "Idempotency-Key",
-  "x-lax-consent-marketing",
-  "x-lax-consent-analytics",
-  "x-lax-page-url",
-  X_LEGAL_ENTITY_ID_HEADER,
-] as const;
+/** Browser CORS allowlist — sourced from `@auction/http-headers`. */
+export const BROWSER_CORS_ALLOW_HEADERS = BROWSER_API_CUSTOM_HEADERS;
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
   const webOrigins = trustedWebOrigins(env);
