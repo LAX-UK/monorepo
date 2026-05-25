@@ -1,3 +1,4 @@
+import type { Redis } from "ioredis";
 import {
   type Account,
   CreditNote,
@@ -45,6 +46,7 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
     private readonly connections: IXeroConnectionRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
     private readonly errorReporter: IErrorReporter,
+    private readonly redis: Redis,
   ) {}
 
   isConfigured(): boolean {
@@ -199,7 +201,9 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
     conn: XeroConnectionRow,
   ): Promise<XeroConnectionRow> {
     try {
-      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn, {
+        redis: this.redis,
+      });
     } catch (cause) {
       this.errorReporter.report({
         severity: "error",

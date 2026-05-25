@@ -9,6 +9,11 @@ export const paymentExternalSyncStatusEnum = pgEnum("payment_external_sync_statu
   "error",
 ]);
 
+export const xeroConnectionStatusEnum = pgEnum("xero_connection_status", [
+  "healthy",
+  "needs_reauth",
+]);
+
 /** Single connected Xero organisation (marketplace-wide). */
 export const xeroConnection = pgTable(
   "xero_connection",
@@ -23,6 +28,10 @@ export const xeroConnection = pgTable(
     connectedByUserId: text("connected_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    connectionStatus: xeroConnectionStatusEnum("connection_status").notNull().default("healthy"),
+    lastRefreshError: text("last_refresh_error"),
+    orgShortCode: text("org_short_code"),
+    orgBaseCurrency: text("org_base_currency"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
