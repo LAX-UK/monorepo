@@ -411,18 +411,25 @@ export function ArtworkBidPanel({
         ? Number.parseFloat(autoBidStep)
         : undefined;
     setSubmitting(true);
-    const result = await bidWriter.placeBid({
-      lotId: auction.id,
-      amount: n,
-      idempotencyKey: ensureConfirmIdempotencyKey(),
-      ...(maxN !== undefined && !Number.isNaN(maxN)
-        ? {
-            maxAutoBidAmount: maxN,
-            ...(stepN !== undefined && !Number.isNaN(stepN) ? { autoBidStepAmount: stepN } : {}),
-          }
-        : {}),
-    });
-    setSubmitting(false);
+    let result: Awaited<ReturnType<typeof bidWriter.placeBid>>;
+    try {
+      result = await bidWriter.placeBid({
+        lotId: auction.id,
+        amount: n,
+        idempotencyKey: ensureConfirmIdempotencyKey(),
+        ...(maxN !== undefined && !Number.isNaN(maxN)
+          ? {
+              maxAutoBidAmount: maxN,
+              ...(stepN !== undefined && !Number.isNaN(stepN) ? { autoBidStepAmount: stepN } : {}),
+            }
+          : {}),
+      });
+    } catch {
+      setError(clientBidError("Could not reach the server. Check your connection and try again."));
+      return;
+    } finally {
+      setSubmitting(false);
+    }
     if (!result.ok) {
       const mapped = mapBidError(result.error, {
         verifyReturnPath: loginNext,
