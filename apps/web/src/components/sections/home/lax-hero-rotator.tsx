@@ -54,7 +54,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       <CarouselContent className="-ml-0 h-full min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
         {slides.map((slide, i) => (
           <CarouselItem key={slide.id} className="basis-full pl-0">
-            <HeroSlidePanel slide={slide} priority={i === 0} slideIndex={i} slideCount={n} />
+            <HeroSlidePanel slide={slide} priority={i === 0} />
           </CarouselItem>
         ))}
       </CarouselContent>
@@ -63,36 +63,30 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
   );
 }
 
-function HeroSlidePanel({
-  slide,
-  priority,
-  slideIndex,
-  slideCount,
-}: {
-  slide: HeroSaleSlideVM;
-  priority: boolean;
-  slideIndex: number;
-  slideCount: number;
-}) {
+const HERO_MIN_H = "min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]";
+
+function HeroSlidePanel({ slide, priority }: { slide: HeroSaleSlideVM; priority: boolean }) {
   return (
-    <RevealOnMount
-      key={slide.id}
-      variant="wipeZoom"
-      className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]"
-      innerClassName="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]"
-    >
-      <HeroAdaptiveShell
-        src={slide.coverImageUrl}
-        alt={slide.coverImageAlt}
-        priority={priority}
-        imgClassName="object-center"
-        backdropScrim={<HeroHorizontalScrim />}
+    <div className={cn("relative", HERO_MIN_H)}>
+      <RevealOnMount
+        key={slide.id}
+        variant="wipeZoom"
+        className="absolute inset-0 overflow-hidden"
+        innerClassName="absolute inset-0"
       >
-        <div className="pointer-events-none absolute inset-0 flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
-          <HeroSlideCopy slide={slide} slideIndex={slideIndex} slideCount={slideCount} />
-        </div>
-      </HeroAdaptiveShell>
-    </RevealOnMount>
+        <HeroAdaptiveShell
+          className="absolute inset-0 h-full w-full"
+          shellClassName={HERO_MIN_H}
+          src={slide.coverImageUrl}
+          alt={slide.coverImageAlt}
+          priority={priority}
+          imgClassName="object-center"
+          backdropScrim={<HeroHorizontalScrim />}
+        >
+          <span className="sr-only">{slide.title}</span>
+        </HeroAdaptiveShell>
+      </RevealOnMount>
+    </div>
   );
 }
 
@@ -118,16 +112,25 @@ function HeroProgressWithCarousel({
 }
 
 function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
-  const { scrollPrev, scrollNext } = useCarousel();
+  const { selectedIndex, scrollPrev, scrollNext } = useCarousel();
   const n = slides.length;
-  if (n <= 1) return null;
+  const current = slides[selectedIndex] ?? slides[0];
+  if (!current) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-16 z-[2] flex flex-col justify-end px-6 md:bottom-20 md:px-10 lg:px-10">
-      <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
-        <HeroDots />
-      </div>
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-0 z-[2] flex flex-col justify-end px-6 pb-16 pt-32 md:px-10 md:pb-20 lg:px-10",
+        HERO_MIN_H,
+      )}
+    >
+      <HeroSlideCopy slide={current} slideIndex={selectedIndex} slideCount={n} />
+      {n > 1 ? (
+        <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
+          <HeroDots />
+        </div>
+      ) : null}
     </div>
   );
 }
