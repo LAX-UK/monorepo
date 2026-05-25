@@ -6,6 +6,7 @@ import {
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
+import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createOrganizationOnboardingRoutes } from "./organization-onboarding.js";
@@ -40,6 +41,10 @@ export function createOrganizationRoutes(container: Container, authenticator: IA
 
   /** POST /organizations — create a new organisation. Auth required. */
   r.post("/", requireAuth, zValidator("json", createOrganizationSchema), async (c) => {
+    if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+      const body = orgModuleDisabledResponse();
+      return c.json(body, 403);
+    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.organizationOnboardingService.createOrganization(userId, body);

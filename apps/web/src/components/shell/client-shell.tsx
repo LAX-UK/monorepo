@@ -18,6 +18,7 @@ type Props = {
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
+  orgModuleEnabled?: boolean;
   children: ReactNode;
 };
 
@@ -31,6 +32,7 @@ export function ClientShell({
   contextBanner,
   topSlot,
   acting = { kind: "self" },
+  orgModuleEnabled = true,
   children,
 }: Props) {
   const config = useMemo(
@@ -39,12 +41,21 @@ export function ClientShell({
         user,
         role: "client",
         clientWorkspaceMode,
+        orgModuleEnabled,
         headerRightSlot,
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
       }),
-    [user, clientWorkspaceMode, headerRightSlot, contextBanner, topSlot, hideEmailStatusBanner],
+    [
+      user,
+      clientWorkspaceMode,
+      orgModuleEnabled,
+      headerRightSlot,
+      contextBanner,
+      topSlot,
+      hideEmailStatusBanner,
+    ],
   );
 
   return (

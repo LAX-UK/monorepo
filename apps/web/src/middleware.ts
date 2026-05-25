@@ -4,6 +4,7 @@ import {
 } from "@/lib/auth/auth-public-edge";
 import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
+import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
 import { type NextRequest, NextResponse } from "next/server";
@@ -109,6 +110,20 @@ export async function middleware(request: NextRequest) {
   }
 
   seedDefaultThemeCookieIfNeeded(request, baseResponse);
+
+  const hostname = request.nextUrl.hostname;
+  if (!isOrgModuleEnabled(hostname)) {
+    const { pathname } = request.nextUrl;
+    if (
+      pathname === "/onboarding/organisation" ||
+      pathname.startsWith("/onboarding/organisation/") ||
+      pathname === "/dashboard/invitations" ||
+      pathname.startsWith("/dashboard/invitations/") ||
+      pathname.startsWith("/dashboard/organisations/")
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/organisations", request.url), 307);
+    }
+  }
 
   const csp = buildCsp(nonce, themeInitScriptSrcToken);
   const headerName = CSP_REPORT_ONLY

@@ -19,6 +19,7 @@ type Props = {
   myRegistrations: { buyerLegalEntityId: string; status: string }[];
   kycApproved: boolean;
   kycFeedback?: KycUserFeedbackDto | null;
+  orgModuleEnabled?: boolean;
 };
 
 function apiBase(): string {
@@ -34,6 +35,7 @@ export function SaleroomRegisterToBid({
   myRegistrations,
   kycApproved,
   kycFeedback = null,
+  orgModuleEnabled = true,
 }: Props) {
   const router = useRouter();
   const [entityId, setEntityId] = useState("");
@@ -81,6 +83,13 @@ export function SaleroomRegisterToBid({
   }
 
   if (buyerEntities.length === 0) {
+    if (!orgModuleEnabled) {
+      return (
+        <p className="max-w-sm font-body text-xs text-on-surface-variant">
+          Organisation buyer profiles are coming soon.
+        </p>
+      );
+    }
     return (
       <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
         <Link href="/onboarding/organisation">Set up a buyer profile</Link>

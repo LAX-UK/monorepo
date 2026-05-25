@@ -31,6 +31,7 @@ import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
@@ -68,6 +69,8 @@ export default async function ArtworkPage({ params }: PageProps) {
     notFound();
   }
   ensureCanonicalLotSlug(slug, auction);
+
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
 
   const watchlistPromise = session
     ? getServerDataContainer()
@@ -262,6 +265,7 @@ export default async function ArtworkPage({ params }: PageProps) {
         kycSummary={kycSummary}
         saleRegistrationBidGate={saleRegistrationBidGate}
         saleRegistrationPath={parentSale ? salePath(parentSale) : null}
+        orgModuleEnabled={orgModuleEnabled}
         saleForLifecycle={saleLifecyclePick}
       />
     </OnlineBidsView>

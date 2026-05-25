@@ -30,6 +30,7 @@ export type BuildShellConfigInput = {
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
+  orgModuleEnabled?: boolean;
 };
 
 export function buildShellConfig({
@@ -45,6 +46,7 @@ export function buildShellConfig({
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   navCounts,
+  orgModuleEnabled = true,
 }: BuildShellConfigInput): ShellConfig {
   const navItems = getAppShellNavItems(
     role,
@@ -53,6 +55,7 @@ export function buildShellConfig({
     clientWorkspaceMode,
     pendingArtistCount,
     navCounts,
+    orgModuleEnabled,
   );
   const nav =
     role === "client"
@@ -68,7 +71,7 @@ export function buildShellConfig({
         );
   const mobileNav =
     role === "client"
-      ? appShellNavItemsToNavItems(getClientMobileBottomTabs(clientWorkspaceMode))
+      ? appShellNavItemsToNavItems(getClientMobileBottomTabs(clientWorkspaceMode, orgModuleEnabled))
       : appShellNavItemsToNavItems(
           getStaffMobileBottomTabs(
             user.role as UserRole,

@@ -8,6 +8,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -237,6 +238,10 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
    * is encoded in the token).
    */
   r.post("/invitations/accept", requireAuth, zValidator("json", acceptBodySchema), async (c) => {
+    if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+      const body = orgModuleDisabledResponse();
+      return c.json(body, 403);
+    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const u = await container.userService.getById(userId);

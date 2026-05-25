@@ -57,6 +57,7 @@ export const saleRegistrationPolicy: BidPolicy = {
               myRegistrations={gate.myRegistrations}
               kycApproved={gate.kycApproved}
               kycFeedback={gate.kycFeedback ?? null}
+              orgModuleEnabled={ctx.orgModuleEnabled !== false}
             />
           </div>
         ),
@@ -85,6 +86,7 @@ export const saleRegistrationPolicy: BidPolicy = {
             myRegistrations={gate.myRegistrations}
             kycApproved={gate.kycApproved}
             kycFeedback={gate.kycFeedback ?? null}
+            orgModuleEnabled={ctx.orgModuleEnabled !== false}
           />
         </div>
       ),
