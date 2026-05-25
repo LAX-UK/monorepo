@@ -13,7 +13,7 @@ export const metadata: Metadata = metadataForPrivate("Sign in", description);
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; switch?: string }>;
+  searchParams: Promise<{ next?: string; switch?: string; verify_pending?: string }>;
 }) {
   const sp = await searchParams;
   const next = typeof sp.next === "string" ? sp.next : undefined;

@@ -1,8 +1,9 @@
 "use client";
 
+import { trackLogin } from "@/lib/analytics/events";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { verifyBackupCodeService } from "@/lib/auth/services/verify-backup-code.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
@@ -22,6 +23,7 @@ export function useVerifyTotpController(nextHref: string) {
   const [mode, setMode] = useState<TwoFactorVerifyMode>("totp");
   const [trustDevice, setTrustDevice] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
 
   const totpForm = useForm({
     resolver: zodResolver(totpVerifyFormSchema),
@@ -51,9 +53,20 @@ export function useVerifyTotpController(nextHref: string) {
         }),
       );
     } else {
-      const base = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
-      const joiner = base.includes("?") ? "&" : "?";
-      router.push(`${base}${joiner}welcome=back`);
+      router.push(
+        resolvePostAuthDestination({
+          user: {
+            email: "",
+            role: "client",
+            emailVerified: true,
+            suspended: false,
+          },
+          requestedNext: nextHref,
+          context: "sign-in",
+          requireEmailVerification: false,
+          withWelcomeBack: true,
+        }),
+      );
     }
     router.refresh();
   }, [nextHref, refetchSession, router]);
@@ -61,17 +74,28 @@ export function useVerifyTotpController(nextHref: string) {
   const submitTotp = useCallback(
     async (code: string) => {
       setBusy(true);
-      const r = await verifyTotpService({
-        code,
-        ...(trustDevice ? { trustDevice: true } : {}),
-      });
-      setBusy(false);
-      if (!r.ok) {
-        notify.error(r.message);
+      setBannerError(null);
+      try {
+        const r = await verifyTotpService({
+          code,
+          ...(trustDevice ? { trustDevice: true } : {}),
+        });
+        if (!r.ok) {
+          setBannerError(r.message);
+          notify.error(r.message);
+          return false;
+        }
+        trackLogin();
+        await completeSignIn();
+        return true;
+      } catch {
+        const message = "Network error. Try again.";
+        setBannerError(message);
+        notify.error(message);
         return false;
+      } finally {
+        setBusy(false);
       }
-      await completeSignIn();
-      return true;
     },
     [completeSignIn, trustDevice],
   );
@@ -79,17 +103,28 @@ export function useVerifyTotpController(nextHref: string) {
   const submitBackup = useCallback(
     async (code: string) => {
       setBusy(true);
-      const r = await verifyBackupCodeService({
-        code,
-        ...(trustDevice ? { trustDevice: true } : {}),
-      });
-      setBusy(false);
-      if (!r.ok) {
-        notify.error(r.message);
+      setBannerError(null);
+      try {
+        const r = await verifyBackupCodeService({
+          code,
+          ...(trustDevice ? { trustDevice: true } : {}),
+        });
+        if (!r.ok) {
+          setBannerError(r.message);
+          notify.error(r.message);
+          return false;
+        }
+        trackLogin();
+        await completeSignIn();
+        return true;
+      } catch {
+        const message = "Network error. Try again.";
+        setBannerError(message);
+        notify.error(message);
         return false;
+      } finally {
+        setBusy(false);
       }
-      await completeSignIn();
-      return true;
     },
     [completeSignIn, trustDevice],
   );
@@ -100,6 +135,7 @@ export function useVerifyTotpController(nextHref: string) {
     trustDevice,
     setTrustDevice,
     busy,
+    bannerError,
     totpForm,
     backupForm,
     submitTotp,

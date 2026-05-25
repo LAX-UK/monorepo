@@ -37,20 +37,25 @@ export async function requireAuthenticatedUser(opts: {
   }
 
   if (user.emailVerified !== true) {
+    const params = new URLSearchParams();
+    if (user.email) params.set("email", user.email);
     if (isSafeNextPath(opts.loginNext)) {
-      redirect(
-        `/register/verify-pending?${new URLSearchParams({ next: opts.loginNext }).toString()}`,
-      );
-    } else {
-      redirect("/register/verify-pending");
+      params.set("next", opts.loginNext);
     }
+    const qs = params.toString();
+    redirect(qs ? `/register/verify-pending?${qs}` : "/register/verify-pending");
   }
 
   const role = user.role as UserRole;
   const staff = user.staffRole ?? null;
 
   if (opts.shell === "client" && canAccessStaffAdminShell(role)) {
-    redirect(staffRoleDefaultDestination(role, staff));
+    const dest = staffRoleDefaultDestination(role, staff);
+    const destPath = dest.split("?")[0] ?? dest;
+    const loginPath = opts.loginNext.split("?")[0] ?? opts.loginNext;
+    if (destPath !== loginPath) {
+      redirect(dest);
+    }
   }
 
   if (opts.shell === "staff" && !canAccessStaffAdminShell(role)) {

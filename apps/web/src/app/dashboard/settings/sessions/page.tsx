@@ -22,7 +22,7 @@ export default async function SessionsPage() {
       redirect("/login?next=/dashboard/settings/sessions&auth=required");
     }
     if (result.error === "suspended") {
-      redirect("/login?session_expired=1");
+      redirect("/account-suspended");
     }
     redirect(`/dashboard?error=sessions&code=${encodeURIComponent(result.error)}`);
   }

@@ -120,7 +120,7 @@ export async function runSignInTurnstileGate(opts: {
 
   if (emailForKey) {
     const key = failureKeyForEmail(emailForKey);
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       const count = await redis.incr(key);
       if (count === 1) await redis.expire(key, FAIL_TTL_SEC);
     } else if (res.status >= 200 && res.status < 300) {

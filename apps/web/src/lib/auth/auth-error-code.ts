@@ -14,6 +14,7 @@ export const AUTH_ERROR_CODES = [
   "forgot_password_failed",
   "reset_password_failed",
   "totp_invalid",
+  "two_factor_session_expired",
   "backup_code_invalid",
   "two_factor_enable_failed",
   "two_factor_disable_failed",
@@ -58,6 +59,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   forgot_password_failed: "Something went wrong. Please try again.",
   reset_password_failed: "We could not reset your password. Please request a new link.",
   totp_invalid: "That code is not valid. Try again.",
+  two_factor_session_expired:
+    "Your two-factor sign-in session expired. Please sign in again and enter your code.",
   backup_code_invalid: "That backup code is not valid. Try again.",
   two_factor_enable_failed:
     "We could not start two-factor setup. Check your password and try again.",
@@ -144,6 +147,9 @@ export function mapBetterAuthSecondaryFailure(input: {
   const msg = (input.message ?? "").toLowerCase();
   if (raw.includes("RATE") || raw.includes("TOO_MANY") || msg.includes("too many")) {
     return "rate_limited";
+  }
+  if (raw.includes("INVALID_TWO_FACTOR") || raw.includes("TWO_FACTOR_COOKIE")) {
+    return "two_factor_session_expired";
   }
   return input.defaultCode;
 }

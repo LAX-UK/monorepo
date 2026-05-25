@@ -108,11 +108,14 @@ export function buildEmailAndPasswordBlock(options: {
   email?: IEmailService | undefined;
   requireEmailVerification?: boolean | undefined;
   revokeAllSessions?: RevokeSessions | undefined;
+  webOrigin?: string | undefined;
 }) {
-  const { email, requireEmailVerification, revokeAllSessions } = options;
+  const { email, requireEmailVerification, revokeAllSessions, webOrigin } = options;
+  const sessionsSettingsUrl = `${(webOrigin ?? "https://lax.bid").replace(/\/$/, "")}/dashboard/settings/sessions`;
   return {
     enabled: true,
     requireEmailVerification: requireEmailVerification ?? true,
+    resetPasswordTokenExpiresIn: AUTH_TIMINGS.resetPasswordExpiresSec,
     sendResetPassword: async ({
       user: authUser,
       url,
@@ -150,6 +153,23 @@ export function buildEmailAndPasswordBlock(options: {
           userId: authUser.id,
           error: e instanceof Error ? e.message : String(e),
         });
+        email
+          ?.enqueue({
+            template: "password-changed-sessions-not-revoked",
+            to: authUser.email,
+            userId: authUser.id,
+            category: "auth",
+            vars: {
+              userName: authUser.name,
+              sessionsSettingsUrl,
+            },
+          })
+          .catch((err: unknown) => {
+            console.error("[auth] enqueue password-changed-sessions-not-revoked failed", {
+              userId: authUser.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
       }
       email
         ?.enqueue({
@@ -188,7 +208,7 @@ export function buildEmailAndPasswordBlock(options: {
 export function buildEmailVerificationBlock(email?: IEmailService | undefined) {
   return {
     sendOnSignUp: true,
-    sendOnSignIn: true,
+    sendOnSignIn: false,
     autoSignInAfterVerification: true,
     expiresIn: AUTH_TIMINGS.emailVerificationExpiresSec,
     sendVerificationEmail: async ({

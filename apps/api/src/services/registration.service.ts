@@ -22,13 +22,18 @@ export class RegistrationService implements IRegistrationService {
     if (!v.ok) {
       return { ok: false as const, message: v.message, status: 400 };
     }
+    let validatedInvite: Awaited<ReturnType<InvitationService["validateForRegistration"]>> | null =
+      null;
     if (input.inviteToken) {
-      const invite = await this.invitations.validateForRegistration(input.inviteToken, input.email);
-      if (invite.isErr()) {
+      validatedInvite = await this.invitations.validateForRegistration(
+        input.inviteToken,
+        input.email,
+      );
+      if (validatedInvite.isErr()) {
         return {
           ok: false as const,
-          message: invite.error.message,
-          status: invite.error.status as 400,
+          message: validatedInvite.error.message,
+          status: validatedInvite.error.status as 400,
         };
       }
     }
@@ -37,6 +42,8 @@ export class RegistrationService implements IRegistrationService {
       name: displayName,
       email: input.email,
       password: input.password,
+      ...(input.inviteToken ? { inviteToken: input.inviteToken } : {}),
+      persona: input.persona,
     });
     if (!signup.ok) {
       return { ok: false as const, message: signup.message, status: signup.status ?? 400 };
@@ -54,18 +61,20 @@ export class RegistrationService implements IRegistrationService {
         message: profile.message,
       });
     }
-    if (input.inviteToken) {
-      const consumed = await this.invitations.consumeInviteForNewUser(
-        input.inviteToken,
-        signup.userId,
-        input.email,
-      );
-      if (consumed.isErr()) {
-        return {
-          ok: false as const,
-          message: consumed.error.message,
-          status: consumed.error.status as 400,
-        };
+    if (input.inviteToken && validatedInvite?.isOk()) {
+      if (validatedInvite.value.targetLegalEntityId == null) {
+        const consumed = await this.invitations.consumeInviteForNewUser(
+          input.inviteToken,
+          signup.userId,
+          input.email,
+        );
+        if (consumed.isErr()) {
+          return {
+            ok: false as const,
+            message: consumed.error.message,
+            status: consumed.error.status as 400,
+          };
+        }
       }
     }
     await this.welcome.notifyWelcome(signup.userId, input.email);

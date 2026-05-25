@@ -18,6 +18,9 @@ export async function forgotPasswordService(
   });
   const payload = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
   if (!res.ok) {
+    if (res.status === 429) {
+      return authSubmitFailure("rate_limited");
+    }
     if (payload.code === "captcha_required" || payload.code === "captcha_invalid") {
       return authSubmitFailure(
         payload.code === "captcha_required" ? "captcha_required" : "captcha_invalid",

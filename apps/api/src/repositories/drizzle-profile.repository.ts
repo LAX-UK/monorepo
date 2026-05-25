@@ -29,6 +29,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         signupPersona: user.signupPersona,
         deletionRequestedAt: user.deletionRequestedAt,
         twoFactorEnabled: user.twoFactorEnabled,
+        suspendedAt: user.suspendedAt,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -54,6 +55,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       signupPersona: persona,
       deletionRequestedAt: row.deletionRequestedAt ?? null,
       twoFactorEnabled: row.twoFactorEnabled ?? false,
+      suspended: row.suspendedAt != null,
     };
   }
 

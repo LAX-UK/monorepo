@@ -29,13 +29,26 @@ describe("isSafeNextPath", () => {
     expect(isSafeNextPath("/%2F%2Fevil.com")).toBe(false);
     expect(isSafeNextPath("/%5Cevil")).toBe(false);
   });
+
+  it("rejects auth-internal paths", () => {
+    expect(isSafeNextPath("/login")).toBe(false);
+    expect(isSafeNextPath("/register")).toBe(false);
+    expect(isSafeNextPath("/auth/social-callback")).toBe(false);
+    expect(isSafeNextPath("/account-suspended")).toBe(false);
+  });
 });
 
 describe("staffRoleDefaultDestination", () => {
   it("maps staff specializations", () => {
     expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
     expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/finance");
+    expect(staffRoleDefaultDestination("staff", "content_marketing")).toBe("/admin/artists");
     expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
+  });
+
+  it("never sends staff to /dashboard", () => {
+    expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
+    expect(staffRoleDefaultDestination("staff", "content_marketing")).not.toBe("/dashboard");
   });
 });
 
@@ -99,6 +112,62 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-in",
       }),
     ).toBe("/admin");
+  });
+
+  it("routes content_marketing staff to /admin/artists after OAuth-style sign-in", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: {
+          ...clientUser,
+          role: "staff",
+          staffRole: "content_marketing",
+        },
+        context: "sign-in",
+        withWelcomeBack: true,
+      }),
+    ).toBe("/admin/artists?welcome=back");
+  });
+
+  it("ignores default client dashboard next for staff users", () => {
+    const staffMarketing = {
+      ...clientUser,
+      role: "staff" as const,
+      staffRole: "content_marketing" as const,
+    };
+    expect(
+      resolvePostAuthDestination({
+        user: staffMarketing,
+        requestedNext: "/dashboard",
+        context: "sign-in",
+        withWelcomeBack: true,
+      }),
+    ).toBe("/admin/artists?welcome=back");
+    expect(
+      resolvePostAuthDestination({
+        user: staffMarketing,
+        requestedNext: "/dashboard/portfolio",
+        context: "sign-in",
+        withWelcomeBack: true,
+      }),
+    ).toBe("/admin/artists?welcome=back");
+    expect(
+      resolvePostAuthDestination({
+        user: staffMarketing,
+        requestedNext: "/sales/foo",
+        context: "sign-in",
+      }),
+    ).toBe("/sales/foo");
+  });
+
+  it("preserves client dashboard deep links", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: clientUser,
+        requestedNext: "/dashboard/portfolio",
+        context: "sign-in",
+        withWelcomeBack: true,
+      }),
+    ).toBe("/dashboard/portfolio?welcome=back");
   });
 
   it("appends welcome=back", () => {
