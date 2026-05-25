@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/ui/overlay-tone-context", () => ({
   useOverlayTone: () => ({ tone: "light", kind: "frosted" }),
+  useOverlayToneContext: () => null,
 }));
 
 describe("MarketingWatchlistHeart", () => {

@@ -2,6 +2,12 @@ import { ArtistFiltersSheet } from "@/components/sections/artists/artist-filters
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+function clickFirstButton(name: string | RegExp) {
+  const button = screen.getAllByRole("button", { name })[0];
+  if (!button) throw new Error(`Expected button: ${String(name)}`);
+  fireEvent.click(button);
+}
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -62,7 +68,7 @@ describe("ArtistFiltersSheet", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Filters/i })[0]!);
+    clickFirstButton(/Filters/i);
 
     expect(screen.getByRole("heading", { name: "Scenario" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Kind" })).toBeInTheDocument();

@@ -17,6 +17,7 @@ export const LOT_CARD_GRID_SLOTS: FixedSlotDef[] = [
 export const LOT_CARD_TIMER_SLOTS: FixedSlotDef[] = [
   ...LOT_CARD_GRID_SLOTS,
   { name: "bottomLeft", type: "pill", rect: SLOT_RECTS.bottomLeft },
+  { name: "bottomRight", type: "pill", rect: SLOT_RECTS.bottomRight },
 ];
 
 export const GALLERY_HERO_SLOTS: FixedSlotDef[] = [

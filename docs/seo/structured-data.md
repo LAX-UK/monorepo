@@ -54,3 +54,7 @@ Use Google's [Rich Results Test](https://search.google.com/test/rich-results)
 for each high-value route after deploys. Cross-check the sitemap with
 `xmllint --format` to confirm no malformed entries land before search engines
 crawl them.
+
+For saleroom catalog / layout UI changes, see
+[marketing-ui-seo-audit.md](./marketing-ui-seo-audit.md) and run the contract
+tests under `saleroom-catalog-seo.contract.test.tsx`.

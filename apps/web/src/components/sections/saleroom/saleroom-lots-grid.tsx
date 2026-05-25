@@ -27,7 +27,7 @@ export function SaleroomLotsGrid({
   return (
     <ul
       className={cn(
-        "list-none justify-items-stretch gap-x-3 gap-y-6 p-0 md:gap-x-7 md:gap-y-10",
+        "list-none auto-rows-fr items-stretch justify-items-stretch gap-x-3 gap-y-6 p-0 md:gap-x-7 md:gap-y-10",
         sparseGridClasses(lots.length, {
           multi:
             "grid grid-cols-1 gap-x-3 gap-y-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
@@ -35,8 +35,13 @@ export function SaleroomLotsGrid({
       )}
     >
       {lots.map((lot, index) => (
-        <li key={lot.id} className="flex min-w-0 justify-center md:justify-start">
-          <RevealInView variant="fadeUp" delayMs={index * 70} className="w-full max-w-full">
+        <li key={lot.id} className="flex h-full min-w-0 flex-col">
+          <RevealInView
+            variant="fadeUp"
+            delayMs={index * 70}
+            className="h-full w-full"
+            innerClassName="flex h-full min-w-0 flex-col"
+          >
             <SaleroomLotCard
               lot={lot}
               cornerAction={renderCorner?.(lot)}
