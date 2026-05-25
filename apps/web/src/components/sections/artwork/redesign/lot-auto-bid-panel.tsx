@@ -162,13 +162,20 @@ export function LotAutoBidPanel({
     if (!saveIdempotencyKeyRef.current) {
       saveIdempotencyKeyRef.current = crypto.randomUUID();
     }
-    const result = await autoBidWriter.setAutoBid({
-      lotId: lot.id,
-      maxAutoBidAmount: maxNumeric,
-      autoBidStepAmount: stepNumeric,
-      idempotencyKey: saveIdempotencyKeyRef.current,
-    });
-    setSaving(false);
+    let result: Awaited<ReturnType<typeof autoBidWriter.setAutoBid>>;
+    try {
+      result = await autoBidWriter.setAutoBid({
+        lotId: lot.id,
+        maxAutoBidAmount: maxNumeric,
+        autoBidStepAmount: stepNumeric,
+        idempotencyKey: saveIdempotencyKeyRef.current,
+      });
+    } catch {
+      setError(clientBidError("Could not reach the server. Check your connection and try again."));
+      return;
+    } finally {
+      setSaving(false);
+    }
     if (!result.ok) {
       setError(
         mapBidError(result.error, {
@@ -202,8 +209,15 @@ export function LotAutoBidPanel({
     setError(null);
     setSuccess(null);
     setClearing(true);
-    const result = await autoBidWriter.clearAutoBid(lot.id);
-    setClearing(false);
+    let result: Awaited<ReturnType<typeof autoBidWriter.clearAutoBid>>;
+    try {
+      result = await autoBidWriter.clearAutoBid(lot.id);
+    } catch {
+      setError(clientBidError("Could not reach the server. Check your connection and try again."));
+      return;
+    } finally {
+      setClearing(false);
+    }
     if (!result.ok) {
       setError(clientBidError(result.error));
       return;
