@@ -51,7 +51,7 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
             formId="end-impersonation-form"
             size="sm"
             variant="secondary"
-            className="w-full bg-white text-red-700 hover:bg-red-50 sm:w-auto"
+            className="w-full bg-white text-red-700 hover:bg-red-50 dark:bg-surface-container-highest dark:text-red-300 dark:hover:bg-red-950/40 sm:w-auto"
             confirmTitle="End impersonation?"
             confirmBody="You will return to your staff session immediately."
             confirmLabel="End now"

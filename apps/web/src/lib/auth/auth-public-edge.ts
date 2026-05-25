@@ -1,7 +1,6 @@
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import type { NextRequest } from "next/server";
-
-const sessionCookiePattern = /better-auth|session_token/i;
 
 /** When the browser lands on a protected route with `?from=auth-edge`, forward a header so SSR
  * can avoid redirect loops if the session cookie was stale.
@@ -43,7 +42,7 @@ export function getAuthPublicCookieRedirectUrl(requestUrl: URL, cookieHeader: st
   if (sp.get("registered") === "1") return null;
   if (sp.get("reset") === "1") return null;
   if (pathname === "/register" && sp.has("invite")) return null;
-  if (!sessionCookiePattern.test(cookieHeader)) return null;
+  if (!hasAuthSessionCookie(cookieHeader)) return null;
 
   const next = sp.get("next");
   const targetPath = next != null && isSafeNextPath(next) ? next : "/dashboard";
