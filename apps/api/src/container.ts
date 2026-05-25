@@ -54,6 +54,7 @@ import { ZodRegistrationValidator } from "./infrastructure/zod-registration.vali
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
+import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
 import { createPlatformCatalogLegalEntityIdProvider } from "./lib/platform-catalog-legal-entity.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
@@ -336,6 +337,8 @@ export type Container = {
   kycResubmissionNotifier: KycResubmissionNotifier;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
+  /** Production-domain gate for org module mutations. */
+  orgModuleGate: OrgModuleGate;
   /** organisation multi-step onboarding (Phase D). */
   organizationOnboardingFlowService: OrganizationOnboardingFlowService;
   /** artist registry (search, merge, review). */
@@ -1050,6 +1053,8 @@ export function createContainer(env: Env): Container {
   );
   const accountLinkingService = new AccountLinkingService(db);
 
+  const orgModuleGate = createOrgModuleGate(env.WEB_ORIGIN);
+
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
   const adminSuspender = new DrizzleAdminUserSuspender(db, sessionRevocation, {
@@ -1181,6 +1186,7 @@ export function createContainer(env: Env): Container {
     kycService,
     kycResubmissionNotifier,
     organizationOnboardingService,
+    orgModuleGate,
     organizationOnboardingFlowService,
     artistRegistryService,
     stripeConnectService,
