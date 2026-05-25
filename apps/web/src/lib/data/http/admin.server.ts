@@ -799,16 +799,27 @@ export async function getAdminPayoutList(
   return body.data.map(parseAdminPayoutRow);
 }
 
+export type AdminXeroConnectionHealth = "healthy" | "degraded" | "disconnected";
+
 export type AdminXeroIntegrationStatus = {
   connected: boolean;
   tenantId: string | null;
   tenantName: string | null;
   expiresAt: string | null;
   oauthConfigured: boolean;
-  /** Optional explicit token expiry (mockup label "Token expiry"); falls back to `expiresAt`. */
-  tokenExpiresAt?: string;
-  /** Optional fully-qualified webhook URL; the page falls back to env composition when absent. */
-  webhookUrl?: string;
+  connectedAt: string | null;
+  updatedAt: string | null;
+  connectedBy: { id: string; name: string; email: string } | null;
+  scopes: string | null;
+  webhookConfigured: boolean;
+  webhookUrl: string | null;
+  recentWebhookErrors: number;
+  syncErrorCount: number;
+  health: AdminXeroConnectionHealth;
+  connectionStatus: "healthy" | "needs_reauth" | null;
+  lastRefreshError: string | null;
+  orgShortCode: string | null;
+  orgBaseCurrency: string | null;
 };
 
 export async function getAdminXeroIntegrationStatus(): Promise<AdminXeroIntegrationStatus> {

@@ -3,6 +3,7 @@ import type { Redis } from "ioredis";
 import type { TokenSet } from "xero-node";
 import type { Env } from "../env.js";
 import { createXeroClientForOAuth } from "./accounting/xero-accounting.provider.js";
+import { fetchAndCacheXeroOrganisationMetadata } from "./accounting/xero-organisation-metadata.js";
 import type { IXeroConnectionRepository } from "./interfaces/xero-repositories.js";
 
 function tokenExpiryFromSeconds(expiresAt: unknown): Date {
@@ -79,6 +80,8 @@ export class XeroOAuthService {
       })(),
       connectedByUserId: params.userId,
     });
+
+    await fetchAndCacheXeroOrganisationMetadata(client, tenant.tenantId, this.connections);
 
     return { ok: true };
   }
