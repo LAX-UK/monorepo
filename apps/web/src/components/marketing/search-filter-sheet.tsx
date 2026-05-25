@@ -8,8 +8,9 @@ import { SearchCategoryChips } from "@/components/marketing/search-category-chip
 import { SearchFilterForm } from "@/components/marketing/search-filter-form";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { SearchSortSheetGroup } from "@/components/marketing/search-sort-sheet-group";
+import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import type { Category } from "@auction/types";
+import type { Category, LotStatus } from "@auction/types";
 import { useCallback, useId, useState } from "react";
 
 const SEARCH_FILTER_FORM_ID = "search-filter-sheet-form";
@@ -23,6 +24,8 @@ export type SearchFilterSheetProps = {
   categories: Category[];
   trimmed: string;
   resultCountLabel: string;
+  status?: LotStatus;
+  ending?: SearchEndingWindow;
 };
 
 /** Mobile filter sheet + trigger for `/search`. */
@@ -35,6 +38,8 @@ export function SearchFilterSheet({
   categories,
   trimmed,
   resultCountLabel,
+  status,
+  ending,
 }: SearchFilterSheetProps) {
   const [open, setOpen] = useState(false);
   const formId = useId();
@@ -67,6 +72,9 @@ export function SearchFilterSheet({
           sort={sort}
           categoryId={categoryId}
           view={view}
+          {...(status ? { status } : {})}
+          {...(ending ? { ending } : {})}
+          inputId={`${resolvedFormId}-q`}
           onSubmitted={close}
         />
         {categories.length > 0 ? (
@@ -81,6 +89,8 @@ export function SearchFilterSheet({
               trimmed={trimmed}
               sort={sort}
               view={view}
+              {...(status ? { status } : {})}
+              {...(ending ? { ending } : {})}
             />
           </div>
         ) : null}
@@ -92,6 +102,8 @@ export function SearchFilterSheet({
             sort,
             view,
             ...(categoryId ? { categoryId } : {}),
+            ...(status ? { status } : {}),
+            ...(ending ? { ending } : {}),
           }}
         />
       </div>

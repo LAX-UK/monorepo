@@ -8,14 +8,22 @@ import {
   SearchCatalogPendingProvider,
   SearchResultsShell,
 } from "@/components/marketing/search-catalog-client";
-import { SearchFilterForm } from "@/components/marketing/search-filter-form";
+import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-form";
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
+import { lotsEndingSoon } from "@/components/sections/home/home-urgency-helpers";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import {
+  parseSearchEnding,
+  parseSearchStatus,
+  searchEndingLabel,
+  searchStatusLabel,
+} from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
@@ -38,6 +46,8 @@ type PageProps = {
     sort?: string;
     categoryId?: string;
     view?: string;
+    status?: string;
+    ending?: string;
   }>;
 };
 
@@ -49,7 +59,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     (typeof sp.categoryId === "string" && sp.categoryId.trim().length > 0) ||
     (typeof sp.sort === "string" && sp.sort.trim().length > 0) ||
     (typeof sp.offset === "string" && sp.offset !== "0") ||
-    (typeof sp.view === "string" && sp.view.trim().length > 0);
+    (typeof sp.view === "string" && sp.view.trim().length > 0) ||
+    (typeof sp.status === "string" && sp.status.trim().length > 0) ||
+    (typeof sp.ending === "string" && sp.ending.trim().length > 0);
   return metadataForListing({
     title: "Search lots",
     description:
@@ -77,11 +89,21 @@ function resultSummaryLabel(trimmed: string, count: number, hasNext: boolean): s
 
 export default async function SearchPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const { q = "", offset: offsetRaw = "0", sort: sortRaw, categoryId: catRaw, view: viewRaw } = sp;
+  const {
+    q = "",
+    offset: offsetRaw = "0",
+    sort: sortRaw,
+    categoryId: catRaw,
+    view: viewRaw,
+    status: statusRaw,
+    ending: endingRaw,
+  } = sp;
   const offset = Math.max(0, Number.parseInt(String(offsetRaw), 10) || 0);
   const trimmed = String(q).trim();
   const sort = parseSort(firstString(sortRaw));
   const categoryId = firstString(catRaw);
+  const statusFilter = parseSearchStatus(firstString(statusRaw));
+  const endingWindow = parseSearchEnding(firstString(endingRaw));
 
   const [reader, session, catReader, watchedSet] = await Promise.all([
     getServerLotReader(),
@@ -105,23 +127,49 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   let auctions: Lot[] = [];
   let loadError: string | null = null;
+  let hasNext = false;
   try {
     const fetchLimit = PAGE_SIZE + 1;
-    auctions = await reader.list({
-      limit: fetchLimit,
-      offset,
-      ...(trimmed ? { q: trimmed } : {}),
-      sort,
-      ...(categoryId ? { categoryId } : {}),
-    });
+    const listSort = endingWindow ? "endingAsc" : sort;
+    const listStatus = statusFilter ?? (endingWindow ? "active" : undefined);
+
+    if (endingWindow === "24h") {
+      const batch = await reader.list({
+        limit: 200,
+        offset: 0,
+        ...(trimmed ? { q: trimmed } : {}),
+        sort: "endingAsc",
+        status: "active",
+        ...(categoryId ? { categoryId } : {}),
+      });
+      const endingSoon = lotsEndingSoon(batch);
+      const slice = endingSoon.slice(offset, offset + PAGE_SIZE + 1);
+      hasNext = slice.length > PAGE_SIZE;
+      auctions = hasNext ? slice.slice(0, PAGE_SIZE) : slice;
+    } else {
+      auctions = await reader.list({
+        limit: fetchLimit,
+        offset,
+        ...(trimmed ? { q: trimmed } : {}),
+        sort: listSort,
+        ...(listStatus ? { status: listStatus } : {}),
+        ...(categoryId ? { categoryId } : {}),
+      });
+      hasNext = auctions.length > PAGE_SIZE;
+      if (hasNext) auctions = auctions.slice(0, PAGE_SIZE);
+    }
   } catch {
     loadError = "We couldn’t load inventory right now. Please try again shortly.";
   }
-  const hasNext = auctions.length > PAGE_SIZE;
-  const filtered = hasNext ? auctions.slice(0, PAGE_SIZE) : auctions;
+  const filtered = auctions;
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
   const prevOffset = Math.max(0, offset - PAGE_SIZE);
+
+  const qsExtras = {
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(endingWindow ? { ending: endingWindow } : {}),
+  };
 
   const loginNextPath = `/search?${buildSearchQs({
     offset,
@@ -129,6 +177,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     sort,
     ...(categoryId ? { categoryId } : {}),
     view: layoutView,
+    ...qsExtras,
   })}`;
 
   const base = getSiteUrl();
@@ -154,6 +203,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       sort,
       ...(categoryId ? { categoryId } : {}),
       view: layoutView,
+      ...qsExtras,
     });
 
   const popularCategories = categories.slice(0, 6);
@@ -162,6 +212,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
     q: trimmed,
     ...(categoryId ? { categoryId } : {}),
     sort,
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(endingWindow ? { ending: endingWindow } : {}),
   });
   const resultCountLabel =
     filtered.length === 0
@@ -172,7 +224,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   return (
     <SearchCatalogPendingProvider>
-      <main id="main-content" className="bg-surface pb-[var(--page-bottom-padding)]">
+      <main
+        id="main-content"
+        className="bg-surface pb-[var(--page-bottom-padding)] pt-[var(--section-pt)]"
+      >
         <script type="application/ld+json" suppressHydrationWarning>
           {listLdText}
         </script>
@@ -180,37 +235,30 @@ export default async function SearchPage({ searchParams }: PageProps) {
         <MarketingPageHero
           title="Search lots"
           titleSize="section"
+          className="pb-6 pt-0 md:pb-8"
           description="Browse live inventory by title, medium, and category. Save lots to your watchlist to track them from your dashboard."
           meta={
             !loadError ? (
               <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
-                {resultSummaryLabel(trimmed, filtered.length, hasNext)}
+                {endingWindow
+                  ? searchEndingLabel(endingWindow)
+                  : statusFilter
+                    ? searchStatusLabel(statusFilter)
+                    : resultSummaryLabel(trimmed, filtered.length, hasNext)}
               </p>
             ) : null
           }
         />
 
-        <RecentlyViewedRail />
-
-        <div className="mx-auto max-w-[var(--container-max,1440px)] px-6 md:px-16">
-          <div className="mb-6 md:hidden">
-            <SearchFilterForm
-              variant="default"
-              initialQ={String(q)}
-              sort={sort}
-              categoryId={categoryId}
-              view={layoutView}
-            />
-          </div>
-          <div className="mb-6 hidden md:block">
-            <SearchFilterForm
-              variant="hero"
-              initialQ={String(q)}
-              sort={sort}
-              categoryId={categoryId}
-              view={layoutView}
-            />
-          </div>
+        <div className={MARKETING_PAGE_SHELL}>
+          <SearchFilterFormDesktop
+            initialQ={String(q)}
+            sort={sort}
+            categoryId={categoryId}
+            view={layoutView}
+            {...(statusFilter ? { status: statusFilter } : {})}
+            {...(endingWindow ? { ending: endingWindow } : {})}
+          />
 
           <SearchPageToolbar
             {...(countLabel ? { countLabel } : {})}
@@ -222,7 +270,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
             categories={categories}
             trimmed={trimmed}
             resultCountLabel={resultCountLabel}
+            {...(statusFilter ? { status: statusFilter } : {})}
+            {...(endingWindow ? { ending: endingWindow } : {})}
           />
+
+          <RecentlyViewedRail className="-mx-8 md:-mx-10 lg:-mx-14" />
 
           <SearchActiveFilters categories={categories} sort={sort} />
 
@@ -256,6 +308,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                                 sort,
                                 categoryId: c.id,
                                 view: layoutView,
+                                ...qsExtras,
                               })}`}
                               scroll={false}
                               className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
