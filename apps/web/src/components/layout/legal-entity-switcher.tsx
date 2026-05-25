@@ -34,6 +34,7 @@ type Props = {
   memberships: LegalEntitySummary[];
   /** Pending org invites for the signed-in user's email (badge on trigger). */
   pendingInvitesCount?: number;
+  orgModuleEnabled?: boolean;
 };
 
 const SWITCH_FAILURE_TITLES: Record<"not_a_member" | "unauthenticated" | "unknown", string> = {
@@ -49,7 +50,12 @@ const SWITCH_FAILURE_DESCRIPTIONS: Record<"not_a_member" | "unauthenticated" | "
     unknown: "Please try again in a moment.",
   };
 
-export function LegalEntitySwitcher({ acting, memberships, pendingInvitesCount = 0 }: Props) {
+export function LegalEntitySwitcher({
+  acting,
+  memberships,
+  pendingInvitesCount = 0,
+  orgModuleEnabled = true,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -178,7 +184,7 @@ export function LegalEntitySwitcher({ acting, memberships, pendingInvitesCount =
                   </CommandItem>
                 ))}
             </CommandGroup>
-            {memberships.some((m) => m.kind === "organisation") && (
+            {memberships.some((m) => m.kind === "organisation") && orgModuleEnabled ? (
               <CommandGroup heading="Organisations">
                 {memberships
                   .filter((m) => m.kind === "organisation")
@@ -217,45 +223,47 @@ export function LegalEntitySwitcher({ acting, memberships, pendingInvitesCount =
                     </CommandItem>
                   ))}
               </CommandGroup>
-            )}
+            ) : null}
           </CommandList>
         </Command>
-        <div className="rounded-b-lg border-t border-border-hairline bg-surface-container-lowest/50 p-1">
-          {pendingInvitesCount > 0 ? (
+        {orgModuleEnabled ? (
+          <div className="rounded-b-lg border-t border-border-hairline bg-surface-container-lowest/50 p-1">
+            {pendingInvitesCount > 0 ? (
+              <Link
+                href="/dashboard/invitations"
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
+              >
+                <span className="flex items-center gap-2">
+                  Pending invitations
+                  <StatusBadge variant="warning" size="sm">
+                    {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
+                  </StatusBadge>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+              </Link>
+            ) : null}
             <Link
-              href="/dashboard/invitations"
+              href="/dashboard/organisations"
+              onClick={() => setOpen(false)}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
+            >
+              Manage organisations
+              <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+            </Link>
+            <Link
+              href="/onboarding/organisation?fresh=1"
               onClick={() => setOpen(false)}
               className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
             >
               <span className="flex items-center gap-2">
-                Pending invitations
-                <StatusBadge variant="warning" size="sm">
-                  {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
-                </StatusBadge>
+                <Plus className="size-4 text-primary" aria-hidden />
+                Register organisation
               </span>
               <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
             </Link>
-          ) : null}
-          <Link
-            href="/dashboard/organisations"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
-          >
-            Manage organisations
-            <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-          </Link>
-          <Link
-            href="/onboarding/organisation?fresh=1"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
-          >
-            <span className="flex items-center gap-2">
-              <Plus className="size-4 text-primary" aria-hidden />
-              Register organisation
-            </span>
-            <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-          </Link>
-        </div>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

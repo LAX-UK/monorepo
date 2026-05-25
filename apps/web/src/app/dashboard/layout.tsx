@@ -4,11 +4,12 @@ import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
 import { ContextBanner } from "@/components/shell/context-banner";
-import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import {
   DASHBOARD_DENSITY_COOKIE,
@@ -29,14 +30,15 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
   const pendingGw = createPendingInvitationsGateway();
   const [kycR, orgR, pendingR] = await Promise.allSettled([
     c.kyc.getSummary(),
-    c.orgOnboarding.getResume(),
-    pendingGw.listMine(),
+    orgModuleEnabled ? c.orgOnboarding.getResume() : Promise.resolve(null),
+    orgModuleEnabled ? pendingGw.listMine() : Promise.resolve([]),
   ]);
   const kycSummary = kycR.status === "fulfilled" ? kycR.value : null;
   const orgOnboardingResume = orgR.status === "fulfilled" ? orgR.value : null;
@@ -48,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       message: dashboardSliceFailureMessage(kycR.reason, "kyc", "Could not load KYC status."),
     });
   }
-  if (orgR.status === "rejected") {
+  if (orgR.status === "rejected" && orgModuleEnabled) {
     layoutWarnings.push({
       title: "Organisation onboarding unavailable",
       message: dashboardSliceFailureMessage(
@@ -58,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       ),
     });
   }
-  if (pendingR.status === "rejected") {
+  if (pendingR.status === "rejected" && orgModuleEnabled) {
     layoutWarnings.push({
       title: "Pending invitations unavailable",
       message: dashboardSliceFailureMessage(
@@ -80,24 +82,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const cookieDensity =
     fromUserDensity ?? parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
-  const acting: ActingContext =
-    actingContext.impersonation && actingContext.acting
-      ? {
-          kind: "impersonating",
-          userId: actingContext.acting.id,
-          userName: actingContext.impersonation.displayName,
-        }
-      : actingContext.acting?.kind === "organisation"
-        ? {
-            kind: "organisation",
-            orgId: actingContext.acting.id,
-            orgName: actingContext.acting.displayName,
-          }
-        : { kind: "self" };
+  const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
 
   return (
     <ClientShell
       user={user}
+      orgModuleEnabled={orgModuleEnabled}
       clientWorkspaceMode={clientWorkspaceMode}
       cookieDensity={cookieDensity}
       hideEmailStatusBanner
@@ -108,7 +98,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           userRole={user.role}
           userStaffRole={user.staffRole ?? null}
           prefetchedActingContext={actingContext}
-          pendingInvitesCount={pendingInvites.length}
+          pendingInvitesCount={orgModuleEnabled ? pendingInvites.length : 0}
+          orgModuleEnabled={orgModuleEnabled}
         />
       }
       contextBanner={
@@ -119,9 +110,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           ))}
           <DashboardBannerStack
             user={user}
-            acting={actingContext.acting}
+            acting={safeActing}
             kycSummary={kycSummary}
-            orgOnboardingResume={orgOnboardingResume}
+            orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
+            orgModuleEnabled={orgModuleEnabled}
           />
         </>
       }

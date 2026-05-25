@@ -10,7 +10,13 @@ import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { useId, useMemo } from "react";
 import { type Control, Controller, useWatch } from "react-hook-form";
 
-export function SignUpFields({ control }: { control: Control<SignUpFormValues> }) {
+export function SignUpFields({
+  control,
+  orgModuleEnabled = true,
+}: {
+  control: Control<SignUpFormValues>;
+  orgModuleEnabled?: boolean;
+}) {
   const pwdHintId = useId();
   const pwdMeterId = useId();
   const personaGroupId = useId();
@@ -25,74 +31,76 @@ export function SignUpFields({ control }: { control: Control<SignUpFormValues> }
 
   return (
     <div className="flex flex-col gap-10">
-      <Controller
-        control={control}
-        name="persona"
-        render={({ field, fieldState }) => (
-          <fieldset
-            aria-labelledby={personaGroupId}
-            aria-describedby={fieldState.error?.message ? `${personaGroupId}-error` : undefined}
-          >
-            <legend
-              id={personaGroupId}
-              className="mb-3 font-label text-sm font-medium text-on-surface"
+      {orgModuleEnabled ? (
+        <Controller
+          control={control}
+          name="persona"
+          render={({ field, fieldState }) => (
+            <fieldset
+              aria-labelledby={personaGroupId}
+              aria-describedby={fieldState.error?.message ? `${personaGroupId}-error` : undefined}
             >
-              I'm joining as…
-            </legend>
-            <RadioGroup
-              value={field.value}
-              onValueChange={field.onChange}
-              className="flex flex-col gap-3"
-            >
-              <Label
-                htmlFor={personaIndividualId}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
+              <legend
+                id={personaGroupId}
+                className="mb-3 font-label text-sm font-medium text-on-surface"
               >
-                <RadioGroupItem
-                  id={personaIndividualId}
-                  value="individual"
-                  className="mt-0.5"
-                  ref={field.ref}
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="font-body text-sm font-medium text-on-surface">
-                    An individual
-                  </span>
-                  <span className="font-body text-xs text-on-surface-variant">
-                    Bid and buy on your own behalf.
-                  </span>
-                </span>
-              </Label>
-              <Label
-                htmlFor={personaOrganisationId}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
+                I'm joining as…
+              </legend>
+              <RadioGroup
+                value={field.value}
+                onValueChange={field.onChange}
+                className="flex flex-col gap-3"
               >
-                <RadioGroupItem
-                  id={personaOrganisationId}
-                  value="organisation"
-                  className="mt-0.5"
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="font-body text-sm font-medium text-on-surface">
-                    Representing a gallery, dealer, or estate
+                <Label
+                  htmlFor={personaIndividualId}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
+                >
+                  <RadioGroupItem
+                    id={personaIndividualId}
+                    value="individual"
+                    className="mt-0.5"
+                    ref={field.ref}
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-body text-sm font-medium text-on-surface">
+                      An individual
+                    </span>
+                    <span className="font-body text-xs text-on-surface-variant">
+                      Bid and buy on your own behalf.
+                    </span>
                   </span>
-                  <span className="font-body text-xs text-on-surface-variant">
-                    Sell and consign on behalf of an organisation.
+                </Label>
+                <Label
+                  htmlFor={personaOrganisationId}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
+                >
+                  <RadioGroupItem
+                    id={personaOrganisationId}
+                    value="organisation"
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-body text-sm font-medium text-on-surface">
+                      Representing a gallery, dealer, or estate
+                    </span>
+                    <span className="font-body text-xs text-on-surface-variant">
+                      Sell and consign on behalf of an organisation.
+                    </span>
                   </span>
-                </span>
-              </Label>
-            </RadioGroup>
-            {fieldState.error?.message ? (
-              <p
-                id={`${personaGroupId}-error`}
-                className="mt-2 font-footer-links text-xs text-error"
-              >
-                {fieldState.error.message}
-              </p>
-            ) : null}
-          </fieldset>
-        )}
-      />
+                </Label>
+              </RadioGroup>
+              {fieldState.error?.message ? (
+                <p
+                  id={`${personaGroupId}-error`}
+                  className="mt-2 font-footer-links text-xs text-error"
+                >
+                  {fieldState.error.message}
+                </p>
+              ) : null}
+            </fieldset>
+          )}
+        />
+      ) : null}
       <RHFInput control={control} name="firstName" label="First Name" autoComplete="given-name" />
       <RHFInput control={control} name="lastName" label="Last Name" autoComplete="family-name" />
       <div>

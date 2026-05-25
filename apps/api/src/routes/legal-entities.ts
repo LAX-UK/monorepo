@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
+import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
@@ -61,6 +62,9 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
 
   /** GET /legal-entities/invitations/mine — pending entity invites for the user's email. */
   r.get("/invitations/mine", requireAuth, async (c) => {
+    if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+      return c.json({ data: [] });
+    }
     const userId = c.get("userId") as string;
     const u = await container.userService.getById(userId);
     if (!u) {
@@ -76,6 +80,10 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     requireAuth,
     zValidator("param", invitationIdParamSchema),
     async (c) => {
+      if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+        const body = orgModuleDisabledResponse();
+        return c.json(body, 403);
+      }
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const u = await container.userService.getById(userId);
@@ -100,6 +108,10 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     zValidator("param", invitationIdParamSchema),
     zValidator("json", declineLegalEntityInvitationBodySchema),
     async (c) => {
+      if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+        const body = orgModuleDisabledResponse();
+        return c.json(body, 403);
+      }
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");

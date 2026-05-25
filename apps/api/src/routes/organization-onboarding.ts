@@ -7,6 +7,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
@@ -28,6 +29,17 @@ export function createOrganizationOnboardingRoutes(
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
   r.use("*", requireAuth);
+
+  r.use("*", async (c, next) => {
+    if (c.req.method === "GET") {
+      await next();
+      return;
+    }
+    if (!isOrgModuleEnabled(container.env.WEB_ORIGIN)) {
+      return c.json(orgModuleDisabledResponse(), 403);
+    }
+    await next();
+  });
 
   r.get("/", zValidator("param", entityIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;

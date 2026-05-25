@@ -15,6 +15,7 @@ export type BuildAttentionItemsOptions = {
   vm: DashboardOverviewVm;
   kyc: KycStatusSummaryDto | null;
   orgOnboarding: OrgOnboardingResumeVm | null;
+  orgModuleEnabled?: boolean;
   /** If true, the urgent first settlement is already shown by ActionRequiredBanner. */
   skipFirstSettlement?: boolean;
 };
@@ -24,6 +25,7 @@ export function buildAttentionItems({
   vm,
   kyc,
   orgOnboarding,
+  orgModuleEnabled = true,
   skipFirstSettlement = false,
 }: BuildAttentionItemsOptions): AttentionListItem[] {
   const items: AttentionListItem[] = [];
@@ -73,7 +75,7 @@ export function buildAttentionItems({
     }
   }
 
-  if (orgOnboarding) {
+  if (orgModuleEnabled && orgOnboarding) {
     items.push({
       id: `org-${orgOnboarding.entityId}`,
       title: `Finish onboarding for ${orgOnboarding.displayName}`,

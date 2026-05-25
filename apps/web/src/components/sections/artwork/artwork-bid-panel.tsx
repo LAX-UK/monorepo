@@ -52,6 +52,7 @@ type Props = {
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   /** Sale page path for registration error CTAs. */
   saleRegistrationPath?: string | null;
+  orgModuleEnabled?: boolean;
   /** Parent sale (when known) for pre-launch / draft-sale catalogue messaging. */
   saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
 };
@@ -75,6 +76,7 @@ export function ArtworkBidPanel({
   kycSummary = null,
   saleRegistrationBidGate = null,
   saleRegistrationPath = null,
+  orgModuleEnabled = true,
   saleForLifecycle = null,
 }: Props) {
   const { bidWriter } = useLotPorts();
@@ -571,6 +573,7 @@ export function ArtworkBidPanel({
       }
       saleRegistrationBidGate={saleRegistrationBidGate}
       biddingLifecycle={{ kind: lifecycle.kind }}
+      orgModuleEnabled={orgModuleEnabled}
     >
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>

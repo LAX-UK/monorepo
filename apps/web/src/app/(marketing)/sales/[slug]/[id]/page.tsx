@@ -27,6 +27,7 @@ import {
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
@@ -159,6 +160,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const actingCtx = session
     ? await resolveActingContext(session.role, session.staffRole ?? null)
     : null;
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const mySaleRegs = session ? await getServerSaleMyRegistrations(id).catch(() => []) : [];
 
   const layoutViewRaw = await resolveMarketingLayoutView({
@@ -308,6 +310,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
               myRegistrations,
               kycApproved,
               kycFeedback,
+              orgModuleEnabled,
             }}
           />
         }

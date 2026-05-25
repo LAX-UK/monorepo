@@ -5,7 +5,13 @@ import { useForm } from "react-hook-form";
 import { describe, expect, it } from "vitest";
 import { SignUpFields } from "./sign-up-fields";
 
-function Harness({ defaults }: { defaults?: Partial<SignUpFormValues> }) {
+function Harness({
+  defaults,
+  orgModuleEnabled = true,
+}: {
+  defaults?: Partial<SignUpFormValues>;
+  orgModuleEnabled?: boolean;
+}) {
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpFormSchema),
     defaultValues: {
@@ -19,10 +25,15 @@ function Harness({ defaults }: { defaults?: Partial<SignUpFormValues> }) {
       ...defaults,
     },
   });
-  return <SignUpFields control={form.control} />;
+  return <SignUpFields control={form.control} orgModuleEnabled={orgModuleEnabled} />;
 }
 
 describe("SignUpFields persona selector", () => {
+  it("hides persona selector when org module disabled", () => {
+    render(<Harness orgModuleEnabled={false} />);
+    expect(screen.queryByRole("group", { name: /i'm joining as/i })).not.toBeInTheDocument();
+  });
+
   it("renders the persona group with both options and 'individual' selected by default", () => {
     render(<Harness />);
     const group = screen.getByRole("group", { name: /i'm joining as/i });

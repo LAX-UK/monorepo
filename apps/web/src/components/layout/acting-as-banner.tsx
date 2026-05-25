@@ -4,8 +4,27 @@ import {
   type ResolvedActingContext,
   resolveActingContext,
 } from "@/lib/legal-entity/acting-context.server";
+import type { LegalEntitySummary } from "@auction/types";
 import { ActingAsTooltip } from "./acting-as-tooltip";
 import { LegalEntitySwitcher } from "./legal-entity-switcher";
+
+function personalOnlyContext(
+  acting: LegalEntitySummary,
+  memberships: LegalEntitySummary[],
+): { acting: LegalEntitySummary; memberships: LegalEntitySummary[] } {
+  const personalMemberships = memberships.filter((m) => m.kind === "individual");
+  const personal =
+    personalMemberships.find((m) => m.id === acting.id) ??
+    personalMemberships[0] ??
+    (acting.kind === "individual" ? acting : null);
+  if (!personal) {
+    return { acting, memberships: personalMemberships };
+  }
+  return {
+    acting: personal,
+    memberships: personalMemberships.length > 0 ? personalMemberships : [personal],
+  };
+}
 
 type Props = {
   /** From GET /users/me (`SessionUser.hasSeenActingContextTooltip`); when omitted, suppresses the hint.
@@ -19,6 +38,8 @@ type Props = {
   prefetchedActingContext?: ResolvedActingContext;
   /** Pending org invites for the user's email (switcher badge). */
   pendingInvitesCount?: number;
+  /** When false (production), hide organisation workspaces in the switcher. */
+  orgModuleEnabled?: boolean;
 };
 
 /** Renders the acting-context switcher in the header chrome.
@@ -34,19 +55,26 @@ export async function ActingAsBanner({
   className,
   prefetchedActingContext,
   pendingInvitesCount = 0,
+  orgModuleEnabled = true,
 }: Props) {
   const { acting, memberships } =
     prefetchedActingContext ?? (await resolveActingContext(userRole, userStaffRole ?? null));
   if (!acting) return null;
 
-  const showTooltip = !hasSeenTooltip && memberships.some((m) => m.kind === "organisation");
+  const switcherContext = orgModuleEnabled
+    ? { acting, memberships }
+    : personalOnlyContext(acting, memberships);
+
+  const showTooltip =
+    orgModuleEnabled && !hasSeenTooltip && memberships.some((m) => m.kind === "organisation");
 
   return (
     <div className={`relative inline-flex items-center gap-2 ${className ?? ""}`}>
       <LegalEntitySwitcher
-        acting={acting}
-        memberships={memberships}
+        acting={switcherContext.acting}
+        memberships={switcherContext.memberships}
         pendingInvitesCount={pendingInvitesCount}
+        orgModuleEnabled={orgModuleEnabled}
       />
       <ActingAsTooltip initiallyVisible={showTooltip} />
     </div>

@@ -16,6 +16,7 @@ type Props = {
     myRegistrations: { buyerLegalEntityId: string; status: string }[];
     kycApproved: boolean;
     kycFeedback?: KycUserFeedbackDto | null;
+    orgModuleEnabled?: boolean;
   };
 };
 
@@ -39,6 +40,7 @@ export function SaleroomHeroActions({
           myRegistrations={registerToBid.myRegistrations}
           kycApproved={registerToBid.kycApproved}
           kycFeedback={registerToBid.kycFeedback ?? null}
+          orgModuleEnabled={registerToBid.orgModuleEnabled !== false}
         />
       ) : null}
       <SaleroomFollowToggle
