@@ -57,7 +57,7 @@ export function useSignUpController(opts?: { inviteToken?: string; next?: string
     const result = await run(turnstileToken ? { ...base, turnstileToken } : base);
     if (result.ok) {
       trackSignUp();
-      const params = new URLSearchParams({ persona: data.persona });
+      const params = new URLSearchParams({ persona: data.persona, email: data.email });
       const safe = opts?.next && isSafeNextPath(opts.next) ? opts.next : undefined;
       if (safe) params.set("next", safe);
       router.push(`/register/verify-pending?${params.toString()}`);

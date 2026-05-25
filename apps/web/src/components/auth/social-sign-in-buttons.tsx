@@ -29,9 +29,10 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
     setPending(provider);
     const webOrigin = window.location.origin;
     const safeNext = isSafeNextPath(next) ? next : "/dashboard";
+    const callbackParams = new URLSearchParams({ next: safeNext });
     const { error } = await authClient.signIn.social({
       provider,
-      callbackURL: `${webOrigin}${safeNext}`,
+      callbackURL: `${webOrigin}/auth/social-callback?${callbackParams.toString()}`,
       errorCallbackURL: `${webOrigin}/login?social_error=1`,
     });
     if (error) {

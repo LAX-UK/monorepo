@@ -1,5 +1,6 @@
 "use client";
 
+import { FormBanner } from "@/components/auth/primitives/form-error";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { UnderlineInput } from "@/components/ui/input";
 import { useVerifyTotpController } from "@/lib/auth/hooks/use-verify-totp-controller";
@@ -30,6 +31,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
     backupForm,
     submitTotp,
     submitBackup,
+    bannerError,
   } = useVerifyTotpController(nextHref);
 
   const lastAutoTotp = useRef<string>("");
@@ -57,6 +59,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
 
   return (
     <div className="flex w-full flex-col gap-8">
+      <FormBanner message={bannerError} />
       <div className="flex items-center gap-3 rounded-lg border border-border-hairline bg-surface-container-low/50 px-3 py-2">
         <Checkbox
           id="trust-device"

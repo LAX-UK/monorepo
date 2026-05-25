@@ -22,7 +22,12 @@ export async function requireAdminCapability(
   const role = user.role as UserRole;
   const staffRole = user.staffRole ?? null;
   if (!userHasAccessTo(role, staffRole, req)) {
-    redirect(staffRoleDefaultDestination(role, staffRole));
+    const dest = staffRoleDefaultDestination(role, staffRole);
+    const destPath = dest.split("?")[0] ?? dest;
+    const returnPath = returnTo.split("?")[0] ?? returnTo;
+    if (destPath !== returnPath) {
+      redirect(dest);
+    }
   }
   return user;
 }

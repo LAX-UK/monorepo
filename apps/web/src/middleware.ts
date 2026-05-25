@@ -2,8 +2,10 @@ import {
   buildRequestWithAuthEdgeHeader,
   getAuthPublicCookieRedirectUrl,
 } from "@/lib/auth/auth-public-edge";
+import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
+import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Generate a cryptographically random nonce string for CSP. */
@@ -51,7 +53,7 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
     // Include configured API/auth origins. In local dev these vars are typically
     // absent so we fall back to localhost ports to avoid CSP violations.
     // DigitalOcean Spaces presigned PUTs go directly to *.digitaloceanspaces.com
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3002"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net https://*.veriff.com https://*.veriff.me https://*.probity.io`.trim(),
+    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net https://*.veriff.com https://*.veriff.me https://*.probity.io`.trim(),
     // Cloudflare Turnstile + YouTube embeds (live-stream hero) + Veriff InContext SDK iframes.
     "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://*.veriff.com https://*.veriff.me https://*.hotjar.com",
     `frame-ancestors 'none'`,
@@ -65,39 +67,6 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
 }
 
 const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
-
-/** Better Auth cookie names that may carry a stale session after server-side invalidation. */
-const STALE_AUTH_COOKIE_NAMES = [
-  "better-auth.session_token",
-  "__Secure-better-auth.session_token",
-  "better-auth.session_data",
-  "__Secure-better-auth.session_data",
-];
-
-/**
- * Expire stale Better Auth cookies in the browser.
- *
- * To actually delete a cookie the Set-Cookie triple (name, path, domain) must
- * match what was set. Better Auth sets cookies with `Domain=<COOKIE_DOMAIN>`
- * in production (`.lax.bid`). Without repeating the domain attribute, the
- * browser creates a separate host-only expired cookie while the original
- * domain-scoped one persists — the loop returns on the very next request.
- *
- * `NEXT_PUBLIC_COOKIE_DOMAIN` is the web-app-readable counterpart of the
- * server-side `COOKIE_DOMAIN`; both must be identical for this to work.
- */
-function purgeStaleAuthCookies(response: NextResponse): void {
-  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN?.trim() || undefined;
-  for (const name of STALE_AUTH_COOKIE_NAMES) {
-    response.cookies.set(name, "", {
-      path: "/",
-      expires: new Date(0),
-      maxAge: 0,
-      sameSite: "lax",
-      ...(domain ? { domain } : {}),
-    });
-  }
-}
 
 /** True when the URL is the post-stale-session landing page; we purge the cookies as we render it. */
 function isStaleSessionLanding(url: URL): boolean {
@@ -138,6 +107,8 @@ export async function middleware(request: NextRequest) {
   if (isStaleSessionLanding(request.nextUrl)) {
     purgeStaleAuthCookies(baseResponse);
   }
+
+  seedDefaultThemeCookieIfNeeded(request, baseResponse);
 
   const csp = buildCsp(nonce, themeInitScriptSrcToken);
   const headerName = CSP_REPORT_ONLY

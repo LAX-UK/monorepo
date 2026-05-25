@@ -46,6 +46,9 @@ import OAuthAccountResetAttemptEmail, {
 import PasswordChangedElsewhereEmail, {
   subject as passwordChangedElsewhereSubject,
 } from "./templates/password-changed-elsewhere.js";
+import PasswordChangedSessionsNotRevokedEmail, {
+  subject as passwordChangedSessionsNotRevokedSubject,
+} from "./templates/password-changed-sessions-not-revoked.js";
 import PasswordChanged, {
   subject as passwordChangedSubject,
 } from "./templates/password-changed.js";
@@ -123,6 +126,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "password-changed-elsewhere": {
     subject: passwordChangedElsewhereSubject,
     component: (vars) => <PasswordChangedElsewhereEmail {...vars} />,
+  },
+  "password-changed-sessions-not-revoked": {
+    subject: passwordChangedSessionsNotRevokedSubject,
+    component: (vars) => <PasswordChangedSessionsNotRevokedEmail {...vars} />,
   },
   "change-email": {
     subject: changeEmailSubject,

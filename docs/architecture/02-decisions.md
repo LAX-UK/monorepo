@@ -126,7 +126,7 @@ The websocket app (`apps/ws`) migrates to JWT-only verification on the Socket.IO
 
 ## D11. Social login via better-auth's Google and Apple plugins, account linking enabled
 
-**Chosen.** `packages/auth/src/server.ts` registers better-auth's `socialProviders.google` and `socialProviders.apple`. Email/password remains as a fallback credential. The `accountLinking` config is `{ enabled: true, trustedProviders: ['google', 'apple'] }`. Email/password credential users link to social signups via the email-verification gate from D3 — `'email-password'` is *not* a valid value in `trustedProviders` and would cause a config error if added.
+**Chosen.** `packages/auth/src/server.ts` registers better-auth's `socialProviders.google` and `socialProviders.apple`. Email/password remains as a fallback credential. The `accountLinking` config is `{ enabled: true, trustedProviders: [] }`. With an empty trusted-provider list, Better Auth does not auto-link social accounts without a verified email match — Google sign-ins link when the provider returns a verified email; Apple relay emails link by `sub` via the `account` table. Email/password credential users link to social signups via the email-verification gate from D3.
 
 **Apple "Hide My Email" handling.** Apple's privacy relay returns email addresses ending in `@privaterelay.appleid.com`. These are stable per-(app, user) pair but are not the user's real inbox. The account-linking service detects this domain when `provider='apple'` and skips the D3 email-based lookup entirely — instead, the linking happens by Apple's `sub` claim via `external_accounts(provider='apple', external_id=<sub>)`. The relay email is persisted as-is in `external_accounts.email` so we can still send transactional email through Apple's relay. This means a user who later signs in via email/password with their real address will appear as a *different* identity until they explicitly link — which is the correct privacy behavior for the user, even though it produces apparent duplicates in our database.
 
@@ -136,7 +136,7 @@ The same defensive pattern applies if Google ever returns a no-email signup (unu
 
 **Why this wins.** Apple Sign-In unblocks any future iOS App Store distribution, which is mandatory for that channel. Google covers the largest share of consumer auth. Email/password remains for users who don't want to sign in via a social provider. Better-auth's plugin model is designed for exactly this composition pattern.
 
-**Status.** *Implemented (conditional on env).* [packages/auth/src/server.ts](../../packages/auth/src/server.ts) registers Google when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and Apple when both `APPLE_CLIENT_ID` and `APPLE_CLIENT_SECRET` are set. `accountLinking` is `{ enabled: true, trustedProviders: ["google", "apple"] }`. The privacy-relay branch lives in [apps/api/src/services/account-linking.service.ts](../../apps/api/src/services/account-linking.service.ts).
+**Status.** *Implemented (conditional on env).* [packages/auth/src/server.ts](../../packages/auth/src/server.ts) registers Google when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and Apple when both `APPLE_CLIENT_ID` and `APPLE_CLIENT_SECRET` are set. `accountLinking` is `{ enabled: true, trustedProviders: [] }`. OAuth rows live in Better Auth's `account` table (not `external_accounts`).
 
 ## How to add a new decision
 

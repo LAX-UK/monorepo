@@ -217,7 +217,7 @@ export function staffRoleDefaultDestination(
 ): string {
   if (role === "client") return "/dashboard";
   const staff = normalizeUserStaffRole(staffRole ?? undefined);
-  if (staff == null) return "/dashboard";
+  if (staff == null) return "/admin";
 
   if (staff === "super_admin") return "/admin";
   if (staff === "finance_ops") return "/admin/finance";
@@ -228,9 +228,19 @@ export function staffRoleDefaultDestination(
     { path: "/admin/submissions", requirement: "specialist.appraise" },
     { path: "/admin/lot-fulfilment", requirement: "operations.fulfilment" },
     { path: "/admin/legal-entities", requirement: "legal_entity.read" },
+    { path: "/admin/artists", requirement: "artist.read" },
     {
       path: "/admin",
-      requirement: { anyOf: ["auction.manage", "catalogue.write", "specialist.appraise"] },
+      requirement: {
+        anyOf: [
+          "auction.manage",
+          "catalogue.write",
+          "specialist.appraise",
+          "content.write",
+          "support.respond",
+          "artist.read",
+        ],
+      },
     },
   ];
 
@@ -238,5 +248,5 @@ export function staffRoleDefaultDestination(
     if (userHasAccessTo(role, staff, requirement)) return path;
   }
 
-  return "/dashboard";
+  return "/admin";
 }

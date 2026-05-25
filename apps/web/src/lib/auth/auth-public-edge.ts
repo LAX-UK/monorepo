@@ -41,13 +41,16 @@ export function getAuthPublicCookieRedirectUrl(requestUrl: URL, cookieHeader: st
   if (sp.get("auth") === "required") return null;
   if (sp.get("registered") === "1") return null;
   if (sp.get("reset") === "1") return null;
+  if (sp.get("verify_pending") === "1") return null;
   if (pathname === "/register" && sp.has("invite")) return null;
   if (!hasAuthSessionCookie(cookieHeader)) return null;
 
   const next = sp.get("next");
-  const targetPath = next != null && isSafeNextPath(next) ? next : "/dashboard";
+  const targetPath = next != null && isSafeNextPath(next) ? next : "/auth/social-callback";
   const dest = new URL(targetPath, requestUrl);
-  dest.searchParams.set("from", "auth-edge");
-  dest.searchParams.set("welcome", "back");
+  if (targetPath !== "/auth/social-callback") {
+    dest.searchParams.set("from", "auth-edge");
+    dest.searchParams.set("welcome", "back");
+  }
   return dest;
 }
