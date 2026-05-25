@@ -9,7 +9,7 @@ When disabled:
 
 ## Implementation commit
 
-Introduced in [`476d4dbf`](https://github.com/LAX-UK/monorepo/commit/476d4dbf) (`feat: hide organisation module on production domain until launch`).
+Introduced in [`79d4b67a`](https://github.com/LAX-UK/monorepo/commit/79d4b67a) (`feat: hide organisation module on production domain until launch`).
 
 ## How the toggle works
 
