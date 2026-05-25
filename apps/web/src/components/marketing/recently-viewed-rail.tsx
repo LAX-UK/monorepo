@@ -1,11 +1,13 @@
 "use client";
 
+import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { getRecentlyViewedLots } from "@/lib/marketing/recently-viewed-lots";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 /** Client-only rail of recently viewed lot links. */
-export function RecentlyViewedRail() {
+export function RecentlyViewedRail({ className }: { className?: string }) {
   const [items, setItems] = useState<ReturnType<typeof getRecentlyViewedLots>>([]);
 
   useEffect(() => {
@@ -17,9 +19,13 @@ export function RecentlyViewedRail() {
   return (
     <section
       aria-label="Recently viewed lots"
-      className="border-b border-border-hairline bg-surface-container-low/40 px-4 py-3 md:px-8"
+      className={cn(
+        "border-b border-border-hairline bg-surface-container-low/40 py-3",
+        MARKETING_CATALOG_GUTTER,
+        className,
+      )}
     >
-      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-2">
+      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-2">
         <h2 className="font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Recently viewed
         </h2>

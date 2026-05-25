@@ -9,9 +9,12 @@ const timedAuctionsHref = calendarSalesHref({
 
 const investmentGradeMinGbp = 50_000;
 
-function searchHref(sort?: "endingAsc" | "createdDesc"): string {
-  if (!sort || sort === "endingAsc") return "/search";
-  return `/search?sort=${sort}`;
+function searchHref(sort?: "endingAsc" | "createdDesc", ending?: "24h"): string {
+  const params = new URLSearchParams();
+  if (sort && sort !== "endingAsc") params.set("sort", sort);
+  if (ending) params.set("ending", ending);
+  const qs = params.toString();
+  return qs ? `/search?${qs}` : "/search";
 }
 
 /**
@@ -39,7 +42,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
       label: "Buy",
       items: [
         { href: "/search", label: "Browse Lots" },
-        { href: searchHref("endingAsc"), label: "Ending Soon" },
+        { href: searchHref("endingAsc", "24h"), label: "Ending Soon" },
         { href: searchHref("createdDesc"), label: "New This Week" },
         { href: calendarSalesHref({ maxPrice: 5_000 }), label: "Under £5,000" },
         { href: calendarSalesHref({ maxPrice: 25_000 }), label: "Under £25,000" },

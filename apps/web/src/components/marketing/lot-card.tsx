@@ -13,6 +13,7 @@ import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { Fragment } from "react";
 
 type NavLinkProps = Pick<
   ComponentProps<typeof Link>,
@@ -88,7 +89,10 @@ export function LotCardGrid({
           {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
           className="relative aspect-[4/5] bg-surface-container-low"
         >
-          <div className={cn("absolute inset-0", mediaHover)}>
+          <div
+            key={lotId ? `${lotId}-media` : "media"}
+            className={cn("absolute inset-0", mediaHover)}
+          >
             {adaptiveMedia ? (
               <AdaptiveFrameImage
                 src={adaptiveMedia.src}
@@ -104,16 +108,26 @@ export function LotCardGrid({
             )}
           </div>
           {topLeft ? (
-            <div className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3">
+            <div
+              key={lotId ? `${lotId}-top-left` : "top-left"}
+              className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3"
+            >
               {topLeft}
             </div>
           ) : null}
           {bottomLeft ? (
-            <div className="pointer-events-none absolute bottom-1.5 left-1.5 z-[1] md:bottom-3 md:left-3">
+            <div
+              key={lotId ? `${lotId}-bottom-left` : "bottom-left"}
+              className="pointer-events-none absolute bottom-1.5 left-1.5 z-[1] md:bottom-3 md:left-3"
+            >
               {bottomLeft}
             </div>
           ) : null}
-          {imageOverlays}
+          {imageOverlays ? (
+            <Fragment key={lotId ? `${lotId}-image-overlays` : "image-overlays"}>
+              {imageOverlays}
+            </Fragment>
+          ) : null}
         </AdaptiveMediaFrameContainer>
         <div className="p-3 md:p-5">
           {title}

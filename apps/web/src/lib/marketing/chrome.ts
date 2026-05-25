@@ -10,3 +10,6 @@ export const MARKETING_PAGE_SHELL = `${MARKETING_PAGE_GUTTER} max-w-[var(--conta
 
 /** Inner reading / catalogue column. */
 export const MARKETING_PAGE_INNER = `${MARKETING_PAGE_GUTTER} max-w-[var(--container-inner,1376px)]`;
+
+/** Catalogue toolbar / rail horizontal rhythm (matches page inner). */
+export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;

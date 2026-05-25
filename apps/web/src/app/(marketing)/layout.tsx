@@ -3,6 +3,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
 import { MarketingLotQuickLookShell } from "@/components/marketing/lot-quick-look/marketing-lot-quick-look-shell";
+import { MarketingGlobalHotkeys } from "@/lib/hotkeys/marketing-global-hotkeys";
 import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import type { ReactNode } from "react";
 
@@ -13,6 +14,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
     <>
       <MarketingLotQuickLookShell>
         <CommandPaletteLazy variant="marketing" />
+        <MarketingGlobalHotkeys />
         <SiteHeader user={null} nav={nav} transparentPaths={["/"]} />
         {children}
         <AuthRequiredToast />
