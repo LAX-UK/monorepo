@@ -1,8 +1,8 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
 import { enableTwoFactorService } from "@/lib/auth/services/enable-two-factor.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
+import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
 import { enableTwoFactorFormSchema, totpVerifyFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 export type EnableWizardStep = "password" | "qr" | "confirm" | "backup";
 
 export function useEnableTwoFactorController() {
-  const session = authClient.useSession();
+  const refetchSession = useRefetchAppSession();
   const [step, setStep] = useState<EnableWizardStep>("password");
   const [totpURI, setTotpURI] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
@@ -53,7 +53,7 @@ export function useEnableTwoFactorController() {
       notify.error(r.message);
       return;
     }
-    await session.refetch({ query: { disableCookieCache: true } });
+    await refetchSession();
     setStep("backup");
   });
 

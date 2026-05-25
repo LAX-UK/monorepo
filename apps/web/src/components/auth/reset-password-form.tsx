@@ -5,16 +5,13 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { authClient } from "@/lib/auth-client";
 import { useResetPasswordController } from "@/lib/auth/hooks/use-reset-password-controller";
+import { useAppSession } from "@/lib/auth/use-app-session";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const { form, onSubmit, loading, bannerError } = useResetPasswordController(token);
-  const session = authClient.useSession();
-  const signedInEmail =
-    typeof session.data?.user === "object" && session.data.user && "email" in session.data.user
-      ? String((session.data.user as { email?: string }).email ?? "")
-      : "";
+  const { user } = useAppSession();
+  const signedInEmail = user?.email ?? "";
 
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>

@@ -1,10 +1,11 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
+import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { verifyBackupCodeService } from "@/lib/auth/services/verify-backup-code.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
+import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
 import { normalizeUserRoleOrClient } from "@auction/types";
 import { backupCodeFormSchema, totpVerifyFormSchema } from "@auction/validators";
@@ -17,7 +18,7 @@ export type TwoFactorVerifyMode = "totp" | "backup";
 
 export function useVerifyTotpController(nextHref: string) {
   const router = useRouter();
-  const session = authClient.useSession();
+  const refetchSession = useRefetchAppSession();
   const [mode, setMode] = useState<TwoFactorVerifyMode>("totp");
   const [trustDevice, setTrustDevice] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -33,7 +34,8 @@ export function useVerifyTotpController(nextHref: string) {
   });
 
   const completeSignIn = useCallback(async () => {
-    await session.refetch({ query: { disableCookieCache: true } });
+    await refetchSession();
+    postAuthBroadcast({ type: "signed-in" });
     const me = await fetchSessionUserAfterAuth();
     if (me) {
       router.push(
@@ -54,7 +56,7 @@ export function useVerifyTotpController(nextHref: string) {
       router.push(`${base}${joiner}welcome=back`);
     }
     router.refresh();
-  }, [nextHref, router, session]);
+  }, [nextHref, refetchSession, router]);
 
   const submitTotp = useCallback(
     async (code: string) => {

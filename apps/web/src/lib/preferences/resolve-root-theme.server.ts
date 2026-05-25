@@ -1,6 +1,6 @@
 import type { ThemePreference } from "@auction/validators";
 
-/** Skip `/users/me` when the device already has a theme cookie. */
+/** @deprecated Root layout now fetches session whenever an auth cookie exists. Kept for tests. */
 export function shouldFetchSessionForTheme(
   hasSessionCookie: boolean,
   existingTheme: ThemePreference | null,

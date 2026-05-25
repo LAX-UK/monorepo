@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useState } from "react";
@@ -16,10 +16,10 @@ type Props = {
 
 /** Persists current search filters for signed-in users. */
 export function SaveSearchButton({ label, query }: Props) {
-  const session = authClient.useSession();
+  const { user } = useAppSession();
   const [saving, setSaving] = useState(false);
 
-  if (!session.data?.user) return null;
+  if (!user) return null;
 
   async function save() {
     setSaving(true);
