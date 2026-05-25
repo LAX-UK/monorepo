@@ -229,9 +229,16 @@ function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
   };
 }
 
+/** Matches {@link listLotsQuerySchema} max on the API. */
+const ADMIN_LOT_LIST_MAX_LIMIT = 100;
+
 export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[]> {
   const qs = new URLSearchParams(
-    buildLotListQuery({ limit: params.limit ?? 100, offset: params.offset ?? 0, ...params }),
+    buildLotListQuery({
+      ...params,
+      limit: Math.min(params.limit ?? ADMIN_LOT_LIST_MAX_LIMIT, ADMIN_LOT_LIST_MAX_LIMIT),
+      offset: params.offset ?? 0,
+    }),
   );
   const res = await authedServerFetch(`/lots?${qs.toString()}`);
   if (!res.ok) {
@@ -634,6 +641,14 @@ export async function getAdminLotById(id: string): Promise<Lot | null> {
   }
   const body = (await res.json()) as { data: unknown };
   return parseLot(body.data);
+}
+
+/** Resolve lots referenced by id (e.g. payment rows) without scanning the full lot list. */
+export async function getAdminLotsByIds(lotIds: string[]): Promise<Lot[]> {
+  const unique = [...new Set(lotIds.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const lots = await Promise.all(unique.map((id) => getAdminLotById(id)));
+  return lots.filter((lot): lot is Lot => lot != null);
 }
 
 export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
