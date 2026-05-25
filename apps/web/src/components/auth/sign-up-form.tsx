@@ -17,9 +17,10 @@ import { useEffect } from "react";
 
 type Props = {
   inviteToken?: string;
+  orgModuleEnabled?: boolean;
 };
 
-export function SignUpForm({ inviteToken }: Props) {
+export function SignUpForm({ inviteToken, orgModuleEnabled = true }: Props) {
   const searchParams = useSearchParams();
   const rawNext = searchParams.get("next");
   const safeNext = rawNext && isSafeNextPath(rawNext) ? rawNext : undefined;
@@ -42,9 +43,9 @@ export function SignUpForm({ inviteToken }: Props) {
   } = useSignUpController(controllerOpts);
 
   useEffect(() => {
-    if (!inviteToken) return;
+    if (!inviteToken || !orgModuleEnabled) return;
     void rememberPendingEntityInviteAction(inviteToken);
-  }, [inviteToken]);
+  }, [inviteToken, orgModuleEnabled]);
 
   useEffect(() => {
     if (!inviteToken) return;
@@ -73,36 +74,50 @@ export function SignUpForm({ inviteToken }: Props) {
       <FormBanner
         message={(form.formState.errors.root?.message as string | undefined) ?? bannerError ?? null}
       />
-      {inviteToken ? (
+      {inviteToken && !orgModuleEnabled ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          Organisation invitations are not available yet on this site. Please try again after
+          launch, or contact{" "}
+          <a href="mailto:support@thelax.co" className="font-medium text-primary underline">
+            support@thelax.co
+          </a>
+          .
+        </p>
+      ) : null}
+      {inviteToken && orgModuleEnabled ? (
         <p className="font-body text-sm text-on-surface-variant">
           You’re signing up with an invitation
           {form.watch("email") ? ` for ${form.watch("email")}` : ""}.
         </p>
       ) : null}
-      <SignUpFields control={form.control} />
-      <SignUpLegalConsent control={form.control} />
-      <TurnstileWidget
-        siteKey={turnstileSiteKey}
-        onToken={onTurnstileToken}
-        onClear={onTurnstileExpire}
-      />
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
-          <span className="h-px flex-1 bg-outline-variant/40" />
-          <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-            or
-          </span>
-          <span className="h-px flex-1 bg-outline-variant/40" />
-        </div>
-        <SocialSignInButtons next={next} />
-      </div>
+      {(!inviteToken || orgModuleEnabled) && (
+        <>
+          <SignUpFields control={form.control} orgModuleEnabled={orgModuleEnabled} />
+          <SignUpLegalConsent control={form.control} />
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={onTurnstileToken}
+            onClear={onTurnstileExpire}
+          />
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
+              <span className="h-px flex-1 bg-outline-variant/40" />
+              <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+                or
+              </span>
+              <span className="h-px flex-1 bg-outline-variant/40" />
+            </div>
+            <SocialSignInButtons next={next} />
+          </div>
 
-      <div className="flex flex-col gap-6">
-        <AuthSubmitButton loading={loading} loadingLabel="Signing up…">
-          Sign Up
-        </AuthSubmitButton>
-        <AuthFooterLink prefix="Already have an account?" linkText="Log in" href={loginHref} />
-      </div>
+          <div className="flex flex-col gap-6">
+            <AuthSubmitButton loading={loading} loadingLabel="Signing up…">
+              Sign Up
+            </AuthSubmitButton>
+            <AuthFooterLink prefix="Already have an account?" linkText="Log in" href={loginHref} />
+          </div>
+        </>
+      )}
     </form>
   );
 }

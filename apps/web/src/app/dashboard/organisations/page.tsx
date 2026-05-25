@@ -5,6 +5,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
 import { subkindLabel } from "@/components/organisations/labels";
+import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { OrganisationCard } from "@/components/organisations/organisation-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
@@ -15,6 +16,7 @@ import {
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
@@ -29,6 +31,15 @@ import Link from "next/link";
 type HubMembership = LegalEntitySummary;
 
 export default async function OrganisationsHubPage() {
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  if (!orgModuleEnabled) {
+    return (
+      <DashboardPage>
+        <OrgModuleComingSoon />
+      </DashboardPage>
+    );
+  }
+
   const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/organisations",

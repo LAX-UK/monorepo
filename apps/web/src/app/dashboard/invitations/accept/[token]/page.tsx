@@ -1,11 +1,13 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { acceptInvitationAction } from "@/lib/legal-entity/member-management.actions";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { LogIn, UserPlus } from "lucide-react";
@@ -19,6 +21,15 @@ export default async function AcceptInvitationTokenPage({
 }) {
   const { token: raw } = await params;
   const token = decodeURIComponent(raw);
+
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  if (!orgModuleEnabled) {
+    return (
+      <DashboardPage>
+        <OrgModuleComingSoon />
+      </DashboardPage>
+    );
+  }
 
   const session = await getServerSessionUser();
   if (session?.id) {

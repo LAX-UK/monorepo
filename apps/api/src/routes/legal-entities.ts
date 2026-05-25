@@ -61,6 +61,9 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
 
   /** GET /legal-entities/invitations/mine — pending entity invites for the user's email. */
   r.get("/invitations/mine", requireAuth, async (c) => {
+    if (!container.orgModuleGate.isEnabled()) {
+      return c.json({ data: [] });
+    }
     const userId = c.get("userId") as string;
     const u = await container.userService.getById(userId);
     if (!u) {
@@ -76,6 +79,10 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     requireAuth,
     zValidator("param", invitationIdParamSchema),
     async (c) => {
+      if (!container.orgModuleGate.isEnabled()) {
+        const body = container.orgModuleGate.disabledResponse();
+        return c.json(body, 403);
+      }
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const u = await container.userService.getById(userId);
@@ -100,6 +107,10 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
     zValidator("param", invitationIdParamSchema),
     zValidator("json", declineLegalEntityInvitationBodySchema),
     async (c) => {
+      if (!container.orgModuleGate.isEnabled()) {
+        const body = container.orgModuleGate.disabledResponse();
+        return c.json(body, 403);
+      }
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");

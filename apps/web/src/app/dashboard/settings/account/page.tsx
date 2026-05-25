@@ -2,6 +2,8 @@ import { ChangeEmailForm } from "@/components/auth/change-email-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -14,6 +16,7 @@ export default async function AccountSettingsPage({
   searchParams: Promise<{ changed?: string }>;
 }) {
   const sp = await searchParams;
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings/account",
@@ -69,19 +72,36 @@ export default async function AccountSettingsPage({
           <h2 className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             Organisations
           </h2>
-          <p className="font-body text-sm text-on-surface-variant">
-            Manage galleries, dealers, and estates you belong to — invites, members, and onboarding
-            continue in one place.
-          </p>
+          {orgModuleEnabled ? (
+            <p className="font-body text-sm text-on-surface-variant">
+              Manage galleries, dealers, and estates you belong to — invites, members, and
+              onboarding continue in one place.
+            </p>
+          ) : (
+            <p className="font-body text-sm text-on-surface-variant">
+              {DASHBOARD_EMPTY.orgModuleComingSoon.description}
+            </p>
+          )}
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <Button asChild variant="cta" size="sm">
-            <Link href="/dashboard/organisations">Open Organisations</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/onboarding/organisation?fresh=1">Register organisation</Link>
-          </Button>
-        </div>
+        {orgModuleEnabled ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button asChild variant="cta" size="sm">
+              <Link href="/dashboard/organisations">Open Organisations</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/onboarding/organisation?fresh=1">Register organisation</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button asChild variant="cta" size="sm">
+              <Link href="/contact">Contact us</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href="mailto:support@thelax.co">support@thelax.co</a>
+            </Button>
+          </div>
+        )}
       </Surface>
     </DashboardPage>
   );

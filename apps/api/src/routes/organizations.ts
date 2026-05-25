@@ -40,6 +40,10 @@ export function createOrganizationRoutes(container: Container, authenticator: IA
 
   /** POST /organizations — create a new organisation. Auth required. */
   r.post("/", requireAuth, zValidator("json", createOrganizationSchema), async (c) => {
+    if (!container.orgModuleGate.isEnabled()) {
+      const body = container.orgModuleGate.disabledResponse();
+      return c.json(body, 403);
+    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const result = await container.organizationOnboardingService.createOrganization(userId, body);

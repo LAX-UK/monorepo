@@ -102,6 +102,11 @@ export const DASHBOARD_EMPTY = {
     title: "No pending invitations",
     description: "Organisation invites sent to your email will appear here.",
   },
+  orgModuleComingSoon: {
+    title: "Organisations — coming soon",
+    description:
+      "Gallery, dealer, and estate workspaces are being prepared. You'll be able to register an organisation, invite your team, and manage consignments here.",
+  },
   checkout: {
     title: "Your checkout basket is empty",
     description: "Add lots from your portfolio or won items to pay in one session.",

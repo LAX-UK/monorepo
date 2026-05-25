@@ -20,6 +20,7 @@ type Props = {
   user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
   kyc?: KycStatusSummaryDto | null;
   orgOnboarding?: OrgOnboardingResumeVm | null;
+  orgModuleEnabled?: boolean;
   addressesCount?: number;
   activity?: readonly ActivityItem[];
 };
@@ -29,6 +30,7 @@ export function DashboardOverviewView({
   user,
   kyc = null,
   orgOnboarding = null,
+  orgModuleEnabled = true,
   addressesCount = 0,
   activity = [],
 }: Props) {
@@ -61,7 +63,14 @@ export function DashboardOverviewView({
               hideIdentityPill={kyc?.requiresKyc === true}
             />
           ),
-          kpis: <OverviewHeroBand vm={vm} kyc={kyc} orgOnboarding={orgOnboarding} />,
+          kpis: (
+            <OverviewHeroBand
+              vm={vm}
+              kyc={kyc}
+              orgOnboarding={orgOnboarding}
+              orgModuleEnabled={orgModuleEnabled}
+            />
+          ),
           activity: <ActiveBidsCard vm={vm} />,
           activityFeed: <ActivityFeed items={activity} />,
           watchlist: <WatchlistPreviewCard vm={vm} variant="tile-grid" />,

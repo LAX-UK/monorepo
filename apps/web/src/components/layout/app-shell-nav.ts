@@ -66,111 +66,133 @@ function exactOrNested(href: string) {
   return (pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const ORG_MODULE_NAV_IDS = new Set(["organisations", "invitations"]);
+
+function filterOrgModuleNavItems(
+  items: AppShellNavItem[],
+  orgModuleEnabled: boolean,
+): AppShellNavItem[] {
+  if (orgModuleEnabled) return items;
+  return items.filter((item) => !ORG_MODULE_NAV_IDS.has(item.id));
+}
+
 /** Collector-focused navigation (bidding & collection). */
-export function getClientBuyingNavItems(): AppShellNavItem[] {
-  return [
-    {
-      id: "overview",
-      label: "Overview",
-      href: "/dashboard",
-      icon: LayoutGrid,
-      match: (pathname) => pathname === "/dashboard",
-    },
-    { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
-    { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
-    { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
-    { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
-    {
-      id: "organisations",
-      label: "Organisations",
-      href: "/dashboard/organisations",
-      icon: Building2,
-      match: exactOrNested("/dashboard/organisations"),
-    },
-    {
-      id: "invitations",
-      label: "Invitations",
-      href: "/dashboard/invitations",
-      icon: Inbox,
-      match: exactOrNested("/dashboard/invitations"),
-    },
-    { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-    {
-      id: "settings",
-      label: "Settings",
-      href: "/dashboard/settings/profile",
-      icon: Settings,
-      match: exactOrNested("/dashboard/settings"),
-    },
-  ];
+export function getClientBuyingNavItems(orgModuleEnabled = true): AppShellNavItem[] {
+  return filterOrgModuleNavItems(
+    [
+      {
+        id: "overview",
+        label: "Overview",
+        href: "/dashboard",
+        icon: LayoutGrid,
+        match: (pathname) => pathname === "/dashboard",
+      },
+      { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
+      { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
+      { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
+      { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
+      {
+        id: "organisations",
+        label: "Organisations",
+        href: "/dashboard/organisations",
+        icon: Building2,
+        match: exactOrNested("/dashboard/organisations"),
+      },
+      {
+        id: "invitations",
+        label: "Invitations",
+        href: "/dashboard/invitations",
+        icon: Inbox,
+        match: exactOrNested("/dashboard/invitations"),
+      },
+      { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+      {
+        id: "settings",
+        label: "Settings",
+        href: "/dashboard/settings/profile",
+        icon: Settings,
+        match: exactOrNested("/dashboard/settings"),
+      },
+    ],
+    orgModuleEnabled,
+  );
 }
 
 /** Seller & artist workspace navigation. */
-export function getClientSellingNavItems(): AppShellNavItem[] {
-  return [
-    {
-      id: "seller-overview",
-      label: "Seller overview",
-      href: "/dashboard/seller",
-      icon: Store,
-      match: (pathname) => pathname === "/dashboard/seller",
-    },
-    {
-      id: "submissions",
-      label: "Submissions",
-      href: "/dashboard/submissions",
-      icon: Upload,
-      match: exactOrNested("/dashboard/submissions"),
-    },
-    {
-      id: "in-sale",
-      label: "Items in sale",
-      href: "/dashboard/seller/in-sale",
-      icon: Layers,
-    },
-    {
-      id: "payouts",
-      label: "Sold & payouts",
-      href: "/dashboard/seller/payouts",
-      icon: WalletCards,
-    },
-    {
-      id: "artist",
-      label: "Artist profile",
-      href: "/dashboard/seller/artist",
-      icon: Brush,
-    },
-    {
-      id: "organisations",
-      label: "Organisations",
-      href: "/dashboard/organisations",
-      icon: Building2,
-      match: exactOrNested("/dashboard/organisations"),
-    },
-    {
-      id: "invitations",
-      label: "Invitations",
-      href: "/dashboard/invitations",
-      icon: Inbox,
-      match: exactOrNested("/dashboard/invitations"),
-    },
-    { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-    {
-      id: "settings",
-      label: "Settings",
-      href: "/dashboard/settings/profile",
-      icon: Settings,
-      match: exactOrNested("/dashboard/settings"),
-    },
-  ];
+export function getClientSellingNavItems(orgModuleEnabled = true): AppShellNavItem[] {
+  return filterOrgModuleNavItems(
+    [
+      {
+        id: "seller-overview",
+        label: "Seller overview",
+        href: "/dashboard/seller",
+        icon: Store,
+        match: (pathname) => pathname === "/dashboard/seller",
+      },
+      {
+        id: "submissions",
+        label: "Submissions",
+        href: "/dashboard/submissions",
+        icon: Upload,
+        match: exactOrNested("/dashboard/submissions"),
+      },
+      {
+        id: "in-sale",
+        label: "Items in sale",
+        href: "/dashboard/seller/in-sale",
+        icon: Layers,
+      },
+      {
+        id: "payouts",
+        label: "Sold & payouts",
+        href: "/dashboard/seller/payouts",
+        icon: WalletCards,
+      },
+      {
+        id: "artist",
+        label: "Artist profile",
+        href: "/dashboard/seller/artist",
+        icon: Brush,
+      },
+      {
+        id: "organisations",
+        label: "Organisations",
+        href: "/dashboard/organisations",
+        icon: Building2,
+        match: exactOrNested("/dashboard/organisations"),
+      },
+      {
+        id: "invitations",
+        label: "Invitations",
+        href: "/dashboard/invitations",
+        icon: Inbox,
+        match: exactOrNested("/dashboard/invitations"),
+      },
+      { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+      {
+        id: "settings",
+        label: "Settings",
+        href: "/dashboard/settings/profile",
+        icon: Settings,
+        match: exactOrNested("/dashboard/settings"),
+      },
+    ],
+    orgModuleEnabled,
+  );
 }
 
-export function getClientNavItems(workspace: ClientWorkspaceMode = "buying"): AppShellNavItem[] {
-  return workspace === "selling" ? getClientSellingNavItems() : getClientBuyingNavItems();
+export function getClientNavItems(
+  workspace: ClientWorkspaceMode = "buying",
+  orgModuleEnabled = true,
+): AppShellNavItem[] {
+  return workspace === "selling"
+    ? getClientSellingNavItems(orgModuleEnabled)
+    : getClientBuyingNavItems(orgModuleEnabled);
 }
 
 export function getClientMobileBottomTabs(
   workspace: ClientWorkspaceMode = "buying",
+  orgModuleEnabled = true,
 ): AppShellNavItem[] {
   const more = {
     id: "more",
@@ -179,7 +201,7 @@ export function getClientMobileBottomTabs(
     icon: Menu,
   };
   if (workspace === "selling") {
-    const selling = getClientSellingNavItems();
+    const selling = getClientSellingNavItems(orgModuleEnabled);
     return [
       selling.find((item) => item.id === "seller-overview"),
       selling.find((item) => item.id === "submissions"),
@@ -188,7 +210,7 @@ export function getClientMobileBottomTabs(
       more,
     ].filter((item): item is AppShellNavItem => item != null);
   }
-  const buying = getClientBuyingNavItems();
+  const buying = getClientBuyingNavItems(orgModuleEnabled);
   return [
     buying.find((item) => item.id === "overview"),
     buying.find((item) => item.id === "bids"),
@@ -207,8 +229,9 @@ export function getAppShellNavItems(
   clientWorkspace: ClientWorkspaceMode = "buying",
   pendingArtistCount = 0,
   navCounts?: import("@/lib/data/http/admin-nav-counts.types").AdminNavCounts,
+  orgModuleEnabled = true,
 ): AppShellNavItem[] {
-  if (shell === "client") return getClientNavItems(clientWorkspace);
+  if (shell === "client") return getClientNavItems(clientWorkspace, orgModuleEnabled);
   return getStaffNavItems(
     sessionUser.role as UserRole,
     sessionUser.staffRole ?? null,

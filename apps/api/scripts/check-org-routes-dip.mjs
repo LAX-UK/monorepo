@@ -27,6 +27,7 @@ const allowed = new Set([
   "requireLegalEntityContext",
   "db",
   "organizationOnboardingService",
+  "orgModuleGate",
   "stripeConnectService",
 ]);
 

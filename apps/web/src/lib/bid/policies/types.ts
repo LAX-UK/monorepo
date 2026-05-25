@@ -37,6 +37,7 @@ export type BidPolicyContext = {
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
   biddingLifecycle?: { kind: LotLifecycleKind } | null;
+  orgModuleEnabled?: boolean;
 };
 
 export type BidPolicyDecision =

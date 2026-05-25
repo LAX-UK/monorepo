@@ -57,6 +57,15 @@ describe("resolvePostVerifyDestination", () => {
     ).toEqual({ href: "/onboarding/organisation", label: "Set up your organisation" });
   });
 
+  it("organisation persona routes to dashboard when org module disabled", () => {
+    expect(
+      resolvePostVerifyDestination({
+        sessionPersona: "organisation",
+        orgModuleEnabled: false,
+      }),
+    ).toEqual({ href: "/dashboard", label: "Go to dashboard" });
+  });
+
   it("unknown persona strings are ignored", () => {
     expect(
       resolvePostVerifyDestination({ queryPersona: "robot" as unknown as "individual" }),

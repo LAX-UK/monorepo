@@ -237,6 +237,10 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
    * is encoded in the token).
    */
   r.post("/invitations/accept", requireAuth, zValidator("json", acceptBodySchema), async (c) => {
+    if (!container.orgModuleGate.isEnabled()) {
+      const body = container.orgModuleGate.disabledResponse();
+      return c.json(body, 403);
+    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
     const u = await container.userService.getById(userId);
