@@ -1,20 +1,27 @@
 "use client";
 
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { ShareButton } from "@/components/marketing/share-button";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useSplitOverlayOpenSm } from "@/hooks/use-split-overlay-open";
 import { trackQuickLookEnrichmentMs } from "@/lib/analytics/events";
+import { recordRecentlyViewedLot } from "@/lib/marketing/recently-viewed-lots";
 import { cn } from "@auction/ui";
+import {
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetDescription,
+  BottomSheetTitle,
+} from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
-import { X } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type TouchEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -301,23 +308,6 @@ function QuickLookBody({
   );
 }
 
-function MobileSheetChrome() {
-  return (
-    <div className="sticky top-0 z-10 flex shrink-0 items-center justify-end bg-surface-container-lowest/95 px-3 pb-2 pt-[max(env(safe-area-inset-top,0px),0.5rem)] backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80 sm:hidden">
-      <div
-        className="pointer-events-none absolute left-1/2 top-2 h-1 w-9 -translate-x-1/2 rounded-full bg-outline-variant/60"
-        aria-hidden
-      />
-      <DialogClose
-        className="relative inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        aria-label="Close quick look"
-      >
-        <X className="size-5" aria-hidden />
-      </DialogClose>
-    </div>
-  );
-}
-
 function preloadImage(url: string): void {
   const img = new Image();
   img.src = url;
@@ -345,6 +335,11 @@ export function LotQuickLookDialog() {
     setImageIndex(0);
     setLightboxOpen(false);
     emitQuickLookOpen(activeVm.id, session?.options.deckSourceLabel);
+    recordRecentlyViewedLot({
+      id: activeVm.id,
+      href: activeVm.href,
+      title: activeVm.title,
+    });
 
     let cancelled = false;
     setEnriching(true);
@@ -377,6 +372,8 @@ export function LotQuickLookDialog() {
     },
     [closeQuickLook],
   );
+
+  const { mobile, desktop } = useSplitOverlayOpenSm(open, handleOpenChange);
 
   const handleCtaNavigate = useCallback(() => {
     setLightboxOpen(false);
@@ -470,185 +467,214 @@ export function LotQuickLookDialog() {
     (deckLength > 1 ? `Quick look · ${deckIndex + 1} of ${deckLength}` : "Quick look");
   const contextId = "quick-look-context";
   const statusId = "quick-look-status";
+  const shareBase = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const shareUrl = vm.href.startsWith("http")
+    ? vm.href
+    : `${shareBase.replace(/\/$/, "")}${vm.href}`;
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        onCloseAutoFocus={handleCloseAutoFocus}
-        onEscapeKeyDown={(e) => {
-          if (lightboxOpen) {
-            e.preventDefault();
-            setLightboxOpen(false);
-          }
-        }}
-        overlayClassName={quickLookOverlayMotion(reduceMotion)}
-        closeClassName="hidden sm:inline-flex"
-        className={cn(
-          "flex max-h-[92dvh] w-full max-w-none flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:max-h-[85vh] sm:w-[calc(100vw-1rem)] sm:max-w-3xl",
-          "top-auto bottom-0 translate-x-[-50%] translate-y-0 sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
-          "rounded-t-2xl sm:rounded-lg",
-          quickLookPanelMotion(reduceMotion),
-        )}
-      >
-        <output className="sr-only" aria-live="polite">
-          {enrichmentAnnounce}
-        </output>
-        <output className="sr-only" aria-live="polite">
-          {deckAnnounce}
-        </output>
+  const quickLookInner = (
+    <>
+      <output className="sr-only" aria-live="polite">
+        {enrichmentAnnounce}
+      </output>
+      <output className="sr-only" aria-live="polite">
+        {deckAnnounce}
+      </output>
 
-        <MobileSheetChrome />
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-          <div className="shrink-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-            <QuickLookBody
-              key={vm.id}
-              vm={vm}
-              enriching={enriching}
-              deckDirection={deckDirection}
-              imageIndex={imageIndex}
-              onImageIndexChange={setImageIndex}
-              onHeroClick={() => {
-                if (images.length > 0) setLightboxOpen(true);
-              }}
-              deckNav={
-                deckLength > 1 ? (
-                  <LotQuickLookDeckNav
-                    variant="hero-overlay"
-                    deckIndex={deckIndex}
-                    deckLength={deckLength}
-                    onPrev={goDeckPrev}
-                    onNext={goDeckNext}
-                  />
-                ) : null
-              }
-            />
-          </div>
-
-          <div
-            key={`meta-${vm.id}`}
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-2 sm:p-6",
-              deckEnterClass(deckDirection),
-            )}
-          >
-            <div className="quick-look-stagger flex flex-col gap-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p
-                  id={contextId}
-                  className="font-body text-xs font-medium uppercase tracking-wide text-on-surface-variant"
-                >
-                  {contextLabel}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleOpenChange(false)}
-                  className="font-body text-xs text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  Back to results
-                </button>
-              </div>
-
-              <QuickLookStatusBand vm={vm} statusId={statusId} />
-
-              <div className="space-y-1">
-                <DialogTitle
-                  className="line-clamp-2 text-left font-headline text-xl font-semibold leading-snug text-on-surface sm:text-2xl"
-                  aria-describedby={`${contextId} ${statusId}`}
-                >
-                  {vm.title}
-                </DialogTitle>
-                <DialogDescription className="line-clamp-1 text-left font-body text-sm text-on-surface-variant">
-                  {vm.subtitle}
-                </DialogDescription>
-              </div>
-
-              {vm.medium ? (
-                <p className="line-clamp-2 font-body text-sm text-on-surface-variant">
-                  {vm.medium}
-                </p>
-              ) : enriching ? (
-                <div
-                  className="h-4 w-2/3 animate-pulse rounded bg-surface-container-high motion-reduce:animate-none"
-                  aria-hidden
-                />
-              ) : null}
-
-              {vm.dimensions ? (
-                <p className="font-body text-sm text-on-surface-variant">{vm.dimensions}</p>
-              ) : null}
-
-              <QuickLookPricingCards vm={vm} />
-
-              {vm.buyersPremiumHint ? (
-                <p className="font-body text-xs text-on-surface-variant">{vm.buyersPremiumHint}</p>
-              ) : null}
-
-              {deckLength > 1 ? (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div className="shrink-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <QuickLookBody
+            key={vm.id}
+            vm={vm}
+            enriching={enriching}
+            deckDirection={deckDirection}
+            imageIndex={imageIndex}
+            onImageIndexChange={setImageIndex}
+            onHeroClick={() => {
+              if (images.length > 0) setLightboxOpen(true);
+            }}
+            deckNav={
+              deckLength > 1 ? (
                 <LotQuickLookDeckNav
-                  className="lg:hidden"
+                  variant="hero-overlay"
                   deckIndex={deckIndex}
                   deckLength={deckLength}
                   onPrev={goDeckPrev}
                   onNext={goDeckNext}
                 />
-              ) : null}
-            </div>
-          </div>
+              ) : null
+            }
+          />
         </div>
 
-        <div className="sticky bottom-0 flex shrink-0 flex-col gap-3 border-t border-outline-variant/20 bg-surface-container-lowest p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div className="flex items-center gap-2">
-            <MarketingWatchlistHeart
-              lotId={vm.id}
-              lotTitle={vm.title}
-              initialWatching={options.watchedLotIds.includes(vm.id)}
-              isAuthenticated={options.isAuthenticated}
-              loginNextPath={loginNextPath}
-              layout="inline"
-            />
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            {showBid ? (
-              <Button asChild className="h-11 min-h-11 w-full sm:w-auto">
-                <Link
-                  href={bidHref}
-                  onClick={() => {
-                    emitQuickLookCta(vm.id, "bid");
-                    handleCtaNavigate();
-                  }}
-                >
-                  Bid
-                </Link>
-              </Button>
+        <div
+          key={`meta-${vm.id}`}
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-2 sm:p-6",
+            deckEnterClass(deckDirection),
+          )}
+        >
+          <div className="quick-look-stagger flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p
+                id={contextId}
+                className="font-body text-xs font-medium uppercase tracking-wide text-on-surface-variant"
+              >
+                {contextLabel}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleOpenChange(false)}
+                className="font-body text-xs text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Back to results
+              </button>
+            </div>
+
+            <QuickLookStatusBand vm={vm} statusId={statusId} />
+
+            <div className="space-y-1">
+              <h2
+                className="line-clamp-2 text-left font-headline text-xl font-semibold leading-snug text-on-surface sm:text-2xl"
+                aria-describedby={`${contextId} ${statusId}`}
+              >
+                {vm.title}
+              </h2>
+              <p className="line-clamp-1 text-left font-body text-sm text-on-surface-variant">
+                {vm.subtitle}
+              </p>
+            </div>
+
+            {vm.medium ? (
+              <p className="line-clamp-2 font-body text-sm text-on-surface-variant">{vm.medium}</p>
+            ) : enriching ? (
+              <div
+                className="h-4 w-2/3 animate-pulse rounded bg-surface-container-high motion-reduce:animate-none"
+                aria-hidden
+              />
             ) : null}
-            <Button
-              variant={showBid ? "outline" : "default"}
-              asChild
-              className="h-11 min-h-11 w-full sm:w-auto"
-            >
+
+            {vm.dimensions ? (
+              <p className="font-body text-sm text-on-surface-variant">{vm.dimensions}</p>
+            ) : null}
+
+            <QuickLookPricingCards vm={vm} />
+
+            {vm.buyersPremiumHint ? (
+              <p className="font-body text-xs text-on-surface-variant">{vm.buyersPremiumHint}</p>
+            ) : null}
+
+            {deckLength > 1 ? (
+              <LotQuickLookDeckNav
+                className="lg:hidden"
+                deckIndex={deckIndex}
+                deckLength={deckLength}
+                onPrev={goDeckPrev}
+                onNext={goDeckNext}
+              />
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 flex shrink-0 flex-col gap-3 border-t border-outline-variant/20 bg-surface-container-lowest p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex items-center gap-2">
+          <MarketingWatchlistHeart
+            lotId={vm.id}
+            lotTitle={vm.title}
+            initialWatching={options.watchedLotIds.includes(vm.id)}
+            isAuthenticated={options.isAuthenticated}
+            loginNextPath={loginNextPath}
+            layout="inline"
+          />
+          <ShareButton url={shareUrl} title={vm.title} className="min-h-10" />
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          {showBid ? (
+            <Button asChild className="h-11 min-h-11 w-full sm:w-auto">
               <Link
-                href={vm.href}
+                href={bidHref}
                 onClick={() => {
-                  emitQuickLookCta(vm.id, "view_lot");
+                  emitQuickLookCta(vm.id, "bid");
                   handleCtaNavigate();
                 }}
               >
-                View lot
+                Bid
               </Link>
             </Button>
-          </div>
+          ) : null}
+          <Button
+            variant={showBid ? "outline" : "default"}
+            asChild
+            className="h-11 min-h-11 w-full sm:w-auto"
+          >
+            <Link
+              href={vm.href}
+              onClick={() => {
+                emitQuickLookCta(vm.id, "view_lot");
+                handleCtaNavigate();
+              }}
+            >
+              View lot
+            </Link>
+          </Button>
         </div>
+      </div>
 
-        <LotQuickLookLightbox
-          title={vm.title}
-          images={images}
-          index={imageIndex}
-          open={lightboxOpen}
-          onIndexChange={setImageIndex}
-          onClose={() => setLightboxOpen(false)}
-        />
-      </DialogContent>
-    </Dialog>
+      <LotQuickLookLightbox
+        title={vm.title}
+        images={images}
+        index={imageIndex}
+        open={lightboxOpen}
+        onIndexChange={setImageIndex}
+        onClose={() => setLightboxOpen(false)}
+      />
+    </>
+  );
+
+  return (
+    <>
+      <BottomSheet {...mobile}>
+        <BottomSheetContent
+          overlayClassName="sm:hidden"
+          className={cn(
+            "flex max-h-[92dvh] flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:hidden",
+            quickLookPanelMotion(reduceMotion),
+          )}
+        >
+          <BottomSheetTitle className="sr-only">{vm.title}</BottomSheetTitle>
+          <BottomSheetDescription className="sr-only">{vm.subtitle}</BottomSheetDescription>
+          {quickLookInner}
+        </BottomSheetContent>
+      </BottomSheet>
+
+      <Dialog {...desktop}>
+        <DialogContent
+          onCloseAutoFocus={handleCloseAutoFocus}
+          onEscapeKeyDown={(e) => {
+            if (lightboxOpen) {
+              e.preventDefault();
+              setLightboxOpen(false);
+            }
+          }}
+          overlayClassName={cn(
+            "hidden sm:block z-[var(--z-overlay,60)]",
+            quickLookOverlayMotion(reduceMotion),
+          )}
+          closeClassName="hidden sm:inline-flex"
+          className={cn(
+            "hidden max-h-[85vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:flex",
+            "z-[var(--z-overlay,60)]",
+            "top-[50%] translate-x-[-50%] translate-y-[-50%]",
+            "rounded-lg",
+            quickLookPanelMotion(reduceMotion),
+          )}
+        >
+          <DialogTitle className="sr-only">{vm.title}</DialogTitle>
+          <DialogDescription className="sr-only">{vm.subtitle}</DialogDescription>
+          {quickLookInner}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

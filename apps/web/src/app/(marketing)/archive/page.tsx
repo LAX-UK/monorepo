@@ -136,7 +136,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     return (
       <main
         id="main-content"
-        className="bg-surface px-8 pb-24 pt-[var(--section-pt)] text-on-surface md:px-20"
+        className="bg-surface px-8 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] text-on-surface md:px-20"
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
@@ -171,7 +171,10 @@ export default async function ArchivePage({ searchParams }: PageProps) {
   } catch (err) {
     console.error("[ArchivePage]", err);
     return (
-      <main id="main-content" className="bg-surface px-8 pb-24 pt-[var(--section-pt)] md:px-20">
+      <main
+        id="main-content"
+        className="bg-surface px-8 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-20"
+      >
         <PastAuctionsHeader totalVolumeLabel="—" />
         <Suspense fallback={filtersFallback()}>
           <ArchiveFilterBar categories={[]} />

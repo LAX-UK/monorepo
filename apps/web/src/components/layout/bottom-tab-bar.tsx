@@ -33,7 +33,7 @@ export function BottomTabBar() {
     <>
       <nav
         aria-label="Primary mobile dashboard navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-hairline bg-surface-container-lowest/95 px-2 pb-[max(0.5rem,var(--safe-area-bottom,env(safe-area-inset-bottom)))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm lg:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-tab-bar-bottom,0px)] z-[var(--z-site-chrome,50)] border-t border-border-hairline bg-surface-container-lowest/95 px-2 pb-[max(0.5rem,var(--safe-area-bottom,env(safe-area-inset-bottom)))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm lg:hidden"
         style={{ minHeight: "var(--bottom-nav-height, 64px)" }}
       >
         <ul

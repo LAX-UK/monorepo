@@ -17,20 +17,18 @@ describe("auth guard contract (source)", () => {
     expect(src).toContain("/register/verify-pending");
   });
 
-  it("guarded marketing pages import redirectIfAuthenticated or verify-pending guard", () => {
-    expect(read("app/(marketing)/login/page.tsx")).toContain("redirectIfAuthenticated");
-    expect(read("app/(marketing)/register/page.tsx")).toContain("redirectIfAuthenticated");
-    expect(read("app/(marketing)/forgot-password/page.tsx")).toContain("redirectIfAuthenticated");
-    expect(read("app/(marketing)/register/verify-pending/page.tsx")).toContain(
+  it("guarded task auth pages import redirectIfAuthenticated or verify-pending guard", () => {
+    expect(read("app/(task)/login/page.tsx")).toContain("redirectIfAuthenticated");
+    expect(read("app/(task)/register/page.tsx")).toContain("redirectIfAuthenticated");
+    expect(read("app/(task)/forgot-password/page.tsx")).toContain("redirectIfAuthenticated");
+    expect(read("app/(task)/register/verify-pending/page.tsx")).toContain(
       "redirectIfVerifyPendingNotNeeded",
     );
   });
 
   it("token-bound pages do not import redirectIfAuthenticated", () => {
-    expect(read("app/(marketing)/reset-password/page.tsx")).not.toContain(
-      "redirectIfAuthenticated",
-    );
-    expect(read("app/(marketing)/verify-email/page.tsx")).not.toContain("redirectIfAuthenticated");
+    expect(read("app/(task)/reset-password/page.tsx")).not.toContain("redirectIfAuthenticated");
+    expect(read("app/(task)/verify-email/page.tsx")).not.toContain("redirectIfAuthenticated");
     expect(read("app/(marketing)/unsubscribe/page.tsx")).not.toContain("redirectIfAuthenticated");
   });
 });

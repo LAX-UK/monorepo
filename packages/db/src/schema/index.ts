@@ -19,6 +19,7 @@ export * from "./categories.js";
 export * from "./notifications.js";
 export * from "./notification-preferences.js";
 export * from "./user-ui-preferences.js";
+export * from "./saved-search.js";
 export * from "./push-subscriptions.js";
 export * from "./payments.js";
 export * from "./watchlist.js";

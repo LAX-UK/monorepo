@@ -135,7 +135,7 @@ const envSchema = z
     /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
     XERO_CLIENT_ID: z.string().optional(),
     XERO_CLIENT_SECRET: z.string().optional(),
-    /** Must match a redirect URI registered in the Xero developer portal (e.g. https://api.example.com/admin/integrations/xero/callback). */
+    /** Must match the web app callback route registered in the Xero developer portal (e.g. https://lax.bid/admin/integrations/xero/callback). */
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Webhook signing key from Xero (optional until webhooks are configured). */
     XERO_WEBHOOK_KEY: z.string().optional(),

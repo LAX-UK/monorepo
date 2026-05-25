@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
+import { SavedSearchesPanel } from "@/components/dashboard/saved-searches-panel";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -69,9 +70,22 @@ export default async function NotificationSettingsPage({
       ) : null}
 
       {!loadFailure && prefs ? (
-        <Surface variant="section" padding="md">
-          <NotificationPreferencesForm initial={prefs} />
-        </Surface>
+        <>
+          <Surface variant="section" padding="md">
+            <NotificationPreferencesForm initial={prefs} />
+          </Surface>
+          <Surface variant="section" padding="md" className="space-y-4">
+            <div>
+              <h2 className="font-headline text-lg font-semibold text-on-surface">
+                Saved searches
+              </h2>
+              <p className="mt-1 font-body text-sm text-on-surface-variant">
+                Manage catalogue filters you saved from search.
+              </p>
+            </div>
+            <SavedSearchesPanel />
+          </Surface>
+        </>
       ) : null}
     </DashboardPage>
   );

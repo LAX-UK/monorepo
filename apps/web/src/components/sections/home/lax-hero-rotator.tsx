@@ -8,7 +8,8 @@ import { HeroDots } from "@/components/sections/home/hero/hero-dots";
 import { HeroProgressBar } from "@/components/sections/home/hero/hero-progress-bar";
 import { HeroSlideCopy } from "@/components/sections/home/hero/hero-slide-copy";
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
-import { MediaImage } from "@/components/ui/media-image";
+import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
+import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
@@ -53,7 +54,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       <CarouselContent className="-ml-0 h-full min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
         {slides.map((slide, i) => (
           <CarouselItem key={slide.id} className="basis-full pl-0">
-            <HeroSlidePanel slide={slide} priority={i === 0} />
+            <HeroSlidePanel slide={slide} priority={i === 0} slideIndex={i} slideCount={n} />
           </CarouselItem>
         ))}
       </CarouselContent>
@@ -62,34 +63,36 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
   );
 }
 
-function HeroSlidePanel({ slide, priority }: { slide: HeroSaleSlideVM; priority: boolean }) {
+function HeroSlidePanel({
+  slide,
+  priority,
+  slideIndex,
+  slideCount,
+}: {
+  slide: HeroSaleSlideVM;
+  priority: boolean;
+  slideIndex: number;
+  slideCount: number;
+}) {
   return (
-    <div className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
-      <RevealOnMount
-        key={slide.id}
-        variant="wipeZoom"
-        className="absolute inset-0 overflow-hidden"
-        innerClassName="absolute inset-0"
+    <RevealOnMount
+      key={slide.id}
+      variant="wipeZoom"
+      className="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]"
+      innerClassName="relative min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]"
+    >
+      <HeroAdaptiveShell
+        src={slide.coverImageUrl}
+        alt={slide.coverImageAlt}
+        priority={priority}
+        imgClassName="object-center"
+        backdropScrim={<HeroHorizontalScrim />}
       >
-        <MediaImage
-          src={slide.coverImageUrl}
-          alt={slide.coverImageAlt}
-          label="Auction cover"
-          tone="dark"
-          priority={priority}
-          imgClassName="object-center"
-          sizes="100vw"
-        />
-      </RevealOnMount>
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, var(--color-scrim-hero), var(--color-scrim-hero-mid), transparent)",
-        }}
-        aria-hidden
-      />
-    </div>
+        <div className="pointer-events-none absolute inset-0 flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
+          <HeroSlideCopy slide={slide} slideIndex={slideIndex} slideCount={slideCount} />
+        </div>
+      </HeroAdaptiveShell>
+    </RevealOnMount>
   );
 }
 
@@ -115,20 +118,16 @@ function HeroProgressWithCarousel({
 }
 
 function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
-  const { selectedIndex, scrollPrev, scrollNext } = useCarousel();
+  const { scrollPrev, scrollNext } = useCarousel();
   const n = slides.length;
-  const current = slides[selectedIndex] ?? slides[0];
-  if (!current) return null;
+  if (n <= 1) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
-      <HeroSlideCopy slide={current} slideIndex={selectedIndex} slideCount={n} />
-      {n > 1 ? (
-        <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
-          <HeroDots />
-        </div>
-      ) : null}
+    <div className="pointer-events-none absolute inset-x-0 bottom-16 z-[2] flex flex-col justify-end px-6 md:bottom-20 md:px-10 lg:px-10">
+      <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
+        <HeroDots />
+      </div>
     </div>
   );
 }

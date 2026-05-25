@@ -113,6 +113,17 @@ export {
   SheetTitle,
   SheetDescription,
 } from "./components/ui/sheet.js";
+export {
+  BottomSheet,
+  BottomSheetPortal,
+  BottomSheetTrigger,
+  BottomSheetClose,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetFooter,
+  BottomSheetTitle,
+  BottomSheetDescription,
+} from "./components/ui/bottom-sheet.js";
 export { DataTable } from "./components/ui/data-table.js";
 export { EmptyState } from "./components/ui/empty-state.js";
 export type { EmptyStateProps } from "./components/ui/empty-state.js";
@@ -265,8 +276,8 @@ export { ListRow } from "./components/ui/list-row.js";
 export type { ListRowProps } from "./components/ui/list-row.js";
 export { InsetGroup } from "./components/ui/inset-group.js";
 export type { InsetGroupProps } from "./components/ui/inset-group.js";
-export { LoadingButton } from "./components/ui/loading-button.js";
-export type { LoadingButtonProps } from "./components/ui/loading-button.js";
+export { LoadingButton, AsyncButton } from "./components/ui/loading-button.js";
+export type { LoadingButtonProps, AsyncButtonProps } from "./components/ui/loading-button.js";
 export { SectionToc } from "./components/ui/section-toc.js";
 export type { SectionTocItem, SectionTocProps } from "./components/ui/section-toc.js";
 export { FilterRow } from "./components/ui/filter-row.js";

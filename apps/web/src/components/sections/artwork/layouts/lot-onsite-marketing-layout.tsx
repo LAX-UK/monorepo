@@ -93,7 +93,7 @@ export function LotOnsiteMarketingLayout({
       <h1 id="lot-heading-onsite" className="sr-only">
         {auction.title}
       </h1>
-      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-20 pt-6 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[var(--page-bottom-padding)] pt-6 sm:px-6 md:px-8">
         <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
           <LotHeroViewTransitionShell
             lotId={auction.id}

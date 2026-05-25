@@ -1,15 +1,16 @@
 "use client";
 
-import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { Lot } from "@auction/types";
-import { LotQuickLookTrigger } from "./lot-quick-look-trigger";
+import type { ReactNode } from "react";
 import { lotQuickLookFromLot } from "./mappers";
+import { MarketingLotOverlayActions } from "./marketing-lot-overlay-actions";
 
 type Props = {
   lot: Lot;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;
+  bottomLeftAddon?: ReactNode;
 };
 
 /** Watchlist + quick-look controls for search/catalog grid cards. */
@@ -18,27 +19,23 @@ export function CatalogLotQuickLookCorner({
   isAuthenticated,
   watchedLotIds,
   loginNextPath,
+  bottomLeftAddon,
 }: Props) {
   const vm = lotQuickLookFromLot(lot);
   return (
-    <div className="pointer-events-auto flex flex-col items-end gap-2">
-      <MarketingWatchlistHeart
-        lotId={lot.id}
-        lotTitle={lot.title}
-        initialWatching={watchedLotIds.includes(lot.id)}
-        isAuthenticated={isAuthenticated}
-        loginNextPath={loginNextPath}
-        layout="overlay"
-      />
-      <LotQuickLookTrigger
-        vm={vm}
-        layout="overlay"
-        options={{
-          isAuthenticated,
-          watchedLotIds,
-          loginNextPath,
-        }}
-      />
-    </div>
+    <MarketingLotOverlayActions
+      lotId={lot.id}
+      lotTitle={lot.title}
+      initialWatching={watchedLotIds.includes(lot.id)}
+      isAuthenticated={isAuthenticated}
+      loginNextPath={loginNextPath}
+      vm={vm}
+      quickLookOptions={{
+        isAuthenticated,
+        watchedLotIds,
+        loginNextPath,
+      }}
+      bottomLeftAddon={bottomLeftAddon}
+    />
   );
 }
