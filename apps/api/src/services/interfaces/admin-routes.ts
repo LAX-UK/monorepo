@@ -299,12 +299,27 @@ export interface IAdminLegalEntityLifecycleApplicationService {
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>>;
 }
 
+export type XeroConnectionHealth = "healthy" | "degraded" | "disconnected";
+
 export type XeroStatusPayload = {
   connected: boolean;
   tenantId: string | null;
   tenantName: string | null;
   expiresAt: string | null;
   oauthConfigured: boolean;
+  connectedAt: string | null;
+  updatedAt: string | null;
+  connectedBy: { id: string; name: string; email: string } | null;
+  scopes: string | null;
+  webhookConfigured: boolean;
+  webhookUrl: string | null;
+  recentWebhookErrors: number;
+  syncErrorCount: number;
+  health: XeroConnectionHealth;
+  connectionStatus: "healthy" | "needs_reauth" | null;
+  lastRefreshError: string | null;
+  orgShortCode: string | null;
+  orgBaseCurrency: string | null;
 };
 
 export interface IXeroAdminApplicationService {

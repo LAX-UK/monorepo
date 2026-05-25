@@ -15,6 +15,11 @@ import type { IEmailObservabilityRepository } from "../interfaces/email-observab
 import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "../interfaces/xero-repositories.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
 import type { LotService } from "../lot.service.js";
@@ -55,7 +60,10 @@ export type CreateAdminRouteServicesInput = {
   lotService: LotService;
   invitationService: InvitationService;
   xeroOAuthService: XeroOAuthService | null;
-  env: Pick<Env, "XERO_REDIRECT_URI">;
+  xeroConnectionRepository: IXeroConnectionRepository;
+  xeroWebhookEventRepository: IXeroWebhookEventRepository;
+  paymentExternalRefRepository: IPaymentExternalRefRepository;
+  env: Pick<Env, "XERO_REDIRECT_URI" | "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">;
 };
 
 export function createAdminRouteServices(input: CreateAdminRouteServicesInput): AdminRouteServices {
@@ -89,6 +97,14 @@ export function createAdminRouteServices(input: CreateAdminRouteServicesInput): 
       input.legalEntityRepository,
       input.legalEntityLifecycleAdminService,
     ),
-    xero: new AdminXeroApplicationService(input.xeroOAuthService, input.env.XERO_REDIRECT_URI),
+    xero: new AdminXeroApplicationService(
+      input.xeroOAuthService,
+      input.env.XERO_REDIRECT_URI,
+      input.xeroConnectionRepository,
+      input.xeroWebhookEventRepository,
+      input.paymentExternalRefRepository,
+      input.db,
+      input.env,
+    ),
   };
 }

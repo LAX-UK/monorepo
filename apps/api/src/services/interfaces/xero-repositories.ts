@@ -10,6 +10,7 @@ export type PaymentExternalRefInsert = InferInsertModel<typeof paymentExternalRe
 export type XeroWebhookEventInsert = InferInsertModel<typeof xeroWebhookEvent>;
 
 export type PaymentExternalSyncStatus = PaymentExternalRefRow["syncStatus"];
+export type XeroConnectionStatus = XeroConnectionRow["connectionStatus"];
 
 export interface IXeroConnectionRepository {
   findLatest(): Promise<XeroConnectionRow | null>;
@@ -19,6 +20,15 @@ export interface IXeroConnectionRepository {
   updateTokens(
     tenantId: string,
     patch: Pick<XeroConnectionRow, "accessToken" | "refreshToken" | "expiresAt">,
+  ): Promise<void>;
+  updateConnectionStatus(
+    tenantId: string,
+    status: XeroConnectionStatus,
+    lastRefreshError: string | null,
+  ): Promise<void>;
+  updateOrgMetadata(
+    tenantId: string,
+    patch: Pick<XeroConnectionRow, "orgShortCode" | "orgBaseCurrency">,
   ): Promise<void>;
   deleteAll(): Promise<void>;
 }
@@ -42,6 +52,8 @@ export interface IPaymentExternalRefRepository {
 
   patchOnlineInvoiceUrl(paymentId: string, url: string): Promise<void>;
 
+  countSyncErrors(): Promise<number>;
+
   updateInvoiceCreated(
     paymentId: string,
     patch: {
@@ -63,6 +75,7 @@ export interface IXeroWebhookEventRepository {
   }): Promise<{ claimed: boolean }>;
   markProcessed(eventKey: string): Promise<void>;
   markFailed(eventKey: string, error: string): Promise<void>;
+  countErrorsSince(since: Date): Promise<number>;
   listRecentFailures(
     limit: number,
   ): Promise<{ tenantId: string; resourceId: string; eventKey: string }[]>;

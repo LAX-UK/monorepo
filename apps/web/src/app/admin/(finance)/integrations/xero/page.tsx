@@ -1,9 +1,8 @@
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
-import { XeroDisconnectSubmit } from "@/components/admin/xero-disconnect-submit";
+import { XeroIntegrationPanel } from "@/components/admin/xero-integration-panel";
 import { adminXeroDisconnectAction, adminXeroOAuthStartAction } from "@/lib/actions/admin";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 
 export default async function AdminXeroIntegrationPage({
   searchParams,
@@ -24,19 +23,19 @@ export default async function AdminXeroIntegrationPage({
 
   return (
     <AdminPanelPage
-      className="max-w-[560px]"
+      className="max-w-[640px]"
       title="Xero"
-      description="Connect one Xero organisation for hosted invoices and payment collection. Redirect URI must match your Xero app and environment variables."
+      description="Connect one Xero organisation for hosted invoices and payment collection."
     >
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-6">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
-      {connected ? (
-        <Alert>
+      {connected && !error ? (
+        <Alert className="mb-6">
           <AlertTitle>Connected</AlertTitle>
           <AlertDescription>Xero authorisation completed.</AlertDescription>
         </Alert>
@@ -50,71 +49,11 @@ export default async function AdminXeroIntegrationPage({
       ) : null}
 
       {status ? (
-        <div className="rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                OAuth configured
-              </dt>
-              <dd className="mt-1 font-headline text-lg text-on-surface">
-                {status.oauthConfigured ? "Yes" : "No"}
-              </dd>
-              {!status.oauthConfigured ? (
-                <p className="mt-1 text-xs text-on-surface-variant">Set XERO_* env on API.</p>
-              ) : null}
-            </div>
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Connected
-              </dt>
-              <dd className="mt-1 font-headline text-lg text-on-surface">
-                {status.connected ? "Yes" : "No"}
-              </dd>
-            </div>
-            {status.tenantName ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Organisation
-                </dt>
-                <dd className="mt-1 text-on-surface">{status.tenantName}</dd>
-              </div>
-            ) : null}
-            {status.tokenExpiresAt || status.expiresAt ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Token expiry (UTC)
-                </dt>
-                <dd className="mt-1 font-mono text-xs">
-                  {status.tokenExpiresAt ?? status.expiresAt}
-                </dd>
-              </div>
-            ) : null}
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Webhook URL
-              </dt>
-              <dd className="mt-1 break-all font-mono text-xs">
-                {status.webhookUrl ??
-                  `${process.env.NEXT_PUBLIC_API_URL ?? process.env.INTERNAL_API_URL ?? ""}/webhooks/xero`}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            {status.oauthConfigured ? (
-              <form action={adminXeroOAuthStartAction}>
-                <Button type="submit" className="min-h-11">
-                  {status.connected ? "Reconnect to Xero" : "Connect to Xero"}
-                </Button>
-              </form>
-            ) : null}
-            {status.connected ? (
-              <form id="xero-disconnect-form" action={adminXeroDisconnectAction}>
-                <XeroDisconnectSubmit formId="xero-disconnect-form" />
-              </form>
-            ) : null}
-          </div>
-        </div>
+        <XeroIntegrationPanel
+          status={status}
+          oauthStartAction={adminXeroOAuthStartAction}
+          disconnectAction={adminXeroDisconnectAction}
+        />
       ) : null}
     </AdminPanelPage>
   );

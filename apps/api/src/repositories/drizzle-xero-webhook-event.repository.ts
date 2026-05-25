@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { xeroWebhookEvent } from "@auction/db/schema";
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import type { IXeroWebhookEventRepository } from "../services/interfaces/xero-repositories.js";
 
 export class DrizzleXeroWebhookEventRepository implements IXeroWebhookEventRepository {
@@ -38,6 +38,14 @@ export class DrizzleXeroWebhookEventRepository implements IXeroWebhookEventRepos
       .update(xeroWebhookEvent)
       .set({ error, processedAt: new Date() })
       .where(eq(xeroWebhookEvent.eventKey, eventKey));
+  }
+
+  async countErrorsSince(since: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(xeroWebhookEvent)
+      .where(and(isNotNull(xeroWebhookEvent.error), gte(xeroWebhookEvent.createdAt, since)));
+    return row?.count ?? 0;
   }
 
   async listRecentFailures(limit: number) {
