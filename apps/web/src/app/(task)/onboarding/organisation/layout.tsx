@@ -1,8 +1,10 @@
 import { OrgOnboardingShell } from "@/app/(task)/onboarding/organisation/org-onboarding-shell";
 import { OrgOnboardingLoadingSkeleton } from "@/components/onboarding/org-onboarding-loading-skeleton";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -12,6 +14,11 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function OrganisationOnboardingLayout({ children }: { children: ReactNode }) {
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  if (!orgModuleEnabled) {
+    redirect("/dashboard/organisations");
+  }
+
   await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/onboarding/organisation",

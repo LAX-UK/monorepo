@@ -19,6 +19,7 @@ import type {
 import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
 import { Suspense } from "react";
 
@@ -37,9 +38,11 @@ function takeSettledSlice<T>(
 async function DashboardHomeContent({
   orgSubmitted,
   sessionsFailure,
+  orgModuleEnabled,
 }: {
   orgSubmitted: boolean;
   sessionsFailure: ReturnType<typeof describeSessionsOverviewError> | null;
+  orgModuleEnabled: boolean;
 }) {
   const c = await getServerDataContainer();
 
@@ -64,7 +67,7 @@ async function DashboardHomeContent({
     c.bids.listMine(),
     c.submissions.listMine({ limit: 100 }),
     c.kyc.getSummary(),
-    c.orgOnboarding.getResume(),
+    orgModuleEnabled ? c.orgOnboarding.getResume() : Promise.resolve(null),
     c.addresses.listMine(),
     c.notifications.listMineSafe({ limit: 12 }),
   ]);
@@ -192,7 +195,7 @@ async function DashboardHomeContent({
 
   return (
     <DashboardPage>
-      {orgSubmitted ? <OrgSubmittedAlert /> : null}
+      {orgSubmitted && orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       {sessionsFailure && userR.status !== "rejected" ? (
         <DashboardSliceErrorAlert failure={sessionsFailure} />
       ) : null}
@@ -207,7 +210,8 @@ async function DashboardHomeContent({
           }
         }
         kyc={kyc}
-        orgOnboarding={orgOnboarding}
+        orgOnboarding={orgModuleEnabled ? orgOnboarding : null}
+        orgModuleEnabled={orgModuleEnabled}
         addressesCount={addresses.length}
         activity={activity}
       />
@@ -224,9 +228,14 @@ export default async function DashboardHomePage({
   const orgSubmitted = sp.org_submitted === "1";
   const sessionsFailure =
     sp.error === "sessions" ? describeSessionsOverviewError(sp.code ?? null) : null;
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   return (
     <Suspense fallback={<DashboardSkeleton variant="dashboard" />}>
-      <DashboardHomeContent orgSubmitted={orgSubmitted} sessionsFailure={sessionsFailure} />
+      <DashboardHomeContent
+        orgSubmitted={orgSubmitted}
+        sessionsFailure={sessionsFailure}
+        orgModuleEnabled={orgModuleEnabled}
+      />
     </Suspense>
   );
 }

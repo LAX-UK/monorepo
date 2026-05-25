@@ -12,9 +12,10 @@ import { OrgTabsNav } from "@/components/organisations/org-tabs-nav";
 import { SetActingOrgButton } from "@/components/organisations/set-acting-org-button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function OrganisationLayout({
   children,
@@ -23,6 +24,11 @@ export default async function OrganisationLayout({
   children: React.ReactNode;
   params: Promise<{ id: string }>;
 }) {
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  if (!orgModuleEnabled) {
+    redirect("/dashboard/organisations");
+  }
+
   const { id } = await params;
   const user = await requireAuthenticatedUser({
     shell: "client",

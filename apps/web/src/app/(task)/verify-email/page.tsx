@@ -4,6 +4,7 @@ import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
 import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
 import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invite.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -35,12 +36,14 @@ export default async function VerifyEmailPage({
 
   const queryInvite = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : null;
 
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const sessionUser = await getServerSessionUser();
 
   const destination = resolvePostVerifyDestination({
     requestedNext: queryNext,
     queryPersona,
     sessionPersona: sessionUser?.signupPersona ?? null,
+    orgModuleEnabled,
   });
 
   if (error) {
@@ -94,7 +97,7 @@ export default async function VerifyEmailPage({
     );
   }
 
-  if (sessionUser?.id) {
+  if (sessionUser?.id && orgModuleEnabled) {
     const consumed = await tryConsumePendingInviteAfterVerify(queryInvite);
     if (consumed) {
       redirect(consumed.redirectTo);

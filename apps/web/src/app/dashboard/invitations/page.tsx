@@ -3,6 +3,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
+import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -11,12 +12,22 @@ import {
   parseApiErrorCode,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { Button } from "@auction/ui/components/button";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
 
 export default async function InvitationsInboxPage() {
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  if (!orgModuleEnabled) {
+    return (
+      <DashboardPage>
+        <OrgModuleComingSoon />
+      </DashboardPage>
+    );
+  }
+
   await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/invitations",

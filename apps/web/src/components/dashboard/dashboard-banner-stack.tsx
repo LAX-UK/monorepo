@@ -33,6 +33,7 @@ type StackProps = {
   acting: LegalEntitySummary | null;
   kycSummary: KycStatusSummaryDto | null;
   orgOnboardingResume: OrgOnboardingResumeVm | null;
+  orgModuleEnabled?: boolean;
 };
 
 /** Renders dashboard alerts by priority; overflow links to settings. */
@@ -41,6 +42,7 @@ export function DashboardBannerStack({
   acting,
   kycSummary,
   orgOnboardingResume,
+  orgModuleEnabled = true,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
 
@@ -52,7 +54,7 @@ export function DashboardBannerStack({
     });
   }
 
-  if (orgOnboardingResume) {
+  if (orgModuleEnabled && orgOnboardingResume) {
     candidates.push({
       id: "org-onboarding-resume",
       priority: DASHBOARD_BANNER_PRIORITIES.orgOnboardingResume,
@@ -60,7 +62,7 @@ export function DashboardBannerStack({
     });
   }
 
-  if (isEntityStatusBannerVisible(acting)) {
+  if (orgModuleEnabled && isEntityStatusBannerVisible(acting)) {
     candidates.push({
       id: "org-status",
       priority: DASHBOARD_BANNER_PRIORITIES.org,

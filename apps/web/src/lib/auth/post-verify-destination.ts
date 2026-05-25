@@ -9,6 +9,8 @@ export type PostVerifyDestinationInput = {
   queryPersona?: string | null;
   /** Persona persisted on the user row, surfaced via /users/me. */
   sessionPersona?: SignupPersona | null;
+  /** When false (production), organisation persona routes to dashboard. */
+  orgModuleEnabled?: boolean;
 };
 
 export type PostVerifyDestination = {
@@ -39,8 +41,9 @@ export function resolvePostVerifyDestination(
   }
 
   const persona = normalisePersona(input.sessionPersona) ?? normalisePersona(input.queryPersona);
+  const orgModuleEnabled = input.orgModuleEnabled !== false;
 
-  if (persona === "organisation") {
+  if (persona === "organisation" && orgModuleEnabled) {
     return { href: "/onboarding/organisation", label: "Set up your organisation" };
   }
 

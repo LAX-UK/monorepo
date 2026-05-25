@@ -11,16 +11,24 @@ type OverviewHeroBandProps = {
   vm: DashboardOverviewVm;
   kyc: KycStatusSummaryDto | null;
   orgOnboarding: OrgOnboardingResumeVm | null;
+  orgModuleEnabled?: boolean;
   className?: string;
 };
 
 /** Focal above-the-fold band: KPIs, optional urgent settlement strip, compact attention list. */
-export function OverviewHeroBand({ vm, kyc, orgOnboarding, className }: OverviewHeroBandProps) {
+export function OverviewHeroBand({
+  vm,
+  kyc,
+  orgOnboarding,
+  orgModuleEnabled = true,
+  className,
+}: OverviewHeroBandProps) {
   const firstSettlement = vm.settlementsDue[0];
   const attentionItems = buildAttentionItems({
     vm,
     kyc,
     orgOnboarding,
+    orgModuleEnabled,
     skipFirstSettlement: Boolean(firstSettlement),
   });
   const hasAttention = attentionItems.length > 0;
