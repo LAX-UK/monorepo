@@ -60,6 +60,14 @@ vi.mock("@/lib/actions/user-ui-preferences", () => ({
   updateUiPreferencesAction: vi.fn(),
 }));
 
+vi.mock("@/lib/auth/use-app-session", () => ({
+  useAppSession: () => ({ user: null, pending: false }),
+}));
+
+vi.mock("@/lib/auth/use-refetch-app-session", () => ({
+  useRefetchAppSession: () => async () => {},
+}));
+
 const clientUser = {
   id: "user-1",
   email: "client@example.com",

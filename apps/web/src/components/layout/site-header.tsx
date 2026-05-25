@@ -4,7 +4,6 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { SITE_LOGO_TEXT_PATH } from "@/lib/brand";
-import type { SessionUser } from "@/lib/data/contracts";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +20,6 @@ import { ThemeToggle } from "./theme-toggle";
 type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 
 type SiteHeaderProps = {
-  user?: SessionUser | null;
   nav?: MegaMenuSection[];
   transparentPaths?: string[];
   chromeVariant?: SiteHeaderChromeVariant;
@@ -34,13 +32,11 @@ type SiteHeaderShellProps = SiteHeaderProps & {
 };
 
 function SiteHeaderShell({
-  user: _user,
   nav: navProp,
   transparentPaths,
   chromeVariant,
   searchParams,
 }: SiteHeaderShellProps) {
-  void _user;
   const nav = navProp ?? emptyMegaMenuSections();
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);

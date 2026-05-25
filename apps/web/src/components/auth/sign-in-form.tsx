@@ -8,11 +8,10 @@ import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { authClient } from "@/lib/auth-client";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
-import { normalizeUserRoleOrClient } from "@auction/types";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -61,7 +60,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     window.history.replaceState(null, "", url);
   }, []);
 
-  const session = authClient.useSession();
+  const { user, pending } = useAppSession();
   const emailValue = form.watch("email");
   const safeNext = isSafeNextPath(next) ? next : undefined;
   const registerHref = buildAuthHref("/register", {
@@ -71,28 +70,23 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
     ...(emailValue ? { email: emailValue } : {}),
   });
-  const rawUser = session.data?.user as
-    | { email?: string; role?: string; emailVerified?: boolean; suspended?: boolean }
-    | undefined;
-
   if (switchAccount) {
-    if (session.isPending) {
+    if (pending) {
       return (
         <div className="h-64 animate-pulse rounded-md bg-surface-container-high" aria-hidden />
       );
     }
   }
 
-  if (switchAccount && rawUser?.email) {
+  if (switchAccount && user?.email) {
     return (
       <div className="flex w-full flex-col gap-8">
         <output
           className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
           aria-live="polite"
         >
-          You&apos;re signed in as{" "}
-          <span className="font-medium text-on-surface">{rawUser.email}</span>. Sign out to use a
-          different account, or continue to your dashboard.
+          You&apos;re signed in as <span className="font-medium text-on-surface">{user.email}</span>
+          . Sign out to use a different account, or continue to your dashboard.
         </output>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           <Button
@@ -109,13 +103,13 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     );
   }
 
-  if (!switchAccount && rawUser?.email && !session.isPending) {
+  if (!switchAccount && user?.email && !pending) {
     const dest = resolvePostAuthDestination({
       user: {
-        email: rawUser.email,
-        role: normalizeUserRoleOrClient(rawUser.role),
-        emailVerified: rawUser.emailVerified ?? false,
-        suspended: rawUser.suspended ?? false,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified ?? false,
+        suspended: user.suspended ?? false,
       },
       requestedNext: next,
       context: "redirect-if-authed",
@@ -129,7 +123,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           aria-live="polite"
         >
           You&apos;re already signed in as{" "}
-          <span className="font-medium text-on-surface">{rawUser.email}</span>.
+          <span className="font-medium text-on-surface">{user.email}</span>.
         </output>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           <Button

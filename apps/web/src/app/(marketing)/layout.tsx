@@ -15,7 +15,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
       <MarketingLotQuickLookShell>
         <CommandPaletteLazy variant="marketing" />
         <MarketingGlobalHotkeys />
-        <SiteHeader user={null} nav={nav} transparentPaths={["/"]} />
+        <SiteHeader nav={nav} transparentPaths={["/"]} />
         {children}
         <AuthRequiredToast />
       </MarketingLotQuickLookShell>
