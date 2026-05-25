@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getClientMobileBottomTabs } from "./app-shell-nav";
+import { getClientBuyingNavItems, getClientMobileBottomTabs } from "./app-shell-nav";
 
 describe("getClientMobileBottomTabs", () => {
   it("returns buying workspace tabs", () => {
@@ -20,5 +20,14 @@ describe("getClientMobileBottomTabs", () => {
       "notifications",
       "more",
     ]);
+  });
+});
+
+describe("org module nav filtering", () => {
+  it("hides organisations and invitations when org module disabled", () => {
+    const ids = getClientBuyingNavItems(false).map((item) => item.id);
+    expect(ids).not.toContain("organisations");
+    expect(ids).not.toContain("invitations");
+    expect(ids).toContain("overview");
   });
 });

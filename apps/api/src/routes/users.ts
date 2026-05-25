@@ -38,6 +38,7 @@ import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
+import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
@@ -91,6 +92,13 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     }
     const body = c.req.valid("json");
     const { turnstileToken: _turnstile, ...reg } = body;
+    if (
+      !isOrgModuleEnabled(container.env.WEB_ORIGIN) &&
+      (reg.persona === "organisation" || reg.inviteToken)
+    ) {
+      const disabled = orgModuleDisabledResponse();
+      return c.json(disabled, 403);
+    }
     const result = await container.registrationService.register({
       firstName: reg.firstName,
       lastName: reg.lastName,
