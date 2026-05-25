@@ -1,6 +1,5 @@
 import { DashboardBannerStack } from "@/components/dashboard/dashboard-banner-stack";
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
-import { DashboardThemeSync } from "@/components/dashboard/dashboard-theme-sync";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
@@ -128,7 +127,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       }
       topSlot={<WelcomeBackToast />}
     >
-      <DashboardThemeSync theme={user.uiPreferences?.theme ?? "system"} />
       {children}
     </ClientShell>
   );

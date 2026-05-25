@@ -199,7 +199,7 @@ export function LotMoreFromRail({
                       <Button
                         variant="outline"
                         asChild
-                        className="h-10 min-h-10 flex-1 rounded border-[#A3A3A3] text-base font-semibold text-[#0A0A0A] dark:text-on-surface"
+                        className="h-10 min-h-10 flex-1 rounded border-[#A3A3A3] text-base font-semibold text-[#0A0A0A] dark:border-neutral-500 dark:text-on-surface"
                       >
                         <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
                       </Button>

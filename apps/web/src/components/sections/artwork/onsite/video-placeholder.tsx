@@ -17,7 +17,7 @@ export function VideoPlaceholder({ children, className }: Props) {
       )}
     >
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#2a2a2a] to-[#0a0a0a]">
-        <div className="rounded-full bg-white/10 p-5 text-white/90 backdrop-blur-sm transition-transform duration-300 motion-safe:hover:scale-105 motion-reduce:hover:scale-100">
+        <div className="rounded-full bg-white/10 p-5 text-white/90 backdrop-blur-sm transition-transform duration-300 dark:bg-white/10 motion-safe:hover:scale-105 motion-reduce:hover:scale-100">
           <Play className="size-12 fill-current pl-1" aria-hidden />
           <span className="sr-only">Video placeholder — stream not connected</span>
         </div>
