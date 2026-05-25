@@ -39,6 +39,8 @@ export class DrizzleXeroConnectionRepository implements IXeroConnectionRepositor
           expiresAt: row.expiresAt,
           scopes: row.scopes,
           connectedByUserId: row.connectedByUserId,
+          connectionStatus: "healthy",
+          lastRefreshError: null,
           updatedAt: now,
         },
       })
@@ -50,6 +52,31 @@ export class DrizzleXeroConnectionRepository implements IXeroConnectionRepositor
   async updateTokens(
     tenantId: string,
     patch: Pick<XeroConnectionRow, "accessToken" | "refreshToken" | "expiresAt">,
+  ): Promise<void> {
+    await this.db
+      .update(xeroConnection)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(xeroConnection.tenantId, tenantId));
+  }
+
+  async updateConnectionStatus(
+    tenantId: string,
+    status: XeroConnectionRow["connectionStatus"],
+    lastRefreshError: string | null,
+  ): Promise<void> {
+    await this.db
+      .update(xeroConnection)
+      .set({
+        connectionStatus: status,
+        lastRefreshError,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.tenantId, tenantId));
+  }
+
+  async updateOrgMetadata(
+    tenantId: string,
+    patch: Pick<XeroConnectionRow, "orgShortCode" | "orgBaseCurrency">,
   ): Promise<void> {
     await this.db
       .update(xeroConnection)

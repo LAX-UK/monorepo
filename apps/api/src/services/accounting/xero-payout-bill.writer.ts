@@ -1,3 +1,4 @@
+import type { Redis } from "ioredis";
 import {
   Contact,
   CurrencyCode,
@@ -40,6 +41,7 @@ export class XeroPayoutBillWriter {
     private readonly payouts: IPayoutRepository,
     private readonly legalEntities: ILegalEntityRepository,
     private readonly errorReporter: IErrorReporter,
+    private readonly redis: Redis,
   ) {}
 
   private async refreshXeroTokensReporting(
@@ -47,7 +49,9 @@ export class XeroPayoutBillWriter {
     conn: XeroConnectionRow,
   ): Promise<XeroConnectionRow> {
     try {
-      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn, {
+        redis: this.redis,
+      });
     } catch (cause) {
       this.errorReporter.report({
         severity: "error",

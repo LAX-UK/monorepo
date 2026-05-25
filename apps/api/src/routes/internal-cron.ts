@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
+import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 
 /** Redis key for `SET … NX` — only one bulk settlement across API instances. */
 export const BULK_PAYOUT_SETTLEMENT_LOCK_KEY = "payout:settlement:lock";
@@ -150,6 +151,33 @@ export function createInternalCronRoutes(container: Container, env: Env) {
       }
     }
     return c.json({ data: { attempted: rows.length, recovered } });
+  });
+
+  /** Proactively refresh Xero OAuth tokens (keeps refresh token alive on idle stacks). */
+  r.post("/refresh-xero-tokens", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (!env.XERO_CLIENT_ID || !env.XERO_CLIENT_SECRET || !env.XERO_REDIRECT_URI) {
+      return c.json({ error: "xero_not_configured" }, 503);
+    }
+    const { DrizzleXeroConnectionRepository } = await import(
+      "../repositories/drizzle-xero-connection.repository.js"
+    );
+    const connections = new DrizzleXeroConnectionRepository(container.db);
+    const result = await proactiveRefreshXeroTokens({
+      env,
+      connections,
+      redis: container.redis,
+    });
+    if (!result.ok) {
+      return c.json({ data: result }, result.reason === "not_connected" ? 200 : 502);
+    }
+    return c.json({ data: result });
   });
 
   /** Replay admin refunds where Stripe succeeded but DB persist failed. */
