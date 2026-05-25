@@ -1,12 +1,14 @@
 "use client";
 
 import { trackLogin } from "@/lib/analytics/events";
+import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { signInService } from "@/lib/auth/services/sign-in.service";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
+import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -15,6 +17,7 @@ import { useForm } from "react-hook-form";
 
 export function useSignInController(nextHref: string) {
   const router = useRouter();
+  const refetchSession = useRefetchAppSession();
   const turnstileRef = useRef<string | undefined>(undefined);
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit((data: SignInFormValues) =>
     signInService({ ...data, turnstileToken: turnstileRef.current }),
@@ -51,6 +54,8 @@ export function useSignInController(nextHref: string) {
         return;
       }
       trackLogin();
+      await refetchSession();
+      postAuthBroadcast({ type: "signed-in" });
       const me = await fetchSessionUserAfterAuth();
       if (me) {
         router.push(

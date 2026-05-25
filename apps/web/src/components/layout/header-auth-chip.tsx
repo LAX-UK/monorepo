@@ -3,9 +3,7 @@
 import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { authClient } from "@/lib/auth-client";
-import type { SessionUser } from "@/lib/data/contracts";
-import { normalizeUserRoleOrClient } from "@auction/types";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { accountNavLinks } from "./header-account-nav";
@@ -19,38 +17,6 @@ const loginPillClassSolid =
 type HeaderAuthChipProps = {
   variant?: HeaderAuthChipVariant;
 };
-
-type AuthUserLike = {
-  id: string;
-  email: string;
-  name?: string | null;
-  image?: string | null;
-  role?: string | null;
-  suspended?: boolean | null;
-  twoFactorEnabled?: boolean | null;
-};
-
-function mapAuthUser(user: AuthUserLike): SessionUser {
-  const out: SessionUser = {
-    id: user.id,
-    email: user.email,
-    name: user.name?.trim() || user.email,
-    role: normalizeUserRoleOrClient(user.role),
-    image: user.image ?? null,
-  };
-  if (typeof user.suspended === "boolean") out.suspended = user.suspended;
-  if (typeof user.twoFactorEnabled === "boolean") out.twoFactorEnabled = user.twoFactorEnabled;
-  return out;
-}
-
-function useHeaderSessionUser(): { user: SessionUser | null; pending: boolean } {
-  const session = authClient.useSession();
-  const rawUser = session.data?.user as AuthUserLike | undefined;
-  return {
-    user: rawUser ? mapAuthUser(rawUser) : null,
-    pending: session.isPending,
-  };
-}
 
 function HeaderAuthSkeleton({ variant }: { variant: HeaderAuthChipVariant }) {
   if (variant === "notifications") {
@@ -82,7 +48,7 @@ function LoginPill() {
 }
 
 export function HeaderAuthChip({ variant = "full" }: HeaderAuthChipProps) {
-  const { user, pending } = useHeaderSessionUser();
+  const { user, pending } = useAppSession();
 
   if (pending) return <HeaderAuthSkeleton variant={variant} />;
   if (!user) {
@@ -101,7 +67,7 @@ export function HeaderAuthChip({ variant = "full" }: HeaderAuthChipProps) {
 }
 
 export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
-  const { user, pending } = useHeaderSessionUser();
+  const { user, pending } = useAppSession();
 
   if (pending) {
     return (
