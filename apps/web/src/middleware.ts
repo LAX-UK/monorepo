@@ -3,6 +3,7 @@ import {
   getAuthPublicCookieRedirectUrl,
 } from "@/lib/auth/auth-public-edge";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
+import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Generate a cryptographically random nonce string for CSP. */
@@ -154,6 +155,8 @@ export async function middleware(request: NextRequest) {
       "max-age=63072000; includeSubDomains; preload",
     );
   }
+
+  applyClientHintHeaders(baseResponse);
 
   return baseResponse;
 }

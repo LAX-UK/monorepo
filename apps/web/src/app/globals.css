@@ -583,6 +583,11 @@
   }
 }
 
+/* Light theme: native controls match semantic tokens */
+html {
+  color-scheme: light;
+}
+
 /* Dark theme: semantic tokens (mirrors @theme names) */
 html.dark {
   color-scheme: dark;

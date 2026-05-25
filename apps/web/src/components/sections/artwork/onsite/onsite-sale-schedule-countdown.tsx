@@ -45,11 +45,13 @@ export function OnsiteSaleScheduleCountdown({ sale, className }: Props) {
 
   return (
     <div className={cn("text-center", className)}>
-      <p className="font-body text-sm font-medium text-[#D1D1D1] sm:text-base">{label}</p>
+      <p className="font-body text-sm font-medium text-[#D1D1D1] dark:text-[#D1D1D1] sm:text-base">
+        {label}
+      </p>
       {phase !== "ended" ? (
         <p
           className={cn(
-            "mt-2 font-bold tabular-nums text-[#F1F1F3] sm:text-2xl",
+            "mt-2 font-bold tabular-nums text-[#F1F1F3] dark:text-[#F1F1F3] sm:text-2xl",
             msLeft != null && msLeft < 60_000 ? "text-live-red" : "",
           )}
           suppressHydrationWarning

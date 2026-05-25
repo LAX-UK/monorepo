@@ -1,10 +1,11 @@
 import type { Database } from "@auction/db";
 import { userUiPreference } from "@auction/db/schema";
-import type {
-  DensityPreference,
-  LayoutViewDefault,
-  ThemePreference,
-  UiPreferencePatch,
+import {
+  DEFAULT_THEME_PREFERENCE,
+  type DensityPreference,
+  type LayoutViewDefault,
+  type ThemePreference,
+  type UiPreferencePatch,
 } from "@auction/validators";
 import { eq } from "drizzle-orm";
 import type {
@@ -12,7 +13,7 @@ import type {
   UiPreferenceRow,
 } from "../services/interfaces/ui-preference.js";
 
-const DEFAULT_THEME = "system" as const;
+const DEFAULT_THEME = DEFAULT_THEME_PREFERENCE;
 const DEFAULT_VIEW = "auto" as const;
 const DEFAULT_DENSITY = "comfortable" as const;
 
