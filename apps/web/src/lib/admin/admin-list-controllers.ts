@@ -19,6 +19,7 @@ import {
   getAdminFinanceDisputeDomainEvents,
   getAdminLotFulfilmentList,
   getAdminLotList,
+  getAdminLotsByIds,
   getAdminPaymentList,
   getAdminPayoutList,
   getAdminSalesList,
@@ -343,11 +344,11 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
       return { ...base, status, limit: Math.min(200, base.limit) };
     },
     async fetch(q) {
-      const [payments, lots, fulfilmentRows] = await Promise.all([
+      const [payments, fulfilmentRows] = await Promise.all([
         getAdminPaymentList(),
-        getAdminLotList({ limit: 200, offset: 0 }),
         getAdminLotFulfilmentList().catch(() => []),
       ]);
+      const lots = await getAdminLotsByIds(payments.map((p) => p.lotId));
       const allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
       let filtered = filterPaymentTableRowsByStatus(allRows, q.status);
       const needle = q.q?.trim().toLowerCase();
